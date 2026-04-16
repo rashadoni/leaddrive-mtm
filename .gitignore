@@ -1,0 +1,26 @@
+node_modules/
+.next/
+admin-panel-standalone/
+.env
+.env.local
+.DS_Store
+._*
+*.apk
+*.aab
+*.keystore
+
+# Android build
+MTMobileApp/android/.gradle/
+MTMobileApp/android/build/
+MTMobileApp/android/app/build/
+MTMobileApp/android/app/.cxx/
+
+# iOS
+MTMobileApp/ios/Pods/
+MTMobileApp/ios/build/
+
+# Metro
+MTMobileApp/.metro-health-check*
+
+# Claude
+.claude/

@@ -1,0 +1,53 @@
+services:
+  backend:
+    build: ./backend
+    container_name: mtm-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CORS_ORIGIN: '*'
+      DATABASE_URL: postgresql://mtm_user:mtm_secure_2026@db:5432/mtm_db?schema=public
+      JWT_EXPIRES_IN: 7d
+      JWT_SECRET: mtm-jwt-production-secret-hetzner-2026
+      ONEC_BASE_URL: http://185.132.107.206:6540
+      ONEC_PASSWORD: Z3ytun
+      ONEC_USERNAME: WebService
+      PORT: 4000
+    ports:
+    - 4000:4000
+    restart: always
+  db:
+    container_name: mtm-db
+    environment:
+      POSTGRES_DB: mtm_db
+      POSTGRES_PASSWORD: mtm_secure_2026
+      POSTGRES_USER: mtm_user
+    healthcheck:
+      interval: 5s
+      retries: 5
+      test:
+      - CMD-SHELL
+      - pg_isready -U mtm_user -d mtm_db
+      timeout: 5s
+    image: postgres:16-alpine
+    restart: always
+    volumes:
+    - pgdata:/var/lib/postgresql/data
+  frontend:
+    image: node:20-alpine
+    container_name: mtm-frontend
+    working_dir: /app
+    volumes:
+    - ./admin-panel-standalone:/app
+    depends_on:
+    - backend
+    ports:
+    - 3080:3000
+    environment:
+      HOSTNAME: '0.0.0.0'
+      PORT: '3000'
+    command: node server.js
+    restart: always
+volumes:
+  pgdata: null
