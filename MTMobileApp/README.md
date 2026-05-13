@@ -1,5 +1,12 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+## Project scope
+
+**Mobile companion app for the LeadDrive MTM ("Route & Field") module.** Sales / field agents use this on Android phones to log customer visits, check in via GPS, capture photos, and create orders that sync back to the CRM at `app.leaddrivecrm.org`.
+
+- **Platforms:** Android only. There is no `ios/` directory; iOS is not currently in scope. When iOS becomes a requirement, add the platform-specific scaffold and update `versionName` / `versionCode` policy below to apply to both manifests.
+- **Versioning:** `android/app/build.gradle` (`versionCode` int + `versionName` semver) and `package.json` `version` move in lockstep on every shipped APK. Bump policy: patch for one-screen fixes, minor for batches (geofence/UX overhauls, icon redesign, etc.), major for breaking API or auth changes. Builds are saved to `~/Desktop/leaddrive-mtm-debug-v<X.Y.Z>.apk` for handover.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

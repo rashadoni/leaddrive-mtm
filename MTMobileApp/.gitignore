@@ -35,6 +35,16 @@ local.properties
 !debug.keystore
 .kotlin/
 
+# Android — gradle/Metro build artifacts that get regenerated on each
+# `assembleDebug`. Committing them creates noise on every rebuild.
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/res/drawable-mdpi/
+android/app/src/main/res/drawable-hdpi/
+android/app/src/main/res/drawable-xhdpi/
+android/app/src/main/res/drawable-xxhdpi/
+android/app/src/main/res/drawable-xxxhdpi/
+android/app/src/main/res/raw/keep.xml
+
 # node.js
 #
 node_modules/
