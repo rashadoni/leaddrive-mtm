@@ -309,22 +309,24 @@ export default function RouteScreen() {
           )
         })
       } catch {
-        // Fresh GPS failed — try cached position from location service
-        if (lastKnownPosition) {
-          coords = { latitude: lastKnownPosition.latitude, longitude: lastKnownPosition.longitude }
-          const proceed = await new Promise<boolean>((resolve) => {
-            Alert.alert(
-              "Using Last Known Position",
-              `Fresh GPS unavailable. Using your last known position (accuracy: ${Math.round(lastKnownPosition!.accuracy)}m).`,
-              [
-                { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
-                { text: "Continue", onPress: () => resolve(true) },
-              ]
-            )
-          })
-          if (!proceed) { setMutating(false); return }
+        // Fresh GPS failed — fall back to cached position from location
+        // service silently. Location service streams continuous updates
+        // in the background, so the cached fix is typically <30s old.
+        // The downstream geofence check (below) is the only gate that
+        // matters; a modal here read as an error to users even when the
+        // cached accuracy was excellent (e.g. 10m).
+        //
+        // Staleness guard: if the background service died (Android killed
+        // the foreground process, permission revoked mid-session) the
+        // cache can grow arbitrarily old. Reject cache > STALE_LIMIT and
+        // fall through to the Retry alert so the user retries fresh GPS
+        // rather than checking in against a hours-old fix.
+        const STALE_LIMIT = 120_000 // 2 min
+        const cacheFresh = lastKnownPosition && (Date.now() - lastKnownPosition.timestamp) < STALE_LIMIT
+        if (cacheFresh) {
+          coords = { latitude: lastKnownPosition!.latitude, longitude: lastKnownPosition!.longitude }
         } else {
-          // No cached position either — only allow retry
+          // No fresh cached position — only allow retry
           await new Promise<void>((resolve) => {
             Alert.alert(
               "Location Unavailable",
@@ -337,24 +339,35 @@ export default function RouteScreen() {
         }
       }
 
+      // F-28 client-gate: only SUPERVISOR/MANAGER/ADMIN see the "Try
+      // Anyway" override button. AGENT-role users get a single Cancel
+      // because the server would 403 the force=true POST anyway. This
+      // matches VisitScreen.tsx behavior and avoids a misleading
+      // success-looking button that actually fails server-side.
+      let forceCheckIn = false
       if (coords && point.distanceMeters != null && point.distanceMeters > GEOFENCE_DEFAULT) {
+        const canOverride = api.canForceCheckIn
         const proceed = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            "Too Far Away",
-            `You are ${formatDistance(point.distanceMeters!)} from ${point.customer.name}.\nYou need to be within ${GEOFENCE_DEFAULT}m to check in.`,
-            [
-              { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
-              { text: "Try Anyway", onPress: () => resolve(true) },
-            ]
-          )
+          const buttons: Array<{ text: string; onPress: () => void; style?: "cancel" }> = canOverride
+            ? [
+                { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
+                { text: "Try Anyway", onPress: () => resolve(true) },
+              ]
+            : [{ text: "OK", onPress: () => resolve(false) }]
+          const message = canOverride
+            ? `You are ${formatDistance(point.distanceMeters!)} from ${point.customer.name}.\nYou need to be within ${GEOFENCE_DEFAULT}m to check in.`
+            : `You are ${formatDistance(point.distanceMeters!)} from ${point.customer.name}.\nMust be within ${GEOFENCE_DEFAULT}m. Ask your supervisor if you need an override.`
+          Alert.alert("Too Far Away", message, buttons)
         })
         if (!proceed) { setMutating(false); return }
+        forceCheckIn = true
       }
 
       const res = await api.checkIn({
         customerId: point.customer.id,
         latitude: coords?.latitude,
         longitude: coords?.longitude,
+        ...(forceCheckIn && { force: true }),
       })
       if (res.success) {
         setSheetVisible(false)

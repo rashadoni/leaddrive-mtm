@@ -2,7 +2,7 @@ import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
 
-export let lastKnownPosition: { latitude: number; longitude: number; accuracy: number } | null = null
+export let lastKnownPosition: { latitude: number; longitude: number; accuracy: number; timestamp: number } | null = null
 
 const SEND_INTERVAL = 30_000 // 30 seconds
 const MAX_ACCURACY = 50 // meters — reject positions worse than this
@@ -80,7 +80,7 @@ function pollAndSendAsync(retryCount = 0): Promise<void> {
         console.warn(`[GPS] Position: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}, acc=${accuracy?.toFixed(1)}m`)
 
         // Cache for check-in fallback
-        lastKnownPosition = { latitude, longitude, accuracy: accuracy || 0 }
+        lastKnownPosition = { latitude, longitude, accuracy: accuracy || 0, timestamp: Date.now() }
 
         // If accuracy too bad, retry
         if (accuracy && accuracy > MAX_ACCURACY && retryCount < MAX_RETRIES) {
@@ -108,7 +108,7 @@ function pollAndSendAsync(retryCount = 0): Promise<void> {
         if (retryCount === 0) {
           Geolocation.getCurrentPosition(
             (pos) => {
-              lastKnownPosition = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy || 0 }
+              lastKnownPosition = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, accuracy: pos.coords.accuracy || 0, timestamp: Date.now() }
               api.sendLocation({
                 latitude: pos.coords.latitude,
                 longitude: pos.coords.longitude,

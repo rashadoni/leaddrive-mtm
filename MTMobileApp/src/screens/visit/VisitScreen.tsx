@@ -245,11 +245,23 @@ export default function VisitScreen() {
         return
       }
 
-      // Geofence check — warn if beyond GEOFENCE_DEFAULT meters but allow override
+      // Geofence check — warn if beyond GEOFENCE_DEFAULT meters but allow
+      // override only for SUPERVISOR/MANAGER/ADMIN (F-28 client-gate).
+      // AGENT role would 403 server-side on force=true, so don't even
+      // surface the override prompt — show a toast instead and bail.
       let forceCheckIn = false
       if (customer.latitude != null && customer.longitude != null) {
         const distance = Math.round(haversineDistance(coords.latitude, coords.longitude, customer.latitude, customer.longitude))
         if (distance > GEOFENCE_DEFAULT) {
+          if (!api.canForceCheckIn) {
+            showToast(
+              "error",
+              "Too Far Away",
+              `${formatDistance(distance)} from ${customer.name} (max ${GEOFENCE_DEFAULT}m). Ask your supervisor.`,
+            )
+            setMutating(false)
+            return
+          }
           const proceed = await new Promise<boolean>((resolve) => {
             setPendingGeofenceResolve(() => (v: boolean) => resolve(v))
             setConfirm({

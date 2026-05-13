@@ -10,7 +10,11 @@ import {
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 
-interface OrderItem { product: string; qty: number; price: number }
+// F-43: server validator (mtm-validators OrderItem) uses `name`, not
+// `product`. Mobile previously read `it.product` which never existed
+// in stored items (Zod strip'd it on write); fallback kept for any
+// legacy in-flight rows where someone hand-crafted a stored row.
+interface OrderItem { name?: string; product?: string; qty: number; price: number }
 
 interface Order {
   id: string
@@ -154,7 +158,7 @@ export default function OrdersScreen() {
             <View style={styles.itemsList}>
               {(item.items || []).slice(0, 3).map((it, idx) => (
                 <View key={idx} style={styles.itemRow}>
-                  <Text style={styles.itemName} numberOfLines={1}>{it.product}</Text>
+                  <Text style={styles.itemName} numberOfLines={1}>{it.name || it.product || "(item)"}</Text>
                   <Text style={styles.itemQty}>x{it.qty}</Text>
                   <Text style={styles.itemPrice}>${(it.qty * it.price).toFixed(0)}</Text>
                 </View>
