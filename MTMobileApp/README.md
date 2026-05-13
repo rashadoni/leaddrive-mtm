@@ -39,7 +39,9 @@ npm run android
 yarn android
 ```
 
-### iOS
+### iOS (out of scope — see [Project scope](#project-scope) above)
+
+The original RN template instructions below remain as reference for anyone forking this app to add iOS support later. No iOS scaffold currently exists in this repo and CI/builds do not target iOS.
 
 For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
 
