@@ -250,21 +250,29 @@ export default function RouteScreen() {
       if (res.success && res.data?.routes?.length > 0) {
         const now = new Date()
         now.setHours(0, 0, 0, 0)
-        // Two bugs lived here before:
-        //  1. The list was sorted ASC by date and `sorted[0]` taken, so
-        //     when an agent had multiple PLANNED routes for the same
-        //     day (supervisor regenerated the plan), the OLDER route
-        //     won.
-        //  2. COMPLETED / CANCELLED routes weren't filtered out — a
-        //     finished route from earlier today could still be shown.
-        // The server now returns rows ordered by date DESC then
-        // createdAt DESC, so we just respect that order, drop closed
-        // routes, and take the first active match.
+        // Picker history:
+        //  v1: sorted ASC by date, took [0] — older route won when
+        //      two routes shared a date.
+        //  v2 (1.1.1): server now returns date DESC + createdAt DESC,
+        //      mobile filters to ACTIVE_STATUS and `date >= today`,
+        //      with fallback to res.data.routes[0] if empty.
+        //  v3 (this turn): the fallback was masking real "no route
+        //      today" scenarios — when an admin created a route with
+        //      a past date by mistake (e.g. typed 14.04 in DD.MM/MM.DD
+        //      confusion), there was no active route for today and
+        //      the fallback silently showed yesterday's COMPLETED
+        //      route, looking like "old route stuck." Now: no
+        //      fallback. If no active route matches, render the
+        //      empty state and let the agent ask their supervisor.
         const ACTIVE_STATUS = new Set(["PLANNED", "IN_PROGRESS"])
         const activeForToday = res.data.routes.filter((r: any) =>
           new Date(r.date) >= now && ACTIVE_STATUS.has(r.status)
         )
-        const routeData = activeForToday[0] || res.data.routes[0]
+        const routeData = activeForToday[0]
+        if (!routeData) {
+          setRoute(null)
+          return
+        }
         if (routeData?.id) {
           const coords = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
             Geolocation.getCurrentPosition(
