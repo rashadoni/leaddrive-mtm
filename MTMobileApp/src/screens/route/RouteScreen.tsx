@@ -250,10 +250,21 @@ export default function RouteScreen() {
       if (res.success && res.data?.routes?.length > 0) {
         const now = new Date()
         now.setHours(0, 0, 0, 0)
-        const sorted = res.data.routes
-          .filter((r: any) => new Date(r.date) >= now)
-          .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        const routeData = sorted[0] || res.data.routes[0]
+        // Two bugs lived here before:
+        //  1. The list was sorted ASC by date and `sorted[0]` taken, so
+        //     when an agent had multiple PLANNED routes for the same
+        //     day (supervisor regenerated the plan), the OLDER route
+        //     won.
+        //  2. COMPLETED / CANCELLED routes weren't filtered out — a
+        //     finished route from earlier today could still be shown.
+        // The server now returns rows ordered by date DESC then
+        // createdAt DESC, so we just respect that order, drop closed
+        // routes, and take the first active match.
+        const ACTIVE_STATUS = new Set(["PLANNED", "IN_PROGRESS"])
+        const activeForToday = res.data.routes.filter((r: any) =>
+          new Date(r.date) >= now && ACTIVE_STATUS.has(r.status)
+        )
+        const routeData = activeForToday[0] || res.data.routes[0]
         if (routeData?.id) {
           const coords = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
             Geolocation.getCurrentPosition(
