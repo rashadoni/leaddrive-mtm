@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 import { useAuthStore } from "../../store/auth"
 import { api } from "../../services/api"
 
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function LoginScreen({ serverDomain, companyName, onSwitchServer }: Props) {
+  const { t } = useTranslation()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -40,7 +42,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter email and password")
+      Alert.alert(t("common.error"), t("auth.validationMissing"))
       return
     }
 
@@ -55,7 +57,12 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
         await api.clearCredentials()
       }
     } catch (e: any) {
-      Alert.alert("Login Failed", e.message || "Invalid credentials")
+      // Backend errors come back in English; using e.message directly
+      // would mix EN error text inside an AZ/RU UI. Always show the
+      // localized "invalid credentials" line; backend detail goes to
+      // Sentry / console for ops triage.
+      console.warn("[LoginScreen] login failed:", e?.message ?? e)
+      Alert.alert(t("auth.loginFailedTitle"), t("auth.invalidCredentials"))
     } finally {
       setLoading(false)
     }
@@ -78,11 +85,11 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
         {/* Server badge */}
         <TouchableOpacity style={styles.serverBadge} onPress={onSwitchServer}>
           <Text style={styles.serverText}>{serverDomain}</Text>
-          <Text style={styles.serverChange}>Change</Text>
+          <Text style={styles.serverChange}>{t("common.change")}</Text>
         </TouchableOpacity>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>{t("auth.email")}</Text>
           <TextInput
             style={styles.input}
             value={email}
@@ -94,13 +101,13 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
             autoCorrect={false}
           />
 
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>{t("auth.password")}</Text>
           <View style={styles.passwordRow}>
             <TextInput
               style={[styles.input, { flex: 1 }]}
               value={password}
               onChangeText={setPassword}
-              placeholder="Enter password"
+              placeholder={t("auth.passwordPlaceholder")}
               placeholderTextColor="#94a3b8"
               secureTextEntry={!showPassword}
             />
@@ -120,7 +127,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
             <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
               {rememberMe && <Text style={styles.checkmark}>✓</Text>}
             </View>
-            <Text style={styles.rememberText}>Remember me</Text>
+            <Text style={styles.rememberText}>{t("auth.rememberMe")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -131,7 +138,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={styles.buttonText}>{t("auth.signIn")}</Text>
             )}
           </TouchableOpacity>
         </View>

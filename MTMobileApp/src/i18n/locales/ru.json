@@ -1,4 +1,18 @@
 {
+  "common": {
+    "error": "Ошибка",
+    "change": "Изменить"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Пароль",
+    "passwordPlaceholder": "Введите пароль",
+    "signIn": "Войти",
+    "rememberMe": "Запомнить меня",
+    "loginFailedTitle": "Не удалось войти",
+    "invalidCredentials": "Неверные учётные данные",
+    "validationMissing": "Введите email и пароль"
+  },
   "profile": {
     "language": "Язык",
     "languageAz": "Azərbaycan",

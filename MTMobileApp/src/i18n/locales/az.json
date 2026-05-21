@@ -1,4 +1,18 @@
 {
+  "common": {
+    "error": "Səhv",
+    "change": "Dəyiş"
+  },
+  "auth": {
+    "email": "E-poçt",
+    "password": "Şifrə",
+    "passwordPlaceholder": "Şifrəni daxil edin",
+    "signIn": "Daxil ol",
+    "rememberMe": "Məni xatırla",
+    "loginFailedTitle": "Giriş alınmadı",
+    "invalidCredentials": "Səhv giriş məlumatları",
+    "validationMissing": "E-poçt və şifrəni daxil edin"
+  },
   "profile": {
     "language": "Dil",
     "languageAz": "Azərbaycan",

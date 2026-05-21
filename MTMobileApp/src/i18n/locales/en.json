@@ -1,4 +1,18 @@
 {
+  "common": {
+    "error": "Error",
+    "change": "Change"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password",
+    "signIn": "Sign In",
+    "rememberMe": "Remember me",
+    "loginFailedTitle": "Login Failed",
+    "invalidCredentials": "Invalid credentials",
+    "validationMissing": "Please enter email and password"
+  },
   "profile": {
     "language": "Language",
     "languageAz": "Azərbaycan",
