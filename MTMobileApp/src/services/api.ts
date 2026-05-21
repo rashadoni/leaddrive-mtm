@@ -13,6 +13,11 @@ class ApiClient {
   // overrides; this is UX so a regular AGENT doesn't see a button that
   // will 403 server-side.
   private _agentRole: string | null = null
+  // M1-2: cached for photo watermark composition. agentName goes into
+  // the visible watermark; agentCode falls back to the trailing 6 chars
+  // of the agent id if the backend doesn't return a separate field.
+  private _agentName: string | null = null
+  private _agentCode: string | null = null
   private baseUrl: string = ""
 
   async init() {
@@ -27,6 +32,8 @@ class ApiClient {
         const agent = JSON.parse(agentRaw)
         this.agentId = agent.id || null
         this._agentRole = agent.role || null
+        this._agentName = agent.name || null
+        this._agentCode = agent.code || null
       } catch (e) {
         console.warn("Failed to parse stored agent:", e)
       }
@@ -36,6 +43,23 @@ class ApiClient {
   /** Role of the currently authenticated agent, or null if not signed in. */
   get agentRole(): string | null {
     return this._agentRole
+  }
+
+  /**
+   * Current agent identity for client-side use (M1-2 photo watermark
+   * composer needs id + name + code). Returns null when not signed in.
+   * agentCode falls back to the last 6 chars of agentId if the backend
+   * doesn't ship a separate `code` field — `#A042` style suffix works
+   * either way in the watermark text.
+   */
+  get currentAgent(): { id: string; name: string; code: string; role: string | null } | null {
+    if (!this.agentId) return null
+    return {
+      id: this.agentId,
+      name: this._agentName ?? "Unknown",
+      code: this._agentCode ?? this.agentId.slice(-6).toUpperCase(),
+      role: this._agentRole,
+    }
   }
 
   /** True if the current agent may bypass geofence (F-28 server contract). */
@@ -212,6 +236,8 @@ class ApiClient {
       this.token = data.data.token
       this.agentId = data.data.agent?.id || null
       this._agentRole = data.data.agent?.role || null
+      this._agentName = data.data.agent?.name || null
+      this._agentCode = data.data.agent?.code || null
       await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
       await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
     }
@@ -223,6 +249,8 @@ class ApiClient {
     this.token = null
     this.agentId = null
     this._agentRole = null
+    this._agentName = null
+    this._agentCode = null
     await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT])
   }
 

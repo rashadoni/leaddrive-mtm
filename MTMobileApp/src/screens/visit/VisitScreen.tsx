@@ -615,6 +615,31 @@ export default function VisitScreen() {
         visible={cameraVisible}
         onClose={() => setCameraVisible(false)}
         onPhotoTaken={handlePhotoTaken}
+        watermark={
+          api.currentAgent && activeVisit
+            ? {
+                agent: {
+                  id: api.currentAgent.id,
+                  name: api.currentAgent.name,
+                  code: api.currentAgent.code,
+                },
+                visit: { id: activeVisit.id },
+                customer: {
+                  id: activeVisit.customer.id,
+                  name: activeVisit.customer.name,
+                },
+                getLocation: getCoords,
+                getLastKnownLocation: () =>
+                  lastKnownPosition
+                    ? {
+                        latitude: lastKnownPosition.latitude,
+                        longitude: lastKnownPosition.longitude,
+                        capturedAt: new Date(lastKnownPosition.timestamp),
+                      }
+                    : null,
+              }
+            : undefined
+        }
       />
       <ConfirmSheet
         visible={confirm.visible}

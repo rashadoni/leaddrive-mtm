@@ -14,14 +14,33 @@ import {
   useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera"
+import { photoWatermarkPipeline } from "../lib/photo-watermark"
+
+/**
+ * M1-2: when this context is passed, every captured photo gets a
+ * burned-in watermark (date / agent / customer / GPS) and EXIF tags
+ * (Software, Make, Model, ImageDescription, DateTimeOriginal, GPS)
+ * before being handed to `onPhotoTaken`. Callers that don't need a
+ * watermark (e.g. debug screens) can simply omit the prop.
+ */
+export interface WatermarkContext {
+  agent: { id: string; name: string; code: string }
+  visit: { id: string } | null
+  customer: { id: string; name: string } | null
+  /** Fetch current GPS. Should resolve quickly; null on permission denial / timeout. */
+  getLocation: () => Promise<{ latitude: number; longitude: number } | null>
+  /** Optional fallback when getLocation returns null (background-tracked position). */
+  getLastKnownLocation?: () => { latitude: number; longitude: number; capturedAt: Date } | null
+}
 
 interface Props {
   visible: boolean
   onClose: () => void
   onPhotoTaken: (path: string) => void
+  watermark?: WatermarkContext
 }
 
-export default function PhotoCaptureModal({ visible, onClose, onPhotoTaken }: Props) {
+export default function PhotoCaptureModal({ visible, onClose, onPhotoTaken, watermark }: Props) {
   const device = useCameraDevice("back")
   const { hasPermission, requestPermission } = useCameraPermission()
   const camera = useRef<Camera>(null)
@@ -33,11 +52,36 @@ export default function PhotoCaptureModal({ visible, onClose, onPhotoTaken }: Pr
     if (!camera.current || capturing) return
     setCapturing(true)
     try {
-      const photo = await camera.current.takePhoto({
-        flash,
-        enableShutterSound: true,
-      })
-      setPreviewPath(photo.path)
+      // Fetch GPS in parallel with the shutter so the preview shows the
+      // watermark with no perceptible extra delay.
+      const [photo, currentLocation] = await Promise.all([
+        camera.current.takePhoto({ flash, enableShutterSound: true }),
+        watermark?.getLocation() ?? Promise.resolve(null),
+      ])
+
+      let finalPath = photo.path
+      if (watermark) {
+        try {
+          const lastKnown = watermark.getLastKnownLocation?.() ?? undefined
+          const { watermarkedPath } = await photoWatermarkPipeline({
+            photoPath: photo.path,
+            timestamp: new Date(),
+            agent: watermark.agent,
+            visit: watermark.visit,
+            customer: watermark.customer,
+            location: currentLocation,
+            lastKnownLocation: lastKnown ?? undefined,
+          })
+          finalPath = watermarkedPath
+        } catch (e: any) {
+          // Don't lose the photo if watermark fails — backend will mark it
+          // PENDING (missing/invalid Software tag) so a supervisor sees it
+          // in the review queue. Better than dropping the visit's only
+          // proof of presence.
+          console.warn("[PhotoCaptureModal] watermark pipeline failed:", e?.message ?? e)
+        }
+      }
+      setPreviewPath(finalPath)
     } catch (e: any) {
       Alert.alert("Error", e.message || "Failed to capture photo")
     } finally {
