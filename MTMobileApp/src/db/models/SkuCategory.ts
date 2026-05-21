@@ -7,10 +7,10 @@ export class SkuCategory extends Model {
   @field('organization_id') organizationId!: string
   @field('parent_id') parentId!: string | null
   @field('name') name!: string
-  @field('name_az') nameAz!: string
-  @field('name_en') nameEn!: string
-  @field('code') code!: string
-  @field('icon_url') iconUrl!: string
+  @field('name_az') nameAz!: string | null
+  @field('name_en') nameEn!: string | null
+  @field('code') code!: string | null
+  @field('icon_url') iconUrl!: string | null
   @field('sort_order') sortOrder!: number
   @field('is_active') isActive!: boolean
 

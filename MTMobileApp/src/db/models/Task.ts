@@ -18,12 +18,12 @@ export class Task extends Model {
   @field('customer_id') customerId!: string | null
   @field('visit_id') visitId!: string | null
   @field('title') title!: string
-  @field('description') description!: string
+  @field('description') description!: string | null
   @field('status') status!: TaskStatus
   @field('priority') priority!: TaskPriority
   @field('due_date') dueDate!: number | null
   @field('completed_at') completedAt!: number | null
-  @field('result') result!: string
+  @field('result') result!: string | null
 
   @readonly @date('created_at') createdAt!: Date
   @date('updated_at') updatedAt!: Date

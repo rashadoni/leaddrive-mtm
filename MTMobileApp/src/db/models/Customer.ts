@@ -8,21 +8,21 @@ export class Customer extends Model {
   static table = 'customers'
 
   @field('organization_id') organizationId!: string
-  @field('code') code!: string
+  /** Optional — not all customers have an org-specific code */
+  @field('code') code!: string | null
   @field('name') name!: string
   @field('category') category!: CustomerCategory
   @field('status') status!: CustomerStatus
-  @field('address') address!: string
-  @field('city') city!: string
-  @field('district') district!: string
+  @field('address') address!: string | null
+  @field('city') city!: string | null
+  @field('district') district!: string | null
   @field('latitude') latitude!: number | null
   @field('longitude') longitude!: number | null
-  @field('phone') phone!: string
-  @field('contact_person') contactPerson!: string
-  @field('notes') notes!: string
+  @field('phone') phone!: string | null
+  @field('contact_person') contactPerson!: string | null
+  @field('notes') notes!: string | null
   @field('geofence_radius') geofenceRadius!: number | null
 
-  /** epoch ms */
   @readonly @date('created_at') createdAt!: Date
   @date('updated_at') updatedAt!: Date
   @field('deleted_at') deletedAt!: number | null

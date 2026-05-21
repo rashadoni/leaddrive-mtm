@@ -20,7 +20,8 @@ export class RoutePoint extends Model {
   @field('status') status!: RoutePointStatus
   @field('planned_time') plannedTime!: number | null
   @field('visited_at') visitedAt!: number | null
-  @field('notes') notes!: string
+  /** route_points has no created_at/updated_at — synced via parent Route reload */
+  @field('notes') notes!: string | null
   @field('deleted_at') deletedAt!: number | null
 
   @relation('routes', 'route_id') route!: Relation<Route>

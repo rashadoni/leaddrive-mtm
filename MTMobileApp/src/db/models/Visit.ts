@@ -23,7 +23,7 @@ export class Visit extends Model {
   @field('check_out_lat') checkOutLat!: number | null
   @field('check_out_lng') checkOutLng!: number | null
   @field('duration') duration!: number | null
-  @field('notes') notes!: string
+  @field('notes') notes!: string | null
   @field('tasks_completed') tasksCompleted!: number
   @field('tasks_total') tasksTotal!: number
 

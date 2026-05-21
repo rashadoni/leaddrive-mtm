@@ -16,13 +16,13 @@ export class Route extends Model {
   @field('agent_id') agentId!: string
   /** epoch ms, midnight UTC for the route date */
   @field('date') date!: number
-  @field('name') name!: string
+  @field('name') name!: string | null
   @field('status') status!: RouteStatus
   @field('total_points') totalPoints!: number
   @field('visited_points') visitedPoints!: number
   @field('started_at') startedAt!: number | null
   @field('completed_at') completedAt!: number | null
-  @field('notes') notes!: string
+  @field('notes') notes!: string | null
 
   @readonly @date('created_at') createdAt!: Date
   @date('updated_at') updatedAt!: Date

@@ -204,6 +204,7 @@ export default appSchema({
         { name: 'retry_count',      type: 'number' },
         { name: 'last_error',       type: 'string', isOptional: true },
         { name: 'synced_at',        type: 'number', isOptional: true },
+        { name: 'created_at',       type: 'number' },
       ],
     }),
   ],

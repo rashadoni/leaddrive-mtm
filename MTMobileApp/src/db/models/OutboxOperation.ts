@@ -2,7 +2,8 @@ import { Model } from '@nozbe/watermelondb'
 import { field, json, readonly, date } from '@nozbe/watermelondb/decorators'
 
 export type OutboxOpType = 'create' | 'update'
-export type OutboxEntity  = 'visits' | 'orders' | 'tasks'
+/** Extensible — new entities added as sync evolves (not constrained to union) */
+export type OutboxEntity  = string
 export type OutboxStatus  = 'pending' | 'syncing' | 'synced' | 'failed'
 
 const sanitizeData = (raw: unknown): Record<string, unknown> => {
@@ -34,7 +35,7 @@ export class OutboxOperation extends Model {
   @field('client_timestamp') clientTimestamp!: number
   @field('status') status!: OutboxStatus
   @field('retry_count') retryCount!: number
-  @field('last_error') lastError!: string
+  @field('last_error') lastError!: string | null
   @field('synced_at') syncedAt!: number | null
 
   @readonly @date('created_at') createdAt!: Date

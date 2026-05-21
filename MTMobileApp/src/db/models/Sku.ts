@@ -7,19 +7,19 @@ export class Sku extends Model {
   @field('organization_id') organizationId!: string
   @field('category_id') categoryId!: string | null
   @field('code') code!: string
-  @field('external_id') externalId!: string
-  @field('barcode') barcode!: string
+  @field('external_id') externalId!: string | null
+  @field('barcode') barcode!: string | null
   @field('name') name!: string
-  @field('name_az') nameAz!: string
-  @field('name_en') nameEn!: string
-  @field('description') description!: string
-  @field('brand') brand!: string
+  @field('name_az') nameAz!: string | null
+  @field('name_en') nameEn!: string | null
+  @field('description') description!: string | null
+  @field('brand') brand!: string | null
   @field('unit') unit!: string
   @field('pack_size') packSize!: number
   @field('base_price') basePrice!: number
   @field('currency') currency!: string
-  @field('image_url') imageUrl!: string
-  @field('thumbnail_url') thumbnailUrl!: string
+  @field('image_url') imageUrl!: string | null
+  @field('thumbnail_url') thumbnailUrl!: string | null
   @field('is_active') isActive!: boolean
   @field('weight') weight!: number | null
   @field('volume_ml') volumeMl!: number | null
