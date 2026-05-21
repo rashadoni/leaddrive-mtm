@@ -61,6 +61,13 @@ export default function SkuCatalogScreen() {
   const cartCount = getItemCount()
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // M1-4d.race — sequence guard against debounced-fetch race condition.
+  // Fast typer can land an older fetch response over a newer one because
+  // requests are not cancelled, just their pending timeouts cleared. Each
+  // fetchSkus call increments this ref; on response, we check that our
+  // request is still the latest before applying state. Stale responses
+  // are silently discarded.
+  const fetchSeqRef = useRef(0)
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -70,6 +77,7 @@ export default function SkuCatalogScreen() {
   }, [])
 
   const fetchSkus = useCallback(async (catId?: string, q?: string) => {
+    const mySeq = ++fetchSeqRef.current
     setLoading(true)
     try {
       const res = await api.getSkus({
@@ -77,17 +85,26 @@ export default function SkuCatalogScreen() {
         search: q && q.trim().length > 0 ? q.trim() : undefined,
         isActive: true,
       })
+      // M1-4d.race: discard if a newer fetch superseded us mid-flight.
+      if (mySeq !== fetchSeqRef.current) return
       if (res.success) setSkus(res.data?.skus || [])
     } catch {
+      if (mySeq !== fetchSeqRef.current) return
       setSkus([])
     } finally {
-      setLoading(false)
+      if (mySeq === fetchSeqRef.current) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     fetchCategories()
     fetchSkus()
+    // M1-4d.race: on unmount, bump seq so any still-in-flight fetches
+    // discard their responses (avoids "setState on unmounted component").
+    return () => {
+      fetchSeqRef.current++
+      if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    }
   }, [])
 
   const onCategoryPress = (id: string) => {
