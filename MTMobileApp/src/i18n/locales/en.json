@@ -170,6 +170,26 @@
     "languageEn": "English",
     "languageRu": "Русский",
     "logout": "Log out",
-    "switchServer": "Switch server"
+    "switchServer": "Switch server",
+    "loadingProfile": "Loading profile…",
+    "performanceTitle": "Today's Performance",
+    "statVisits": "Visits",
+    "statTasks": "Tasks",
+    "statRoute": "Route",
+    "routeProgressTemplate": "Route: {{visited}}/{{total}} points",
+    "alertsTitle": "Active Alerts",
+    "contactInfoTitle": "Contact Info",
+    "infoEmail": "Email",
+    "infoPhone": "Phone",
+    "connectionTitle": "Connection",
+    "infoServer": "Server",
+    "infoStatus": "Status",
+    "statusConnected": "Connected",
+    "logoutTitle": "Logout",
+    "logoutMessage": "Are you sure you want to logout? You'll need to sign in again.",
+    "logoutConfirm": "Logout",
+    "switchTitle": "Switch Company",
+    "switchMessage": "This will log you out and clear server settings. You'll need to enter a new server address.",
+    "switchConfirm": "Switch"
   }
 }

@@ -170,6 +170,26 @@
     "languageEn": "English",
     "languageRu": "Русский",
     "logout": "Выйти",
-    "switchServer": "Сменить сервер"
+    "switchServer": "Сменить сервер",
+    "loadingProfile": "Загружаем профиль…",
+    "performanceTitle": "Показатели за сегодня",
+    "statVisits": "Визиты",
+    "statTasks": "Задачи",
+    "statRoute": "Маршрут",
+    "routeProgressTemplate": "Маршрут: {{visited}}/{{total}} точек",
+    "alertsTitle": "Активные уведомления",
+    "contactInfoTitle": "Контакты",
+    "infoEmail": "Email",
+    "infoPhone": "Телефон",
+    "connectionTitle": "Подключение",
+    "infoServer": "Сервер",
+    "infoStatus": "Статус",
+    "statusConnected": "Подключено",
+    "logoutTitle": "Выйти",
+    "logoutMessage": "Вы уверены, что хотите выйти? Придётся войти заново.",
+    "logoutConfirm": "Выйти",
+    "switchTitle": "Сменить компанию",
+    "switchMessage": "Это закроет сеанс и сбросит настройки сервера. Нужно будет указать новый адрес.",
+    "switchConfirm": "Сменить"
   }
 }

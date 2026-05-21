@@ -25,7 +25,7 @@ interface MtmAlert {
 }
 
 export default function ProfileScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -74,7 +74,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
         <ActivityIndicator size="large" color="#6C63FF" />
-        <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>Loading profile...</Text>
+        <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>{t("profile.loadingProfile")}</Text>
       </View>
     )
   }
@@ -96,13 +96,13 @@ export default function ProfileScreen() {
       {/* Today's Summary */}
       {summary && (
         <View style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>Today's Performance</Text>
+          <Text style={styles.sectionTitle}>{t("profile.performanceTitle")}</Text>
           <View style={styles.statsRow}>
-            <StatBox value={summary?.visits ?? 0} label="Visits" color="#0B0B1E" />
+            <StatBox value={summary?.visits ?? 0} label={t("profile.statVisits")} color="#0B0B1E" />
             <View style={styles.statDivider} />
-            <StatBox value={summary?.tasksCompleted ?? 0} label="Tasks" color="#22c55e" />
+            <StatBox value={summary?.tasksCompleted ?? 0} label={t("profile.statTasks")} color="#22c55e" />
             <View style={styles.statDivider} />
-            <StatBox value={`${completionPct}%`} label="Route" color="#6C63FF" />
+            <StatBox value={`${completionPct}%`} label={t("profile.statRoute")} color="#6C63FF" />
           </View>
 
           {/* Progress bar */}
@@ -110,7 +110,10 @@ export default function ProfileScreen() {
             <View style={[styles.progressBar, { width: `${Math.max(completionPct, 2)}%` }]} />
           </View>
           <Text style={styles.progressLabel}>
-            Route: {summary?.routeVisited ?? 0}/{summary?.routePoints ?? 0} points
+            {t("profile.routeProgressTemplate", {
+              visited: summary?.routeVisited ?? 0,
+              total: summary?.routePoints ?? 0,
+            })}
           </Text>
         </View>
       )}
@@ -119,7 +122,7 @@ export default function ProfileScreen() {
       {alerts.length > 0 && (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>Active Alerts</Text>
+            <Text style={styles.sectionTitle}>{t("profile.alertsTitle")}</Text>
             <View style={styles.alertBadge}>
               <Text style={styles.alertBadgeText}>{alerts.length}</Text>
             </View>
@@ -132,7 +135,7 @@ export default function ProfileScreen() {
                 {a.description && <Text style={styles.alertDesc} numberOfLines={1}>{a.description}</Text>}
               </View>
               <Text style={styles.alertTime}>
-                {new Date(a.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                {new Date(a.createdAt).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
               </Text>
             </View>
           ))}
@@ -141,16 +144,16 @@ export default function ProfileScreen() {
 
       {/* Contact Info */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Contact Info</Text>
-        <InfoRow label="Email" value={agent?.email || "—"} />
-        <InfoRow label="Phone" value={agent?.phone || "—"} />
+        <Text style={styles.sectionTitle}>{t("profile.contactInfoTitle")}</Text>
+        <InfoRow label={t("profile.infoEmail")} value={agent?.email || "—"} />
+        <InfoRow label={t("profile.infoPhone")} value={agent?.phone || "—"} />
       </View>
 
       {/* Server info */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Connection</Text>
-        <InfoRow label="Server" value={serverDomain || "—"} />
-        <InfoRow label="Status" value="Connected" valueColor="#22c55e" />
+        <Text style={styles.sectionTitle}>{t("profile.connectionTitle")}</Text>
+        <InfoRow label={t("profile.infoServer")} value={serverDomain || "—"} />
+        <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
       </View>
 
       {/* Language switcher (M1-1a) */}
@@ -187,16 +190,17 @@ export default function ProfileScreen() {
         <Text style={styles.switchText}>{t("profile.switchServer")}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.version}>Route & Field v1.1.0</Text>
+      <Text style={styles.version}>Route & Field v1.2.0</Text>
 
       {/* Confirm sheets */}
       <ConfirmSheet
         visible={confirmAction === "logout"}
         icon="👋"
         iconColor="#ef4444"
-        title="Logout"
-        message="Are you sure you want to logout? You'll need to sign in again."
-        confirmText="Logout"
+        title={t("profile.logoutTitle")}
+        message={t("profile.logoutMessage")}
+        confirmText={t("profile.logoutConfirm")}
+        cancelText={t("common.cancel")}
         destructive
         onCancel={() => setConfirmAction(null)}
         onConfirm={handleConfirm}
@@ -205,9 +209,10 @@ export default function ProfileScreen() {
         visible={confirmAction === "switch"}
         icon="🔄"
         iconColor="#6C63FF"
-        title="Switch Company"
-        message="This will log you out and clear server settings. You'll need to enter a new server address."
-        confirmText="Switch"
+        title={t("profile.switchTitle")}
+        message={t("profile.switchMessage")}
+        confirmText={t("profile.switchConfirm")}
+        cancelText={t("common.cancel")}
         destructive
         onCancel={() => setConfirmAction(null)}
         onConfirm={handleConfirm}

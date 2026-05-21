@@ -170,6 +170,26 @@
     "languageEn": "English",
     "languageRu": "Русский",
     "logout": "Çıxış",
-    "switchServer": "Server dəyişdir"
+    "switchServer": "Server dəyişdir",
+    "loadingProfile": "Profil yüklənir…",
+    "performanceTitle": "Bugünkü performans",
+    "statVisits": "Ziyarətlər",
+    "statTasks": "Tapşırıqlar",
+    "statRoute": "Marşrut",
+    "routeProgressTemplate": "Marşrut: {{visited}}/{{total}} nöqtə",
+    "alertsTitle": "Aktiv xəbərdarlıqlar",
+    "contactInfoTitle": "Əlaqə məlumatı",
+    "infoEmail": "E-poçt",
+    "infoPhone": "Telefon",
+    "connectionTitle": "Bağlantı",
+    "infoServer": "Server",
+    "infoStatus": "Status",
+    "statusConnected": "Qoşulu",
+    "logoutTitle": "Çıxış",
+    "logoutMessage": "Hesabınızdan çıxmaq istədiyinizə əminsiniz? Yenidən daxil olmalı olacaqsınız.",
+    "logoutConfirm": "Çıxış",
+    "switchTitle": "Şirkəti dəyiş",
+    "switchMessage": "Bu, sizi hesabdan çıxaracaq və server tənzimləmələrini siləcək. Yeni server ünvanı daxil etməli olacaqsınız.",
+    "switchConfirm": "Dəyiş"
   }
 }
