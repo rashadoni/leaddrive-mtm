@@ -28,11 +28,19 @@ function freshState() {
  * stays the source of truth for the contract and the test will fail
  * until both match.
  */
-function buildOrderPayload(): { customerId: string | null; items: { name: string; price: number; qty: number }[]; notes?: string } {
+function buildOrderPayload(): {
+  customerId: string | null
+  items: { skuId: string; name: string; price: number; qty: number }[]
+  notes?: string
+} {
   const { items, customerId, notes } = useCartStore.getState()
   return {
     customerId,
-    items: items.map((it) => ({ name: it.name, price: it.price, qty: it.qty })),
+    // M1-4d.security: include skuId so server can recompute price from
+    // MtmSku.basePrice. Server commit f61a8851 expects this field; if
+    // mobile drops it, the server treats mobile price as authoritative
+    // and the price=0 exploit re-opens.
+    items: items.map((it) => ({ skuId: it.skuId, name: it.name, price: it.price, qty: it.qty })),
     notes: notes.trim() || undefined,
   }
 }
@@ -40,7 +48,7 @@ function buildOrderPayload(): { customerId: string | null; items: { name: string
 describe("Order payload contract (M1-4d)", () => {
   beforeEach(freshState)
 
-  it("items use server-side field names {name, price, qty} — NOT mobile-internal {skuId, quantity, unitPrice}", () => {
+  it("items include skuId + server-side {name, price, qty} — server recomputes price from MtmSku.basePrice (M1-4d.security)", () => {
     useCartStore.getState().setCustomer("cust-1", "Bravo Nəsimi")
     useCartStore.getState().addItem({
       skuId: "cmtm00000000000000sku001",
@@ -54,12 +62,14 @@ describe("Order payload contract (M1-4d)", () => {
     expect(payload.items).toHaveLength(1)
 
     const item = payload.items[0]
-    // Server-side required keys present:
+    // Server-side required keys present. `skuId` is the M1-4d.security
+    // signal — server uses it to look up MtmSku.basePrice and ignore the
+    // mobile-supplied `price` (closes the price=0 exploit).
+    expect(item).toHaveProperty("skuId", "cmtm00000000000000sku001")
     expect(item).toHaveProperty("name", "Pepsi 0.5L")
     expect(item).toHaveProperty("price", 1.2)
     expect(item).toHaveProperty("qty", 3)
     // Server schema does NOT expect these mobile-internal keys:
-    expect(item).not.toHaveProperty("skuId")
     expect(item).not.toHaveProperty("quantity")
     expect(item).not.toHaveProperty("unitPrice")
   })

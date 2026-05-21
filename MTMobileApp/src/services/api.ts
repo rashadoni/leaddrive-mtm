@@ -453,7 +453,7 @@ class ApiClient {
    */
   async createOrderWithSkuItems(data: {
     customerId: string
-    items: { name: string; price: number; qty: number }[]
+    items: { skuId: string; name: string; price: number; qty: number }[]
     notes?: string
   }) {
     return this.request("/orders", {

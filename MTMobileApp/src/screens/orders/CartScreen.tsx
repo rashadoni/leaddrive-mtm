@@ -67,11 +67,14 @@ export default function CartScreen() {
         customerId,
         // Server schema (`OrderItem` in src/lib/mtm-validators.ts):
         //   { productId?: cuid, name?: string, price: number, qty: number }
-        // Mobile uses `skuId` internally (M1-4 SKU catalog) but the order
-        // route lives over the legacy `mtm_orders.items` jsonb which has
-        // its own shape — we send `name + price + qty` (server-side
-        // totalAmount recomputes from these).
+        // Send `skuId` so the server can recompute `price` from
+        // MtmSku.basePrice (M1-4d.security, server commit f61a8851).
+        // Without skuId the server trusts client price — equivalent to
+        // the legacy web-admin manual-entry path. With skuId, mobile's
+        // `price`/`name` are advisory only; server overrides them from
+        // the SKU master row at order-create time.
         items: items.map((it) => ({
+          skuId: it.skuId,
           name: it.name,
           price: it.price,
           qty: it.qty,
