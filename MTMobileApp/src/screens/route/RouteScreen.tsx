@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
+import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { useAuthStore } from "../../store/auth"
@@ -71,6 +72,7 @@ function PointBottomSheet({
   onCheckIn: (point: RoutePoint) => void
   mutating: boolean
 }) {
+  const { t, i18n } = useTranslation()
   const slideAnim = useRef(new Animated.Value(400)).current
   const backdropAnim = useRef(new Animated.Value(0)).current
 
@@ -126,7 +128,11 @@ function PointBottomSheet({
           {isVisited ? (
             <View style={[styles.chip, { backgroundColor: "#dcfce7" }]}>
               <Text style={[styles.chipText, { color: "#22c55e" }]}>
-                Visited {point.visitedAt ? new Date(point.visitedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                {t("route.visitedAtTime", {
+                  time: point.visitedAt
+                    ? new Date(point.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })
+                    : "",
+                })}
               </Text>
             </View>
           ) : (
@@ -141,13 +147,13 @@ function PointBottomSheet({
               {point.plannedTime && (
                 <View style={[styles.chip, { backgroundColor: "#f0f0ff" }]}>
                   <Text style={[styles.chipText, { color: "#6C63FF" }]}>
-                    🕐 {new Date(point.plannedTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    🕐 {new Date(point.plannedTime).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
                   </Text>
                 </View>
               )}
               <View style={[styles.chip, { backgroundColor: "#f8fafc" }]}>
                 <Text style={[styles.chipText, { color: "#94a3b8" }]}>
-                  #{point.orderIndex + 1} in route
+                  {t("route.positionInRoute", { position: point.orderIndex + 1 })}
                 </Text>
               </View>
             </>
@@ -163,7 +169,7 @@ function PointBottomSheet({
                 onPress={() => { onClose(); onNavigate(point) }}
               >
                 <Text style={styles.sheetNavIcon}>🧭</Text>
-                <Text style={styles.sheetNavText}>Navigate</Text>
+                <Text style={styles.sheetNavText}>{t("route.navigate")}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -172,14 +178,14 @@ function PointBottomSheet({
               disabled={mutating}
             >
               <Text style={styles.sheetCheckInIcon}>{mutating ? "⏳" : "📋"}</Text>
-              <Text style={styles.sheetCheckInText}>{mutating ? "Checking in..." : "Check In"}</Text>
+              <Text style={styles.sheetCheckInText}>{mutating ? t("route.checkingIn") : t("visit.checkInButton")}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {isVisited && (
           <View style={styles.sheetVisitedNote}>
-            <Text style={styles.sheetVisitedText}>This point has already been visited</Text>
+            <Text style={styles.sheetVisitedText}>{t("route.alreadyVisited")}</Text>
           </View>
         )}
       </Animated.View>
@@ -188,6 +194,7 @@ function PointBottomSheet({
 }
 
 export default function RouteScreen() {
+  const { t, i18n } = useTranslation()
   const agent = useAuthStore((s) => s.agent)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -348,9 +355,9 @@ export default function RouteScreen() {
           // No fresh cached position — only allow retry
           await new Promise<void>((resolve) => {
             Alert.alert(
-              "Location Unavailable",
-              "Could not determine your position. Please make sure GPS is enabled and try again.",
-              [{ text: "Retry", onPress: () => resolve() }]
+              t("route.locationUnavailableTitle"),
+              t("route.locationUnavailableBody"),
+              [{ text: t("common.retry"), onPress: () => resolve() }]
             )
           })
           setMutating(false)
@@ -369,14 +376,14 @@ export default function RouteScreen() {
         const proceed = await new Promise<boolean>((resolve) => {
           const buttons: Array<{ text: string; onPress: () => void; style?: "cancel" }> = canOverride
             ? [
-                { text: "Cancel", onPress: () => resolve(false), style: "cancel" },
-                { text: "Try Anyway", onPress: () => resolve(true) },
+                { text: t("common.cancel"), onPress: () => resolve(false), style: "cancel" },
+                { text: t("route.tryAnyway"), onPress: () => resolve(true) },
               ]
-            : [{ text: "OK", onPress: () => resolve(false) }]
+            : [{ text: t("common.ok"), onPress: () => resolve(false) }]
           const message = canOverride
-            ? `You are ${formatDistance(point.distanceMeters!)} from ${point.customer.name}.\nYou need to be within ${GEOFENCE_DEFAULT}m to check in.`
-            : `You are ${formatDistance(point.distanceMeters!)} from ${point.customer.name}.\nMust be within ${GEOFENCE_DEFAULT}m. Ask your supervisor if you need an override.`
-          Alert.alert("Too Far Away", message, buttons)
+            ? t("visit.tooFarBody", { distance: formatDistance(point.distanceMeters!), name: point.customer.name, max: GEOFENCE_DEFAULT })
+            : t("route.tooFarSupervisorBody", { distance: formatDistance(point.distanceMeters!), name: point.customer.name, max: GEOFENCE_DEFAULT })
+          Alert.alert(t("visit.tooFarTitle"), message, buttons)
         })
         if (!proceed) { setMutating(false); return }
         forceCheckIn = true
@@ -391,14 +398,21 @@ export default function RouteScreen() {
       if (res.success) {
         setSheetVisible(false)
         setSelectedPoint(null)
-        Alert.alert("Checked In", `You are now at ${point.customer.name}`, [
-          { text: "OK", onPress: () => { fetchRoute(); fetchActiveVisit() } },
-        ])
+        Alert.alert(
+          t("visit.checkedInTitle"),
+          t("visit.checkedInBody", { name: point.customer.name }),
+          [{ text: t("common.ok"), onPress: () => { fetchRoute(); fetchActiveVisit() } }],
+        )
       } else if (res.error) {
-        Alert.alert("Check-in Blocked", res.error)
+        // Backend errors in EN — log + show localized message instead of leaking
+        console.warn("[RouteScreen] check-in blocked:", res.error)
+        Alert.alert(t("visit.checkInBlocked"), t("visit.checkInFailed"))
       }
     } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") Alert.alert("Error", e.message || "Check-in failed")
+      if (e.message !== "SESSION_EXPIRED") {
+        console.warn("[RouteScreen] check-in error:", e?.message ?? e)
+        Alert.alert(t("common.error"), t("visit.checkInFailed"))
+      }
     } finally {
       setMutating(false)
     }
@@ -430,14 +444,17 @@ export default function RouteScreen() {
         notes: notes || undefined,
       })
       if (res.success) {
-        Alert.alert("Checked Out", "Visit completed successfully")
+        Alert.alert(t("visit.checkedOutTitle"), t("visit.checkedOutBody"))
         setActiveVisit(null)
         setPhotoCount(0)
         fetchRoute()
         fetchActiveVisit()
       }
     } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") Alert.alert("Error", e.message || "Check-out failed")
+      if (e.message !== "SESSION_EXPIRED") {
+        console.warn("[RouteScreen] check-out error:", e?.message ?? e)
+        Alert.alert(t("common.error"), t("visit.checkOutFailed"))
+      }
     } finally {
       setMutating(false)
     }
@@ -452,15 +469,19 @@ export default function RouteScreen() {
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.greeting}>Hello, {agent?.name?.split(" ")[0]}!</Text>
+            <Text style={styles.greeting}>
+              {agent?.name
+                ? t("route.greeting", { name: agent.name.split(" ")[0] })
+                : t("route.greetingNoName")}
+            </Text>
             <Text style={styles.date}>
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              {new Date().toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })}
             </Text>
           </View>
           {route && (
             <View style={styles.headerBadge}>
               <Text style={styles.headerBadgeNum}>{remaining}</Text>
-              <Text style={styles.headerBadgeLabel}>left</Text>
+              <Text style={styles.headerBadgeLabel}>{t("route.leftLabel")}</Text>
             </View>
           )}
         </View>
@@ -471,11 +492,11 @@ export default function RouteScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryTop}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.summaryTitle}>{route.name || "Route"}</Text>
+              <Text style={styles.summaryTitle}>{route.name || t("route.fallbackName")}</Text>
               <Text style={styles.summaryDate}>
-                {new Date(route.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                {new Date(route.date).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" })}
                 {new Date(route.date).toDateString() === new Date().toDateString() && (
-                  <Text style={{ color: "#6C63FF" }}>  Today</Text>
+                  <Text style={{ color: "#6C63FF" }}>{"  "}{t("route.todaySuffix")}</Text>
                 )}
               </Text>
             </View>
@@ -487,20 +508,26 @@ export default function RouteScreen() {
                 styles.statusPillText,
                 { color: route.status === "COMPLETED" ? "#22c55e" : "#6C63FF" },
               ]}>
-                {route.status === "IN_PROGRESS" ? "IN PROGRESS" : route.status}
+                {route.status === "IN_PROGRESS"
+                  ? t("route.statusInProgress")
+                  : route.status === "COMPLETED"
+                    ? t("route.statusCompleted")
+                    : route.status === "PLANNED"
+                      ? t("route.statusPlanned")
+                      : route.status}
               </Text>
             </View>
           </View>
 
           {/* Stats row */}
           <View style={styles.statsRow}>
-            <StatBox value={route.totalPoints} label="Total" color="#0B0B1E" />
+            <StatBox value={route.totalPoints} label={t("route.statTotal")} color="#0B0B1E" />
             <View style={styles.statDivider} />
-            <StatBox value={route.visitedPoints} label="Visited" color="#22c55e" />
+            <StatBox value={route.visitedPoints} label={t("route.statVisited")} color="#22c55e" />
             <View style={styles.statDivider} />
-            <StatBox value={remaining} label="Left" color={remaining > 0 ? "#f59e0b" : "#22c55e"} />
+            <StatBox value={remaining} label={t("route.statLeft")} color={remaining > 0 ? "#f59e0b" : "#22c55e"} />
             <View style={styles.statDivider} />
-            <StatBox value={`${completion}%`} label="Done" color="#6C63FF" />
+            <StatBox value={`${completion}%`} label={t("route.statDone")} color="#6C63FF" />
           </View>
 
           {/* Progress bar */}
@@ -517,9 +544,9 @@ export default function RouteScreen() {
           <View style={styles.emptyIconWrap}>
             <Text style={styles.emptyIcon}>📍</Text>
           </View>
-          <Text style={styles.emptyTitle}>{loading ? "Loading route..." : "No Route Today"}</Text>
+          <Text style={styles.emptyTitle}>{loading ? t("route.loadingRoute") : t("route.noRouteTitle")}</Text>
           <Text style={styles.emptySubtitle}>
-            {loading ? "Fetching your schedule" : "Check back later or pull to refresh"}
+            {loading ? t("route.fetching") : t("route.noRouteHint")}
           </Text>
         </View>
       )}
@@ -531,10 +558,11 @@ export default function RouteScreen() {
             <View style={styles.activePulseInner} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.activeLabel}>Currently at</Text>
-            <Text style={styles.activeName}>{activeVisit.customer?.name || "Customer"}</Text>
+            <Text style={styles.activeLabel}>{t("visit.activeLabel")}</Text>
+            <Text style={styles.activeName}>{activeVisit.customer?.name || t("common.customer")}</Text>
             <Text style={styles.activeTime}>
-              {elapsedMin} min elapsed{photoCount > 0 ? `  •  ${photoCount} photos` : ""}
+              {t("visit.elapsedMin", { n: elapsedMin })}
+              {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
             </Text>
           </View>
           <View style={styles.activeBtns}>
@@ -546,7 +574,7 @@ export default function RouteScreen() {
               {mutating ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.checkOutText}>Check Out</Text>
+                <Text style={styles.checkOutText}>{t("visit.checkOutButton")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -556,8 +584,8 @@ export default function RouteScreen() {
       {/* Section header */}
       {sortedPoints.length > 0 && (
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Route Points</Text>
-          <Text style={styles.sectionCount}>{sortedPoints.length} stops</Text>
+          <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+          <Text style={styles.sectionCount}>{t("route.stopsCount", { n: sortedPoints.length })}</Text>
         </View>
       )}
 
@@ -624,14 +652,14 @@ export default function RouteScreen() {
                       {item.plannedTime && (
                         <View style={styles.metaTag}>
                           <Text style={styles.metaText}>
-                            🕐 {new Date(item.plannedTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            🕐 {new Date(item.plannedTime).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         </View>
                       )}
                       {item.visitedAt && (
                         <View style={[styles.metaTag, { backgroundColor: "#dcfce7" }]}>
                           <Text style={[styles.metaText, { color: "#22c55e" }]}>
-                            ✓ {new Date(item.visitedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            ✓ {new Date(item.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
                           </Text>
                         </View>
                       )}
@@ -671,8 +699,8 @@ export default function RouteScreen() {
       {/* Check-out notes modal */}
       <NotesModal
         visible={notesVisible}
-        title="Check Out"
-        message="Add notes about this visit (optional):"
+        title={t("visit.checkOutButton")}
+        message={t("visit.checkOutNotes")}
         onCancel={() => setNotesVisible(false)}
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />

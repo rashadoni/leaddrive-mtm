@@ -3,7 +3,10 @@
     "error": "Error",
     "change": "Change",
     "loading": "Loading…",
-    "customer": "Customer"
+    "customer": "Customer",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "retry": "Retry"
   },
   "auth": {
     "email": "Email",
@@ -98,6 +101,35 @@
     "completeFailed": "Failed to complete task",
     "resultModalTitle": "Task Result",
     "resultModalMessage": "Add result notes (optional)"
+  },
+  "route": {
+    "greeting": "Hello, {{name}}!",
+    "leftLabel": "left",
+    "fallbackName": "Route",
+    "todaySuffix": "Today",
+    "greetingNoName": "Today's route",
+    "statusPlanned": "PLANNED",
+    "statusInProgress": "IN PROGRESS",
+    "statusCompleted": "COMPLETED",
+    "statTotal": "Total",
+    "statVisited": "Visited",
+    "statLeft": "Left",
+    "statDone": "Done",
+    "loadingRoute": "Loading route…",
+    "noRouteTitle": "No Route Today",
+    "noRouteHint": "Check back later or pull to refresh",
+    "fetching": "Fetching your schedule",
+    "pointsSection": "Route Points",
+    "stopsCount": "{{n}} stops",
+    "visitedAtTime": "Visited {{time}}",
+    "positionInRoute": "#{{position}} in route",
+    "navigate": "Navigate",
+    "checkingIn": "Checking in…",
+    "alreadyVisited": "This point has already been visited",
+    "locationUnavailableTitle": "Location Unavailable",
+    "locationUnavailableBody": "Could not determine your position. Please make sure GPS is enabled and try again.",
+    "tryAnyway": "Try Anyway",
+    "tooFarSupervisorBody": "You are {{distance}} from {{name}}.\nMust be within {{max}}m. Ask your supervisor if you need an override."
   },
   "profile": {
     "language": "Language",

@@ -3,7 +3,10 @@
     "error": "Səhv",
     "change": "Dəyiş",
     "loading": "Yüklənir…",
-    "customer": "Müştəri"
+    "customer": "Müştəri",
+    "ok": "OK",
+    "cancel": "Ləğv et",
+    "retry": "Yenidən cəhd et"
   },
   "auth": {
     "email": "E-poçt",
@@ -98,6 +101,35 @@
     "completeFailed": "Tapşırığı tamamlamaq alınmadı",
     "resultModalTitle": "Tapşırıq nəticəsi",
     "resultModalMessage": "Nəticə qeydləri əlavə edin (məcburi deyil)"
+  },
+  "route": {
+    "greeting": "Salam, {{name}}!",
+    "leftLabel": "qalır",
+    "fallbackName": "Marşrut",
+    "todaySuffix": "Bu gün",
+    "greetingNoName": "Bugünkü marşrut",
+    "statusPlanned": "PLANLANIB",
+    "statusInProgress": "İCRADA",
+    "statusCompleted": "TAMAMLANIB",
+    "statTotal": "Cəmi",
+    "statVisited": "Ziyarət",
+    "statLeft": "Qalır",
+    "statDone": "Tamam",
+    "loadingRoute": "Marşrut yüklənir…",
+    "noRouteTitle": "Bu gün marşrut yoxdur",
+    "noRouteHint": "Sonra yoxlayın və ya yeniləmək üçün çəkin",
+    "fetching": "Cədvəliniz yüklənir",
+    "pointsSection": "Marşrut nöqtələri",
+    "stopsCount": "{{n}} dayanacaq",
+    "visitedAtTime": "Ziyarət {{time}}",
+    "positionInRoute": "Marşrutda #{{position}}",
+    "navigate": "Naviqasiya",
+    "checkingIn": "Giriş edilir…",
+    "alreadyVisited": "Bu nöqtə artıq ziyarət olunub",
+    "locationUnavailableTitle": "Məkan əlçatmazdır",
+    "locationUnavailableBody": "Yerləşmənizi təyin etmək mümkün olmadı. GPS-in aktiv olduğundan əmin olun və yenidən cəhd edin.",
+    "tryAnyway": "Yenə də cəhd et",
+    "tooFarSupervisorBody": "{{name}} ünvanından {{distance}} uzaqlıqdasınız.\nGiriş üçün {{max}}m-dən yaxın olmalısınız. Rəhbərinizdən override istəyin."
   },
   "profile": {
     "language": "Dil",

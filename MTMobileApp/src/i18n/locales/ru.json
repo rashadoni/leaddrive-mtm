@@ -3,7 +3,10 @@
     "error": "Ошибка",
     "change": "Изменить",
     "loading": "Загрузка…",
-    "customer": "Клиент"
+    "customer": "Клиент",
+    "ok": "OK",
+    "cancel": "Отмена",
+    "retry": "Повторить"
   },
   "auth": {
     "email": "Email",
@@ -98,6 +101,35 @@
     "completeFailed": "Не удалось завершить задачу",
     "resultModalTitle": "Результат задачи",
     "resultModalMessage": "Добавьте заметку о результате (необязательно)"
+  },
+  "route": {
+    "greeting": "Привет, {{name}}!",
+    "leftLabel": "осталось",
+    "fallbackName": "Маршрут",
+    "todaySuffix": "Сегодня",
+    "greetingNoName": "Маршрут на сегодня",
+    "statusPlanned": "ЗАПЛАНИРОВАН",
+    "statusInProgress": "В РАБОТЕ",
+    "statusCompleted": "ЗАВЕРШЁН",
+    "statTotal": "Всего",
+    "statVisited": "Посещено",
+    "statLeft": "Осталось",
+    "statDone": "Готово",
+    "loadingRoute": "Загружаем маршрут…",
+    "noRouteTitle": "Сегодня маршрута нет",
+    "noRouteHint": "Загляните позже или потяните для обновления",
+    "fetching": "Загружаем ваш график",
+    "pointsSection": "Точки маршрута",
+    "stopsCount": "{{n}} остановок",
+    "visitedAtTime": "Посещено {{time}}",
+    "positionInRoute": "#{{position}} в маршруте",
+    "navigate": "Маршрут",
+    "checkingIn": "Заходим…",
+    "alreadyVisited": "Эта точка уже посещена",
+    "locationUnavailableTitle": "Местоположение недоступно",
+    "locationUnavailableBody": "Не удалось определить ваше положение. Убедитесь, что GPS включен, и попробуйте снова.",
+    "tryAnyway": "Всё равно попробовать",
+    "tooFarSupervisorBody": "Вы в {{distance}} от {{name}}.\nНужно быть ближе {{max}}м. Обратитесь к супервайзеру за override."
   },
   "profile": {
     "language": "Язык",
