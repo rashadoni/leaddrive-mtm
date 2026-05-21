@@ -66,7 +66,7 @@ interface PushResult {
 
 // ─── SyncManager class ────────────────────────────────────────────────────────
 
-class SyncManager {
+export class SyncManager {
   private _listeners: SyncStatusListener[] = []
   private _state: SyncState = {
     status: 'idle',
