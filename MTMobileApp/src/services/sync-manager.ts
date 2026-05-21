@@ -38,8 +38,10 @@ const MAX_RETRIES            = 5
 const PUSH_BATCH_SIZE        = 100      // server limit
 const SYNCED_PURGE_DAYS      = 7        // purge synced ops older than N days
 
-// Exponential backoff caps at 30 s
-const backoffMs = (retryCount: number) =>
+// TODO(M2-1f): wire exponential backoff between sync retries.
+// Formula: min(30 s, 1 s × 2^retryCount). Not yet applied — push errors
+// currently retry on the next 60 s auto-sync cycle.
+export const backoffMs = (retryCount: number): number =>
   Math.min(30_000, 1_000 * 2 ** retryCount)
 
 // ─── Types ────────────────────────────────────────────────────────────────────

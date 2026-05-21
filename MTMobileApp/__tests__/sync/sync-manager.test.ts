@@ -46,6 +46,11 @@ jest.mock('../../src/services/api', () => ({
   api: { request: jest.fn() },
 }))
 
+// Silence netinfo warning in tests — simulate it being installed
+jest.mock('@react-native-community/netinfo', () => ({
+  default: { addEventListener: jest.fn(() => () => {}) },
+}), { virtual: true })
+
 jest.mock('@nozbe/watermelondb', () => ({
   Q: {
     where: jest.fn((_col: string, _val: unknown) => ({ __q: 'where' })),
@@ -324,9 +329,14 @@ describe('push — conflict result (anti-regression)', () => {
     // Original data keys preserved
     expect(mergedData.id).toBe('visit-1')
 
-    // ANTI-REGRESSION: _raw.data must NOT have been overwritten with a
-    // merged JSON string (that was the bug — direct _raw bypass that skips _setRaw).
-    // With the fix, _raw.data stays as the original JSON from before the update.
+    // ANTI-REGRESSION: verify the code uses `r.data = { ...r.data, ... }` (setter path)
+    // not `r._raw.data = JSON.stringify(...)` (direct bypass).
+    //
+    // In this mock (plain object, no @json decorator), setting r.data = merged does NOT
+    // update _raw.data — so _raw.data keeps the original JSON string from before the
+    // update. This lets us confirm the buggy direct-write code path was NOT executed:
+    // if someone re-introduced `r._raw.data = JSON.stringify({...merged...})`, _raw.data
+    // would contain '_serverData' and '_conflict', breaking these assertions.
     const rawData = (op.state._raw as Record<string, unknown>).data as string
     expect(rawData).not.toContain('_serverData')
     expect(rawData).not.toContain('_conflict')
@@ -495,5 +505,30 @@ describe('push payload anti-regression: op.data not _raw.data', () => {
     // data must be the deserialized object (not a string)
     expect(typeof ops[0].data).toBe('object')
     expect(ops[0].data).toEqual(opData)
+  })
+})
+
+// ─── clearOutbox ──────────────────────────────────────────────────────────────
+
+describe('clearOutbox', () => {
+  it('destroys all outbox ops and resets pendingCount to 0', async () => {
+    const sm = new SyncManager()
+
+    const op1 = makePendingOp({ id: 'op-a', operationId: 'uuid-a' })
+    const op2 = makePendingOp({ id: 'op-b', operationId: 'uuid-b' })
+
+    const emptyResult = { fetch: jest.fn(async () => []), fetchCount: jest.fn(async () => 0) }
+    const outboxCol = {
+      query: jest.fn()
+        .mockReturnValueOnce({ fetch: jest.fn(async () => [op1, op2]) })  // clearOutbox fetch
+        .mockReturnValue(emptyResult),                                     // _refreshCounts × 2
+    }
+    db.collections.get.mockReturnValue(outboxCol)
+
+    await sm.clearOutbox()
+
+    expect(op1.prepareDestroyPermanently).toHaveBeenCalledTimes(1)
+    expect(op2.prepareDestroyPermanently).toHaveBeenCalledTimes(1)
+    expect(sm.getState().pendingCount).toBe(0)
   })
 })

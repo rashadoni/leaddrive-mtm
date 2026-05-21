@@ -62,7 +62,7 @@ function makeCollection(findRecord?: Record<string, unknown>) {
   }
 }
 
-beforeAll(() => { _createSeq = 0 })
+beforeEach(() => { _createSeq = 0 })
 
 function makeMutableRecord(id: string) {
   const state: Record<string, unknown> = { id, _raw: { id } }

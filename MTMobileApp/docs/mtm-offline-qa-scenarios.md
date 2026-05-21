@@ -160,13 +160,16 @@ On the server, manually mark the same visit as `CHECKED_OUT` (simulating another
 
 ### Expected progression
 
-| After cycle | `retry_count` | `status` | Delay before next attempt |
-|---|---|---|---|
-| 1 | 1 | `pending` | ~2 s backoff |
-| 2 | 2 | `pending` | ~4 s |
-| 3 | 3 | `pending` | ~8 s |
-| 4 | 4 | `pending` | ~16 s |
-| 5 | 5 | **`failed`** | — never retried |
+Each retry occurs on the **next 60-second auto-sync cycle** (backoff per-op not yet wired —
+tracked as TODO M2-1f). The retry_count simply accumulates across cycles.
+
+| After sync cycle # | `retry_count` | `status` |
+|---|---|---|
+| 1 | 1 | `pending` |
+| 2 | 2 | `pending` |
+| 3 | 3 | `pending` |
+| 4 | 4 | `pending` |
+| 5 | 5 | **`failed`** |
 
 ### Pass criteria
 - Op reaches `failed` state after exactly 5 error results
