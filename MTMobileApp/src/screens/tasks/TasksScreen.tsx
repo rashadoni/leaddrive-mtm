@@ -7,6 +7,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import FeedbackToast from "../../components/FeedbackToast"
@@ -23,9 +24,14 @@ interface Task {
 }
 
 const STATUS_TABS = ["PENDING", "IN_PROGRESS", "COMPLETED"]
-const TAB_LABELS: Record<string, string> = { PENDING: "To Do", IN_PROGRESS: "Active", COMPLETED: "Done" }
+const STATUS_LABEL_KEY: Record<string, string> = {
+  PENDING: "task.statusToDo",
+  IN_PROGRESS: "task.statusActive",
+  COMPLETED: "task.statusDone",
+}
 
 export default function TasksScreen() {
+  const { t, i18n } = useTranslation()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -67,12 +73,13 @@ export default function TasksScreen() {
     try {
       const res = await api.updateTask(task.id, { status: newStatus })
       if (res.success) {
-        setToast({ visible: true, type: "success", title: "Task Started", message: task.title })
+        setToast({ visible: true, type: "success", title: t("task.startedToastTitle"), message: task.title })
         fetchTasks()
       }
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
-        setToast({ visible: true, type: "error", title: "Error", message: e.message || "Failed to update task" })
+        console.warn("[TasksScreen] update-task error:", e?.message ?? e)
+        setToast({ visible: true, type: "error", title: t("common.error"), message: t("task.updateFailed") })
       }
     } finally {
       setUpdatingTaskId(null)
@@ -88,12 +95,13 @@ export default function TasksScreen() {
         result: notes || undefined,
       })
       if (res.success) {
-        setToast({ visible: true, type: "success", title: "Task Completed", message: pendingCompleteTask.title })
+        setToast({ visible: true, type: "success", title: t("task.completedToastTitle"), message: pendingCompleteTask.title })
         fetchTasks()
       }
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
-        setToast({ visible: true, type: "error", title: "Error", message: e.message || "Failed to complete task" })
+        console.warn("[TasksScreen] complete-task error:", e?.message ?? e)
+        setToast({ visible: true, type: "error", title: t("common.error"), message: t("task.completeFailed") })
       }
     } finally {
       setUpdatingTaskId(null)
@@ -125,15 +133,16 @@ export default function TasksScreen() {
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Tasks</Text>
+            <Text style={styles.headerTitle}>{t("task.title")}</Text>
             <Text style={styles.headerSubtitle}>
-              {tasks.length} total • {overdueCount > 0 ? `${overdueCount} overdue` : "all on track"}
+              {t("task.totalTemplate", { n: tasks.length })} •{" "}
+              {overdueCount > 0 ? t("task.overdueTemplate", { n: overdueCount }) : t("task.allOnTrack")}
             </Text>
           </View>
           {urgentCount > 0 && (
             <View style={styles.urgentBadge}>
               <Text style={styles.urgentNum}>{urgentCount}</Text>
-              <Text style={styles.urgentLabel}>urgent</Text>
+              <Text style={styles.urgentLabel}>{t("task.urgentLabel")}</Text>
             </View>
           )}
         </View>
@@ -141,13 +150,13 @@ export default function TasksScreen() {
 
       {/* Stats */}
       <View style={styles.statsCard}>
-        <StatItem value={tasks.length} label="Total" color="#0B0B1E" />
+        <StatItem value={tasks.length} label={t("task.statTotal")} color="#0B0B1E" />
         <View style={styles.statDivider} />
-        <StatItem value={urgentCount} label="Urgent" color="#ef4444" />
+        <StatItem value={urgentCount} label={t("task.statUrgent")} color="#ef4444" />
         <View style={styles.statDivider} />
-        <StatItem value={dueTodayCount} label="Due Today" color="#f59e0b" />
+        <StatItem value={dueTodayCount} label={t("task.statDueToday")} color="#f59e0b" />
         <View style={styles.statDivider} />
-        <StatItem value={overdueCount} label="Overdue" color={overdueCount > 0 ? "#ef4444" : "#94a3b8"} />
+        <StatItem value={overdueCount} label={t("task.statOverdue")} color={overdueCount > 0 ? "#ef4444" : "#94a3b8"} />
       </View>
 
       {/* Tabs */}
@@ -162,7 +171,7 @@ export default function TasksScreen() {
               onPress={() => setActiveTab(tab)}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {TAB_LABELS[tab]}
+                {t(STATUS_LABEL_KEY[tab])}
               </Text>
               <View style={[styles.tabCount, isActive && styles.tabCountActive]}>
                 <Text style={[styles.tabCountText, isActive && styles.tabCountTextActive]}>{count}</Text>
@@ -188,10 +197,14 @@ export default function TasksScreen() {
               </Text>
             </View>
             <Text style={styles.emptyTitle}>
-              {loading ? "Loading..." : activeTab === "COMPLETED" ? "No Completed Tasks" : "All Clear"}
+              {loading
+                ? t("common.loading")
+                : activeTab === "COMPLETED"
+                  ? t("task.emptyCompleted")
+                  : t("task.emptyAllClear")}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {!loading && activeTab !== "COMPLETED" ? "No pending tasks right now" : ""}
+              {!loading && activeTab !== "COMPLETED" ? t("task.emptyPendingHint") : ""}
             </Text>
           </View>
         }
@@ -206,7 +219,7 @@ export default function TasksScreen() {
                   </View>
                   {isOverdue(item) && (
                     <View style={styles.overdueBadge}>
-                      <Text style={styles.overdueText}>OVERDUE</Text>
+                      <Text style={styles.overdueText}>{t("task.overdueBadge")}</Text>
                     </View>
                   )}
                 </View>
@@ -227,7 +240,7 @@ export default function TasksScreen() {
               {item.dueDate && (
                 <View style={[styles.metaTag, isOverdue(item) && { backgroundColor: "#fef2f2" }]}>
                   <Text style={[styles.metaText, isOverdue(item) && { color: "#ef4444" }]}>
-                    {new Date(item.dueDate).toLocaleDateString([], { month: "short", day: "numeric" })}
+                    {new Date(item.dueDate).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
                   </Text>
                 </View>
               )}
@@ -242,7 +255,9 @@ export default function TasksScreen() {
                     onPress={() => handleStatusChange(item, "IN_PROGRESS")}
                     disabled={updatingTaskId === item.id}
                   >
-                    <Text style={styles.startBtnText}>{updatingTaskId === item.id ? "Starting..." : "Start Task"}</Text>
+                    <Text style={styles.startBtnText}>
+                      {updatingTaskId === item.id ? t("task.starting") : t("task.startButton")}
+                    </Text>
                   </TouchableOpacity>
                 )}
                 {item.status === "IN_PROGRESS" && (
@@ -251,7 +266,9 @@ export default function TasksScreen() {
                     onPress={() => handleStatusChange(item, "COMPLETED")}
                     disabled={updatingTaskId === item.id}
                   >
-                    <Text style={styles.completeBtnText}>{updatingTaskId === item.id ? "Completing..." : "Complete"}</Text>
+                    <Text style={styles.completeBtnText}>
+                      {updatingTaskId === item.id ? t("task.completing") : t("task.completeButton")}
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -262,8 +279,8 @@ export default function TasksScreen() {
 
       <NotesModal
         visible={notesVisible}
-        title="Task Result"
-        message="Add result notes (optional)"
+        title={t("task.resultModalTitle")}
+        message={t("task.resultModalMessage")}
         onCancel={() => { setNotesVisible(false); setPendingCompleteTask(null) }}
         onSubmit={(text) => { setNotesVisible(false); handleCompleteWithNotes(text) }}
       />
