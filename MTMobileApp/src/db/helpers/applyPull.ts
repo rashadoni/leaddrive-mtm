@@ -9,13 +9,14 @@
  * All operations execute in a single database.write() call (SQLite transaction).
  */
 
-import { Q } from '@nozbe/watermelondb'
+import { Q, Model } from '@nozbe/watermelondb'
 import { database } from '../database'
 import type {
   Customer, SkuCategory, Sku,
   Route, RoutePoint,
   Visit, Order, Task,
 } from '../models'
+import type { OrderItem } from '../models/Order'
 
 // ─── Server-side shape types (limited select from pull route) ────────────────
 
@@ -157,7 +158,7 @@ export async function applyPull(
   const { organizationId, agentId } = context
 
   await database.write(async () => {
-    const batch: Parameters<typeof database.batch>[0][] = []
+    const batch: Model[] = []
 
     // ── Customers ──────────────────────────────────────────────────────
     if (changes.customers) {
@@ -428,7 +429,7 @@ export async function applyPull(
         const existingMap = new Map(existing.map(r => [r.id, r]))
 
         for (const sr of changes.orders.updated) {
-          const rawItems = JSON.stringify(Array.isArray(sr.items) ? sr.items : [])
+          const serverItems = (Array.isArray(sr.items) ? sr.items : []) as OrderItem[]
           const rec = existingMap.get(sr.id)
           if (rec) {
             batch.push(rec.prepareUpdate(r => {
@@ -436,7 +437,7 @@ export async function applyPull(
               r.orderNumber = sr.orderNumber
               r.totalAmount = sr.totalAmount
               r.notes = sr.notes
-              r._raw.items = rawItems
+              r.items = serverItems
               r._raw.updated_at = msRequired(sr.updatedAt)
             }))
           } else {
@@ -448,7 +449,7 @@ export async function applyPull(
               r.visitId = sr.visitId ?? null
               r.orderNumber = sr.orderNumber
               r.status = sr.status as Order['status']
-              r._raw.items = rawItems
+              r.items = serverItems
               r.totalAmount = sr.totalAmount
               r.notes = sr.notes
               r._raw.created_at = msRequired(sr.createdAt)

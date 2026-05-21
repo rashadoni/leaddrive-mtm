@@ -79,7 +79,7 @@ export async function createVisitOffline(input: CreateVisitInput): Promise<strin
       o.operationId = operationId
       o.opType = 'create'
       o.entity = 'visits'
-      o._raw.data = JSON.stringify({
+      o.data = {
         id: visit.id,
         customerId: input.customerId,
         checkInAt: new Date(checkInAt).toISOString(),
@@ -87,7 +87,7 @@ export async function createVisitOffline(input: CreateVisitInput): Promise<strin
         checkInLng: input.checkInLng ?? null,
         notes: input.notes ?? null,
         status: 'CHECKED_IN',
-      })
+      }
       o.clientTimestamp = now
       o.status = 'pending'
       o.retryCount = 0
@@ -137,7 +137,7 @@ export async function checkOutOffline(input: CheckOutInput): Promise<void> {
       o.operationId = operationId
       o.opType = 'update'
       o.entity = 'visits'
-      o._raw.data = JSON.stringify({
+      o.data = {
         id: input.visitId,
         status: 'CHECKED_OUT',
         checkOutAt: new Date(checkOutAt).toISOString(),
@@ -145,7 +145,7 @@ export async function checkOutOffline(input: CheckOutInput): Promise<void> {
         checkOutLng: input.checkOutLng ?? null,
         notes: input.notes ?? null,
         duration: input.duration ?? null,
-      })
+      }
       o.clientTimestamp = now
       o.status = 'pending'
       o.retryCount = 0
@@ -187,7 +187,7 @@ export async function createOrderOffline(input: CreateOrderInput): Promise<strin
       r.customerId = input.customerId
       r.visitId = input.visitId ?? null
       r.status = 'DRAFT'
-      r._raw.items = JSON.stringify(input.items)
+      r.items = input.items
       r.totalAmount = totalAmount
       r.notes = input.notes ?? null
       r._raw.created_at = now
@@ -198,7 +198,7 @@ export async function createOrderOffline(input: CreateOrderInput): Promise<strin
       o.operationId = operationId
       o.opType = 'create'
       o.entity = 'orders'
-      o._raw.data = JSON.stringify({
+      o.data = {
         id: order.id,
         customerId: input.customerId,
         visitId: input.visitId ?? null,
@@ -209,7 +209,7 @@ export async function createOrderOffline(input: CreateOrderInput): Promise<strin
           unitPrice: it.price,
         })),
         notes: input.notes ?? null,
-      })
+      }
       o.clientTimestamp = now
       o.status = 'pending'
       o.retryCount = 0
@@ -256,11 +256,11 @@ export async function updateTaskOffline(input: UpdateTaskInput): Promise<void> {
       o.operationId = operationId
       o.opType = 'update'
       o.entity = 'tasks'
-      o._raw.data = JSON.stringify({
+      o.data = {
         id: input.taskId,
         status: input.status,
         ...(input.result !== undefined ? { result: input.result ?? null } : {}),
-      })
+      }
       o.clientTimestamp = now
       o.status = 'pending'
       o.retryCount = 0

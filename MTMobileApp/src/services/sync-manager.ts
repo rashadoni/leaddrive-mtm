@@ -268,9 +268,7 @@ class SyncManager {
       const payload = {
         clientId,
         operations: ops.map(op => {
-          const data = typeof op._raw.data === 'string'
-            ? JSON.parse(op._raw.data)
-            : op.data ?? {}
+          const data = op.data ?? {}
           return {
             operationId: op.operationId,
             op: op.opType,
@@ -330,11 +328,7 @@ class SyncManager {
             r.status = 'failed'
             r.lastError = result.error ?? 'Conflict with server data'
             // Store server data alongside for UI resolution
-            r._raw.data = JSON.stringify({
-              ...(typeof r._raw.data === 'string' ? JSON.parse(r._raw.data) : {}),
-              _serverData: result.serverData ?? null,
-              _conflict: true,
-            })
+            r.data = { ...r.data, _serverData: result.serverData ?? null, _conflict: true }
           })
         }
 
