@@ -8,8 +8,12 @@ import {
   RefreshControl,
 } from "react-native"
 import { useTranslation } from "react-i18next"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import type { RootStackParamList } from "../../navigation/AppNavigator"
 
 // F-43: server validator (mtm-validators OrderItem) uses `name`, not
 // `product`. Mobile previously read `it.product` which never existed
@@ -49,6 +53,7 @@ const EMPTY_KEY: Record<string, string> = {
 
 export default function OrdersScreen() {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [orders, setOrders] = useState<Order[]>([])
@@ -141,10 +146,18 @@ export default function OrdersScreen() {
         })}
       </View>
 
+      {/* New Order FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("SkuCatalog")}
+      >
+        <Icon name="add" size={26} color="#fff" />
+      </TouchableOpacity>
+
       <FlatList
         data={filtered}
         keyExtractor={(o) => o.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding + 72 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchOrders() }} tintColor="#6C63FF" />
         }
@@ -326,4 +339,22 @@ const styles = StyleSheet.create({
   },
   totalAmount: { fontSize: 18, fontWeight: "800", color: "#6C63FF" },
   orderDate: { fontSize: 11, color: "#94a3b8" },
+
+  // New Order FAB
+  fab: {
+    position: "absolute",
+    bottom: 80,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#6C63FF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
 })

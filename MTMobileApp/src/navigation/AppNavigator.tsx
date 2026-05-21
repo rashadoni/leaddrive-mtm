@@ -14,8 +14,19 @@ import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import OrdersScreen from "../screens/orders/OrdersScreen"
+import SkuCatalogScreen from "../screens/orders/SkuCatalogScreen"
+import CartScreen from "../screens/orders/CartScreen"
 
-const Stack = createNativeStackNavigator()
+// Route type map for useNavigation<NativeStackNavigationProp<RootStackParamList>>
+export type RootStackParamList = {
+  Main: undefined
+  Login: undefined
+  Server: undefined
+  SkuCatalog: undefined
+  Cart: undefined
+}
+
+const Stack = createNativeStackNavigator<RootStackParamList>()
 const Tab = createBottomTabNavigator()
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
@@ -84,7 +95,11 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isLoggedIn ? (
-          <Stack.Screen name="Main" component={MainTabs} />
+          <>
+            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="SkuCatalog" component={SkuCatalogScreen} />
+            <Stack.Screen name="Cart" component={CartScreen} />
+          </>
         ) : hasServer ? (
           <Stack.Screen name="Login">
             {() => (

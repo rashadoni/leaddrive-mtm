@@ -152,6 +152,36 @@
     "itemFallback": "(item)",
     "moreItemsTemplate": "+{{n}} more items"
   },
+  "sku": {
+    "title": "SKU Catalog",
+    "searchPlaceholder": "Search products…",
+    "all": "All",
+    "emptyTitle": "No Products",
+    "emptyHint": "Try a different category or search term",
+    "goToCart": "View Cart"
+  },
+  "cart": {
+    "title": "My Cart",
+    "clear": "Clear",
+    "clearTitle": "Clear Cart",
+    "clearMessage": "Remove all items from cart?",
+    "noCustomer": "No customer selected",
+    "noCustomerTitle": "Customer Required",
+    "noCustomerMessage": "Please check in at a customer location first.",
+    "emptyTitle": "Cart is Empty",
+    "emptyMessage": "Add items before placing an order.",
+    "emptyHint": "Add products from the catalog",
+    "browseCatalog": "Browse Catalog",
+    "removeTitle": "Remove Item",
+    "removeMessage": "Remove {{name}} from cart?",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "Add notes for this order…",
+    "total": "Order Total",
+    "placeOrder": "Place Order",
+    "submitFailed": "Failed to place order. Try again.",
+    "successTitle": "Order Placed!",
+    "successMessage": "Order confirmed for {{total}} AZN"
+  },
   "notesModal": {
     "placeholder": "Enter notes…",
     "cancel": "Cancel",

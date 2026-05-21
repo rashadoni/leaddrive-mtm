@@ -152,6 +152,36 @@
     "itemFallback": "(məhsul)",
     "moreItemsTemplate": "+{{n}} əlavə məhsul"
   },
+  "sku": {
+    "title": "SKU Kataloqu",
+    "searchPlaceholder": "Məhsul axtar…",
+    "all": "Hamısı",
+    "emptyTitle": "Məhsul yoxdur",
+    "emptyHint": "Başqa kateqoriya və ya axtarış sözü sınayın",
+    "goToCart": "Səbətə keç"
+  },
+  "cart": {
+    "title": "Mənim Səbətim",
+    "clear": "Təmizlə",
+    "clearTitle": "Səbəti Təmizlə",
+    "clearMessage": "Bütün məhsulları səbətdən çıxarılsın?",
+    "noCustomer": "Müştəri seçilməyib",
+    "noCustomerTitle": "Müştəri Tələb Olunur",
+    "noCustomerMessage": "Əvvəlcə müştəriyə check-in edin.",
+    "emptyTitle": "Səbət Boşdur",
+    "emptyMessage": "Sifariş vermədən əvvəl məhsul əlavə edin.",
+    "emptyHint": "Kataloqdan məhsul əlavə edin",
+    "browseCatalog": "Kataloqa Bax",
+    "removeTitle": "Məhsulu Sil",
+    "removeMessage": "{{name}} səbətdən çıxarılsın?",
+    "notes": "Qeydlər (isteğe bağlı)",
+    "notesPlaceholder": "Bu sifariş üçün qeyd əlavə edin…",
+    "total": "Cəmi",
+    "placeOrder": "Sifariş Ver",
+    "submitFailed": "Sifariş verilmədi. Yenidən cəhd edin.",
+    "successTitle": "Sifariş Verildi!",
+    "successMessage": "{{total}} AZN məbləğinə sifariş təsdiqləndi"
+  },
   "notesModal": {
     "placeholder": "Qeyd daxil edin…",
     "cancel": "Ləğv et",

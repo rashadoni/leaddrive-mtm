@@ -420,6 +420,32 @@ class ApiClient {
     })
   }
 
+  // --- SKU Catalog ---
+
+  async getSkuCategories() {
+    return this.request("/skus/categories")
+  }
+
+  async getSkus(params?: { categoryId?: string; search?: string; isActive?: boolean }) {
+    const query = new URLSearchParams()
+    if (params?.categoryId) query.set("categoryId", params.categoryId)
+    if (params?.search) query.set("search", params.search)
+    if (params?.isActive !== undefined) query.set("isActive", String(params.isActive))
+    const qs = query.toString()
+    return this.request(`/skus${qs ? `?${qs}` : ""}`)
+  }
+
+  async createOrderWithSkuItems(data: {
+    customerId: string
+    items: { skuId: string; quantity: number; unitPrice: number }[]
+    notes?: string
+  }) {
+    return this.request("/orders", {
+      method: "POST",
+      body: JSON.stringify({ ...data, agentId: this.agentId }),
+    })
+  }
+
   // --- Alerts ---
 
   async getAlerts(params?: { resolved?: boolean }) {
