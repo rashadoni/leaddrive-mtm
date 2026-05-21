@@ -25,7 +25,19 @@ interface CartState {
   addItem: (item: Omit<CartItem, "qty"> & { qty?: number }) => void
   removeItem: (skuId: string) => void
   setQty: (skuId: string, qty: number) => void
+  /**
+   * Reset cart contents (items + notes) but PRESERVE the
+   * customerId/customerName binding so the agent can submit a second
+   * order at the same visit without re-checking in. The check-out
+   * lifecycle (VisitScreen check-out success) is the only path that
+   * should wipe the customer binding via `resetCart()`.
+   */
   clearCart: () => void
+  /**
+   * Fully reset every field — called when the visit ends (check-out)
+   * or when switching between checked-in customers.
+   */
+  resetCart: () => void
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -73,5 +85,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     }))
   },
 
-  clearCart: () => set({ items: [], customerId: null, customerName: null, notes: "" }),
+  // Preserve customer binding across `clearCart` — see the JSDoc on the
+  // interface for the lifecycle reasoning. End-of-visit cleanup uses
+  // `resetCart()` instead.
+  clearCart: () => set({ items: [], notes: "" }),
+
+  resetCart: () => set({ items: [], notes: "", customerId: null, customerName: null }),
 }))

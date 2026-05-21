@@ -435,9 +435,25 @@ class ApiClient {
     return this.request(`/skus${qs ? `?${qs}` : ""}`)
   }
 
+  /**
+   * Place an order with items snapshotted from the SKU catalog (M1-4d).
+   *
+   * Server expects `OrderItem` shape `{ name, price, qty, productId? }`
+   * per `src/lib/mtm-validators.ts:OrderItem` (leaddrive-v2). Mobile
+   * holds `skuId` internally for cart deduplication, but the catalog
+   * `MtmSku.id` is NOT the same row as `MtmProduct.id` (legacy product
+   * table used by `productId`) — so we send `name + price + qty` only
+   * and let the server reduce `totalAmount` from them.
+   *
+   * Known follow-up (architect M1-4d audit): the server currently
+   * trusts the mobile-supplied `price`. An agent can post `price: 0`
+   * and ship goods free. Server-side lookup of `MtmSku.basePrice`
+   * by `skuId` (new optional field) is the right fix — tracked as
+   * M1-4d.security in the roadmap.
+   */
   async createOrderWithSkuItems(data: {
     customerId: string
-    items: { skuId: string; quantity: number; unitPrice: number }[]
+    items: { name: string; price: number; qty: number }[]
     notes?: string
   }) {
     return this.request("/orders", {

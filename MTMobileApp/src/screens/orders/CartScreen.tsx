@@ -8,12 +8,14 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import Icon from "react-native-vector-icons/Ionicons"
+import { Sentry } from "../../services/sentry"
 import { api } from "../../services/api"
 import { useCartStore } from "../../store/cart"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -63,15 +65,24 @@ export default function CartScreen() {
     try {
       const res = await api.createOrderWithSkuItems({
         customerId,
+        // Server schema (`OrderItem` in src/lib/mtm-validators.ts):
+        //   { productId?: cuid, name?: string, price: number, qty: number }
+        // Mobile uses `skuId` internally (M1-4 SKU catalog) but the order
+        // route lives over the legacy `mtm_orders.items` jsonb which has
+        // its own shape — we send `name + price + qty` (server-side
+        // totalAmount recomputes from these).
         items: items.map((it) => ({
-          skuId: it.skuId,
-          quantity: it.qty,
-          unitPrice: it.price,
+          name: it.name,
+          price: it.price,
+          qty: it.qty,
         })),
         notes: notes.trim() || undefined,
       })
 
       if (res.success) {
+        // Reset items + notes; preserve customer binding so the agent
+        // can stack a second order at the same visit. Customer binding
+        // is wiped on check-out via VisitScreen.resetCart().
         clearCart()
         Alert.alert(
           t("cart.successTitle"),
@@ -82,14 +93,22 @@ export default function CartScreen() {
         Alert.alert(t("common.error"), res.error || t("cart.submitFailed"))
       }
     } catch (e: any) {
-      Alert.alert(t("common.error"), e.message || t("cart.submitFailed"))
+      // Surface to Sentry with feature tag so order-placement failures
+      // are queryable. Matches the inline-tags convention used by
+      // src/db/database.ts:28 (the existing capture site in this repo).
+      const err = e instanceof Error ? e : new Error(String(e))
+      Sentry.captureException(err, { tags: { feature: "place-order" } })
+      Alert.alert(t("common.error"), e?.message || t("cart.submitFailed"))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       {/* Header */}
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerRow}>
@@ -227,7 +246,7 @@ export default function CartScreen() {
           </View>
         </>
       )}
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 

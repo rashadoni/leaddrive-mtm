@@ -22,6 +22,7 @@ import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
+import { useCartStore } from "../../store/cart"
 
 interface Visit {
   id: string
@@ -305,6 +306,10 @@ export default function VisitScreen() {
         ...(forceCheckIn && { force: true }),
       })
       if (res.success) {
+        // Bind the cart to this customer for the duration of the visit.
+        // SkuCatalogScreen / CartScreen surface this binding so place-order
+        // can hit the API with a real customerId (M1-4d fix-before-build).
+        useCartStore.getState().setCustomer(customer.id, customer.name)
         showToast("success", t("visit.checkedInTitle"), t("visit.checkedInBody", { name: customer.name }))
         fetchData()
       } else if (res.error) {
@@ -340,6 +345,9 @@ export default function VisitScreen() {
         notes: notes || undefined,
       })
       if (res.success) {
+        // Visit ended — wipe the cart fully (customer binding + items +
+        // notes). The agent's next check-in will set a fresh customer.
+        useCartStore.getState().resetCart()
         showToast("success", t("visit.checkedOutTitle"), t("visit.checkedOutBody"))
         fetchData()
       }
