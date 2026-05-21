@@ -131,6 +131,27 @@
     "tryAnyway": "Yenə də cəhd et",
     "tooFarSupervisorBody": "{{name}} ünvanından {{distance}} uzaqlıqdasınız.\nGiriş üçün {{max}}m-dən yaxın olmalısınız. Rəhbərinizdən override istəyin."
   },
+  "order": {
+    "title": "Sifarişlər",
+    "totalTemplate": "Cəmi {{n}} sifariş",
+    "revenueLabel": "gəlir",
+    "statOrders": "Sifariş",
+    "statRevenue": "Gəlir",
+    "statAverage": "Orta",
+    "statusDraft": "QARALAMA",
+    "statusConfirmed": "TƏSDİQ",
+    "statusDelivered": "ÇATDIRILIB",
+    "statusCancelled": "LƏĞV",
+    "tabDraft": "Qaralama",
+    "tabConfirmed": "Təsdiq",
+    "tabDelivered": "Çatdırılıb",
+    "emptyTitle": "Sifariş yoxdur",
+    "emptyDraft": "Hələ qaralama sifariş yoxdur",
+    "emptyConfirmed": "Hələ təsdiq olunan sifariş yoxdur",
+    "emptyDelivered": "Hələ çatdırılan sifariş yoxdur",
+    "itemFallback": "(məhsul)",
+    "moreItemsTemplate": "+{{n}} əlavə məhsul"
+  },
   "profile": {
     "language": "Dil",
     "languageAz": "Azərbaycan",

@@ -131,6 +131,27 @@
     "tryAnyway": "Try Anyway",
     "tooFarSupervisorBody": "You are {{distance}} from {{name}}.\nMust be within {{max}}m. Ask your supervisor if you need an override."
   },
+  "order": {
+    "title": "Orders",
+    "totalTemplate": "{{n}} total orders",
+    "revenueLabel": "revenue",
+    "statOrders": "Orders",
+    "statRevenue": "Revenue",
+    "statAverage": "Average",
+    "statusDraft": "DRAFT",
+    "statusConfirmed": "CONFIRMED",
+    "statusDelivered": "DELIVERED",
+    "statusCancelled": "CANCELLED",
+    "tabDraft": "Draft",
+    "tabConfirmed": "Confirmed",
+    "tabDelivered": "Delivered",
+    "emptyTitle": "No Orders",
+    "emptyDraft": "No draft orders yet",
+    "emptyConfirmed": "No confirmed orders yet",
+    "emptyDelivered": "No delivered orders yet",
+    "itemFallback": "(item)",
+    "moreItemsTemplate": "+{{n}} more items"
+  },
   "profile": {
     "language": "Language",
     "languageAz": "Azərbaycan",

@@ -131,6 +131,27 @@
     "tryAnyway": "Всё равно попробовать",
     "tooFarSupervisorBody": "Вы в {{distance}} от {{name}}.\nНужно быть ближе {{max}}м. Обратитесь к супервайзеру за override."
   },
+  "order": {
+    "title": "Заказы",
+    "totalTemplate": "Всего {{n}} заказов",
+    "revenueLabel": "выручка",
+    "statOrders": "Заказы",
+    "statRevenue": "Выручка",
+    "statAverage": "Средний",
+    "statusDraft": "ЧЕРНОВИК",
+    "statusConfirmed": "ПОДТВЕРЖДЁН",
+    "statusDelivered": "ДОСТАВЛЕН",
+    "statusCancelled": "ОТМЕНЁН",
+    "tabDraft": "Черновик",
+    "tabConfirmed": "Подтверждён",
+    "tabDelivered": "Доставлен",
+    "emptyTitle": "Заказов нет",
+    "emptyDraft": "Черновиков пока нет",
+    "emptyConfirmed": "Подтверждённых заказов пока нет",
+    "emptyDelivered": "Доставленных заказов пока нет",
+    "itemFallback": "(товар)",
+    "moreItemsTemplate": "+{{n}} ещё товаров"
+  },
   "profile": {
     "language": "Язык",
     "languageAz": "Azərbaycan",

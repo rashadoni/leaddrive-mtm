@@ -7,6 +7,7 @@ import {
   StyleSheet,
   RefreshControl,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 
@@ -29,9 +30,25 @@ interface Order {
 }
 
 const STATUS_TABS = ["DRAFT", "CONFIRMED", "DELIVERED"]
-const TAB_LABELS: Record<string, string> = { DRAFT: "Draft", CONFIRMED: "Confirmed", DELIVERED: "Delivered" }
+const TAB_LABEL_KEY: Record<string, string> = {
+  DRAFT: "order.tabDraft",
+  CONFIRMED: "order.tabConfirmed",
+  DELIVERED: "order.tabDelivered",
+}
+const STATUS_LABEL_KEY: Record<string, string> = {
+  DRAFT: "order.statusDraft",
+  CONFIRMED: "order.statusConfirmed",
+  DELIVERED: "order.statusDelivered",
+  CANCELLED: "order.statusCancelled",
+}
+const EMPTY_KEY: Record<string, string> = {
+  DRAFT: "order.emptyDraft",
+  CONFIRMED: "order.emptyConfirmed",
+  DELIVERED: "order.emptyDelivered",
+}
 
 export default function OrdersScreen() {
+  const { t, i18n } = useTranslation()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [orders, setOrders] = useState<Order[]>([])
@@ -72,13 +89,13 @@ export default function OrdersScreen() {
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Orders</Text>
-            <Text style={styles.headerSubtitle}>{orders.length} total orders</Text>
+            <Text style={styles.headerTitle}>{t("order.title")}</Text>
+            <Text style={styles.headerSubtitle}>{t("order.totalTemplate", { n: orders.length })}</Text>
           </View>
           {totalRevenue > 0 && (
             <View style={styles.revenueBadge}>
               <Text style={styles.revenueNum}>${totalRevenue.toFixed(0)}</Text>
-              <Text style={styles.revenueLabel}>revenue</Text>
+              <Text style={styles.revenueLabel}>{t("order.revenueLabel")}</Text>
             </View>
           )}
         </View>
@@ -88,17 +105,17 @@ export default function OrdersScreen() {
       <View style={styles.statsCard}>
         <View style={styles.statItem}>
           <Text style={styles.statValue}>{orders.length}</Text>
-          <Text style={styles.statLabel}>Orders</Text>
+          <Text style={styles.statLabel}>{t("order.statOrders")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={[styles.statItem, { flex: 1.5 }]}>
           <Text style={[styles.statValue, { color: "#22c55e" }]}>${totalRevenue.toFixed(0)}</Text>
-          <Text style={styles.statLabel}>Revenue</Text>
+          <Text style={styles.statLabel}>{t("order.statRevenue")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: "#6C63FF" }]}>${avgOrder.toFixed(0)}</Text>
-          <Text style={styles.statLabel}>Average</Text>
+          <Text style={styles.statLabel}>{t("order.statAverage")}</Text>
         </View>
       </View>
 
@@ -114,7 +131,7 @@ export default function OrdersScreen() {
               onPress={() => setActiveTab(tab)}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {TAB_LABELS[tab]}
+                {t(TAB_LABEL_KEY[tab])}
               </Text>
               <View style={[styles.tabCount, isActive && styles.tabCountActive]}>
                 <Text style={[styles.tabCountText, isActive && styles.tabCountTextActive]}>{count}</Text>
@@ -136,9 +153,9 @@ export default function OrdersScreen() {
             <View style={styles.emptyIconWrap}>
               <Text style={styles.emptyIcon}>🛒</Text>
             </View>
-            <Text style={styles.emptyTitle}>{loading ? "Loading..." : "No Orders"}</Text>
+            <Text style={styles.emptyTitle}>{loading ? t("common.loading") : t("order.emptyTitle")}</Text>
             <Text style={styles.emptySubtitle}>
-              {!loading ? `No ${TAB_LABELS[activeTab].toLowerCase()} orders yet` : ""}
+              {!loading ? t(EMPTY_KEY[activeTab]) : ""}
             </Text>
           </View>
         }
@@ -150,7 +167,9 @@ export default function OrdersScreen() {
                 {item.customer && <Text style={styles.customerName}>{item.customer.name}</Text>}
               </View>
               <View style={[styles.statusBadge, { backgroundColor: statusColor(item.status) + "18" }]}>
-                <Text style={[styles.statusText, { color: statusColor(item.status) }]}>{item.status}</Text>
+                <Text style={[styles.statusText, { color: statusColor(item.status) }]}>
+                  {STATUS_LABEL_KEY[item.status] ? t(STATUS_LABEL_KEY[item.status]) : item.status}
+                </Text>
               </View>
             </View>
 
@@ -158,20 +177,20 @@ export default function OrdersScreen() {
             <View style={styles.itemsList}>
               {(item.items || []).slice(0, 3).map((it, idx) => (
                 <View key={idx} style={styles.itemRow}>
-                  <Text style={styles.itemName} numberOfLines={1}>{it.name || it.product || "(item)"}</Text>
+                  <Text style={styles.itemName} numberOfLines={1}>{it.name || it.product || t("order.itemFallback")}</Text>
                   <Text style={styles.itemQty}>x{it.qty}</Text>
                   <Text style={styles.itemPrice}>${(it.qty * it.price).toFixed(0)}</Text>
                 </View>
               ))}
               {(item.items || []).length > 3 && (
-                <Text style={styles.moreItems}>+{item.items.length - 3} more items</Text>
+                <Text style={styles.moreItems}>{t("order.moreItemsTemplate", { n: item.items.length - 3 })}</Text>
               )}
             </View>
 
             <View style={styles.orderFooter}>
               <Text style={styles.totalAmount}>${(item.totalAmount || 0).toFixed(2)}</Text>
               <Text style={styles.orderDate}>
-                {new Date(item.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
+                {new Date(item.createdAt).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
               </Text>
             </View>
           </View>
