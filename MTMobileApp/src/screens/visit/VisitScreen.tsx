@@ -14,6 +14,7 @@ import {
   ScrollView,
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
+import { useTranslation } from "react-i18next"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -65,6 +66,7 @@ function distanceColor(meters: number): string {
 }
 
 export default function VisitScreen() {
+  const { t, i18n } = useTranslation()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [visits, setVisits] = useState<Visit[]>([])
@@ -170,10 +172,10 @@ export default function VisitScreen() {
       const fine = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
       if (fine) return true
       const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, {
-        title: "Location Required",
-        message: "MTM needs access to your location for check-in verification.",
-        buttonPositive: "Allow",
-        buttonNegative: "Deny",
+        title: t("permission.locationRequiredTitle"),
+        message: t("permission.locationRequiredBody"),
+        buttonPositive: t("permission.allow"),
+        buttonNegative: t("permission.deny"),
       })
       if (result === PermissionsAndroid.RESULTS.GRANTED) return true
       if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
@@ -181,9 +183,9 @@ export default function VisitScreen() {
           visible: true,
           icon: "⚙️",
           iconColor: "#ef4444",
-          title: "Location Permission Required",
-          message: "Location access was permanently denied. Please enable it in Settings → Apps → MTMobileApp → Permissions → Location.",
-          confirmText: "Open Settings",
+          title: t("permission.locationDeniedTitle"),
+          message: t("permission.locationDeniedBody"),
+          confirmText: t("permission.openSettings"),
           confirmColor: "#6C63FF",
           onConfirm: () => { setConfirm(c => ({ ...c, visible: false })); Linking.openSettings() },
         })
@@ -207,7 +209,7 @@ export default function VisitScreen() {
         )
       })
     } catch {
-      setToast({ visible: true, type: "error", message: "GPS signal not found. Make sure location is enabled and try again." })
+      setToast({ visible: true, type: "error", title: t("common.error"), message: t("visit.gpsSignalLost") })
       return null
     }
   }
@@ -219,9 +221,9 @@ export default function VisitScreen() {
       visible: true,
       icon: "📋",
       iconColor: "#6C63FF",
-      title: `Check in at ${customer.name}?`,
-      message: customer.address || "No address on file",
-      confirmText: "Check In",
+      title: t("visit.checkInPromptTitle", { name: customer.name }),
+      message: customer.address || t("visit.noAddress"),
+      confirmText: t("visit.checkInButton"),
       onConfirm: () => {
         setConfirm(c => ({ ...c, visible: false }))
         performCheckIn(customer)
@@ -237,10 +239,14 @@ export default function VisitScreen() {
       // If fresh GPS fails, try cached position from background tracking
       if (!coords && lastKnownPosition) {
         coords = { latitude: lastKnownPosition.latitude, longitude: lastKnownPosition.longitude }
-        showToast("warning", "Using Last Position", `Accuracy: ${lastKnownPosition.accuracy?.toFixed(0) || "?"}m`)
+        showToast(
+          "warning",
+          t("visit.usingLastPosition"),
+          t("visit.lastPositionAccuracy", { accuracy: lastKnownPosition.accuracy?.toFixed(0) || "?" }),
+        )
       }
       if (!coords) {
-        showToast("error", "GPS Unavailable", "Cannot determine your location. Try again.")
+        showToast("error", t("visit.gpsUnavailable"), t("visit.gpsCantDetermine"))
         setMutating(false)
         return
       }
@@ -256,8 +262,12 @@ export default function VisitScreen() {
           if (!api.canForceCheckIn) {
             showToast(
               "error",
-              "Too Far Away",
-              `${formatDistance(distance)} from ${customer.name} (max ${GEOFENCE_DEFAULT}m). Ask your supervisor.`,
+              t("visit.tooFarTitle"),
+              t("visit.tooFarAskSupervisor", {
+                distance: formatDistance(distance),
+                name: customer.name,
+                max: GEOFENCE_DEFAULT,
+              }),
             )
             setMutating(false)
             return
@@ -268,9 +278,13 @@ export default function VisitScreen() {
               visible: true,
               icon: "📏",
               iconColor: "#ef4444",
-              title: "Too Far Away",
-              message: `You are ${formatDistance(distance)} from ${customer.name}.\nYou need to be within ${GEOFENCE_DEFAULT}m to check in.`,
-              confirmText: "Check In Anyway",
+              title: t("visit.tooFarTitle"),
+              message: t("visit.tooFarBody", {
+                distance: formatDistance(distance),
+                name: customer.name,
+                max: GEOFENCE_DEFAULT,
+              }),
+              confirmText: t("visit.checkInAnyway"),
               confirmColor: "#ef4444",
               onConfirm: () => {
                 setConfirm(c => ({ ...c, visible: false }))
@@ -291,13 +305,19 @@ export default function VisitScreen() {
         ...(forceCheckIn && { force: true }),
       })
       if (res.success) {
-        showToast("success", "Checked In", `You are now at ${customer.name}`)
+        showToast("success", t("visit.checkedInTitle"), t("visit.checkedInBody", { name: customer.name }))
         fetchData()
       } else if (res.error) {
-        showToast("error", "Check-in Blocked", res.error)
+        // Backend error messages are English; surfacing them in AZ/RU UI mixes
+        // locales. Show localized title + log backend detail for ops.
+        console.warn("[VisitScreen] check-in blocked:", res.error)
+        showToast("error", t("visit.checkInBlocked"), t("visit.checkInFailed"))
       }
     } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") showToast("error", "Error", e.message || "Check-in failed")
+      if (e.message !== "SESSION_EXPIRED") {
+        console.warn("[VisitScreen] check-in error:", e?.message ?? e)
+        showToast("error", t("common.error"), t("visit.checkInFailed"))
+      }
     } finally {
       setMutating(false)
     }
@@ -320,11 +340,14 @@ export default function VisitScreen() {
         notes: notes || undefined,
       })
       if (res.success) {
-        showToast("success", "Checked Out", "Visit completed successfully")
+        showToast("success", t("visit.checkedOutTitle"), t("visit.checkedOutBody"))
         fetchData()
       }
     } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") showToast("error", "Error", e.message || "Check-out failed")
+      if (e.message !== "SESSION_EXPIRED") {
+        console.warn("[VisitScreen] check-out error:", e?.message ?? e)
+        showToast("error", t("common.error"), t("visit.checkOutFailed"))
+      }
     } finally {
       setMutating(false)
     }
@@ -351,9 +374,10 @@ export default function VisitScreen() {
         longitude: coords?.longitude,
       })
       setPhotoCount((c) => c + 1)
-      showToast("success", "Photo Saved", "Photo uploaded successfully")
+      showToast("success", t("visit.photoSavedTitle"), t("visit.photoSavedBody"))
     } catch (e: any) {
-      showToast("error", "Upload Failed", e.message || "Could not upload photo")
+      console.warn("[VisitScreen] photo upload error:", e?.message ?? e)
+      showToast("error", t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
     }
   }
 
@@ -376,15 +400,15 @@ export default function VisitScreen() {
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerContent}>
           <View>
-            <Text style={styles.headerTitle}>Visits</Text>
+            <Text style={styles.headerTitle}>{t("visit.title")}</Text>
             <Text style={styles.headerSubtitle}>
-              {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              {new Date().toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" })}
             </Text>
           </View>
           {visits.length > 0 && (
             <View style={styles.headerBadge}>
               <Text style={styles.headerBadgeNum}>{visits.length}</Text>
-              <Text style={styles.headerBadgeLabel}>today</Text>
+              <Text style={styles.headerBadgeLabel}>{t("visit.todayLabel")}</Text>
             </View>
           )}
         </View>
@@ -394,24 +418,24 @@ export default function VisitScreen() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{visits.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
+          <Text style={styles.statLabel}>{t("visit.statTotal")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statCard}>
           <Text style={[styles.statValue, { color: "#22c55e" }]}>{checkedInCount}</Text>
-          <Text style={styles.statLabel}>Active</Text>
+          <Text style={styles.statLabel}>{t("visit.statActive")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statCard}>
           <Text style={[styles.statValue, { color: "#6C63FF" }]}>{checkedOutCount}</Text>
-          <Text style={styles.statLabel}>Done</Text>
+          <Text style={styles.statLabel}>{t("visit.statDone")}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statCard}>
           <Text style={[styles.statValue, { color: "#f59e0b" }]}>
             {avgDuration > 0 ? `${Math.round(avgDuration)}` : "—"}
           </Text>
-          <Text style={styles.statLabel}>Avg min</Text>
+          <Text style={styles.statLabel}>{t("visit.statAvgMin")}</Text>
         </View>
       </View>
 
@@ -422,10 +446,11 @@ export default function VisitScreen() {
             <View style={styles.activePulseInner} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.activeLabel}>Currently at</Text>
-            <Text style={styles.activeName}>{activeVisit.customer?.name || "Customer"}</Text>
+            <Text style={styles.activeLabel}>{t("visit.activeLabel")}</Text>
+            <Text style={styles.activeName}>{activeVisit.customer?.name || t("common.customer")}</Text>
             <Text style={styles.activeTime}>
-              {elapsedMin} min elapsed{photoCount > 0 ? `  •  ${photoCount} photos` : ""}
+              {t("visit.elapsedMin", { n: elapsedMin })}
+              {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
             </Text>
           </View>
           <View style={styles.activeBtns}>
@@ -444,7 +469,7 @@ export default function VisitScreen() {
               {mutating ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.checkOutText}>Check Out</Text>
+                <Text style={styles.checkOutText}>{t("visit.checkOutButton")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -455,8 +480,8 @@ export default function VisitScreen() {
       {!activeVisit && customersWithDistance.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Quick Check-in</Text>
-            <Text style={styles.sectionCount}>{customersWithDistance.length} nearby</Text>
+            <Text style={styles.sectionTitle}>{t("visit.quickCheckIn")}</Text>
+            <Text style={styles.sectionCount}>{t("visit.nearbyCount", { n: customersWithDistance.length })}</Text>
           </View>
 
           {/* Search input */}
@@ -466,7 +491,7 @@ export default function VisitScreen() {
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search customers..."
+              placeholder={t("visit.searchPlaceholder")}
               placeholderTextColor="#94a3b8"
               returnKeyType="search"
               clearButtonMode="while-editing"
@@ -506,7 +531,7 @@ export default function VisitScreen() {
                   </TouchableOpacity>
                 ))}
               {customersWithDistance.filter((c) => c.name.toLowerCase().includes(searchQuery.trim().toLowerCase())).length === 0 && (
-                <Text style={styles.noResults}>No customers found</Text>
+                <Text style={styles.noResults}>{t("visit.noCustomersFound")}</Text>
               )}
             </ScrollView>
           ) : (
@@ -549,8 +574,8 @@ export default function VisitScreen() {
 
       {/* Recent visits */}
       <View style={styles.sectionHeader2}>
-        <Text style={styles.sectionTitle}>Today's Visits</Text>
-        <Text style={styles.sectionCount}>{visits.length} visits</Text>
+        <Text style={styles.sectionTitle}>{t("visit.todayVisits")}</Text>
+        <Text style={styles.sectionCount}>{t("visit.visitsCount", { n: visits.length })}</Text>
       </View>
       <FlatList
         data={visits}
@@ -565,10 +590,10 @@ export default function VisitScreen() {
               <Text style={styles.emptyIcon}>📋</Text>
             </View>
             <Text style={styles.emptyTitle}>
-              {loading ? "Loading..." : "No Visits Today"}
+              {loading ? t("common.loading") : t("visit.noVisitsToday")}
             </Text>
             <Text style={styles.emptySubtitle}>
-              {!loading ? "Use Quick Check-in to start your first visit" : "Fetching your visits"}
+              {!loading ? t("visit.emptyHint") : t("visit.fetching")}
             </Text>
           </View>
         }
@@ -591,11 +616,11 @@ export default function VisitScreen() {
               {item.status === "CHECKED_IN" ? (
                 <View style={styles.liveTag}>
                   <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
+                  <Text style={styles.liveText}>{t("visit.liveBadge")}</Text>
                 </View>
               ) : (
                 <Text style={styles.visitDuration}>
-                  {item.duration ? `${item.duration} min` : "—"}
+                  {item.duration ? t("visit.durationMin", { n: item.duration }) : "—"}
                 </Text>
               )}
             </View>
@@ -606,8 +631,8 @@ export default function VisitScreen() {
       {/* Modals */}
       <NotesModal
         visible={notesVisible}
-        title="Check Out"
-        message="Add notes about this visit (optional):"
+        title={t("visit.checkOutButton")}
+        message={t("visit.checkOutNotes")}
         onCancel={() => setNotesVisible(false)}
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />
