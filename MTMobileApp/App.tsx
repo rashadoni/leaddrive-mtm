@@ -6,6 +6,21 @@ import { useAuthStore } from './src/store/auth'
 import { startTracking, stopTracking } from './src/services/location'
 import { api } from './src/services/api'
 import { initI18n } from './src/i18n'
+import { initSentry } from './src/services/sentry'
+import { version as APP_VERSION } from './package.json'
+
+// M1-3: init Sentry at module-load (NOT inside useEffect) so the SDK is
+// live before the first React commit — render-phase errors during initial
+// mount get captured. Release format follows Sentry convention
+// `<package>@<versionName>+<versionCode>`; versionCode is kept in sync
+// with android/app/build.gradle by hand — bump together. Sentry dedupes
+// builds by full release string, so the +5 suffix prevents two APKs
+// with the same versionName but different versionCode (hotfix → rebuild)
+// merging into one release row.
+// TODO: read versionCode from native via react-native-device-info's
+// getBuildNumber() if we ever forget to bump in lockstep.
+const ANDROID_VERSION_CODE = 5
+initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 // Ping interval — keeps agent "online" on server even without GPS fix
 const PING_INTERVAL = 60_000 // 60 seconds
@@ -118,7 +133,9 @@ function AppContent() {
 export default function App() {
   // M1-1a: bootstrap i18n once before rendering anything that calls
   // useTranslation(). Shows a tiny splash while AsyncStorage + locale
-  // detection resolve (typically <50ms).
+  // detection resolve (typically <50ms). Sentry is already live —
+  // initialized at module-load above, so first-render exceptions get
+  // captured automatically.
   const [i18nReady, setI18nReady] = useState(false)
   useEffect(() => {
     initI18n()

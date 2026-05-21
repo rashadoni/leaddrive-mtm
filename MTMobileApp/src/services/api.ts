@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { setAgentContext, clearAgentContext } from "./sentry"
 
 const STORAGE_KEY_TOKEN = "@mtm_token"
 const STORAGE_KEY_AGENT = "@mtm_agent"
@@ -240,6 +241,11 @@ class ApiClient {
       this._agentCode = data.data.agent?.code || null
       await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
       await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
+      // M1-3: surface agent identity to Sentry so field crashes can be
+      // filtered per-rep and per-org. Org id isn't returned by login
+      // (it's bound on the server side via subdomain), so we attach
+      // only agentId here.
+      setAgentContext(this.agentId, data.data.agent?.organizationId ?? null)
     }
 
     return data
@@ -252,6 +258,9 @@ class ApiClient {
     this._agentName = null
     this._agentCode = null
     await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT])
+    // M1-3: wipe Sentry scope so anonymous post-logout traces aren't
+    // misattributed to the previous user.
+    clearAgentContext()
   }
 
   /**
