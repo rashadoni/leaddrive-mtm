@@ -152,6 +152,18 @@
     "itemFallback": "(item)",
     "moreItemsTemplate": "+{{n}} more items"
   },
+  "server": {
+    "subtitle": "Connect to your company",
+    "companyLabel": "Company",
+    "companyPlaceholder": "e.g. app, guven, acme",
+    "willConnectTemplate": "Will connect to: {{domain}}",
+    "enterCompanyHint": "Enter your company name or full domain",
+    "connectButton": "Connect",
+    "validationMissing": "Please enter your company name",
+    "connectionFailedTitle": "Connection Failed",
+    "serverNotFound": "Server not found",
+    "couldNotConnect": "Could not connect to server"
+  },
   "profile": {
     "language": "Language",
     "languageAz": "Azərbaycan",

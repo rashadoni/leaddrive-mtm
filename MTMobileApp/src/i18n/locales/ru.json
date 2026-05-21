@@ -152,6 +152,18 @@
     "itemFallback": "(товар)",
     "moreItemsTemplate": "+{{n}} ещё товаров"
   },
+  "server": {
+    "subtitle": "Подключитесь к вашей компании",
+    "companyLabel": "Компания",
+    "companyPlaceholder": "напр. app, guven, acme",
+    "willConnectTemplate": "Подключение к: {{domain}}",
+    "enterCompanyHint": "Введите название компании или полный домен",
+    "connectButton": "Подключиться",
+    "validationMissing": "Введите название компании",
+    "connectionFailedTitle": "Подключение не удалось",
+    "serverNotFound": "Сервер не найден",
+    "couldNotConnect": "Не удалось подключиться к серверу"
+  },
   "profile": {
     "language": "Язык",
     "languageAz": "Azərbaycan",

@@ -152,6 +152,18 @@
     "itemFallback": "(məhsul)",
     "moreItemsTemplate": "+{{n}} əlavə məhsul"
   },
+  "server": {
+    "subtitle": "Şirkətinizə qoşulun",
+    "companyLabel": "Şirkət",
+    "companyPlaceholder": "məs. app, guven, acme",
+    "willConnectTemplate": "Qoşulacaq: {{domain}}",
+    "enterCompanyHint": "Şirkət adını və ya tam domeni daxil edin",
+    "connectButton": "Qoşul",
+    "validationMissing": "Şirkət adını daxil edin",
+    "connectionFailedTitle": "Qoşulma alınmadı",
+    "serverNotFound": "Server tapılmadı",
+    "couldNotConnect": "Serverə qoşulmaq mümkün olmadı"
+  },
   "profile": {
     "language": "Dil",
     "languageAz": "Azərbaycan",

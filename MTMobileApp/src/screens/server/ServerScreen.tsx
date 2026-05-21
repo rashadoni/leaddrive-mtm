@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 
 interface Props {
@@ -17,13 +18,14 @@ interface Props {
 }
 
 export default function ServerScreen({ onServerSelected }: Props) {
+  const { t } = useTranslation()
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleConnect = async () => {
     const value = input.trim().toLowerCase()
     if (!value) {
-      Alert.alert("Error", "Please enter your company name")
+      Alert.alert(t("common.error"), t("server.validationMissing"))
       return
     }
 
@@ -34,10 +36,14 @@ export default function ServerScreen({ onServerSelected }: Props) {
         await api.setServer(result.domain)
         onServerSelected(result.domain, result.name || value)
       } else {
-        Alert.alert("Connection Failed", result.error || "Server not found")
+        // Backend error string is EN; show localized "server not found"
+        // and log the raw error for ops.
+        console.warn("[ServerScreen] ping failed:", result.error)
+        Alert.alert(t("server.connectionFailedTitle"), t("server.serverNotFound"))
       }
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Could not connect to server")
+      console.warn("[ServerScreen] connect error:", e?.message ?? e)
+      Alert.alert(t("common.error"), t("server.couldNotConnect"))
     } finally {
       setLoading(false)
     }
@@ -54,17 +60,17 @@ export default function ServerScreen({ onServerSelected }: Props) {
             <Text style={styles.logoText}>R&F</Text>
           </View>
           <Text style={styles.title}>Route & Field</Text>
-          <Text style={styles.subtitle}>Connect to your company</Text>
+          <Text style={styles.subtitle}>{t("server.subtitle")}</Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Company</Text>
+          <Text style={styles.label}>{t("server.companyLabel")}</Text>
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
               value={input}
               onChangeText={setInput}
-              placeholder="e.g. app, guven, acme"
+              placeholder={t("server.companyPlaceholder")}
               placeholderTextColor="#94a3b8"
               autoCapitalize="none"
               autoCorrect={false}
@@ -74,10 +80,10 @@ export default function ServerScreen({ onServerSelected }: Props) {
           </View>
           <Text style={styles.hint}>
             {input.trim().includes(".") || input.trim().includes(":")
-              ? `Will connect to: ${input.trim().toLowerCase()}`
+              ? t("server.willConnectTemplate", { domain: input.trim().toLowerCase() })
               : input.trim()
-              ? `Will connect to: ${input.trim().toLowerCase()}.leaddrivecrm.org`
-              : "Enter your company name or full domain"}
+              ? t("server.willConnectTemplate", { domain: `${input.trim().toLowerCase()}.leaddrivecrm.org` })
+              : t("server.enterCompanyHint")}
           </Text>
 
           <TouchableOpacity
@@ -88,7 +94,7 @@ export default function ServerScreen({ onServerSelected }: Props) {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Connect</Text>
+              <Text style={styles.buttonText}>{t("server.connectButton")}</Text>
             )}
           </TouchableOpacity>
         </View>
