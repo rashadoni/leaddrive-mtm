@@ -152,6 +152,11 @@
     "itemFallback": "(item)",
     "moreItemsTemplate": "+{{n}} more items"
   },
+  "notesModal": {
+    "placeholder": "Enter notes…",
+    "cancel": "Cancel",
+    "submit": "Confirm"
+  },
   "server": {
     "subtitle": "Connect to your company",
     "companyLabel": "Company",

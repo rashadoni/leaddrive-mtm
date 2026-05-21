@@ -152,6 +152,11 @@
     "itemFallback": "(товар)",
     "moreItemsTemplate": "+{{n}} ещё товаров"
   },
+  "notesModal": {
+    "placeholder": "Введите заметки…",
+    "cancel": "Отмена",
+    "submit": "Подтвердить"
+  },
   "server": {
     "subtitle": "Подключитесь к вашей компании",
     "companyLabel": "Компания",

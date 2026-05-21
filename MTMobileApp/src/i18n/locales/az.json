@@ -152,6 +152,11 @@
     "itemFallback": "(məhsul)",
     "moreItemsTemplate": "+{{n}} əlavə məhsul"
   },
+  "notesModal": {
+    "placeholder": "Qeyd daxil edin…",
+    "cancel": "Ləğv et",
+    "submit": "Təsdiq et"
+  },
   "server": {
     "subtitle": "Şirkətinizə qoşulun",
     "companyLabel": "Şirkət",

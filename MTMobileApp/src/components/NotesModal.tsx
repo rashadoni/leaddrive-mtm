@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 
 interface Props {
   visible: boolean
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function NotesModal({ visible, title, message, onCancel, onSubmit }: Props) {
+  const { t } = useTranslation()
   const [text, setText] = useState("")
 
   const handleSubmit = () => {
@@ -44,7 +46,7 @@ export default function NotesModal({ visible, title, message, onCancel, onSubmit
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder="Enter notes..."
+            placeholder={t("notesModal.placeholder")}
             placeholderTextColor="#94a3b8"
             multiline
             numberOfLines={3}
@@ -52,10 +54,10 @@ export default function NotesModal({ visible, title, message, onCancel, onSubmit
           />
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{t("notesModal.cancel")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
-              <Text style={styles.submitText}>Submit</Text>
+              <Text style={styles.submitText}>{t("notesModal.submit")}</Text>
             </TouchableOpacity>
           </View>
         </View>
