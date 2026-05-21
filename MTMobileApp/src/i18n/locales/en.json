@@ -1,0 +1,10 @@
+{
+  "profile": {
+    "language": "Language",
+    "languageAz": "Azərbaycan",
+    "languageEn": "English",
+    "languageRu": "Русский",
+    "logout": "Log out",
+    "switchServer": "Switch server"
+  }
+}

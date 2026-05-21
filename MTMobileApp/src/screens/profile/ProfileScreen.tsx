@@ -7,10 +7,12 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native"
+import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
+import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 
 interface MtmAlert {
   id: string
@@ -23,6 +25,7 @@ interface MtmAlert {
 }
 
 export default function ProfileScreen() {
+  const { t } = useTranslation()
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -30,6 +33,13 @@ export default function ProfileScreen() {
   const [alerts, setAlerts] = useState<MtmAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [confirmAction, setConfirmAction] = useState<"logout" | "switch" | null>(null)
+  // Trigger re-render after setLocale so the toggle reflects current state.
+  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(getCurrentLocale())
+
+  const onPickLocale = async (loc: SupportedLocale) => {
+    await setLocale(loc)
+    setCurrentLocale(loc)
+  }
 
   useEffect(() => {
     Promise.all([
@@ -143,13 +153,38 @@ export default function ProfileScreen() {
         <InfoRow label="Status" value="Connected" valueColor="#22c55e" />
       </View>
 
+      {/* Language switcher (M1-1a) */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>{t("profile.language")}</Text>
+        <View style={styles.localeRow}>
+          {SUPPORTED_LOCALES.map((loc) => (
+            <TouchableOpacity
+              key={loc}
+              style={[styles.localeBtn, currentLocale === loc && styles.localeBtnActive]}
+              onPress={() => onPickLocale(loc)}
+              accessibilityRole="button"
+              accessibilityLabel={t(`profile.language${loc.charAt(0).toUpperCase() + loc.slice(1)}` as any)}
+            >
+              <Text
+                style={[
+                  styles.localeBtnText,
+                  currentLocale === loc && styles.localeBtnTextActive,
+                ]}
+              >
+                {t(`profile.language${loc.charAt(0).toUpperCase() + loc.slice(1)}` as any)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* Actions */}
       <TouchableOpacity style={styles.logoutBtn} onPress={() => setConfirmAction("logout")}>
-        <Text style={styles.logoutText}>Logout</Text>
+        <Text style={styles.logoutText}>{t("profile.logout")}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.switchBtn} onPress={() => setConfirmAction("switch")}>
-        <Text style={styles.switchText}>Switch Company</Text>
+        <Text style={styles.switchText}>{t("profile.switchServer")}</Text>
       </TouchableOpacity>
 
       <Text style={styles.version}>Route & Field v1.1.0</Text>
@@ -322,5 +357,32 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0ff",
   },
   switchText: { color: "#6C63FF", fontSize: 15, fontWeight: "700" },
+  // M1-1a language switcher
+  localeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  localeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#1f1f3a",
+    alignItems: "center",
+    backgroundColor: "transparent",
+  },
+  localeBtnActive: {
+    backgroundColor: "#6C63FF",
+    borderColor: "#6C63FF",
+  },
+  localeBtnText: {
+    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  localeBtnTextActive: {
+    color: "#fff",
+  },
   version: { textAlign: "center", color: "#cbd5e1", fontSize: 11, marginTop: 20, marginBottom: 10 },
 })

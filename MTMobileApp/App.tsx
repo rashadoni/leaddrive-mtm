@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react'
-import { StatusBar, Platform, PermissionsAndroid, AppState, AppStateStatus } from 'react-native'
+import React, { useEffect, useRef, useState } from 'react'
+import { StatusBar, Platform, PermissionsAndroid, AppState, AppStateStatus, View, ActivityIndicator } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import AppNavigator from './src/navigation/AppNavigator'
 import { useAuthStore } from './src/store/auth'
 import { startTracking, stopTracking } from './src/services/location'
 import { api } from './src/services/api'
+import { initI18n } from './src/i18n'
 
 // Ping interval — keeps agent "online" on server even without GPS fix
 const PING_INTERVAL = 60_000 // 60 seconds
@@ -115,5 +116,25 @@ function AppContent() {
 }
 
 export default function App() {
+  // M1-1a: bootstrap i18n once before rendering anything that calls
+  // useTranslation(). Shows a tiny splash while AsyncStorage + locale
+  // detection resolve (typically <50ms).
+  const [i18nReady, setI18nReady] = useState(false)
+  useEffect(() => {
+    initI18n()
+      .then(() => setI18nReady(true))
+      .catch((e) => {
+        console.warn("[APP] i18n init failed, rendering anyway:", e)
+        setI18nReady(true) // fail-open — show app in fallback (ru) instead of blocking
+      })
+  }, [])
+
+  if (!i18nReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0B0B1E" }}>
+        <ActivityIndicator size="large" color="#6C63FF" />
+      </View>
+    )
+  }
   return <AppContent />
 }
