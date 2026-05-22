@@ -72,6 +72,11 @@ beforeEach(() => {
   mockInit.mockResolvedValue(undefined)
   mockLogout.mockResolvedValue(undefined)
   mockFullLogout.mockResolvedValue(undefined)
+  // Explicit safe defaults for checkAuth-path mocks; each test overrides as needed.
+  // Without these, a test that forgets to set them inherits a previous test's resolved value.
+  mockGetStoredServer.mockResolvedValue(null)
+  mockIsLoggedIn.mockResolvedValue(false)
+  mockGetStoredAgent.mockResolvedValue(null)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
