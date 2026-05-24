@@ -102,6 +102,19 @@
     "resultModalTitle": "Tapşırıq nəticəsi",
     "resultModalMessage": "Nəticə qeydləri əlavə edin (məcburi deyil)"
   },
+  "planogram": {
+    "title": "Planoqramlar",
+    "button": "Planoqram",
+    "tapToZoom": "Böyütmək üçün toxunun",
+    "compliant": "Uyğundur",
+    "nonCompliant": "Uyğun deyil",
+    "submit": "Nəticələri göndər",
+    "markedCount": "{{total}}-dən {{n}} qeyd edildi",
+    "empty": "Planoqram tapılmadı",
+    "emptyHint": "Bu müştəri üçün planoqram təyin edilməyib",
+    "submitSuccess": "Nəticələr göndərildi",
+    "submitError": "Göndərmək alınmadı. Yenidən cəhd edin."
+  },
   "route": {
     "greeting": "Salam, {{name}}!",
     "leftLabel": "qalır",

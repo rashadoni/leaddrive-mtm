@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { RootStackParamList } from "../../navigation/AppNavigator"
 import {
   View,
   Text,
@@ -63,6 +66,7 @@ function PointBottomSheet({
   onClose,
   onNavigate,
   onCheckIn,
+  onPlanogram,
   mutating,
 }: {
   visible: boolean
@@ -70,6 +74,7 @@ function PointBottomSheet({
   onClose: () => void
   onNavigate: (point: RoutePoint) => void
   onCheckIn: (point: RoutePoint) => void
+  onPlanogram: (point: RoutePoint) => void
   mutating: boolean
 }) {
   const { t, i18n } = useTranslation()
@@ -188,6 +193,14 @@ function PointBottomSheet({
             <Text style={styles.sheetVisitedText}>{t("route.alreadyVisited")}</Text>
           </View>
         )}
+
+        <TouchableOpacity
+          style={styles.sheetPlanogramBtn}
+          onPress={() => { onClose(); onPlanogram(point) }}
+        >
+          <Text style={styles.sheetPlanogramIcon}>📐</Text>
+          <Text style={styles.sheetPlanogramText}>{t("planogram.button")}</Text>
+        </TouchableOpacity>
       </Animated.View>
     </Modal>
   )
@@ -196,6 +209,7 @@ function PointBottomSheet({
 export default function RouteScreen() {
   const { t, i18n } = useTranslation()
   const agent = useAuthStore((s) => s.agent)
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [route, setRoute] = useState<Route | null>(null)
@@ -321,6 +335,13 @@ export default function RouteScreen() {
   const handlePointPress = (point: RoutePoint) => {
     setSelectedPoint(point)
     setSheetVisible(true)
+  }
+
+  const handlePlanogram = (point: RoutePoint) => {
+    navigation.navigate("Planogram", {
+      customerId: point.customer.id,
+      customerName: point.customer.name,
+    })
   }
 
   const handleNavigate = (point: RoutePoint) => {
@@ -708,6 +729,7 @@ export default function RouteScreen() {
         onClose={() => { setSheetVisible(false); setSelectedPoint(null) }}
         onNavigate={handleNavigate}
         onCheckIn={handleCheckIn}
+        onPlanogram={handlePlanogram}
         mutating={mutating}
       />
 
@@ -1063,4 +1085,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sheetVisitedText: { fontSize: 13, color: "#22c55e", fontWeight: "600" },
+  sheetPlanogramBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    marginHorizontal: 16, marginTop: 10, marginBottom: 6,
+    paddingVertical: 11, borderRadius: 12,
+    backgroundColor: "#f0f0ff", borderWidth: 1.5, borderColor: "#6C63FF22",
+    gap: 6,
+  },
+  sheetPlanogramIcon: { fontSize: 16 },
+  sheetPlanogramText: { fontSize: 14, fontWeight: "600", color: "#6C63FF" },
 })

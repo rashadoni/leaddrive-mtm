@@ -16,6 +16,7 @@ import ProfileScreen from "../screens/profile/ProfileScreen"
 import OrdersScreen from "../screens/orders/OrdersScreen"
 import SkuCatalogScreen from "../screens/orders/SkuCatalogScreen"
 import CartScreen from "../screens/orders/CartScreen"
+import PlanogramScreen from "../screens/planogram/PlanogramScreen"
 
 // Route type map for useNavigation<NativeStackNavigationProp<RootStackParamList>>
 export type RootStackParamList = {
@@ -24,6 +25,7 @@ export type RootStackParamList = {
   Server: undefined
   SkuCatalog: undefined
   Cart: undefined
+  Planogram: { customerId: string; customerName: string; visitId?: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -99,6 +101,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="SkuCatalog" component={SkuCatalogScreen} />
             <Stack.Screen name="Cart" component={CartScreen} />
+            <Stack.Screen name="Planogram" component={PlanogramScreen} />
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">

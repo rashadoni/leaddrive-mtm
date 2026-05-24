@@ -553,6 +553,23 @@ class ApiClient {
   async getSettings() {
     return this.request("/settings")
   }
+
+  // --- Planograms ---
+
+  async getPlanograms(customerId: string) {
+    return this.request(`/mobile/customers/${customerId}/planograms`)
+  }
+
+  async submitPlanogramCheck(data: {
+    customerId: string
+    visitId?: string
+    results: Array<{ planogramId: string; status: "compliant" | "non_compliant" }>
+  }) {
+    return this.request("/mobile/planogram-checks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
 }
 
 export const api = new ApiClient()

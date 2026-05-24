@@ -102,6 +102,19 @@
     "resultModalTitle": "Task Result",
     "resultModalMessage": "Add result notes (optional)"
   },
+  "planogram": {
+    "title": "Planograms",
+    "button": "Planogram",
+    "tapToZoom": "Tap to zoom",
+    "compliant": "Compliant",
+    "nonCompliant": "Non-compliant",
+    "submit": "Submit results",
+    "markedCount": "Marked {{n}} of {{total}}",
+    "empty": "No planograms",
+    "emptyHint": "No planograms assigned to this customer",
+    "submitSuccess": "Results submitted",
+    "submitError": "Failed to submit. Try again."
+  },
   "route": {
     "greeting": "Hello, {{name}}!",
     "leftLabel": "left",
