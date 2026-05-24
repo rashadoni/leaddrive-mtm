@@ -570,6 +570,17 @@ class ApiClient {
       body: JSON.stringify(data),
     })
   }
+
+  async analyzeShelf(data: {
+    planogramId?: string
+    imageBase64: string
+    imageMediaType?: "image/jpeg" | "image/png"
+  }) {
+    return this.request("/mobile/shelf-analytics/analyze", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 60_000)
+  }
 }
 
 export const api = new ApiClient()

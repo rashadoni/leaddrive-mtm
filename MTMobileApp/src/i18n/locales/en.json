@@ -113,7 +113,12 @@
     "empty": "No planograms",
     "emptyHint": "No planograms assigned to this customer",
     "submitSuccess": "Results submitted",
-    "submitError": "Failed to submit. Try again."
+    "submitError": "Failed to submit. Try again.",
+    "scan": "Scan Shelf",
+    "aiResult": "AI Analysis",
+    "detected": "Detected",
+    "missing": "Missing",
+    "details": "Details →"
   },
   "route": {
     "greeting": "Hello, {{name}}!",

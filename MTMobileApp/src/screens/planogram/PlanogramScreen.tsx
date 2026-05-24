@@ -10,23 +10,50 @@ import {
   Modal,
   Alert,
   StatusBar,
+  ScrollView,
 } from "react-native"
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import RNFS from "react-native-fs"
+import ImageResizer from "react-native-image-resizer"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
+import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Planogram">
 type RouteType = RouteProp<RootStackParamList, "Planogram">
 
+interface ExpectedSku {
+  skuId: string
+  expectedFacings: number
+  position?: number
+}
+
 interface Planogram {
   id: string
   title: string
-  category?: string
-  imageUrl: string
-  description?: string
+  category?: string | null
+  imageUrl: string | null
+  description?: string | null
+  expectedSkus?: ExpectedSku[]
+}
+
+interface DetectedResult {
+  label: string
+  skuId: string | null
+  confidence: number
+  facings: number
+}
+
+interface AnalysisResult {
+  planogramId: string
+  detectedSkus: DetectedResult[]
+  missingSkus: Array<{ skuId: string; skuName?: string; expectedFacings: number }>
+  complianceScore: number | null
+  totalDetected: number
+  modelVersion: string
 }
 
 type ComplianceStatus = "compliant" | "non_compliant" | null
@@ -43,9 +70,16 @@ export default function PlanogramScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [compliance, setCompliance] = useState<Record<string, ComplianceStatus>>({})
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // AI scan state
+  const [scanPlanogramId, setScanPlanogramId] = useState<string | null>(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const res = await api.getPlanograms(customerId)
       if (res.success) {
@@ -54,9 +88,11 @@ export default function PlanogramScreen() {
         const initial: Record<string, ComplianceStatus> = {}
         list.forEach(p => { initial[p.id] = null })
         setCompliance(initial)
+      } else {
+        setLoadError(`API error: ${res.error ?? "unknown"}`)
       }
-    } catch {
-      // silent — empty state handles it
+    } catch (e: any) {
+      setLoadError(e?.message ?? "Network error")
     } finally {
       setLoading(false)
     }
@@ -90,8 +126,42 @@ export default function PlanogramScreen() {
     }
   }
 
+  const handlePhotoTaken = async (path: string) => {
+    if (!scanPlanogramId) return
+    const planogramId = scanPlanogramId
+    setScanPlanogramId(null)
+    setAnalyzing(true)
+
+    try {
+      // Resize to max 1200px wide, 85% JPEG quality — keeps base64 under ~500KB
+      const resized = await ImageResizer.createResizedImage(
+        path.startsWith("file://") ? path : `file://${path}`,
+        1200, 1200, "JPEG", 85, 0
+      )
+      const imageBase64 = await RNFS.readFile(resized.uri.replace("file://", ""), "base64")
+      const res = await api.analyzeShelf({ planogramId, imageBase64, imageMediaType: "image/jpeg" })
+      if (res.success && res.data) {
+        const result: AnalysisResult = { planogramId, ...res.data }
+        setAnalysisResult(result)
+        // Auto-set compliance from score
+        if (result.complianceScore !== null) {
+          const autoStatus: ComplianceStatus = result.complianceScore >= 70 ? "compliant" : "non_compliant"
+          setCompliance(prev => ({ ...prev, [planogramId]: autoStatus }))
+        }
+      } else {
+        Alert.alert(t("common.error"), res.error ?? t("planogram.submitError"))
+      }
+    } catch (e: any) {
+      Alert.alert(t("common.error"), e?.message ?? t("planogram.submitError"))
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
   const renderItem = ({ item }: { item: Planogram }) => {
     const status = compliance[item.id]
+    const lastResult = analysisResult?.planogramId === item.id ? analysisResult : null
+
     return (
       <View style={styles.card}>
         {item.category && (
@@ -100,19 +170,53 @@ export default function PlanogramScreen() {
           </View>
         )}
 
-        <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewUrl(item.imageUrl)}>
-          <Image
-            source={{ uri: item.imageUrl }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-          <View style={styles.zoomHint}>
-            <Text style={styles.zoomHintText}>🔍 {t("planogram.tapToZoom")}</Text>
+        {item.imageUrl ? (
+          <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewUrl(item.imageUrl)}>
+            <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
+            <View style={styles.zoomHint}>
+              <Text style={styles.zoomHintText}>🔍 {t("planogram.tapToZoom")}</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.noImagePlaceholder}>
+            <Text style={styles.noImageText}>📐</Text>
           </View>
-        </TouchableOpacity>
+        )}
 
         <Text style={styles.cardTitle}>{item.title}</Text>
         {item.description ? <Text style={styles.cardDesc}>{item.description}</Text> : null}
+
+        {/* AI scan result inline */}
+        {lastResult && (
+          <View style={styles.resultBanner}>
+            <Text style={styles.resultTitle}>
+              {lastResult.complianceScore !== null
+                ? `AI: ${Math.round(lastResult.complianceScore)}% ` + t("planogram.compliant")
+                : `AI: ${lastResult.totalDetected} SKU`}
+            </Text>
+            {lastResult.missingSkus.length > 0 && (
+              <Text style={styles.resultMissing}>
+                ⚠️ {lastResult.missingSkus.length} {t("planogram.missing", { defaultValue: "missing" })}
+              </Text>
+            )}
+            <TouchableOpacity onPress={() => setAnalysisResult(lastResult)}>
+              <Text style={styles.resultDetails}>{t("planogram.details", { defaultValue: "Details →" })}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Scan button */}
+        <TouchableOpacity
+          style={styles.scanBtn}
+          onPress={() => setScanPlanogramId(item.id)}
+          disabled={analyzing}
+        >
+          {analyzing && scanPlanogramId === null ? (
+            <ActivityIndicator size="small" color="#6C63FF" />
+          ) : (
+            <Text style={styles.scanBtnText}>📷 {t("planogram.scan", { defaultValue: "Scan Shelf" })}</Text>
+          )}
+        </TouchableOpacity>
 
         <View style={styles.complianceRow}>
           <TouchableOpacity
@@ -149,11 +253,19 @@ export default function PlanogramScreen() {
           <Text style={styles.headerTitle}>{t("planogram.title")}</Text>
           <Text style={styles.headerSub} numberOfLines={1}>{customerName}</Text>
         </View>
+        {analyzing && <ActivityIndicator size="small" color="#6C63FF" style={{ marginRight: 8 }} />}
       </View>
 
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#6C63FF" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyIcon}>⚠️</Text>
+          <Text style={styles.emptyTitle}>Ошибка загрузки</Text>
+          <Text style={styles.emptyHint}>{loadError}</Text>
+          <Text style={[styles.emptyHint, { marginTop: 4, fontSize: 11, color: "#999" }]}>ID: {customerId}</Text>
         </View>
       ) : planograms.length === 0 ? (
         <View style={styles.center}>
@@ -204,6 +316,90 @@ export default function PlanogramScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Camera for AI scan */}
+      <PhotoCaptureModal
+        visible={!!scanPlanogramId}
+        onClose={() => setScanPlanogramId(null)}
+        onPhotoTaken={handlePhotoTaken}
+      />
+
+      {/* AI Analysis Result Modal */}
+      <Modal
+        visible={!!analysisResult}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAnalysisResult(null)}
+      >
+        <View style={styles.resultBackdrop}>
+          <View style={[styles.resultSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.resultHeader}>
+              <Text style={styles.resultSheetTitle}>
+                🤖 {t("planogram.aiResult", { defaultValue: "AI Analysis" })}
+              </Text>
+              <TouchableOpacity onPress={() => setAnalysisResult(null)}>
+                <Text style={styles.resultClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {analysisResult && (
+              <>
+                {/* Score */}
+                {analysisResult.complianceScore !== null && (
+                  <View style={[
+                    styles.scoreBlock,
+                    analysisResult.complianceScore >= 70 ? styles.scoreGood : styles.scoreBad,
+                  ]}>
+                    <Text style={styles.scoreValue}>
+                      {Math.round(analysisResult.complianceScore)}%
+                    </Text>
+                    <Text style={styles.scoreLabel}>
+                      {analysisResult.complianceScore >= 70
+                        ? t("planogram.compliant")
+                        : t("planogram.nonCompliant")}
+                    </Text>
+                  </View>
+                )}
+
+                <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+                  {/* Detected */}
+                  <Text style={styles.sectionTitle}>
+                    ✅ {t("planogram.detected", { defaultValue: "Detected" })} ({analysisResult.totalDetected})
+                  </Text>
+                  {analysisResult.detectedSkus.map((d, i) => (
+                    <View key={i} style={styles.skuRow}>
+                      <Text style={styles.skuLabel} numberOfLines={1}>{d.label}</Text>
+                      <Text style={styles.skuMeta}>×{d.facings} · {Math.round(d.confidence * 100)}%</Text>
+                    </View>
+                  ))}
+
+                  {/* Missing */}
+                  {analysisResult.missingSkus.length > 0 && (
+                    <>
+                      <Text style={[styles.sectionTitle, { marginTop: 12, color: "#ef4444" }]}>
+                        ❌ {t("planogram.missing", { defaultValue: "Missing" })} ({analysisResult.missingSkus.length})
+                      </Text>
+                      {analysisResult.missingSkus.map((s, i) => (
+                        <View key={i} style={styles.skuRow}>
+                          <Text style={styles.skuLabel}>{s.skuName ?? s.skuId}</Text>
+                          <Text style={styles.skuMeta}>exp ×{s.expectedFacings}</Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={styles.resultDoneBtn}
+                  onPress={() => setAnalysisResult(null)}
+                >
+                  <Text style={styles.resultDoneText}>{t("common.ok")}</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -244,7 +440,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 3,
   },
   categoryText: { fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.3 },
-  image: { width: "100%", height: 200 },
+  image: { width: "100%", height: 180 },
+  noImagePlaceholder: {
+    width: "100%", height: 80,
+    backgroundColor: "#f8fafc",
+    justifyContent: "center", alignItems: "center",
+  },
+  noImageText: { fontSize: 32 },
   zoomHint: {
     position: "absolute", bottom: 8, right: 8,
     backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 10,
@@ -254,10 +456,29 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 15, fontWeight: "700", color: "#0B0B1E", margin: 14, marginBottom: 4 },
   cardDesc: { fontSize: 13, color: "#64748b", marginHorizontal: 14, marginBottom: 4 },
 
+  // AI result inline banner
+  resultBanner: {
+    marginHorizontal: 14, marginBottom: 8,
+    backgroundColor: "#eff6ff", borderRadius: 10, padding: 10,
+    borderWidth: 1, borderColor: "#bfdbfe",
+  },
+  resultTitle: { fontSize: 13, fontWeight: "700", color: "#1d4ed8" },
+  resultMissing: { fontSize: 12, color: "#dc2626", marginTop: 2 },
+  resultDetails: { fontSize: 12, color: "#6C63FF", marginTop: 4, fontWeight: "600" },
+
+  // Scan button
+  scanBtn: {
+    marginHorizontal: 14, marginBottom: 10,
+    borderWidth: 1.5, borderColor: "#6C63FF", borderRadius: 10,
+    paddingVertical: 9, alignItems: "center",
+    backgroundColor: "#f5f3ff",
+  },
+  scanBtnText: { fontSize: 13, fontWeight: "600", color: "#6C63FF" },
+
   // Compliance
   complianceRow: {
     flexDirection: "row", gap: 10,
-    margin: 14, marginTop: 10,
+    margin: 14, marginTop: 4,
   },
   compBtn: {
     flex: 1, paddingVertical: 10, borderRadius: 10,
@@ -296,4 +517,39 @@ const styles = StyleSheet.create({
     width: 36, height: 36, justifyContent: "center", alignItems: "center",
   },
   previewCloseText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+
+  // Analysis result sheet
+  resultBackdrop: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  resultSheet: {
+    backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 20, paddingTop: 16,
+  },
+  resultHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginBottom: 16,
+  },
+  resultSheetTitle: { fontSize: 17, fontWeight: "700", color: "#0B0B1E" },
+  resultClose: { fontSize: 18, color: "#94a3b8", padding: 4 },
+  scoreBlock: {
+    borderRadius: 14, padding: 16, alignItems: "center", marginBottom: 16,
+  },
+  scoreGood: { backgroundColor: "#dcfce7" },
+  scoreBad: { backgroundColor: "#fef2f2" },
+  scoreValue: { fontSize: 40, fontWeight: "800", color: "#0B0B1E" },
+  scoreLabel: { fontSize: 14, fontWeight: "600", color: "#475569", marginTop: 4 },
+  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#475569", marginBottom: 6 },
+  skuRow: {
+    flexDirection: "row", justifyContent: "space-between",
+    paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: "#f1f5f9",
+  },
+  skuLabel: { fontSize: 13, color: "#0B0B1E", flex: 1, marginRight: 8 },
+  skuMeta: { fontSize: 12, color: "#94a3b8" },
+  resultDoneBtn: {
+    marginTop: 16, backgroundColor: "#6C63FF",
+    borderRadius: 14, paddingVertical: 14, alignItems: "center",
+  },
+  resultDoneText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 })

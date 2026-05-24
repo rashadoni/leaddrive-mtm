@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { useAuthStore } from "../../store/auth"
+import { useCartStore } from "../../store/cart"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import NotesModal from "../../components/NotesModal"
 
@@ -265,7 +266,8 @@ export default function RouteScreen() {
   const fetchRoute = useCallback(async (signal?: AbortSignal) => {
     setSlowConnection(false)
     try {
-      const today = new Date().toISOString().split("T")[0]
+      const _now = new Date()
+      const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`
       let res = await api.getRoutes(today, signal)
       if (!res.success || !res.data?.routes?.length) {
         res = await api.getRoutes(undefined, signal)
@@ -426,6 +428,9 @@ export default function RouteScreen() {
         ...(forceCheckIn && { force: true }),
       })
       if (res.success) {
+        // F-43 parity: bind cart to this customer so SKU Catalog → Place Order
+        // works without requiring a separate VisitScreen check-in.
+        useCartStore.getState().setCustomer(point.customer.id, point.customer.name)
         setSheetVisible(false)
         setSelectedPoint(null)
         Alert.alert(

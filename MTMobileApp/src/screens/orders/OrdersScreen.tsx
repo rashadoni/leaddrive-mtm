@@ -146,14 +146,6 @@ export default function OrdersScreen() {
         })}
       </View>
 
-      {/* New Order FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate("SkuCatalog")}
-      >
-        <Icon name="add" size={26} color="#fff" />
-      </TouchableOpacity>
-
       <FlatList
         data={filtered}
         keyExtractor={(o) => o.id}
@@ -209,6 +201,14 @@ export default function OrdersScreen() {
           </View>
         )}
       />
+
+      {/* New Order FAB — must be AFTER FlatList so it sits on top in Android's touch dispatch */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("SkuCatalog")}
+      >
+        <Icon name="add" size={26} color="#fff" />
+      </TouchableOpacity>
     </View>
   )
 }

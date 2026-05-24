@@ -113,7 +113,12 @@
     "empty": "Planoqram tapılmadı",
     "emptyHint": "Bu müştəri üçün planoqram təyin edilməyib",
     "submitSuccess": "Nəticələr göndərildi",
-    "submitError": "Göndərmək alınmadı. Yenidən cəhd edin."
+    "submitError": "Göndərmək alınmadı. Yenidən cəhd edin.",
+    "scan": "Rəfi skan et",
+    "aiResult": "AI Analiz",
+    "detected": "Aşkar edildi",
+    "missing": "Çatışmır",
+    "details": "Ətraflı →"
   },
   "route": {
     "greeting": "Salam, {{name}}!",
