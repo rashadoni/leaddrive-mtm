@@ -13,7 +13,7 @@ import { modelClasses } from './models'
  *   Falls back to async bridge automatically if JSI is not available on device.
  *
  * After `npm install`:
- *   Android: gradle includes watermelondb.gradle — rebuild the app
+ *   Android: autolinking via react-native.config.js → native/android (no manual gradle step needed since 0.27)
  *   iOS:     cd ios && pod install
  */
 const adapter = new SQLiteAdapter({

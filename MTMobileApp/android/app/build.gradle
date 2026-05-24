@@ -2,8 +2,6 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
-// WatermelonDB native SQLite module — required after `npm install @nozbe/watermelondb`
-apply from: "../../node_modules/@nozbe/watermelondb/android/watermelondb.gradle"
 
 /**
  * This is the configuration block to customize your React Native Android app.
