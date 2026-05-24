@@ -118,6 +118,8 @@
     "loadingRoute": "Loading route…",
     "noRouteTitle": "No Route Today",
     "noRouteHint": "Check back later or pull to refresh",
+    "connectionSlow": "Connection slow",
+    "connectionSlowHint": "Tap to retry",
     "fetching": "Fetching your schedule",
     "pointsSection": "Route Points",
     "stopsCount": "{{n}} stops",

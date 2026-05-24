@@ -211,6 +211,7 @@ export default function RouteScreen() {
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
   const [photoCount, setPhotoCount] = useState(0)
+  const [slowConnection, setSlowConnection] = useState(false)
 
   useEffect(() => {
     Geolocation.getCurrentPosition(
@@ -247,12 +248,13 @@ export default function RouteScreen() {
     return () => clearInterval(interval)
   }, [activeVisit])
 
-  const fetchRoute = useCallback(async () => {
+  const fetchRoute = useCallback(async (signal?: AbortSignal) => {
+    setSlowConnection(false)
     try {
       const today = new Date().toISOString().split("T")[0]
-      let res = await api.getRoutes(today)
+      let res = await api.getRoutes(today, signal)
       if (!res.success || !res.data?.routes?.length) {
-        res = await api.getRoutes()
+        res = await api.getRoutes(undefined, signal)
       }
       if (res.success && res.data?.routes?.length > 0) {
         const now = new Date()
@@ -289,7 +291,7 @@ export default function RouteScreen() {
             )
           })
           if (coords) setAgentCoords(coords)
-          const detail = await api.getRoute(routeData.id, coords ?? undefined)
+          const detail = await api.getRoute(routeData.id, coords ?? undefined, signal)
           if (detail.success) { setRoute(detail.data); return }
         }
         setRoute(routeData)
@@ -297,6 +299,8 @@ export default function RouteScreen() {
         setRoute(null)
       }
     } catch (e: any) {
+      if (e.message === "ABORTED") return
+      if (e.message === "REQUEST_TIMEOUT") { setSlowConnection(true); return }
       if (e.message !== "SESSION_EXPIRED") console.warn("Failed to fetch route:", e.message)
     } finally {
       setLoading(false)
@@ -304,7 +308,12 @@ export default function RouteScreen() {
     }
   }, [])
 
-  useEffect(() => { fetchRoute(); fetchActiveVisit() }, [fetchRoute, fetchActiveVisit])
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchRoute(controller.signal)
+    fetchActiveVisit()
+    return () => controller.abort()
+  }, [fetchRoute, fetchActiveVisit])
 
   const completion = route ? Math.round((route.visitedPoints / Math.max(route.totalPoints, 1)) * 100) : 0
   const remaining = route ? route.totalPoints - route.visitedPoints : 0
@@ -540,15 +549,21 @@ export default function RouteScreen() {
           </View>
         </View>
       ) : (
-        <View style={styles.emptyCard}>
+        <TouchableOpacity
+          style={styles.emptyCard}
+          onPress={slowConnection ? () => { setLoading(true); fetchRoute() } : undefined}
+          activeOpacity={slowConnection ? 0.7 : 1}
+        >
           <View style={styles.emptyIconWrap}>
-            <Text style={styles.emptyIcon}>📍</Text>
+            <Text style={styles.emptyIcon}>{slowConnection ? "📡" : "📍"}</Text>
           </View>
-          <Text style={styles.emptyTitle}>{loading ? t("route.loadingRoute") : t("route.noRouteTitle")}</Text>
-          <Text style={styles.emptySubtitle}>
-            {loading ? t("route.fetching") : t("route.noRouteHint")}
+          <Text style={styles.emptyTitle}>
+            {loading ? t("route.loadingRoute") : slowConnection ? t("route.connectionSlow") : t("route.noRouteTitle")}
           </Text>
-        </View>
+          <Text style={styles.emptySubtitle}>
+            {loading ? t("route.fetching") : slowConnection ? t("route.connectionSlowHint") : t("route.noRouteHint")}
+          </Text>
+        </TouchableOpacity>
       )}
 
       {/* Active visit banner */}

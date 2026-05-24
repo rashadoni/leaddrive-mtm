@@ -118,6 +118,8 @@
     "loadingRoute": "Marşrut yüklənir…",
     "noRouteTitle": "Bu gün marşrut yoxdur",
     "noRouteHint": "Sonra yoxlayın və ya yeniləmək üçün çəkin",
+    "connectionSlow": "Əlaqə yavaşdır",
+    "connectionSlowHint": "Yenidən cəhd etmək üçün toxunun",
     "fetching": "Cədvəliniz yüklənir",
     "pointsSection": "Marşrut nöqtələri",
     "stopsCount": "{{n}} dayanacaq",

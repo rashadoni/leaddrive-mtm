@@ -118,6 +118,8 @@
     "loadingRoute": "Загружаем маршрут…",
     "noRouteTitle": "Сегодня маршрута нет",
     "noRouteHint": "Загляните позже или потяните для обновления",
+    "connectionSlow": "Медленное соединение",
+    "connectionSlowHint": "Нажмите, чтобы повторить",
     "fetching": "Загружаем ваш график",
     "pointsSection": "Точки маршрута",
     "stopsCount": "{{n}} остановок",

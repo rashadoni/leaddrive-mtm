@@ -189,7 +189,7 @@ class ApiClient {
 
   // --- Request ---
 
-  private async request(path: string, options: RequestInit = {}) {
+  private async request(path: string, options: RequestInit = {}, timeoutMs = 20_000) {
     if (!this.baseUrl) throw new Error("Server not configured")
 
     const url = `${this.baseUrl}${path}`
@@ -202,19 +202,40 @@ class ApiClient {
       headers["Authorization"] = `Bearer ${this.token}`
     }
 
-    const res = await fetch(url, { ...options, headers })
-    const data = await res.json()
+    const controller = new AbortController()
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; controller.abort() }, timeoutMs)
 
-    if (res.status === 401) {
-      await this.logout()
-      throw new Error("SESSION_EXPIRED")
+    if (options.signal) {
+      const callerSignal = options.signal as AbortSignal
+      if (callerSignal.aborted) {
+        clearTimeout(timer)
+        controller.abort()
+      } else {
+        callerSignal.addEventListener("abort", () => controller.abort(), { once: true })
+      }
     }
 
-    if (!res.ok) {
-      throw new Error(data.error || `Request failed: ${res.status}`)
-    }
+    try {
+      const res = await fetch(url, { ...options, headers, signal: controller.signal })
+      const data = await res.json()
 
-    return data
+      if (res.status === 401) {
+        await this.logout()
+        throw new Error("SESSION_EXPIRED")
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed: ${res.status}`)
+      }
+
+      return data
+    } catch (e: any) {
+      if (e.name === "AbortError") throw new Error(timedOut ? "REQUEST_TIMEOUT" : "ABORTED")
+      throw e
+    } finally {
+      clearTimeout(timer)
+    }
   }
 
   // --- Auth ---
@@ -320,19 +341,19 @@ class ApiClient {
 
   // --- Routes ---
 
-  async getRoutes(date?: string) {
+  async getRoutes(date?: string, signal?: AbortSignal) {
     const query = new URLSearchParams()
     if (date) query.set("date", date)
     if (this.agentId) query.set("agentId", this.agentId)
     const qs = query.toString()
-    return this.request(`/routes${qs ? `?${qs}` : ""}`)
+    return this.request(`/routes${qs ? `?${qs}` : ""}`, { signal })
   }
 
-  async getRoute(id: string, coords?: { latitude: number; longitude: number }) {
+  async getRoute(id: string, coords?: { latitude: number; longitude: number }, signal?: AbortSignal) {
     const qs = coords
       ? `?latitude=${coords.latitude}&longitude=${coords.longitude}`
       : ""
-    return this.request(`/routes/${id}${qs}`)
+    return this.request(`/routes/${id}${qs}`, { signal })
   }
 
   // --- Visits ---
