@@ -38,9 +38,6 @@ const MAX_RETRIES            = 5
 const PUSH_BATCH_SIZE        = 100      // server limit
 const SYNCED_PURGE_DAYS      = 7        // purge synced ops older than N days
 
-// TODO(M2-1f): wire exponential backoff between sync retries.
-// Formula: min(30 s, 1 s × 2^retryCount). Not yet applied — push errors
-// currently retry on the next 60 s auto-sync cycle.
 export const backoffMs = (retryCount: number): number =>
   Math.min(30_000, 1_000 * 2 ** retryCount)
 
@@ -81,6 +78,8 @@ export class SyncManager {
   private _netinfoUnsubscribe: (() => void) | null = null
   /** Prevent concurrent syncs */
   private _isSyncing = false
+  /** In-memory backoff gate: opId → earliest epoch ms for next push attempt */
+  private _nextRetryAt = new Map<string, number>()
 
   // ── Initialization ─────────────────────────────────────────────────────────
 
@@ -240,11 +239,17 @@ export class SyncManager {
 
     if (pendingOps.length === 0) return
 
+    const now = Date.now()
+    const eligibleOps = pendingOps.filter(
+      op => (this._nextRetryAt.get(op.operationId) ?? 0) <= now,
+    )
+    if (eligibleOps.length === 0) return
+
     const clientId = await this._getClientId()
 
     // Process in batches of PUSH_BATCH_SIZE
-    for (let i = 0; i < pendingOps.length; i += PUSH_BATCH_SIZE) {
-      const batch = pendingOps.slice(i, i + PUSH_BATCH_SIZE)
+    for (let i = 0; i < eligibleOps.length; i += PUSH_BATCH_SIZE) {
+      const batch = eligibleOps.slice(i, i + PUSH_BATCH_SIZE)
       await this._pushBatch(batch, clientId)
     }
   }
@@ -318,6 +323,7 @@ export class SyncManager {
         }
 
         if (result.status === 'ok') {
+          this._nextRetryAt.delete(op.operationId)
           return op.prepareUpdate(r => {
             r.status = 'synced'
             r.syncedAt = Date.now()
@@ -326,6 +332,7 @@ export class SyncManager {
 
         if (result.status === 'conflict') {
           // Server wins — mark failed so the UI can surface the conflict
+          this._nextRetryAt.delete(op.operationId)
           return op.prepareUpdate(r => {
             r.status = 'failed'
             r.lastError = result.error ?? 'Conflict with server data'
@@ -334,8 +341,13 @@ export class SyncManager {
           })
         }
 
-        // status === 'error'
+        // status === 'error' — apply exponential backoff before next attempt
         const newRetryCount = op.retryCount + 1
+        if (newRetryCount < MAX_RETRIES) {
+          this._nextRetryAt.set(op.operationId, Date.now() + backoffMs(newRetryCount))
+        } else {
+          this._nextRetryAt.delete(op.operationId)
+        }
         return op.prepareUpdate(r => {
           r.retryCount = newRetryCount
           r.lastError = result.error ?? 'Server error'
