@@ -581,6 +581,20 @@ class ApiClient {
       body: JSON.stringify(data),
     }, 60_000)
   }
+
+  /** Generic GET — used by stores that don't have a dedicated method yet. */
+  async get(path: string) {
+    return this.request(path)
+  }
+
+  /** Generic POST — used by stores that don't have a dedicated method yet. */
+  async post(path: string, body: unknown) {
+    return this.request(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  }
 }
 
 export const api = new ApiClient()

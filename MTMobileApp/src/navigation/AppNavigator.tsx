@@ -13,10 +13,15 @@ import RouteScreen from "../screens/route/RouteScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
+import DashboardScreen from "../screens/dashboard/DashboardScreen"
 import OrdersScreen from "../screens/orders/OrdersScreen"
 import SkuCatalogScreen from "../screens/orders/SkuCatalogScreen"
 import CartScreen from "../screens/orders/CartScreen"
 import PlanogramScreen from "../screens/planogram/PlanogramScreen"
+import EquipmentListScreen from "../screens/equipment/EquipmentListScreen"
+import EquipmentInspectScreen from "../screens/equipment/EquipmentInspectScreen"
+import RepairRequestScreen from "../screens/equipment/RepairRequestScreen"
+import { EquipmentCondition } from "../store/equipment"
 
 // Route type map for useNavigation<NativeStackNavigationProp<RootStackParamList>>
 export type RootStackParamList = {
@@ -26,6 +31,9 @@ export type RootStackParamList = {
   SkuCatalog: undefined
   Cart: undefined
   Planogram: { customerId: string; customerName: string; visitId?: string }
+  EquipmentList: { customerId: string; visitId?: string }
+  EquipmentInspect: { equipmentId: string; serialNumber: string; model: string; condition: EquipmentCondition; visitId?: string }
+  RepairRequest: { equipmentId: string; serialNumber: string; visitId?: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -34,7 +42,7 @@ const Tab = createBottomTabNavigator()
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Route: { active: "navigate", inactive: "navigate-outline" },
   Visit: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
-  Tasks: { active: "clipboard", inactive: "clipboard-outline" },
+  Dashboard: { active: "bar-chart", inactive: "bar-chart-outline" },
   Orders: { active: "receipt", inactive: "receipt-outline" },
   Profile: { active: "person", inactive: "person-outline" },
 }
@@ -71,7 +79,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Route" component={RouteScreen} />
       <Tab.Screen name="Visit" component={VisitScreen} />
-      <Tab.Screen name="Tasks" component={TasksScreen} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Orders" component={OrdersScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -102,6 +110,9 @@ export default function AppNavigator() {
             <Stack.Screen name="SkuCatalog" component={SkuCatalogScreen} />
             <Stack.Screen name="Cart" component={CartScreen} />
             <Stack.Screen name="Planogram" component={PlanogramScreen} />
+            <Stack.Screen name="EquipmentList" component={EquipmentListScreen} />
+            <Stack.Screen name="EquipmentInspect" component={EquipmentInspectScreen} />
+            <Stack.Screen name="RepairRequest" component={RepairRequestScreen} />
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">

@@ -247,5 +247,24 @@
     "switchMessage": "Bu, sizi hesabdan çıxaracaq və server tənzimləmələrini siləcək. Yeni server ünvanı daxil etməli olacaqsınız.",
     "switchConfirm": "Dəyiş"
   },
-  "location": { "taskTitle": "MTM — Yer İzləmə", "taskDesc": "Yeriniz real vaxtda paylaşılır" }
+  "location": { "taskTitle": "MTM — Yer İzləmə", "taskDesc": "Yeriniz real vaxtda paylaşılır" },
+  "equipment": {
+    "title": "Avadanlıq", "empty": "Bu müştəridə avadanlıq tapılmadı",
+    "serialNumber": "Serial nömrəsi", "model": "Model",
+    "condition": { "GOOD": "Yaxşı", "DAMAGED": "Zədəli", "NEEDS_REPAIR": "Təmir tələb edir", "MISSING": "Yoxdur" },
+    "inspect": { "title": "Avadanlıq yoxlaması", "conditionLabel": "Vəziyyət", "notesPlaceholder": "Qeydlər (istəyə görə)", "submit": "Yoxlamanı saxla" },
+    "repair": { "title": "Təmir sorğusu", "descPlaceholder": "Problem təsviri", "submit": "Sorğu göndər", "successToast": "Təmir sorğusu göndərildi" }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "greeting": "Salam, {{name}}!",
+    "syncPending": "{{n}} element sinxronizasiya gözləyir",
+    "today": "Bu gün",
+    "week": "Bu həftə",
+    "month": "Bu ay",
+    "visits": "Ziyarətlər",
+    "orders": "Sifarişlər",
+    "tasks": "Tapşırıqlar",
+    "photos": "Fotolar"
+  }
 }

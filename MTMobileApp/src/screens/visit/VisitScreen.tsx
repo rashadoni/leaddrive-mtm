@@ -15,6 +15,8 @@ import {
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import { useTranslation } from "react-i18next"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { useNavigation } from "@react-navigation/native"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -23,6 +25,9 @@ import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useCartStore } from "../../store/cart"
+import { RootStackParamList } from "../../navigation/AppNavigator"
+
+type NavProp = NativeStackNavigationProp<RootStackParamList>
 
 interface Visit {
   id: string
@@ -68,6 +73,7 @@ function distanceColor(meters: number): string {
 
 export default function VisitScreen() {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<NavProp>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [visits, setVisits] = useState<Visit[]>([])
@@ -470,6 +476,17 @@ export default function VisitScreen() {
               <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              style={styles.equipmentBtn}
+              onPress={() =>
+                navigation.navigate("EquipmentList", {
+                  customerId: activeVisit.customer.id,
+                  visitId: activeVisit.id,
+                })
+              }
+            >
+              <Text style={styles.equipmentBtnText}>🔧 {t("equipment.title")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
               onPress={handleCheckOut}
               disabled={mutating}
@@ -785,6 +802,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   photoBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  equipmentBtn: {
+    backgroundColor: "#f59e0b",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  equipmentBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   checkOutBtn: {
     backgroundColor: "#ef4444",
     borderRadius: 10,

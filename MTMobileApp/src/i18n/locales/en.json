@@ -247,5 +247,24 @@
     "switchMessage": "This will log you out and clear server settings. You'll need to enter a new server address.",
     "switchConfirm": "Switch"
   },
-  "location": { "taskTitle": "MTM — Location Tracking", "taskDesc": "Your location is being shared in real time" }
+  "location": { "taskTitle": "MTM — Location Tracking", "taskDesc": "Your location is being shared in real time" },
+  "equipment": {
+    "title": "Equipment", "empty": "No equipment found at this customer",
+    "serialNumber": "Serial number", "model": "Model",
+    "condition": { "GOOD": "Good", "DAMAGED": "Damaged", "NEEDS_REPAIR": "Needs repair", "MISSING": "Missing" },
+    "inspect": { "title": "Equipment inspection", "conditionLabel": "Condition", "notesPlaceholder": "Notes (optional)", "submit": "Save inspection" },
+    "repair": { "title": "Repair request", "descPlaceholder": "Problem description", "submit": "Submit request", "successToast": "Repair request submitted" }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "greeting": "Hello, {{name}}!",
+    "syncPending": "{{n}} items pending sync",
+    "today": "Today",
+    "week": "This Week",
+    "month": "This Month",
+    "visits": "Visits",
+    "orders": "Orders",
+    "tasks": "Tasks",
+    "photos": "Photos"
+  }
 }
