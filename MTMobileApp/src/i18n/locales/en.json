@@ -246,5 +246,6 @@
     "switchTitle": "Switch Company",
     "switchMessage": "This will log you out and clear server settings. You'll need to enter a new server address.",
     "switchConfirm": "Switch"
-  }
+  },
+  "location": { "taskTitle": "MTM — Location Tracking", "taskDesc": "Your location is being shared in real time" }
 }

@@ -1,6 +1,7 @@
 import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
+import i18n from "../i18n"
 
 export let lastKnownPosition: { latitude: number; longitude: number; accuracy: number; timestamp: number } | null = null
 
@@ -12,8 +13,6 @@ const MAX_RETRIES = 3
 // --- Background Service Configuration ---
 const backgroundOptions = {
   taskName: "MTM GPS Tracking",
-  taskTitle: "MTM — Отслеживание местоположения",
-  taskDesc: "Ваше местоположение передаётся в реальном времени",
   taskIcon: {
     name: "ic_launcher",
     type: "mipmap",
@@ -161,8 +160,13 @@ export async function startTracking() {
     })
 
     // Start background service (creates Android foreground notification)
+    const backgroundOpts = {
+      ...backgroundOptions,
+      taskTitle: i18n.t("location.taskTitle"),
+      taskDesc: i18n.t("location.taskDesc"),
+    }
     console.warn("[GPS] Calling BackgroundService.start()...")
-    await BackgroundService.start(backgroundTask, backgroundOptions)
+    await BackgroundService.start(backgroundTask, backgroundOpts)
     console.warn("[GPS] BackgroundService.start() resolved ✓, isRunning:", BackgroundService.isRunning())
   } catch (e: any) {
     console.warn("[GPS] Background service FAILED, falling back to foreground:", e?.message || e)
