@@ -16,7 +16,9 @@
     "rememberMe": "Remember me",
     "loginFailedTitle": "Login Failed",
     "invalidCredentials": "Invalid credentials",
-    "validationMissing": "Please enter email and password"
+    "validationMissing": "Please enter email and password",
+    "accessRevokedTitle": "Access Revoked",
+    "accessRevokedBody": "Your access was revoked by an administrator. Contact your manager."
   },
   "permission": {
     "locationRequiredTitle": "Location Required",

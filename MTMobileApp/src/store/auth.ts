@@ -19,8 +19,22 @@ interface AuthState {
   serverDomain: string
   companyName: string
   agent: Agent | null
+  /**
+   * Set to "REVOKED" when the backend returns a mid-session 401 (fired
+   * agent, suspended account, or deactivated org). LoginScreen reads
+   * this to show a "access revoked" banner. Cleared on a fresh login
+   * attempt via clearRevokedReason().
+   */
+  revokedReason: string | null
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  /**
+   * Called by the api.ts unauthorized callback — flips the store to
+   * logged-out without re-calling api.logout() (the interceptor already
+   * cleared the token). Avoids double-work / recursion.
+   */
+  handleRevoked: (reason: string) => void
+  clearRevokedReason: () => void
   switchServer: () => Promise<void>
   checkAuth: () => Promise<void>
   setServer: (domain: string, name: string) => void
@@ -33,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   serverDomain: "",
   companyName: "",
   agent: null,
+  revokedReason: null,
 
   login: async (email: string, password: string) => {
     const result = await api.login(email, password)
@@ -45,7 +60,18 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     await api.logout()
-    set({ isLoggedIn: false, agent: null })
+    set({ isLoggedIn: false, agent: null, revokedReason: null })
+  },
+
+  handleRevoked: (reason: string) => {
+    // The api interceptor already called api.logout() (cleared token +
+    // AsyncStorage). We only flip the store state here — no second
+    // api.logout() to avoid double-work or recursion.
+    set({ isLoggedIn: false, agent: null, revokedReason: reason })
+  },
+
+  clearRevokedReason: () => {
+    set({ revokedReason: null })
   },
 
   switchServer: async () => {

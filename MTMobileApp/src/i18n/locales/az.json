@@ -16,7 +16,9 @@
     "rememberMe": "Məni xatırla",
     "loginFailedTitle": "Giriş alınmadı",
     "invalidCredentials": "Səhv giriş məlumatları",
-    "validationMissing": "E-poçt və şifrəni daxil edin"
+    "validationMissing": "E-poçt və şifrəni daxil edin",
+    "accessRevokedTitle": "Giriş ləğv edildi",
+    "accessRevokedBody": "Giriş hüququnuz administrator tərəfindən ləğv edildi. Menecerlə əlaqə saxlayın."
   },
   "permission": {
     "locationRequiredTitle": "Məkan tələb olunur",

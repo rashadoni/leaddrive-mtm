@@ -105,6 +105,17 @@ export const useSyncQueueStore = create<SyncQueueState>()(
               successCount++
             } catch (e: unknown) {
               const errorMsg = e instanceof Error ? e.message : String(e)
+
+              if (errorMsg === "SESSION_EXPIRED") {
+                // Token was revoked mid-session. Stop processing immediately
+                // — do NOT increment retries or re-queue. The store logout
+                // already fired via the api interceptor callback (Change A).
+                // Further items would also 401; bail out of the entire loop.
+                console.warn("[SyncQueue] Session revoked — aborting queue processing")
+                set({ syncing: false })
+                return successCount
+              }
+
               const newRetries = item.retries + 1
               const newStatus: SyncStatus = newRetries >= MAX_RETRIES ? "failed" : "pending"
               set((state) => ({

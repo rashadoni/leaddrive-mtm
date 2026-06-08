@@ -16,7 +16,9 @@
     "rememberMe": "Запомнить меня",
     "loginFailedTitle": "Не удалось войти",
     "invalidCredentials": "Неверные учётные данные",
-    "validationMissing": "Введите email и пароль"
+    "validationMissing": "Введите email и пароль",
+    "accessRevokedTitle": "Доступ отозван",
+    "accessRevokedBody": "Ваш доступ был отозван администратором. Обратитесь к своему менеджеру."
   },
   "permission": {
     "locationRequiredTitle": "Нужен доступ к местоположению",

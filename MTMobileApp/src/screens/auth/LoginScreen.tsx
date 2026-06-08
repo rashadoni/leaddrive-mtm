@@ -28,6 +28,8 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
   const login = useAuthStore((s) => s.login)
+  const revokedReason = useAuthStore((s) => s.revokedReason)
+  const clearRevokedReason = useAuthStore((s) => s.clearRevokedReason)
 
   // Load saved credentials
   useEffect(() => {
@@ -45,6 +47,9 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
       Alert.alert(t("common.error"), t("auth.validationMissing"))
       return
     }
+
+    // Clear the revoked banner when the user makes a new login attempt
+    clearRevokedReason()
 
     setLoading(true)
     try {
@@ -81,6 +86,14 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
           <Text style={styles.title}>Route & Field</Text>
           <Text style={styles.subtitle}>{companyName}</Text>
         </View>
+
+        {/* Access revoked banner — shown after a mid-session 401 (fired agent, suspended org) */}
+        {revokedReason === "REVOKED" && (
+          <View style={styles.revokedBanner}>
+            <Text style={styles.revokedTitle}>{t("auth.accessRevokedTitle")}</Text>
+            <Text style={styles.revokedBody}>{t("auth.accessRevokedBody")}</Text>
+          </View>
+        )}
 
         {/* Server badge */}
         <TouchableOpacity style={styles.serverBadge} onPress={onSwitchServer}>
@@ -293,5 +306,25 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontSize: 12,
     marginTop: 24,
+  },
+  revokedBanner: {
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+  },
+  revokedTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#B91C1C",
+    marginBottom: 2,
+  },
+  revokedBody: {
+    fontSize: 12,
+    color: "#7F1D1D",
+    lineHeight: 16,
   },
 })

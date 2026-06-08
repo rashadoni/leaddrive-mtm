@@ -30,6 +30,16 @@ function AppContent() {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Register the mid-session 401 → store-logout bridge once on mount.
+  // Must be set before any authenticated request fires, so we do it here
+  // (not inside checkAuth) to guarantee it's live even on the first call.
+  // Callback pattern avoids a circular import (api.ts must not import store).
+  useEffect(() => {
+    api.setUnauthorizedHandler((reason) => {
+      useAuthStore.getState().handleRevoked(reason ?? "REVOKED")
+    })
+  }, [])
+
   // Start GPS tracking + online ping when logged in
   useEffect(() => {
     console.warn("[APP] isLoggedIn changed:", isLoggedIn)

@@ -9,6 +9,17 @@ const STORAGE_KEY_CREDENTIALS = "@mtm_saved_login"
 class ApiClient {
   private token: string | null = null
   private agentId: string | null = null
+  /**
+   * Registered by App.tsx after api.init() to avoid a circular import
+   * (api.ts must not import the store). When a mid-session 401 arrives
+   * the interceptor calls this callback AFTER clearing the local token,
+   * so the store can flip isLoggedIn → false and surface the revoked UX.
+   */
+  private _onUnauthorized: ((reason?: string) => void) | null = null
+
+  setUnauthorizedHandler(fn: (reason?: string) => void): void {
+    this._onUnauthorized = fn
+  }
   // F-28 follow-up: agent role drives client-side gating of geofence
   // override prompts. Server still authoritatively rejects unprivileged
   // overrides; this is UX so a regular AGENT doesn't see a button that
@@ -222,6 +233,7 @@ class ApiClient {
 
       if (res.status === 401) {
         await this.logout()
+        this._onUnauthorized?.("REVOKED")
         throw new Error("SESSION_EXPIRED")
       }
 
@@ -534,6 +546,7 @@ class ApiClient {
 
     if (res.status === 401) {
       await this.logout()
+      this._onUnauthorized?.("REVOKED")
       throw new Error("SESSION_EXPIRED")
     }
 

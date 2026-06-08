@@ -123,6 +123,15 @@ export class SyncManager {
       this._setState({ status: 'idle', lastError: null })
       return true
     } catch (err: any) {
+      if (err?.message === 'SESSION_EXPIRED') {
+        // Mid-session 401 — token revoked by the backend. Stop the
+        // auto-sync timer immediately so we don't 401-storm on every
+        // reconnect. The store logout already fired via the api callback.
+        console.warn('[SyncManager] Session revoked — stopping auto-sync')
+        this.stopAutoSync()
+        this._setState({ status: 'idle', lastError: null })
+        return false
+      }
       const msg = err?.message ?? 'Sync failed'
       this._setState({ status: 'error', lastError: msg })
       console.error('[SyncManager] Sync cycle failed:', err)
