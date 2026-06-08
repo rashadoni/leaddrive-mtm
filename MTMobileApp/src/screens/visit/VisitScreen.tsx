@@ -391,7 +391,12 @@ export default function VisitScreen() {
       showToast("success", t("visit.photoSavedTitle"), t("visit.photoSavedBody"))
     } catch (e: any) {
       console.warn("[VisitScreen] photo upload error:", e?.message ?? e)
-      showToast("error", t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+      // SESSION_EXPIRED → the auth transition (handleRevoked) already navigates
+      // the user away; suppress the upload-failed toast so they don't see a
+      // confusing upload error on top of the revoked-logout flow.
+      if (e?.message !== "SESSION_EXPIRED") {
+        showToast("error", t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+      }
     }
   }
 

@@ -76,7 +76,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   switchServer: async () => {
     await api.fullLogout()
-    set({ isLoggedIn: false, hasServer: false, serverDomain: "", companyName: "", agent: null })
+    // Also clear revokedReason so a revoked-banner from the previous tenant
+    // doesn't carry over to the next tenant's login screen.
+    set({ isLoggedIn: false, hasServer: false, serverDomain: "", companyName: "", agent: null, revokedReason: null })
   },
 
   setServer: (domain: string, name: string) => {

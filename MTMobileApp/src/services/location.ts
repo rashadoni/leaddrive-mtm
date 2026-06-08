@@ -53,14 +53,12 @@ async function backgroundTask(taskData: any) {
     iteration++
     console.warn(`[GPS-BG] ── Iteration ${iteration} ──`)
     try {
+      // pollAndSendAsync always resolves (never rejects) — SESSION_EXPIRED
+      // is handled inside its own send-path .catch → stopTracking().
+      // This outer try/catch is retained for unexpected throws only.
       await pollAndSendAsync()
     } catch (e: any) {
-      if (e?.message === "SESSION_EXPIRED") {
-        console.warn("[GPS-BG] Session revoked — stopping GPS tracking")
-        await stopTracking()
-        return
-      }
-      console.warn("[GPS-BG] pollAndSend error:", e?.message || e)
+      console.warn("[GPS-BG] pollAndSend unexpected error:", e?.message || e)
     }
 
     // Sleep until next poll
@@ -130,7 +128,14 @@ function pollAndSendAsync(retryCount = 0): Promise<void> {
                 altitude: pos.coords.altitude || undefined,
               })
               .then(() => console.warn("[GPS] Fallback sent OK"))
-              .catch(() => {})
+              .catch((e) => {
+                if (e?.message === "SESSION_EXPIRED") {
+                  console.warn("[GPS] Fallback send FAILED — session revoked, stopping")
+                  stopTracking().catch(() => {})
+                } else {
+                  console.warn("[GPS] Fallback send FAILED:", e?.message || e)
+                }
+              })
               .finally(() => resolve())
             },
             () => resolve(),
@@ -193,18 +198,15 @@ export async function startTracking() {
  */
 function startForegroundTracking() {
   if (foregroundIntervalId !== null) return
+  // pollAndSendAsync always resolves; SESSION_EXPIRED is handled inside the
+  // send-path .catch → stopTracking(). These outer .catch calls guard only
+  // against truly unexpected rejections (should not occur in practice).
   pollAndSendAsync().catch((e) => {
-    if (e?.message === "SESSION_EXPIRED") {
-      console.warn("[GPS-FG] Session revoked — stopping foreground tracking")
-      stopTracking().catch(() => {})
-    }
+    console.warn("[GPS-FG] Unexpected pollAndSend error:", e?.message || e)
   })
   foregroundIntervalId = setInterval(() => {
     pollAndSendAsync().catch((e) => {
-      if (e?.message === "SESSION_EXPIRED") {
-        console.warn("[GPS-FG] Session revoked — stopping foreground tracking")
-        stopTracking().catch(() => {})
-      }
+      console.warn("[GPS-FG] Unexpected pollAndSend error:", e?.message || e)
     })
   }, SEND_INTERVAL)
 }

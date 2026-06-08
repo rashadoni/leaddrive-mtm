@@ -12,7 +12,7 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "../../store/auth"
-import { api } from "../../services/api"
+import { api, REVOKED_REASON } from "../../services/api"
 
 interface Props {
   serverDomain: string
@@ -88,7 +88,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
         </View>
 
         {/* Access revoked banner — shown after a mid-session 401 (fired agent, suspended org) */}
-        {revokedReason === "REVOKED" && (
+        {revokedReason === REVOKED_REASON && (
           <View style={styles.revokedBanner}>
             <Text style={styles.revokedTitle}>{t("auth.accessRevokedTitle")}</Text>
             <Text style={styles.revokedBody}>{t("auth.accessRevokedBody")}</Text>

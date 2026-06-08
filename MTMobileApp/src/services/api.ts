@@ -1,6 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setAgentContext, clearAgentContext } from "./sentry"
 
+/**
+ * Canonical reason string set when the backend returns a mid-session 401
+ * (agent fired, org suspended, etc.). Referenced in api.ts (both 401
+ * interception points) and LoginScreen ("access revoked" banner check).
+ * Centralised here so all three sites can't drift independently.
+ */
+export const REVOKED_REASON = "REVOKED"
+
 const STORAGE_KEY_TOKEN = "@mtm_token"
 const STORAGE_KEY_AGENT = "@mtm_agent"
 const STORAGE_KEY_SERVER = "@mtm_server"
@@ -232,8 +240,16 @@ class ApiClient {
       const data = await res.json()
 
       if (res.status === 401) {
+        // Gate the revoked-banner callback on a token being present:
+        // a mid-session revocation ALWAYS has a token; the login request
+        // does not (token is set only AFTER login succeeds). So login-401
+        // (wrong password / agent-not-found) stays as a normal credentials
+        // error and never surfaces the "access revoked" banner.
+        const hadToken = !!this.token
         await this.logout()
-        this._onUnauthorized?.("REVOKED")
+        if (hadToken) {
+          this._onUnauthorized?.(REVOKED_REASON)
+        }
         throw new Error("SESSION_EXPIRED")
       }
 
@@ -545,8 +561,14 @@ class ApiClient {
     })
 
     if (res.status === 401) {
+      // Same token-gate as request(): uploadPhoto always runs mid-session
+      // (token required for the Authorization header above), so hadToken
+      // is always true here — but we guard consistently for correctness.
+      const hadToken = !!this.token
       await this.logout()
-      this._onUnauthorized?.("REVOKED")
+      if (hadToken) {
+        this._onUnauthorized?.(REVOKED_REASON)
+      }
       throw new Error("SESSION_EXPIRED")
     }
 

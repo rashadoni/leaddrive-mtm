@@ -162,6 +162,22 @@ describe("useAuthStore — switchServer", () => {
     expect(state.agent).toBeNull()
     expect(mockFullLogout).toHaveBeenCalled()
   })
+
+  // FIX 3: switchServer must also clear revokedReason so the revoked banner
+  // from tenant A doesn't carry over to tenant B's login screen
+  it("clears revokedReason when switching server", async () => {
+    useAuthStore.setState({
+      isLoggedIn: false,
+      hasServer: true,
+      serverDomain: "guven.leaddrivecrm.org",
+      companyName: "Güvən",
+      agent: null,
+      revokedReason: "REVOKED",
+    })
+    await useAuthStore.getState().switchServer()
+    expect(useAuthStore.getState().revokedReason).toBeNull()
+    expect(mockFullLogout).toHaveBeenCalled()
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

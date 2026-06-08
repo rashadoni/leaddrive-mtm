@@ -340,6 +340,37 @@ describe("ApiClient — request error handling", () => {
     expect(client.token).toBeNull()
   })
 
+  // FIX 1: login-time 401 (no token present) must NOT fire the revoked handler
+  it("401 with NO token set does NOT call the unauthorized handler (login wrong-password path)", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = null // simulates the login request — no session token yet
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 401,
+      ok: false,
+      json: async () => ({ error: "Invalid credentials" }),
+    })
+    await expect(client.request("/mobile/auth")).rejects.toThrow("SESSION_EXPIRED")
+    // Revoked banner must NOT show on a login-time 401
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  // FIX 1: mid-session 401 (token present) MUST fire the revoked handler
+  it("401 WITH a token set calls the unauthorized handler (mid-session revocation)", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "active-jwt" // simulates a logged-in session
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 401,
+      ok: false,
+      json: async () => ({ error: "Unauthorized" }),
+    })
+    await expect(client.request("/routes")).rejects.toThrow("SESSION_EXPIRED")
+    expect(handler).toHaveBeenCalledWith("REVOKED")
+  })
+
   it("throws the server error message on non-ok response", async () => {
     client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
     ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
