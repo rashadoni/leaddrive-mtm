@@ -492,6 +492,18 @@ export default function VisitScreen() {
               <Text style={styles.equipmentBtnText}>🔧 {t("equipment.title")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              style={styles.equipmentBtn}
+              onPress={() =>
+                navigation.navigate("Planogram", {
+                  customerId: activeVisit.customer.id,
+                  customerName: activeVisit.customer.name,
+                  visitId: activeVisit.id,
+                })
+              }
+            >
+              <Text style={styles.equipmentBtnText}>📐 {t("planogram.title")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
               onPress={handleCheckOut}
               disabled={mutating}

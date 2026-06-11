@@ -18,8 +18,10 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import RNFS from "react-native-fs"
 import ImageResizer from "react-native-image-resizer"
+import Geolocation from "@react-native-community/geolocation"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
+import { lastKnownPosition } from "../../services/location"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Planogram">
@@ -54,6 +56,11 @@ interface AnalysisResult {
   complianceScore: number | null
   totalDetected: number
   modelVersion: string
+  // Slice A: ids of the persisted scan (null when the server degraded to
+  // ephemeral mode, persisted:false)
+  analysisId?: string | null
+  photoId?: string | null
+  persisted?: boolean
 }
 
 type ComplianceStatus = "compliant" | "non_compliant" | null
@@ -76,6 +83,27 @@ export default function PlanogramScreen() {
   const [scanPlanogramId, setScanPlanogramId] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  // Slice A: per-planogram id of the persisted scan — attached to the
+  // submitted verdict so the supervisor sees AI score next to the decision
+  const [analysisIds, setAnalysisIds] = useState<Record<string, string>>({})
+
+  // Silent GPS read: permission was requested at app start (background
+  // tracking); on failure fall back to the tracker's last known position.
+  const getCoords = async (): Promise<{ latitude: number; longitude: number } | null> => {
+    try {
+      return await new Promise((resolve, reject) => {
+        Geolocation.getCurrentPosition(
+          pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          err => reject(err),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+        )
+      })
+    } catch {
+      return lastKnownPosition
+        ? { latitude: lastKnownPosition.latitude, longitude: lastKnownPosition.longitude }
+        : null
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -113,7 +141,11 @@ export default function PlanogramScreen() {
     try {
       const results = Object.entries(compliance)
         .filter(([, s]) => s !== null)
-        .map(([planogramId, status]) => ({ planogramId, status: status! }))
+        .map(([planogramId, status]) => ({
+          planogramId,
+          status: status!,
+          ...(analysisIds[planogramId] ? { analysisId: analysisIds[planogramId] } : {}),
+        }))
 
       await api.submitPlanogramCheck({ customerId, visitId, results })
       Alert.alert(t("planogram.submitSuccess"), "", [
@@ -133,16 +165,30 @@ export default function PlanogramScreen() {
     setAnalyzing(true)
 
     try {
-      // Resize to max 1200px wide, 85% JPEG quality — keeps base64 under ~500KB
-      const resized = await ImageResizer.createResizedImage(
-        path.startsWith("file://") ? path : `file://${path}`,
-        1200, 1200, "JPEG", 85, 0
-      )
+      // Resize to max 1200px wide, 85% JPEG quality — keeps base64 under ~500KB.
+      // GPS in parallel — it rides along to the persisted photo row (Slice A).
+      const [resized, coords] = await Promise.all([
+        ImageResizer.createResizedImage(
+          path.startsWith("file://") ? path : `file://${path}`,
+          1200, 1200, "JPEG", 85, 0
+        ),
+        getCoords(),
+      ])
       const imageBase64 = await RNFS.readFile(resized.uri.replace("file://", ""), "base64")
-      const res = await api.analyzeShelf({ planogramId, imageBase64, imageMediaType: "image/jpeg" })
+      const res = await api.analyzeShelf({
+        planogramId,
+        imageBase64,
+        imageMediaType: "image/jpeg",
+        visitId,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      })
       if (res.success && res.data) {
         const result: AnalysisResult = { planogramId, ...res.data }
         setAnalysisResult(result)
+        if (res.data.analysisId) {
+          setAnalysisIds(prev => ({ ...prev, [planogramId]: res.data.analysisId as string }))
+        }
         // Auto-set compliance from score
         if (result.complianceScore !== null) {
           const autoStatus: ComplianceStatus = result.complianceScore >= 70 ? "compliant" : "non_compliant"
@@ -317,11 +363,34 @@ export default function PlanogramScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Camera for AI scan */}
+      {/* Camera for AI scan — watermark context burns date/agent/customer/GPS
+          into the shelf photo before it is persisted server-side (Slice A) */}
       <PhotoCaptureModal
         visible={!!scanPlanogramId}
         onClose={() => setScanPlanogramId(null)}
         onPhotoTaken={handlePhotoTaken}
+        watermark={
+          api.currentAgent
+            ? {
+                agent: {
+                  id: api.currentAgent.id,
+                  name: api.currentAgent.name,
+                  code: api.currentAgent.code,
+                },
+                visit: visitId ? { id: visitId } : null,
+                customer: { id: customerId, name: customerName },
+                getLocation: getCoords,
+                getLastKnownLocation: () =>
+                  lastKnownPosition
+                    ? {
+                        latitude: lastKnownPosition.latitude,
+                        longitude: lastKnownPosition.longitude,
+                        capturedAt: new Date(lastKnownPosition.timestamp),
+                      }
+                    : null,
+              }
+            : undefined
+        }
       />
 
       {/* AI Analysis Result Modal */}

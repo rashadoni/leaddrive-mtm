@@ -598,7 +598,9 @@ class ApiClient {
   async submitPlanogramCheck(data: {
     customerId: string
     visitId?: string
-    results: Array<{ planogramId: string; status: "compliant" | "non_compliant" }>
+    // analysisId links the verdict to the persisted AI scan (Slice A) so the
+    // supervisor page shows the score + photo next to the agent's decision.
+    results: Array<{ planogramId: string; status: "compliant" | "non_compliant"; analysisId?: string }>
   }) {
     return this.request("/mobile/planogram-checks", {
       method: "POST",
@@ -610,6 +612,11 @@ class ApiClient {
     planogramId?: string
     imageBase64: string
     imageMediaType?: "image/jpeg" | "image/png"
+    // Slice A: scan is persisted server-side (MtmPhoto + MtmShelfAnalysis);
+    // visitId ties it to the active visit, GPS lands on the photo row.
+    visitId?: string
+    latitude?: number
+    longitude?: number
   }) {
     return this.request("/mobile/shelf-analytics/analyze", {
       method: "POST",
