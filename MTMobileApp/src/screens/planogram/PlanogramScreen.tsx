@@ -79,9 +79,11 @@ export default function PlanogramScreen() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  // AI scan state
+  // AI scan state. analyzingId — the planogram being analyzed RIGHT NOW:
+  // the spinner must render only on that card (a global boolean made every
+  // card spin during any scan — user-reported bug).
   const [scanPlanogramId, setScanPlanogramId] = useState<string | null>(null)
-  const [analyzing, setAnalyzing] = useState(false)
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   // Slice A: per-planogram id of the persisted scan — attached to the
   // submitted verdict so the supervisor sees AI score next to the decision
@@ -162,7 +164,7 @@ export default function PlanogramScreen() {
     if (!scanPlanogramId) return
     const planogramId = scanPlanogramId
     setScanPlanogramId(null)
-    setAnalyzing(true)
+    setAnalyzingId(planogramId)
 
     try {
       // Resize to max 1200px wide, 85% JPEG quality — keeps base64 under ~500KB.
@@ -200,7 +202,7 @@ export default function PlanogramScreen() {
     } catch (e: any) {
       Alert.alert(t("common.error"), e?.message ?? t("planogram.submitError"))
     } finally {
-      setAnalyzing(false)
+      setAnalyzingId(null)
     }
   }
 
@@ -251,13 +253,13 @@ export default function PlanogramScreen() {
           </View>
         )}
 
-        {/* Scan button */}
+        {/* Scan button — spinner ONLY on the card being analyzed */}
         <TouchableOpacity
           style={styles.scanBtn}
           onPress={() => setScanPlanogramId(item.id)}
-          disabled={analyzing}
+          disabled={analyzingId !== null}
         >
-          {analyzing && scanPlanogramId === null ? (
+          {analyzingId === item.id ? (
             <ActivityIndicator size="small" color="#6C63FF" />
           ) : (
             <Text style={styles.scanBtnText}>📷 {t("planogram.scan", { defaultValue: "Scan Shelf" })}</Text>
@@ -299,7 +301,7 @@ export default function PlanogramScreen() {
           <Text style={styles.headerTitle}>{t("planogram.title")}</Text>
           <Text style={styles.headerSub} numberOfLines={1}>{customerName}</Text>
         </View>
-        {analyzing && <ActivityIndicator size="small" color="#6C63FF" style={{ marginRight: 8 }} />}
+        {analyzingId !== null && <ActivityIndicator size="small" color="#6C63FF" style={{ marginRight: 8 }} />}
       </View>
 
       {loading ? (
