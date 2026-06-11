@@ -39,7 +39,9 @@ export interface PhotoWatermarkPipelineOutput {
   effectiveLocation: { latitude: number; longitude: number } | null
 }
 
-const APP_VERSION = "v1.2.0"
+// Keep in sync with android/app/build.gradle versionName — this string is
+// burned into every photo's EXIF Model tag (forensic provenance).
+const APP_VERSION = "v1.4.0"
 const APP_MAKE = "LeadDrive MTM"
 const APP_SOFTWARE = "LeadDrive MTM Mobile"
 const MAX_LAST_KNOWN_AGE_MS_DEFAULT = 5 * 60_000 // spec §5 — 5 min

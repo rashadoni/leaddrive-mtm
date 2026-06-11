@@ -13,6 +13,7 @@ import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
+import { version as APP_VERSION } from "../../../package.json"
 
 interface MtmAlert {
   id: string
@@ -190,7 +191,7 @@ export default function ProfileScreen() {
         <Text style={styles.switchText}>{t("profile.switchServer")}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.version}>Route & Field v1.2.0</Text>
+      <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
 
       {/* Confirm sheets */}
       <ConfirmSheet
