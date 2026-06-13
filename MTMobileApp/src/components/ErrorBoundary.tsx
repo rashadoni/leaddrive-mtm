@@ -1,5 +1,6 @@
 import React from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Sentry } from "../services/sentry"
 import { i18n } from "../i18n"
 
@@ -12,14 +13,19 @@ import { i18n } from "../i18n"
  * reopens it and it works, because the second mount hits a different state.
  * That "app closes after login → reopen and it's fine" report is exactly this
  * class of bug. Wrapping the navigator converts a silent app-kill into a
- * recoverable screen AND ships the stack trace to Sentry (once a DSN is set;
- * until then it's still logged to logcat via console.error), so the next
- * occurrence is diagnosable instead of invisible.
+ * recoverable screen AND makes the crash DIAGNOSABLE:
+ *   - Sentry.captureException (once a DSN is set in services/sentry.ts)
+ *   - console.error to logcat (needs the phone tethered)
+ *   - the error is shown ON SCREEN behind a "Details" toggle — selectable so a
+ *     field user with no DSN/logcat can long-press → copy → send it to us
+ *   - persisted to AsyncStorage (@mtm_last_crash) so it survives the dismiss
  *
  * The boundary itself must never throw — it uses only primitive RN components
  * and reads strings through i18n.t with hardcoded defaults, so it renders even
  * if the locale bundle failed to load.
  */
+const CRASH_KEY = "@mtm_last_crash"
+
 interface Props {
   children: React.ReactNode
   /** Test seam — invoked with the caught error after Sentry capture. */
@@ -29,6 +35,13 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
+  /** React component stack from componentDidCatch — the most useful clue for a
+   *  render-phase crash (which screen threw). Held in state so the fallback can
+   *  display it; getDerivedStateFromError only receives the error. */
+  componentStack: string | null
+  /** User toggled the technical detail open. Hidden by default so a normal
+   *  field user sees a clean recovery screen, not a wall of stack trace. */
+  showDetails: boolean
   /** Bumped on retry to force a full remount of the child tree (clears any
    *  stuck navigator/store state — the "reopen fixes it" signal suggests the
    *  crash is transient/stale-state, so a clean remount is what actually helps;
@@ -37,7 +50,7 @@ interface State {
 }
 
 export class ErrorBoundary extends React.Component<Props, State> {
-  state: State = { hasError: false, error: null, resetKey: 0 }
+  state: State = { hasError: false, error: null, componentStack: null, showDetails: false, resetKey: 0 }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error }
@@ -46,16 +59,36 @@ export class ErrorBoundary extends React.Component<Props, State> {
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
     // logcat trail — survives even with no Sentry DSN
     console.error("[ErrorBoundary] caught render error:", error, info.componentStack)
+    this.setState({ componentStack: info.componentStack ?? null })
     try {
       Sentry.captureException(error, { extra: { componentStack: info.componentStack } })
     } catch {
       // never let crash-reporting crash the crash screen
     }
+    // Persist the last crash so it's recoverable after dismiss / no DSN / no
+    // logcat. Fire-and-forget; wrapped so a storage failure can't re-crash.
+    try {
+      void AsyncStorage.setItem(
+        CRASH_KEY,
+        JSON.stringify({
+          message: error.message,
+          stack: error.stack ?? null,
+          componentStack: info.componentStack ?? null,
+          at: new Date().toISOString(),
+        }),
+      ).catch(() => {})
+    } catch {
+      // ignore
+    }
     this.props.onError?.(error, info)
   }
 
   handleReset = (): void => {
-    this.setState(s => ({ hasError: false, error: null, resetKey: s.resetKey + 1 }))
+    this.setState(s => ({ hasError: false, error: null, componentStack: null, showDetails: false, resetKey: s.resetKey + 1 }))
+  }
+
+  toggleDetails = (): void => {
+    this.setState(s => ({ showDetails: !s.showDetails }))
   }
 
   render(): React.ReactNode {
@@ -69,6 +102,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
       defaultValue: "Произошла ошибка. Нажмите, чтобы попробовать снова.",
     })
     const retry = i18n.t("common.retry", { defaultValue: "Повторить" })
+    const detailsLabel = i18n.t("errorBoundary.details", { defaultValue: "Подробности" })
+
+    const detailText = [
+      this.state.error?.message,
+      this.state.componentStack?.trim(),
+    ]
+      .filter(Boolean)
+      .join("\n\n")
 
     return (
       <View style={styles.container}>
@@ -76,12 +117,21 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <Text style={styles.icon}>⚠️</Text>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.body}>{body}</Text>
-          {__DEV__ && this.state.error ? (
-            <Text style={styles.detail}>{this.state.error.message}</Text>
-          ) : null}
-          <TouchableOpacity style={styles.button} onPress={this.handleReset} accessibilityRole="button">
+
+          <TouchableOpacity testID="error-retry" style={styles.button} onPress={this.handleReset} accessibilityRole="button">
             <Text style={styles.buttonText}>{retry}</Text>
           </TouchableOpacity>
+
+          {detailText ? (
+            <TouchableOpacity testID="error-details-toggle" onPress={this.toggleDetails} accessibilityRole="button" style={styles.detailsToggle}>
+              <Text style={styles.detailsToggleText}>{this.state.showDetails ? "▾ " : "▸ "}{detailsLabel}</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {this.state.showDetails && detailText ? (
+            // selectable → long-press to copy on Android (no clipboard pkg needed)
+            <Text style={styles.detail} selectable>{detailText}</Text>
+          ) : null}
         </ScrollView>
       </View>
     )
@@ -94,13 +144,6 @@ const styles = StyleSheet.create({
   icon: { fontSize: 48, marginBottom: 16 },
   title: { fontSize: 18, fontWeight: "700", color: "#0B0B1E", textAlign: "center", marginBottom: 8 },
   body: { fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 20 },
-  detail: {
-    fontSize: 12,
-    color: "#ef4444",
-    textAlign: "center",
-    marginBottom: 20,
-    fontFamily: "monospace",
-  },
   button: {
     backgroundColor: "#6C63FF",
     borderRadius: 14,
@@ -108,4 +151,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   buttonText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  detailsToggle: { marginTop: 18, paddingVertical: 6 },
+  detailsToggleText: { fontSize: 13, color: "#6C63FF", fontWeight: "600" },
+  detail: {
+    fontSize: 11,
+    color: "#475569",
+    marginTop: 8,
+    fontFamily: "monospace",
+    alignSelf: "stretch",
+  },
 })

@@ -25,6 +25,11 @@ jest.mock("../../src/services/sentry", () => ({
 jest.mock("../../src/i18n", () => ({
   i18n: { t: (_key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? _key },
 }))
+const mockSetItem = jest.fn((..._a: unknown[]) => Promise.resolve())
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: { setItem: (...a: unknown[]) => mockSetItem(...a) },
+}))
 
 import { ErrorBoundary } from "../../src/components/ErrorBoundary"
 
@@ -40,9 +45,19 @@ function findByText(tree: TestRenderer.ReactTestRenderer, text: string): boolean
   return textOf(tree.toJSON()).includes(text)
 }
 
+// TouchableOpacity forwards testID to its inner View, so findByProps would match
+// >1. Pick the instance that actually carries the onPress handler.
+function pressByTestId(tree: TestRenderer.ReactTestRenderer, testID: string): void {
+  const node = tree.root
+    .findAllByProps({ testID })
+    .find(n => typeof (n.props as { onPress?: unknown }).onPress === "function")
+  act(() => { (node!.props as { onPress: () => void }).onPress() })
+}
+
 beforeEach(() => {
   shouldThrow = true
   mockCapture.mockClear()
+  mockSetItem.mockClear()
   jest.spyOn(console, "error").mockImplementation(() => {})
 })
 afterEach(() => {
@@ -85,8 +100,7 @@ describe("ErrorBoundary", () => {
 
     // child is "fixed", then the user taps Retry → boundary resets → children render
     shouldThrow = false
-    const retryBtn = tree.root.findAll(n => n.props?.accessibilityRole === "button")[0]
-    act(() => { (retryBtn.props as { onPress: () => void }).onPress() })
+    pressByTestId(tree, "error-retry")
 
     expect(findByText(tree, "recovered")).toBe(true)
   })
@@ -100,5 +114,29 @@ describe("ErrorBoundary", () => {
       })
     }).not.toThrow()
     expect(findByText(tree, "Что-то пошло не так")).toBe(true)
+  })
+
+  it("hides the error text by default, reveals it when Details is tapped (release-diagnosable)", () => {
+    let tree!: TestRenderer.ReactTestRenderer
+    act(() => {
+      tree = TestRenderer.create(<ErrorBoundary><Boom /></ErrorBoundary>)
+    })
+    // the raw error message is NOT shown until the user opts in
+    expect(findByText(tree, "kaboom")).toBe(false)
+
+    pressByTestId(tree, "error-details-toggle")
+
+    expect(findByText(tree, "kaboom")).toBe(true)
+  })
+
+  it("persists the last crash to AsyncStorage for offline diagnosis", () => {
+    act(() => {
+      TestRenderer.create(<ErrorBoundary><Boom /></ErrorBoundary>)
+    })
+    expect(mockSetItem).toHaveBeenCalledTimes(1)
+    expect(mockSetItem.mock.calls[0][0]).toBe("@mtm_last_crash")
+    const payload = JSON.parse(mockSetItem.mock.calls[0][1] as string)
+    expect(payload.message).toBe("kaboom")
+    expect(typeof payload.at).toBe("string")
   })
 })

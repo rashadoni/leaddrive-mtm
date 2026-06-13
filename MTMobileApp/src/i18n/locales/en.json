@@ -10,7 +10,8 @@
   },
   "errorBoundary": {
     "title": "Something went wrong",
-    "body": "An error occurred. Tap to try again."
+    "body": "An error occurred. Tap to try again.",
+    "details": "Details"
   },
   "auth": {
     "email": "Email",
