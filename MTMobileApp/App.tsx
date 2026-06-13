@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { StatusBar, Platform, PermissionsAndroid, AppState, AppStateStatus, View, ActivityIndicator } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import AppNavigator from './src/navigation/AppNavigator'
+import { ErrorBoundary } from './src/components/ErrorBoundary'
 import { useAuthStore } from './src/store/auth'
 import { startTracking, stopTracking } from './src/services/location'
 import { api } from './src/services/api'
@@ -19,7 +20,7 @@ import { version as APP_VERSION } from './package.json'
 // merging into one release row.
 // TODO: read versionCode from native via react-native-device-info's
 // getBuildNumber() if we ever forget to bump in lockstep.
-const ANDROID_VERSION_CODE = 11
+const ANDROID_VERSION_CODE = 12
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 // Ping interval — keeps agent "online" on server even without GPS fix
@@ -135,7 +136,13 @@ function AppContent() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#6C63FF" />
-      <AppNavigator />
+      {/* A render-phase throw in any screen (e.g. the first tab mounting
+          right after login) would otherwise silently close the release app
+          — "closes after login, reopen and it works". The boundary turns
+          that into a recoverable screen + a Sentry capture. */}
+      <ErrorBoundary>
+        <AppNavigator />
+      </ErrorBoundary>
     </SafeAreaProvider>
   )
 }

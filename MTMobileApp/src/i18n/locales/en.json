@@ -8,6 +8,10 @@
     "cancel": "Cancel",
     "retry": "Retry"
   },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "An error occurred. Tap to try again."
+  },
   "auth": {
     "email": "Email",
     "password": "Password",

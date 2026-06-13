@@ -8,6 +8,10 @@
     "cancel": "Ləğv et",
     "retry": "Yenidən cəhd et"
   },
+  "errorBoundary": {
+    "title": "Nəsə səhv getdi",
+    "body": "Xəta baş verdi. Yenidən cəhd etmək üçün toxunun."
+  },
   "auth": {
     "email": "E-poçt",
     "password": "Şifrə",
