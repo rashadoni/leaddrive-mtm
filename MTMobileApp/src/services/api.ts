@@ -617,11 +617,26 @@ class ApiClient {
     visitId?: string
     latitude?: number
     longitude?: number
+    // Variant C Phase 3 idempotency key (UUIDv4 generated per capture). A retried
+    // POST (timeout / app restart) converges on the same analysis row instead of
+    // spawning a duplicate; also lets the server park the scan for the backstop.
+    clientScanId?: string
   }) {
     return this.request("/mobile/shelf-analytics/analyze", {
       method: "POST",
       body: JSON.stringify(data),
     }, 60_000)
+  }
+
+  /**
+   * Variant C Phase 3 — poll a parked scan's status by analysisId (sync-pull).
+   * The server returns the SAME body shape as analyzeShelf: 202 with
+   * data.status === "processing" while still running, or 200 with the full
+   * result + data.status (COMPLETED / FAILED / REJECTED) once terminal. A 202 is
+   * res.ok, so request() returns the body rather than throwing.
+   */
+  async getShelfAnalysis(analysisId: string) {
+    return this.request(`/mobile/shelf-analytics/${analysisId}`)
   }
 
   /** Generic GET — used by stores that don't have a dedicated method yet. */

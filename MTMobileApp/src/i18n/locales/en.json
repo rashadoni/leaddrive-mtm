@@ -125,7 +125,8 @@
     "aiResult": "AI Analysis",
     "detected": "Detected",
     "missing": "Missing",
-    "details": "Details →"
+    "details": "Details →",
+    "processingInBackground": "Scan is processing in the background — the AI score will appear shortly. You can mark compliance manually."
   },
   "route": {
     "greeting": "Hello, {{name}}!",

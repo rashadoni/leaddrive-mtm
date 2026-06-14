@@ -125,7 +125,8 @@
     "aiResult": "AI Analiz",
     "detected": "Aşkar edildi",
     "missing": "Çatışmır",
-    "details": "Ətraflı →"
+    "details": "Ətraflı →",
+    "processingInBackground": "Skan arxa planda işlənir — AI qiyməti tezliklə görünəcək. Uyğunluğu əl ilə qeyd edə bilərsiniz."
   },
   "route": {
     "greeting": "Salam, {{name}}!",

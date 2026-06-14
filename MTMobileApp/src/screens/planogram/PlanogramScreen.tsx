@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
 import {
   View,
   Text,
@@ -22,7 +22,15 @@ import Geolocation from "@react-native-community/geolocation"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
+import { pollScanUntilTerminal } from "../../services/shelf-scan-poll"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
+
+/** Idempotency key per capture (UUIDv4 when Hermes exposes crypto, else unique fallback). */
+function generateClientScanId(): string {
+  const c = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+  if (c?.randomUUID) return c.randomUUID()
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "Planogram">
 type RouteType = RouteProp<RootStackParamList, "Planogram">
@@ -61,6 +69,10 @@ interface AnalysisResult {
   analysisId?: string | null
   photoId?: string | null
   persisted?: boolean
+  // Variant C Phase 3: terminal status from a polled (backstop) result —
+  // "COMPLETED" | "FAILED" | "REJECTED". Absent on a fresh inline 200.
+  status?: string
+  errorMessage?: string | null
 }
 
 type ComplianceStatus = "compliant" | "non_compliant" | null
@@ -88,6 +100,10 @@ export default function PlanogramScreen() {
   // Slice A: per-planogram id of the persisted scan — attached to the
   // submitted verdict so the supervisor sees AI score next to the decision
   const [analysisIds, setAnalysisIds] = useState<Record<string, string>>({})
+  // Variant C Phase 3: stops an in-flight backstop poll if the screen unmounts
+  // (avoids setState-after-unmount) — flipped true on teardown.
+  const unmountedRef = useRef(false)
+  useEffect(() => () => { unmountedRef.current = true }, [])
 
   // Silent GPS read: permission was requested at app start (background
   // tracking); on failure fall back to the tracker's last known position.
@@ -160,6 +176,26 @@ export default function PlanogramScreen() {
     }
   }
 
+  // Apply a TERMINAL scan result (fresh inline 200 or a polled backstop result)
+  // to the screen: show it, link its analysisId, auto-set compliance from score.
+  // A FAILED/REJECTED scan surfaces an error and does NOT auto-set compliance —
+  // the agent marks it by hand.
+  const applyAnalysisData = (planogramId: string, data: Partial<AnalysisResult>) => {
+    if (data?.analysisId) {
+      setAnalysisIds(prev => ({ ...prev, [planogramId]: data.analysisId as string }))
+    }
+    if (data?.status === "FAILED" || data?.status === "REJECTED") {
+      Alert.alert(t("common.error"), t("planogram.submitError"))
+      return
+    }
+    const result = { planogramId, ...data } as AnalysisResult
+    setAnalysisResult(result)
+    if (typeof result.complianceScore === "number") {
+      const autoStatus: ComplianceStatus = result.complianceScore >= 70 ? "compliant" : "non_compliant"
+      setCompliance(prev => ({ ...prev, [planogramId]: autoStatus }))
+    }
+  }
+
   const handlePhotoTaken = async (path: string) => {
     if (!scanPlanogramId) return
     const planogramId = scanPlanogramId
@@ -184,25 +220,47 @@ export default function PlanogramScreen() {
         visitId,
         latitude: coords?.latitude,
         longitude: coords?.longitude,
+        clientScanId: generateClientScanId(),
       })
-      if (res.success && res.data) {
-        const result: AnalysisResult = { planogramId, ...res.data }
-        setAnalysisResult(result)
-        if (res.data.analysisId) {
-          setAnalysisIds(prev => ({ ...prev, [planogramId]: res.data.analysisId as string }))
+
+      if (res?.data?.status === "processing") {
+        // 202 — Claude was overloaded; the server parked the scan for the durable
+        // backstop. Link the analysisId now (so a submitted verdict still picks up
+        // the eventual score) and poll until terminal. The spinner stays up.
+        const analysisId = res.data.analysisId as string | undefined
+        if (!analysisId) {
+          // Defensive: the backend always returns analysisId on a 202; without it
+          // we can't poll a status URL — fall straight to the background message
+          // rather than hammering /shelf-analytics/undefined for the whole window.
+          Alert.alert(t("planogram.aiResult"), t("planogram.processingInBackground"))
+        } else {
+          setAnalysisIds(prev => ({ ...prev, [planogramId]: analysisId }))
+          const outcome = await pollScanUntilTerminal(
+            analysisId,
+            id => api.getShelfAnalysis(id),
+            {
+              sleep: ms => new Promise(r => setTimeout(r, ms)),
+              shouldStop: () => unmountedRef.current,
+            },
+          )
+          if (unmountedRef.current) return
+          if (outcome.terminal) {
+            applyAnalysisData(planogramId, outcome.data)
+          } else {
+            // Still processing after the poll window — the backstop will finish it
+            // server-side; the agent can mark compliance by hand and submit now.
+            Alert.alert(t("planogram.aiResult"), t("planogram.processingInBackground"))
+          }
         }
-        // Auto-set compliance from score
-        if (result.complianceScore !== null) {
-          const autoStatus: ComplianceStatus = result.complianceScore >= 70 ? "compliant" : "non_compliant"
-          setCompliance(prev => ({ ...prev, [planogramId]: autoStatus }))
-        }
+      } else if (res?.success && res?.data) {
+        applyAnalysisData(planogramId, res.data) // fresh inline result
       } else {
-        Alert.alert(t("common.error"), res.error ?? t("planogram.submitError"))
+        Alert.alert(t("common.error"), res?.error ?? t("planogram.submitError"))
       }
     } catch (e: any) {
       Alert.alert(t("common.error"), e?.message ?? t("planogram.submitError"))
     } finally {
-      setAnalyzingId(null)
+      if (!unmountedRef.current) setAnalyzingId(null)
     }
   }
 
