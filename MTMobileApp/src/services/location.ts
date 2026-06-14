@@ -35,11 +35,20 @@ async function backgroundTask(taskData: any) {
 
   console.warn("[GPS-BG] ★ Background task STARTED, delay:", delay)
 
-  // Configure geolocation provider
+  // Configure geolocation provider.
+  // BUG-1 FIX: locationProvider was "playServices" — the Play Services / fused
+  // path in @react-native-community/geolocation 3.4.0 crashes the app NATIVELY
+  // ("java.lang.NullPointerException: Listener must not be null" in
+  // com.reactnativecommunity.geolocation → gms.common.api.internal) on the
+  // getCurrentPosition success callback right after login. A native crash on
+  // the Android main looper can't be caught from JS (the ErrorBoundary never
+  // sees it), so the app just closed — the user's "closes after login" report.
+  // Reproduced + confirmed on the emulator. "android" uses the OS
+  // LocationManager and sidesteps the fused-provider listener bug.
   try {
     Geolocation.setRNConfiguration({
       skipPermissionRequests: true,
-      locationProvider: "playServices",
+      locationProvider: "android",
     })
     console.warn("[GPS-BG] Geolocation configured OK")
   } catch (e: any) {
@@ -171,10 +180,17 @@ export async function startTracking() {
   }
 
   try {
-    // Configure geolocation provider
+    // Configure geolocation provider.
+    // BUG-1 FIX: "playServices" → "android". The fused/Play-Services path in
+    // @react-native-community/geolocation 3.4.0 throws a NATIVE
+    // NullPointerException ("Listener must not be null") in the
+    // getCurrentPosition success callback right after login, killing the app
+    // (uncatchable from JS). The foreground fallback below calls
+    // getCurrentPosition, so this config governs the crash path. The OS
+    // LocationManager ("android") avoids the fused-provider listener bug.
     Geolocation.setRNConfiguration({
       skipPermissionRequests: true,
-      locationProvider: "playServices",
+      locationProvider: "android",
     })
 
     // Start background service (creates Android foreground notification)

@@ -8,12 +8,15 @@ import { i18n } from "../i18n"
  * App-wide error boundary.
  *
  * Why this exists: a release build has NO redbox — an unhandled error thrown
- * during a screen's render (e.g. the first tab mounting right after login)
- * tears down the whole React tree and Android closes the app. The user then
- * reopens it and it works, because the second mount hits a different state.
- * That "app closes after login → reopen and it's fine" report is exactly this
- * class of bug. Wrapping the navigator converts a silent app-kill into a
- * recoverable screen AND makes the crash DIAGNOSABLE:
+ * during a screen's render tears down the whole React tree and Android closes
+ * the app. This boundary catches JS RENDER-phase errors and turns a silent
+ * app-kill into a recoverable screen.
+ *
+ * NOTE: it does NOT catch native crashes (e.g. the original "closes after
+ * login" bug was a native NullPointerException in the geolocation library on
+ * the Android main looper — fixed separately in services/location.ts; a JS
+ * error boundary can never see a native crash). It remains a safety net for
+ * the JS-render class of failure, and makes those crashes DIAGNOSABLE:
  *   - Sentry.captureException (once a DSN is set in services/sentry.ts)
  *   - console.error to logcat (needs the phone tethered)
  *   - the error is shown ON SCREEN behind a "Details" toggle — selectable so a
