@@ -38,10 +38,14 @@ export const useKpiStore = create<KpiState>((set, get) => ({
         api.getPhotos(),
       ])
 
-      const visits: { id: string; status: string }[] = visitsRes?.data ?? []
-      const orders: unknown[] = ordersRes?.data ?? []
-      const tasks: { id: string; status: string }[] = tasksRes?.data ?? []
-      const photos: unknown[] = photosRes?.data ?? []
+      // The API wraps each array inside data.<entity>
+      // ({ data: { visits: [...] } }) — NOT data itself. Reading data directly
+      // gave an OBJECT, and `obj.filter()` threw "undefined is not a function",
+      // breaking the whole Dashboard (reproduced on the emulator 2026-06-12).
+      const visits: { id: string; status: string }[] = visitsRes?.data?.visits ?? []
+      const orders: unknown[] = ordersRes?.data?.orders ?? []
+      const tasks: { id: string; status: string }[] = tasksRes?.data?.tasks ?? []
+      const photos: unknown[] = photosRes?.data?.photos ?? []
 
       const completedVisits = visits.filter((v) => v.status === "CHECKED_OUT").length
       const doneTasks = tasks.filter(

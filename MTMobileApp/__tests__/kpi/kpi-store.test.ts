@@ -32,42 +32,55 @@ const mockGetOrders = api.getOrders as jest.Mock
 const mockGetTasks = api.getTasks as jest.Mock
 const mockGetPhotos = api.getPhotos as jest.Mock
 
+// REGRESSION 2026-06-12: the API wraps each array inside data.<entity>
+// ({ data: { visits: [...] } }), NOT data itself. These fixtures previously
+// put the array directly at `data`, which matched the BUGGY store code
+// (`res.data.filter(...)` on an object → "undefined is not a function", whole
+// Dashboard broke). Verified the real server shape via curl, fixtures corrected.
 const SAMPLE_VISITS = {
   success: true,
-  data: [
-    { id: 'v-1', status: 'CHECKED_OUT' },
-    { id: 'v-2', status: 'CHECKED_IN' },
-    { id: 'v-3', status: 'CHECKED_OUT' },
-  ],
+  data: {
+    visits: [
+      { id: 'v-1', status: 'CHECKED_OUT' },
+      { id: 'v-2', status: 'CHECKED_IN' },
+      { id: 'v-3', status: 'CHECKED_OUT' },
+    ],
+  },
 }
 
 const SAMPLE_ORDERS = {
   success: true,
-  data: [
-    { id: 'o-1', status: 'CONFIRMED' },
-    { id: 'o-2', status: 'DRAFT' },
-  ],
+  data: {
+    orders: [
+      { id: 'o-1', status: 'CONFIRMED' },
+      { id: 'o-2', status: 'DRAFT' },
+    ],
+  },
 }
 
 const SAMPLE_TASKS = {
   success: true,
-  data: [
-    { id: 't-1', status: 'DONE' },
-    { id: 't-2', status: 'COMPLETED' },
-    { id: 't-3', status: 'TODO' },
-    { id: 't-4', status: 'IN_PROGRESS' },
-  ],
+  data: {
+    tasks: [
+      { id: 't-1', status: 'DONE' },
+      { id: 't-2', status: 'COMPLETED' },
+      { id: 't-3', status: 'TODO' },
+      { id: 't-4', status: 'IN_PROGRESS' },
+    ],
+  },
 }
 
 const SAMPLE_PHOTOS = {
   success: true,
-  data: [
-    { id: 'p-1' },
-    { id: 'p-2' },
-    { id: 'p-3' },
-    { id: 'p-4' },
-    { id: 'p-5' },
-  ],
+  data: {
+    photos: [
+      { id: 'p-1' },
+      { id: 'p-2' },
+      { id: 'p-3' },
+      { id: 'p-4' },
+      { id: 'p-5' },
+    ],
+  },
 }
 
 function resetStore() {
@@ -152,7 +165,7 @@ describe('stats.visits', () => {
   })
 
   it('handles empty visits array', async () => {
-    mockGetVisits.mockResolvedValue({ success: true, data: [] })
+    mockGetVisits.mockResolvedValue({ success: true, data: { visits: [] } })
     await useKpiStore.getState().fetchKpi('today')
     const { stats } = useKpiStore.getState()
     expect(stats?.visits.completed).toBe(0)
@@ -171,7 +184,7 @@ describe('stats.orders', () => {
   })
 
   it('handles empty orders array', async () => {
-    mockGetOrders.mockResolvedValue({ success: true, data: [] })
+    mockGetOrders.mockResolvedValue({ success: true, data: { orders: [] } })
     await useKpiStore.getState().fetchKpi('today')
     const { stats } = useKpiStore.getState()
     expect(stats?.orders.count).toBe(0)
@@ -196,7 +209,7 @@ describe('stats.tasks', () => {
   })
 
   it('handles empty tasks array', async () => {
-    mockGetTasks.mockResolvedValue({ success: true, data: [] })
+    mockGetTasks.mockResolvedValue({ success: true, data: { tasks: [] } })
     await useKpiStore.getState().fetchKpi('today')
     const { stats } = useKpiStore.getState()
     expect(stats?.tasks.done).toBe(0)

@@ -20,7 +20,7 @@ import { version as APP_VERSION } from './package.json'
 // merging into one release row.
 // TODO: read versionCode from native via react-native-device-info's
 // getBuildNumber() if we ever forget to bump in lockstep.
-const ANDROID_VERSION_CODE = 14
+const ANDROID_VERSION_CODE = 15
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 // Ping interval — keeps agent "online" on server even without GPS fix
