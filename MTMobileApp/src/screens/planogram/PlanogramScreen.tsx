@@ -166,9 +166,11 @@ export default function PlanogramScreen() {
         }))
 
       await api.submitPlanogramCheck({ customerId, visitId, results })
-      Alert.alert(t("planogram.submitSuccess"), "", [
-        { text: t("common.ok"), onPress: () => navigation.goBack() },
-      ])
+      Alert.alert(
+        t("planogram.submitSuccess"),
+        t("planogram.submitSuccessBody", { n: results.length }),
+        [{ text: t("common.ok"), onPress: () => navigation.goBack() }],
+      )
     } catch {
       Alert.alert(t("common.error"), t("planogram.submitError"))
     } finally {

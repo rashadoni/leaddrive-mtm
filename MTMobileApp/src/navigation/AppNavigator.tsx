@@ -42,6 +42,7 @@ const Tab = createBottomTabNavigator()
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Route: { active: "navigate", inactive: "navigate-outline" },
   Visit: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
+  Tasks: { active: "clipboard", inactive: "clipboard-outline" },
   Dashboard: { active: "bar-chart", inactive: "bar-chart-outline" },
   Orders: { active: "receipt", inactive: "receipt-outline" },
   Profile: { active: "person", inactive: "person-outline" },
@@ -79,6 +80,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Route" component={RouteScreen} />
       <Tab.Screen name="Visit" component={VisitScreen} />
+      <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Orders" component={OrdersScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

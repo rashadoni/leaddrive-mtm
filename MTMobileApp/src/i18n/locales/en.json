@@ -120,6 +120,7 @@
     "empty": "No planograms",
     "emptyHint": "No planograms assigned to this customer",
     "submitSuccess": "Results submitted",
+    "submitSuccessBody": "{{n}} planogram check(s) sent to your supervisor.",
     "submitError": "Failed to submit. Try again.",
     "scan": "Scan Shelf",
     "aiResult": "AI Analysis",

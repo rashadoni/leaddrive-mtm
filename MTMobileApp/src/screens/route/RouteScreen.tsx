@@ -25,6 +25,7 @@ import { useAuthStore } from "../../store/auth"
 import { useCartStore } from "../../store/cart"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import NotesModal from "../../components/NotesModal"
+import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 
 interface RoutePoint {
   id: string
@@ -226,6 +227,7 @@ export default function RouteScreen() {
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
   const [photoCount, setPhotoCount] = useState(0)
+  const [cameraVisible, setCameraVisible] = useState(false)
   const [slowConnection, setSlowConnection] = useState(false)
 
   useEffect(() => {
@@ -344,6 +346,36 @@ export default function RouteScreen() {
       customerId: point.customer.id,
       customerName: point.customer.name,
     })
+  }
+
+  // Visit-level photo straight from the active-visit banner (mirrors VisitScreen
+  // so the agent doesn't have to switch tabs to snap a store photo).
+  const handlePhotoTaken = async (path: string) => {
+    if (!activeVisit) return
+    try {
+      let coords: { latitude: number; longitude: number } | null = null
+      try {
+        coords = await new Promise((resolve, reject) => {
+          Geolocation.getCurrentPosition(
+            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            (err) => reject(err),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+          )
+        })
+      } catch {}
+      await api.uploadPhoto({
+        filePath: path,
+        visitId: activeVisit.id,
+        category: "VISIT",
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+      })
+      setPhotoCount((c) => c + 1)
+    } catch (e: any) {
+      if (e?.message !== "SESSION_EXPIRED") {
+        Alert.alert(t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+      }
+    }
   }
 
   const handleNavigate = (point: RoutePoint) => {
@@ -608,6 +640,36 @@ export default function RouteScreen() {
           </View>
           <View style={styles.activeBtns}>
             <TouchableOpacity
+              style={styles.photoBtn}
+              onPress={() => setCameraVisible(true)}
+              disabled={mutating}
+            >
+              <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.equipmentBtn}
+              onPress={() =>
+                navigation.navigate("EquipmentList", {
+                  customerId: activeVisit.customer.id,
+                  visitId: activeVisit.id,
+                })
+              }
+            >
+              <Text style={styles.equipmentBtnText}>🔧 {t("equipment.title")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.equipmentBtn}
+              onPress={() =>
+                navigation.navigate("Planogram", {
+                  customerId: activeVisit.customer.id,
+                  customerName: activeVisit.customer.name,
+                  visitId: activeVisit.id,
+                })
+              }
+            >
+              <Text style={styles.equipmentBtnText}>📐 {t("planogram.title")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
               onPress={handleCheckOut}
               disabled={mutating}
@@ -747,7 +809,12 @@ export default function RouteScreen() {
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />
 
-      {/* Photo capture available on Visit tab */}
+      {/* Visit-level photo capture from the active-visit banner */}
+      <PhotoCaptureModal
+        visible={cameraVisible}
+        onClose={() => setCameraVisible(false)}
+        onPhotoTaken={handlePhotoTaken}
+      />
     </View>
   )
 }
@@ -901,6 +968,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkOutText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  equipmentBtn: {
+    backgroundColor: "#f59e0b",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  equipmentBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 
   // --- Section header ---
   sectionHeader: {
