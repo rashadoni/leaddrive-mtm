@@ -133,6 +133,9 @@
     "shareOfShelf": "Доля полки",
     "ours": "Наши",
     "competitor": "Конкурент",
+    "perfectStore": "Идеальный магазин",
+    "grade": { "gold": "Золото", "silver": "Серебро", "bronze": "Бронза", "fail": "Доработать" },
+    "pillar": { "availability": "Наличие", "compliance": "Соответствие", "share": "Доля", "facings": "Фейсинги" },
     "details": "Подробнее →",
     "processingInBackground": "Скан обрабатывается в фоне — AI-оценка появится чуть позже. Можно отметить соответствие вручную."
   },

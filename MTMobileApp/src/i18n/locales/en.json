@@ -133,6 +133,9 @@
     "shareOfShelf": "Share of Shelf",
     "ours": "Ours",
     "competitor": "Competitor",
+    "perfectStore": "Perfect Store",
+    "grade": { "gold": "Gold", "silver": "Silver", "bronze": "Bronze", "fail": "Needs work" },
+    "pillar": { "availability": "Availability", "compliance": "Compliance", "share": "Share", "facings": "Facings" },
     "details": "Details →",
     "processingInBackground": "Scan is processing in the background — the AI score will appear shortly. You can mark compliance manually."
   },

@@ -133,6 +133,9 @@
     "shareOfShelf": "Rəf payı",
     "ours": "Bizim",
     "competitor": "Rəqib",
+    "perfectStore": "İdeal mağaza",
+    "grade": { "gold": "Qızıl", "silver": "Gümüş", "bronze": "Bürünc", "fail": "Yaxşılaşdırmalı" },
+    "pillar": { "availability": "Mövcudluq", "compliance": "Uyğunluq", "share": "Pay", "facings": "Feysinqlər" },
     "details": "Ətraflı →",
     "processingInBackground": "Skan arxa planda işlənir — AI qiyməti tezliklə görünəcək. Uyğunluğu əl ilə qeyd edə bilərsiniz."
   },

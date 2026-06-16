@@ -79,6 +79,12 @@ interface AnalysisResult {
   // Brand-level share of shelf (our portfolio % vs competitor) — present on every
   // scan from the server. Optional so an older cached response still type-checks.
   brandShareOfShelf?: BrandShareOfShelf
+  // Perfect-Store composite score + grade (gold/silver/bronze/fail). Optional.
+  perfectStore?: {
+    score: number | null
+    grade: "gold" | "silver" | "bronze" | "fail" | null
+    pillars: Array<{ key: string; score: number; weight: number }>
+  }
   modelVersion: string
   // Slice A: ids of the persisted scan (null when the server degraded to
   // ephemeral mode, persisted:false)
@@ -92,6 +98,20 @@ interface AnalysisResult {
 }
 
 type ComplianceStatus = "compliant" | "non_compliant" | null
+
+// Perfect-Store grade → colour + medal icon (matches metrics.ts banding).
+const PS_GRADE_COLOR: Record<"gold" | "silver" | "bronze" | "fail", string> = {
+  gold: "#d97706",
+  silver: "#6b7280",
+  bronze: "#b45309",
+  fail: "#ef4444",
+}
+const PS_GRADE_ICON: Record<"gold" | "silver" | "bronze" | "fail", string> = {
+  gold: "🥇",
+  silver: "🥈",
+  bronze: "🥉",
+  fail: "⚠️",
+}
 
 export default function PlanogramScreen() {
   const { t } = useTranslation()
@@ -577,6 +597,33 @@ export default function PlanogramScreen() {
 
             {analysisResult && (
               <>
+                {/* Perfect-Store composite — the headline store grade */}
+                {analysisResult.perfectStore?.score != null && analysisResult.perfectStore.grade && (
+                  <View style={[styles.psCard, { borderColor: PS_GRADE_COLOR[analysisResult.perfectStore.grade] }]}>
+                    <View style={styles.psHeaderRow}>
+                      <Text style={[styles.psGrade, { color: PS_GRADE_COLOR[analysisResult.perfectStore.grade] }]}>
+                        {PS_GRADE_ICON[analysisResult.perfectStore.grade]}{" "}
+                        {t(`planogram.grade.${analysisResult.perfectStore.grade}`, {
+                          defaultValue: analysisResult.perfectStore.grade.toUpperCase(),
+                        })}
+                      </Text>
+                      <Text style={[styles.psScore, { color: PS_GRADE_COLOR[analysisResult.perfectStore.grade] }]}>
+                        {analysisResult.perfectStore.score}
+                      </Text>
+                    </View>
+                    <Text style={styles.psSubtitle}>
+                      {t("planogram.perfectStore", { defaultValue: "Perfect Store" })}
+                    </Text>
+                    <View style={styles.psPillarRow}>
+                      {analysisResult.perfectStore.pillars.map(p => (
+                        <Text key={p.key} style={styles.psPillar}>
+                          {t(`planogram.pillar.${p.key}`, { defaultValue: p.key })} {p.score}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
                 {/* Score */}
                 {analysisResult.complianceScore !== null && (
                   <View style={[
@@ -842,6 +889,20 @@ const styles = StyleSheet.create({
   },
   sosLegendRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
   sosLegend: { fontSize: 12, fontWeight: "700" },
+  // Perfect-Store card
+  psCard: {
+    borderWidth: 2, borderRadius: 14, padding: 12, marginBottom: 12,
+    backgroundColor: "#fafafa",
+  },
+  psHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  psGrade: { fontSize: 18, fontWeight: "800" },
+  psScore: { fontSize: 28, fontWeight: "800" },
+  psSubtitle: { fontSize: 11, color: "#94a3b8", marginTop: -2, textTransform: "uppercase", letterSpacing: 0.5 },
+  psPillarRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
+  psPillar: {
+    fontSize: 11, color: "#475569", backgroundColor: "#eef2f7",
+    borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6, marginBottom: 4,
+  },
   resultDoneBtn: {
     marginTop: 16, backgroundColor: "#6C63FF",
     borderRadius: 14, paddingVertical: 14, alignItems: "center",
