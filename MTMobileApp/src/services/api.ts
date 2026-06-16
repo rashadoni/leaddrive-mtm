@@ -117,6 +117,22 @@ class ApiClient {
   }
 
   /**
+   * Resolve a server media path to an absolute URL the RN <Image> can load.
+   * The backend stores referenceImageUrl / photo urls as ROOT-relative paths
+   * ("/uploads/mtm-photos/x.jpg"); RN <Image source={{uri}}> needs an absolute
+   * http(s) URL, so a relative path renders blank. We strip the "/api/v1/mtm"
+   * suffix off baseUrl to get the server ORIGIN and prefix the path with it.
+   * Already-absolute URLs pass through unchanged; null/empty → null.
+   */
+  resolveMediaUrl(path: string | null | undefined): string | null {
+    if (!path) return null
+    if (/^https?:\/\//i.test(path)) return path
+    if (!this.baseUrl) return null
+    const origin = this.baseUrl.replace(/\/api\/v1\/mtm\/?$/, "")
+    return `${origin}${path.startsWith("/") ? "" : "/"}${path}`
+  }
+
+  /**
    * Derive the tenant slug from the stored server domain. Server-side
    * mobile-auth uses this to scope the lookup to one (org, email) pair
    * — without it, an agent whose email collides with another tenant's

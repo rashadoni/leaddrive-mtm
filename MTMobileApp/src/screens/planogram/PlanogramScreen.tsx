@@ -152,6 +152,9 @@ export default function PlanogramScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [compliance, setCompliance] = useState<Record<string, ComplianceStatus>>({})
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  // Planogram ids whose reference image failed to load (404 / broken) — they fall
+  // back to the 📐 placeholder instead of showing a blank with a "tap to zoom".
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
   const [loadError, setLoadError] = useState<string | null>(null)
 
   // AI scan state. analyzingId — the planogram being analyzed RIGHT NOW:
@@ -395,18 +398,28 @@ export default function PlanogramScreen() {
           </View>
         )}
 
-        {item.imageUrl ? (
-          <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewUrl(item.imageUrl)}>
-            <Image source={{ uri: item.imageUrl }} style={styles.image} resizeMode="cover" />
-            <View style={styles.zoomHint}>
-              <Text style={styles.zoomHintText}>🔍 {t("planogram.tapToZoom")}</Text>
+        {(() => {
+          // Resolve the (root-relative) reference path to an absolute URL; fall
+          // back to the placeholder when there's no image OR it failed to load.
+          const resolvedImg = api.resolveMediaUrl(item.imageUrl)
+          return resolvedImg && !failedImages.has(item.id) ? (
+            <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewUrl(resolvedImg)}>
+              <Image
+                source={{ uri: resolvedImg }}
+                style={styles.image}
+                resizeMode="cover"
+                onError={() => setFailedImages(prev => new Set(prev).add(item.id))}
+              />
+              <View style={styles.zoomHint}>
+                <Text style={styles.zoomHintText}>🔍 {t("planogram.tapToZoom")}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.noImagePlaceholder}>
+              <Text style={styles.noImageText}>📐</Text>
             </View>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.noImagePlaceholder}>
-            <Text style={styles.noImageText}>📐</Text>
-          </View>
-        )}
+          )
+        })()}
 
         <Text style={styles.cardTitle}>{item.title}</Text>
         {item.description ? <Text style={styles.cardDesc}>{item.description}</Text> : null}
