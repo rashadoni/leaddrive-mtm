@@ -87,6 +87,16 @@ class ApiClient {
     return this._agentRole === "ADMIN" || this._agentRole === "MANAGER" || this._agentRole === "SUPERVISOR"
   }
 
+  /**
+   * True if the current agent may set a planogram's GOLDEN REFERENCE photo
+   * (the shelf-AI compliance baseline). Supervisor-and-up only — a field AGENT
+   * cannot; the server enforces the same MtmAgentRole set and returns 403, this
+   * just hides the button so an AGENT never taps a will-403 action.
+   */
+  get canSetGoldenReference(): boolean {
+    return this._agentRole === "ADMIN" || this._agentRole === "MANAGER" || this._agentRole === "SUPERVISOR"
+  }
+
   // --- Server discovery ---
 
   /**
@@ -593,6 +603,24 @@ class ApiClient {
 
   async getPlanograms(customerId: string) {
     return this.request(`/mobile/customers/${customerId}/planograms`)
+  }
+
+  /**
+   * Set this planogram's GOLDEN REFERENCE photo (the shelf-AI compliance
+   * baseline) — a supervisor on-site captures the ideal, correctly-merchandised
+   * shelf. The server sets referenceImageUrl + clears stale slot embeddings;
+   * precise slot markup + activation happens on the WEB (big screen). base64
+   * JSON like analyzeShelf. Supervisor-and-up only (server-enforced 403 for AGENT).
+   */
+  async setGoldenReference(data: {
+    planogramId: string
+    imageBase64: string
+    imageMediaType?: "image/jpeg" | "image/png" | "image/webp"
+  }) {
+    return this.request(`/mobile/planograms/${data.planogramId}/golden-reference/upload`, {
+      method: "POST",
+      body: JSON.stringify({ imageBase64: data.imageBase64, imageMediaType: data.imageMediaType ?? "image/jpeg" }),
+    }, 60_000)
   }
 
   async submitPlanogramCheck(data: {

@@ -97,6 +97,13 @@ export default function PlanogramScreen() {
   const [scanPlanogramId, setScanPlanogramId] = useState<string | null>(null)
   const [analyzingId, setAnalyzingId] = useState<string | null>(null)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  // Golden-reference capture (supervisor sets the ideal-shelf baseline). A
+  // SEPARATE modal + spinner from the field-scan flow so the working scan path
+  // is untouched. canSetGolden gates the button to supervisor-and-up (server
+  // also 403s an AGENT).
+  const [goldenPlanogramId, setGoldenPlanogramId] = useState<string | null>(null)
+  const [settingGoldenId, setSettingGoldenId] = useState<string | null>(null)
+  const canSetGolden = api.canSetGoldenReference
   // Slice A: per-planogram id of the persisted scan — attached to the
   // submitted verdict so the supervisor sees AI score next to the decision
   const [analysisIds, setAnalysisIds] = useState<Record<string, string>>({})
@@ -266,6 +273,47 @@ export default function PlanogramScreen() {
     }
   }
 
+  // Golden-reference capture: a supervisor photographs the IDEAL shelf; the
+  // server sets referenceImageUrl + clears stale embeddings. Precise slot markup
+  // + activation happens on the web. No watermark (the reference must be clean).
+  const handleGoldenPhotoTaken = async (path: string) => {
+    if (!goldenPlanogramId) return
+    const planogramId = goldenPlanogramId
+    setGoldenPlanogramId(null)
+    setSettingGoldenId(planogramId)
+    try {
+      // A reference image deserves a bit more resolution than a field scan.
+      const resized = await ImageResizer.createResizedImage(
+        path.startsWith("file://") ? path : `file://${path}`,
+        1600, 1600, "JPEG", 90, 0,
+      )
+      const imageBase64 = await RNFS.readFile(resized.uri.replace("file://", ""), "base64")
+      const res = await api.setGoldenReference({ planogramId, imageBase64, imageMediaType: "image/jpeg" })
+      if (res?.success) {
+        if (unmountedRef.current) return
+        // Update ONLY this card's reference image — do NOT call load(): it
+        // re-inits the whole compliance map to null (PlanogramScreen load()),
+        // wiping the supervisor's already-marked compliant/non-compliant cards.
+        if (typeof res.url === "string") {
+          setPlanograms(prev => prev.map(pl => (pl.id === planogramId ? { ...pl, imageUrl: res.url as string } : pl)))
+        }
+        Alert.alert(
+          t("planogram.goldenSetTitle", { defaultValue: "Golden reference saved" }),
+          t("planogram.goldenSetBody", {
+            defaultValue:
+              "Now mark the slots on this photo in the web admin. Until then, scans use the provisional AI score (not the deterministic one).",
+          }),
+        )
+      } else {
+        Alert.alert(t("common.error"), res?.error ?? t("planogram.submitError"))
+      }
+    } catch (e: any) {
+      Alert.alert(t("common.error"), e?.message ?? t("planogram.submitError"))
+    } finally {
+      if (!unmountedRef.current) setSettingGoldenId(null)
+    }
+  }
+
   const renderItem = ({ item }: { item: Planogram }) => {
     const status = compliance[item.id]
     const lastResult = analysisResult?.planogramId === item.id ? analysisResult : null
@@ -325,6 +373,23 @@ export default function PlanogramScreen() {
             <Text style={styles.scanBtnText}>📷 {t("planogram.scan", { defaultValue: "Scan Shelf" })}</Text>
           )}
         </TouchableOpacity>
+
+        {/* Supervisor-only: capture the IDEAL shelf as the golden reference */}
+        {canSetGolden && (
+          <TouchableOpacity
+            style={styles.goldenBtn}
+            onPress={() => setGoldenPlanogramId(item.id)}
+            disabled={settingGoldenId !== null || analyzingId !== null}
+          >
+            {settingGoldenId === item.id ? (
+              <ActivityIndicator size="small" color="#b45309" />
+            ) : (
+              <Text style={styles.goldenBtnText}>
+                ⭐ {t("planogram.setGolden", { defaultValue: "Set as Golden Reference" })}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         <View style={styles.complianceRow}>
           <TouchableOpacity
@@ -453,6 +518,14 @@ export default function PlanogramScreen() {
               }
             : undefined
         }
+      />
+
+      {/* Camera for the GOLDEN reference — deliberately NO watermark: the
+          reference image is the clean ideal-shelf baseline, not a field record. */}
+      <PhotoCaptureModal
+        visible={!!goldenPlanogramId}
+        onClose={() => setGoldenPlanogramId(null)}
+        onPhotoTaken={handleGoldenPhotoTaken}
       />
 
       {/* AI Analysis Result Modal */}
@@ -605,6 +678,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f3ff",
   },
   scanBtnText: { fontSize: 13, fontWeight: "600", color: "#6C63FF" },
+
+  // Golden-reference button (supervisor only) — amber to read as "baseline", distinct from the scan action
+  goldenBtn: {
+    marginHorizontal: 14, marginBottom: 10,
+    borderWidth: 1.5, borderColor: "#f59e0b", borderRadius: 10,
+    paddingVertical: 9, alignItems: "center",
+    backgroundColor: "#fffbeb",
+  },
+  goldenBtnText: { fontSize: 13, fontWeight: "600", color: "#b45309" },
 
   // Compliance
   complianceRow: {
