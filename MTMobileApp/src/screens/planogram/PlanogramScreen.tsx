@@ -101,6 +101,9 @@ export default function PlanogramScreen() {
   const { customerId, customerName, visitId } = route.params
 
   const [planograms, setPlanograms] = useState<Planogram[]>([])
+  // 'category' = matched this store's cluster; 'fallback-all' = no exact match,
+  // showing every active standard; 'none' = org has none. Drives the banner.
+  const [matchedBy, setMatchedBy] = useState<"category" | "fallback-all" | "none" | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [compliance, setCompliance] = useState<Record<string, ComplianceStatus>>({})
@@ -154,6 +157,7 @@ export default function PlanogramScreen() {
       if (res.success) {
         const list: Planogram[] = res.data?.planograms ?? []
         setPlanograms(list)
+        setMatchedBy(res.data?.matchedBy ?? null)
         const initial: Record<string, ComplianceStatus> = {}
         list.forEach(p => { initial[p.id] = null })
         setCompliance(initial)
@@ -464,6 +468,15 @@ export default function PlanogramScreen() {
         </View>
       ) : (
         <>
+          {matchedBy === "fallback-all" && (
+            <View style={styles.fallbackBanner}>
+              <Text style={styles.fallbackText}>
+                ⚠️ {t("planogram.fallbackNote", {
+                  defaultValue: "No standard set for this store's category — showing all standards.",
+                })}
+              </Text>
+            </View>
+          )}
           <FlatList
             data={planograms}
             keyExtractor={p => p.id}
@@ -684,6 +697,11 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 17, fontWeight: "700", color: "#0B0B1E" },
   emptyHint: { fontSize: 13, color: "#94a3b8", textAlign: "center", paddingHorizontal: 32 },
+  fallbackBanner: {
+    backgroundColor: "#fef3c7", borderColor: "#fcd34d", borderWidth: 1,
+    borderRadius: 10, marginHorizontal: 12, marginTop: 8, padding: 10,
+  },
+  fallbackText: { fontSize: 12, color: "#92400e", lineHeight: 16 },
 
   // List
   list: { padding: 16, gap: 16 },

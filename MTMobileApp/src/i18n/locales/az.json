@@ -119,6 +119,7 @@
     "markedCount": "{{total}}-dən {{n}} qeyd edildi",
     "empty": "Planoqram tapılmadı",
     "emptyHint": "Bu müştəri üçün planoqram təyin edilməyib",
+    "fallbackNote": "Bu mağazanın kateqoriyası üçün standart yoxdur — bütün standartlar göstərilir.",
     "submitSuccess": "Nəticələr göndərildi",
     "submitSuccessBody": "{{n}} planoqram yoxlaması supervayzerə göndərildi.",
     "submitError": "Göndərmək alınmadı. Yenidən cəhd edin.",

@@ -119,6 +119,7 @@
     "markedCount": "Marked {{n}} of {{total}}",
     "empty": "No planograms",
     "emptyHint": "No planograms assigned to this customer",
+    "fallbackNote": "No standard set for this store's category — showing all standards.",
     "submitSuccess": "Results submitted",
     "submitSuccessBody": "{{n}} planogram check(s) sent to your supervisor.",
     "submitError": "Failed to submit. Try again.",
