@@ -45,6 +45,7 @@ interface Planogram {
   id: string
   title: string
   category?: string | null
+  brand?: string | null
   imageUrl: string | null
   description?: string | null
   expectedSkus?: ExpectedSku[]
@@ -386,6 +387,11 @@ export default function PlanogramScreen() {
         {item.category && (
           <View style={styles.categoryChip}>
             <Text style={styles.categoryText}>{item.category}</Text>
+          </View>
+        )}
+        {item.brand && (
+          <View style={styles.brandChip}>
+            <Text style={styles.brandText}>🏷️ {item.brand}</Text>
           </View>
         )}
 
@@ -839,6 +845,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 3,
   },
   categoryText: { fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.3 },
+  brandChip: {
+    position: "absolute", top: 10, right: 10, zIndex: 1,
+    backgroundColor: "#0f172a", borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 3,
+  },
+  brandText: { fontSize: 11, fontWeight: "700", color: "#fff", letterSpacing: 0.3 },
   image: { width: "100%", height: 180 },
   noImagePlaceholder: {
     width: "100%", height: 80,
