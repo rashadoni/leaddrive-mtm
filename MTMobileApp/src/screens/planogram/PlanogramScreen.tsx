@@ -57,12 +57,28 @@ interface DetectedResult {
   facings: number
 }
 
+interface BrandShareEntry {
+  brand: string
+  facings: number
+  sharePct: number
+  ours: boolean
+}
+interface BrandShareOfShelf {
+  brands: BrandShareEntry[]
+  ourSharePct: number
+  competitorSharePct: number
+  totalFacings: number
+}
+
 interface AnalysisResult {
   planogramId: string
   detectedSkus: DetectedResult[]
   missingSkus: Array<{ skuId: string; skuName?: string; expectedFacings: number }>
   complianceScore: number | null
   totalDetected: number
+  // Brand-level share of shelf (our portfolio % vs competitor) — present on every
+  // scan from the server. Optional so an older cached response still type-checks.
+  brandShareOfShelf?: BrandShareOfShelf
   modelVersion: string
   // Slice A: ids of the persisted scan (null when the server degraded to
   // ephemeral mode, persisted:false)
@@ -591,6 +607,47 @@ export default function PlanogramScreen() {
                       ))}
                     </>
                   )}
+
+                  {/* Share of Shelf — our portfolio vs competitor (FMCG KAM view) */}
+                  {analysisResult.brandShareOfShelf &&
+                    analysisResult.brandShareOfShelf.totalFacings > 0 && (
+                      <>
+                        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>
+                          📊 {t("planogram.shareOfShelf", { defaultValue: "Share of Shelf" })}
+                        </Text>
+                        {/* Stacked bar: ours (green) vs competitor (grey) */}
+                        <View style={styles.sosBar}>
+                          <View
+                            style={{
+                              width: `${analysisResult.brandShareOfShelf.ourSharePct}%`,
+                              backgroundColor: "#22c55e",
+                            }}
+                          />
+                          <View
+                            style={{
+                              width: `${analysisResult.brandShareOfShelf.competitorSharePct}%`,
+                              backgroundColor: "#cbd5e1",
+                            }}
+                          />
+                        </View>
+                        <View style={styles.sosLegendRow}>
+                          <Text style={[styles.sosLegend, { color: "#16a34a" }]}>
+                            {t("planogram.ours", { defaultValue: "Ours" })} {analysisResult.brandShareOfShelf.ourSharePct}%
+                          </Text>
+                          <Text style={[styles.sosLegend, { color: "#64748b" }]}>
+                            {t("planogram.competitor", { defaultValue: "Competitor" })} {analysisResult.brandShareOfShelf.competitorSharePct}%
+                          </Text>
+                        </View>
+                        {analysisResult.brandShareOfShelf.brands.map((b, i) => (
+                          <View key={i} style={styles.skuRow}>
+                            <Text style={styles.skuLabel} numberOfLines={1}>
+                              {b.ours ? "" : "△ "}{b.brand}
+                            </Text>
+                            <Text style={styles.skuMeta}>×{b.facings} · {b.sharePct}%</Text>
+                          </View>
+                        ))}
+                      </>
+                    )}
                 </ScrollView>
 
                 <TouchableOpacity
@@ -760,6 +817,13 @@ const styles = StyleSheet.create({
   },
   skuLabel: { fontSize: 13, color: "#0B0B1E", flex: 1, marginRight: 8 },
   skuMeta: { fontSize: 12, color: "#94a3b8" },
+  // Share of Shelf stacked bar
+  sosBar: {
+    flexDirection: "row", height: 14, borderRadius: 7, overflow: "hidden",
+    backgroundColor: "#f1f5f9", marginBottom: 6,
+  },
+  sosLegendRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  sosLegend: { fontSize: 12, fontWeight: "700" },
   resultDoneBtn: {
     marginTop: 16, backgroundColor: "#6C63FF",
     borderRadius: 14, paddingVertical: 14, alignItems: "center",
