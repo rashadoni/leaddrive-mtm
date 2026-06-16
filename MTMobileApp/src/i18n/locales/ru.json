@@ -139,6 +139,7 @@
     "fixNow": "Исправить до ухода",
     "actionRestock": "Выставить {{name}} ({{n}})",
     "actionAddFacings": "Добавить {{n}} × {{name}}",
+    "priceCompliance": "Проверка цен",
     "details": "Подробнее →",
     "processingInBackground": "Скан обрабатывается в фоне — AI-оценка появится чуть позже. Можно отметить соответствие вручную."
   },

@@ -94,6 +94,20 @@ interface AnalysisResult {
     expected: number
     deficit: number
   }>
+  // Price-OCR compliance (only when MTM_PRICE_OCR_ENABLED on the server).
+  priceCompliance?: {
+    entries: Array<{
+      skuId: string
+      skuName: string
+      expected: number
+      detected: number
+      deviationPct: number
+      status: "ok" | "underpriced" | "overpriced"
+    }>
+    unmatchedCount: number
+    okCount: number
+    violationCount: number
+  }
   modelVersion: string
   // Slice A: ids of the persisted scan (null when the server degraded to
   // ephemeral mode, persisted:false)
@@ -733,6 +747,36 @@ export default function PlanogramScreen() {
                               {b.ours ? "" : "△ "}{b.brand}
                             </Text>
                             <Text style={styles.skuMeta}>×{b.facings} · {b.sharePct}%</Text>
+                          </View>
+                        ))}
+                      </>
+                    )}
+
+                  {/* Price compliance — shelf tag vs reference (only when server flag on) */}
+                  {analysisResult.priceCompliance &&
+                    analysisResult.priceCompliance.entries.length > 0 && (
+                      <>
+                        <Text style={[styles.sectionTitle, { marginTop: 14 }]}>
+                          🏷️ {t("planogram.priceCompliance", { defaultValue: "Price check" })}
+                          {analysisResult.priceCompliance.violationCount > 0
+                            ? ` · ${analysisResult.priceCompliance.violationCount} ⚠️`
+                            : " · ✅"}
+                        </Text>
+                        {analysisResult.priceCompliance.entries.map(e => (
+                          <View key={e.skuId} style={styles.skuRow}>
+                            <Text style={styles.skuLabel} numberOfLines={1}>
+                              {e.status === "ok" ? "✅ " : e.status === "underpriced" ? "🔻 " : "🔺 "}
+                              {e.skuName}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.skuMeta,
+                                e.status !== "ok" && { color: "#ef4444", fontWeight: "700" },
+                              ]}
+                            >
+                              {e.detected} / {e.expected} ({e.deviationPct > 0 ? "+" : ""}
+                              {Math.round(e.deviationPct)}%)
+                            </Text>
                           </View>
                         ))}
                       </>

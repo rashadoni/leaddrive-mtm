@@ -139,6 +139,7 @@
     "fixNow": "Getməzdən əvvəl düzəlt",
     "actionRestock": "{{name}} çıxar ({{n}})",
     "actionAddFacings": "{{n}} × {{name}} əlavə et",
+    "priceCompliance": "Qiymət yoxlanışı",
     "details": "Ətraflı →",
     "processingInBackground": "Skan arxa planda işlənir — AI qiyməti tezliklə görünəcək. Uyğunluğu əl ilə qeyd edə bilərsiniz."
   },

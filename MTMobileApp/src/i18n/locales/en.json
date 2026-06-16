@@ -139,6 +139,7 @@
     "fixNow": "Fix before you leave",
     "actionRestock": "Restock {{name}} ({{n}})",
     "actionAddFacings": "Add {{n}} × {{name}}",
+    "priceCompliance": "Price check",
     "details": "Details →",
     "processingInBackground": "Scan is processing in the background — the AI score will appear shortly. You can mark compliance manually."
   },
