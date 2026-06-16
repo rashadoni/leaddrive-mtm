@@ -136,6 +136,9 @@
     "perfectStore": "İdeal mağaza",
     "grade": { "gold": "Qızıl", "silver": "Gümüş", "bronze": "Bürünc", "fail": "Yaxşılaşdırmalı" },
     "pillar": { "availability": "Mövcudluq", "compliance": "Uyğunluq", "share": "Pay", "facings": "Feysinqlər" },
+    "fixNow": "Getməzdən əvvəl düzəlt",
+    "actionRestock": "{{name}} çıxar ({{n}})",
+    "actionAddFacings": "{{n}} × {{name}} əlavə et",
     "details": "Ətraflı →",
     "processingInBackground": "Skan arxa planda işlənir — AI qiyməti tezliklə görünəcək. Uyğunluğu əl ilə qeyd edə bilərsiniz."
   },

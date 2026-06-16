@@ -85,6 +85,15 @@ interface AnalysisResult {
     grade: "gold" | "silver" | "bronze" | "fail" | null
     pillars: Array<{ key: string; score: number; weight: number }>
   }
+  // In-visit prescriptive guidance: ranked "restock / add N facings" actions.
+  actions?: Array<{
+    skuId: string
+    skuName: string
+    type: "restock" | "add_facings"
+    current: number
+    expected: number
+    deficit: number
+  }>
   modelVersion: string
   // Slice A: ids of the persisted scan (null when the server degraded to
   // ephemeral mode, persisted:false)
@@ -624,6 +633,26 @@ export default function PlanogramScreen() {
                   </View>
                 )}
 
+                {/* In-visit guidance — what to fix before leaving */}
+                {analysisResult.actions && analysisResult.actions.length > 0 && (
+                  <View style={styles.actionsCard}>
+                    <Text style={styles.actionsTitle}>
+                      🛠️ {t("planogram.fixNow", { defaultValue: "Fix before you leave" })}
+                    </Text>
+                    {analysisResult.actions.map(a => (
+                      <View key={a.skuId} style={styles.actionRow}>
+                        <Text style={styles.actionText} numberOfLines={1}>
+                          {a.type === "restock" ? "🔴 " : "➕ "}
+                          {a.type === "restock"
+                            ? t("planogram.actionRestock", { name: a.skuName, n: a.deficit, defaultValue: `Restock ${a.skuName}` })
+                            : t("planogram.actionAddFacings", { name: a.skuName, n: a.deficit, defaultValue: `Add ${a.deficit} × ${a.skuName}` })}
+                        </Text>
+                        <Text style={styles.actionMeta}>{a.current}/{a.expected}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 {/* Score */}
                 {analysisResult.complianceScore !== null && (
                   <View style={[
@@ -903,6 +932,18 @@ const styles = StyleSheet.create({
     fontSize: 11, color: "#475569", backgroundColor: "#eef2f7",
     borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6, marginBottom: 4,
   },
+  // In-visit guidance card
+  actionsCard: {
+    backgroundColor: "#eff6ff", borderColor: "#bfdbfe", borderWidth: 1,
+    borderRadius: 12, padding: 12, marginBottom: 12,
+  },
+  actionsTitle: { fontSize: 13, fontWeight: "800", color: "#1e3a8a", marginBottom: 6 },
+  actionRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingVertical: 4,
+  },
+  actionText: { fontSize: 13, color: "#1e293b", flex: 1, marginRight: 8 },
+  actionMeta: { fontSize: 12, fontWeight: "700", color: "#64748b" },
   resultDoneBtn: {
     marginTop: 16, backgroundColor: "#6C63FF",
     borderRadius: 14, paddingVertical: 14, alignItems: "center",

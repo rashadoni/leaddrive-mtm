@@ -136,6 +136,9 @@
     "perfectStore": "Perfect Store",
     "grade": { "gold": "Gold", "silver": "Silver", "bronze": "Bronze", "fail": "Needs work" },
     "pillar": { "availability": "Availability", "compliance": "Compliance", "share": "Share", "facings": "Facings" },
+    "fixNow": "Fix before you leave",
+    "actionRestock": "Restock {{name}} ({{n}})",
+    "actionAddFacings": "Add {{n}} × {{name}}",
     "details": "Details →",
     "processingInBackground": "Scan is processing in the background — the AI score will appear shortly. You can mark compliance manually."
   },
