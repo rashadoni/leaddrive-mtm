@@ -23,6 +23,7 @@ import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { pollScanUntilTerminal } from "../../services/shelf-scan-poll"
+import { preserveExifAcrossResize } from "../../lib/photo-watermark"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 
 /** Idempotency key per capture (UUIDv4 when Hermes exposes crypto, else unique fallback). */
@@ -288,6 +289,12 @@ export default function PlanogramScreen() {
         ),
         getCoords(),
       ])
+      // react-native-image-resizer re-encodes the JPEG WITHOUT EXIF, dropping the
+      // provenance tags photoWatermarkPipeline injected (Software/Make/Model,
+      // DateTimeOriginal, GPS). Re-apply the source EXIF onto the resized file so
+      // the anti-fraud chain survives to the server. No-op-safe (the visible
+      // watermark still proves presence if this can't run). (C4a)
+      await preserveExifAcrossResize(path, resized.uri)
       const imageBase64 = await RNFS.readFile(resized.uri.replace("file://", ""), "base64")
       const res = await api.analyzeShelf({
         planogramId,

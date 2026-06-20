@@ -2,6 +2,7 @@ import ImageMarker from "react-native-image-marker"
 import piexifLib from "piexifjs"
 import RNFS from "react-native-fs"
 import { composeWatermarkText } from "./compose-watermark-text"
+import { APP_VERSION, APP_MAKE, APP_SOFTWARE } from "./provenance-constants"
 
 // @types/piexifjs (as of v1.0.x) is missing `TagValues` — but the runtime
 // module exposes it (it's the documented entry point for tag IDs). We
@@ -39,11 +40,6 @@ export interface PhotoWatermarkPipelineOutput {
   effectiveLocation: { latitude: number; longitude: number } | null
 }
 
-// Keep in sync with android/app/build.gradle versionName — this string is
-// burned into every photo's EXIF Model tag (forensic provenance).
-const APP_VERSION = "v1.4.0"
-const APP_MAKE = "LeadDrive MTM"
-const APP_SOFTWARE = "LeadDrive MTM Mobile"
 const MAX_LAST_KNOWN_AGE_MS_DEFAULT = 5 * 60_000 // spec §5 — 5 min
 
 /**
