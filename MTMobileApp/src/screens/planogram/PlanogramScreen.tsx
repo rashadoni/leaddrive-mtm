@@ -24,6 +24,8 @@ import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { pollScanUntilTerminal } from "../../services/shelf-scan-poll"
 import { preserveExifAcrossResize } from "../../lib/photo-watermark"
+import { enqueueScan, drainScanQueue, getQueuedScanCount, isConnectivityError } from "../../services/scan-queue"
+import NetInfo from "@react-native-community/netinfo"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 
 /** Idempotency key per capture (UUIDv4 when Hermes exposes crypto, else unique fallback). */
@@ -179,6 +181,35 @@ export default function PlanogramScreen() {
   const unmountedRef = useRef(false)
   useEffect(() => () => { unmountedRef.current = true }, [])
 
+  // C4b: count of scans captured offline and queued for upload. Drives the banner.
+  const [queuedCount, setQueuedCount] = useState(0)
+  const refreshQueuedCount = useCallback(async () => {
+    try { setQueuedCount(await getQueuedScanCount()) } catch { /* count is best-effort */ }
+  }, [])
+
+  // Drain the offline scan queue when this screen is up and the device is online —
+  // on mount AND on every reconnect while mounted. Scans originate here, so this is
+  // the natural place to flush them; drainScanQueue is concurrency-guarded + safe
+  // when empty/offline. The replay is idempotent (same clientScanId), so the server
+  // never double-counts.
+  useEffect(() => {
+    let cancelled = false
+    const runDrain = async () => {
+      try {
+        const r = await drainScanQueue()
+        if (cancelled) return
+        if (r.uploaded > 0 || r.failed > 0) await refreshQueuedCount()
+      } catch { /* a drain failure is non-fatal; the queue persists for next time */ }
+    }
+    refreshQueuedCount()
+    // addEventListener fires immediately with the current state, then on changes —
+    // so an online mount drains right away and a later reconnect drains again.
+    const unsub = NetInfo.addEventListener(state => {
+      if (state.isConnected) runDrain()
+    })
+    return () => { cancelled = true; unsub() }
+  }, [refreshQueuedCount])
+
   // Silent GPS read: permission was requested at app start (background
   // tracking); on failure fall back to the tracker's last known position.
   const getCoords = async (): Promise<{ latitude: number; longitude: number } | null> => {
@@ -296,15 +327,57 @@ export default function PlanogramScreen() {
       // watermark still proves presence if this can't run). (C4a)
       await preserveExifAcrossResize(path, resized.uri)
       const imageBase64 = await RNFS.readFile(resized.uri.replace("file://", ""), "base64")
-      const res = await api.analyzeShelf({
-        planogramId,
-        imageBase64,
-        imageMediaType: "image/jpeg",
-        visitId,
-        latitude: coords?.latitude,
-        longitude: coords?.longitude,
-        clientScanId: generateClientScanId(),
-      })
+      const clientScanId = generateClientScanId()
+
+      // C4b: when there's no connection, persist the scan and replay it later
+      // (idempotent on clientScanId) instead of losing the visit's compliance
+      // proof. Shared by the up-front offline check and the network-error fallback.
+      const enqueueOffline = async () => {
+        await enqueueScan({
+          clientScanId,
+          planogramId,
+          visitId: visitId ?? null,
+          latitude: coords?.latitude ?? null,
+          longitude: coords?.longitude ?? null,
+          imageMediaType: "image/jpeg",
+          srcImagePath: resized.uri,
+        })
+        await refreshQueuedCount()
+        Alert.alert(
+          t("planogram.savedOfflineTitle", { defaultValue: "Saved — will upload when online" }),
+          t("planogram.savedOfflineBody", {
+            defaultValue: "No connection right now. This scan is queued and uploads automatically when you're back online.",
+          }),
+        )
+      }
+
+      // Known-offline → queue immediately rather than waiting out the 60s timeout.
+      const net = await NetInfo.fetch().catch(() => null)
+      if (net?.isConnected === false) {
+        await enqueueOffline()
+        return
+      }
+
+      let res
+      try {
+        res = await api.analyzeShelf({
+          planogramId,
+          imageBase64,
+          imageMediaType: "image/jpeg",
+          visitId,
+          latitude: coords?.latitude,
+          longitude: coords?.longitude,
+          clientScanId,
+        })
+      } catch (e) {
+        // Lost connectivity mid-request → queue it; a real server error rethrows
+        // to the outer catch and surfaces the message.
+        if (isConnectivityError(e)) {
+          await enqueueOffline()
+          return
+        }
+        throw e
+      }
 
       if (res?.data?.status === "processing") {
         // 202 — Claude was overloaded; the server parked the scan for the durable
@@ -517,6 +590,18 @@ export default function PlanogramScreen() {
         </View>
         {analyzingId !== null && <ActivityIndicator size="small" color="#6C63FF" style={{ marginRight: 8 }} />}
       </View>
+
+      {/* C4b: offline scan queue indicator — uploads automatically when online */}
+      {queuedCount > 0 && (
+        <View style={styles.queueBanner}>
+          <Text style={styles.queueText}>
+            ⏳ {t("planogram.queuedScans", {
+              count: queuedCount,
+              defaultValue: `${queuedCount} offline scan(s) queued — uploading when back online`,
+            })}
+          </Text>
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -848,6 +933,13 @@ const styles = StyleSheet.create({
     borderRadius: 10, marginHorizontal: 12, marginTop: 8, padding: 10,
   },
   fallbackText: { fontSize: 12, color: "#92400e", lineHeight: 16 },
+
+  // C4b offline-scan-queue banner (blue, distinct from the amber fallback note)
+  queueBanner: {
+    backgroundColor: "#dbeafe", borderColor: "#93c5fd", borderWidth: 1,
+    borderRadius: 10, marginHorizontal: 12, marginTop: 8, padding: 10,
+  },
+  queueText: { fontSize: 12, color: "#1e40af", lineHeight: 16, fontWeight: "600" },
 
   // List
   list: { padding: 16, gap: 16 },
