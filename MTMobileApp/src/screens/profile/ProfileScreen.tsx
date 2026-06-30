@@ -7,6 +7,8 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
@@ -14,6 +16,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { version as APP_VERSION } from "../../../package.json"
+import { RootStackParamList } from "../../navigation/AppNavigator"
 
 interface MtmAlert {
   id: string
@@ -27,6 +30,7 @@ interface MtmAlert {
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -156,6 +160,21 @@ export default function ProfileScreen() {
         <InfoRow label={t("profile.infoServer")} value={serverDomain || "—"} />
         <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
       </View>
+
+      {api.canSetGoldenReference && (
+        <TouchableOpacity
+          style={styles.planogramCard}
+          onPress={() => navigation.navigate("PlanogramLibrary")}
+          accessibilityRole="button"
+          accessibilityLabel={t("planogram.libraryEntryTitle")}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.planogramTitle}>{t("planogram.libraryEntryTitle")}</Text>
+            <Text style={styles.planogramBody}>{t("planogram.libraryEntryBody")}</Text>
+          </View>
+          <Text style={styles.planogramArrow}>›</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Language switcher (M1-1a) */}
       <View style={styles.card}>
@@ -303,6 +322,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  planogramCard: {
+    backgroundColor: "#0f172a",
+    marginHorizontal: 16,
+    marginTop: 14,
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  planogramTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  planogramBody: { color: "#cbd5e1", fontSize: 12, lineHeight: 17, marginTop: 4 },
+  planogramArrow: { color: "#fff", fontSize: 28, marginLeft: 12, lineHeight: 30 },
 
   // Alerts
   alertBadge: {

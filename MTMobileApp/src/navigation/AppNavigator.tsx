@@ -18,6 +18,7 @@ import OrdersScreen from "../screens/orders/OrdersScreen"
 import SkuCatalogScreen from "../screens/orders/SkuCatalogScreen"
 import CartScreen from "../screens/orders/CartScreen"
 import PlanogramScreen from "../screens/planogram/PlanogramScreen"
+import PlanogramLibraryScreen from "../screens/planogram/PlanogramLibraryScreen"
 import EquipmentListScreen from "../screens/equipment/EquipmentListScreen"
 import EquipmentInspectScreen from "../screens/equipment/EquipmentInspectScreen"
 import RepairRequestScreen from "../screens/equipment/RepairRequestScreen"
@@ -31,6 +32,7 @@ export type RootStackParamList = {
   SkuCatalog: undefined
   Cart: undefined
   Planogram: { customerId: string; customerName: string; visitId?: string }
+  PlanogramLibrary: undefined
   EquipmentList: { customerId: string; visitId?: string }
   EquipmentInspect: { equipmentId: string; serialNumber: string; model: string; condition: EquipmentCondition; visitId?: string }
   RepairRequest: { equipmentId: string; serialNumber: string; visitId?: string }
@@ -58,7 +60,7 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: "#6C63FF",
         tabBarInactiveTintColor: "#94a3b8",
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color, size: _size }) => {
           const icons = TAB_ICONS[route.name] || TAB_ICONS.Route
           return <Icon name={focused ? icons.active : icons.inactive} size={22} color={color} />
         },
@@ -93,7 +95,7 @@ export default function AppNavigator() {
 
   useEffect(() => {
     checkAuth()
-  }, [])
+  }, [checkAuth])
 
   if (isLoading) {
     return (
@@ -112,6 +114,7 @@ export default function AppNavigator() {
             <Stack.Screen name="SkuCatalog" component={SkuCatalogScreen} />
             <Stack.Screen name="Cart" component={CartScreen} />
             <Stack.Screen name="Planogram" component={PlanogramScreen} />
+            <Stack.Screen name="PlanogramLibrary" component={PlanogramLibraryScreen} />
             <Stack.Screen name="EquipmentList" component={EquipmentListScreen} />
             <Stack.Screen name="EquipmentInspect" component={EquipmentInspectScreen} />
             <Stack.Screen name="RepairRequest" component={RepairRequestScreen} />

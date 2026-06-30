@@ -634,7 +634,7 @@ class ApiClient {
     description?: string
     customerCategory?: "A" | "B" | "C" | "D"
     brand?: string
-    expectedSkus: Array<{ skuId: string; expectedFacings: number; position?: number }>
+    expectedSkus?: Array<{ skuId: string; expectedFacings: number; position?: number }>
     strictCompliance?: boolean
   }) {
     return this.request("/planograms", {

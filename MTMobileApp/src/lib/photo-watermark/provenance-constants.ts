@@ -10,6 +10,6 @@
  * effectiveLocation, agent/visit/customer stamped). Keep APP_VERSION in sync with
  * android/app/build.gradle versionName.
  */
-export const APP_VERSION = "v1.5.3"
+export const APP_VERSION = "v1.5.4"
 export const APP_MAKE = "LeadDrive MTM"
 export const APP_SOFTWARE = "LeadDrive MTM Mobile"
