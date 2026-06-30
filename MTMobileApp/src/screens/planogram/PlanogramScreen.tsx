@@ -11,6 +11,7 @@ import {
   Alert,
   StatusBar,
   ScrollView,
+  TextInput,
 } from "react-native"
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
@@ -53,6 +54,17 @@ interface Planogram {
   description?: string | null
   expectedSkus?: ExpectedSku[]
 }
+
+interface CatalogSku {
+  id: string
+  name: string
+  code?: string | null
+  brand?: string | null
+  unit?: string | null
+}
+
+type CustomerCategory = "A" | "B" | "C" | "D"
+const CUSTOMER_CATEGORIES: CustomerCategory[] = ["A", "B", "C", "D"]
 
 interface DetectedResult {
   label: string
@@ -151,6 +163,7 @@ export default function PlanogramScreen() {
   // 'category' = matched this store's cluster; 'fallback-all' = no exact match,
   // showing every active standard; 'none' = org has none. Drives the banner.
   const [matchedBy, setMatchedBy] = useState<"category" | "fallback-all" | "none" | null>(null)
+  const [customerCategory, setCustomerCategory] = useState<CustomerCategory | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [compliance, setCompliance] = useState<Record<string, ComplianceStatus>>({})
@@ -159,6 +172,15 @@ export default function PlanogramScreen() {
   // back to the 📐 placeholder instead of showing a blank with a "tap to zoom".
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set())
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [createVisible, setCreateVisible] = useState(false)
+  const [creatingPlanogram, setCreatingPlanogram] = useState(false)
+  const [catalogSkus, setCatalogSkus] = useState<CatalogSku[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [skuSearch, setSkuSearch] = useState("")
+  const [newTitle, setNewTitle] = useState("")
+  const [newBrand, setNewBrand] = useState("")
+  const [newCategory, setNewCategory] = useState<CustomerCategory>("B")
+  const [selectedSkus, setSelectedSkus] = useState<Record<string, number>>({})
 
   // AI scan state. analyzingId — the planogram being analyzed RIGHT NOW:
   // the spinner must render only on that card (a global boolean made every
@@ -173,6 +195,7 @@ export default function PlanogramScreen() {
   const [goldenPlanogramId, setGoldenPlanogramId] = useState<string | null>(null)
   const [settingGoldenId, setSettingGoldenId] = useState<string | null>(null)
   const canSetGolden = api.canSetGoldenReference
+  const canManagePlanograms = api.canSetGoldenReference
   // Slice A: per-planogram id of the persisted scan — attached to the
   // submitted verdict so the supervisor sees AI score next to the decision
   const [analysisIds, setAnalysisIds] = useState<Record<string, string>>({})
@@ -237,6 +260,7 @@ export default function PlanogramScreen() {
         const list: Planogram[] = res.data?.planograms ?? []
         setPlanograms(list)
         setMatchedBy(res.data?.matchedBy ?? null)
+        setCustomerCategory((res.data?.customerCategory as CustomerCategory | null) ?? null)
         const initial: Record<string, ComplianceStatus> = {}
         list.forEach(p => { initial[p.id] = null })
         setCompliance(initial)
@@ -252,12 +276,102 @@ export default function PlanogramScreen() {
 
   useEffect(() => { load() }, [load])
 
+  const fetchCatalogSkus = useCallback(async (q = "") => {
+    setCatalogLoading(true)
+    try {
+      const res = await api.getSkus({
+        search: q.trim() ? q.trim() : undefined,
+        isActive: true,
+      })
+      if (res.success) {
+        setCatalogSkus(res.data?.skus ?? [])
+      } else {
+        setCatalogSkus([])
+      }
+    } catch {
+      setCatalogSkus([])
+    } finally {
+      setCatalogLoading(false)
+    }
+  }, [])
+
+  const openCreatePlanogram = () => {
+    const category = customerCategory ?? "B"
+    setNewCategory(category)
+    setNewTitle(t("planogram.standardNamePlaceholder", { customer: customerName, category }))
+    setNewBrand("")
+    setSkuSearch("")
+    setSelectedSkus({})
+    setCreateVisible(true)
+    fetchCatalogSkus()
+  }
+
+  const adjustSkuFacings = (skuId: string, delta: number) => {
+    setSelectedSkus(prev => {
+      const next = { ...prev }
+      const value = Math.max(0, (next[skuId] ?? 0) + delta)
+      if (value === 0) delete next[skuId]
+      else next[skuId] = value
+      return next
+    })
+  }
+
+  const handleCreatePlanogram = async () => {
+    const entries = Object.entries(selectedSkus).filter(([, facings]) => facings > 0)
+    const name = newTitle.trim()
+    if (!name || entries.length === 0 || creatingPlanogram) return
+    setCreatingPlanogram(true)
+    try {
+      const res = await api.createPlanogram({
+        name,
+        brand: newBrand.trim() || undefined,
+        customerCategory: newCategory,
+        description: `${customerName} ${newCategory}`,
+        expectedSkus: entries.map(([skuId, expectedFacings], index) => ({
+          skuId,
+          expectedFacings,
+          position: index + 1,
+        })),
+      })
+      if (!res?.success) {
+        Alert.alert(t("common.error"), res?.error ?? t("planogram.createError"))
+        return
+      }
+      const created = res.data
+      const item: Planogram = {
+        id: created.id,
+        title: created.name,
+        description: created.description ?? null,
+        category: created.customerCategory ?? newCategory,
+        brand: created.brand ?? null,
+        imageUrl: created.referenceImageUrl ?? null,
+        expectedSkus: created.expectedSkus ?? [],
+      }
+      setPlanograms(prev => [item, ...prev])
+      setMatchedBy("category")
+      setCustomerCategory(newCategory)
+      setCompliance(prev => ({ ...prev, [item.id]: null }))
+      setCreateVisible(false)
+      Alert.alert(
+        t("planogram.createSuccess"),
+        t("planogram.createSuccessBody"),
+        [{ text: t("common.ok"), onPress: () => setGoldenPlanogramId(item.id) }],
+      )
+    } catch (e: any) {
+      Alert.alert(t("common.error"), e?.message ?? t("planogram.createError"))
+    } finally {
+      setCreatingPlanogram(false)
+    }
+  }
+
   const setStatus = (id: string, status: ComplianceStatus) => {
     setCompliance(prev => ({ ...prev, [id]: status }))
   }
 
   const markedCount = Object.values(compliance).filter(v => v !== null).length
   const canSubmit = markedCount > 0 && !submitting
+  const selectedSkuCount = Object.keys(selectedSkus).length
+  const canCreatePlanogram = newTitle.trim().length > 0 && selectedSkuCount > 0 && !creatingPlanogram
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -575,6 +689,34 @@ export default function PlanogramScreen() {
     )
   }
 
+  const renderCategoryPanel = () => {
+    if (!customerCategory && !canManagePlanograms) return null
+    const exact = matchedBy === "category"
+    return (
+      <View style={styles.categoryPanel}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.categoryPanelTitle}>
+            {customerCategory
+              ? t(exact ? "planogram.showingCategory" : "planogram.categoryContext", { category: customerCategory })
+              : t("planogram.title")}
+          </Text>
+          <Text style={styles.categoryPanelText}>
+            {matchedBy === "fallback-all"
+              ? t("planogram.chooseStandard")
+              : planograms.length === 0
+                ? t("planogram.emptyHint")
+                : t("planogram.chooseStandard")}
+          </Text>
+        </View>
+        {canManagePlanograms && (
+          <TouchableOpacity style={styles.createSmallBtn} onPress={openCreatePlanogram}>
+            <Text style={styles.createSmallBtnText}>＋ {t("planogram.createStandard")}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    )
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
@@ -603,6 +745,8 @@ export default function PlanogramScreen() {
         </View>
       )}
 
+      {!loading && !loadError && renderCategoryPanel()}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#6C63FF" />
@@ -619,6 +763,11 @@ export default function PlanogramScreen() {
           <Text style={styles.emptyIcon}>📐</Text>
           <Text style={styles.emptyTitle}>{t("planogram.empty")}</Text>
           <Text style={styles.emptyHint}>{t("planogram.emptyHint")}</Text>
+          {canManagePlanograms && (
+            <TouchableOpacity style={styles.emptyCreateBtn} onPress={openCreatePlanogram}>
+              <Text style={styles.emptyCreateBtnText}>＋ {t("planogram.createStandard")}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <>
@@ -710,6 +859,128 @@ export default function PlanogramScreen() {
         onClose={() => setGoldenPlanogramId(null)}
         onPhotoTaken={handleGoldenPhotoTaken}
       />
+
+      {/* Manager flow: create the missing category standard, then capture its reference photo. */}
+      <Modal
+        visible={createVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCreateVisible(false)}
+      >
+        <View style={styles.createBackdrop}>
+          <View style={[styles.createSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.createHeader}>
+              <Text style={styles.createTitle}>{t("planogram.createTitle")}</Text>
+              <TouchableOpacity onPress={() => setCreateVisible(false)} disabled={creatingPlanogram}>
+                <Text style={styles.resultClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.createBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Text style={styles.inputLabel}>{t("planogram.targetCategory")}</Text>
+              <View style={styles.categoryPicker}>
+                {CUSTOMER_CATEGORIES.map(cat => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.categoryOption, newCategory === cat && styles.categoryOptionActive]}
+                    onPress={() => {
+                      setNewCategory(cat)
+                      if (!newTitle.trim()) {
+                        setNewTitle(t("planogram.standardNamePlaceholder", { customer: customerName, category: cat }))
+                      }
+                    }}
+                  >
+                    <Text style={[styles.categoryOptionText, newCategory === cat && styles.categoryOptionTextActive]}>
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>{t("planogram.standardName")}</Text>
+              <TextInput
+                style={styles.textInput}
+                value={newTitle}
+                onChangeText={setNewTitle}
+                placeholder={t("planogram.standardNamePlaceholder", { customer: customerName, category: newCategory })}
+                placeholderTextColor="#94a3b8"
+              />
+
+              <Text style={styles.inputLabel}>{t("planogram.brand")}</Text>
+              <TextInput
+                style={styles.textInput}
+                value={newBrand}
+                onChangeText={setNewBrand}
+                placeholder={t("planogram.brandPlaceholder")}
+                placeholderTextColor="#94a3b8"
+              />
+
+              <View style={styles.skuSearchRow}>
+                <TextInput
+                  style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+                  value={skuSearch}
+                  onChangeText={(text) => {
+                    setSkuSearch(text)
+                    fetchCatalogSkus(text)
+                  }}
+                  placeholder={t("planogram.skuSearch")}
+                  placeholderTextColor="#94a3b8"
+                  returnKeyType="search"
+                  onSubmitEditing={() => fetchCatalogSkus(skuSearch)}
+                />
+                {catalogLoading && <ActivityIndicator size="small" color="#6C63FF" />}
+              </View>
+
+              <Text style={styles.selectedSkuText}>
+                {t("planogram.selectedSkus", { n: selectedSkuCount })}
+              </Text>
+
+              {catalogSkus.slice(0, 30).map(sku => {
+                const qty = selectedSkus[sku.id] ?? 0
+                return (
+                  <View key={sku.id} style={styles.createSkuRow}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={styles.createSkuName} numberOfLines={1}>{sku.name}</Text>
+                      <Text style={styles.createSkuMeta} numberOfLines={1}>
+                        {[sku.code, sku.brand].filter(Boolean).join(" · ")}
+                      </Text>
+                    </View>
+                    <View style={styles.facingStepper}>
+                      <TouchableOpacity
+                        style={[styles.stepBtn, qty === 0 && styles.stepBtnDisabled]}
+                        onPress={() => adjustSkuFacings(sku.id, -1)}
+                        disabled={qty === 0}
+                      >
+                        <Text style={styles.stepBtnText}>−</Text>
+                      </TouchableOpacity>
+                      <View style={styles.facingValue}>
+                        <Text style={styles.facingValueText}>{qty}</Text>
+                      </View>
+                      <TouchableOpacity style={styles.stepBtn} onPress={() => adjustSkuFacings(sku.id, 1)}>
+                        <Text style={styles.stepBtnText}>＋</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )
+              })}
+
+              {!canCreatePlanogram && (
+                <Text style={styles.createHint}>{t("planogram.createDisabledHint")}</Text>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.createSubmitBtn, !canCreatePlanogram && styles.submitBtnDisabled]}
+              onPress={handleCreatePlanogram}
+              disabled={!canCreatePlanogram}
+            >
+              {creatingPlanogram
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.createSubmitText}>{t("planogram.createStandard")}</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* AI Analysis Result Modal */}
       <Modal
@@ -940,6 +1211,23 @@ const styles = StyleSheet.create({
     borderRadius: 10, marginHorizontal: 12, marginTop: 8, padding: 10,
   },
   queueText: { fontSize: 12, color: "#1e40af", lineHeight: 16, fontWeight: "600" },
+  categoryPanel: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#fff", borderColor: "#e2e8f0", borderWidth: 1,
+    borderRadius: 12, marginHorizontal: 12, marginTop: 10, padding: 12,
+  },
+  categoryPanelTitle: { fontSize: 13, fontWeight: "800", color: "#0f172a" },
+  categoryPanelText: { fontSize: 12, color: "#64748b", marginTop: 3, lineHeight: 16 },
+  createSmallBtn: {
+    marginLeft: 10, backgroundColor: "#0f172a", borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 9,
+  },
+  createSmallBtnText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  emptyCreateBtn: {
+    marginTop: 12, backgroundColor: "#6C63FF", borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 11,
+  },
+  emptyCreateBtnText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 
   // List
   list: { padding: 16, gap: 16 },
@@ -1117,4 +1405,65 @@ const styles = StyleSheet.create({
     borderRadius: 14, paddingVertical: 14, alignItems: "center",
   },
   resultDoneText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+
+  // Create planogram sheet
+  createBackdrop: {
+    flex: 1, backgroundColor: "rgba(15,23,42,0.45)",
+    justifyContent: "flex-end",
+  },
+  createSheet: {
+    maxHeight: "88%", backgroundColor: "#fff",
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    padding: 16,
+  },
+  createHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  createTitle: { fontSize: 18, fontWeight: "800", color: "#0B0B1E" },
+  createBody: { maxHeight: 640 },
+  inputLabel: { fontSize: 12, fontWeight: "800", color: "#334155", marginBottom: 7, marginTop: 10 },
+  textInput: {
+    borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 14, color: "#0f172a", backgroundColor: "#f8fafc",
+    marginBottom: 4,
+  },
+  categoryPicker: { flexDirection: "row", gap: 8, marginBottom: 4 },
+  categoryOption: {
+    flex: 1, borderWidth: 1.5, borderColor: "#e2e8f0", borderRadius: 12,
+    paddingVertical: 10, alignItems: "center", backgroundColor: "#f8fafc",
+  },
+  categoryOptionActive: { borderColor: "#6C63FF", backgroundColor: "#f5f3ff" },
+  categoryOptionText: { fontSize: 14, fontWeight: "800", color: "#475569" },
+  categoryOptionTextActive: { color: "#6C63FF" },
+  skuSearchRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  selectedSkuText: { fontSize: 12, fontWeight: "700", color: "#64748b", marginTop: 10, marginBottom: 6 },
+  createSkuRow: {
+    flexDirection: "row", alignItems: "center",
+    borderTopWidth: 1, borderTopColor: "#f1f5f9",
+    paddingVertical: 10,
+  },
+  createSkuName: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
+  createSkuMeta: { fontSize: 12, color: "#64748b", marginTop: 2 },
+  facingStepper: { flexDirection: "row", alignItems: "center", gap: 6 },
+  stepBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "#eef2ff",
+  },
+  stepBtnDisabled: { opacity: 0.35 },
+  stepBtnText: { fontSize: 18, fontWeight: "900", color: "#6C63FF" },
+  facingValue: {
+    minWidth: 34, height: 34, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0",
+  },
+  facingValueText: { fontSize: 14, fontWeight: "800", color: "#0f172a" },
+  createHint: { fontSize: 12, color: "#b45309", marginTop: 10, marginBottom: 2 },
+  createSubmitBtn: {
+    marginTop: 12, backgroundColor: "#6C63FF",
+    borderRadius: 14, paddingVertical: 14, alignItems: "center",
+  },
+  createSubmitText: { fontSize: 15, fontWeight: "800", color: "#fff" },
 })

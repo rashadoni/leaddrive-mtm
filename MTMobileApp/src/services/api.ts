@@ -621,6 +621,28 @@ class ApiClient {
     return this.request(`/mobile/customers/${customerId}/planograms`)
   }
 
+  async listPlanogramStandards(params?: { category?: string; limit?: number }) {
+    const query = new URLSearchParams()
+    if (params?.category) query.set("category", params.category)
+    if (params?.limit) query.set("limit", String(params.limit))
+    const qs = query.toString()
+    return this.request(`/planograms${qs ? `?${qs}` : ""}`)
+  }
+
+  async createPlanogram(data: {
+    name: string
+    description?: string
+    customerCategory?: "A" | "B" | "C" | "D"
+    brand?: string
+    expectedSkus: Array<{ skuId: string; expectedFacings: number; position?: number }>
+    strictCompliance?: boolean
+  }) {
+    return this.request("/planograms", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
   /**
    * Set this planogram's GOLDEN REFERENCE photo (the shelf-AI compliance
    * baseline) — a supervisor on-site captures the ideal, correctly-merchandised

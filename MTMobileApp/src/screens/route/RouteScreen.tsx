@@ -13,7 +13,6 @@ import {
   Linking,
   Modal,
   Animated,
-  Dimensions,
   Platform,
   ActivityIndicator,
 } from "react-native"
@@ -48,7 +47,6 @@ interface Route {
 }
 
 const GEOFENCE_DEFAULT = 100
-const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
 function distanceColor(meters: number): string {
   if (meters < GEOFENCE_DEFAULT) return "#22c55e"
@@ -95,7 +93,7 @@ function PointBottomSheet({
         Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start()
     }
-  }, [visible])
+  }, [visible, slideAnim, backdropAnim])
 
   if (!point) return null
 
@@ -218,7 +216,7 @@ export default function RouteScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [mutating, setMutating] = useState(false)
-  const [agentCoords, setAgentCoords] = useState<{ latitude: number; longitude: number } | null>(null)
+  const [_agentCoords, setAgentCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<RoutePoint | null>(null)
   const [sheetVisible, setSheetVisible] = useState(false)
 
@@ -333,8 +331,15 @@ export default function RouteScreen() {
     return () => controller.abort()
   }, [fetchRoute, fetchActiveVisit])
 
-  const completion = route ? Math.round((route.visitedPoints / Math.max(route.totalPoints, 1)) * 100) : 0
-  const remaining = route ? route.totalPoints - route.visitedPoints : 0
+  const sortedPoints = route?.points ? [...route.points].sort((a, b) => a.orderIndex - b.orderIndex) : []
+  const displayTotalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0
+  const displayVisitedPoints = sortedPoints.length > 0
+    ? sortedPoints.filter((p) => p.status === "VISITED").length
+    : route?.visitedPoints ?? 0
+  const completion = displayTotalPoints > 0
+    ? Math.round((displayVisitedPoints / displayTotalPoints) * 100)
+    : 0
+  const remaining = Math.max(displayTotalPoints - displayVisitedPoints, 0)
 
   const handlePointPress = (point: RoutePoint) => {
     setSelectedPoint(point)
@@ -527,7 +532,6 @@ export default function RouteScreen() {
     }
   }
 
-  const sortedPoints = route?.points ? [...route.points].sort((a, b) => a.orderIndex - b.orderIndex) : []
   const nextPendingIdx = sortedPoints.findIndex((p) => p.status === "PENDING")
 
   return (
@@ -588,9 +592,9 @@ export default function RouteScreen() {
 
           {/* Stats row */}
           <View style={styles.statsRow}>
-            <StatBox value={route.totalPoints} label={t("route.statTotal")} color="#0B0B1E" />
+            <StatBox value={displayTotalPoints} label={t("route.statTotal")} color="#0B0B1E" />
             <View style={styles.statDivider} />
-            <StatBox value={route.visitedPoints} label={t("route.statVisited")} color="#22c55e" />
+            <StatBox value={displayVisitedPoints} label={t("route.statVisited")} color="#22c55e" />
             <View style={styles.statDivider} />
             <StatBox value={remaining} label={t("route.statLeft")} color={remaining > 0 ? "#f59e0b" : "#22c55e"} />
             <View style={styles.statDivider} />
