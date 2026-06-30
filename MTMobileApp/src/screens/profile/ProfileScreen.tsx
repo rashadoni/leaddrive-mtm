@@ -161,20 +161,18 @@ export default function ProfileScreen() {
         <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
       </View>
 
-      {api.canSetGoldenReference && (
-        <TouchableOpacity
-          style={styles.planogramCard}
-          onPress={() => navigation.navigate("PlanogramLibrary")}
-          accessibilityRole="button"
-          accessibilityLabel={t("planogram.libraryEntryTitle")}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.planogramTitle}>{t("planogram.libraryEntryTitle")}</Text>
-            <Text style={styles.planogramBody}>{t("planogram.libraryEntryBody")}</Text>
-          </View>
-          <Text style={styles.planogramArrow}>›</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.planogramCard}
+        onPress={() => navigation.navigate("PlanogramLibrary")}
+        accessibilityRole="button"
+        accessibilityLabel={t("planogram.libraryEntryTitle")}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.planogramTitle}>{t("planogram.libraryEntryTitle")}</Text>
+          <Text style={styles.planogramBody}>{t("planogram.libraryEntryBody")}</Text>
+        </View>
+        <Text style={styles.planogramArrow}>›</Text>
+      </TouchableOpacity>
 
       {/* Language switcher (M1-1a) */}
       <View style={styles.card}>

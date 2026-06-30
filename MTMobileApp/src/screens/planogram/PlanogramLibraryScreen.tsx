@@ -56,6 +56,7 @@ export default function PlanogramLibraryScreen() {
   const { t } = useTranslation()
   const navigation = useNavigation<Navigation>()
   const insets = useSafeAreaInsets()
+  const canGoBack = navigation.canGoBack()
 
   const [loading, setLoading] = useState(true)
   const [standards, setStandards] = useState<PlanogramStandard[]>([])
@@ -369,9 +370,11 @@ export default function PlanogramLibraryScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F4F5F9" />
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        {canGoBack && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{t("planogram.libraryTitle")}</Text>
           <Text style={styles.headerSub}>{t("planogram.librarySubtitle")}</Text>

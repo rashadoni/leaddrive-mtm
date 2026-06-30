@@ -47,6 +47,7 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Tasks: { active: "clipboard", inactive: "clipboard-outline" },
   Dashboard: { active: "bar-chart", inactive: "bar-chart-outline" },
   Orders: { active: "receipt", inactive: "receipt-outline" },
+  Planograms: { active: "albums", inactive: "albums-outline" },
   Profile: { active: "person", inactive: "person-outline" },
 }
 
@@ -85,6 +86,7 @@ function MainTabs() {
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Orders" component={OrdersScreen} />
+      <Tab.Screen name="Planograms" component={PlanogramLibraryScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   )
