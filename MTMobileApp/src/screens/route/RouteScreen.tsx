@@ -22,6 +22,7 @@ import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import HintCard from "../../components/HintCard"
@@ -317,12 +318,16 @@ export default function RouteScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    fetchRoute(controller.signal)
-    fetchActiveVisit()
-    return () => controller.abort()
-  }, [fetchRoute, fetchActiveVisit])
+  // Initial load + keep fresh: refetch on tab focus, on return from
+  // background and every 60s, so a route assigned in the admin panel
+  // appears by itself (fetchRoute/fetchActiveVisit are silent — they never
+  // flip loading flags on, so polling doesn't flash spinners).
+  useAutoRefresh(
+    useCallback(() => {
+      fetchRoute()
+      fetchActiveVisit()
+    }, [fetchRoute, fetchActiveVisit])
+  )
 
   const sortedPoints = route?.points ? [...route.points].sort((a, b) => a.orderIndex - b.orderIndex) : []
   const displayTotalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0

@@ -20,6 +20,7 @@ import { useNavigation } from "@react-navigation/native"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
@@ -143,7 +144,9 @@ export default function VisitScreen() {
     }
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  // Initial load + keep fresh (focus / foreground / 60s poll) — the visit
+  // list and the active-visit banner follow server state by themselves.
+  useAutoRefresh(fetchData)
 
   useEffect(() => {
     if (!activeVisit) { setElapsedMin(0); return }
