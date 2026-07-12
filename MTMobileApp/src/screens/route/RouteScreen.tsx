@@ -237,7 +237,10 @@ export default function RouteScreen() {
         if (!active) { setPhotoCount(0) }
       }
     } catch {
-      setActiveVisit(null)
+      // Network error/timeout — keep the previous state. Nulling it here
+      // would hide the active-visit banner (with the check-out and photo
+      // buttons) mid-visit whenever a pull-to-refresh times out on a weak
+      // signal; the server truth lands on the next successful fetch.
     }
   }, [])
 
@@ -524,33 +527,14 @@ export default function RouteScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header with gradient feel */}
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>
-              {agent?.name
-                ? t("route.greeting", { name: agent.name.split(" ")[0] })
-                : t("route.greetingNoName")}
-            </Text>
-            <Text style={styles.date}>
-              {new Date().toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })}
-            </Text>
-          </View>
-          {route && (
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeNum}>{remaining}</Text>
-              <Text style={styles.headerBadgeLabel}>{t("route.leftLabel")}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Everything below the header scrolls inside this FlatList so the
-          pull-to-refresh gesture works anywhere on the screen — including
-          the empty "no route" state (before, the RefreshControl existed
-          only when there were points, so pulling on an empty screen did
-          nothing). */}
+      {/* The whole screen scrolls inside this FlatList so the
+          pull-to-refresh gesture works anywhere — including the empty
+          "no route" state (before, the RefreshControl existed only when
+          there were points, so pulling on an empty screen did nothing).
+          The purple header lives in ListHeaderComponent too: the summary
+          card's marginTop:-14 overlap only renders when both are siblings
+          inside the scroll content (a negative top margin on the FIRST
+          scroll child gets clipped to the list bounds on Android). */}
       <FlatList
         data={sortedPoints}
         keyExtractor={(item) => item.id}
@@ -565,6 +549,28 @@ export default function RouteScreen() {
         }
         ListHeaderComponent={
           <>
+            {/* Header with gradient feel */}
+            <View style={[styles.header, { paddingTop: headerTop }]}>
+              <View style={styles.headerContent}>
+                <View>
+                  <Text style={styles.greeting}>
+                    {agent?.name
+                      ? t("route.greeting", { name: agent.name.split(" ")[0] })
+                      : t("route.greetingNoName")}
+                  </Text>
+                  <Text style={styles.date}>
+                    {new Date().toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })}
+                  </Text>
+                </View>
+                {route && (
+                  <View style={styles.headerBadge}>
+                    <Text style={styles.headerBadgeNum}>{remaining}</Text>
+                    <Text style={styles.headerBadgeLabel}>{t("route.leftLabel")}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
             {/* Route summary card */}
             {route ? (
               <View style={styles.summaryCard}>
