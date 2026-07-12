@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next"
 import { useKpiStore, KpiPeriod } from "../../store/kpi"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import HintCard from "../../components/HintCard"
 
 const PERIODS: KpiPeriod[] = ["today", "week", "month"]
 const PERIOD_KEY: Record<KpiPeriod, string> = {
@@ -89,9 +90,11 @@ export default function DashboardScreen() {
             refreshing={refreshing}
             onRefresh={() => load()}
             tintColor="#6C63FF"
+            colors={["#6C63FF"]}
           />
         }
       >
+        <HintCard id="dashboard.refresh" text={t("hints.dashboardRefresh")} />
         {error ? (
           <View style={styles.errorCard}>
             <Text style={styles.errorText}>{error}</Text>

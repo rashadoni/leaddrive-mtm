@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Switch,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
@@ -15,6 +16,7 @@ import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
+import { useHintsStore } from "../../store/hints"
 import { version as APP_VERSION } from "../../../package.json"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 
@@ -40,6 +42,8 @@ export default function ProfileScreen() {
   const [confirmAction, setConfirmAction] = useState<"logout" | "switch" | null>(null)
   // Trigger re-render after setLocale so the toggle reflects current state.
   const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(getCurrentLocale())
+  const hintsEnabled = useHintsStore((s) => s.enabled)
+  const setHintsEnabled = useHintsStore((s) => s.setEnabled)
 
   const onPickLocale = async (loc: SupportedLocale) => {
     await setLocale(loc)
@@ -185,6 +189,21 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ))}
         </View>
+      </View>
+
+      {/* Hints toggle: OFF hides every 💡 hint, ON also restores dismissed ones */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>{t("profile.hintsTitle")}</Text>
+        <View style={styles.hintsRow}>
+          <Text style={styles.hintsLabel}>{t("profile.hintsShow")}</Text>
+          <Switch
+            value={hintsEnabled}
+            onValueChange={setHintsEnabled}
+            trackColor={{ false: "#e2e8f0", true: "#c7c3ff" }}
+            thumbColor={hintsEnabled ? "#6C63FF" : "#94a3b8"}
+          />
+        </View>
+        <Text style={styles.hintsNote}>{t("profile.hintsNote")}</Text>
       </View>
 
       {/* Actions */}
@@ -395,5 +414,13 @@ const styles = StyleSheet.create({
   localeBtnTextActive: {
     color: "#fff",
   },
+  // Hints toggle
+  hintsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  hintsLabel: { fontSize: 14, fontWeight: "600", color: "#0B0B1E" },
+  hintsNote: { fontSize: 11, color: "#94a3b8", marginTop: 8, lineHeight: 15 },
   version: { textAlign: "center", color: "#cbd5e1", fontSize: 11, marginTop: 20, marginBottom: 10 },
 })

@@ -24,6 +24,7 @@ import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
+import HintCard from "../../components/HintCard"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
@@ -458,6 +459,8 @@ export default function VisitScreen() {
         </View>
       </View>
 
+      <HintCard id="visit.checkin" text={t("hints.visitCheckin")} />
+
       {/* Active visit banner */}
       {activeVisit && (
         <View style={styles.activeBanner}>
@@ -601,7 +604,7 @@ export default function VisitScreen() {
         keyExtractor={(v) => v.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor="#6C63FF" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor="#6C63FF" colors={["#6C63FF"]} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
