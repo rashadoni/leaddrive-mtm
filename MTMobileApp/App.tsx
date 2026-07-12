@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import AppNavigator from './src/navigation/AppNavigator'
 import { ErrorBoundary } from './src/components/ErrorBoundary'
 import { useAuthStore } from './src/store/auth'
+import { useHintsStore } from './src/store/hints'
 import { startTracking, stopTracking } from './src/services/location'
 import { api } from './src/services/api'
 import { initI18n } from './src/i18n'
@@ -20,7 +21,7 @@ import { version as APP_VERSION } from './package.json'
 // merging into one release row.
 // TODO: read versionCode from native via react-native-device-info's
 // getBuildNumber() if we ever forget to bump in lockstep.
-const ANDROID_VERSION_CODE = 22
+const ANDROID_VERSION_CODE = 23
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 // Ping interval — keeps agent "online" on server even without GPS fix
@@ -155,6 +156,9 @@ export default function App() {
   // captured automatically.
   const [i18nReady, setI18nReady] = useState(false)
   useEffect(() => {
+    // Hints hydrate in parallel — HintCard renders nothing until hydrated,
+    // so the app never flashes a hint the user already dismissed.
+    useHintsStore.getState().hydrate().catch(() => {})
     initI18n()
       .then(() => setI18nReady(true))
       .catch((e) => {

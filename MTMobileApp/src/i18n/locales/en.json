@@ -187,7 +187,10 @@
     "logoutConfirm": "Logout",
     "switchTitle": "Switch Company",
     "switchMessage": "This will log you out and clear server settings. You'll need to enter a new server address.",
-    "switchConfirm": "Switch"
+    "switchConfirm": "Switch",
+    "hintsTitle": "Hints",
+    "hintsShow": "Show hints",
+    "hintsNote": "Turning hints back on also restores the ones you dismissed with ✕."
   },
   "location": {
     "taskTitle": "MTM — Location Tracking",
@@ -202,5 +205,11 @@
     "visits": "Visits",
     "tasks": "Tasks",
     "photos": "Photos"
+  },
+  "hints": {
+    "routePull": "Pull the screen down to refresh your route. Tap a stop to navigate or check in.",
+    "visitCheckin": "Check-in works within 100 m of the customer. Take photos before checking out.",
+    "tasksStatus": "Tap “Start Task” when you begin a task and “Complete” when you finish — your manager sees the status live.",
+    "dashboardRefresh": "Your day at a glance. Pull down to refresh the numbers."
   }
 }

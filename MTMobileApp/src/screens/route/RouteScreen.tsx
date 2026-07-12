@@ -22,8 +22,10 @@ import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
+import HintCard from "../../components/HintCard"
 
 interface RoutePoint {
   id: string
@@ -236,7 +238,10 @@ export default function RouteScreen() {
         if (!active) { setPhotoCount(0) }
       }
     } catch {
-      setActiveVisit(null)
+      // Network error/timeout — keep the previous state. Nulling it here
+      // would hide the active-visit banner (with the check-out and photo
+      // buttons) mid-visit whenever a pull-to-refresh times out on a weak
+      // signal; the server truth lands on the next successful fetch.
     }
   }, [])
 
@@ -313,12 +318,16 @@ export default function RouteScreen() {
     }
   }, [])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    fetchRoute(controller.signal)
-    fetchActiveVisit()
-    return () => controller.abort()
-  }, [fetchRoute, fetchActiveVisit])
+  // Initial load + keep fresh: refetch on tab focus, on return from
+  // background and every 60s, so a route assigned in the admin panel
+  // appears by itself (fetchRoute/fetchActiveVisit are silent — they never
+  // flip loading flags on, so polling doesn't flash spinners).
+  useAutoRefresh(
+    useCallback(() => {
+      fetchRoute()
+      fetchActiveVisit()
+    }, [fetchRoute, fetchActiveVisit])
+  )
 
   const sortedPoints = route?.points ? [...route.points].sort((a, b) => a.orderIndex - b.orderIndex) : []
   const displayTotalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0
@@ -523,239 +532,254 @@ export default function RouteScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header with gradient feel */}
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>
-              {agent?.name
-                ? t("route.greeting", { name: agent.name.split(" ")[0] })
-                : t("route.greetingNoName")}
-            </Text>
-            <Text style={styles.date}>
-              {new Date().toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })}
-            </Text>
-          </View>
-          {route && (
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeNum}>{remaining}</Text>
-              <Text style={styles.headerBadgeLabel}>{t("route.leftLabel")}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Route summary card */}
-      {route ? (
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryTop}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.summaryTitle}>{route.name || t("route.fallbackName")}</Text>
-              <Text style={styles.summaryDate}>
-                {new Date(route.date).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" })}
-                {new Date(route.date).toDateString() === new Date().toDateString() && (
-                  <Text style={{ color: "#6C63FF" }}>{"  "}{t("route.todaySuffix")}</Text>
+      {/* The whole screen scrolls inside this FlatList so the
+          pull-to-refresh gesture works anywhere — including the empty
+          "no route" state (before, the RefreshControl existed only when
+          there were points, so pulling on an empty screen did nothing).
+          The purple header lives in ListHeaderComponent too: the summary
+          card's marginTop:-14 overlap only renders when both are siblings
+          inside the scroll content (a negative top margin on the FIRST
+          scroll child gets clipped to the list bounds on Android). */}
+      <FlatList
+        data={sortedPoints}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: tabBarPadding, flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); fetchRoute(); fetchActiveVisit() }}
+            tintColor="#6C63FF"
+            colors={["#6C63FF"]}
+          />
+        }
+        ListHeaderComponent={
+          <>
+            {/* Header with gradient feel */}
+            <View style={[styles.header, { paddingTop: headerTop }]}>
+              <View style={styles.headerContent}>
+                <View>
+                  <Text style={styles.greeting}>
+                    {agent?.name
+                      ? t("route.greeting", { name: agent.name.split(" ")[0] })
+                      : t("route.greetingNoName")}
+                  </Text>
+                  <Text style={styles.date}>
+                    {new Date().toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })}
+                  </Text>
+                </View>
+                {route && (
+                  <View style={styles.headerBadge}>
+                    <Text style={styles.headerBadgeNum}>{remaining}</Text>
+                    <Text style={styles.headerBadgeLabel}>{t("route.leftLabel")}</Text>
+                  </View>
                 )}
-              </Text>
+              </View>
             </View>
-            <View style={[
-              styles.statusPill,
-              route.status === "COMPLETED" ? styles.statusCompleted : styles.statusPlanned,
-            ]}>
-              <Text style={[
-                styles.statusPillText,
-                { color: route.status === "COMPLETED" ? "#22c55e" : "#6C63FF" },
-              ]}>
-                {route.status === "IN_PROGRESS"
-                  ? t("route.statusInProgress")
-                  : route.status === "COMPLETED"
-                    ? t("route.statusCompleted")
-                    : route.status === "PLANNED"
-                      ? t("route.statusPlanned")
-                      : route.status}
-              </Text>
-            </View>
-          </View>
 
-          {/* Stats row */}
-          <View style={styles.statsRow}>
-            <StatBox value={displayTotalPoints} label={t("route.statTotal")} color="#0B0B1E" />
-            <View style={styles.statDivider} />
-            <StatBox value={displayVisitedPoints} label={t("route.statVisited")} color="#22c55e" />
-            <View style={styles.statDivider} />
-            <StatBox value={remaining} label={t("route.statLeft")} color={remaining > 0 ? "#f59e0b" : "#22c55e"} />
-            <View style={styles.statDivider} />
-            <StatBox value={`${completion}%`} label={t("route.statDone")} color="#6C63FF" />
-          </View>
+            {/* Route summary card */}
+            {route ? (
+              <View style={styles.summaryCard}>
+                <View style={styles.summaryTop}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.summaryTitle}>{route.name || t("route.fallbackName")}</Text>
+                    <Text style={styles.summaryDate}>
+                      {new Date(route.date).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" })}
+                      {new Date(route.date).toDateString() === new Date().toDateString() && (
+                        <Text style={{ color: "#6C63FF" }}>{"  "}{t("route.todaySuffix")}</Text>
+                      )}
+                    </Text>
+                  </View>
+                  <View style={[
+                    styles.statusPill,
+                    route.status === "COMPLETED" ? styles.statusCompleted : styles.statusPlanned,
+                  ]}>
+                    <Text style={[
+                      styles.statusPillText,
+                      { color: route.status === "COMPLETED" ? "#22c55e" : "#6C63FF" },
+                    ]}>
+                      {route.status === "IN_PROGRESS"
+                        ? t("route.statusInProgress")
+                        : route.status === "COMPLETED"
+                          ? t("route.statusCompleted")
+                          : route.status === "PLANNED"
+                            ? t("route.statusPlanned")
+                            : route.status}
+                    </Text>
+                  </View>
+                </View>
 
-          {/* Progress bar */}
-          <View style={styles.progressTrack}>
-            <View style={[
-              styles.progressBar,
-              { width: `${Math.max(completion, 2)}%` },
-              completion === 100 && { backgroundColor: "#22c55e" },
-            ]} />
-          </View>
-        </View>
-      ) : (
-        <TouchableOpacity
-          style={styles.emptyCard}
-          onPress={slowConnection ? () => { setLoading(true); fetchRoute() } : undefined}
-          activeOpacity={slowConnection ? 0.7 : 1}
-        >
-          <View style={styles.emptyIconWrap}>
-            <Text style={styles.emptyIcon}>{slowConnection ? "📡" : "📍"}</Text>
-          </View>
-          <Text style={styles.emptyTitle}>
-            {loading ? t("route.loadingRoute") : slowConnection ? t("route.connectionSlow") : t("route.noRouteTitle")}
-          </Text>
-          <Text style={styles.emptySubtitle}>
-            {loading ? t("route.fetching") : slowConnection ? t("route.connectionSlowHint") : t("route.noRouteHint")}
-          </Text>
-        </TouchableOpacity>
-      )}
+                {/* Stats row */}
+                <View style={styles.statsRow}>
+                  <StatBox value={displayTotalPoints} label={t("route.statTotal")} color="#0B0B1E" />
+                  <View style={styles.statDivider} />
+                  <StatBox value={displayVisitedPoints} label={t("route.statVisited")} color="#22c55e" />
+                  <View style={styles.statDivider} />
+                  <StatBox value={remaining} label={t("route.statLeft")} color={remaining > 0 ? "#f59e0b" : "#22c55e"} />
+                  <View style={styles.statDivider} />
+                  <StatBox value={`${completion}%`} label={t("route.statDone")} color="#6C63FF" />
+                </View>
 
-      {/* Active visit banner */}
-      {activeVisit && (
-        <View style={styles.activeBanner}>
-          <View style={styles.activePulseOuter}>
-            <View style={styles.activePulseInner} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.activeLabel}>{t("visit.activeLabel")}</Text>
-            <Text style={styles.activeName}>{activeVisit.customer?.name || t("common.customer")}</Text>
-            <Text style={styles.activeTime}>
-              {t("visit.elapsedMin", { n: elapsedMin })}
-              {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
-            </Text>
-          </View>
-          <View style={styles.activeBtns}>
-            <TouchableOpacity
-              style={styles.photoBtn}
-              onPress={() => setCameraVisible(true)}
-              disabled={mutating}
-            >
-              <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
-              onPress={handleCheckOut}
-              disabled={mutating}
-            >
-              {mutating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.checkOutText}>{t("visit.checkOutButton")}</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Section header */}
-      {sortedPoints.length > 0 && (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-          <Text style={styles.sectionCount}>{t("route.stopsCount", { n: sortedPoints.length })}</Text>
-        </View>
-      )}
-
-      {/* Points list */}
-      {sortedPoints.length > 0 && (
-        <FlatList
-          data={sortedPoints}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRoute() }} tintColor="#6C63FF" />
-          }
-          renderItem={({ item, index }) => {
-            const isVisited = item.status === "VISITED"
-            const isSkipped = item.status === "SKIPPED"
-            const isPending = item.status === "PENDING"
-            const isNext = index === nextPendingIdx
-            const dist = item.distanceMeters
-
-            return (
+                {/* Progress bar */}
+                <View style={styles.progressTrack}>
+                  <View style={[
+                    styles.progressBar,
+                    { width: `${Math.max(completion, 2)}%` },
+                    completion === 100 && { backgroundColor: "#22c55e" },
+                  ]} />
+                </View>
+              </View>
+            ) : (
               <TouchableOpacity
-                style={styles.pointRow}
-                onPress={() => handlePointPress(item)}
+                style={styles.emptyCard}
+                onPress={() => { setLoading(true); fetchRoute() }}
                 activeOpacity={0.7}
               >
-                {/* Timeline */}
-                <View style={styles.timeline}>
-                  <View style={[
-                    styles.dot,
-                    isVisited && styles.dotVisited,
-                    isSkipped && styles.dotSkipped,
-                    isNext && styles.dotNext,
-                  ]}>
-                    {isVisited && <Text style={styles.dotIcon}>✓</Text>}
-                    {isSkipped && <Text style={styles.dotIcon}>✕</Text>}
-                    {isPending && (
-                      <Text style={[styles.dotNum, isNext && { color: "#fff" }]}>{index + 1}</Text>
-                    )}
-                  </View>
-                  {index < sortedPoints.length - 1 && (
-                    <View style={[
-                      styles.connector,
-                      isVisited && { backgroundColor: "#22c55e" },
-                    ]} />
-                  )}
+                <View style={styles.emptyIconWrap}>
+                  <Text style={styles.emptyIcon}>{slowConnection ? "📡" : "📍"}</Text>
                 </View>
-
-                {/* Card */}
-                <View style={[
-                  styles.card,
-                  isVisited && styles.cardVisited,
-                  isNext && styles.cardNext,
-                ]}>
-                  <View style={styles.cardBody}>
-                    <Text style={[styles.cardName, isVisited && styles.cardNameVisited]} numberOfLines={1}>
-                      {item.customer.name}
-                    </Text>
-                    {item.customer.address && (
-                      <Text style={styles.cardAddress} numberOfLines={1}>{item.customer.address}</Text>
-                    )}
-
-                    {/* Meta row */}
-                    <View style={styles.cardMeta}>
-                      {item.plannedTime && (
-                        <View style={styles.metaTag}>
-                          <Text style={styles.metaText}>
-                            🕐 {new Date(item.plannedTime).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
-                          </Text>
-                        </View>
-                      )}
-                      {item.visitedAt && (
-                        <View style={[styles.metaTag, { backgroundColor: "#dcfce7" }]}>
-                          <Text style={[styles.metaText, { color: "#22c55e" }]}>
-                            ✓ {new Date(item.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
-                          </Text>
-                        </View>
-                      )}
-                      {isPending && dist != null && (
-                        <View style={[styles.metaTag, { backgroundColor: distanceColor(dist) + "15" }]}>
-                          <Text style={[styles.metaText, { color: distanceColor(dist) }]}>
-                            {formatDistance(dist)}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {/* Right side action hint */}
-                  {isPending && (
-                    <View style={styles.cardArrow}>
-                      <Text style={{ color: isNext ? "#6C63FF" : "#cbd5e1", fontSize: 18 }}>›</Text>
-                    </View>
-                  )}
-                </View>
+                <Text style={styles.emptyTitle}>
+                  {loading ? t("route.loadingRoute") : slowConnection ? t("route.connectionSlow") : t("route.noRouteTitle")}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {loading ? t("route.fetching") : slowConnection ? t("route.connectionSlowHint") : t("route.noRouteHint")}
+                </Text>
               </TouchableOpacity>
-            )
-          }}
-        />
-      )}
+            )}
+
+            <HintCard id="route.pullRefresh" text={t("hints.routePull")} />
+
+            {/* Active visit banner */}
+            {activeVisit && (
+              <View style={styles.activeBanner}>
+                <View style={styles.activePulseOuter}>
+                  <View style={styles.activePulseInner} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.activeLabel}>{t("visit.activeLabel")}</Text>
+                  <Text style={styles.activeName}>{activeVisit.customer?.name || t("common.customer")}</Text>
+                  <Text style={styles.activeTime}>
+                    {t("visit.elapsedMin", { n: elapsedMin })}
+                    {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
+                  </Text>
+                </View>
+                <View style={styles.activeBtns}>
+                  <TouchableOpacity
+                    style={styles.photoBtn}
+                    onPress={() => setCameraVisible(true)}
+                    disabled={mutating}
+                  >
+                    <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
+                    onPress={handleCheckOut}
+                    disabled={mutating}
+                  >
+                    {mutating ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.checkOutText}>{t("visit.checkOutButton")}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Section header */}
+            {sortedPoints.length > 0 && (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+                <Text style={styles.sectionCount}>{t("route.stopsCount", { n: sortedPoints.length })}</Text>
+              </View>
+            )}
+          </>
+        }
+        renderItem={({ item, index }) => {
+          const isVisited = item.status === "VISITED"
+          const isSkipped = item.status === "SKIPPED"
+          const isPending = item.status === "PENDING"
+          const isNext = index === nextPendingIdx
+          const dist = item.distanceMeters
+
+          return (
+            <TouchableOpacity
+              style={styles.pointRow}
+              onPress={() => handlePointPress(item)}
+              activeOpacity={0.7}
+            >
+              {/* Timeline */}
+              <View style={styles.timeline}>
+                <View style={[
+                  styles.dot,
+                  isVisited && styles.dotVisited,
+                  isSkipped && styles.dotSkipped,
+                  isNext && styles.dotNext,
+                ]}>
+                  {isVisited && <Text style={styles.dotIcon}>✓</Text>}
+                  {isSkipped && <Text style={styles.dotIcon}>✕</Text>}
+                  {isPending && (
+                    <Text style={[styles.dotNum, isNext && { color: "#fff" }]}>{index + 1}</Text>
+                  )}
+                </View>
+                {index < sortedPoints.length - 1 && (
+                  <View style={[
+                    styles.connector,
+                    isVisited && { backgroundColor: "#22c55e" },
+                  ]} />
+                )}
+              </View>
+
+              {/* Card */}
+              <View style={[
+                styles.card,
+                isVisited && styles.cardVisited,
+                isNext && styles.cardNext,
+              ]}>
+                <View style={styles.cardBody}>
+                  <Text style={[styles.cardName, isVisited && styles.cardNameVisited]} numberOfLines={1}>
+                    {item.customer.name}
+                  </Text>
+                  {item.customer.address && (
+                    <Text style={styles.cardAddress} numberOfLines={1}>{item.customer.address}</Text>
+                  )}
+
+                  {/* Meta row */}
+                  <View style={styles.cardMeta}>
+                    {item.plannedTime && (
+                      <View style={styles.metaTag}>
+                        <Text style={styles.metaText}>
+                          🕐 {new Date(item.plannedTime).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
+                        </Text>
+                      </View>
+                    )}
+                    {item.visitedAt && (
+                      <View style={[styles.metaTag, { backgroundColor: "#dcfce7" }]}>
+                        <Text style={[styles.metaText, { color: "#22c55e" }]}>
+                          ✓ {new Date(item.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
+                        </Text>
+                      </View>
+                    )}
+                    {isPending && dist != null && (
+                      <View style={[styles.metaTag, { backgroundColor: distanceColor(dist) + "15" }]}>
+                        <Text style={[styles.metaText, { color: distanceColor(dist) }]}>
+                          {formatDistance(dist)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {/* Right side action hint */}
+                {isPending && (
+                  <View style={styles.cardArrow}>
+                    <Text style={{ color: isNext ? "#6C63FF" : "#cbd5e1", fontSize: 18 }}>›</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          )
+        }}
+      />
 
       {/* Bottom Sheet */}
       <PointBottomSheet
@@ -949,7 +973,7 @@ const styles = StyleSheet.create({
   sectionCount: { fontSize: 12, color: "#94a3b8" },
 
   // --- Timeline & Points ---
-  pointRow: { flexDirection: "row", marginBottom: 0 },
+  pointRow: { flexDirection: "row", marginHorizontal: 16, marginBottom: 0 },
 
   timeline: { width: 40, alignItems: "center" },
   dot: {

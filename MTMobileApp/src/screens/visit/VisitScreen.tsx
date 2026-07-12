@@ -20,10 +20,12 @@ import { useNavigation } from "@react-navigation/native"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
+import HintCard from "../../components/HintCard"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
@@ -142,7 +144,9 @@ export default function VisitScreen() {
     }
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  // Initial load + keep fresh (focus / foreground / 60s poll) — the visit
+  // list and the active-visit banner follow server state by themselves.
+  useAutoRefresh(fetchData)
 
   useEffect(() => {
     if (!activeVisit) { setElapsedMin(0); return }
@@ -458,6 +462,8 @@ export default function VisitScreen() {
         </View>
       </View>
 
+      <HintCard id="visit.checkin" text={t("hints.visitCheckin")} />
+
       {/* Active visit banner */}
       {activeVisit && (
         <View style={styles.activeBanner}>
@@ -601,7 +607,7 @@ export default function VisitScreen() {
         keyExtractor={(v) => v.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor="#6C63FF" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor="#6C63FF" colors={["#6C63FF"]} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>

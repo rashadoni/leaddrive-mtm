@@ -187,7 +187,10 @@
     "logoutConfirm": "Çıxış",
     "switchTitle": "Şirkəti dəyiş",
     "switchMessage": "Bu, sizi hesabdan çıxaracaq və server tənzimləmələrini siləcək. Yeni server ünvanı daxil etməli olacaqsınız.",
-    "switchConfirm": "Dəyiş"
+    "switchConfirm": "Dəyiş",
+    "hintsTitle": "Məsləhətlər",
+    "hintsShow": "Məsləhətləri göstər",
+    "hintsNote": "Məsləhətləri yenidən aktiv etmək ✕ ilə bağladıqlarınızı da geri qaytarır."
   },
   "location": {
     "taskTitle": "MTM — Yer İzləmə",
@@ -202,5 +205,11 @@
     "visits": "Ziyarətlər",
     "tasks": "Tapşırıqlar",
     "photos": "Fotolar"
+  },
+  "hints": {
+    "routePull": "Marşrutu yeniləmək üçün ekranı aşağı çəkin. Naviqasiya və check-in üçün nöqtəyə toxunun.",
+    "visitCheckin": "Check-in müştəridən 100 m məsafədə işləyir. Ziyarəti bitirməzdən əvvəl foto çəkin.",
+    "tasksStatus": "Tapşırığa başlayanda «Başla», bitirəndə «Tamamla» düyməsinə toxunun — menecer statusu dərhal görür.",
+    "dashboardRefresh": "Gününüz bir baxışda. Rəqəmləri yeniləmək üçün aşağı çəkin."
   }
 }

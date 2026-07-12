@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useState, useCallback } from "react"
 import {
   View,
   Text,
@@ -10,8 +10,10 @@ import {
 import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import NotesModal from "../../components/NotesModal"
+import HintCard from "../../components/HintCard"
 
 interface Task {
   id: string
@@ -57,7 +59,9 @@ export default function TasksScreen() {
     }
   }, [])
 
-  useEffect(() => { fetchTasks() }, [fetchTasks])
+  // Initial load + keep fresh: tasks created in the admin panel appear
+  // by themselves (focus / foreground / 60s poll; fetchTasks is silent).
+  useAutoRefresh(fetchTasks)
 
   const handleStatusChange = async (task: Task, newStatus: string) => {
     if (updatingTaskId) return
@@ -181,13 +185,15 @@ export default function TasksScreen() {
         })}
       </View>
 
+      <HintCard id="tasks.status" text={t("hints.tasksStatus")} />
+
       {/* Tasks list */}
       <FlatList
         data={filtered}
         keyExtractor={(t) => t.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks() }} tintColor="#6C63FF" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchTasks() }} tintColor="#6C63FF" colors={["#6C63FF"]} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
