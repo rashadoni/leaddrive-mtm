@@ -5,7 +5,6 @@ export type KpiPeriod = "today" | "week" | "month"
 
 export interface KpiStats {
   visits: { completed: number; total: number }
-  orders: { count: number }
   tasks: { done: number; total: number }
   photos: { count: number }
   period: KpiPeriod
@@ -31,9 +30,8 @@ export const useKpiStore = create<KpiState>((set, get) => ({
     set({ loading: true, error: null })
 
     try {
-      const [visitsRes, ordersRes, tasksRes, photosRes] = await Promise.all([
+      const [visitsRes, tasksRes, photosRes] = await Promise.all([
         api.getVisits(),
-        api.getOrders(),
         api.getTasks(),
         api.getPhotos(),
       ])
@@ -43,7 +41,6 @@ export const useKpiStore = create<KpiState>((set, get) => ({
       // gave an OBJECT, and `obj.filter()` threw "undefined is not a function",
       // breaking the whole Dashboard (reproduced on the emulator 2026-06-12).
       const visits: { id: string; status: string }[] = visitsRes?.data?.visits ?? []
-      const orders: unknown[] = ordersRes?.data?.orders ?? []
       const tasks: { id: string; status: string }[] = tasksRes?.data?.tasks ?? []
       const photos: unknown[] = photosRes?.data?.photos ?? []
 
@@ -54,7 +51,6 @@ export const useKpiStore = create<KpiState>((set, get) => ({
 
       const stats: KpiStats = {
         visits: { completed: completedVisits, total: visits.length },
-        orders: { count: orders.length },
         tasks: { done: doneTasks, total: tasks.length },
         photos: { count: photos.length },
         period: effectivePeriod,

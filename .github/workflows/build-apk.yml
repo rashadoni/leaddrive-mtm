@@ -1,0 +1,81 @@
+name: Build Android APK
+
+# Builds the MTMobileApp release APK and publishes it as a workflow artifact.
+# Signing: if the MTM_RELEASE_KEYSTORE_B64 secret is set (base64 of
+# mtm-release.keystore), the APK is signed with the real release key and can
+# update existing installs. Without the secret, build.gradle falls back to the
+# debug keystore — the APK installs fine but CANNOT update an install signed
+# with the release key (uninstall/reinstall required).
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths:
+      - "MTMobileApp/**"
+      - ".github/workflows/build-apk.yml"
+  pull_request:
+    paths:
+      - "MTMobileApp/**"
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: MTMobileApp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: MTMobileApp/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JS dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Run tests
+        run: npx jest --ci
+
+      - name: Materialize release keystore (optional)
+        env:
+          KEYSTORE_B64: ${{ secrets.MTM_RELEASE_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/mtm-release.keystore
+            echo "Release keystore materialized — APK will be release-signed."
+          else
+            echo "No MTM_RELEASE_KEYSTORE_B64 secret — falling back to debug signing."
+            echo "::warning::APK will be DEBUG-signed: it installs, but cannot update an existing release-signed install."
+          fi
+
+      - name: Build release APK
+        working-directory: MTMobileApp/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK with version
+        id: apk
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          OUT="leaddrive-mtm-v${VERSION}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$OUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "file=$OUT" >> "$GITHUB_OUTPUT"
+          ls -lh "$OUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leaddrive-mtm-apk-v${{ steps.apk.outputs.version }}
+          path: MTMobileApp/${{ steps.apk.outputs.file }}
+          retention-days: 30
+          if-no-files-found: error

@@ -21,7 +21,6 @@ import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { useAuthStore } from "../../store/auth"
-import { useCartStore } from "../../store/cart"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
@@ -66,7 +65,6 @@ function PointBottomSheet({
   onClose,
   onNavigate,
   onCheckIn,
-  onPlanogram,
   mutating,
 }: {
   visible: boolean
@@ -74,7 +72,6 @@ function PointBottomSheet({
   onClose: () => void
   onNavigate: (point: RoutePoint) => void
   onCheckIn: (point: RoutePoint) => void
-  onPlanogram: (point: RoutePoint) => void
   mutating: boolean
 }) {
   const { t, i18n } = useTranslation()
@@ -193,14 +190,6 @@ function PointBottomSheet({
             <Text style={styles.sheetVisitedText}>{t("route.alreadyVisited")}</Text>
           </View>
         )}
-
-        <TouchableOpacity
-          style={styles.sheetPlanogramBtn}
-          onPress={() => { onClose(); onPlanogram(point) }}
-        >
-          <Text style={styles.sheetPlanogramIcon}>📐</Text>
-          <Text style={styles.sheetPlanogramText}>{t("planogram.button")}</Text>
-        </TouchableOpacity>
       </Animated.View>
     </Modal>
   )
@@ -346,13 +335,6 @@ export default function RouteScreen() {
     setSheetVisible(true)
   }
 
-  const handlePlanogram = (point: RoutePoint) => {
-    navigation.navigate("Planogram", {
-      customerId: point.customer.id,
-      customerName: point.customer.name,
-    })
-  }
-
   // Visit-level photo straight from the active-visit banner (mirrors VisitScreen
   // so the agent doesn't have to switch tabs to snap a store photo).
   const handlePhotoTaken = async (path: string) => {
@@ -378,7 +360,11 @@ export default function RouteScreen() {
       setPhotoCount((c) => c + 1)
     } catch (e: any) {
       if (e?.message !== "SESSION_EXPIRED") {
-        Alert.alert(t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+        if (e?.code === "MAX_PHOTOS_REACHED") {
+          Alert.alert(t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
+        } else {
+          Alert.alert(t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+        }
       }
     }
   }
@@ -465,9 +451,6 @@ export default function RouteScreen() {
         ...(forceCheckIn && { force: true }),
       })
       if (res.success) {
-        // F-43 parity: bind cart to this customer so SKU Catalog → Place Order
-        // works without requiring a separate VisitScreen check-in.
-        useCartStore.getState().setCustomer(point.customer.id, point.customer.name)
         setSheetVisible(false)
         setSelectedPoint(null)
         Alert.alert(
@@ -525,7 +508,11 @@ export default function RouteScreen() {
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
         console.warn("[RouteScreen] check-out error:", e?.message ?? e)
-        Alert.alert(t("common.error"), t("visit.checkOutFailed"))
+        if (e?.code === "PHOTO_REQUIRED") {
+          Alert.alert(t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
+        } else {
+          Alert.alert(t("common.error"), t("visit.checkOutFailed"))
+        }
       }
     } finally {
       setMutating(false)
@@ -649,29 +636,6 @@ export default function RouteScreen() {
               disabled={mutating}
             >
               <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.equipmentBtn}
-              onPress={() =>
-                navigation.navigate("EquipmentList", {
-                  customerId: activeVisit.customer.id,
-                  visitId: activeVisit.id,
-                })
-              }
-            >
-              <Text style={styles.equipmentBtnText}>🔧 {t("equipment.title")}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.equipmentBtn}
-              onPress={() =>
-                navigation.navigate("Planogram", {
-                  customerId: activeVisit.customer.id,
-                  customerName: activeVisit.customer.name,
-                  visitId: activeVisit.id,
-                })
-              }
-            >
-              <Text style={styles.equipmentBtnText}>📐 {t("planogram.title")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
@@ -800,7 +764,6 @@ export default function RouteScreen() {
         onClose={() => { setSheetVisible(false); setSelectedPoint(null) }}
         onNavigate={handleNavigate}
         onCheckIn={handleCheckIn}
-        onPlanogram={handlePlanogram}
         mutating={mutating}
       />
 
@@ -972,14 +935,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkOutText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  equipmentBtn: {
-    backgroundColor: "#f59e0b",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  equipmentBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 
   // --- Section header ---
   sectionHeader: {
@@ -1169,13 +1124,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sheetVisitedText: { fontSize: 13, color: "#22c55e", fontWeight: "600" },
-  sheetPlanogramBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    marginHorizontal: 16, marginTop: 10, marginBottom: 6,
-    paddingVertical: 11, borderRadius: 12,
-    backgroundColor: "#f0f0ff", borderWidth: 1.5, borderColor: "#6C63FF22",
-    gap: 6,
-  },
-  sheetPlanogramIcon: { fontSize: 16 },
-  sheetPlanogramText: { fontSize: 14, fontWeight: "600", color: "#6C63FF" },
 })
