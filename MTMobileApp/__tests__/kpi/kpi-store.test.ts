@@ -1,8 +1,9 @@
 /**
  * G4 — KPI store for the Dashboard screen.
  *
- * Aggregates visit, order, task and photo counts from existing API
- * endpoints. The mobile dashboard screen relies on this store to
+ * Aggregates visit, task and photo counts from existing API
+ * endpoints (orders were removed with the LeadShelf split — the server
+ * no longer has an orders domain). The mobile dashboard screen relies on this store to
  * surface daily/weekly/monthly agent performance without a dedicated
  * backend endpoint.
  *
@@ -18,7 +19,6 @@
 jest.mock('../../src/services/api', () => ({
   api: {
     getVisits: jest.fn(),
-    getOrders: jest.fn(),
     getTasks: jest.fn(),
     getPhotos: jest.fn(),
   },
@@ -28,7 +28,6 @@ import { api } from '../../src/services/api'
 import { useKpiStore } from '../../src/store/kpi'
 
 const mockGetVisits = api.getVisits as jest.Mock
-const mockGetOrders = api.getOrders as jest.Mock
 const mockGetTasks = api.getTasks as jest.Mock
 const mockGetPhotos = api.getPhotos as jest.Mock
 
@@ -44,16 +43,6 @@ const SAMPLE_VISITS = {
       { id: 'v-1', status: 'CHECKED_OUT' },
       { id: 'v-2', status: 'CHECKED_IN' },
       { id: 'v-3', status: 'CHECKED_OUT' },
-    ],
-  },
-}
-
-const SAMPLE_ORDERS = {
-  success: true,
-  data: {
-    orders: [
-      { id: 'o-1', status: 'CONFIRMED' },
-      { id: 'o-2', status: 'DRAFT' },
     ],
   },
 }
@@ -96,7 +85,6 @@ beforeEach(() => {
   jest.clearAllMocks()
   resetStore()
   mockGetVisits.mockResolvedValue(SAMPLE_VISITS)
-  mockGetOrders.mockResolvedValue(SAMPLE_ORDERS)
   mockGetTasks.mockResolvedValue(SAMPLE_TASKS)
   mockGetPhotos.mockResolvedValue(SAMPLE_PHOTOS)
 })
@@ -104,10 +92,9 @@ beforeEach(() => {
 // ─── fetchKpi ─────────────────────────────────────────────────────────────────
 
 describe('fetchKpi', () => {
-  it("calls getVisits, getOrders, getTasks, getPhotos in parallel", async () => {
+  it("calls getVisits, getTasks, getPhotos in parallel", async () => {
     await useKpiStore.getState().fetchKpi('today')
     expect(mockGetVisits).toHaveBeenCalledTimes(1)
-    expect(mockGetOrders).toHaveBeenCalledTimes(1)
     expect(mockGetTasks).toHaveBeenCalledTimes(1)
     expect(mockGetPhotos).toHaveBeenCalledTimes(1)
   })
@@ -170,24 +157,6 @@ describe('stats.visits', () => {
     const { stats } = useKpiStore.getState()
     expect(stats?.visits.completed).toBe(0)
     expect(stats?.visits.total).toBe(0)
-  })
-})
-
-// ─── stats.orders ─────────────────────────────────────────────────────────────
-
-describe('stats.orders', () => {
-  it('counts all orders', async () => {
-    await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    // SAMPLE_ORDERS has 2 orders
-    expect(stats?.orders.count).toBe(2)
-  })
-
-  it('handles empty orders array', async () => {
-    mockGetOrders.mockResolvedValue({ success: true, data: { orders: [] } })
-    await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    expect(stats?.orders.count).toBe(0)
   })
 })
 

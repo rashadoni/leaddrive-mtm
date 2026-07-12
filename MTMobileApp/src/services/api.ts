@@ -87,16 +87,6 @@ class ApiClient {
     return this._agentRole === "ADMIN" || this._agentRole === "MANAGER" || this._agentRole === "SUPERVISOR"
   }
 
-  /**
-   * True if the current agent may set a planogram's GOLDEN REFERENCE photo
-   * (the shelf-AI compliance baseline). Supervisor-and-up only — a field AGENT
-   * cannot; the server enforces the same MtmAgentRole set and returns 403, this
-   * just hides the button so an AGENT never taps a will-403 action.
-   */
-  get canSetGoldenReference(): boolean {
-    return this._agentRole === "ADMIN" || this._agentRole === "MANAGER" || this._agentRole === "SUPERVISOR"
-  }
-
   // --- Server discovery ---
 
   /**
@@ -280,7 +270,16 @@ class ApiClient {
       }
 
       if (!res.ok) {
-        throw new Error(data.error || `Request failed: ${res.status}`)
+        // Surface the server's machine-readable error code (e.g. the 422
+        // codes PHOTO_REQUIRED / MAX_PHOTOS_REACHED) so screens can react
+        // specifically instead of showing a generic failure toast.
+        const err = new Error(data.error || `Request failed: ${res.status}`) as Error & {
+          code?: string
+          status?: number
+        }
+        err.code = data.code
+        err.status = res.status
+        throw err
       }
 
       return data
@@ -480,63 +479,6 @@ class ApiClient {
 
   // --- Orders ---
 
-  async getOrders(params?: { status?: string }) {
-    const query = new URLSearchParams()
-    if (params?.status) query.set("status", params.status)
-    if (this.agentId) query.set("agentId", this.agentId)
-    const qs = query.toString()
-    return this.request(`/orders${qs ? `?${qs}` : ""}`)
-  }
-
-  async createOrder(data: { customerId: string; items: any[]; notes?: string }) {
-    return this.request("/orders", {
-      method: "POST",
-      body: JSON.stringify({ ...data, agentId: this.agentId }),
-    })
-  }
-
-  // --- SKU Catalog ---
-
-  async getSkuCategories() {
-    return this.request("/skus/categories")
-  }
-
-  async getSkus(params?: { categoryId?: string; search?: string; isActive?: boolean }) {
-    const query = new URLSearchParams()
-    if (params?.categoryId) query.set("categoryId", params.categoryId)
-    if (params?.search) query.set("search", params.search)
-    if (params?.isActive !== undefined) query.set("isActive", String(params.isActive))
-    const qs = query.toString()
-    return this.request(`/skus${qs ? `?${qs}` : ""}`)
-  }
-
-  /**
-   * Place an order with items snapshotted from the SKU catalog (M1-4d).
-   *
-   * Server expects `OrderItem` shape `{ name, price, qty, productId? }`
-   * per `src/lib/mtm-validators.ts:OrderItem` (leaddrive-v2). Mobile
-   * holds `skuId` internally for cart deduplication, but the catalog
-   * `MtmSku.id` is NOT the same row as `MtmProduct.id` (legacy product
-   * table used by `productId`) — so we send `name + price + qty` only
-   * and let the server reduce `totalAmount` from them.
-   *
-   * Known follow-up (architect M1-4d audit): the server currently
-   * trusts the mobile-supplied `price`. An agent can post `price: 0`
-   * and ship goods free. Server-side lookup of `MtmSku.basePrice`
-   * by `skuId` (new optional field) is the right fix — tracked as
-   * M1-4d.security in the roadmap.
-   */
-  async createOrderWithSkuItems(data: {
-    customerId: string
-    items: { skuId: string; name: string; price: number; qty: number }[]
-    notes?: string
-  }) {
-    return this.request("/orders", {
-      method: "POST",
-      body: JSON.stringify({ ...data, agentId: this.agentId }),
-    })
-  }
-
   // --- Alerts ---
 
   async getAlerts(params?: { resolved?: boolean }) {
@@ -599,110 +541,16 @@ class ApiClient {
     }
 
     const responseData = await res.json()
-    if (!res.ok) throw new Error(responseData.error || "Upload failed")
+    if (!res.ok) {
+      const err = new Error(responseData.error || "Upload failed") as Error & {
+        code?: string
+        status?: number
+      }
+      err.code = responseData.code
+      err.status = res.status
+      throw err
+    }
     return responseData
-  }
-
-  // --- Dashboard ---
-
-  async getDashboard() {
-    return this.request("/dashboard")
-  }
-
-  // --- Settings ---
-
-  async getSettings() {
-    return this.request("/settings")
-  }
-
-  // --- Planograms ---
-
-  async getPlanograms(customerId: string) {
-    return this.request(`/mobile/customers/${customerId}/planograms`)
-  }
-
-  async listPlanogramStandards(params?: { category?: string; limit?: number }) {
-    const query = new URLSearchParams()
-    if (params?.category) query.set("category", params.category)
-    if (params?.limit) query.set("limit", String(params.limit))
-    const qs = query.toString()
-    return this.request(`/planograms${qs ? `?${qs}` : ""}`)
-  }
-
-  async createPlanogram(data: {
-    name: string
-    description?: string
-    customerCategory?: "A" | "B" | "C" | "D"
-    brand?: string
-    expectedSkus?: Array<{ skuId: string; expectedFacings: number; position?: number }>
-    strictCompliance?: boolean
-  }) {
-    return this.request("/planograms", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
-  /**
-   * Set this planogram's GOLDEN REFERENCE photo (the shelf-AI compliance
-   * baseline) — a supervisor on-site captures the ideal, correctly-merchandised
-   * shelf. The server sets referenceImageUrl + clears stale slot embeddings;
-   * precise slot markup + activation happens on the WEB (big screen). base64
-   * JSON like analyzeShelf. Supervisor-and-up only (server-enforced 403 for AGENT).
-   */
-  async setGoldenReference(data: {
-    planogramId: string
-    imageBase64: string
-    imageMediaType?: "image/jpeg" | "image/png" | "image/webp"
-  }) {
-    return this.request(`/mobile/planograms/${data.planogramId}/golden-reference/upload`, {
-      method: "POST",
-      body: JSON.stringify({ imageBase64: data.imageBase64, imageMediaType: data.imageMediaType ?? "image/jpeg" }),
-    }, 60_000)
-  }
-
-  async submitPlanogramCheck(data: {
-    customerId: string
-    visitId?: string
-    // analysisId links the verdict to the persisted AI scan (Slice A) so the
-    // supervisor page shows the score + photo next to the agent's decision.
-    results: Array<{ planogramId: string; status: "compliant" | "non_compliant"; analysisId?: string }>
-  }) {
-    return this.request("/mobile/planogram-checks", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
-  async analyzeShelf(data: {
-    planogramId?: string
-    imageBase64: string
-    imageMediaType?: "image/jpeg" | "image/png"
-    // Slice A: scan is persisted server-side (MtmPhoto + MtmShelfAnalysis);
-    // visitId ties it to the active visit, GPS lands on the photo row.
-    visitId?: string
-    latitude?: number
-    longitude?: number
-    // Variant C Phase 3 idempotency key (UUIDv4 generated per capture). A retried
-    // POST (timeout / app restart) converges on the same analysis row instead of
-    // spawning a duplicate; also lets the server park the scan for the backstop.
-    clientScanId?: string
-  }) {
-    return this.request("/mobile/shelf-analytics/analyze", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }, 60_000)
-  }
-
-  /**
-   * Variant C Phase 3 — poll a parked scan's status by analysisId (sync-pull).
-   * The server returns the SAME body shape as analyzeShelf: 202 with
-   * data.status === "processing" while still running, or 200 with the full
-   * result + data.status (COMPLETED / FAILED / REJECTED) once terminal. A 202 is
-   * res.ok, so request() returns the body rather than throwing.
-   */
-  async getShelfAnalysis(analysisId: string) {
-    return this.request(`/mobile/shelf-analytics/${analysisId}`)
   }
 
   /** Generic GET — used by stores that don't have a dedicated method yet. */

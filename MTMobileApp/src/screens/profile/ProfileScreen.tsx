@@ -161,18 +161,6 @@ export default function ProfileScreen() {
         <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
       </View>
 
-      <TouchableOpacity
-        style={styles.planogramCard}
-        onPress={() => navigation.navigate("PlanogramLibrary")}
-        accessibilityRole="button"
-        accessibilityLabel={t("planogram.libraryEntryTitle")}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={styles.planogramTitle}>{t("planogram.libraryEntryTitle")}</Text>
-          <Text style={styles.planogramBody}>{t("planogram.libraryEntryBody")}</Text>
-        </View>
-        <Text style={styles.planogramArrow}>›</Text>
-      </TouchableOpacity>
 
       {/* Language switcher (M1-1a) */}
       <View style={styles.card}>
@@ -320,18 +308,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  planogramCard: {
-    backgroundColor: "#0f172a",
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  planogramTitle: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  planogramBody: { color: "#cbd5e1", fontSize: 12, lineHeight: 17, marginTop: 4 },
-  planogramArrow: { color: "#fff", fontSize: 28, marginLeft: 12, lineHeight: 30 },
 
   // Alerts
   alertBadge: {

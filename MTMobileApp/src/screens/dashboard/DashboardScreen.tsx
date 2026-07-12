@@ -10,7 +10,6 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import { useKpiStore, KpiPeriod } from "../../store/kpi"
-import { useSyncQueueStore } from "../../store/syncQueue"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 
@@ -27,7 +26,6 @@ export default function DashboardScreen() {
   const headerTop = useHeaderTop()
 
   const { stats, loading, error, period, fetchKpi, setPeriod } = useKpiStore()
-  const pendingCount = useSyncQueueStore((s) => s.pendingCount())
   const agent = useAuthStore((s) => s.agent)
 
   const agentName = agent?.name ?? ""
@@ -94,15 +92,6 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Sync banner */}
-        {pendingCount > 0 && (
-          <View style={styles.syncBanner}>
-            <Text style={styles.syncBannerText}>
-              {"🔄 " + t("dashboard.syncPending", { n: pendingCount })}
-            </Text>
-          </View>
-        )}
-
         {error ? (
           <View style={styles.errorCard}>
             <Text style={styles.errorText}>{error}</Text>
@@ -122,13 +111,6 @@ export default function DashboardScreen() {
                   ? stats.visits.completed / stats.visits.total
                   : 0
               }
-            />
-
-            {/* Orders card */}
-            <KpiCard
-              label={t("dashboard.orders")}
-              color="#22c55e"
-              value={stats ? String(stats.orders.count) : "—"}
             />
 
             {/* Tasks card */}
@@ -239,23 +221,6 @@ const styles = StyleSheet.create({
   },
   periodTextActive: {
     color: "#6C63FF",
-  },
-
-  // Sync banner
-  syncBanner: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: "#fef3c7",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderLeftWidth: 3,
-    borderLeftColor: "#f59e0b",
-  },
-  syncBannerText: {
-    color: "#92400e",
-    fontSize: 13,
-    fontWeight: "600",
   },
 
   // Error

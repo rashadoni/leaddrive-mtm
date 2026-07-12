@@ -24,7 +24,6 @@ import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
-import { useCartStore } from "../../store/cart"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>
@@ -312,10 +311,6 @@ export default function VisitScreen() {
         ...(forceCheckIn && { force: true }),
       })
       if (res.success) {
-        // Bind the cart to this customer for the duration of the visit.
-        // SkuCatalogScreen / CartScreen surface this binding so place-order
-        // can hit the API with a real customerId (M1-4d fix-before-build).
-        useCartStore.getState().setCustomer(customer.id, customer.name)
         showToast("success", t("visit.checkedInTitle"), t("visit.checkedInBody", { name: customer.name }))
         fetchData()
       } else if (res.error) {
@@ -351,16 +346,17 @@ export default function VisitScreen() {
         notes: notes || undefined,
       })
       if (res.success) {
-        // Visit ended — wipe the cart fully (customer binding + items +
-        // notes). The agent's next check-in will set a fresh customer.
-        useCartStore.getState().resetCart()
         showToast("success", t("visit.checkedOutTitle"), t("visit.checkedOutBody"))
         fetchData()
       }
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-out error:", e?.message ?? e)
-        showToast("error", t("common.error"), t("visit.checkOutFailed"))
+        if (e?.code === "PHOTO_REQUIRED") {
+          showToast("error", t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
+        } else {
+          showToast("error", t("common.error"), t("visit.checkOutFailed"))
+        }
       }
     } finally {
       setMutating(false)
@@ -395,7 +391,11 @@ export default function VisitScreen() {
       // the user away; suppress the upload-failed toast so they don't see a
       // confusing upload error on top of the revoked-logout flow.
       if (e?.message !== "SESSION_EXPIRED") {
-        showToast("error", t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+        if (e?.code === "MAX_PHOTOS_REACHED") {
+          showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
+        } else {
+          showToast("error", t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+        }
       }
     }
   }
@@ -479,29 +479,6 @@ export default function VisitScreen() {
               disabled={mutating}
             >
               <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.equipmentBtn}
-              onPress={() =>
-                navigation.navigate("EquipmentList", {
-                  customerId: activeVisit.customer.id,
-                  visitId: activeVisit.id,
-                })
-              }
-            >
-              <Text style={styles.equipmentBtnText}>🔧 {t("equipment.title")}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.equipmentBtn}
-              onPress={() =>
-                navigation.navigate("Planogram", {
-                  customerId: activeVisit.customer.id,
-                  customerName: activeVisit.customer.name,
-                  visitId: activeVisit.id,
-                })
-              }
-            >
-              <Text style={styles.equipmentBtnText}>📐 {t("planogram.title")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
@@ -819,14 +796,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   photoBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  equipmentBtn: {
-    backgroundColor: "#f59e0b",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  equipmentBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   checkOutBtn: {
     backgroundColor: "#ef4444",
     borderRadius: 10,
