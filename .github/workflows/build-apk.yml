@@ -18,6 +18,9 @@ on:
       - "MTMobileApp/**"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -79,3 +82,17 @@ jobs:
           path: MTMobileApp/${{ steps.apk.outputs.file }}
           retention-days: 30
           if-no-files-found: error
+
+      # Artifact downloads require an authenticated Actions UI session; a
+      # prerelease gives a plain downloadable asset URL instead.
+      - name: Publish APK to GitHub prerelease
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.apk.outputs.version }}-build${{ github.run_number }}"
+          gh release create "$TAG" --prerelease \
+            --title "MTM App ${TAG}" \
+            --notes "CI build of ${GITHUB_SHA} (branch ${GITHUB_REF_NAME})" \
+            --target "${GITHUB_SHA}" || true
+          gh release upload "$TAG" "${{ steps.apk.outputs.file }}" --clobber
