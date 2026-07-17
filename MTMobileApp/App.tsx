@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { StatusBar, Platform, PermissionsAndroid, AppState, AppStateStatus, View, ActivityIndicator } from 'react-native'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { StatusBar, Platform, PermissionsAndroid, AppState, AppStateStatus, View, ActivityIndicator, StyleSheet } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import AppNavigator from './src/navigation/AppNavigator'
 import { ErrorBoundary } from './src/components/ErrorBoundary'
@@ -31,6 +31,23 @@ function AppContent() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sendPing = useCallback(() => {
+    api.ping().catch(() => {})
+  }, [])
+
+  const stopPing = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current)
+      pingIntervalRef.current = null
+    }
+  }, [])
+
+  const startPing = useCallback(() => {
+    if (pingIntervalRef.current) return
+    sendPing()
+    pingIntervalRef.current = setInterval(sendPing, PING_INTERVAL)
+  }, [sendPing])
+
 
   // Register the mid-session 401 → store-logout bridge once on mount.
   // Must be set before any authenticated request fires, so we do it here
@@ -65,7 +82,7 @@ function AppContent() {
           await startTracking()
 
           // Request background location separately (non-blocking, Android 10+)
-          if (Platform.Version >= 29) {
+          if (Number(Platform.Version) >= 29) {
             PermissionsAndroid.request(
               PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
               {
@@ -90,7 +107,7 @@ function AppContent() {
     startPing()
 
     return () => { stopTracking().catch(() => {}); stopPing() }
-  }, [isLoggedIn])
+  }, [isLoggedIn, startPing, stopPing])
 
   // AppState listener — restart tracking when app returns from background
   useEffect(() => {
@@ -114,25 +131,8 @@ function AppContent() {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange)
     return () => subscription?.remove()
-  }, [])
+  }, [sendPing])
 
-  function startPing() {
-    if (pingIntervalRef.current) return
-    // Send ping immediately
-    sendPing()
-    pingIntervalRef.current = setInterval(sendPing, PING_INTERVAL)
-  }
-
-  function stopPing() {
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current)
-      pingIntervalRef.current = null
-    }
-  }
-
-  function sendPing() {
-    api.ping().catch(() => {})
-  }
 
   return (
     <SafeAreaProvider>
@@ -169,10 +169,19 @@ export default function App() {
 
   if (!i18nReady) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0B0B1E" }}>
+      <View style={styles.loader}>
         <ActivityIndicator size="large" color="#6C63FF" />
       </View>
     )
   }
   return <AppContent />
 }
+
+const styles = StyleSheet.create({
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0B0B1E",
+  },
+})
