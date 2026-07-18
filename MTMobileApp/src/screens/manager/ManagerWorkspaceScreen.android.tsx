@@ -43,13 +43,17 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const meta = SCREEN_META[kind]
   const tablet = isTabletWidth(width)
   const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
-  const [loading, setLoading] = useState(kind === "team")
+  const [summary, setSummary] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (kind !== "team") return
     const controller = new AbortController()
-    api.getManagerTeam(controller.signal)
-      .then((response: any) => setTeam(response?.data?.agents || []))
+    const request = kind === "team" ? api.getManagerTeam(controller.signal) : kind === "planning" ? api.getManagerPlanning(undefined, controller.signal) : api.getManagerApprovals(controller.signal)
+    request.then((response: any) => {
+        if (kind === "team") setTeam(response?.data?.agents || [])
+        else if (kind === "planning") setSummary(`${response?.data?.routes?.length || 0} routes planned today`)
+        else setSummary(`${Object.values(response?.data?.counts || {}).reduce((a: number, b: any) => a + Number(b || 0), 0)} approvals pending`)
+      })
       .catch(() => setTeam([]))
       .finally(() => setLoading(false))
     return () => controller.abort()
@@ -84,7 +88,10 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
               </View>
             ))}
           </View>
-        ) : <View style={styles.statusPanel}>
+        ) : !loading && summary ? <View style={styles.statusPanel}>
+          <View style={styles.statusIcon}><Icon name={kind === "planning" ? "calendar-outline" : "checkmark-done-outline"} size={22} color={meta.color} /></View>
+          <View style={styles.statusCopy}><Text style={styles.statusTitle}>{summary}</Text><Text style={styles.statusBody}>{t(meta.bodyKey)}</Text></View>
+        </View> : <View style={styles.statusPanel}>
           <View style={styles.statusIcon}>
             <Icon name="git-branch-outline" size={22} color={fieldTheme.color.primary} />
           </View>

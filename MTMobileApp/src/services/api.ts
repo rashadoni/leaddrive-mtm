@@ -423,6 +423,15 @@ class ApiClient {
     return this.request("/mobile/manager/team", { signal })
   }
 
+  async getManagerPlanning(date?: string, signal?: AbortSignal) {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : ""
+    return this.request(`/mobile/manager/planning${qs}`, { signal })
+  }
+
+  async getManagerApprovals(signal?: AbortSignal) {
+    return this.request("/mobile/manager/approvals", { signal })
+  }
+
   // --- Routes ---
 
   async getRoutes(date?: string, signal?: AbortSignal) {
