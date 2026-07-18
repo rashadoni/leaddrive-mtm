@@ -17,16 +17,16 @@ The current-state labels below are based on inspection of this Android repositor
 - `src/screens/visit/VisitScreen.tsx`: nearby customer search, GPS/geofence check-in, check-out, notes, visit photo, and today's visit list;
 - `src/screens/tasks/TasksScreen.tsx`: basic task list and `PENDING → IN_PROGRESS → COMPLETED` transition with result notes;
 - `src/screens/dashboard/DashboardScreen.android.tsx`, `src/screens/dashboard/dashboard-layout.ts`, and `src/store/dashboard-layout.ts`: role-derived Agent/Manager homes with one to six persistent widgets, deterministic phone/tablet grids, ordering, reset, and a focused widget view. Layout storage is scoped by tenant, user, workspace, and device class. Manager release data remains explicitly unavailable rather than simulated;
-- `src/runtime/AndroidApp.tsx`, `src/store/workday.ts`, and `src/services/location.android.ts`: explicit persisted Agent workday start/end gates heartbeat and background location. Manager roles cannot start field tracking. Android location/camera permission prompts begin from the Agent workday flow rather than silently at login;
-- `src/store/kpi.ts`: only the presently connected Agent aggregates can populate real dashboard values. Manager team KPI, coverage, GPS quality, promotion, approval, period, formula, and drill-down data are not yet connected;
+- `src/runtime/AndroidApp.tsx`, `src/store/workday.ts`, and `src/services/location.android.ts`: an explicit client-local persisted Agent workday start/end gate controls heartbeat and background location. It is not yet a server-authoritative workday record or enforcement boundary. Manager roles cannot start field tracking. Android location/camera permission prompts begin from the Agent workday flow rather than silently at login;
+- `src/store/kpi.ts`: only the presently connected Agent `/visits`, `/tasks`, and `/photos` aggregates can populate real dashboard values, without a server-authoritative period query. Manager team KPI, coverage, GPS quality, promotion, approval, period, formula, and drill-down data are not yet connected;
 - `src/services/api.ts`: mobile routes, visits, tasks, customers, photos, alerts, profile, and location history endpoints;
 - `src/screens/profile/ProfileScreen.tsx`: profile, daily summary, alerts, RU/AZ/EN language choice, hints, server switch;
-- `docs/mtm-offline-qa-scenarios.md`: an intended WatermelonDB/outbox test plan. The inspected tree has no WatermelonDB/SQLite dependency, local entity database, `SyncManager`, or sync implementation, so this document is evidence of a target, not evidence that offline-first is implemented;
+- `docs/mtm-offline-qa-scenarios.md`: a legacy target document that references an absent WatermelonDB/`SyncManager` architecture and a removed Orders flow. The inspected tree has no WatermelonDB/SQLite dependency, local entity database, durable outbox, or sync implementation, so the document is neither a current executable test plan nor evidence that offline-first is implemented;
 - `package.json`: no map library and no local database/sync dependency, so map/replay and durable offline parity are not present in this build.
 
 This document does **not** claim the state of separate web/backend repositories. Any backend or web item must be verified in its own tree before being marked complete.
 
-The role shell, configurable home, and explicit workday are foundation progress only. They do not make any photographed SWM workflow complete without its real data, authorization, audit, offline, and acceptance paths.
+The role shell, configurable home, and client-local workday lifecycle gate are foundation progress only. They do not make any photographed SWM workflow complete without its real data, server authorization, audit, offline, and acceptance paths.
 
 ## Status legend
 
@@ -395,7 +395,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 10, selected employee/date/time GPS history with distance, stops, and organization list.
 
 **Target roles:** Manager; Agent may view only their own history.
-**Current state: Partial.** Background GPS sending, cached last position, heartbeat, and `getLocationHistory()` exist. Android V2 now gates collection to an authenticated Agent with an explicit persisted workday start/end; Manager roles cannot activate field tracking. There is still no history screen, map dependency, employee/date/time filters, stop detection UI, replay, organization/visit correlation, server-authoritative workday enforcement, or completed physical-device privacy/lifecycle proof.
+**Current state: Partial.** Background GPS sending, a process-memory last-position cache, heartbeat, and `getLocationHistory()` exist. Android V2 gates collection locally to an authenticated Agent with an explicit persisted workday start/end; this is not a durable GPS cache or a server-authoritative shift. Manager roles cannot activate field tracking. There is still no history screen, map dependency, employee/date/time filters, stop detection UI, replay, organization/visit correlation, server-authoritative workday enforcement, or completed physical-device privacy/lifecycle proof.
 
 **Data and filters**
 
@@ -426,7 +426,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 11, full physical route across a territory with point sequence and route line.
 
 **Target roles:** Manager and Agent self-view.
-**Current state: Partial.** `RouteScreen` shows an ordered planned route, point statuses, distances, planned time, completion, and external navigation. Android V2 can send GPS points during an active Agent workday. There is no in-app map, actual route line, full-day replay, stop overlay, plan-vs-fact comparison, or proven offline replay continuity.
+**Current state: Partial.** `RouteScreen` shows an ordered planned route, point statuses, distances, planned time, completion, and external navigation. Android V2 can send GPS points while its client-local Agent workday gate is active; the server does not yet prove or enforce the shift boundary. There is no in-app map, actual route line, full-day replay, stop overlay, plan-vs-fact comparison, or proven offline replay continuity.
 
 **Data/filter/actions/status**
 
@@ -452,7 +452,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 12, current map of employees across Azerbaijan with employee list and latest activity time.
 
 **Target roles:** Manager/Supervisor.
-**Current state: Partial.** A role-safe Manager workspace now exists with Overview, Team, Planning, Approvals, and Profile navigation. Team/Planning/Approvals are honest data-unavailable shells, not completed workflows. Agents can send location and a 60-second heartbeat only during an explicit Agent workday, and profile alerts exist; there is still no connected team list, live map, markers, clustering, last-seen status, battery, scope filters, or Manager live-data API in this app.
+**Current state: Partial.** A role-safe Manager workspace now exists with Overview, Team, Planning, Approvals, and Profile navigation. Team/Planning/Approvals are honest data-unavailable shells, not completed workflows. Agents can send location and a 60-second heartbeat only while the client-local workday gate is active, and profile alerts exist; server-authoritative shift enforcement is still absent. There is still no connected team list, live map, markers, clustering, last-seen status, battery, scope filters, or Manager live-data API in this app.
 
 **Data and filters**
 
@@ -481,7 +481,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 13, visit-plan and GPS gauges, trend chart, and department/employee/visit-type/brand filters.
 
 **Target roles:** Agent self-view; Manager team/drill-down.
-**Current state: Partial.** Android V2 has separate role-derived dashboard widget sets and a configurable home. Connected Agent route/task aggregates can populate their corresponding widgets; unconnected Agent widgets and all Manager team metrics remain explicitly unavailable in release builds. There is no server-authoritative period selector/query, visit-plan or GPS gauge, coverage formula, organizational filter, trend, formula version, or source drill-down.
+**Current state: Partial.** Android V2 has separate role-derived dashboard widget sets and a configurable home. Only connected Agent `/visits`, `/tasks`, and `/photos` aggregates can populate corresponding values; there is no confirmed route aggregate or period-query contract. Unconnected Agent widgets and all Manager team metrics remain explicitly unavailable in release builds. There is no server-authoritative period selector/query, visit-plan or GPS gauge, coverage formula, organizational filter, trend, formula version, or source drill-down.
 
 **Data and formulas**
 
@@ -607,7 +607,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 17, weekday columns with visits, day-start times, coverage summary, tasks, and filters.
 
 **Target roles:** Agent self-view; Manager selected employee/team view.
-**Current state: Partial.** Route/Visit show today's work, Dashboard/Profile show small summaries, and Agent Home now has explicit persisted start/end-workday control that gates Android GPS/heartbeat lifecycle. There is still no week/day-column calendar, 1/5/7-day switch, planned-vs-fact per day, integrated coverage/tasks, Manager employee selector, server-authoritative workday record, or completed offline/physical-device lifecycle validation.
+**Current state: Partial.** Route/Visit show today's work, Dashboard/Profile show small summaries, and Agent Home has an explicit client-local persisted start/end-workday control that gates Android GPS/heartbeat lifecycle. It is not yet a server-authoritative shift. There is still no week/day-column calendar, 1/5/7-day switch, planned-vs-fact per day, integrated coverage/tasks, Manager employee selector, server-authoritative workday record, or completed offline/physical-device lifecycle validation.
 
 **Data and filters**
 
@@ -692,7 +692,7 @@ LeadShelf unavailability must not block a downloaded MTM route, visit check-in/o
 
 - **Emulator runtime remains open:** the APK built from the final combined tree still needs a complete Agent and Manager walkthrough covering authentication/logout, role-safe tabs, 599/600/839/840 dp boundaries, phone and tablet orientation changes, one/two/six-widget layouts, focused-widget return, workday permission transitions, and absence of restored-fragment/navigation crashes. Source checks and an older APK do not replace this evidence.
 - **Physical Android remains open:** no accepted proof yet covers a representative tablet and smartphone, background GPS under screen-off/Doze/vendor power management, permission denial/revocation, camera/photo flow, rotation, cold restart, weak network, or airplane-mode recovery.
-- **Signed distribution remains open:** a locally installable emulator release APK is not a production signing gate. The production keystore workflow, signed ARM64 APK/AAB, signature verification, clean install, upgrade-over-previous-version, and store/MDM delivery evidence remain external gates.
+- **Signed distribution remains open:** a locally installable emulator release APK is not a production signing gate. The production keystore workflow must source credentials from protected CI secrets rather than tracked literals and remove or rotate the current placeholder values. A signed ARM64 APK/AAB, signature verification, clean install, upgrade-over-previous-version, and store/MDM delivery evidence remain external gates.
 - **Production delivery is separate:** when authorized, delivery must remain PR → merge → CI. A manual `deploy.sh` run is not an acceptance substitute for Android runtime, physical-device, or signed-artifact evidence.
 
 For each SWM item, the completion sequence is:
@@ -713,7 +713,7 @@ The item remains **Partial** if any required role, status branch, formula/drill-
 ## Recommended implementation order
 
 1. **Parity contract and acceptance baseline:** maintain the 18-photo register, sign the glossary/formulas, confirm role authority and device targets, inventory backend/web dependencies, and keep one acceptance script per SWM item.
-2A. **Foundation — UI/runtime:** role-safe Agent/Manager navigation; shared 600/840 dp adaptation; phone bottom tabs and tablet rail; role-derived configurable home; explicit Agent workday controls; RU/AZ/EN and accessibility; emulator evidence for both roles, orientations, widget layouts, rotation, and login/logout. The source foundation is in progress, but the open emulator/physical/signed gates above prevent completion.
+2A. **Foundation — UI/runtime:** role-safe Agent/Manager navigation; shared 600/840 dp adaptation; phone bottom tabs and tablet rail; role-derived configurable home; explicit Agent workday controls; RU/AZ/EN and accessibility. The source checkpoint and a local release APK are ready for validation. Phase 2A completes only after the final-commit Agent and Manager emulator walkthrough passes and the client approves the design. Physical-device lifecycle, production signing, distribution, and upgrade evidence remain Phase 7/release gates; they do not block starting Phase 2B.
 2B. **Foundation — data/safety:** server-authoritative tenant/RBAC enforcement; workday records and GPS policy/audit; durable offline database/outbox; idempotency, retries, conflicts, and resumable attachments; shared dictionaries/formulas; real Manager APIs; stale-data isolation and user/tenant cache invalidation. This phase is not complete and must precede master-data workflow claims.
 3. **Master data:** SWM-01, SWM-03, SWM-04, SWM-05, SWM-06, SWM-07, then SWM-02/SWM-08.
 4. **Planning and execution:** SWM-16, SWM-18, SWM-17, then complete Route/Visit parity.
