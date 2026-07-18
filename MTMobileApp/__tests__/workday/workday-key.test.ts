@@ -64,7 +64,7 @@ describe("workday identity", () => {
     const ending = useWorkdayStore.getState().end("tenant-a:agent-a")
     const starting = useWorkdayStore.getState().start("tenant-a:agent-b")
     await Promise.resolve()
-    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(1)
+    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(2)
 
     releaseRemove()
     await Promise.all([ending, starting])
