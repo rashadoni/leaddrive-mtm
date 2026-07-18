@@ -75,7 +75,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
           <View style={styles.teamList}>
             {team.map((agent) => (
               <View key={agent.id} style={styles.agentRow}>
-                <View style={[styles.presenceDot, { backgroundColor: agent.isOnline ? fieldTheme.color.green : fieldTheme.color.border }]} />
+                <View style={[styles.presenceDot, { backgroundColor: agent.isOnline ? fieldTheme.color.success : fieldTheme.color.border }]} />
                 <View style={styles.agentCopy}>
                   <Text style={styles.agentName}>{agent.name}</Text>
                   <Text style={styles.agentMeta}>{agent.role} · {agent.workday?.status || t("dashboardV2.unavailable")}</Text>
