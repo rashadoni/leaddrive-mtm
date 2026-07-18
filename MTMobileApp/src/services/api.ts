@@ -419,6 +419,10 @@ class ApiClient {
     return this.request(`/mobile/sync/pull?${query.toString()}`)
   }
 
+  async getManagerTeam(signal?: AbortSignal) {
+    return this.request("/mobile/manager/team", { signal })
+  }
+
   // --- Routes ---
 
   async getRoutes(date?: string, signal?: AbortSignal) {

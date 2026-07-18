@@ -1,10 +1,11 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
+import { api } from "../../services/api"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -41,6 +42,18 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const headerTop = useHeaderTop()
   const meta = SCREEN_META[kind]
   const tablet = isTabletWidth(width)
+  const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
+  const [loading, setLoading] = useState(kind === "team")
+
+  useEffect(() => {
+    if (kind !== "team") return
+    const controller = new AbortController()
+    api.getManagerTeam(controller.signal)
+      .then((response: any) => setTeam(response?.data?.agents || []))
+      .catch(() => setTeam([]))
+      .finally(() => setLoading(false))
+    return () => controller.abort()
+  }, [kind])
 
   return (
     <View style={styles.root}>
@@ -58,7 +71,20 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, tablet && styles.contentTablet]}>
-        <View style={styles.statusPanel}>
+        {kind === "team" && !loading && team.length > 0 ? (
+          <View style={styles.teamList}>
+            {team.map((agent) => (
+              <View key={agent.id} style={styles.agentRow}>
+                <View style={[styles.presenceDot, { backgroundColor: agent.isOnline ? fieldTheme.color.green : fieldTheme.color.border }]} />
+                <View style={styles.agentCopy}>
+                  <Text style={styles.agentName}>{agent.name}</Text>
+                  <Text style={styles.agentMeta}>{agent.role} · {agent.workday?.status || t("dashboardV2.unavailable")}</Text>
+                </View>
+                <Text style={styles.agentState}>{agent.isOnline ? "ONLINE" : "OFFLINE"}</Text>
+              </View>
+            ))}
+          </View>
+        ) : <View style={styles.statusPanel}>
           <View style={styles.statusIcon}>
             <Icon name="git-branch-outline" size={22} color={fieldTheme.color.primary} />
           </View>
@@ -66,7 +92,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
             <Text style={styles.statusTitle}>{t("dashboardV2.unavailable")}</Text>
             <Text style={styles.statusBody}>{t("managerShell.pendingApi")}</Text>
           </View>
-        </View>
+        </View>}
 
         <View style={[styles.skeletonGrid, tablet && styles.skeletonGridTablet]}>
           {[0, 1, 2, 3].map((item) => (
@@ -138,6 +164,13 @@ const styles = StyleSheet.create({
   statusCopy: { flex: 1, gap: 3 },
   statusTitle: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
   statusBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19 },
+  teamList: { gap: fieldTheme.space.sm },
+  agentRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  presenceDot: { width: 10, height: 10, borderRadius: fieldTheme.radius.pill },
+  agentCopy: { flex: 1, gap: 2 },
+  agentName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12 },
+  agentState: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
   skeletonGrid: { gap: fieldTheme.space.md },
   skeletonGridTablet: { flexDirection: "row", flexWrap: "wrap" },
   skeleton: {
