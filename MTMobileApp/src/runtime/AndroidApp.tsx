@@ -18,6 +18,7 @@ import { useDashboardLayoutStore } from "../store/dashboard-layout"
 import { useWorkdayStore, workdayKey } from "../store/workday"
 import { startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
+import { flushOutbox } from "../services/outbox"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { canTrackFieldLocation } from "../auth/roles"
@@ -58,6 +59,15 @@ function AppContent() {
     sendPing()
     pingIntervalRef.current = setInterval(sendPing, PING_INTERVAL)
   }, [sendPing])
+
+  const flushPendingOperations = useCallback(() => {
+    if (!useAuthStore.getState().isLoggedIn) return
+    flushOutbox((operations) => api.syncPush(operations)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (isLoggedIn) flushPendingOperations()
+  }, [isLoggedIn, flushPendingOperations])
 
   useEffect(() => {
     api.setUnauthorizedHandler((reason) => {
@@ -129,6 +139,7 @@ function AppContent() {
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
+        flushPendingOperations()
         const auth = useAuthStore.getState()
         const workday = useWorkdayStore.getState()
         const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
@@ -143,7 +154,7 @@ function AppContent() {
 
     const subscription = AppState.addEventListener("change", handleAppStateChange)
     return () => subscription.remove()
-  }, [sendPing])
+  }, [sendPing, flushPendingOperations])
 
   return (
     <SafeAreaProvider>
