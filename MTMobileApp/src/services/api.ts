@@ -400,6 +400,19 @@ class ApiClient {
     return this.request("/mobile/location")
   }
 
+  async syncPush(operations: Array<{
+    operationId: string
+    entity: string
+    op: "create" | "update"
+    data: Record<string, unknown>
+    clientTimestamp: number
+  }>) {
+    return this.request("/mobile/sync/push", {
+      method: "POST",
+      body: JSON.stringify({ clientId: this.agentId || "mobile", operations }),
+    })
+  }
+
   // --- Routes ---
 
   async getRoutes(date?: string, signal?: AbortSignal) {

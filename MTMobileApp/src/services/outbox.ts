@@ -66,3 +66,30 @@ export async function deferOutboxOperation(operationIdToDefer: string, now = Dat
 export async function clearOutbox() {
   await AsyncStorage.removeItem(STORAGE_KEY)
 }
+
+export async function flushOutbox(
+  send: (operations: OutboxOperation[]) => Promise<{ results?: Array<{ operationId: string; status: string }> }>,
+) {
+  const pending = await pendingOutboxOperations()
+  if (pending.length === 0) return { sent: 0, deferred: 0 }
+  try {
+    const response = await send(pending)
+    const resultById = new Map((response.results ?? []).map((result) => [result.operationId, result.status]))
+    let sent = 0
+    let deferred = 0
+    for (const item of pending) {
+      const status = resultById.get(item.operationId)
+      if (status === "ok" || status === "conflict") {
+        await acknowledgeOutboxOperation(item.operationId)
+        sent += 1
+      } else {
+        await deferOutboxOperation(item.operationId)
+        deferred += 1
+      }
+    }
+    return { sent, deferred }
+  } catch {
+    for (const item of pending) await deferOutboxOperation(item.operationId)
+    return { sent: 0, deferred: pending.length }
+  }
+}
