@@ -317,6 +317,10 @@ export default function DashboardScreen() {
                 return (
                   <Pressable
                     key={widget.id}
+                    testID={`dashboard-widget-toggle-${widget.id}`}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={t(widget.labelKey)}
+                    accessibilityState={{ checked: selected }}
                     onPress={() => toggleWidget(widget.id)}
                     style={[
                       styles.pickerItem,
@@ -344,7 +348,9 @@ export default function DashboardScreen() {
                   <Text style={styles.orderNumber}>{index + 1}</Text>
                   <Text style={styles.orderLabel} numberOfLines={1}>{t(widget.labelKey)}</Text>
                   <Pressable
+                    testID={`dashboard-widget-move-earlier-${widget.id}`}
                     accessibilityRole="button"
+                    accessibilityLabel={`${t(widget.labelKey)}: ${t("dashboardV2.moveEarlier")}`}
                     disabled={index === 0}
                     onPress={() => save(moveWidget(selectedIds, widget.id, -1))}
                     style={[
@@ -356,7 +362,9 @@ export default function DashboardScreen() {
                     <Icon name="arrow-back" size={17} color={fieldTheme.color.ink} />
                   </Pressable>
                   <Pressable
+                    testID={`dashboard-widget-move-later-${widget.id}`}
                     accessibilityRole="button"
+                    accessibilityLabel={`${t(widget.labelKey)}: ${t("dashboardV2.moveLater")}`}
                     disabled={index === selectedWidgets.length - 1}
                     onPress={() => save(moveWidget(selectedIds, widget.id, 1))}
                     style={[
@@ -373,6 +381,7 @@ export default function DashboardScreen() {
 
             {message && <Text style={styles.message}>{message}</Text>}
             <Pressable
+              accessibilityRole="button"
               onPress={() => resetLayout(context).catch(() => setMessage(t("common.error")))}
               style={[styles.resetButton, expandedTablet && styles.expandedTouchHeight]}
             >
