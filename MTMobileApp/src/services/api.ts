@@ -416,7 +416,7 @@ class ApiClient {
   async syncPull(since?: string | null) {
     const query = new URLSearchParams({ entities: "routes,customers,visits,tasks", limit: "200" })
     if (since) query.set("since", since)
-    return this.request()
+    return this.request(`/mobile/sync/pull?${query.toString()}`)
   }
 
   // --- Routes ---

@@ -5,7 +5,7 @@ type SyncRecord = { id: string; [key: string]: unknown }
 type SyncState = { version: string | null; entities: Partial<Record<SyncEntity, SyncRecord[]>> }
 
 function key(tenantId: string | null | undefined, agentId: string | null | undefined) {
-  return 
+  return `@mtm_sync_cache_v1:${tenantId || "unknown"}:${agentId || "unknown"}`
 }
 
 export async function readSyncCache(tenantId?: string | null, agentId?: string | null): Promise<SyncState> {
