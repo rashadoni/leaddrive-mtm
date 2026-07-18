@@ -1,7 +1,7 @@
 import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
-import i18n from "../i18n"
+import { i18n } from "../i18n"
 
 export let lastKnownPosition: { latitude: number; longitude: number; accuracy: number; timestamp: number } | null = null
 
@@ -19,7 +19,7 @@ const backgroundOptions = {
   },
   color: "#6C63FF",
   linkingURI: "mtm://",
-  foregroundServiceType: ["location"] as const,
+  foregroundServiceType: ["location"] as Array<"location">,
   parameters: {
     delay: SEND_INTERVAL,
   },

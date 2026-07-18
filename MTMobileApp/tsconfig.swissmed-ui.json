@@ -1,0 +1,36 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node"]
+  },
+  "include": [
+    "App.android.ts",
+    "src/runtime/AndroidApp.tsx",
+    "src/navigation/AppNavigator.android.ts",
+    "src/navigation/AppNavigatorAndroidV2.tsx",
+    "src/auth/**/*.ts",
+    "src/theme/**/*.ts",
+    "src/screens/dashboard/DashboardScreen.android.tsx",
+    "src/screens/dashboard/dashboard-layout.ts",
+    "src/screens/auth/UnsupportedRoleScreen.android.tsx",
+    "src/screens/manager/ManagerWorkspaceScreen.android.tsx",
+    "src/screens/manager/ManagerWorkspaceScreen.ts",
+    "src/services/location.android.ts",
+    "src/store/dashboard-layout.ts",
+    "src/store/workday.ts",
+    "src/i18n/index.android.ts",
+    "src/i18n/mobile-resources.ts",
+    "src/hooks/useTabBarHeight.android.ts",
+    "src/types/**/*.d.ts",
+    "__tests__/auth/**/*.ts",
+    "__tests__/dashboard/**/*.ts",
+    "__tests__/workday/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "App.tsx",
+    "App.android.tsx",
+    "src/services/location.ts",
+    "__tests__/services/**"
+  ]
+}

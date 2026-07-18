@@ -14,6 +14,12 @@ const STORAGE_KEY_AGENT = "@mtm_agent"
 const STORAGE_KEY_SERVER = "@mtm_server"
 const STORAGE_KEY_CREDENTIALS = "@mtm_saved_login"
 
+// Server discovery includes a cold TLS handshake through the tenant proxy.
+// Ten seconds is too aggressive on entry-level Android devices and on
+// software-accelerated emulators, where an otherwise healthy tenant can be
+// reported as missing before the handshake completes.
+const SERVER_DISCOVERY_TIMEOUT_MS = 30_000
+
 class ApiClient {
   private token: string | null = null
   private agentId: string | null = null
@@ -161,16 +167,18 @@ class ApiClient {
 
     try {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10000)
+      const timeout = setTimeout(() => controller.abort(), SERVER_DISCOVERY_TIMEOUT_MS)
 
-      const res = await fetch(url, { signal: controller.signal })
-      clearTimeout(timeout)
-
-      const data = await res.json()
-      if (data.success) {
-        return { success: true, domain, name: data.data?.name }
+      try {
+        const res = await fetch(url, { signal: controller.signal })
+        const data = await res.json()
+        if (data.success) {
+          return { success: true, domain, name: data.data?.name }
+        }
+        return { success: false, domain, error: "Invalid server response" }
+      } finally {
+        clearTimeout(timeout)
       }
-      return { success: false, domain, error: "Invalid server response" }
     } catch (e: any) {
       if (e.name === "AbortError") {
         return { success: false, domain, error: "Connection timeout" }
@@ -390,6 +398,19 @@ class ApiClient {
 
   async getLocationHistory() {
     return this.request("/mobile/location")
+  }
+
+  async syncPush(operations: Array<{
+    operationId: string
+    entity: string
+    op: "create" | "update"
+    data: Record<string, unknown>
+    clientTimestamp: number
+  }>) {
+    return this.request("/mobile/sync/push", {
+      method: "POST",
+      body: JSON.stringify({ clientId: this.agentId || "mobile", operations }),
+    })
   }
 
   // --- Routes ---

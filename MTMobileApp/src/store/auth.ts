@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { api } from "../services/api"
+import { kpiScopeKey, useKpiStore } from "./kpi"
 
 interface Agent {
   id: string
@@ -50,8 +51,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   revokedReason: null,
 
   login: async (email: string, password: string) => {
+    useKpiStore.getState().clearScope()
     const result = await api.login(email, password)
     if (result.success) {
+      useKpiStore.getState().setScope(
+        kpiScopeKey(result.data.agent?.organizationId, result.data.agent?.id),
+      )
       set({ isLoggedIn: true, agent: result.data.agent })
     } else {
       throw new Error(result.error || "Login failed")
@@ -59,6 +64,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    useKpiStore.getState().clearScope()
     await api.logout()
     set({ isLoggedIn: false, agent: null, revokedReason: null })
   },
@@ -67,6 +73,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // The api interceptor already called api.logout() (cleared token +
     // AsyncStorage). We only flip the store state here — no second
     // api.logout() to avoid double-work or recursion.
+    useKpiStore.getState().clearScope()
     set({ isLoggedIn: false, agent: null, revokedReason: reason })
   },
 
@@ -75,6 +82,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   switchServer: async () => {
+    useKpiStore.getState().clearScope()
     await api.fullLogout()
     // Also clear revokedReason so a revoked-banner from the previous tenant
     // doesn't carry over to the next tenant's login screen.
@@ -86,6 +94,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   checkAuth: async () => {
+    useKpiStore.getState().clearScope()
     set({ isLoading: true })
     try {
       await api.init()
@@ -101,6 +110,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const loggedIn = await api.isLoggedIn()
       if (loggedIn) {
         const agent = await api.getStoredAgent()
+        useKpiStore.getState().setScope(
+          kpiScopeKey(agent?.organizationId, agent?.id),
+        )
         set({
           isLoggedIn: true,
           hasServer: true,
