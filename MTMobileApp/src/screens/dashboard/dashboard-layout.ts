@@ -72,13 +72,21 @@ export function sanitizeWidgetIds(workspace: DashboardWorkspace, ids: unknown): 
   return unique.length > 0 ? unique : defaultWidgetIds(workspace)
 }
 
-export function dashboardColumns(width: number, count: number) {
-  if (!isTabletWidth(width)) return 1
-  if (count <= 1) return 1
-  if (count === 2) return 2
-  if (count === 3) return 3
-  if (count === 4) return 2
-  return 3
+export const DASHBOARD_MIN_CARD_WIDTH = 200
+
+export function dashboardColumns(
+  availableWidth: number,
+  count: number,
+  tablet = isTabletWidth(availableWidth),
+  gap = 16
+) {
+  if (!tablet || count <= 1) return 1
+  const desiredColumns = count === 2 ? 2 : count === 4 ? 2 : 3
+  const widthCapacity = Math.max(
+    1,
+    Math.floor((Math.max(0, availableWidth) + gap) / (DASHBOARD_MIN_CARD_WIDTH + gap))
+  )
+  return Math.min(desiredColumns, widthCapacity)
 }
 
 export function moveWidget(ids: DashboardWidgetId[], id: DashboardWidgetId, direction: -1 | 1) {

@@ -42,6 +42,13 @@ describe("dashboard layout", () => {
     expect(dashboardColumns(1280, 6)).toBe(3)
   })
 
+  it("caps compact-tablet columns by the measured content width after the rail", () => {
+    expect(dashboardColumns(456, 2, true)).toBe(2)
+    expect(dashboardColumns(456, 3, true)).toBe(2)
+    expect(dashboardColumns(456, 6, true)).toBe(2)
+    expect(dashboardColumns(680, 6, true)).toBe(3)
+  })
+
   it("isolates persisted layouts by tenant, user, workspace and device", () => {
     expect(layoutStorageKey("tenant-a", "user-a", "agent", "phone"))
       .not.toBe(layoutStorageKey("tenant-b", "user-a", "agent", "phone"))

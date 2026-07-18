@@ -174,10 +174,15 @@ export default function DashboardScreen() {
     }
   }
 
-  const columns = dashboardColumns(width, selectedWidgets.length)
   const horizontalPadding = isTabletWidth(screenWidth) ? fieldTheme.space.xl : fieldTheme.space.lg
   const gap = fieldTheme.space.md
   const gridWidth = Math.max(280, screenWidth - horizontalPadding * 2)
+  const columns = dashboardColumns(
+    gridWidth,
+    selectedWidgets.length,
+    deviceClass !== "phone",
+    gap
+  )
   const cardWidth = (gridWidth - gap * (columns - 1)) / columns
   const rows = Math.max(1, Math.ceil(selectedWidgets.length / columns))
   const availableHeight = Math.max(380, height - 300)
@@ -457,11 +462,19 @@ function DashboardWidget({
   const { t } = useTranslation()
   const value = metric?.value ?? "—"
   const supporting = metric?.supporting ?? t("dashboardV2.unavailable")
+  const accessibilityText = [
+    value,
+    supporting,
+    preview ? t("dashboardV2.preview") : null,
+  ].filter(Boolean).join(". ")
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={t(definition.labelKey)}
+      accessibilityLabel={`${t(definition.labelKey)}. ${t(definition.captionKey)}`}
+      accessibilityValue={{ text: accessibilityText }}
+      accessibilityHint={focused ? undefined : t("dashboardV2.expandHint")}
+      accessibilityState={{ disabled: focused }}
       onPress={onPress}
       disabled={focused}
       style={({ pressed }) => [
