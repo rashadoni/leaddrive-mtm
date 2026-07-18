@@ -1,10 +1,11 @@
 import { useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { isTabletWidth } from "../theme/layoutBreakpoints"
 
 export function useTabBarPadding() {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
-  if (width >= 720) return 24 + insets.bottom
+  if (isTabletWidth(width)) return 24 + insets.bottom
   return 56 + Math.max(insets.bottom, 8) + 12
 }
 

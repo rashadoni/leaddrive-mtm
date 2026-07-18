@@ -9,6 +9,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useAuthStore } from "../store/auth"
 import { isManagerRole, normalizeRole } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
+import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints"
 
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"
@@ -62,8 +63,8 @@ function MainTabs() {
   const role = useAuthStore((state) => state.agent?.role)
   const manager = isManagerRole(role)
   const normalizedRole = normalizeRole(role)
-  const tablet = width >= 720
-  const expandedRail = width >= 960
+  const tablet = isTabletWidth(width)
+  const expandedRail = isExpandedTabletWidth(width)
   const tabBarHeight = 60 + Math.max(insets.bottom, 8)
 
   if (normalizedRole === "UNKNOWN") return <UnsupportedRoleScreen />
@@ -75,6 +76,7 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarPosition: tablet ? "left" : "bottom",
+        tabBarVariant: tablet ? "material" : "uikit",
         tabBarActiveTintColor: fieldTheme.color.primaryStrong,
         tabBarInactiveTintColor: fieldTheme.color.inkMuted,
         tabBarActiveBackgroundColor: fieldTheme.color.primarySoft,

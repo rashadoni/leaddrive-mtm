@@ -4,6 +4,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -39,7 +40,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
   const meta = SCREEN_META[kind]
-  const tablet = width >= 720
+  const tablet = isTabletWidth(width)
 
   return (
     <View style={styles.root}>
@@ -92,7 +93,13 @@ const styles = StyleSheet.create({
     paddingBottom: fieldTheme.space.xl,
   },
   headerInner: { gap: fieldTheme.space.lg },
-  headerInnerTablet: { maxWidth: 960, flexDirection: "row", alignItems: "center" },
+  headerInnerTablet: {
+    // Content cap, not a viewport breakpoint: keep copy comfortably wide on
+    // expanded tablets while the shared 840dp helper decides when this row is used.
+    maxWidth: 960,
+    flexDirection: "row",
+    alignItems: "center",
+  },
   icon: {
     width: 56,
     height: 56,

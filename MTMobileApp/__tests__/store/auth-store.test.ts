@@ -35,6 +35,7 @@ jest.mock("../../src/services/api", () => ({
 
 import { api } from "../../src/services/api"
 import { useAuthStore } from "../../src/store/auth"
+import { useKpiStore } from "../../src/store/kpi"
 
 // Typed helpers
 const mockLogin = api.login as jest.Mock
@@ -62,6 +63,27 @@ function resetStore() {
     serverDomain: "",
     companyName: "",
     agent: null,
+    revokedReason: null,
+  })
+  useKpiStore.setState({
+    stats: null,
+    loading: false,
+    error: null,
+    period: "today",
+    scopeKey: null,
+    requestGeneration: 0,
+  })
+}
+
+function primeKpiScope() {
+  useKpiStore.setState({
+    scopeKey: "org-old:agent-old",
+    stats: {
+      visits: { completed: 7, total: 8 },
+      tasks: { done: 3, total: 4 },
+      photos: { count: 5 },
+      period: "today",
+    },
   })
 }
 
@@ -104,6 +126,8 @@ describe("useAuthStore — login", () => {
     const { isLoggedIn, agent } = useAuthStore.getState()
     expect(isLoggedIn).toBe(true)
     expect(agent).toEqual(SAMPLE_AGENT)
+    expect(useKpiStore.getState().scopeKey).toBe("org-1:ag-1")
+    expect(useKpiStore.getState().stats).toBeNull()
   })
 
   it("throws and leaves isLoggedIn=false on api failure (success=false)", async () => {
@@ -133,10 +157,26 @@ describe("useAuthStore — login", () => {
 describe("useAuthStore — logout", () => {
   it("sets isLoggedIn=false and clears agent", async () => {
     useAuthStore.setState({ isLoggedIn: true, agent: SAMPLE_AGENT as any })
+    primeKpiScope()
     await useAuthStore.getState().logout()
     expect(useAuthStore.getState().isLoggedIn).toBe(false)
     expect(useAuthStore.getState().agent).toBeNull()
     expect(mockLogout).toHaveBeenCalled()
+    expect(useKpiStore.getState().scopeKey).toBeNull()
+    expect(useKpiStore.getState().stats).toBeNull()
+  })
+})
+
+describe("useAuthStore — revoked session", () => {
+  it("clears KPI identity and data immediately", () => {
+    useAuthStore.setState({ isLoggedIn: true, agent: SAMPLE_AGENT as any })
+    primeKpiScope()
+
+    useAuthStore.getState().handleRevoked("REVOKED")
+
+    expect(useAuthStore.getState().isLoggedIn).toBe(false)
+    expect(useKpiStore.getState().scopeKey).toBeNull()
+    expect(useKpiStore.getState().stats).toBeNull()
   })
 })
 
@@ -153,6 +193,7 @@ describe("useAuthStore — switchServer", () => {
       companyName: "Güvən",
       agent: SAMPLE_AGENT as any,
     })
+    primeKpiScope()
     await useAuthStore.getState().switchServer()
     const state = useAuthStore.getState()
     expect(state.isLoggedIn).toBe(false)
@@ -161,6 +202,8 @@ describe("useAuthStore — switchServer", () => {
     expect(state.companyName).toBe("")
     expect(state.agent).toBeNull()
     expect(mockFullLogout).toHaveBeenCalled()
+    expect(useKpiStore.getState().scopeKey).toBeNull()
+    expect(useKpiStore.getState().stats).toBeNull()
   })
 
   // FIX 3: switchServer must also clear revokedReason so the revoked banner
@@ -207,6 +250,7 @@ describe("useAuthStore — checkAuth", () => {
     expect(companyName).toBe("Mars Overseas") // from agent.organizationName
     expect(agent).toEqual(SAMPLE_AGENT)
     expect(isLoading).toBe(false)
+    expect(useKpiStore.getState().scopeKey).toBe("org-1:ag-1")
   })
 
   it("sets isLoggedIn=false, hasServer=true when server exists but not authenticated", async () => {

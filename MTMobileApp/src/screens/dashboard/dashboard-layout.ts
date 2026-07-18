@@ -1,3 +1,5 @@
+import { isTabletWidth } from "../../theme/layoutBreakpoints"
+
 export type DashboardWorkspace = "agent" | "manager"
 export type DashboardDeviceClass = "phone" | "tabletPortrait" | "tabletLandscape"
 
@@ -41,7 +43,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
 ]
 
 export function deviceClassFor(width: number, height: number): DashboardDeviceClass {
-  if (width < 720) return "phone"
+  if (!isTabletWidth(width)) return "phone"
   return width > height ? "tabletLandscape" : "tabletPortrait"
 }
 
@@ -71,7 +73,7 @@ export function sanitizeWidgetIds(workspace: DashboardWorkspace, ids: unknown): 
 }
 
 export function dashboardColumns(width: number, count: number) {
-  if (width < 720) return 1
+  if (!isTabletWidth(width)) return 1
   if (count <= 1) return 1
   if (count === 2) return 2
   if (count === 3) return 3

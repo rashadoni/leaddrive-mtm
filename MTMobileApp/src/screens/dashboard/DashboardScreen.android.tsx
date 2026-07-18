@@ -20,6 +20,11 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { isManagerRole } from "../../auth/roles"
 import { fieldTheme } from "../../theme/fieldTheme"
 import {
+  LAYOUT_TOUCH_TARGETS,
+  isExpandedTabletWidth,
+  isTabletWidth,
+} from "../../theme/layoutBreakpoints"
+import {
   DASHBOARD_WIDGETS,
   DashboardWidgetDefinition,
   DashboardWidgetId,
@@ -94,7 +99,8 @@ export default function DashboardScreen() {
 
   const agent = useAuthStore((state) => state.agent)
   const privileged = isManagerRole(agent?.role)
-  const [workspace, setWorkspace] = useState<DashboardWorkspace>(privileged ? "manager" : "agent")
+  const workspace: DashboardWorkspace = privileged ? "manager" : "agent"
+  const expandedTablet = isExpandedTabletWidth(width)
   const { stats, loading, error, fetchKpi } = useKpiStore()
   const layouts = useDashboardLayoutStore((state) => state.layouts)
   const setLayout = useDashboardLayoutStore((state) => state.setLayout)
@@ -121,10 +127,6 @@ export default function DashboardScreen() {
   const selectedWidgets = selectedIds
     .map((id) => DASHBOARD_WIDGETS.find((widget) => widget.id === id))
     .filter((widget): widget is DashboardWidgetDefinition => Boolean(widget))
-
-  useEffect(() => {
-    if (!privileged && workspace !== "agent") setWorkspace("agent")
-  }, [privileged, workspace])
 
   useEffect(() => {
     setFocusedWidget(null)
@@ -173,7 +175,7 @@ export default function DashboardScreen() {
   }
 
   const columns = dashboardColumns(width, selectedWidgets.length)
-  const horizontalPadding = screenWidth >= 720 ? fieldTheme.space.xl : fieldTheme.space.lg
+  const horizontalPadding = isTabletWidth(screenWidth) ? fieldTheme.space.xl : fieldTheme.space.lg
   const gap = fieldTheme.space.md
   const gridWidth = Math.max(280, screenWidth - horizontalPadding * 2)
   const cardWidth = (gridWidth - gap * (columns - 1)) / columns
@@ -205,7 +207,7 @@ export default function DashboardScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => setFocusedWidget(null)}
-              style={styles.backButton}
+              style={[styles.backButton, expandedTablet && styles.expandedTouchHeight]}
             >
               <Icon name="arrow-back" size={21} color={fieldTheme.color.onColor} />
               <Text style={styles.backText}>{t("dashboardV2.back")}</Text>
@@ -254,6 +256,7 @@ export default function DashboardScreen() {
                 onPress={() => { toggleWorkday().catch(() => {}) }}
                 style={({ pressed }) => [
                   styles.workdayButton,
+                  expandedTablet && styles.expandedTouchHeight,
                   workdayActive && styles.workdayButtonActive,
                   pressed && styles.pressed,
                 ]}
@@ -269,7 +272,11 @@ export default function DashboardScreen() {
               accessibilityRole="button"
               accessibilityState={{ expanded: customizing }}
               onPress={() => setCustomizing((current) => !current)}
-              style={({ pressed }) => [styles.customizeButton, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.customizeButton,
+                expandedTablet && styles.expandedTouchHeight,
+                pressed && styles.pressed,
+              ]}
             >
               <Icon name={customizing ? "checkmark" : "options"} size={19} color={fieldTheme.color.primaryStrong} />
               <Text style={styles.customizeText}>
@@ -279,24 +286,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {privileged && (
-          <View style={styles.workspaceSwitch}>
-            {(["agent", "manager"] as DashboardWorkspace[]).map((item) => {
-              const active = workspace === item
-              return (
-                <Pressable
-                  key={item}
-                  onPress={() => setWorkspace(item)}
-                  style={[styles.workspaceButton, active && styles.workspaceButtonActive]}
-                >
-                  <Text style={[styles.workspaceText, active && styles.workspaceTextActive]}>
-                    {t(item === "manager" ? "dashboardV2.managerWorkspace" : "dashboardV2.agentWorkspace")}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-        )}
       </View>
 
       <ScrollView
@@ -329,7 +318,11 @@ export default function DashboardScreen() {
                   <Pressable
                     key={widget.id}
                     onPress={() => toggleWidget(widget.id)}
-                    style={[styles.pickerItem, selected && { backgroundColor: widget.tint, borderColor: widget.color }]}
+                    style={[
+                      styles.pickerItem,
+                      expandedTablet && styles.expandedTouchHeight,
+                      selected && { backgroundColor: widget.tint, borderColor: widget.color },
+                    ]}
                   >
                     <Icon
                       name={selected ? "checkmark-circle" : widget.icon}
@@ -354,7 +347,11 @@ export default function DashboardScreen() {
                     accessibilityRole="button"
                     disabled={index === 0}
                     onPress={() => save(moveWidget(selectedIds, widget.id, -1))}
-                    style={[styles.orderButton, index === 0 && styles.disabled]}
+                    style={[
+                      styles.orderButton,
+                      expandedTablet && styles.expandedTouchSquare,
+                      index === 0 && styles.disabled,
+                    ]}
                   >
                     <Icon name="arrow-back" size={17} color={fieldTheme.color.ink} />
                   </Pressable>
@@ -362,7 +359,11 @@ export default function DashboardScreen() {
                     accessibilityRole="button"
                     disabled={index === selectedWidgets.length - 1}
                     onPress={() => save(moveWidget(selectedIds, widget.id, 1))}
-                    style={[styles.orderButton, index === selectedWidgets.length - 1 && styles.disabled]}
+                    style={[
+                      styles.orderButton,
+                      expandedTablet && styles.expandedTouchSquare,
+                      index === selectedWidgets.length - 1 && styles.disabled,
+                    ]}
                   >
                     <Icon name="arrow-forward" size={17} color={fieldTheme.color.ink} />
                   </Pressable>
@@ -373,7 +374,7 @@ export default function DashboardScreen() {
             {message && <Text style={styles.message}>{message}</Text>}
             <Pressable
               onPress={() => resetLayout(context).catch(() => setMessage(t("common.error")))}
-              style={styles.resetButton}
+              style={[styles.resetButton, expandedTablet && styles.expandedTouchHeight]}
             >
               <Icon name="refresh" size={17} color={fieldTheme.color.primary} />
               <Text style={styles.resetText}>{t("dashboardV2.reset")}</Text>
@@ -553,18 +554,11 @@ const styles = StyleSheet.create({
   },
   customizeText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
   pressed: { opacity: 0.78, transform: [{ scale: 0.98 }] },
-  workspaceSwitch: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    marginTop: fieldTheme.space.lg,
-    padding: 3,
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: "#104F43",
+  expandedTouchHeight: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet },
+  expandedTouchSquare: {
+    width: LAYOUT_TOUCH_TARGETS.expandedTablet,
+    height: LAYOUT_TOUCH_TARGETS.expandedTablet,
   },
-  workspaceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.pill },
-  workspaceButtonActive: { backgroundColor: fieldTheme.color.onColor },
-  workspaceText: { color: "#B7DACE", fontSize: 12, fontWeight: "700" },
-  workspaceTextActive: { color: fieldTheme.color.primaryStrong },
   customizer: {
     marginTop: fieldTheme.space.lg,
     padding: fieldTheme.space.lg,

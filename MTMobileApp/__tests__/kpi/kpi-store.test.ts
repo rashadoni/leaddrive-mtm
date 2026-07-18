@@ -25,7 +25,7 @@ jest.mock('../../src/services/api', () => ({
 }))
 
 import { api } from '../../src/services/api'
-import { useKpiStore } from '../../src/store/kpi'
+import { kpiScopeKey, useKpiStore } from '../../src/store/kpi'
 
 const mockGetVisits = api.getVisits as jest.Mock
 const mockGetTasks = api.getTasks as jest.Mock
@@ -78,7 +78,19 @@ function resetStore() {
     loading: false,
     error: null,
     period: 'today',
+    scopeKey: 'org-1:agent-1',
+    requestGeneration: 0,
   })
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
 }
 
 beforeEach(() => {
@@ -215,6 +227,75 @@ describe('fetchKpi — error handling', () => {
   it('sets loading=false after error', async () => {
     mockGetVisits.mockRejectedValue(new Error('Timeout'))
     await useKpiStore.getState().fetchKpi('today')
+    expect(useKpiStore.getState().loading).toBe(false)
+  })
+})
+
+// ─── identity isolation ──────────────────────────────────────────────────────
+
+describe('KPI identity isolation', () => {
+  it('uses a tenant:user scope and rejects incomplete identity', () => {
+    expect(kpiScopeKey('tenant-a', 'agent-a')).toBe('tenant-a:agent-a')
+    expect(kpiScopeKey('tenant-a', null)).toBeNull()
+    expect(kpiScopeKey(undefined, 'agent-a')).toBeNull()
+  })
+
+  it('clears prior stats immediately when the tenant or user changes', async () => {
+    await useKpiStore.getState().fetchKpi('today')
+    expect(useKpiStore.getState().stats).not.toBeNull()
+
+    useKpiStore.getState().setScope('org-2:agent-2')
+
+    expect(useKpiStore.getState().scopeKey).toBe('org-2:agent-2')
+    expect(useKpiStore.getState().stats).toBeNull()
+    expect(useKpiStore.getState().loading).toBe(false)
+    expect(useKpiStore.getState().error).toBeNull()
+  })
+
+  it('does not request or display KPI without an authenticated scope', async () => {
+    useKpiStore.getState().clearScope()
+
+    await useKpiStore.getState().fetchKpi('today')
+
+    expect(mockGetVisits).not.toHaveBeenCalled()
+    expect(mockGetTasks).not.toHaveBeenCalled()
+    expect(mockGetPhotos).not.toHaveBeenCalled()
+    expect(useKpiStore.getState().stats).toBeNull()
+  })
+
+  it('drops a delayed Agent A response after switching to Agent B', async () => {
+    const delayedAgentA = deferred<typeof SAMPLE_VISITS>()
+    const agentBVisits = {
+      success: true,
+      data: { visits: [{ id: 'b-1', status: 'CHECKED_IN' }] },
+    }
+
+    mockGetVisits.mockReset()
+    mockGetVisits
+      .mockResolvedValueOnce(SAMPLE_VISITS)
+      .mockImplementationOnce(() => delayedAgentA.promise)
+      .mockResolvedValueOnce(agentBVisits)
+
+    useKpiStore.getState().setScope('org-a:agent-a')
+    await useKpiStore.getState().fetchKpi('today')
+    expect(useKpiStore.getState().stats?.visits.total).toBe(3)
+
+    const pendingAgentARefresh = useKpiStore.getState().fetchKpi('today')
+    expect(useKpiStore.getState().loading).toBe(true)
+
+    useKpiStore.getState().setScope('org-b:agent-b')
+    expect(useKpiStore.getState().stats).toBeNull()
+    expect(useKpiStore.getState().loading).toBe(false)
+
+    await useKpiStore.getState().fetchKpi('today')
+    expect(useKpiStore.getState().scopeKey).toBe('org-b:agent-b')
+    expect(useKpiStore.getState().stats?.visits.total).toBe(1)
+
+    delayedAgentA.resolve(SAMPLE_VISITS)
+    await pendingAgentARefresh
+
+    expect(useKpiStore.getState().scopeKey).toBe('org-b:agent-b')
+    expect(useKpiStore.getState().stats?.visits.total).toBe(1)
     expect(useKpiStore.getState().loading).toBe(false)
   })
 })
