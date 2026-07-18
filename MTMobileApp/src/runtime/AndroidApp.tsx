@@ -19,6 +19,7 @@ import { useWorkdayStore, workdayKey } from "../store/workday"
 import { startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { flushOutbox } from "../services/outbox"
+import { pullAndApplySync } from "../services/sync-cache"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { canTrackFieldLocation } from "../auth/roles"
@@ -61,8 +62,11 @@ function AppContent() {
   }, [sendPing])
 
   const flushPendingOperations = useCallback(() => {
-    if (!useAuthStore.getState().isLoggedIn) return
-    flushOutbox((operations) => api.syncPush(operations)).catch(() => {})
+    const auth = useAuthStore.getState()
+    if (!auth.isLoggedIn || !auth.agent) return
+    flushOutbox((operations) => api.syncPush(operations))
+      .then(() => pullAndApplySync(auth.agent!.organizationId, auth.agent!.id, (since) => api.syncPull(since)))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
