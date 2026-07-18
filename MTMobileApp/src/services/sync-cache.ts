@@ -42,3 +42,14 @@ export async function applySyncChanges(
 export async function clearSyncCache(tenantId?: string | null, agentId?: string | null) {
   await AsyncStorage.removeItem(key(tenantId, agentId))
 }
+
+export async function pullAndApplySync(
+  tenantId: string,
+  agentId: string,
+  pull: (since: string | null) => Promise<{ timestamp?: string; changes?: Parameters<typeof applySyncChanges>[2] }>,
+) {
+  const previous = await readSyncCache(tenantId, agentId)
+  const response = await pull(previous.version)
+  const version = response.timestamp || previous.version || new Date().toISOString()
+  return applySyncChanges(tenantId, agentId, response.changes || {}, version)
+}
