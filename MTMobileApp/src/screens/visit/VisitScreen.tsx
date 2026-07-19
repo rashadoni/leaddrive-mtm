@@ -370,6 +370,7 @@ export default function VisitScreen() {
 
   const handlePhotoTaken = async (path: string) => {
     if (!activeVisit) return
+    let uploadCoords: { latitude: number; longitude: number } | null = null
     try {
       let coords: { latitude: number; longitude: number } | null = null
       try {
@@ -381,6 +382,7 @@ export default function VisitScreen() {
           )
         })
       } catch {}
+      uploadCoords = coords
       await api.uploadPhoto({
         filePath: path,
         visitId: activeVisit.id,
@@ -399,7 +401,7 @@ export default function VisitScreen() {
         if (e?.code === "MAX_PHOTOS_REACHED") {
           showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
-          await enqueueMediaUpload({ filePath: path, visitId: activeVisit.id, category: "VISIT", latitude: coords?.latitude, longitude: coords?.longitude })
+          await enqueueMediaUpload({ filePath: path, visitId: activeVisit.id, category: "VISIT", latitude: uploadCoords?.latitude, longitude: uploadCoords?.longitude })
           showToast("success", "Photo queued", "It will upload when connection returns.")
         }
       }
