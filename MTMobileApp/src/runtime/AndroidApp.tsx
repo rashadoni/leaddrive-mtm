@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
+import NetInfo from "@react-native-community/netinfo"
 import AppNavigatorAndroidV2 from "../navigation/AppNavigatorAndroidV2"
 import { ErrorBoundary } from "../components/ErrorBoundary"
 import { useAuthStore } from "../store/auth"
@@ -71,6 +72,16 @@ function AppContent() {
 
   useEffect(() => {
     if (isLoggedIn) flushPendingOperations()
+  }, [isLoggedIn, flushPendingOperations])
+
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        flushPendingOperations()
+      }
+    })
+    return unsubscribe
   }, [isLoggedIn, flushPendingOperations])
 
   useEffect(() => {
