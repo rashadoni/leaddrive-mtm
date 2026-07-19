@@ -6,6 +6,8 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
+import { toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
+import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../services/manager-approvals"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -44,7 +46,8 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const tablet = isTabletWidth(width)
   const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
   const [locations, setLocations] = useState<Array<{ agentId: string; latitude: number | null; longitude: number | null; accuracy: number | null; battery: number | null; recordedAt: string | null }>>([])
-  const [summary, setSummary] = useState<string | null>(null)
+  const [planning, setPlanning] = useState<PlanningRoute[]>([])
+  const [approvals, setApprovals] = useState<ManagerApprovals | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -55,10 +58,10 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
           setTeam(response?.[0]?.data?.agents || [])
           setLocations(response?.[1]?.data?.locations || [])
         }
-        else if (kind === "planning") setSummary(`${response?.data?.routes?.length || 0} routes planned today`)
-        else setSummary(`${Object.values(response?.data?.counts || {}).reduce((a: number, b: any) => a + Number(b || 0), 0)} approvals pending`)
+        else if (kind === "planning") setPlanning(toPlanningRoutes(response?.data))
+        else setApprovals(toApprovals(response?.data))
       })
-      .catch(() => setTeam([]))
+      .catch(() => { setTeam([]); setPlanning([]); setApprovals(null) })
       .finally(() => setLoading(false))
     return () => controller.abort()
   }, [kind])
@@ -79,7 +82,8 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, tablet && styles.contentTablet]}>
-        {kind === "team" && !loading && team.length > 0 ? (
+        {kind === "team" ? (
+          team.length > 0 ? (
           <View style={styles.teamList}>
             {team.map((agent) => (
               <View key={agent.id} style={styles.agentRow}>
@@ -112,30 +116,66 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
               </View>
             ))}
           </View>
-        ) : !loading && summary ? <View style={styles.statusPanel}>
-          <View style={styles.statusIcon}><Icon name={kind === "planning" ? "calendar-outline" : "checkmark-done-outline"} size={22} color={meta.color} /></View>
-          <View style={styles.statusCopy}><Text style={styles.statusTitle}>{summary}</Text><Text style={styles.statusBody}>{t(meta.bodyKey)}</Text></View>
-        </View> : <View style={styles.statusPanel}>
-          <View style={styles.statusIcon}>
-            <Icon name="git-branch-outline" size={22} color={fieldTheme.color.primary} />
-          </View>
-          <View style={styles.statusCopy}>
-            <Text style={styles.statusTitle}>{t("dashboardV2.unavailable")}</Text>
-            <Text style={styles.statusBody}>{t("managerShell.pendingApi")}</Text>
-          </View>
-        </View>}
-
-        <View style={[styles.skeletonGrid, tablet && styles.skeletonGridTablet]}>
-          {[0, 1, 2, 3].map((item) => (
-            <View key={item} style={[styles.skeleton, tablet && styles.skeletonTablet]}>
-              <View style={[styles.skeletonDot, { backgroundColor: meta.tint }]} />
-              <View style={styles.skeletonLineStrong} />
-              <View style={styles.skeletonLine} />
-              <View style={[styles.skeletonLine, styles.skeletonLineShort]} />
+          ) : (
+            <StatusPanel icon="people-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.teamEmpty")} body={t(meta.bodyKey)} />
+          )
+        ) : kind === "planning" ? (
+          planning.length > 0 ? (
+            <View style={styles.itemList}>
+              {planning.map((r) => (
+                <View key={r.id} style={styles.itemCard}>
+                  <View style={styles.itemMain}>
+                    <Text style={styles.itemTitle}>{r.name || t("managerShell.routeFallback")}</Text>
+                    <Text style={styles.itemMeta}>{r.agentName}{r.total > 0 ? ` · ${r.visited}/${r.total}` : ""}</Text>
+                  </View>
+                  <View style={styles.itemPill}><Text style={styles.itemPillText}>{r.status}</Text></View>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          ) : (
+            <StatusPanel icon="calendar-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.planningEmpty")} body={t(meta.bodyKey)} />
+          )
+        ) : (
+          approvals && approvals.total > 0 ? (
+            <View style={styles.itemList}>
+              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} />
+              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} />
+              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} />
+            </View>
+          ) : (
+            <StatusPanel icon="checkmark-done-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.approvalsEmpty")} body={t(meta.bodyKey)} />
+          )
+        )}
       </ScrollView>
+    </View>
+  )
+}
+
+function StatusPanel({ icon, color, title, body }: { icon: string; color: string; title: string; body: string }) {
+  return (
+    <View style={styles.statusPanel}>
+      <View style={styles.statusIcon}><Icon name={icon} size={22} color={color} /></View>
+      <View style={styles.statusCopy}>
+        <Text style={styles.statusTitle}>{title}</Text>
+        <Text style={styles.statusBody}>{body}</Text>
+      </View>
+    </View>
+  )
+}
+
+function ApprovalSection({ title, items }: { title: string; items: ApprovalItem[] }) {
+  if (items.length === 0) return null
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title} · {items.length}</Text>
+      {items.map((it) => (
+        <View key={it.id} style={styles.itemCard}>
+          <View style={styles.itemMain}>
+            <Text style={styles.itemTitle}>{it.primary}</Text>
+            <Text style={styles.itemMeta} numberOfLines={2}>{it.agentName}{it.reason ? ` · ${it.reason}` : ""}</Text>
+          </View>
+        </View>
+      ))}
     </View>
   )
 }
@@ -231,4 +271,14 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.surfaceStrong,
   },
   skeletonLineShort: { width: "46%" },
+
+  itemList: { gap: fieldTheme.space.sm },
+  itemCard: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border },
+  itemMain: { flex: 1 },
+  itemTitle: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.ink },
+  itemMeta: { fontSize: 12, color: fieldTheme.color.inkMuted, marginTop: 2 },
+  itemPill: { backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
+  itemPillText: { fontSize: 10, fontWeight: "700", color: fieldTheme.color.primaryStrong },
+  section: { gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
+  sectionTitle: { fontSize: 12, fontWeight: "800", color: fieldTheme.color.inkMuted, textTransform: "uppercase", letterSpacing: 0.4 },
 })
