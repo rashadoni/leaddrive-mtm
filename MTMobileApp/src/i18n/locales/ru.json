@@ -201,6 +201,15 @@
     "actionFeedback": "Обратная связь",
     "actionNextAction": "Следующее действие"
   },
+  "gpsHistory": {
+    "title": "Моя GPS-история",
+    "today": "Сегодня",
+    "statKm": "км",
+    "statPoints": "точек",
+    "statInterval": "интервал",
+    "empty": "Нет GPS-точек за этот день",
+    "offlineNote": "GPS-история недоступна офлайн"
+  },
   "route": {
     "greeting": "Привет, {{name}}!",
     "leftLabel": "осталось",
@@ -255,6 +264,7 @@
     "languageEn": "English",
     "languageRu": "Русский",
     "logout": "Выйти",
+    "gpsHistory": "Моя GPS-история",
     "switchServer": "Сменить сервер",
     "loadingProfile": "Загружаем профиль…",
     "performanceTitle": "Показатели за сегодня",

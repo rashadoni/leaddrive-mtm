@@ -201,6 +201,15 @@
     "actionFeedback": "Feedback",
     "actionNextAction": "Next action"
   },
+  "gpsHistory": {
+    "title": "My GPS history",
+    "today": "Today",
+    "statKm": "km",
+    "statPoints": "points",
+    "statInterval": "interval",
+    "empty": "No GPS points for this day",
+    "offlineNote": "GPS history isn't available offline"
+  },
   "route": {
     "greeting": "Hello, {{name}}!",
     "leftLabel": "left",
@@ -255,6 +264,7 @@
     "languageEn": "English",
     "languageRu": "Русский",
     "logout": "Log out",
+    "gpsHistory": "My GPS history",
     "switchServer": "Switch server",
     "loadingProfile": "Loading profile…",
     "performanceTitle": "Today's Performance",

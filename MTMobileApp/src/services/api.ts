@@ -402,8 +402,9 @@ class ApiClient {
     })
   }
 
-  async getLocationHistory() {
-    return this.request("/mobile/location")
+  async getLocationHistory(date?: string, signal?: AbortSignal) {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : ""
+    return this.request(`/mobile/location${qs}`, { signal })
   }
 
   async syncPush(operations: Array<{

@@ -201,6 +201,15 @@
     "actionFeedback": "Rəy",
     "actionNextAction": "Növbəti hərəkət"
   },
+  "gpsHistory": {
+    "title": "GPS tarixçəm",
+    "today": "Bu gün",
+    "statKm": "km",
+    "statPoints": "nöqtə",
+    "statInterval": "interval",
+    "empty": "Bu gün üçün GPS nöqtəsi yoxdur",
+    "offlineNote": "GPS tarixçəsi oflayn əlçatan deyil"
+  },
   "route": {
     "greeting": "Salam, {{name}}!",
     "leftLabel": "qalır",
@@ -255,6 +264,7 @@
     "languageEn": "English",
     "languageRu": "Русский",
     "logout": "Çıxış",
+    "gpsHistory": "GPS tarixçəm",
     "switchServer": "Server dəyişdir",
     "loadingProfile": "Profil yüklənir…",
     "performanceTitle": "Bugünkü performans",

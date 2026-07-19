@@ -17,6 +17,8 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { useHintsStore } from "../../store/hints"
+import { useBootstrapStore } from "../../store/bootstrap"
+import { hasCapability } from "../../services/bootstrap"
 import { version as APP_VERSION } from "../../../package.json"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 
@@ -34,6 +36,7 @@ export default function ProfileScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
+  const canTrack = useBootstrapStore((s) => hasCapability(s.capabilities, "FIELD_TRACK"))
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [profile, setProfile] = useState<any>(null)
@@ -205,6 +208,14 @@ export default function ProfileScreen() {
         </View>
         <Text style={styles.hintsNote}>{t("profile.hintsNote")}</Text>
       </View>
+
+      {/* My GPS history (agents with field tracking) */}
+      {canTrack && (
+        <TouchableOpacity style={styles.gpsBtn} onPress={() => navigation.navigate("GpsHistory")}>
+          <Text style={styles.gpsText}>{t("profile.gpsHistory")}</Text>
+          <Text style={styles.gpsChevron}>›</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Actions */}
       <TouchableOpacity style={styles.logoutBtn} onPress={() => setConfirmAction("logout")}>
@@ -387,6 +398,21 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0ff",
   },
   switchText: { color: "#6C63FF", fontSize: 15, fontWeight: "700" },
+  gpsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 10,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  gpsText: { color: "#0B0B1E", fontSize: 15, fontWeight: "600" },
+  gpsChevron: { color: "#cbd5e1", fontSize: 20, fontWeight: "300" },
   // M1-1a language switcher
   localeRow: {
     flexDirection: "row",
