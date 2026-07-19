@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useAuthStore } from "../store/auth"
+import { useBootstrapStore } from "../store/bootstrap"
+import { navGroupFromCapabilities, type NavGroup } from "../services/bootstrap"
 import { isManagerRole, normalizeRole } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints"
@@ -69,13 +71,24 @@ function MainTabs() {
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const role = useAuthStore((state) => state.agent?.role)
-  const manager = isManagerRole(role)
+  const capabilities = useBootstrapStore((state) => state.capabilities)
   const normalizedRole = normalizeRole(role)
+  // Server capabilities (from /mobile/bootstrap) are authoritative once loaded;
+  // until then — or if bootstrap failed/offline — fall back to the role-derived
+  // group so the shell never blocks on the network.
+  const navGroup: NavGroup = capabilities.length > 0
+    ? navGroupFromCapabilities(capabilities)
+    : normalizedRole === "UNKNOWN"
+      ? "none"
+      : isManagerRole(role)
+        ? "team"
+        : "field"
+  const manager = navGroup === "team"
   const tablet = isTabletWidth(width)
   const expandedRail = isExpandedTabletWidth(width)
   const tabBarHeight = 60 + Math.max(insets.bottom, 8)
 
-  if (normalizedRole === "UNKNOWN") return <UnsupportedRoleScreen />
+  if (navGroup === "none") return <UnsupportedRoleScreen />
 
   return (
     <Tab.Navigator

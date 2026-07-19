@@ -1,0 +1,76 @@
+jest.mock("../../src/services/api", () => ({ api: { getBootstrap: jest.fn() } }))
+
+import { api } from "../../src/services/api"
+import { toBootstrap, navGroupFromCapabilities, hasCapability } from "../../src/services/bootstrap"
+import { useBootstrapStore } from "../../src/store/bootstrap"
+
+describe("bootstrap mapping", () => {
+  it("maps the payload and drops unknown capabilities", () => {
+    const b = toBootstrap({
+      tenant: { id: "o1", name: "Acme", slug: "acme" },
+      principal: { id: "a1", name: "Rep", email: "r@x.az", role: "AGENT" },
+      capabilities: ["FIELD_EXECUTE", "FIELD_TRACK", "BOGUS"],
+      timezone: "Asia/Baku",
+      workday: { id: "w1", status: "ACTIVE" },
+    })
+    expect(b.tenant).toEqual({ id: "o1", name: "Acme", slug: "acme" })
+    expect(b.principal?.role).toBe("AGENT")
+    expect(b.capabilities).toEqual(["FIELD_EXECUTE", "FIELD_TRACK"])
+    expect(b.timezone).toBe("Asia/Baku")
+    expect(b.workday).toEqual({ id: "w1", status: "ACTIVE" })
+  })
+
+  it("defaults gracefully on an empty payload", () => {
+    const b = toBootstrap({})
+    expect(b.tenant).toBeNull()
+    expect(b.principal).toBeNull()
+    expect(b.capabilities).toEqual([])
+    expect(b.timezone).toBeNull()
+    expect(b.workday).toBeNull()
+  })
+})
+
+describe("capability navigation", () => {
+  it("maps capabilities to the nav group", () => {
+    expect(navGroupFromCapabilities(["FIELD_EXECUTE", "FIELD_TRACK"])).toBe("field")
+    expect(navGroupFromCapabilities(["TEAM_READ", "TEAM_DECIDE"])).toBe("team")
+    expect(navGroupFromCapabilities([])).toBe("none")
+  })
+
+  it("hasCapability checks membership", () => {
+    expect(hasCapability(["FIELD_TRACK"], "FIELD_TRACK")).toBe(true)
+    expect(hasCapability(["FIELD_TRACK"], "TEAM_DECIDE")).toBe(false)
+  })
+})
+
+describe("bootstrap store", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    useBootstrapStore.getState().clear()
+  })
+
+  it("stores capabilities on a successful fetch", async () => {
+    ;(api.getBootstrap as jest.Mock).mockResolvedValue({
+      success: true,
+      data: { capabilities: ["FIELD_EXECUTE"], principal: { id: "a1", role: "AGENT" } },
+    })
+    await useBootstrapStore.getState().fetchBootstrap()
+    expect(useBootstrapStore.getState().capabilities).toEqual(["FIELD_EXECUTE"])
+    expect(useBootstrapStore.getState().loading).toBe(false)
+  })
+
+  it("leaves capabilities empty on a network failure (nav falls back to role)", async () => {
+    ;(api.getBootstrap as jest.Mock).mockRejectedValue(new Error("Network request failed"))
+    await useBootstrapStore.getState().fetchBootstrap()
+    expect(useBootstrapStore.getState().capabilities).toEqual([])
+    expect(useBootstrapStore.getState().loading).toBe(false)
+  })
+
+  it("clear resets the store", async () => {
+    ;(api.getBootstrap as jest.Mock).mockResolvedValue({ success: true, data: { capabilities: ["TEAM_READ"] } })
+    await useBootstrapStore.getState().fetchBootstrap()
+    useBootstrapStore.getState().clear()
+    expect(useBootstrapStore.getState().capabilities).toEqual([])
+    expect(useBootstrapStore.getState().data).toBeNull()
+  })
+})

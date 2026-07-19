@@ -17,6 +17,7 @@ import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
 import { useDashboardLayoutStore } from "../store/dashboard-layout"
 import { useWorkdayStore, workdayKey } from "../store/workday"
+import { useBootstrapStore } from "../store/bootstrap"
 import { startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { flushOutbox } from "../services/outbox"
@@ -73,7 +74,10 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
-    if (isLoggedIn) flushPendingOperations()
+    if (isLoggedIn) {
+      flushPendingOperations()
+      useBootstrapStore.getState().fetchBootstrap()
+    }
   }, [isLoggedIn, flushPendingOperations])
 
   useEffect(() => {

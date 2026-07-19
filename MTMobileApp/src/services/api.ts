@@ -367,6 +367,12 @@ class ApiClient {
     return raw ? JSON.parse(raw) : null
   }
 
+  // --- Bootstrap ---
+
+  async getBootstrap(signal?: AbortSignal) {
+    return this.request("/mobile/bootstrap", { signal })
+  }
+
   // --- Profile ---
 
   async getProfile() {

@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { api } from "../services/api"
 import { kpiScopeKey, useKpiStore } from "./kpi"
+import { useBootstrapStore } from "./bootstrap"
 
 interface Agent {
   id: string
@@ -65,6 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: async () => {
     useKpiStore.getState().clearScope()
+    useBootstrapStore.getState().clear()
     await api.logout()
     set({ isLoggedIn: false, agent: null, revokedReason: null })
   },
@@ -74,6 +76,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // AsyncStorage). We only flip the store state here — no second
     // api.logout() to avoid double-work or recursion.
     useKpiStore.getState().clearScope()
+    useBootstrapStore.getState().clear()
     set({ isLoggedIn: false, agent: null, revokedReason: reason })
   },
 
@@ -83,6 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   switchServer: async () => {
     useKpiStore.getState().clearScope()
+    useBootstrapStore.getState().clear()
     await api.fullLogout()
     // Also clear revokedReason so a revoked-banner from the previous tenant
     // doesn't carry over to the next tenant's login screen.
