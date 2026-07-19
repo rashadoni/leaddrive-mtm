@@ -10,6 +10,8 @@ import {
 import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { readOfflineTasks } from "../../services/offline-reads"
+import { flushOutbox } from "../../services/outbox"
+import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../services/task-outbox"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -49,6 +51,13 @@ export default function TasksScreen() {
   })
   const [notesVisible, setNotesVisible] = useState(false)
   const [pendingCompleteTask, setPendingCompleteTask] = useState<Task | null>(null)
+  const [pendingSync, setPendingSync] = useState(0)
+
+  const refreshPending = useCallback(async () => {
+    try {
+      setPendingSync(await countPendingTaskUpdates())
+    } catch {}
+  }, [])
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -80,7 +89,43 @@ export default function TasksScreen() {
 
   // Initial load + keep fresh: tasks created in the admin panel appear
   // by themselves (focus / foreground / 60s poll; fetchTasks is silent).
-  useAutoRefresh(fetchTasks)
+  useAutoRefresh(
+    useCallback(() => { fetchTasks(); refreshPending() }, [fetchTasks, refreshPending])
+  )
+
+  /**
+   * Durable task status change: update the card optimistically, queue the
+   * change in the outbox (so it survives offline / cold restart), then try an
+   * immediate flush. When the flush reaches the server we re-fetch to reconcile
+   * with server truth (a rejected transition reverts the optimistic status);
+   * when offline the change stays queued and the pending indicator shows it.
+   */
+  const applyTaskStatus = async (
+    task: Task,
+    newStatus: string,
+    result: string | undefined,
+    toastTitle: string,
+    failureMessage: string,
+  ) => {
+    setUpdatingTaskId(task.id)
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, status: newStatus } : item)))
+    try {
+      await queueTaskStatusUpdate(task.id, newStatus, result)
+      const flush = await flushOutbox((ops) => api.syncPush(ops))
+      await refreshPending()
+      // sent > 0 means the server accepted (or conflicted on) the batch — we are
+      // online, so reconcile with authoritative state. deferred-only means we
+      // are offline: keep the optimistic status until the lifecycle flush lands.
+      if (flush.sent > 0) await fetchTasks()
+      setToast({ visible: true, type: "success", title: toastTitle, message: task.title })
+    } catch (e: any) {
+      console.warn("[TasksScreen] queue-task error:", e?.message ?? e)
+      setToast({ visible: true, type: "error", title: t("common.error"), message: failureMessage })
+      fetchTasks()
+    } finally {
+      setUpdatingTaskId(null)
+    }
+  }
 
   const handleStatusChange = async (task: Task, newStatus: string) => {
     if (updatingTaskId) return
@@ -92,44 +137,14 @@ export default function TasksScreen() {
       return
     }
 
-    setUpdatingTaskId(task.id)
-    try {
-      const res = await api.updateTask(task.id, { status: newStatus })
-      if (res.success) {
-        setToast({ visible: true, type: "success", title: t("task.startedToastTitle"), message: task.title })
-        fetchTasks()
-      }
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") {
-        console.warn("[TasksScreen] update-task error:", e?.message ?? e)
-        setToast({ visible: true, type: "error", title: t("common.error"), message: t("task.updateFailed") })
-      }
-    } finally {
-      setUpdatingTaskId(null)
-    }
+    await applyTaskStatus(task, newStatus, undefined, t("task.startedToastTitle"), t("task.updateFailed"))
   }
 
   const handleCompleteWithNotes = async (notes: string) => {
     if (!pendingCompleteTask || updatingTaskId) return
-    setUpdatingTaskId(pendingCompleteTask.id)
-    try {
-      const res = await api.updateTask(pendingCompleteTask.id, {
-        status: "COMPLETED",
-        result: notes || undefined,
-      })
-      if (res.success) {
-        setToast({ visible: true, type: "success", title: t("task.completedToastTitle"), message: pendingCompleteTask.title })
-        fetchTasks()
-      }
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") {
-        console.warn("[TasksScreen] complete-task error:", e?.message ?? e)
-        setToast({ visible: true, type: "error", title: t("common.error"), message: t("task.completeFailed") })
-      }
-    } finally {
-      setUpdatingTaskId(null)
-      setPendingCompleteTask(null)
-    }
+    const task = pendingCompleteTask
+    setPendingCompleteTask(null)
+    await applyTaskStatus(task, "COMPLETED", notes || undefined, t("task.completedToastTitle"), t("task.completeFailed"))
   }
 
   const filtered = tasks.filter((t) => t.status === activeTab)
@@ -187,6 +202,14 @@ export default function TasksScreen() {
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineDot}>●</Text>
           <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
+        </View>
+      )}
+
+      {/* Pending-sync indicator — queued task changes awaiting the server */}
+      {pendingSync > 0 && (
+        <View style={styles.syncBanner}>
+          <Text style={styles.syncDot}>⟳</Text>
+          <Text style={styles.syncBannerText}>{t("task.pendingSyncTemplate", { n: pendingSync })}</Text>
         </View>
       )}
 
@@ -403,6 +426,24 @@ const styles = StyleSheet.create({
   },
   offlineDot: { color: "#f59e0b", fontSize: 10 },
   offlineBannerText: { color: "#b45309", fontSize: 12, fontWeight: "600" },
+
+  // Pending-sync banner
+  syncBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "#eef2ff",
+    borderWidth: 1,
+    borderColor: "#c7d2fe",
+  },
+  syncDot: { color: "#6C63FF", fontSize: 12, fontWeight: "800" },
+  syncBannerText: { color: "#4338ca", fontSize: 12, fontWeight: "600" },
 
   // Tabs
   tabs: { flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 8 },

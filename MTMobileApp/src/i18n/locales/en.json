@@ -112,7 +112,8 @@
     "updateFailed": "Failed to update task",
     "completeFailed": "Failed to complete task",
     "resultModalTitle": "Task Result",
-    "resultModalMessage": "Add result notes (optional)"
+    "resultModalMessage": "Add result notes (optional)",
+    "pendingSyncTemplate": "{{n}} change awaiting sync"
   },
   "route": {
     "greeting": "Hello, {{name}}!",

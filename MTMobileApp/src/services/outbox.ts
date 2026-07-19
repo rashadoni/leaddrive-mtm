@@ -49,6 +49,15 @@ export async function pendingOutboxOperations(now = Date.now()) {
   return (await read()).filter((item) => item.nextAttemptAt <= now)
 }
 
+/**
+ * Every queued operation regardless of backoff schedule. `pendingOutboxOperations`
+ * hides ops whose retry is deferred into the future; this returns them all, which
+ * is what a "N awaiting sync" UI indicator needs to count.
+ */
+export async function allOutboxOperations(): Promise<OutboxOperation[]> {
+  return read()
+}
+
 export async function acknowledgeOutboxOperation(operationIdToRemove: string) {
   await write((await read()).filter((item) => item.operationId !== operationIdToRemove))
 }

@@ -112,7 +112,8 @@
     "updateFailed": "Не удалось обновить задачу",
     "completeFailed": "Не удалось завершить задачу",
     "resultModalTitle": "Результат задачи",
-    "resultModalMessage": "Добавьте заметку о результате (необязательно)"
+    "resultModalMessage": "Добавьте заметку о результате (необязательно)",
+    "pendingSyncTemplate": "{{n}} изменений ожидают синхронизации"
   },
   "route": {
     "greeting": "Привет, {{name}}!",

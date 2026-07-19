@@ -112,7 +112,8 @@
     "updateFailed": "Tapşırığı yeniləmək alınmadı",
     "completeFailed": "Tapşırığı tamamlamaq alınmadı",
     "resultModalTitle": "Tapşırıq nəticəsi",
-    "resultModalMessage": "Nəticə qeydləri əlavə edin (məcburi deyil)"
+    "resultModalMessage": "Nəticə qeydləri əlavə edin (məcburi deyil)",
+    "pendingSyncTemplate": "{{n}} dəyişiklik sinxronizasiyanı gözləyir"
   },
   "route": {
     "greeting": "Salam, {{name}}!",
