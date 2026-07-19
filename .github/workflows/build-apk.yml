@@ -30,6 +30,8 @@ jobs:
         working-directory: MTMobileApp
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Detect whether APK build is required
         id: scope
