@@ -64,7 +64,7 @@ jobs:
 
       - name: Build release APK
         working-directory: MTMobileApp/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
 
       - name: Rename APK with version
         id: apk
