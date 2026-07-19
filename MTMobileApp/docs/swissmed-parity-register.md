@@ -1,6 +1,6 @@
 # SwissMed → LeadDrive MTM parity register
 
-**Version:** 0.3
+**Version:** 0.4
 **Date:** 2026-07-19
 **Scope:** the 18 supplied SwissMed/QuadraSoft CRM 3.1 photographs, in attachment order
 **Target:** LeadDrive MTM for Agent and Manager, tablet-first with smartphone support
@@ -78,9 +78,9 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 |---|---|---|---|---|
 | SWM-01 | Full organization catalogue and filters | Manager, Admin | Partial | P0 |
 | SWM-02 | Bulk contact/organization ownership transfer | Manager, Admin | Missing | P0 |
-| SWM-03 | Contact master card | Agent, Manager, Admin | Missing | P0 |
-| SWM-04 | Doctor professional profile and brand potential | Agent, Manager | Missing | P0 |
-| SWM-05 | My contacts | Agent, Manager | Missing | P0 |
+| SWM-03 | Contact master card | Agent, Manager, Admin | Partial | P0 |
+| SWM-04 | Doctor professional profile and brand potential | Agent, Manager | Partial | P0 |
+| SWM-05 | My contacts | Agent, Manager | Partial | P0 |
 | SWM-06 | Organization detail and tabs | Agent, Manager, Admin | Partial | P0 |
 | SWM-07 | My organizations and coverage context | Agent, Manager | Partial | P0 |
 | SWM-08 | Dense organization table and saved views | Manager, Admin | Missing | P1 |
@@ -241,7 +241,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 5, “My contacts” filter panel and assigned contact table.
 
 **Target roles:** Agent owns daily use; Manager can view by employee and manage assignments.
-**Current state: Partial.** An Agent “База / Контакты” list (`src/screens/base/ContactsList.tsx`) against `GET /contacts` shows the agent's assigned contacts with debounced server search (name/specialty/phone), type/category badges, and the primary workplace; tapping opens the contact card. Missing: contact-level visit context/history, richer filters and saved views, manager-by-employee views, and offline caching (no `contacts` entity in the sync-pull yet).
+**Current state: Partial.** An Agent “База / Контакты” list (`src/screens/base/ContactsList.tsx`) against `GET /contacts` shows the agent's assigned contacts with debounced server search (name/specialty/phone), type/category badges, and the primary workplace; tapping opens the contact card. Contacts are now cached and read offline (server sync-pull gained a `contacts` entity, deployed) — a flat subset (no workplace/visit context offline). Missing: contact-level visit context/history, richer filters and saved views, and manager-by-employee views.
 
 **Data and filters**
 
@@ -607,7 +607,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 17, weekday columns with visits, day-start times, coverage summary, tasks, and filters.
 
 **Target roles:** Agent self-view; Manager selected employee/team view.
-**Current state: Partial.** Route/Visit show today's work, Dashboard/Profile show small summaries, and Agent Home has an explicit client-local persisted start/end-workday control that gates Android GPS/heartbeat lifecycle. It is not yet a server-authoritative shift. There is still no week/day-column calendar, 1/5/7-day switch, planned-vs-fact per day, integrated coverage/tasks, Manager employee selector, server-authoritative workday record, or completed offline/physical-device lifecycle validation.
+**Current state: Partial.** A dedicated Agent “Week” tab (`src/screens/week/WeekScreen.tsx`) now consumes the server `GET /mobile/week` seven-day contract: a week summary (visits, tasks, coverage %) and a per-day agenda with route stops, visit completion, task counts, working-day/weekend markers, and today highlighting, with ‹ / › week navigation and a Today jump. Missing: 1/5/7-day switch, day-column calendar layout, planned-vs-fact per day, in-line coverage/task drill, Manager employee/team selector, draft creation/acknowledgement from the week capabilities, offline week cache, and server-authoritative workday.
 
 **Data and filters**
 
@@ -723,6 +723,23 @@ The item remains **Partial** if any required role, status branch, formula/drill-
 
 This ordering prevents visually complete dashboards and calendars from being built on incomplete contacts, ownership, plans, GPS rules, or formulas.
 
+### Next up — prioritized backlog (as of 2026-07-19, batch 2)
+
+**Now — clean, non-fork slices against ready server contracts:**
+- P0-A: connect `/mobile/bootstrap` → capability-driven navigation (hide tabs/actions the agent can't use); connect the visit workspace (`/mobile/visits/[id]/workspace`).
+- P0-D start: in-app route map + actual GPS line for the day (SWM-11), reusing the already-cached route points; then a GPS history screen (SWM-10).
+
+**Next — needs a product decision first:**
+- Durable offline **check-in/out**: optimistic check-in + a conflict-resolution UI for the geofence out-of-zone / active-visit / requirements rejections the outbox currently drops silently.
+- Connect `/mobile/kpi` (SWM-13): the server contract is week/month-scoped, so the “today” dashboard semantics change — confirm the dashboard period model before wiring.
+
+**Later — larger or lower immediate parity:**
+- SWM-16 visit planning workflow, then SWM-18 contact × date matrix (Manager/tablet).
+- SWM-09 pharmacy promotions / points / approvals.
+- SWM-02 bulk transfer and SWM-08 dense table / saved views (Manager/Admin; web-first candidates).
+- SWM-13/15 KPI charts, formulas, drill-down and coverage/cancellation widgets.
+- Contact detail visit-history + offline detail caches; SWM-12 Manager live team map real data.
+
 ## Changelog — 2026-07-19 (Android, merged to main)
 
 Some evidence bullets in *Purpose and evidence* were written before this batch and are now superseded by the deltas below; the per-item **Current state** lines above are authoritative.
@@ -739,3 +756,16 @@ Some evidence bullets in *Purpose and evidence* were written before this batch a
 - SWM-04 — aggregate brand-potential summary (potential / coverage / %) on both detail cards, from field-potential rows already returned by the detail contracts (PR #20).
 
 **Still open after this batch:** SWM-02 (bulk transfer), SWM-08 (dense table/saved views), SWM-09 (promotions/points), SWM-12/13 (live map/KPI), SWM-16/17/18 (planning/calendar/matrix); contacts offline cache (needs a server `contacts` sync-pull entity); visit check-in/out durability; per-brand potential with names; in-app maps.
+
+## Changelog — 2026-07-19 (batch 2 — merged to main)
+
+**P0-A — server contracts (start):**
+- SWM-17 — new Agent “Week” tab against `GET /mobile/week`: week summary + per-day agenda (route stops, visits, tasks, working-day markers), week ‹ / › navigation, Today jump (PR #22).
+
+**Offline foundation — contacts (server + mobile):**
+- Server: added a `contacts` entity to `GET /mobile/sync/pull`, agent-scoped like customers, with soft-delete tombstones — **leaddrive-v2 PR #444, deployed to prod** (RLS gap check 0, sync suite 54 passed, tsc clean, health 200 post-deploy).
+- Mobile: the Contacts list now caches and reads contacts offline (a flat subset — no workplace/visit context) with the shared offline indicator (PR #23).
+
+This closes the offline read path for both “База” entities (organizations + contacts).
+
+**Still open after batch 2:** everything under *Next up* above — P0-A `/mobile/bootstrap` capability nav and visit workspace; P0-D in-app maps / GPS history / replay (SWM-10/11); durable offline check-in (product decision); `/mobile/kpi` (SWM-13, period-model decision); SWM-02/08/09/16/18; KPI/coverage widgets (SWM-13/15).
