@@ -9,6 +9,8 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
+import { readOfflineTasks } from "../../services/offline-reads"
+import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
@@ -39,6 +41,7 @@ export default function TasksScreen() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [offline, setOffline] = useState(false)
   const [activeTab, setActiveTab] = useState("PENDING")
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string; message?: string }>({
@@ -50,9 +53,25 @@ export default function TasksScreen() {
   const fetchTasks = useCallback(async () => {
     try {
       const res = await api.getTasks()
-      if (res.success) setTasks(res.data?.tasks || [])
+      if (res.success) {
+        setTasks(res.data?.tasks || [])
+        setOffline(false)
+      }
     } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") console.warn("Failed to fetch tasks:", e.message)
+      // SESSION_EXPIRED is handled by the api interceptor (logs the agent out);
+      // anything else is a network/timeout failure — fall back to the durable
+      // sync cache so the rep still sees their last-synced tasks offline.
+      if (e.message !== "SESSION_EXPIRED") {
+        const agent = useAuthStore.getState().agent
+        if (agent) {
+          try {
+            const cached = await readOfflineTasks(agent.organizationId, agent.id)
+            if (cached.length > 0) setTasks(cached)
+          } catch {}
+        }
+        setOffline(true)
+        console.warn("Failed to fetch tasks:", e.message)
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -162,6 +181,14 @@ export default function TasksScreen() {
         <View style={styles.statDivider} />
         <StatItem value={overdueCount} label={t("task.statOverdue")} color={overdueCount > 0 ? "#ef4444" : "#94a3b8"} />
       </View>
+
+      {/* Offline indicator — cache-backed data when the network is unreachable */}
+      {offline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineDot}>●</Text>
+          <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
+        </View>
+      )}
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -358,6 +385,24 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 20, fontWeight: "800" },
   statLabel: { fontSize: 9, color: "#94a3b8", marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 },
   statDivider: { width: 1, height: 28, backgroundColor: "#f1f5f9" },
+
+  // Offline banner
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "#fff7ed",
+    borderWidth: 1,
+    borderColor: "#fed7aa",
+  },
+  offlineDot: { color: "#f59e0b", fontSize: 10 },
+  offlineBannerText: { color: "#b45309", fontSize: 12, fontWeight: "600" },
 
   // Tabs
   tabs: { flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 8 },

@@ -6,7 +6,8 @@
     "customer": "Customer",
     "ok": "OK",
     "cancel": "Cancel",
-    "retry": "Retry"
+    "retry": "Retry",
+    "offlineCached": "Offline — showing saved data"
   },
   "errorBoundary": {
     "title": "Something went wrong",

@@ -1,8 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
-type SyncEntity = "routes" | "customers" | "visits" | "tasks"
-type SyncRecord = { id: string; [key: string]: unknown }
-type SyncState = { version: string | null; entities: Partial<Record<SyncEntity, SyncRecord[]>> }
+export type SyncEntity = "routes" | "customers" | "visits" | "tasks"
+export type SyncRecord = { id: string; [key: string]: unknown }
+export type SyncState = { version: string | null; entities: Partial<Record<SyncEntity, SyncRecord[]>> }
 
 function key(tenantId: string | null | undefined, agentId: string | null | undefined) {
   return `@mtm_sync_cache_v1:${tenantId || "unknown"}:${agentId || "unknown"}`

@@ -6,7 +6,8 @@
     "customer": "Müştəri",
     "ok": "OK",
     "cancel": "Ləğv et",
-    "retry": "Yenidən cəhd et"
+    "retry": "Yenidən cəhd et",
+    "offlineCached": "Oflayn — yadda saxlanmış məlumatlar göstərilir"
   },
   "errorBoundary": {
     "title": "Nəsə səhv getdi",
