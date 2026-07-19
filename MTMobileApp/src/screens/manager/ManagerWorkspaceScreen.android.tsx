@@ -43,14 +43,18 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const meta = SCREEN_META[kind]
   const tablet = isTabletWidth(width)
   const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
+  const [locations, setLocations] = useState<Array<{ agentId: string; latitude: number | null; longitude: number | null; accuracy: number | null; battery: number | null; recordedAt: string | null }>>([])
   const [summary, setSummary] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const controller = new AbortController()
-    const request = kind === "team" ? api.getManagerTeam(controller.signal) : kind === "planning" ? api.getManagerPlanning(undefined, controller.signal) : api.getManagerApprovals(controller.signal)
+    const request = kind === "team" ? Promise.all([api.getManagerTeam(controller.signal), api.getManagerLocations(controller.signal)]) : kind === "planning" ? api.getManagerPlanning(undefined, controller.signal) : api.getManagerApprovals(controller.signal)
     request.then((response: any) => {
-        if (kind === "team") setTeam(response?.data?.agents || [])
+        if (kind === "team") {
+          setTeam(response?.[0]?.data?.agents || [])
+          setLocations(response?.[1]?.data?.locations || [])
+        }
         else if (kind === "planning") setSummary(`${response?.data?.routes?.length || 0} routes planned today`)
         else setSummary(`${Object.values(response?.data?.counts || {}).reduce((a: number, b: any) => a + Number(b || 0), 0)} approvals pending`)
       })
@@ -83,6 +87,15 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
                 <View style={styles.agentCopy}>
                   <Text style={styles.agentName}>{agent.name}</Text>
                   <Text style={styles.agentMeta}>{agent.role} · {agent.workday?.status || t("dashboardV2.unavailable")}</Text>
+                {(() => {
+                  const location = locations.find((item) => item.agentId === agent.id)
+                  if (!location || location.latitude == null || location.longitude == null) return <Text style={styles.locationMeta}>Location unavailable</Text>
+                  const coords = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
+                  const accuracy = location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)}m`
+                  const battery = location.battery == null ? "" : ` · ${Math.round(location.battery)}%`
+                  const recordedAt = location.recordedAt ? ` · ${new Date(location.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""
+                  return <Text style={styles.locationMeta}>{coords}{accuracy}{battery}{recordedAt}</Text>
+                })()}
                 </View>
                 <Text style={styles.agentState}>{agent.isOnline ? "ONLINE" : "OFFLINE"}</Text>
               </View>
@@ -177,6 +190,7 @@ const styles = StyleSheet.create({
   agentCopy: { flex: 1, gap: 2 },
   agentName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
   agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12 },
+  locationMeta: { color: fieldTheme.color.blue, fontSize: 11, fontWeight: "700" },
   agentState: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
   skeletonGrid: { gap: fieldTheme.space.md },
   skeletonGridTablet: { flexDirection: "row", flexWrap: "wrap" },
