@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react"
-import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import React, { useCallback, useEffect, useState } from "react"
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native"
+import NotesModal from "../../components/NotesModal"
+import FeedbackToast from "../../components/FeedbackToast"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -49,22 +51,45 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const [planning, setPlanning] = useState<PlanningRoute[]>([])
   const [approvals, setApprovals] = useState<ManagerApprovals | null>(null)
   const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
 
-  useEffect(() => {
-    const controller = new AbortController()
-    const request = kind === "team" ? Promise.all([api.getManagerTeam(controller.signal), api.getManagerLocations(controller.signal)]) : kind === "planning" ? api.getManagerPlanning(undefined, controller.signal) : api.getManagerApprovals(controller.signal)
+  const reload = useCallback(() => {
+    setLoading(true)
+    const request = kind === "team"
+      ? Promise.all([api.getManagerTeam(), api.getManagerLocations()])
+      : kind === "planning"
+        ? api.getManagerPlanning()
+        : api.getManagerApprovals()
     request.then((response: any) => {
         if (kind === "team") {
           setTeam(response?.[0]?.data?.agents || [])
           setLocations(response?.[1]?.data?.locations || [])
-        }
-        else if (kind === "planning") setPlanning(toPlanningRoutes(response?.data))
+        } else if (kind === "planning") setPlanning(toPlanningRoutes(response?.data))
         else setApprovals(toApprovals(response?.data))
       })
       .catch(() => { setTeam([]); setPlanning([]); setApprovals(null) })
       .finally(() => setLoading(false))
-    return () => controller.abort()
   }, [kind])
+
+  useEffect(() => { reload() }, [reload])
+
+  const decide = async (id: string, decision: "APPROVED" | "REJECTED", note?: string) => {
+    if (busyId) return
+    setBusyId(id)
+    try {
+      const res = await api.hrmDecision(id, decision, note)
+      if (res?.success) {
+        setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
+        reload()
+      }
+    } catch (e: any) {
+      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("common.error") })
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   return (
     <View style={styles.root}>
@@ -138,15 +163,24 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
         ) : (
           approvals && approvals.total > 0 ? (
             <View style={styles.itemList}>
-              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} />
-              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} />
-              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} />
+              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide(id, "APPROVED")} onReject={setRejectId} />
+              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} />
+              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} />
             </View>
           ) : (
             <StatusPanel icon="checkmark-done-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.approvalsEmpty")} body={t(meta.bodyKey)} />
           )
         )}
       </ScrollView>
+
+      <NotesModal
+        visible={rejectId !== null}
+        title={t("managerShell.rejectTitle")}
+        message={t("managerShell.rejectMessage")}
+        onCancel={() => setRejectId(null)}
+        onSubmit={(note) => { const id = rejectId; setRejectId(null); if (id) decide(id, "REJECTED", note) }}
+      />
+      <FeedbackToast visible={toast.visible} type={toast.type} title={toast.title} onDismiss={() => setToast((s) => ({ ...s, visible: false }))} />
     </View>
   )
 }
@@ -163,8 +197,16 @@ function StatusPanel({ icon, color, title, body }: { icon: string; color: string
   )
 }
 
-function ApprovalSection({ title, items }: { title: string; items: ApprovalItem[] }) {
+function ApprovalSection({ title, items, t, busyId, onApprove, onReject }: {
+  title: string
+  items: ApprovalItem[]
+  t: (k: string) => string
+  busyId?: string | null
+  onApprove?: (id: string) => void
+  onReject?: (id: string) => void
+}) {
   if (items.length === 0) return null
+  const actionable = !!(onApprove && onReject)
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title} · {items.length}</Text>
@@ -174,6 +216,16 @@ function ApprovalSection({ title, items }: { title: string; items: ApprovalItem[
             <Text style={styles.itemTitle}>{it.primary}</Text>
             <Text style={styles.itemMeta} numberOfLines={2}>{it.agentName}{it.reason ? ` · ${it.reason}` : ""}</Text>
           </View>
+          {actionable && (
+            <View style={styles.decisionBtns}>
+              <TouchableOpacity style={[styles.approveBtn, busyId === it.id && styles.btnBusy]} disabled={busyId === it.id} onPress={() => onApprove!(it.id)}>
+                <Text style={styles.approveBtnText}>{t("managerShell.approve")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.rejectBtn, busyId === it.id && styles.btnBusy]} disabled={busyId === it.id} onPress={() => onReject!(it.id)}>
+                <Text style={styles.rejectBtnText}>{t("managerShell.reject")}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       ))}
     </View>
@@ -281,4 +333,10 @@ const styles = StyleSheet.create({
   itemPillText: { fontSize: 10, fontWeight: "700", color: fieldTheme.color.primaryStrong },
   section: { gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
   sectionTitle: { fontSize: 12, fontWeight: "800", color: fieldTheme.color.inkMuted, textTransform: "uppercase", letterSpacing: 0.4 },
+  decisionBtns: { flexDirection: "row", gap: fieldTheme.space.xs },
+  approveBtn: { backgroundColor: fieldTheme.color.successSoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
+  approveBtnText: { color: fieldTheme.color.success, fontSize: 12, fontWeight: "700" },
+  rejectBtn: { backgroundColor: fieldTheme.color.dangerSoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
+  rejectBtnText: { color: fieldTheme.color.danger, fontSize: 12, fontWeight: "700" },
+  btnBusy: { opacity: 0.5 },
 })

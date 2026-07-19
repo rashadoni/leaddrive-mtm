@@ -443,6 +443,18 @@ class ApiClient {
     return this.request("/mobile/manager/approvals", { signal })
   }
 
+  /**
+   * Decide an HRM request (approve/reject). Hits the shared operations decision
+   * endpoint, which accepts the mobile Bearer via withMtmRlsAuth and enforces a
+   * non-AGENT actor server-side. A rejection requires a note.
+   */
+  async hrmDecision(id: string, decision: "APPROVED" | "REJECTED", note?: string) {
+    return this.request(`/operations/hrm/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, ...(note ? { note } : {}) }),
+    })
+  }
+
   // --- Routes ---
 
   async getRoutes(date?: string, signal?: AbortSignal) {

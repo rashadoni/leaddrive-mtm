@@ -471,4 +471,25 @@ describe("ApiClient — fullLogout", () => {
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@mtm_server")
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@mtm_saved_login")
   })
+
+  it("hrmDecision posts to the operations decision endpoint with decision + note", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.hrmDecision("hrm-1", "REJECTED", "not enough cover")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/operations/hrm/hrm-1/decision")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ decision: "REJECTED", note: "not enough cover" })
+  })
+
+  it("hrmDecision omits the note when not provided", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.hrmDecision("hrm-2", "APPROVED")
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
+  })
 })
