@@ -63,6 +63,7 @@ jobs:
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.scope.outputs.build == 'true'
 
       - name: Install JS dependencies
         run: npm ci --legacy-peer-deps --no-audit --no-fund
