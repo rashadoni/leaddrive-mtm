@@ -19,6 +19,10 @@
 
 // ── Mocks (defined inline so hoisting works) ──────────────────────────────────
 
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock")
+)
+
 jest.mock("../../src/services/api", () => ({
   api: {
     login: jest.fn(),

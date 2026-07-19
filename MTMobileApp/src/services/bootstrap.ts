@@ -22,7 +22,16 @@ export interface BootstrapData {
   principal: { id: string; name: string; email: string; role: string } | null
   capabilities: MobileCapability[]
   timezone: string | null
-  workday: { id: string; status: string } | null
+  workday: BootstrapWorkday | null
+}
+
+export interface BootstrapWorkday {
+  id: string
+  status: string
+  workDate?: string
+  startedAt?: string
+  pausedAt?: string
+  completedAt?: string
 }
 
 function str(value: unknown): string | undefined {
@@ -57,8 +66,26 @@ export function toBootstrap(raw: any): BootstrapData {
       : null,
     capabilities,
     timezone: str(raw?.timezone) ?? null,
-    workday: workday ? { id: String(workday.id ?? ""), status: str(workday.status) ?? "" } : null,
+    workday: workday
+      ? {
+          id: String(workday.id ?? ""),
+          status: str(workday.status) ?? "",
+          workDate: str(workday.workDate),
+          startedAt: str(workday.startedAt),
+          pausedAt: str(workday.pausedAt),
+          completedAt: str(workday.completedAt),
+        }
+      : null,
   }
+}
+
+/**
+ * True when the server considers a workday currently open (started, not
+ * completed). Used to reconcile the client-local workday state with the
+ * authoritative server shift on bootstrap.
+ */
+export function isWorkdayOpen(workday: BootstrapWorkday | null | undefined): boolean {
+  return !!(workday && workday.startedAt && !workday.completedAt && workday.status !== "COMPLETED")
 }
 
 /** True if `caps` grants `cap`. */

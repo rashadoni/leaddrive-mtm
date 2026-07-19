@@ -1,3 +1,6 @@
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock")
+)
 jest.mock("../../src/services/api", () => ({ api: { getBootstrap: jest.fn() } }))
 
 import { api } from "../../src/services/api"

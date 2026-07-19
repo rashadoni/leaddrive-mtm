@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { create } from "zustand"
 import { enqueueOutboxOperation } from "../services/outbox"
+import { isWorkdayOpen, type BootstrapWorkday } from "../services/bootstrap"
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
 let mutationQueue: Promise<void> = Promise.resolve()
@@ -26,6 +27,19 @@ interface WorkdayState {
   hydrate: () => Promise<void>
   start: (key: string) => Promise<void>
   end: (key: string) => Promise<void>
+  /**
+   * Reconcile the client-local workday with the authoritative server shift
+   * returned by /mobile/bootstrap. Conservative on purpose:
+   *   - server shift open + no local  -> adopt it (restores an active shift on a
+   *     fresh install / new device / cleared storage). The server workday id
+   *     equals the client-generated id (server creates the row with data.id),
+   *     so end() keeps working after adoption.
+   *   - server shift closed + local matches its id -> clear (the shift was ended
+   *     elsewhere, e.g. another device).
+   *   - otherwise -> leave local untouched, so an un-synced optimistic start
+   *     (queued in the outbox, not yet on the server) is never dropped.
+   */
+  reconcileFromServer: (key: string, workday: BootstrapWorkday | null | undefined) => Promise<void>
 }
 
 export function workdayKey(tenantId?: string | null, userId?: string | null) {
@@ -67,5 +81,17 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "END", workdayId: activeWorkday.workdayId, occurredAt } })
     await AsyncStorage.removeItem(STORAGE_KEY)
     if (get().activeWorkday?.key === key) set({ activeWorkday: null })
+  }),
+  reconcileFromServer: (key, workday) => serializeMutation(async () => {
+    const local = get().activeWorkday
+    const open = isWorkdayOpen(workday)
+    if (open && !local) {
+      const activeWorkday: ActiveWorkday = { key, workdayId: workday!.id, startedAt: workday!.startedAt! }
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
+      set({ activeWorkday })
+    } else if (!open && local && workday && local.workdayId === workday.id) {
+      await AsyncStorage.removeItem(STORAGE_KEY)
+      if (get().activeWorkday?.workdayId === local.workdayId) set({ activeWorkday: null })
+    }
   }),
 }))

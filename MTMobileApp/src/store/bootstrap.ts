@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { api } from "../services/api"
 import { toBootstrap, type BootstrapData, type MobileCapability } from "../services/bootstrap"
+import { useWorkdayStore, workdayKey } from "./workday"
 
 interface BootstrapState {
   data: BootstrapData | null
@@ -24,6 +25,9 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
       if (res?.success && res.data) {
         const data = toBootstrap(res.data)
         set({ data, capabilities: data.capabilities, loading: false })
+        // Reconcile the local workday with the authoritative server shift.
+        const key = workdayKey(data.tenant?.id, data.principal?.id)
+        void useWorkdayStore.getState().reconcileFromServer(key, data.workday)
       } else {
         set({ loading: false })
       }
