@@ -127,7 +127,16 @@
     "objectStore": "Store",
     "objectOther": "Object",
     "contactsTemplate": "{{n}} contacts",
-    "visitsTemplate": "{{n}} visits"
+    "visitsTemplate": "{{n}} visits",
+    "detailRequisites": "Details",
+    "detailVisits": "Recent visits",
+    "detailNoContacts": "No contacts linked",
+    "detailNoVisits": "No visits yet",
+    "detailOfflineNote": "Details aren't available offline",
+    "detailError": "Couldn't load the organization",
+    "fieldCode": "Code",
+    "fieldContactPerson": "Contact person",
+    "fieldNotes": "Notes"
   },
   "contacts": {
     "title": "Contacts",

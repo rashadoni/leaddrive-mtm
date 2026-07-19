@@ -127,7 +127,16 @@
     "objectStore": "Mağaza",
     "objectOther": "Obyekt",
     "contactsTemplate": "{{n}} kontakt",
-    "visitsTemplate": "{{n}} ziyarət"
+    "visitsTemplate": "{{n}} ziyarət",
+    "detailRequisites": "Rekvizitlər",
+    "detailVisits": "Son ziyarətlər",
+    "detailNoContacts": "Bağlı kontakt yoxdur",
+    "detailNoVisits": "Hələ ziyarət yoxdur",
+    "detailOfflineNote": "Təfərrüatlar oflayn əlçatan deyil",
+    "detailError": "Təşkilatı yükləmək alınmadı",
+    "fieldCode": "Kod",
+    "fieldContactPerson": "Əlaqə şəxsi",
+    "fieldNotes": "Qeydlər"
   },
   "contacts": {
     "title": "Kontaktlar",

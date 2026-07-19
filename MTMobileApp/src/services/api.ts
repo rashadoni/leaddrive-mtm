@@ -535,6 +535,10 @@ class ApiClient {
     return this.request(`/organizations${qs ? `?${qs}` : ""}`, { signal })
   }
 
+  async getOrganization(id: string, signal?: AbortSignal) {
+    return this.request(`/organizations/${id}`, { signal })
+  }
+
   async getContacts(
     params?: { search?: string; page?: number; limit?: number },
     signal?: AbortSignal,

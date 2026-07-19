@@ -127,7 +127,16 @@
     "objectStore": "Магазин",
     "objectOther": "Объект",
     "contactsTemplate": "Контактов: {{n}}",
-    "visitsTemplate": "Визитов: {{n}}"
+    "visitsTemplate": "Визитов: {{n}}",
+    "detailRequisites": "Реквизиты",
+    "detailVisits": "Последние визиты",
+    "detailNoContacts": "Контактов нет",
+    "detailNoVisits": "Визитов пока нет",
+    "detailOfflineNote": "Детали недоступны офлайн",
+    "detailError": "Не удалось загрузить организацию",
+    "fieldCode": "Код",
+    "fieldContactPerson": "Контактное лицо",
+    "fieldNotes": "Заметки"
   },
   "contacts": {
     "title": "Контакты",
