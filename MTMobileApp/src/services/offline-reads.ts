@@ -156,3 +156,56 @@ export async function readOfflineRoute(
   const active = selectActiveRoute(state.entities.routes ?? [], now)
   return active ? mapCachedRoute(active) : null
 }
+
+export interface CachedOrganization {
+  id: string
+  name: string
+  code?: string
+  category?: string
+  address?: string
+  city?: string
+  phone?: string
+}
+
+/**
+ * Map a cached `customers` record to the Organizations screen shape. The
+ * sync-pull customer carries fewer fields than GET /organizations (no
+ * objectType / status / counts), so the offline card is a lighter version of
+ * the same object — id, name, code, category, address, city, phone.
+ */
+export function mapCachedOrganization(record: SyncRecord): CachedOrganization {
+  return {
+    id: String(record.id),
+    name: str(record.name) ?? "",
+    code: str(record.code),
+    category: str(record.category),
+    address: str(record.address),
+    city: str(record.city),
+    phone: str(record.phone),
+  }
+}
+
+/** Client-side mirror of the server search (name/code/address/phone/city). */
+export function matchesOrganizationSearch(org: CachedOrganization, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return [org.name, org.code, org.address, org.phone, org.city].some(
+    (value) => value != null && value.toLowerCase().includes(q),
+  )
+}
+
+/**
+ * Load the agent's assigned organizations from the durable cache, filtered by
+ * the same search terms the server honours and sorted by name. Used as the
+ * offline fallback for the Organizations screen.
+ */
+export async function readOfflineOrganizations(
+  tenantId: string | null | undefined,
+  agentId: string | null | undefined,
+  search?: string,
+): Promise<CachedOrganization[]> {
+  const state = await readSyncCache(tenantId, agentId)
+  const list = (state.entities.customers ?? []).map(mapCachedOrganization)
+  const filtered = search ? list.filter((org) => matchesOrganizationSearch(org, search)) : list
+  return filtered.sort((a, b) => a.name.localeCompare(b.name))
+}

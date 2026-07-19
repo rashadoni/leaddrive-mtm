@@ -115,6 +115,20 @@
     "resultModalMessage": "Nəticə qeydləri əlavə edin (məcburi deyil)",
     "pendingSyncTemplate": "{{n}} dəyişiklik sinxronizasiyanı gözləyir"
   },
+  "organizations": {
+    "title": "Təşkilatlar",
+    "searchPlaceholder": "Ad, kod, ünvan üzrə axtarış…",
+    "totalTemplate": "{{n}} təşkilat",
+    "empty": "Hələ təyin olunmuş təşkilat yoxdur",
+    "emptySearch": "Axtarışa uyğun nəticə yoxdur",
+    "loading": "Təşkilatlar yüklənir…",
+    "objectPharmacy": "Aptek",
+    "objectClinic": "Klinika",
+    "objectStore": "Mağaza",
+    "objectOther": "Obyekt",
+    "contactsTemplate": "{{n}} kontakt",
+    "visitsTemplate": "{{n}} ziyarət"
+  },
   "route": {
     "greeting": "Salam, {{name}}!",
     "leftLabel": "qalır",

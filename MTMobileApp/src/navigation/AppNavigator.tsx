@@ -12,6 +12,7 @@ import LoginScreen from "../screens/auth/LoginScreen"
 import RouteScreen from "../screens/route/RouteScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
+import OrganizationsScreen from "../screens/organizations/OrganizationsScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen"
 
@@ -30,6 +31,7 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Visit: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
   Tasks: { active: "clipboard", inactive: "clipboard-outline" },
   Dashboard: { active: "bar-chart", inactive: "bar-chart-outline" },
+  Base: { active: "business", inactive: "business-outline" },
   Profile: { active: "person", inactive: "person-outline" },
 }
 
@@ -67,6 +69,7 @@ function MainTabs() {
       <Tab.Screen name="Visit" component={VisitScreen} />
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Base" component={OrganizationsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   )

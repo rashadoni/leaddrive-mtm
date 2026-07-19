@@ -16,6 +16,7 @@ import LoginScreen from "../screens/auth/LoginScreen"
 import RouteScreen from "../screens/route/RouteScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
+import OrganizationsScreen from "../screens/organizations/OrganizationsScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
@@ -35,6 +36,7 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
   Route: { active: "navigate", inactive: "navigate-outline" },
   Visits: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
+  Base: { active: "business", inactive: "business-outline" },
   Profile: { active: "person", inactive: "person-outline" },
   Overview: { active: "grid", inactive: "grid-outline" },
   Team: { active: "people", inactive: "people-outline" },
@@ -130,6 +132,7 @@ function MainTabs() {
           <Tab.Screen name="Route" component={RouteScreen} options={tabOptions("Route", t("navV2.route"))} />
           <Tab.Screen name="Visits" component={VisitScreen} options={tabOptions("Visits", t("navV2.visits"))} />
           <Tab.Screen name="Tasks" component={TasksScreen} options={tabOptions("Tasks", t("navV2.tasks"))} />
+          <Tab.Screen name="Base" component={OrganizationsScreen} options={tabOptions("Base", t("navV2.base"))} />
           <Tab.Screen name="Profile" component={ProfileScreen} options={tabOptions("Profile", t("navV2.profile"))} />
         </>
       )}

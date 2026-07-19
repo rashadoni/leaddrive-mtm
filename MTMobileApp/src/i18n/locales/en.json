@@ -115,6 +115,20 @@
     "resultModalMessage": "Add result notes (optional)",
     "pendingSyncTemplate": "{{n}} change awaiting sync"
   },
+  "organizations": {
+    "title": "Organizations",
+    "searchPlaceholder": "Search by name, code, address…",
+    "totalTemplate": "{{n}} organizations",
+    "empty": "No organizations assigned yet",
+    "emptySearch": "Nothing matches your search",
+    "loading": "Loading organizations…",
+    "objectPharmacy": "Pharmacy",
+    "objectClinic": "Clinic",
+    "objectStore": "Store",
+    "objectOther": "Object",
+    "contactsTemplate": "{{n}} contacts",
+    "visitsTemplate": "{{n}} visits"
+  },
   "route": {
     "greeting": "Hello, {{name}}!",
     "leftLabel": "left",

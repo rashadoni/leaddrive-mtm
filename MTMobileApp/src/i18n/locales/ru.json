@@ -115,6 +115,20 @@
     "resultModalMessage": "Добавьте заметку о результате (необязательно)",
     "pendingSyncTemplate": "{{n}} изменений ожидают синхронизации"
   },
+  "organizations": {
+    "title": "Организации",
+    "searchPlaceholder": "Поиск по названию, коду, адресу…",
+    "totalTemplate": "Организаций: {{n}}",
+    "empty": "Назначенных организаций пока нет",
+    "emptySearch": "По запросу ничего не найдено",
+    "loading": "Загрузка организаций…",
+    "objectPharmacy": "Аптека",
+    "objectClinic": "Клиника",
+    "objectStore": "Магазин",
+    "objectOther": "Объект",
+    "contactsTemplate": "Контактов: {{n}}",
+    "visitsTemplate": "Визитов: {{n}}"
+  },
   "route": {
     "greeting": "Привет, {{name}}!",
     "leftLabel": "осталось",

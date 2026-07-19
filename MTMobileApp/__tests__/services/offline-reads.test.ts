@@ -1,8 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { applySyncChanges } from "../../src/services/sync-cache"
 import {
+  mapCachedOrganization,
   mapCachedRoute,
   mapCachedTask,
+  matchesOrganizationSearch,
+  readOfflineOrganizations,
   readOfflineRoute,
   readOfflineTasks,
   selectActiveRoute,
@@ -10,6 +13,7 @@ import {
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
 import ru from "../../src/i18n/locales/ru.json"
+import { mobileResources } from "../../src/i18n/mobile-resources"
 
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -160,6 +164,62 @@ describe("offline task reads (durable sync cache)", () => {
     })
   })
 
+  describe("offline organizations", () => {
+    it("maps a cached customer to the lighter organization shape", () => {
+      const org = mapCachedOrganization({
+        id: "c1",
+        name: "Clinic One",
+        code: "CL-1",
+        category: "A",
+        address: "Baku, Nizami 12",
+        city: "Baku",
+        phone: "+994501112233",
+        latitude: 40.4,
+        longitude: 49.8,
+      })
+      expect(org).toEqual({
+        id: "c1",
+        name: "Clinic One",
+        code: "CL-1",
+        category: "A",
+        address: "Baku, Nizami 12",
+        city: "Baku",
+        phone: "+994501112233",
+      })
+    })
+
+    it("matches search across name, code, address, phone and city", () => {
+      const org = mapCachedOrganization({ id: "c1", name: "Aptek 7", code: "AP7", address: "Nizami", city: "Ganja", phone: "055" })
+      expect(matchesOrganizationSearch(org, "aptek")).toBe(true)
+      expect(matchesOrganizationSearch(org, "ap7")).toBe(true)
+      expect(matchesOrganizationSearch(org, "ganja")).toBe(true)
+      expect(matchesOrganizationSearch(org, "")).toBe(true)
+      expect(matchesOrganizationSearch(org, "moscow")).toBe(false)
+    })
+
+    it("reads, filters and sorts cached organizations for the scope", async () => {
+      await applySyncChanges(
+        "tenant-a",
+        "agent-a",
+        {
+          customers: {
+            updated: [
+              { id: "c2", name: "Zeta Pharmacy", city: "Baku" },
+              { id: "c1", name: "Alpha Clinic", city: "Baku" },
+              { id: "c3", name: "Beta Store", city: "Ganja" },
+            ],
+          },
+        },
+        "v1",
+      )
+      const all = await readOfflineOrganizations("tenant-a", "agent-a")
+      expect(all.map((o) => o.name)).toEqual(["Alpha Clinic", "Beta Store", "Zeta Pharmacy"])
+      const baku = await readOfflineOrganizations("tenant-a", "agent-a", "baku")
+      expect(baku.map((o) => o.id)).toEqual(["c1", "c2"])
+      expect(await readOfflineOrganizations("tenant-b", "agent-a")).toEqual([])
+    })
+  })
+
   describe("i18n contract", () => {
     it.each([["en", en], ["ru", ru], ["az", az]])(
       'common.offlineCached is present and non-empty in %s',
@@ -167,6 +227,21 @@ describe("offline task reads (durable sync cache)", () => {
         const value = (locale as { common: { offlineCached?: unknown } }).common.offlineCached
         expect(typeof value).toBe("string")
         expect((value as string).length).toBeGreaterThan(0)
+      },
+    )
+
+    const ORG_KEYS = ["title", "searchPlaceholder", "empty", "emptySearch", "objectPharmacy"] as const
+    it.each([["en", en], ["ru", ru], ["az", az]])(
+      "organizations namespace + navV2.base are present in %s",
+      (lang, locale) => {
+        const org = (locale as { organizations: Record<string, unknown> }).organizations
+        for (const key of ORG_KEYS) {
+          expect(typeof org[key]).toBe("string")
+          expect((org[key] as string).length).toBeGreaterThan(0)
+        }
+        const nav = (mobileResources as Record<string, { navV2: { base?: unknown } }>)[lang].navV2
+        expect(typeof nav.base).toBe("string")
+        expect((nav.base as string).length).toBeGreaterThan(0)
       },
     )
   })
