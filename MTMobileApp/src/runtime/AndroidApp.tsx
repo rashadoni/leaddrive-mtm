@@ -20,6 +20,7 @@ import { useWorkdayStore, workdayKey } from "../store/workday"
 import { startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { flushOutbox } from "../services/outbox"
+import { flushMediaOutbox, MediaOutboxItem } from "../services/media-outbox"
 import { pullAndApplySync } from "../services/sync-cache"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
@@ -68,6 +69,7 @@ function AppContent() {
     flushOutbox((operations) => api.syncPush(operations))
       .then(() => pullAndApplySync(auth.agent!.organizationId, auth.agent!.id, (since) => api.syncPull(since)))
       .catch(() => {})
+    flushMediaOutbox((item: MediaOutboxItem) => api.uploadPhoto(item)).catch(() => {})
   }, [])
 
   useEffect(() => {
