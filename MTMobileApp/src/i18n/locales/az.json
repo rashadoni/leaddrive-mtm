@@ -163,6 +163,18 @@
     "coverage": "Əhatə",
     "percent": "Əhatə, %"
   },
+  "week": {
+    "title": "Həftə",
+    "today": "Bu gün",
+    "statVisits": "Ziyarətlər",
+    "statTasks": "Tapşırıqlar",
+    "statCoverage": "Əhatə",
+    "stopsTemplate": "{{n}} nöqtə",
+    "tasksTemplate": "{{n}} tapşırıq",
+    "dayOff": "İstirahət günü",
+    "dayEmpty": "Plan yoxdur",
+    "offlineUnavailable": "Həftə oflayn əlçatan deyil"
+  },
   "route": {
     "greeting": "Salam, {{name}}!",
     "leftLabel": "qalır",

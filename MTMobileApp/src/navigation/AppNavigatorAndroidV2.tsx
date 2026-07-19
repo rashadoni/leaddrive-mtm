@@ -14,6 +14,7 @@ import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"
 import RouteScreen from "../screens/route/RouteScreen"
+import WeekScreen from "../screens/week/WeekScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import BaseScreen from "../screens/base/BaseScreen"
@@ -37,6 +38,7 @@ const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
   Home: { active: "home", inactive: "home-outline" },
+  Week: { active: "calendar-number", inactive: "calendar-number-outline" },
   Route: { active: "navigate", inactive: "navigate-outline" },
   Visits: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
@@ -133,6 +135,7 @@ function MainTabs() {
       ) : (
         <>
           <Tab.Screen name="Home" component={DashboardScreen} options={tabOptions("Home", t("navV2.home"))} />
+          <Tab.Screen name="Week" component={WeekScreen} options={tabOptions("Week", t("navV2.week"))} />
           <Tab.Screen name="Route" component={RouteScreen} options={tabOptions("Route", t("navV2.route"))} />
           <Tab.Screen name="Visits" component={VisitScreen} options={tabOptions("Visits", t("navV2.visits"))} />
           <Tab.Screen name="Tasks" component={TasksScreen} options={tabOptions("Tasks", t("navV2.tasks"))} />

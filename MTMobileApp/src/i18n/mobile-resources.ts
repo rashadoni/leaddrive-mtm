@@ -11,6 +11,7 @@ export const mobileResources = {
       planning: "Планирование",
       approvals: "Согласования",
       base: "База",
+      week: "Неделя",
     },
     dashboardV2: {
       agentWorkspace: "Рабочий день",
@@ -114,6 +115,7 @@ export const mobileResources = {
       planning: "Planning",
       approvals: "Approvals",
       base: "Base",
+      week: "Week",
     },
     dashboardV2: {
       agentWorkspace: "Field day",
@@ -217,6 +219,7 @@ export const mobileResources = {
       planning: "Planlama",
       approvals: "Təsdiqlər",
       base: "Baza",
+      week: "Həftə",
     },
     dashboardV2: {
       agentWorkspace: "Sahə günü",

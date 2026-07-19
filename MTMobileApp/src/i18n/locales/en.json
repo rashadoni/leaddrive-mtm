@@ -163,6 +163,18 @@
     "coverage": "Coverage",
     "percent": "Coverage %"
   },
+  "week": {
+    "title": "Week",
+    "today": "Today",
+    "statVisits": "Visits",
+    "statTasks": "Tasks",
+    "statCoverage": "Coverage",
+    "stopsTemplate": "{{n}} stops",
+    "tasksTemplate": "{{n}} tasks",
+    "dayOff": "Day off",
+    "dayEmpty": "Nothing planned",
+    "offlineUnavailable": "The week isn't available offline"
+  },
   "route": {
     "greeting": "Hello, {{name}}!",
     "leftLabel": "left",

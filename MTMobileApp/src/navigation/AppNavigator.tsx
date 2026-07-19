@@ -10,6 +10,7 @@ import { useAuthStore } from "../store/auth"
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"
 import RouteScreen from "../screens/route/RouteScreen"
+import WeekScreen from "../screens/week/WeekScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import BaseScreen from "../screens/base/BaseScreen"
@@ -32,6 +33,7 @@ const Tab = createBottomTabNavigator()
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   Route: { active: "navigate", inactive: "navigate-outline" },
+  Week: { active: "calendar-number", inactive: "calendar-number-outline" },
   Visit: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
   Tasks: { active: "clipboard", inactive: "clipboard-outline" },
   Dashboard: { active: "bar-chart", inactive: "bar-chart-outline" },
@@ -70,6 +72,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Route" component={RouteScreen} />
+      <Tab.Screen name="Week" component={WeekScreen} />
       <Tab.Screen name="Visit" component={VisitScreen} />
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />

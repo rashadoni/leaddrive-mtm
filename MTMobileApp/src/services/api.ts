@@ -555,6 +555,13 @@ class ApiClient {
     return this.request(`/contacts/${id}`, { signal })
   }
 
+  // --- Week / agenda ---
+
+  async getWeek(start?: string, signal?: AbortSignal) {
+    const qs = start ? `?start=${encodeURIComponent(start)}` : ""
+    return this.request(`/mobile/week${qs}`, { signal })
+  }
+
   // --- Orders ---
 
   // --- Alerts ---

@@ -163,6 +163,18 @@
     "coverage": "Покрытие",
     "percent": "Покрытие, %"
   },
+  "week": {
+    "title": "Неделя",
+    "today": "Сегодня",
+    "statVisits": "Визиты",
+    "statTasks": "Задачи",
+    "statCoverage": "Покрытие",
+    "stopsTemplate": "{{n}} точек",
+    "tasksTemplate": "{{n}} задач",
+    "dayOff": "Выходной",
+    "dayEmpty": "Нет активности",
+    "offlineUnavailable": "Неделя недоступна офлайн"
+  },
   "route": {
     "greeting": "Привет, {{name}}!",
     "leftLabel": "осталось",
