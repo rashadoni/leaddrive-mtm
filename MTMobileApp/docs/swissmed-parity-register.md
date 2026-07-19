@@ -1,7 +1,7 @@
 # SwissMed → LeadDrive MTM parity register
 
-**Version:** 0.2
-**Date:** 2026-07-18
+**Version:** 0.3
+**Date:** 2026-07-19
 **Scope:** the 18 supplied SwissMed/QuadraSoft CRM 3.1 photographs, in attachment order
 **Target:** LeadDrive MTM for Agent and Manager, tablet-first with smartphone support
 **Out of scope:** LeadShelf planograms and shelf-management functions
@@ -102,7 +102,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 1, organization management list with geographical, organizational, ownership, territory, and polygon filters.
 
 **Target roles:** Manager and Admin manage; Agent may search only permitted/assigned records.
-**Current state: Partial.** `getCustomers()` and nearby/route customer lists expose a small organization-like projection (`id`, name, address, category, coordinates), but there is no organization catalogue screen, full schema, filters, table, ownership status, or bulk operation.
+**Current state: Partial.** An Agent “База / Организации” catalogue screen (`src/screens/base/OrganizationsList.tsx`, tab hub `BaseScreen.tsx`) now lists the agent's assigned organizations against `GET /organizations` (agent-scoped) with debounced server search, category badges, object type, city/address, phone, and contact/visit counts, and falls back to the durable customers cache offline. Missing (esp. Manager/Admin): full schema, geographical/classification filters, dense table, ownership status, saved views, and bulk operations.
 
 **Data**
 
@@ -174,7 +174,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 3, contact detail with workplace, personal, contact, address, product, and brand information.
 
 **Target roles:** Agent reads/requests edits; Manager edits permitted records; Admin governs dictionaries/mastering.
-**Current state: Missing.** The app exposes customer/organization projections but no separate contact model or contact detail screen.
+**Current state: Partial.** A contact detail card (`src/screens/base/ContactDetailScreen.tsx`) against `GET /contacts/[id]` now shows contact info (tap-to-call/email), the list of workplaces (organizations the person works at, each cross-navigating to the organization card), and a brand-potential summary. Reached by tapping a row in the “База / Контакты” list. Missing: MOI/Target/psychotype, per-brand product detail, edit/request, full personal schema, and offline caching.
 
 **Data**
 
@@ -208,7 +208,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 4, professional fields, patients/beds/leader/profile, MOI/category, and brand-potential table.
 
 **Target roles:** Agent records field observations; Manager validates/analyses; Admin configures dictionaries.
-**Current state: Missing.** No doctor profile, brand/product potential, MOI, Target, or psychotype model/UI is present.
+**Current state: Partial.** The contact and organization detail cards surface an aggregate brand-potential summary — summed potential, summed coverage, and coverage % (`src/services/field-potential.ts`) — from the server field-potential rows already returned by the detail contracts. Missing: per-brand/product breakdown with readable brand names, MOI, Target, psychotype, and formula drill-down.
 
 **Data**
 
@@ -241,7 +241,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 5, “My contacts” filter panel and assigned contact table.
 
 **Target roles:** Agent owns daily use; Manager can view by employee and manage assignments.
-**Current state: Missing.** `VisitScreen` searches customers/organizations, not contacts; there is no assigned contact list or contact-level visit context.
+**Current state: Partial.** An Agent “База / Контакты” list (`src/screens/base/ContactsList.tsx`) against `GET /contacts` shows the agent's assigned contacts with debounced server search (name/specialty/phone), type/category badges, and the primary workplace; tapping opens the contact card. Missing: contact-level visit context/history, richer filters and saved views, manager-by-employee views, and offline caching (no `contacts` entity in the sync-pull yet).
 
 **Data and filters**
 
@@ -273,7 +273,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 6, organization detail tabs, address/GPS, shipments, contacts, employees, and organization fields.
 
 **Target roles:** Agent reads field context and requests updates; Manager/Admin edit according to policy.
-**Current state: Partial.** Route and Visit screens show organization name, address, category, coordinates, distance, and navigation; there is no organization detail, tab set, contacts, departments, personnel, shipments, or history.
+**Current state: Partial.** An organization detail card (`src/screens/base/OrganizationDetailScreen.tsx`, `GET /organizations/[id]`) now shows requisites, linked contacts (primary marker, tap-to-call), recent visit history, and a brand-potential summary, reached by tapping a row in the “База / Организации” list. Missing: the full SwissMed tab set, departments, personnel, shipments, in-card editing, and the complete history model.
 
 **Data**
 
@@ -305,7 +305,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photographs 7–8, assigned organization list with geography, type, territory, owner, last visit, and compact/dense results.
 
 **Target roles:** Agent and Manager.
-**Current state: Partial.** Assigned route points and a generic customer list are usable for check-in, but there is no explicit My Organizations catalogue, SwissMed filters, last-visit/coverage context, saved views, or map/list toggle.
+**Current state: Partial.** The “База / Организации” catalogue now lists the agent's assigned organizations explicitly (server search, category/type, city, contact/visit counts), backed by the durable customers cache offline, with a detail card per row. Missing: full SwissMed filters, last-visit/coverage context, saved views, and a map/list toggle.
 
 **Data and filters**
 
@@ -426,7 +426,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 11, full physical route across a territory with point sequence and route line.
 
 **Target roles:** Manager and Agent self-view.
-**Current state: Partial.** `RouteScreen` shows an ordered planned route, point statuses, distances, planned time, completion, and external navigation. Android V2 can send GPS points while its client-local Agent workday gate is active; the server does not yet prove or enforce the shift boundary. There is no in-app map, actual route line, full-day replay, stop overlay, plan-vs-fact comparison, or proven offline replay continuity.
+**Current state: Partial.** `RouteScreen` shows an ordered planned route, point statuses, distances, planned time, completion, and external navigation. Android V2 can send GPS points while its client-local Agent workday gate is active; the server does not yet prove or enforce the shift boundary. The route list now falls back to the durable sync cache when offline, but there is still no in-app map, actual route line, full-day replay, stop overlay, plan-vs-fact comparison, or proven offline replay continuity.
 
 **Data/filter/actions/status**
 
@@ -512,7 +512,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 14, task detail with time, place, status, priority, responsible employee, recurrence, mailing, duplication, files, and progress.
 
 **Target roles:** Agent executes; Manager creates/assigns/reviews; Admin configures groups/status policy.
-**Current state: Partial.** Tasks show title, description, priority, due date, organization, and three statuses. An Agent can start and complete with result notes. Missing are detail/edit, start/end time, groups, event, recurrence, progress, place picker, files/evidence, duplication, bulk/mailing, review/return, and timeline.
+**Current state: Partial.** Tasks show title, description, priority, due date, organization, and three statuses. An Agent can start and complete with result notes; these mutations are now **durable** — queued in the outbox and mapped to the idempotent `/mobile/sync/push` `tasks` contract, with an optimistic UI, an “awaiting sync” indicator, and reconcile-on-reconnect — and the list falls back to the durable sync cache when offline. Missing are detail/edit, start/end time, groups, event, recurrence, progress, place picker, files/evidence, duplication, bulk/mailing, review/return, and timeline.
 
 **Data**
 
@@ -722,3 +722,20 @@ The item remains **Partial** if any required role, status branch, formula/drill-
 7. **Measurement and home:** SWM-13 and SWM-15 after formulas and source data are reconciled.
 
 This ordering prevents visually complete dashboards and calendars from being built on incomplete contacts, ownership, plans, GPS rules, or formulas.
+
+## Changelog — 2026-07-19 (Android, merged to main)
+
+Some evidence bullets in *Purpose and evidence* were written before this batch and are now superseded by the deltas below; the per-item **Current state** lines above are authoritative.
+
+**Phase 2B — offline foundation (partial):**
+- The durable sync cache is now **read** by screens: Tasks and Route fall back to the cached data when the network is unavailable, with an honest “Offline — showing saved data” indicator (PRs #13, #14). This is the read side only; contacts have no cached entity yet.
+- A durable outbox now carries **task** start/complete mutations (optimistic UI, “awaiting sync” indicator, reconnect flush, reconcile-on-fetch) mapped to the idempotent `/mobile/sync/push` `tasks` contract (PR #15). Visit check-in/out is deliberately still direct-to-network — moving it to the outbox is a product decision (optimistic check-in + geofence-conflict UI) held for owner direction.
+
+**Phase 3 — master data (Agent, list + detail):**
+- SWM-01/07 — “База / Организации” list against `GET /organizations`, agent-scoped, with search, badges, counts, offline fallback (PR #16).
+- SWM-05/03 (list) — “База” became a segmented hub; Contacts list against `GET /contacts` (PR #17). Contacts are online-only.
+- SWM-06 — organization detail card (`/organizations/[id]`): requisites, contacts, recent visits, tap-to-call (PR #18).
+- SWM-03 (detail) — contact detail card (`/contacts/[id]`): info, workplaces with cross-navigation to the org card, tap-to-call/email (PR #19).
+- SWM-04 — aggregate brand-potential summary (potential / coverage / %) on both detail cards, from field-potential rows already returned by the detail contracts (PR #20).
+
+**Still open after this batch:** SWM-02 (bulk transfer), SWM-08 (dense table/saved views), SWM-09 (promotions/points), SWM-12/13 (live map/KPI), SWM-16/17/18 (planning/calendar/matrix); contacts offline cache (needs a server `contacts` sync-pull entity); visit check-in/out durability; per-brand potential with names; in-app maps.
