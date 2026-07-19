@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -94,7 +94,18 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
                   const accuracy = location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)}m`
                   const battery = location.battery == null ? "" : ` · ${Math.round(location.battery)}%`
                   const recordedAt = location.recordedAt ? ` · ${new Date(location.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""
-                  return <Text style={styles.locationMeta}>{coords}{accuracy}{battery}{recordedAt}</Text>
+                  return (
+                    <View style={styles.locationBlock}>
+                      <Text style={styles.locationMeta}>{coords}{accuracy}{battery}{recordedAt}</Text>
+                      <Pressable
+                        accessibilityRole="link"
+                        accessibilityLabel="Open location on map"
+                        onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`)}
+                      >
+                        <Text style={styles.mapLink}>Open on map</Text>
+                      </Pressable>
+                    </View>
+                  )
                 })()}
                 </View>
                 <Text style={styles.agentState}>{agent.isOnline ? "ONLINE" : "OFFLINE"}</Text>
@@ -190,7 +201,9 @@ const styles = StyleSheet.create({
   agentCopy: { flex: 1, gap: 2 },
   agentName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
   agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12 },
+  locationBlock: { gap: 2 },
   locationMeta: { color: fieldTheme.color.blue, fontSize: 11, fontWeight: "700" },
+  mapLink: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "800" },
   agentState: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
   skeletonGrid: { gap: fieldTheme.space.md },
   skeletonGridTablet: { flexDirection: "row", flexWrap: "wrap" },
