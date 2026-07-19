@@ -31,6 +31,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Detect whether APK build is required
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if printf '%s\n' "$changed" | grep -qvE '^(MTMobileApp/__tests__/|MTMobileApp/docs/|MTMobileApp/.*\.(md|mdx)$|\.github/workflows/build-apk\.yml$)'; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -51,6 +69,7 @@ jobs:
         run: npx jest --ci
 
       - name: Materialize release keystore (optional)
+        if: steps.scope.outputs.build == 'true'
         env:
           KEYSTORE_B64: ${{ secrets.MTM_RELEASE_KEYSTORE_B64 }}
         run: |
@@ -63,10 +82,12 @@ jobs:
           fi
 
       - name: Build release APK
+        if: steps.scope.outputs.build == 'true'
         working-directory: MTMobileApp/android
         run: ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
 
       - name: Rename APK with version
+        if: steps.scope.outputs.build == 'true'
         id: apk
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -77,6 +98,7 @@ jobs:
           ls -lh "$OUT"
 
       - uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.build == 'true'
         with:
           name: leaddrive-mtm-apk-v${{ steps.apk.outputs.version }}
           path: MTMobileApp/${{ steps.apk.outputs.file }}
@@ -86,7 +108,7 @@ jobs:
       # Artifact downloads require an authenticated Actions UI session; a
       # prerelease gives a plain downloadable asset URL instead.
       - name: Publish APK to GitHub prerelease
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.scope.outputs.build == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
