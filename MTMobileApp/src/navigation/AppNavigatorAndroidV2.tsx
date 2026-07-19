@@ -16,7 +16,7 @@ import LoginScreen from "../screens/auth/LoginScreen"
 import RouteScreen from "../screens/route/RouteScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
-import OrganizationsScreen from "../screens/organizations/OrganizationsScreen"
+import BaseScreen from "../screens/base/BaseScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
@@ -132,7 +132,7 @@ function MainTabs() {
           <Tab.Screen name="Route" component={RouteScreen} options={tabOptions("Route", t("navV2.route"))} />
           <Tab.Screen name="Visits" component={VisitScreen} options={tabOptions("Visits", t("navV2.visits"))} />
           <Tab.Screen name="Tasks" component={TasksScreen} options={tabOptions("Tasks", t("navV2.tasks"))} />
-          <Tab.Screen name="Base" component={OrganizationsScreen} options={tabOptions("Base", t("navV2.base"))} />
+          <Tab.Screen name="Base" component={BaseScreen} options={tabOptions("Base", t("navV2.base"))} />
           <Tab.Screen name="Profile" component={ProfileScreen} options={tabOptions("Profile", t("navV2.profile"))} />
         </>
       )}

@@ -129,6 +129,17 @@
     "contactsTemplate": "{{n}} contacts",
     "visitsTemplate": "{{n}} visits"
   },
+  "contacts": {
+    "title": "Contacts",
+    "searchPlaceholder": "Search by name, specialty, phone…",
+    "empty": "No contacts assigned yet",
+    "emptySearch": "Nothing matches your search",
+    "loading": "Loading contacts…",
+    "offlineUnavailable": "Contacts aren't available offline",
+    "typeDoctor": "Doctor",
+    "typePharmacist": "Pharmacist",
+    "typeOther": "Contact"
+  },
   "route": {
     "greeting": "Hello, {{name}}!",
     "leftLabel": "left",

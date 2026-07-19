@@ -12,7 +12,7 @@ import LoginScreen from "../screens/auth/LoginScreen"
 import RouteScreen from "../screens/route/RouteScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
-import OrganizationsScreen from "../screens/organizations/OrganizationsScreen"
+import BaseScreen from "../screens/base/BaseScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen"
 
@@ -69,7 +69,7 @@ function MainTabs() {
       <Tab.Screen name="Visit" component={VisitScreen} />
       <Tab.Screen name="Tasks" component={TasksScreen} />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Base" component={OrganizationsScreen} />
+      <Tab.Screen name="Base" component={BaseScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   )

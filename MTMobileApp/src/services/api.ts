@@ -535,6 +535,18 @@ class ApiClient {
     return this.request(`/organizations${qs ? `?${qs}` : ""}`, { signal })
   }
 
+  async getContacts(
+    params?: { search?: string; page?: number; limit?: number },
+    signal?: AbortSignal,
+  ) {
+    const query = new URLSearchParams()
+    if (params?.search) query.set("search", params.search)
+    if (params?.page) query.set("page", String(params.page))
+    if (params?.limit) query.set("limit", String(params.limit))
+    const qs = query.toString()
+    return this.request(`/contacts${qs ? `?${qs}` : ""}`, { signal })
+  }
+
   // --- Orders ---
 
   // --- Alerts ---

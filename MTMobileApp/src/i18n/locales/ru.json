@@ -129,6 +129,17 @@
     "contactsTemplate": "Контактов: {{n}}",
     "visitsTemplate": "Визитов: {{n}}"
   },
+  "contacts": {
+    "title": "Контакты",
+    "searchPlaceholder": "Поиск по имени, специальности, телефону…",
+    "empty": "Назначенных контактов пока нет",
+    "emptySearch": "По запросу ничего не найдено",
+    "loading": "Загрузка контактов…",
+    "offlineUnavailable": "Контакты недоступны офлайн",
+    "typeDoctor": "Врач",
+    "typePharmacist": "Фармацевт",
+    "typeOther": "Контакт"
+  },
   "route": {
     "greeting": "Привет, {{name}}!",
     "leftLabel": "осталось",

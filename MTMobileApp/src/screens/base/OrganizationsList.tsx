@@ -14,7 +14,7 @@ import {
   type CachedOrganization,
 } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
-import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 
 interface Organization extends CachedOrganization {
   objectType?: string
@@ -55,10 +55,9 @@ function toOrganization(raw: any): Organization {
   }
 }
 
-export default function OrganizationsScreen() {
+export default function OrganizationsList() {
   const { t } = useTranslation()
   const tabBarPadding = useTabBarPadding()
-  const headerTop = useHeaderTop()
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -66,7 +65,6 @@ export default function OrganizationsScreen() {
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
-  // Debounce the search box so each keystroke doesn't fire a request.
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400)
     return () => clearTimeout(timer)
@@ -107,16 +105,7 @@ export default function OrganizationsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <Text style={styles.headerTitle}>{t("organizations.title")}</Text>
-        <Text style={styles.headerSubtitle}>
-          {t("organizations.totalTemplate", { n: organizations.length })}
-        </Text>
-      </View>
-
-      {/* Search */}
+    <View style={styles.wrap}>
       <View style={styles.searchCard}>
         <Text style={styles.searchIcon}>🔍</Text>
         <TextInput
@@ -130,7 +119,6 @@ export default function OrganizationsScreen() {
         />
       </View>
 
-      {/* Offline indicator */}
       {offline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineDot}>●</Text>
@@ -142,6 +130,7 @@ export default function OrganizationsScreen() {
         data={organizations}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding, flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" colors={["#6C63FF"]} />
         }
@@ -162,7 +151,7 @@ export default function OrganizationsScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardTop}>
-              <View style={{ flex: 1 }}>
+              <View style={styles.cardMain}>
                 <Text style={styles.cardName}>{item.name}</Text>
                 <Text style={styles.cardType}>
                   {item.objectType ? t(OBJECT_TYPE_KEY[item.objectType] ?? "organizations.objectOther") : ""}
@@ -203,24 +192,13 @@ export default function OrganizationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
-
-  header: {
-    backgroundColor: "#6C63FF",
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerTitle: { color: "#fff", fontSize: 24, fontWeight: "800", letterSpacing: -0.3 },
-  headerSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 4 },
-
+  wrap: { flex: 1 },
   searchCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    marginTop: -14,
+    marginTop: 14,
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 4,
@@ -264,6 +242,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  cardMain: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: "700", color: "#0B0B1E" },
   cardType: { fontSize: 12, color: "#64748b", marginTop: 2 },
   categoryBadge: { borderRadius: 8, minWidth: 26, paddingHorizontal: 8, paddingVertical: 4, alignItems: "center" },

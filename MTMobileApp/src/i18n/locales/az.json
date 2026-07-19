@@ -129,6 +129,17 @@
     "contactsTemplate": "{{n}} kontakt",
     "visitsTemplate": "{{n}} ziyarət"
   },
+  "contacts": {
+    "title": "Kontaktlar",
+    "searchPlaceholder": "Ad, ixtisas, telefon üzrə axtarış…",
+    "empty": "Hələ təyin olunmuş kontakt yoxdur",
+    "emptySearch": "Axtarışa uyğun nəticə yoxdur",
+    "loading": "Kontaktlar yüklənir…",
+    "offlineUnavailable": "Kontaktlar oflayn əlçatan deyil",
+    "typeDoctor": "Həkim",
+    "typePharmacist": "Əczaçı",
+    "typeOther": "Kontakt"
+  },
   "route": {
     "greeting": "Salam, {{name}}!",
     "leftLabel": "qalır",
