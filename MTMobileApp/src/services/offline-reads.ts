@@ -72,3 +72,87 @@ export async function readOfflineTasks(
   )
   return tasks.map((task) => mapCachedTask(task, customersById))
 }
+
+export interface CachedRoutePoint {
+  id: string
+  orderIndex: number
+  status: string
+  plannedTime?: string
+  visitedAt?: string
+  customer: { id: string; name: string; address?: string }
+}
+
+export interface CachedRoute {
+  id: string
+  name?: string
+  date: string
+  status: string
+  totalPoints: number
+  visitedPoints: number
+  points: CachedRoutePoint[]
+}
+
+const ACTIVE_ROUTE_STATUS = new Set(["PLANNED", "IN_PROGRESS"])
+
+function mapCachedRoutePoint(record: SyncRecord): CachedRoutePoint {
+  const customer = (record.customer ?? {}) as Record<string, unknown>
+  return {
+    id: String(record.id),
+    orderIndex: Number(record.orderIndex ?? 0),
+    status: str(record.status) ?? "",
+    plannedTime: str(record.plannedTime),
+    visitedAt: str(record.visitedAt),
+    customer: {
+      id: str(customer.id) ?? "",
+      name: str(customer.name) ?? "",
+      address: str(customer.address),
+    },
+  }
+}
+
+export function mapCachedRoute(record: SyncRecord): CachedRoute {
+  const points = Array.isArray(record.points)
+    ? (record.points as SyncRecord[]).map(mapCachedRoutePoint)
+    : []
+  return {
+    id: String(record.id),
+    name: str(record.name),
+    date: str(record.date) ?? "",
+    status: str(record.status) ?? "",
+    totalPoints: points.length,
+    visitedPoints: points.filter((point) => point.status === "VISITED").length,
+    points,
+  }
+}
+
+/**
+ * Pick the route RouteScreen would show: an active route (PLANNED/IN_PROGRESS)
+ * dated today or later, most-recent first. Mirrors the online selection in
+ * RouteScreen.fetchRoute so the offline view can't surface a stale/past route.
+ */
+export function selectActiveRoute(routes: SyncRecord[], now: Date): SyncRecord | null {
+  const midnight = new Date(now)
+  midnight.setHours(0, 0, 0, 0)
+  const active = routes.filter((route) => {
+    const raw = str(route.date)
+    if (!raw) return false
+    const date = new Date(raw)
+    return !Number.isNaN(date.getTime()) && date >= midnight && ACTIVE_ROUTE_STATUS.has(String(route.status))
+  })
+  active.sort((a, b) => new Date(String(b.date)).getTime() - new Date(String(a.date)).getTime())
+  return active[0] ?? null
+}
+
+/**
+ * Load the agent's active route from the durable cache, or null when nothing
+ * active is cached for the scope. Used as an offline fallback by RouteScreen.
+ */
+export async function readOfflineRoute(
+  tenantId: string | null | undefined,
+  agentId: string | null | undefined,
+  now: Date = new Date(),
+): Promise<CachedRoute | null> {
+  const state = await readSyncCache(tenantId, agentId)
+  const active = selectActiveRoute(state.entities.routes ?? [], now)
+  return active ? mapCachedRoute(active) : null
+}

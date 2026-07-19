@@ -20,6 +20,7 @@ import Geolocation from "@react-native-community/geolocation"
 import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
+import { readOfflineRoute } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -218,6 +219,7 @@ export default function RouteScreen() {
   const [photoCount, setPhotoCount] = useState(0)
   const [cameraVisible, setCameraVisible] = useState(false)
   const [slowConnection, setSlowConnection] = useState(false)
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
     Geolocation.getCurrentPosition(
@@ -266,6 +268,9 @@ export default function RouteScreen() {
       if (!res.success || !res.data?.routes?.length) {
         res = await api.getRoutes(undefined, signal)
       }
+      // Reaching here means the network responded (a failure would have
+      // thrown) — we are online, so clear any stale offline indicator.
+      setOffline(false)
       if (res.success && res.data?.routes?.length > 0) {
         const now = new Date()
         now.setHours(0, 0, 0, 0)
@@ -309,9 +314,25 @@ export default function RouteScreen() {
         setRoute(null)
       }
     } catch (e: any) {
+      // ABORTED = superseded/unmounted request; leave state untouched.
       if (e.message === "ABORTED") return
-      if (e.message === "REQUEST_TIMEOUT") { setSlowConnection(true); return }
-      if (e.message !== "SESSION_EXPIRED") console.warn("Failed to fetch route:", e.message)
+      if (e.message === "SESSION_EXPIRED") return
+      // Network/timeout failure — fall back to the durable sync cache so the
+      // rep still sees today's assigned route offline. Only fill when we have
+      // nothing live displayed, so a failed refresh never overwrites fresher
+      // server data with the cached copy.
+      const agent = useAuthStore.getState().agent
+      if (agent) {
+        try {
+          const cached = await readOfflineRoute(agent.organizationId, agent.id)
+          if (cached) {
+            setRoute((prev) => prev ?? cached)
+            setOffline(true)
+          }
+        } catch {}
+      }
+      if (e.message === "REQUEST_TIMEOUT") setSlowConnection(true)
+      else console.warn("Failed to fetch route:", e.message)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -575,6 +596,14 @@ export default function RouteScreen() {
                 )}
               </View>
             </View>
+
+            {/* Offline indicator — cache-backed route when the network is unreachable */}
+            {offline && (
+              <View style={styles.offlineBanner}>
+                <Text style={styles.offlineDot}>●</Text>
+                <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
+              </View>
+            )}
 
             {/* Route summary card */}
             {route ? (
@@ -846,6 +875,24 @@ const styles = StyleSheet.create({
   },
   headerBadgeNum: { color: "#fff", fontSize: 20, fontWeight: "800" },
   headerBadgeLabel: { color: "rgba(255,255,255,0.7)", fontSize: 10, textTransform: "uppercase" },
+
+  // --- Offline banner ---
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "#fff7ed",
+    borderWidth: 1,
+    borderColor: "#fed7aa",
+  },
+  offlineDot: { color: "#f59e0b", fontSize: 10 },
+  offlineBannerText: { color: "#b45309", fontSize: 12, fontWeight: "600" },
 
   // --- Summary Card ---
   summaryCard: {

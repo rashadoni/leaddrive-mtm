@@ -1,6 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { applySyncChanges } from "../../src/services/sync-cache"
-import { mapCachedTask, readOfflineTasks } from "../../src/services/offline-reads"
+import {
+  mapCachedRoute,
+  mapCachedTask,
+  readOfflineRoute,
+  readOfflineTasks,
+  selectActiveRoute,
+} from "../../src/services/offline-reads"
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
 import ru from "../../src/i18n/locales/ru.json"
@@ -79,6 +85,78 @@ describe("offline task reads (durable sync cache)", () => {
       await applySyncChanges("tenant-a", "agent-a", { tasks: { updated: [{ id: "t1", title: "X", status: "PENDING" }] } }, "v1")
       expect(await readOfflineTasks("tenant-b", "agent-a")).toEqual([])
       expect(await readOfflineTasks(null, null)).toEqual([])
+    })
+  })
+
+  describe("mapCachedRoute", () => {
+    it("maps the sync-pull route + points and derives point totals", () => {
+      const route = mapCachedRoute({
+        id: "r1",
+        name: "North loop",
+        date: "2026-07-20T00:00:00.000Z",
+        status: "PLANNED",
+        points: [
+          { id: "p1", orderIndex: 0, status: "VISITED", plannedTime: "2026-07-20T09:00:00.000Z", customer: { id: "c1", name: "Clinic", address: "Baku" } },
+          { id: "p2", orderIndex: 1, status: "PENDING", customer: { id: "c2", name: "Aptek" } },
+        ],
+      })
+      expect(route.id).toBe("r1")
+      expect(route.name).toBe("North loop")
+      expect(route.totalPoints).toBe(2)
+      expect(route.visitedPoints).toBe(1)
+      expect(route.points[0].customer).toEqual({ id: "c1", name: "Clinic", address: "Baku" })
+      expect(route.points[1].customer.address).toBeUndefined()
+    })
+
+    it("tolerates a route with no points array", () => {
+      const route = mapCachedRoute({ id: "r2", date: "2026-07-20", status: "PLANNED" })
+      expect(route.points).toEqual([])
+      expect(route.totalPoints).toBe(0)
+    })
+  })
+
+  describe("selectActiveRoute", () => {
+    const now = new Date("2026-07-19T10:00:00.000Z")
+
+    it("picks the most-recent active route dated today or later", () => {
+      const routes = [
+        { id: "old", date: "2026-07-18T00:00:00.000Z", status: "PLANNED" },
+        { id: "today", date: "2026-07-19T00:00:00.000Z", status: "IN_PROGRESS" },
+        { id: "future", date: "2026-07-21T00:00:00.000Z", status: "PLANNED" },
+      ]
+      expect(selectActiveRoute(routes, now)?.id).toBe("future")
+    })
+
+    it("ignores past and non-active routes", () => {
+      const routes = [
+        { id: "yesterday", date: "2026-07-18T00:00:00.000Z", status: "PLANNED" },
+        { id: "done", date: "2026-07-19T00:00:00.000Z", status: "COMPLETED" },
+      ]
+      expect(selectActiveRoute(routes, now)).toBeNull()
+    })
+  })
+
+  describe("readOfflineRoute", () => {
+    it("returns the active cached route for the scope", async () => {
+      await applySyncChanges(
+        "tenant-a",
+        "agent-a",
+        {
+          routes: {
+            updated: [
+              { id: "r1", date: "2026-07-19T00:00:00.000Z", status: "PLANNED", points: [{ id: "p1", orderIndex: 0, status: "PENDING", customer: { id: "c1", name: "Clinic" } }] },
+            ],
+          },
+        },
+        "v1",
+      )
+      const route = await readOfflineRoute("tenant-a", "agent-a", new Date("2026-07-19T08:00:00.000Z"))
+      expect(route?.id).toBe("r1")
+      expect(route?.points).toHaveLength(1)
+    })
+
+    it("returns null when nothing active is cached", async () => {
+      expect(await readOfflineRoute("tenant-empty", "agent-a", new Date("2026-07-19T08:00:00.000Z"))).toBeNull()
     })
   })
 
