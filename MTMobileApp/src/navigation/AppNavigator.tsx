@@ -16,6 +16,7 @@ import TasksScreen from "../screens/tasks/TasksScreen"
 import BaseScreen from "../screens/base/BaseScreen"
 import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
 import ContactDetailScreen from "../screens/base/ContactDetailScreen"
+import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen"
 
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Server: undefined
   OrganizationDetail: { id: string; name?: string }
   ContactDetail: { id: string; name?: string }
+  VisitWorkspace: { visitId: string; name?: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -105,6 +107,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
             <Stack.Screen name="ContactDetail" component={ContactDetailScreen} />
+            <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">

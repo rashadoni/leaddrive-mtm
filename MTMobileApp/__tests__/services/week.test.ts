@@ -18,7 +18,14 @@ describe("week/agenda mapping", () => {
           isWorkingDay: true,
           routes: [{ points: [{}, {}, {}] }],
           tasks: { total: 2, completed: 1 },
-          visits: { total: 3, completed: 2 },
+          visits: {
+            total: 3,
+            completed: 2,
+            items: [
+              { id: "vv1", status: "CHECKED_OUT", customer: { name: "Clinic A" } },
+              { id: "vv2", status: "CHECKED_IN", contact: { displayName: "Dr B" } },
+            ],
+          },
         },
         {
           date: "2026-07-19",
@@ -40,6 +47,10 @@ describe("week/agenda mapping", () => {
     expect(data.weekStart).toBe("2026-07-13")
     expect(data.days).toHaveLength(2)
     expect(data.days[0]).toMatchObject({ routeCount: 1, plannedStops: 3, tasksTotal: 2, visitsCompleted: 2, isWorkingDay: true })
+    expect(data.days[0].visits).toEqual([
+      { id: "vv1", name: "Clinic A", status: "CHECKED_OUT", checkInAt: undefined },
+      { id: "vv2", name: "Dr B", status: "CHECKED_IN", checkInAt: undefined },
+    ])
     expect(data.days[1]).toMatchObject({ isWorkingDay: false, nonWorkingReason: "Weekend", plannedStops: 0 })
     expect(data.summary).toEqual({
       visits: 3, visitsCompleted: 2, tasks: 2, tasksCompleted: 1, plannedStops: 3, visitedStops: 2, coveragePct: 66.7,

@@ -4,6 +4,13 @@
  * unit-tested. Backed by the server GET /mobile/week seven-day contract.
  */
 
+export interface WeekVisitItem {
+  id: string
+  name: string
+  status: string
+  checkInAt?: string
+}
+
 export interface WeekDay {
   date: string
   isToday: boolean
@@ -16,6 +23,7 @@ export interface WeekDay {
   tasksCompleted: number
   visitsTotal: number
   visitsCompleted: number
+  visits: WeekVisitItem[]
 }
 
 export interface WeekSummary {
@@ -41,12 +49,19 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+function optStr(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined
+  const s = String(value)
+  return s.length > 0 ? s : undefined
+}
+
 function mapDay(raw: any): WeekDay {
   const routes = Array.isArray(raw?.routes) ? raw.routes : []
   const plannedStops = routes.reduce(
     (sum: number, route: any) => sum + (Array.isArray(route?.points) ? route.points.length : 0),
     0,
   )
+  const visitItems = Array.isArray(raw?.visits?.items) ? raw.visits.items : []
   return {
     date: String(raw?.date ?? ""),
     isToday: Boolean(raw?.isToday),
@@ -59,6 +74,12 @@ function mapDay(raw: any): WeekDay {
     tasksCompleted: num(raw?.tasks?.completed),
     visitsTotal: num(raw?.visits?.total),
     visitsCompleted: num(raw?.visits?.completed),
+    visits: visitItems.map((v: any) => ({
+      id: String(v?.id ?? ""),
+      name: optStr(v?.customer?.name) ?? optStr(v?.contact?.displayName) ?? "",
+      status: optStr(v?.status) ?? "",
+      checkInAt: optStr(v?.checkInAt),
+    })),
   }
 }
 

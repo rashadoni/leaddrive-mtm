@@ -8,7 +8,10 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
 import { toWeekData, shiftDateKey, type WeekData, type WeekDay } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -35,6 +38,7 @@ function formatRange(start: string, endExclusive: string, lang: string): string 
 
 export default function WeekScreen() {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [anchor, setAnchor] = useState<string | null>(null)
@@ -128,7 +132,13 @@ export default function WeekScreen() {
 
               {/* Day rows */}
               {data.days.map((day) => (
-                <DayRow key={day.date} day={day} lang={lang} t={t} />
+                <DayRow
+                  key={day.date}
+                  day={day}
+                  lang={lang}
+                  t={t}
+                  onVisitPress={(id, name) => navigation.navigate("VisitWorkspace", { visitId: id, name })}
+                />
               ))}
             </>
           )}
@@ -147,7 +157,12 @@ function Stat({ value, label, color }: { value: string; label: string; color: st
   )
 }
 
-function DayRow({ day, lang, t }: { day: WeekDay; lang: string; t: (k: string, o?: any) => string }) {
+function DayRow({ day, lang, t, onVisitPress }: {
+  day: WeekDay
+  lang: string
+  t: (k: string, o?: any) => string
+  onVisitPress: (id: string, name: string) => void
+}) {
   const rest = !day.isWorkingDay
   return (
     <View style={[styles.dayCard, day.isToday && styles.dayCardToday, rest && styles.dayCardRest]}>
@@ -159,26 +174,39 @@ function DayRow({ day, lang, t }: { day: WeekDay; lang: string; t: (k: string, o
         {rest ? (
           <Text style={styles.restLabel}>{day.nonWorkingReason || t("week.dayOff")}</Text>
         ) : (
-          <View style={styles.chips}>
-            {day.routeCount > 0 && (
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>📍 {t("week.stopsTemplate", { n: day.plannedStops })}</Text>
+          <>
+            <View style={styles.chips}>
+              {day.routeCount > 0 && (
+                <View style={styles.chip}>
+                  <Text style={styles.chipText}>📍 {t("week.stopsTemplate", { n: day.plannedStops })}</Text>
+                </View>
+              )}
+              {day.visitsTotal > 0 && (
+                <View style={styles.chip}>
+                  <Text style={styles.chipText}>✅ {day.visitsCompleted}/{day.visitsTotal}</Text>
+                </View>
+              )}
+              {day.tasksTotal > 0 && (
+                <View style={styles.chip}>
+                  <Text style={styles.chipText}>📋 {t("week.tasksTemplate", { n: day.tasksTotal })}</Text>
+                </View>
+              )}
+              {day.routeCount === 0 && day.visitsTotal === 0 && day.tasksTotal === 0 && (
+                <Text style={styles.emptyDay}>{t("week.dayEmpty")}</Text>
+              )}
+            </View>
+            {day.visits.length > 0 && (
+              <View style={styles.visitList}>
+                {day.visits.map((v) => (
+                  <TouchableOpacity key={v.id} style={styles.visitRow} activeOpacity={0.7} onPress={() => onVisitPress(v.id, v.name)}>
+                    <Text style={[styles.visitDot, v.status === "CHECKED_OUT" && styles.visitDotDone]}>●</Text>
+                    <Text style={styles.visitName} numberOfLines={1}>{v.name}</Text>
+                    <Text style={styles.visitChevron}>›</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
-            {day.visitsTotal > 0 && (
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>✅ {day.visitsCompleted}/{day.visitsTotal}</Text>
-              </View>
-            )}
-            {day.tasksTotal > 0 && (
-              <View style={styles.chip}>
-                <Text style={styles.chipText}>📋 {t("week.tasksTemplate", { n: day.tasksTotal })}</Text>
-              </View>
-            )}
-            {day.routeCount === 0 && day.visitsTotal === 0 && day.tasksTotal === 0 && (
-              <Text style={styles.emptyDay}>{t("week.dayEmpty")}</Text>
-            )}
-          </View>
+          </>
         )}
       </View>
     </View>
@@ -243,4 +271,11 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: "#f8fafc", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   chipText: { fontSize: 11, color: "#475569", fontWeight: "600" },
   emptyDay: { fontSize: 12, color: "#cbd5e1" },
+
+  visitList: { marginTop: 8, gap: 4 },
+  visitRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 5, paddingHorizontal: 8, backgroundColor: "#f8fafc", borderRadius: 8 },
+  visitDot: { fontSize: 9, color: "#cbd5e1" },
+  visitDotDone: { color: "#22c55e" },
+  visitName: { flex: 1, fontSize: 12, color: "#334155", fontWeight: "500" },
+  visitChevron: { fontSize: 16, color: "#cbd5e1", fontWeight: "300" },
 })

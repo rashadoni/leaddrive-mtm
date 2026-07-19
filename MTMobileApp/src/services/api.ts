@@ -568,6 +568,12 @@ class ApiClient {
     return this.request(`/mobile/week${qs}`, { signal })
   }
 
+  // --- Visit workspace ---
+
+  async getVisitWorkspace(id: string, signal?: AbortSignal) {
+    return this.request(`/mobile/visits/${id}/workspace`, { signal })
+  }
+
   // --- Orders ---
 
   // --- Alerts ---
