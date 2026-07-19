@@ -1,10 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { applySyncChanges } from "../../src/services/sync-cache"
 import {
+  mapCachedContact,
   mapCachedOrganization,
   mapCachedRoute,
   mapCachedTask,
+  matchesContactSearch,
   matchesOrganizationSearch,
+  readOfflineContacts,
   readOfflineOrganizations,
   readOfflineRoute,
   readOfflineTasks,
@@ -217,6 +220,45 @@ describe("offline task reads (durable sync cache)", () => {
       const baku = await readOfflineOrganizations("tenant-a", "agent-a", "baku")
       expect(baku.map((o) => o.id)).toEqual(["c1", "c2"])
       expect(await readOfflineOrganizations("tenant-b", "agent-a")).toEqual([])
+    })
+  })
+
+  describe("offline contacts", () => {
+    it("maps a cached contact record to the list shape (no workplace offline)", () => {
+      const c = mapCachedContact({
+        id: "k1", displayName: "Dr. A", specialtyName: "Cardio", type: "DOCTOR", category: "A", phone: "+994", email: "a@x.az",
+      })
+      expect(c).toEqual({ id: "k1", name: "Dr. A", specialty: "Cardio", type: "DOCTOR", category: "A", phone: "+994", workplace: undefined })
+    })
+
+    it("matches search across name, specialty and phone", () => {
+      const c = mapCachedContact({ id: "k1", displayName: "Aliyev", specialtyName: "Neuro", phone: "055" })
+      expect(matchesContactSearch(c, "aliyev")).toBe(true)
+      expect(matchesContactSearch(c, "neuro")).toBe(true)
+      expect(matchesContactSearch(c, "055")).toBe(true)
+      expect(matchesContactSearch(c, "")).toBe(true)
+      expect(matchesContactSearch(c, "zzz")).toBe(false)
+    })
+
+    it("reads, filters and sorts cached contacts for the scope", async () => {
+      await applySyncChanges(
+        "tenant-a",
+        "agent-a",
+        {
+          contacts: {
+            updated: [
+              { id: "k2", displayName: "Zeta", specialtyName: "Cardio" },
+              { id: "k1", displayName: "Alpha", specialtyName: "Cardio" },
+            ],
+          },
+        },
+        "v1",
+      )
+      const all = await readOfflineContacts("tenant-a", "agent-a")
+      expect(all.map((c) => c.name)).toEqual(["Alpha", "Zeta"])
+      const cardio = await readOfflineContacts("tenant-a", "agent-a", "cardio")
+      expect(cardio.map((c) => c.id)).toEqual(["k1", "k2"])
+      expect(await readOfflineContacts("tenant-b", "agent-a")).toEqual([])
     })
   })
 

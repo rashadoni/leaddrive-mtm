@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
-export type SyncEntity = "routes" | "customers" | "visits" | "tasks"
+export type SyncEntity = "routes" | "customers" | "visits" | "tasks" | "contacts"
 export type SyncRecord = { id: string; [key: string]: unknown }
 export type SyncState = { version: string | null; entities: Partial<Record<SyncEntity, SyncRecord[]>> }
 

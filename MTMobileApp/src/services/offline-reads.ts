@@ -209,3 +209,55 @@ export async function readOfflineOrganizations(
   const filtered = search ? list.filter((org) => matchesOrganizationSearch(org, search)) : list
   return filtered.sort((a, b) => a.name.localeCompare(b.name))
 }
+
+export interface CachedContact {
+  id: string
+  name: string
+  specialty?: string
+  type?: string
+  category?: string
+  phone?: string
+  workplace?: string
+}
+
+/**
+ * Map a cached `contacts` record (from the sync-pull contacts entity) to the
+ * ContactsList shape. The cached contact carries no workplace (the sync-pull
+ * select is flat), so `workplace` is left undefined offline — a lighter version
+ * of the online row.
+ */
+export function mapCachedContact(record: SyncRecord): CachedContact {
+  return {
+    id: String(record.id),
+    name: str(record.displayName) ?? "",
+    specialty: str(record.specialtyName),
+    type: str(record.type),
+    category: str(record.category),
+    phone: str(record.phone),
+  }
+}
+
+/** Client-side mirror of the contacts server search (name/specialty/phone). */
+export function matchesContactSearch(contact: CachedContact, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return [contact.name, contact.specialty, contact.phone].some(
+    (value) => value != null && value.toLowerCase().includes(q),
+  )
+}
+
+/**
+ * Load the agent's assigned contacts from the durable cache (populated once the
+ * server sync-pull contacts entity is deployed), filtered by search and sorted
+ * by name. Returns [] when nothing is cached — offline is a subset of online.
+ */
+export async function readOfflineContacts(
+  tenantId: string | null | undefined,
+  agentId: string | null | undefined,
+  search?: string,
+): Promise<CachedContact[]> {
+  const state = await readSyncCache(tenantId, agentId)
+  const list = (state.entities.contacts ?? []).map(mapCachedContact)
+  const filtered = search ? list.filter((contact) => matchesContactSearch(contact, search)) : list
+  return filtered.sort((a, b) => a.name.localeCompare(b.name))
+}

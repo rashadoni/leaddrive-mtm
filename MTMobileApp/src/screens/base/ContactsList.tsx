@@ -14,6 +14,8 @@ import { useTranslation } from "react-i18next"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
+import { readOfflineContacts } from "../../services/offline-reads"
+import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 
 const TYPE_KEY: Record<string, string> = {
@@ -55,11 +57,16 @@ export default function ContactsList() {
         setOffline(false)
       }
     } catch (e: any) {
-      // No offline cache for contacts yet (the sync-pull cache has no
-      // `contacts` entity) — surface a "not available offline" note instead of
-      // silently showing an empty list.
+      // SESSION_EXPIRED is handled by the api interceptor; anything else is a
+      // network/timeout failure — fall back to the durable contacts cache
+      // (populated once the server sync-pull contacts entity is deployed).
       if (e.message !== "SESSION_EXPIRED") {
-        setContacts([])
+        const agent = useAuthStore.getState().agent
+        if (agent) {
+          try {
+            setContacts(await readOfflineContacts(agent.organizationId, agent.id, term))
+          } catch {}
+        }
         setOffline(true)
       }
     } finally {
@@ -95,7 +102,7 @@ export default function ContactsList() {
       {offline && (
         <View style={styles.offlineBanner}>
           <Text style={styles.offlineDot}>●</Text>
-          <Text style={styles.offlineBannerText}>{t("contacts.offlineUnavailable")}</Text>
+          <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
         </View>
       )}
 
