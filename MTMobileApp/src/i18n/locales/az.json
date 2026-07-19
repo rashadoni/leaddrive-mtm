@@ -147,7 +147,15 @@
     "offlineUnavailable": "Kontaktlar oflayn əlçatan deyil",
     "typeDoctor": "Həkim",
     "typePharmacist": "Əczaçı",
-    "typeOther": "Kontakt"
+    "typeOther": "Kontakt",
+    "detailInfo": "Əlaqə məlumatı",
+    "detailWorkplaces": "İş yerləri",
+    "detailNoWorkplaces": "Bağlı iş yeri yoxdur",
+    "detailOfflineNote": "Təfərrüatlar oflayn əlçatan deyil",
+    "detailError": "Kontaktı yükləmək alınmadı",
+    "fieldType": "Növ",
+    "fieldCode": "Kod",
+    "fieldNotes": "Qeydlər"
   },
   "route": {
     "greeting": "Salam, {{name}}!",

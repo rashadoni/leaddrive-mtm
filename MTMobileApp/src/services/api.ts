@@ -551,6 +551,10 @@ class ApiClient {
     return this.request(`/contacts${qs ? `?${qs}` : ""}`, { signal })
   }
 
+  async getContact(id: string, signal?: AbortSignal) {
+    return this.request(`/contacts/${id}`, { signal })
+  }
+
   // --- Orders ---
 
   // --- Alerts ---

@@ -147,7 +147,15 @@
     "offlineUnavailable": "Контакты недоступны офлайн",
     "typeDoctor": "Врач",
     "typePharmacist": "Фармацевт",
-    "typeOther": "Контакт"
+    "typeOther": "Контакт",
+    "detailInfo": "Контактная информация",
+    "detailWorkplaces": "Места работы",
+    "detailNoWorkplaces": "Мест работы нет",
+    "detailOfflineNote": "Детали недоступны офлайн",
+    "detailError": "Не удалось загрузить контакт",
+    "fieldType": "Тип",
+    "fieldCode": "Код",
+    "fieldNotes": "Заметки"
   },
   "route": {
     "greeting": "Привет, {{name}}!",

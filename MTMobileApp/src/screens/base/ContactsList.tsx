@@ -5,9 +5,13 @@ import {
   FlatList,
   TextInput,
   RefreshControl,
+  TouchableOpacity,
   StyleSheet,
 } from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
@@ -29,6 +33,7 @@ function categoryColor(category?: string): string {
 
 export default function ContactsList() {
   const { t } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabBarPadding = useTabBarPadding()
   const [contacts, setContacts] = useState<ContactListItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,7 +122,11 @@ export default function ContactsList() {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate("ContactDetail", { id: item.id, name: item.name })}
+          >
             <View style={styles.cardTop}>
               <View style={styles.cardMain}>
                 <Text style={styles.cardName}>{item.name}</Text>
@@ -146,7 +155,7 @@ export default function ContactsList() {
                 </View>
               )}
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
     </View>

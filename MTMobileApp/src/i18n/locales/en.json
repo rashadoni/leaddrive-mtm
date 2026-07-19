@@ -147,7 +147,15 @@
     "offlineUnavailable": "Contacts aren't available offline",
     "typeDoctor": "Doctor",
     "typePharmacist": "Pharmacist",
-    "typeOther": "Contact"
+    "typeOther": "Contact",
+    "detailInfo": "Contact info",
+    "detailWorkplaces": "Workplaces",
+    "detailNoWorkplaces": "No workplaces linked",
+    "detailOfflineNote": "Details aren't available offline",
+    "detailError": "Couldn't load the contact",
+    "fieldType": "Type",
+    "fieldCode": "Code",
+    "fieldNotes": "Notes"
   },
   "route": {
     "greeting": "Hello, {{name}}!",

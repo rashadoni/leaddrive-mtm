@@ -18,6 +18,7 @@ import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import BaseScreen from "../screens/base/BaseScreen"
 import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
+import ContactDetailScreen from "../screens/base/ContactDetailScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   Login: undefined
   Server: undefined
   OrganizationDetail: { id: string; name?: string }
+  ContactDetail: { id: string; name?: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -173,6 +175,7 @@ export default function AppNavigatorAndroidV2() {
           <>
             <Stack.Screen name="Main" component={MainTabs} />
             <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
+            <Stack.Screen name="ContactDetail" component={ContactDetailScreen} />
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">
