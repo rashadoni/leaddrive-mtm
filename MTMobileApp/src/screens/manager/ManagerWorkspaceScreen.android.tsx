@@ -43,7 +43,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const meta = SCREEN_META[kind]
   const tablet = isTabletWidth(width)
   const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
-  const [locations, setLocations] = useState<Array<{ agentId: string; latitude: number | null; longitude: number | null; accuracy: number | null; battery: number | null }>>([])
+  const [locations, setLocations] = useState<Array<{ agentId: string; latitude: number | null; longitude: number | null; accuracy: number | null; battery: number | null; recordedAt: string | null }>>([])
   const [summary, setSummary] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -93,7 +93,8 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
                   const coords = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
                   const accuracy = location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)}m`
                   const battery = location.battery == null ? "" : ` · ${Math.round(location.battery)}%`
-                  return <Text style={styles.locationMeta}>{coords}{accuracy}{battery}</Text>
+                  const recordedAt = location.recordedAt ? ` · ${new Date(location.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""
+                  return <Text style={styles.locationMeta}>{coords}{accuracy}{battery}{recordedAt}</Text>
                 })()}
                 </View>
                 <Text style={styles.agentState}>{agent.isOnline ? "ONLINE" : "OFFLINE"}</Text>
