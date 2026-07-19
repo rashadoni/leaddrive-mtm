@@ -19,6 +19,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useNavigation } from "@react-navigation/native"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
+import { enqueueMediaUpload } from "../../services/media-outbox"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
@@ -398,7 +399,8 @@ export default function VisitScreen() {
         if (e?.code === "MAX_PHOTOS_REACHED") {
           showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
-          showToast("error", t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+          await enqueueMediaUpload({ filePath: path, visitId: activeVisit.id, category: "VISIT", latitude: coords?.latitude, longitude: coords?.longitude })
+          showToast("success", "Photo queued", "It will upload when connection returns.")
         }
       }
     }
