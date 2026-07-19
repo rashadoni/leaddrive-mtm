@@ -157,6 +157,12 @@
     "fieldCode": "Code",
     "fieldNotes": "Notes"
   },
+  "potential": {
+    "title": "Brand potential",
+    "potential": "Potential",
+    "coverage": "Coverage",
+    "percent": "Coverage %"
+  },
   "route": {
     "greeting": "Hello, {{name}}!",
     "leftLabel": "left",

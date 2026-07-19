@@ -157,6 +157,12 @@
     "fieldCode": "Код",
     "fieldNotes": "Заметки"
   },
+  "potential": {
+    "title": "Потенциал бренда",
+    "potential": "Потенциал",
+    "coverage": "Покрытие",
+    "percent": "Покрытие, %"
+  },
   "route": {
     "greeting": "Привет, {{name}}!",
     "leftLabel": "осталось",

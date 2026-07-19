@@ -1,7 +1,9 @@
+import { summarizePotential, type PotentialSummary } from "./field-potential"
+
 /**
  * Pure mapper for the contact detail card (SWM-03). Kept outside the screen so
  * the flattening of GET /contacts/[id] (workplaces -> organizations the person
- * works at) is unit-tested.
+ * works at, field potential) is unit-tested.
  */
 
 export interface ContactWorkplace {
@@ -26,6 +28,7 @@ export interface ContactDetail {
   externalCode?: string
   notes?: string
   workplaces: ContactWorkplace[]
+  potential: PotentialSummary | null
 }
 
 function opt(value: unknown): string | undefined {
@@ -56,5 +59,6 @@ export function toContactDetail(raw: any): ContactDetail {
       isPrimary: Boolean(wp?.isPrimary),
       position: opt(wp?.position),
     })),
+    potential: summarizePotential(raw?.fieldPotentials),
   }
 }

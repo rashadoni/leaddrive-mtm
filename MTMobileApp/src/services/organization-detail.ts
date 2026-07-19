@@ -1,7 +1,10 @@
+import { summarizePotential, type PotentialSummary } from "./field-potential"
+
 /**
  * Pure mapper for the organization detail card (SWM-06). Kept outside the
  * screen so the flattening of the rich GET /organizations/[id] payload
- * (contactWorkplaces -> contacts, visits, counts) is unit-tested.
+ * (contactWorkplaces -> contacts, visits, counts, field potential) is
+ * unit-tested.
  */
 
 export interface OrgDetailContact {
@@ -37,6 +40,7 @@ export interface OrganizationDetail {
   notes?: string
   contacts: OrgDetailContact[]
   visits: OrgDetailVisit[]
+  potential: PotentialSummary | null
 }
 
 function opt(value: unknown): string | undefined {
@@ -77,5 +81,6 @@ export function toOrganizationDetail(raw: any): OrganizationDetail {
       outcome: opt(v?.outcome),
       agentName: opt(v?.agent?.name),
     })),
+    potential: summarizePotential(raw?.fieldPotentials),
   }
 }

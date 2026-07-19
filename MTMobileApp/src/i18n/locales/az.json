@@ -157,6 +157,12 @@
     "fieldCode": "Kod",
     "fieldNotes": "Qeydlər"
   },
+  "potential": {
+    "title": "Brend potensialı",
+    "potential": "Potensial",
+    "coverage": "Əhatə",
+    "percent": "Əhatə, %"
+  },
   "route": {
     "greeting": "Salam, {{name}}!",
     "leftLabel": "qalır",

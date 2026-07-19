@@ -170,6 +170,27 @@ export default function OrganizationDetailScreen() {
                   ))
                 )}
               </View>
+
+              {/* Field potential (SWM-04) */}
+              {detail.potential && (
+                <View style={styles.card}>
+                  <Text style={styles.cardTitle}>{t("potential.title")}</Text>
+                  <View style={styles.potentialRow}>
+                    <View style={styles.potentialStat}>
+                      <Text style={styles.potentialValue}>{detail.potential.potentialValue.toLocaleString(i18n.language)}</Text>
+                      <Text style={styles.potentialLabel}>{t("potential.potential")}</Text>
+                    </View>
+                    <View style={styles.potentialStat}>
+                      <Text style={styles.potentialValue}>{detail.potential.coverageValue.toLocaleString(i18n.language)}</Text>
+                      <Text style={styles.potentialLabel}>{t("potential.coverage")}</Text>
+                    </View>
+                    <View style={styles.potentialStat}>
+                      <Text style={[styles.potentialValue, { color: "#6C63FF" }]}>{detail.potential.coveragePct}%</Text>
+                      <Text style={styles.potentialLabel}>{t("potential.percent")}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
             </>
           )}
 
@@ -257,4 +278,9 @@ const styles = StyleSheet.create({
 
   statusPill: { backgroundColor: "#f1f5f9", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   statusText: { fontSize: 10, fontWeight: "700", color: "#64748b" },
+
+  potentialRow: { flexDirection: "row", marginTop: 2 },
+  potentialStat: { flex: 1, alignItems: "center" },
+  potentialValue: { fontSize: 18, fontWeight: "800", color: "#0B0B1E" },
+  potentialLabel: { fontSize: 10, color: "#94a3b8", marginTop: 3, textTransform: "uppercase", letterSpacing: 0.4, textAlign: "center" },
 })
