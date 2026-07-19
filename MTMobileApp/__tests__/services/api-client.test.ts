@@ -492,4 +492,46 @@ describe("ApiClient — fullLogout", () => {
     await client.hrmDecision("hrm-2", "APPROVED")
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
   })
+
+  it("routeChangeDecision posts to the route-change decision endpoint with decision + comment", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.routeChangeDecision("rc-1", "REJECTED", "out of territory")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/route-change-requests/rc-1/decision")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ decision: "REJECTED", comment: "out of territory" })
+  })
+
+  it("routeChangeDecision omits the comment when not provided", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.routeChangeDecision("rc-2", "APPROVED")
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
+  })
+
+  it("customerCreateDecision posts to the customer-create decision endpoint with decision + comment", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.customerCreateDecision("cc-1", "REJECTED", "duplicate")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/customer-create-requests/cc-1/decision")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ decision: "REJECTED", comment: "duplicate" })
+  })
+
+  it("customerCreateDecision omits the comment when not provided", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.customerCreateDecision("cc-2", "APPROVED")
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
+  })
 })

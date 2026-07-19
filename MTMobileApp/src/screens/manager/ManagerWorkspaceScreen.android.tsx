@@ -13,6 +13,9 @@ import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../ser
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
+/** Which approval queue a decision targets — each hits its own decision endpoint. */
+type ApprovalKind = "hrm" | "routeChange" | "customer"
+
 const SCREEN_META: Record<
   ManagerWorkspaceKind,
   { titleKey: string; bodyKey: string; icon: string; color: string; tint: string }
@@ -52,7 +55,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const [approvals, setApprovals] = useState<ManagerApprovals | null>(null)
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [rejectId, setRejectId] = useState<string | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<{ kind: ApprovalKind; id: string } | null>(null)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
 
   const reload = useCallback(() => {
@@ -75,11 +78,15 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
 
   useEffect(() => { reload() }, [reload])
 
-  const decide = async (id: string, decision: "APPROVED" | "REJECTED", note?: string) => {
+  const decide = async (queue: ApprovalKind, id: string, decision: "APPROVED" | "REJECTED", note?: string) => {
     if (busyId) return
     setBusyId(id)
     try {
-      const res = await api.hrmDecision(id, decision, note)
+      const res = queue === "hrm"
+        ? await api.hrmDecision(id, decision, note)
+        : queue === "routeChange"
+          ? await api.routeChangeDecision(id, decision, note)
+          : await api.customerCreateDecision(id, decision, note)
       if (res?.success) {
         setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
         reload()
@@ -163,9 +170,9 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
         ) : (
           approvals && approvals.total > 0 ? (
             <View style={styles.itemList}>
-              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide(id, "APPROVED")} onReject={setRejectId} />
-              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} />
-              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} />
+              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide("hrm", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "hrm", id })} />
+              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} busyId={busyId} onApprove={(id) => decide("routeChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "routeChange", id })} />
+              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} busyId={busyId} onApprove={(id) => decide("customer", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "customer", id })} />
             </View>
           ) : (
             <StatusPanel icon="checkmark-done-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.approvalsEmpty")} body={t(meta.bodyKey)} />
@@ -174,11 +181,11 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
       </ScrollView>
 
       <NotesModal
-        visible={rejectId !== null}
+        visible={rejectTarget !== null}
         title={t("managerShell.rejectTitle")}
         message={t("managerShell.rejectMessage")}
-        onCancel={() => setRejectId(null)}
-        onSubmit={(note) => { const id = rejectId; setRejectId(null); if (id) decide(id, "REJECTED", note) }}
+        onCancel={() => setRejectTarget(null)}
+        onSubmit={(note) => { const target = rejectTarget; setRejectTarget(null); if (target) decide(target.kind, target.id, "REJECTED", note) }}
       />
       <FeedbackToast visible={toast.visible} type={toast.type} title={toast.title} onDismiss={() => setToast((s) => ({ ...s, visible: false }))} />
     </View>

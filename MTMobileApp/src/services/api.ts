@@ -455,6 +455,30 @@ class ApiClient {
     })
   }
 
+  /**
+   * Decide a route-change request (approve/reject). The decision endpoint
+   * accepts the mobile Bearer via withMtmRlsAuth and gates to a MANAGER/
+   * SUPERVISOR/ADMIN actor in scope; a rejection requires a comment.
+   */
+  async routeChangeDecision(id: string, decision: "APPROVED" | "REJECTED", comment?: string) {
+    return this.request(`/route-change-requests/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
+    })
+  }
+
+  /**
+   * Decide a customer-create request (approve/reject). Same dual-principal
+   * decision endpoint; approval materializes the customer server-side, a
+   * rejection requires a comment.
+   */
+  async customerCreateDecision(id: string, decision: "APPROVED" | "REJECTED", comment?: string) {
+    return this.request(`/customer-create-requests/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
+    })
+  }
+
   // --- Routes ---
 
   async getRoutes(date?: string, signal?: AbortSignal) {
