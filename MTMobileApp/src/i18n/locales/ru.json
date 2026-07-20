@@ -149,7 +149,11 @@
     "priorityMedium": "Средний",
     "priorityHigh": "Высокий",
     "priorityUrgent": "Срочный",
-    "recurNone": "Без повтора"
+    "recurNone": "Без повтора",
+    "duplicate": "Дублировать",
+    "duplicating": "Копирование…",
+    "duplicated": "Задача продублирована",
+    "duplicateFailed": "Не удалось продублировать задачу"
   },
   "organizations": {
     "title": "Организации",

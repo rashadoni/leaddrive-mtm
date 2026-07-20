@@ -149,7 +149,11 @@
     "priorityMedium": "Orta",
     "priorityHigh": "Yüksək",
     "priorityUrgent": "Təcili",
-    "recurNone": "Təkrarlanmır"
+    "recurNone": "Təkrarlanmır",
+    "duplicate": "Dublikat",
+    "duplicating": "Kopyalanır…",
+    "duplicated": "Tapşırıq dublikatlandı",
+    "duplicateFailed": "Tapşırığı dublikatlamaq mümkün olmadı"
   },
   "organizations": {
     "title": "Təşkilatlar",

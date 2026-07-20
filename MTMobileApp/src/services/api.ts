@@ -573,6 +573,14 @@ class ApiClient {
     })
   }
 
+  /**
+   * Manager task duplication. Creates a fresh PENDING copy server-side (same
+   * TEAM_DECIDE + scope gate). Returns the new task in `data`.
+   */
+  async duplicateTask(id: string) {
+    return this.request(`/mobile/tasks/${id}/duplicate`, { method: "POST" })
+  }
+
   // --- Photos ---
 
   async getPhotos() {

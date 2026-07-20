@@ -564,4 +564,15 @@ describe("ApiClient — fullLogout", () => {
     await client.updateTaskFields("task-3", { recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
   })
+
+  it("duplicateTask POSTs to the duplicate endpoint", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.duplicateTask("task-9")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-9/duplicate")
+    expect(opts.method).toBe("POST")
+  })
 })

@@ -17,7 +17,7 @@
 - **SWM-11 Replay маршрута** — ✅ маршрут, статусы точек, дистанции, внешняя навигация, офлайн-кэш · ❌ in-app карта, линия факт-маршрута, дневной replay, plan-vs-fact.
 - **SWM-12 Live team map** — ✅ Manager workspace, снимки локаций, external map links · ❌ живая карта, маркеры, кластеризация, last-seen, real-time API.
 - **SWM-13 KPI дашборд** — ✅ виджеты, локальные агрегаты visits/tasks/photos · ❌ подключение `/mobile/kpi`, server-period, формулы, графики, drill-down.
-- **SWM-14 Задачи** — ✅ список, статусы, старт/завершение, durable мутации + офлайн, **detail-экран + timeline жизненного цикла**, **Manager-редактирование** (title/description/priority, gated TEAM_DECIDE + scope), **recurrence-авторинг** (rule/interval; completion спавнит следующую) · ❌ dueDate/until-редактирование (нужен date-picker), файлы, progress, review/return, дублирование, bulk.
+- **SWM-14 Задачи** — ✅ список, статусы, старт/завершение, durable мутации + офлайн, **detail-экран + timeline жизненного цикла**, **Manager-редактирование** (title/description/priority, gated TEAM_DECIDE + scope), **recurrence-авторинг** (rule/interval; completion спавнит следующую), **дублирование** (Manager, PENDING-копия с провенансом) · ❌ dueDate/until-редактирование (нужен date-picker), файлы/evidence, progress %, review/return, bulk.
 - **SWM-15 Home dashboard** — ✅ настраиваемая главная 1–6 виджетов (телефон/планшет, порядок, reset) · ❌ реальные Manager-значения, coverage drill-down, cancellation-очередь.
 - **SWM-17 Недельный календарь** — ✅ вкладка «Неделя» (сводка + агенда, навигация недель, «Сегодня») · ❌ 1/5/7-дневный переключатель, day-column, plan-vs-fact, Manager-селектор, офлайн-кэш.
 

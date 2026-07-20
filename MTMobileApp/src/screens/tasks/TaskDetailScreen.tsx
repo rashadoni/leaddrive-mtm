@@ -63,6 +63,7 @@ export default function TaskDetailScreen() {
   const canEdit = isManagerRole(role)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
   const timeline = taskTimeline(task)
 
@@ -116,6 +117,19 @@ export default function TaskDetailScreen() {
     }
   }
 
+  const handleDuplicate = async () => {
+    if (duplicating) return
+    setDuplicating(true)
+    try {
+      const res = await api.duplicateTask(task.id)
+      if (res?.success) setToast({ visible: true, type: "success", title: t("task.duplicated") })
+    } catch (e: any) {
+      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.duplicateFailed") })
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -136,9 +150,18 @@ export default function TaskDetailScreen() {
               <Text style={styles.statusBadgeText}>{statusLabel}</Text>
             </View>
             {canEdit && (
-              <TouchableOpacity style={styles.editBtn} onPress={() => setEditing(true)}>
-                <Text style={styles.editBtnText}>{t("task.editButton")}</Text>
-              </TouchableOpacity>
+              <View style={styles.headerBtns}>
+                <TouchableOpacity style={styles.editBtn} onPress={() => setEditing(true)}>
+                  <Text style={styles.editBtnText}>{t("task.editButton")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.editBtn, duplicating && styles.btnBusy]}
+                  onPress={handleDuplicate}
+                  disabled={duplicating}
+                >
+                  <Text style={styles.editBtnText}>{duplicating ? t("task.duplicating") : t("task.duplicate")}</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </View>
@@ -258,8 +281,10 @@ const styles = StyleSheet.create({
   headerRight: { alignItems: "flex-end", gap: 6, marginTop: 2 },
   statusBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.18)" },
   statusBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  headerBtns: { flexDirection: "row", gap: 6 },
   editBtn: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: "#fff" },
   editBtnText: { color: "#6C63FF", fontSize: 12, fontWeight: "800" },
+  btnBusy: { opacity: 0.5 },
 
   scroll: { padding: 16, paddingBottom: 40, gap: 12 },
   card: {

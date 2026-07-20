@@ -149,7 +149,11 @@
     "priorityMedium": "Medium",
     "priorityHigh": "High",
     "priorityUrgent": "Urgent",
-    "recurNone": "Does not repeat"
+    "recurNone": "Does not repeat",
+    "duplicate": "Duplicate",
+    "duplicating": "Copying…",
+    "duplicated": "Task duplicated",
+    "duplicateFailed": "Couldn't duplicate the task"
   },
   "organizations": {
     "title": "Organizations",
