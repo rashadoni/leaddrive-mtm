@@ -587,4 +587,16 @@ describe("ApiClient — fullLogout", () => {
     expect(opts.method).toBe("PATCH")
     expect(JSON.parse(opts.body)).toEqual({ progress: 60 })
   })
+
+  it("returnTask POSTs the reason to the return endpoint", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.returnTask("task-7", "photos missing")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-7/return")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ reason: "photos missing" })
+  })
 })

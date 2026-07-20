@@ -11,6 +11,7 @@ import { useAuthStore } from "../../store/auth"
 import { isManagerRole } from "../../auth/roles"
 import EditTaskModal, { type TaskEditFields } from "../../components/EditTaskModal"
 import FeedbackToast from "../../components/FeedbackToast"
+import NotesModal from "../../components/NotesModal"
 
 const STATUS_KEY: Record<string, string> = {
   PENDING: "task.statusToDo",
@@ -64,9 +65,12 @@ export default function TaskDetailScreen() {
   const canEdit = isManagerRole(role)
   const isOwnTask = !!myAgentId && task.agentId === myAgentId
   const canReportProgress = isOwnTask && task.status !== "COMPLETED" && task.status !== "CANCELLED"
+  const canReturn = canEdit && task.status === "COMPLETED"
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [returnVisible, setReturnVisible] = useState(false)
+  const [returning, setReturning] = useState(false)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
   const timeline = taskTimeline(task)
 
@@ -133,6 +137,22 @@ export default function TaskDetailScreen() {
     }
   }
 
+  const handleReturn = async (reason: string) => {
+    if (returning || !reason.trim()) return
+    setReturning(true)
+    try {
+      const res = await api.returnTask(task.id, reason.trim())
+      if (res?.success) {
+        setTask((t2) => ({ ...t2, status: "IN_PROGRESS", completedAt: null, returnReason: reason.trim() }))
+        setToast({ visible: true, type: "success", title: t("task.returned") })
+      }
+    } catch (e: any) {
+      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.returnFailed") })
+    } finally {
+      setReturning(false)
+    }
+  }
+
   // Optimistic progress: reflect the new value at once, revert on failure.
   const handleProgress = async (next: number) => {
     const clamped = Math.min(100, Math.max(0, next))
@@ -179,6 +199,15 @@ export default function TaskDetailScreen() {
                 >
                   <Text style={styles.editBtnText}>{duplicating ? t("task.duplicating") : t("task.duplicate")}</Text>
                 </TouchableOpacity>
+                {canReturn && (
+                  <TouchableOpacity
+                    style={[styles.returnBtn, returning && styles.btnBusy]}
+                    onPress={() => setReturnVisible(true)}
+                    disabled={returning}
+                  >
+                    <Text style={styles.returnBtnText}>{t("task.returnButton")}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -186,6 +215,13 @@ export default function TaskDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {task.returnReason ? (
+          <View style={styles.returnBanner}>
+            <Text style={styles.returnBannerTitle}>{t("task.returnedBanner")}</Text>
+            <Text style={styles.returnBannerBody}>{task.returnReason}</Text>
+          </View>
+        ) : null}
+
         {task.description ? (
           <View style={styles.card}>
             <Text style={styles.desc}>{task.description}</Text>
@@ -293,6 +329,13 @@ export default function TaskDetailScreen() {
           onSave={handleSave}
         />
       )}
+      <NotesModal
+        visible={returnVisible}
+        title={t("task.returnTitle")}
+        message={t("task.returnMessage")}
+        onCancel={() => setReturnVisible(false)}
+        onSubmit={(reason) => { setReturnVisible(false); if (reason.trim()) handleReturn(reason) }}
+      />
       <FeedbackToast
         visible={toast.visible}
         type={toast.type}
@@ -330,10 +373,15 @@ const styles = StyleSheet.create({
   headerRight: { alignItems: "flex-end", gap: 6, marginTop: 2 },
   statusBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.18)" },
   statusBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  headerBtns: { flexDirection: "row", gap: 6 },
+  headerBtns: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 6 },
   editBtn: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: "#fff" },
   editBtnText: { color: "#6C63FF", fontSize: 12, fontWeight: "800" },
+  returnBtn: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: "#fee2e2" },
+  returnBtnText: { color: "#dc2626", fontSize: 12, fontWeight: "800" },
   btnBusy: { opacity: 0.5 },
+  returnBanner: { backgroundColor: "#fef2f2", borderRadius: 12, borderWidth: 1, borderColor: "#fecaca", padding: 14 },
+  returnBannerTitle: { fontSize: 12, fontWeight: "800", color: "#dc2626", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4 },
+  returnBannerBody: { fontSize: 14, color: "#991b1b", lineHeight: 20 },
 
   scroll: { padding: 16, paddingBottom: 40, gap: 12 },
   card: {

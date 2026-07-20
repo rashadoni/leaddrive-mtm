@@ -21,6 +21,7 @@ export interface RawTask {
   createdAt?: string | null
   result?: string | null
   progress?: number | null
+  returnReason?: string | null
   agentId?: string | null
   customer?: { name?: string | null; address?: string | null } | null
   agent?: { name?: string | null } | null
@@ -48,6 +49,7 @@ export interface TaskDetail {
   createdAt: string | null
   result: string | null
   progress: number | null
+  returnReason: string | null
   agentId: string | null
   customerName: string | null
   customerAddress: string | null
@@ -87,6 +89,7 @@ export function toTaskDetail(raw: RawTask): TaskDetail {
     createdAt: str(raw.createdAt),
     result: str(raw.result),
     progress: typeof raw.progress === "number" ? Math.min(100, Math.max(0, Math.round(raw.progress))) : null,
+    returnReason: str(raw.returnReason),
     agentId: str(raw.agentId),
     customerName: str(raw.customer?.name),
     customerAddress: str(raw.customer?.address),

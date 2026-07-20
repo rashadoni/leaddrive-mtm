@@ -155,7 +155,13 @@
     "duplicated": "Задача продублирована",
     "duplicateFailed": "Не удалось продублировать задачу",
     "sectionProgress": "Прогресс",
-    "progressFailed": "Не удалось обновить прогресс"
+    "progressFailed": "Не удалось обновить прогресс",
+    "returnButton": "Вернуть",
+    "returnTitle": "Вернуть задачу",
+    "returnMessage": "Почему задача возвращается?",
+    "returned": "Задача возвращена",
+    "returnFailed": "Не удалось вернуть задачу",
+    "returnedBanner": "Возвращена на доработку"
   },
   "organizations": {
     "title": "Организации",

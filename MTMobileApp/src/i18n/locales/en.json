@@ -155,7 +155,13 @@
     "duplicated": "Task duplicated",
     "duplicateFailed": "Couldn't duplicate the task",
     "sectionProgress": "Progress",
-    "progressFailed": "Couldn't update progress"
+    "progressFailed": "Couldn't update progress",
+    "returnButton": "Return",
+    "returnTitle": "Return task",
+    "returnMessage": "Why is this task being returned?",
+    "returned": "Task returned",
+    "returnFailed": "Couldn't return the task",
+    "returnedBanner": "Returned for rework"
   },
   "organizations": {
     "title": "Organizations",

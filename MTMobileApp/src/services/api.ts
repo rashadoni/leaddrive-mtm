@@ -592,6 +592,18 @@ class ApiClient {
     })
   }
 
+  /**
+   * Manager review/return: send a completed task back to the assignee for
+   * rework with a reason (TEAM_DECIDE + scope gated). The task reopens to
+   * IN_PROGRESS server-side; a reason is required.
+   */
+  async returnTask(id: string, reason: string) {
+    return this.request(`/mobile/tasks/${id}/return`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    })
+  }
+
   // --- Photos ---
 
   async getPhotos() {

@@ -155,7 +155,13 @@
     "duplicated": "Tapşırıq dublikatlandı",
     "duplicateFailed": "Tapşırığı dublikatlamaq mümkün olmadı",
     "sectionProgress": "İrəliləyiş",
-    "progressFailed": "İrəliləyişi yeniləmək mümkün olmadı"
+    "progressFailed": "İrəliləyişi yeniləmək mümkün olmadı",
+    "returnButton": "Qaytar",
+    "returnTitle": "Tapşırığı qaytar",
+    "returnMessage": "Tapşırıq niyə qaytarılır?",
+    "returned": "Tapşırıq qaytarıldı",
+    "returnFailed": "Tapşırığı qaytarmaq mümkün olmadı",
+    "returnedBanner": "Yenidən işlənməyə qaytarıldı"
   },
   "organizations": {
     "title": "Təşkilatlar",
