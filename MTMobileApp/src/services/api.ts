@@ -581,6 +581,17 @@ class ApiClient {
     return this.request(`/mobile/tasks/${id}/duplicate`, { method: "POST" })
   }
 
+  /**
+   * Report execution progress (0..100) on the caller's own task. Scoped to the
+   * assignee server-side (not TEAM_DECIDE); a non-owned task is a 404.
+   */
+  async updateTaskProgress(id: string, progress: number) {
+    return this.request(`/mobile/tasks/${id}/progress`, {
+      method: "PATCH",
+      body: JSON.stringify({ progress }),
+    })
+  }
+
   // --- Photos ---
 
   async getPhotos() {

@@ -20,6 +20,8 @@ export interface RawTask {
   completedAt?: string | null
   createdAt?: string | null
   result?: string | null
+  progress?: number | null
+  agentId?: string | null
   customer?: { name?: string | null; address?: string | null } | null
   agent?: { name?: string | null } | null
   recurrenceRule?: string | null
@@ -45,6 +47,8 @@ export interface TaskDetail {
   completedAt: string | null
   createdAt: string | null
   result: string | null
+  progress: number | null
+  agentId: string | null
   customerName: string | null
   customerAddress: string | null
   agentName: string | null
@@ -82,6 +86,8 @@ export function toTaskDetail(raw: RawTask): TaskDetail {
     completedAt: str(raw.completedAt),
     createdAt: str(raw.createdAt),
     result: str(raw.result),
+    progress: typeof raw.progress === "number" ? Math.min(100, Math.max(0, Math.round(raw.progress))) : null,
+    agentId: str(raw.agentId),
     customerName: str(raw.customer?.name),
     customerAddress: str(raw.customer?.address),
     agentName: str(raw.agent?.name),

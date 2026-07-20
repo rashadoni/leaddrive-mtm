@@ -575,4 +575,16 @@ describe("ApiClient — fullLogout", () => {
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-9/duplicate")
     expect(opts.method).toBe("POST")
   })
+
+  it("updateTaskProgress PATCHes the progress endpoint", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.updateTaskProgress("task-5", 60)
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-5/progress")
+    expect(opts.method).toBe("PATCH")
+    expect(JSON.parse(opts.body)).toEqual({ progress: 60 })
+  })
 })

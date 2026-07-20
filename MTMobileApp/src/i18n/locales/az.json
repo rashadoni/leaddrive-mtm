@@ -153,7 +153,9 @@
     "duplicate": "Dublikat",
     "duplicating": "Kopyalanır…",
     "duplicated": "Tapşırıq dublikatlandı",
-    "duplicateFailed": "Tapşırığı dublikatlamaq mümkün olmadı"
+    "duplicateFailed": "Tapşırığı dublikatlamaq mümkün olmadı",
+    "sectionProgress": "İrəliləyiş",
+    "progressFailed": "İrəliləyişi yeniləmək mümkün olmadı"
   },
   "organizations": {
     "title": "Təşkilatlar",

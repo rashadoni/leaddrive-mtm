@@ -60,7 +60,10 @@ export default function TaskDetailScreen() {
   const headerTop = useHeaderTop()
   const [task, setTask] = useState(() => toTaskDetail(route.params.task))
   const role = useAuthStore((s) => s.agent?.role)
+  const myAgentId = useAuthStore((s) => s.agent?.id)
   const canEdit = isManagerRole(role)
+  const isOwnTask = !!myAgentId && task.agentId === myAgentId
+  const canReportProgress = isOwnTask && task.status !== "COMPLETED" && task.status !== "CANCELLED"
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
@@ -130,6 +133,21 @@ export default function TaskDetailScreen() {
     }
   }
 
+  // Optimistic progress: reflect the new value at once, revert on failure.
+  const handleProgress = async (next: number) => {
+    const clamped = Math.min(100, Math.max(0, next))
+    const prev = task.progress
+    if (clamped === (prev ?? 0)) return
+    setTask((t2) => ({ ...t2, progress: clamped }))
+    try {
+      const res = await api.updateTaskProgress(task.id, clamped)
+      if (!res?.success) setTask((t2) => ({ ...t2, progress: prev }))
+    } catch (e: any) {
+      setTask((t2) => ({ ...t2, progress: prev }))
+      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.progressFailed") })
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -188,6 +206,37 @@ export default function TaskDetailScreen() {
             />
           ) : null}
         </View>
+
+        {/* Progress */}
+        {(task.progress !== null || canReportProgress) && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t("task.sectionProgress")}</Text>
+            <View style={styles.progressRow}>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${task.progress ?? 0}%` }]} />
+              </View>
+              <Text style={styles.progressPct}>{task.progress ?? 0}%</Text>
+            </View>
+            {canReportProgress && (
+              <View style={styles.progressStepper}>
+                <TouchableOpacity
+                  style={[styles.progressStepBtn, (task.progress ?? 0) <= 0 && styles.btnBusy]}
+                  onPress={() => handleProgress((task.progress ?? 0) - 10)}
+                  disabled={(task.progress ?? 0) <= 0}
+                >
+                  <Text style={styles.progressStepText}>−10%</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.progressStepBtn, (task.progress ?? 0) >= 100 && styles.btnBusy]}
+                  onPress={() => handleProgress((task.progress ?? 0) + 10)}
+                  disabled={(task.progress ?? 0) >= 100}
+                >
+                  <Text style={styles.progressStepText}>+10%</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Timeline */}
         {timeline.length > 0 && (
@@ -296,6 +345,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 12, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   desc: { fontSize: 14, color: "#334155", lineHeight: 21 },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  progressTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: "#eef2ff", overflow: "hidden" },
+  progressFill: { height: 10, borderRadius: 5, backgroundColor: "#6C63FF" },
+  progressPct: { fontSize: 14, fontWeight: "800", color: "#0B0B1E", minWidth: 42, textAlign: "right" },
+  progressStepper: { flexDirection: "row", gap: 10, marginTop: 12 },
+  progressStepBtn: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, backgroundColor: "#eef2ff" },
+  progressStepText: { fontSize: 14, fontWeight: "800", color: "#6C63FF" },
 
   field: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, paddingVertical: 6 },
   fieldLabel: { fontSize: 13, color: "#94a3b8", fontWeight: "600" },

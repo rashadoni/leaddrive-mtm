@@ -51,6 +51,14 @@ describe("toTaskDetail", () => {
     expect(toTaskDetail({ ...base, recurrenceRule: "DAILY" }).recurrence).toEqual({ rule: "DAILY", interval: 1, until: null })
     expect(toTaskDetail({ ...base, recurrenceRule: "DAILY", recurrenceInterval: 0 }).recurrence?.interval).toBe(1)
   })
+
+  it("carries progress (clamped/rounded 0..100) and agentId", () => {
+    expect(toTaskDetail({ ...base, progress: 40, agentId: "a-9" })).toMatchObject({ progress: 40, agentId: "a-9" })
+    expect(toTaskDetail({ ...base, progress: 150 }).progress).toBe(100)
+    expect(toTaskDetail({ ...base, progress: -5 }).progress).toBe(0)
+    expect(toTaskDetail({ ...base, progress: 33.6 }).progress).toBe(34)
+    expect(toTaskDetail(base).progress).toBeNull()
+  })
 })
 
 describe("taskTimeline", () => {

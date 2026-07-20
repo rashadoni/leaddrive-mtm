@@ -153,7 +153,9 @@
     "duplicate": "Duplicate",
     "duplicating": "Copying…",
     "duplicated": "Task duplicated",
-    "duplicateFailed": "Couldn't duplicate the task"
+    "duplicateFailed": "Couldn't duplicate the task",
+    "sectionProgress": "Progress",
+    "progressFailed": "Couldn't update progress"
   },
   "organizations": {
     "title": "Organizations",

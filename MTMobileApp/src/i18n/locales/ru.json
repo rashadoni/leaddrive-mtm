@@ -153,7 +153,9 @@
     "duplicate": "Дублировать",
     "duplicating": "Копирование…",
     "duplicated": "Задача продублирована",
-    "duplicateFailed": "Не удалось продублировать задачу"
+    "duplicateFailed": "Не удалось продублировать задачу",
+    "sectionProgress": "Прогресс",
+    "progressFailed": "Не удалось обновить прогресс"
   },
   "organizations": {
     "title": "Организации",
