@@ -161,7 +161,14 @@
     "returnMessage": "Tapşırıq niyə qaytarılır?",
     "returned": "Tapşırıq qaytarıldı",
     "returnFailed": "Tapşırığı qaytarmaq mümkün olmadı",
-    "returnedBanner": "Yenidən işlənməyə qaytarıldı"
+    "returnedBanner": "Yenidən işlənməyə qaytarıldı",
+    "dueNone": "Son tarix yoxdur",
+    "dueToday": "Bu gün",
+    "dueTomorrow": "Sabah",
+    "duePlus3": "3 gün sonra",
+    "dueWeek": "Gələn həftə",
+    "dueMonth": "Gələn ay",
+    "dueClear": "Təmizlə"
   },
   "organizations": {
     "title": "Təşkilatlar",

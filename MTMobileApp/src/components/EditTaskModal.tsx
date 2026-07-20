@@ -11,11 +11,14 @@ import {
   ScrollView,
 } from "react-native"
 import { useTranslation } from "react-i18next"
+import { computeDueDate, DUE_OPTIONS, DUE_OPTION_KEY } from "../services/task-due"
 
 export interface TaskEditFields {
   title: string
   description: string | null
   priority: string
+  /** ISO timestamp, or null for no due date. */
+  dueDate: string | null
   /** null = does not repeat. */
   recurrenceRule: string | null
   recurrenceInterval: number
@@ -57,10 +60,11 @@ function priorityColor(p: string): string {
 }
 
 export default function EditTaskModal({ visible, initial, saving, onCancel, onSave }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [title, setTitle] = useState(initial.title)
   const [description, setDescription] = useState(initial.description ?? "")
   const [priority, setPriority] = useState(initial.priority)
+  const [dueDate, setDueDate] = useState<string | null>(initial.dueDate)
   const [recurrenceRule, setRecurrenceRule] = useState<string | null>(initial.recurrenceRule)
   const [recurrenceInterval, setRecurrenceInterval] = useState(initial.recurrenceInterval)
 
@@ -70,6 +74,7 @@ export default function EditTaskModal({ visible, initial, saving, onCancel, onSa
       setTitle(initial.title)
       setDescription(initial.description ?? "")
       setPriority(initial.priority)
+      setDueDate(initial.dueDate)
       setRecurrenceRule(initial.recurrenceRule)
       setRecurrenceInterval(initial.recurrenceInterval)
     }
@@ -87,10 +92,15 @@ export default function EditTaskModal({ visible, initial, saving, onCancel, onSa
       title: trimmedTitle,
       description: description.trim() ? description.trim() : null,
       priority,
+      dueDate,
       recurrenceRule,
       recurrenceInterval,
     })
   }
+
+  const dueLabel = dueDate
+    ? new Date(dueDate).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" })
+    : t("task.dueNone")
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -134,6 +144,16 @@ export default function EditTaskModal({ visible, initial, saving, onCancel, onSa
                   </TouchableOpacity>
                 )
               })}
+            </View>
+
+            <Text style={styles.label}>{t("task.fieldDue")}</Text>
+            <Text style={styles.dueCurrent}>{dueLabel}</Text>
+            <View style={styles.chips}>
+              {DUE_OPTIONS.map((opt) => (
+                <TouchableOpacity key={opt} style={styles.chip} onPress={() => setDueDate(computeDueDate(opt))}>
+                  <Text style={styles.chipText}>{t(DUE_OPTION_KEY[opt])}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             <Text style={styles.label}>{t("task.fieldRepeats")}</Text>
@@ -195,6 +215,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 12, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: "#0B0B1E" },
   multiline: { minHeight: 80, textAlignVertical: "top" },
+  dueCurrent: { fontSize: 14, fontWeight: "700", color: "#0B0B1E", marginBottom: 8 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   chipText: { fontSize: 13, fontWeight: "700", color: "#64748b" },

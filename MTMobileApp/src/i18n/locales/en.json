@@ -161,7 +161,14 @@
     "returnMessage": "Why is this task being returned?",
     "returned": "Task returned",
     "returnFailed": "Couldn't return the task",
-    "returnedBanner": "Returned for rework"
+    "returnedBanner": "Returned for rework",
+    "dueNone": "No due date",
+    "dueToday": "Today",
+    "dueTomorrow": "Tomorrow",
+    "duePlus3": "In 3 days",
+    "dueWeek": "Next week",
+    "dueMonth": "Next month",
+    "dueClear": "Clear"
   },
   "organizations": {
     "title": "Organizations",

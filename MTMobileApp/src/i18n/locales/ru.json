@@ -161,7 +161,14 @@
     "returnMessage": "Почему задача возвращается?",
     "returned": "Задача возвращена",
     "returnFailed": "Не удалось вернуть задачу",
-    "returnedBanner": "Возвращена на доработку"
+    "returnedBanner": "Возвращена на доработку",
+    "dueNone": "Без срока",
+    "dueToday": "Сегодня",
+    "dueTomorrow": "Завтра",
+    "duePlus3": "Через 3 дня",
+    "dueWeek": "Через неделю",
+    "dueMonth": "Через месяц",
+    "dueClear": "Убрать"
   },
   "organizations": {
     "title": "Организации",

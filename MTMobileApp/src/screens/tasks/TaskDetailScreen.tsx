@@ -87,10 +87,11 @@ export default function TaskDetailScreen() {
       title: task.title,
       description: task.description,
       priority: task.priority,
+      dueDate: task.dueDate,
       recurrenceRule: task.recurrence?.rule ?? null,
       recurrenceInterval: task.recurrence?.interval ?? 1,
     }),
-    [task.title, task.description, task.priority, task.recurrence],
+    [task.title, task.description, task.priority, task.dueDate, task.recurrence],
   )
 
   const handleSave = async (fields: TaskEditFields) => {
@@ -101,6 +102,7 @@ export default function TaskDetailScreen() {
         title: fields.title,
         description: fields.description,
         priority: fields.priority,
+        dueDate: fields.dueDate,
         recurrenceRule: fields.recurrenceRule,
         ...(fields.recurrenceRule ? { recurrenceInterval: fields.recurrenceInterval } : {}),
       })
@@ -110,6 +112,7 @@ export default function TaskDetailScreen() {
           title: fields.title,
           description: fields.description,
           priority: fields.priority,
+          dueDate: fields.dueDate,
           recurrence: fields.recurrenceRule
             ? { rule: fields.recurrenceRule, interval: fields.recurrenceInterval, until: prev.recurrence?.until ?? null }
             : null,
