@@ -611,4 +611,15 @@ describe("ApiClient — fullLogout", () => {
     expect(opts.method).toBe("POST")
     expect(JSON.parse(opts.body)).toEqual({ taskIds: ["t1", "t2"], agentId: "agent-9" })
   })
+
+  it("getTaskDocuments GETs the task documents endpoint", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true, data: { documents: [] } }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.getTaskDocuments("task-4")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-4/documents")
+    expect(opts.method ?? "GET").toBe("GET")
+  })
 })

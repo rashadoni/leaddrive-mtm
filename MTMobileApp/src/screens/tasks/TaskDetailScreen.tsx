@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native"
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
@@ -54,6 +54,27 @@ function priorityColor(p: string): string {
   }
 }
 
+interface TaskDoc {
+  id: string
+  title: string | null
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+}
+
+function fileGlyph(mime: string): string {
+  if (mime.startsWith("image/")) return "🖼️"
+  if (mime === "application/pdf") return "📄"
+  if (mime.startsWith("video/")) return "🎬"
+  return "📎"
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export default function TaskDetailScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -72,7 +93,18 @@ export default function TaskDetailScreen() {
   const [returnVisible, setReturnVisible] = useState(false)
   const [returning, setReturning] = useState(false)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
+  const [documents, setDocuments] = useState<TaskDoc[]>([])
   const timeline = taskTimeline(task)
+
+  // Load the files/evidence attached to this task (read-only; upload is a
+  // separate device-gated camera path). Failures leave the section empty.
+  useEffect(() => {
+    const controller = new AbortController()
+    api.getTaskDocuments(task.id, controller.signal)
+      .then((res: any) => { if (res?.success) setDocuments(res.data?.documents || []) })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [task.id])
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" })
@@ -321,6 +353,22 @@ export default function TaskDetailScreen() {
             <Text style={styles.desc}>{task.result}</Text>
           </View>
         ) : null}
+
+        {/* Files / evidence */}
+        {documents.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t("task.sectionFiles", { n: documents.length })}</Text>
+            {documents.map((doc) => (
+              <View key={doc.id} style={styles.fileRow}>
+                <Text style={styles.fileGlyph}>{fileGlyph(doc.mimeType)}</Text>
+                <View style={styles.fileMain}>
+                  <Text style={styles.fileName} numberOfLines={1}>{doc.title || doc.fileName}</Text>
+                  <Text style={styles.fileMeta}>{formatBytes(doc.sizeBytes)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       {canEdit && (
@@ -396,6 +444,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 12, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
   desc: { fontSize: 14, color: "#334155", lineHeight: 21 },
+  fileRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 },
+  fileGlyph: { fontSize: 20 },
+  fileMain: { flex: 1 },
+  fileName: { fontSize: 14, fontWeight: "700", color: "#0B0B1E" },
+  fileMeta: { fontSize: 12, color: "#94a3b8", marginTop: 1 },
   progressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   progressTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: "#eef2ff", overflow: "hidden" },
   progressFill: { height: 10, borderRadius: 5, backgroundColor: "#6C63FF" },

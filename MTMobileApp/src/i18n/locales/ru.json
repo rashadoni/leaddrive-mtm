@@ -168,7 +168,8 @@
     "duePlus3": "Через 3 дня",
     "dueWeek": "Через неделю",
     "dueMonth": "Через месяц",
-    "dueClear": "Убрать"
+    "dueClear": "Убрать",
+    "sectionFiles": "Файлы · {{n}}"
   },
   "organizations": {
     "title": "Организации",

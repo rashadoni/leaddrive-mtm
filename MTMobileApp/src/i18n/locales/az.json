@@ -168,7 +168,8 @@
     "duePlus3": "3 gün sonra",
     "dueWeek": "Gələn həftə",
     "dueMonth": "Gələn ay",
-    "dueClear": "Təmizlə"
+    "dueClear": "Təmizlə",
+    "sectionFiles": "Fayllar · {{n}}"
   },
   "organizations": {
     "title": "Təşkilatlar",

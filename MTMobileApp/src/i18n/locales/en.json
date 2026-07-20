@@ -168,7 +168,8 @@
     "duePlus3": "In 3 days",
     "dueWeek": "Next week",
     "dueMonth": "Next month",
-    "dueClear": "Clear"
+    "dueClear": "Clear",
+    "sectionFiles": "Files · {{n}}"
   },
   "organizations": {
     "title": "Organizations",

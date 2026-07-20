@@ -564,6 +564,14 @@ class ApiClient {
   }
 
   /**
+   * List the files/evidence attached to a task (read side). Scoped server-side
+   * to the assignee's own task or a TEAM_READ manager's team.
+   */
+  async getTaskDocuments(taskId: string, signal?: AbortSignal) {
+    return this.request(`/mobile/tasks/${taskId}/documents`, { signal })
+  }
+
+  /**
    * Manager task-metadata edit. Hits the mobile-only endpoint gated on
    * TEAM_DECIDE + agent scope server-side (not the org-scoped web PUT).
    * Only defined fields are sent; description can be cleared with null.
