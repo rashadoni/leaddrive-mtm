@@ -558,7 +558,14 @@ class ApiClient {
    */
   async updateTaskFields(
     id: string,
-    fields: { title?: string; description?: string | null; priority?: string; dueDate?: string | null },
+    fields: {
+      title?: string
+      description?: string | null
+      priority?: string
+      dueDate?: string | null
+      recurrenceRule?: string | null
+      recurrenceInterval?: number
+    },
   ) {
     return this.request(`/mobile/tasks/${id}`, {
       method: "PUT",

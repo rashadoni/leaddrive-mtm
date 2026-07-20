@@ -148,7 +148,8 @@
     "priorityLow": "Низкий",
     "priorityMedium": "Средний",
     "priorityHigh": "Высокий",
-    "priorityUrgent": "Срочный"
+    "priorityUrgent": "Срочный",
+    "recurNone": "Без повтора"
   },
   "organizations": {
     "title": "Организации",

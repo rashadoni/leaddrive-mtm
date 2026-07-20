@@ -148,7 +148,8 @@
     "priorityLow": "Aşağı",
     "priorityMedium": "Orta",
     "priorityHigh": "Yüksək",
-    "priorityUrgent": "Təcili"
+    "priorityUrgent": "Təcili",
+    "recurNone": "Təkrarlanmır"
   },
   "organizations": {
     "title": "Təşkilatlar",

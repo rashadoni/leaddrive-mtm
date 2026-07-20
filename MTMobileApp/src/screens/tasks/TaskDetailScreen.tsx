@@ -75,8 +75,14 @@ export default function TaskDetailScreen() {
   const priorityLabel = t(PRIORITY_KEY[task.priority] ?? "task.priorityMedium")
   const color = priorityColor(task.priority)
   const editInitial = useMemo<TaskEditFields>(
-    () => ({ title: task.title, description: task.description, priority: task.priority }),
-    [task.title, task.description, task.priority],
+    () => ({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      recurrenceRule: task.recurrence?.rule ?? null,
+      recurrenceInterval: task.recurrence?.interval ?? 1,
+    }),
+    [task.title, task.description, task.priority, task.recurrence],
   )
 
   const handleSave = async (fields: TaskEditFields) => {
@@ -87,9 +93,19 @@ export default function TaskDetailScreen() {
         title: fields.title,
         description: fields.description,
         priority: fields.priority,
+        recurrenceRule: fields.recurrenceRule,
+        ...(fields.recurrenceRule ? { recurrenceInterval: fields.recurrenceInterval } : {}),
       })
       if (res?.success) {
-        setTask((prev) => ({ ...prev, title: fields.title, description: fields.description, priority: fields.priority }))
+        setTask((prev) => ({
+          ...prev,
+          title: fields.title,
+          description: fields.description,
+          priority: fields.priority,
+          recurrence: fields.recurrenceRule
+            ? { rule: fields.recurrenceRule, interval: fields.recurrenceInterval, until: prev.recurrence?.until ?? null }
+            : null,
+        }))
         setEditing(false)
         setToast({ visible: true, type: "success", title: t("task.editSaved") })
       }

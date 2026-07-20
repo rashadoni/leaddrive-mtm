@@ -555,4 +555,13 @@ describe("ApiClient — fullLogout", () => {
     await client.updateTaskFields("task-2", { description: null })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ description: null })
   })
+
+  it("updateTaskFields forwards recurrence rule + interval", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.updateTaskFields("task-3", { recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
+  })
 })

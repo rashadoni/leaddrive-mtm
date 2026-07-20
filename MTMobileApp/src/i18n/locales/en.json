@@ -148,7 +148,8 @@
     "priorityLow": "Low",
     "priorityMedium": "Medium",
     "priorityHigh": "High",
-    "priorityUrgent": "Urgent"
+    "priorityUrgent": "Urgent",
+    "recurNone": "Does not repeat"
   },
   "organizations": {
     "title": "Organizations",
