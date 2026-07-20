@@ -1,0 +1,202 @@
+import React from "react"
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native"
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { useTranslation } from "react-i18next"
+import { RootStackParamList } from "../../navigation/AppNavigator"
+import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import { toTaskDetail, taskTimeline, type TaskTimelineKey } from "../../services/task-detail"
+
+const STATUS_KEY: Record<string, string> = {
+  PENDING: "task.statusToDo",
+  IN_PROGRESS: "task.statusActive",
+  COMPLETED: "task.statusDone",
+  CANCELLED: "task.statusCancelled",
+  OVERDUE: "task.statusOverdue",
+}
+
+const TIMELINE_KEY: Record<TaskTimelineKey, string> = {
+  created: "task.tlCreated",
+  accepted: "task.tlAccepted",
+  started: "task.tlStarted",
+  due: "task.tlDue",
+  completed: "task.tlCompleted",
+}
+
+const RECUR_KEY: Record<string, string> = {
+  DAILY: "task.recurDaily",
+  WEEKLY: "task.recurWeekly",
+  MONTHLY: "task.recurMonthly",
+}
+
+function priorityColor(p: string): string {
+  switch (p) {
+    case "HIGH":
+    case "URGENT":
+      return "#ef4444"
+    case "MEDIUM":
+      return "#f59e0b"
+    default:
+      return "#22c55e"
+  }
+}
+
+export default function TaskDetailScreen() {
+  const { t, i18n } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const route = useRoute<RouteProp<RootStackParamList, "TaskDetail">>()
+  const headerTop = useHeaderTop()
+  const task = toTaskDetail(route.params.task)
+  const timeline = taskTimeline(task)
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(i18n.language, { year: "numeric", month: "short", day: "numeric" })
+  const fmtDateTime = (iso: string) =>
+    new Date(iso).toLocaleString(i18n.language, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+
+  const statusLabel = t(STATUS_KEY[task.status] ?? "task.statusToDo")
+  const color = priorityColor(task.priority)
+
+  return (
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: headerTop }]}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <View style={styles.headerMain}>
+            <Text style={styles.headerEyebrow}>{t("task.detailTitle")}</Text>
+            <Text style={styles.headerTitle} numberOfLines={3}>{task.title}</Text>
+          </View>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeText}>{statusLabel}</Text>
+          </View>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {task.description ? (
+          <View style={styles.card}>
+            <Text style={styles.desc}>{task.description}</Text>
+          </View>
+        ) : null}
+
+        {/* Details */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t("task.sectionDetails")}</Text>
+          <Field label={t("task.fieldStatus")} value={statusLabel} />
+          <Field label={t("task.fieldPriority")} value={task.priority} valueColor={color} />
+          {task.dueDate ? <Field label={t("task.fieldDue")} value={fmtDate(task.dueDate)} /> : null}
+          {task.agentName ? <Field label={t("task.fieldAssignee")} value={task.agentName} /> : null}
+          {task.customerName ? (
+            <Field
+              label={t("task.fieldOrg")}
+              value={task.customerAddress ? `${task.customerName} · ${task.customerAddress}` : task.customerName}
+            />
+          ) : null}
+        </View>
+
+        {/* Timeline */}
+        {timeline.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t("task.sectionTimeline")}</Text>
+            {timeline.map((entry, index) => (
+              <View key={`${entry.key}-${index}`} style={styles.tlRow}>
+                <View style={styles.tlRail}>
+                  <View style={[styles.tlDot, entry.kind === "target" && styles.tlDotTarget]} />
+                  {index < timeline.length - 1 && <View style={styles.tlLine} />}
+                </View>
+                <View style={styles.tlBody}>
+                  <Text style={styles.tlLabel}>{t(TIMELINE_KEY[entry.key])}</Text>
+                  <Text style={styles.tlTime}>{fmtDateTime(entry.at)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Recurrence */}
+        {task.recurrence && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t("task.sectionRecurrence")}</Text>
+            <Field
+              label={t("task.fieldRepeats")}
+              value={
+                task.recurrence.interval > 1
+                  ? `${t("task.recurEvery", { n: task.recurrence.interval })} · ${t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}`
+                  : t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")
+              }
+            />
+            {task.recurrence.until ? (
+              <Field label={t("task.fieldUntil")} value={fmtDate(task.recurrence.until)} />
+            ) : null}
+          </View>
+        )}
+
+        {/* Result */}
+        {task.result ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{t("task.sectionResult")}</Text>
+            <Text style={styles.desc}>{task.result}</Text>
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
+  )
+}
+
+function Field({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#F4F5F9" },
+  header: {
+    backgroundColor: "#6C63FF",
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  backBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center", marginTop: 2 },
+  backIcon: { color: "#fff", fontSize: 30, lineHeight: 30, fontWeight: "700" },
+  headerMain: { flex: 1, gap: 2 },
+  headerEyebrow: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "800", letterSpacing: -0.3 },
+  statusBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, marginTop: 2, backgroundColor: "rgba(255,255,255,0.18)" },
+  statusBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+
+  scroll: { padding: 16, paddingBottom: 40, gap: 12 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  cardTitle: { fontSize: 12, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+  desc: { fontSize: 14, color: "#334155", lineHeight: 21 },
+
+  field: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, paddingVertical: 6 },
+  fieldLabel: { fontSize: 13, color: "#94a3b8", fontWeight: "600" },
+  fieldValue: { fontSize: 14, color: "#0B0B1E", fontWeight: "600", flexShrink: 1, textAlign: "right" },
+
+  tlRow: { flexDirection: "row", gap: 12 },
+  tlRail: { alignItems: "center", width: 14 },
+  tlDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#6C63FF", marginTop: 4 },
+  tlDotTarget: { backgroundColor: "#fff", borderWidth: 2, borderColor: "#f59e0b" },
+  tlLine: { flex: 1, width: 2, backgroundColor: "#e2e8f0", marginTop: 2, minHeight: 14 },
+  tlBody: { flex: 1, paddingBottom: 14 },
+  tlLabel: { fontSize: 14, fontWeight: "700", color: "#0B0B1E" },
+  tlTime: { fontSize: 12, color: "#64748b", marginTop: 1 },
+})

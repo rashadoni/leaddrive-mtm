@@ -41,7 +41,7 @@
 
 ## C. Серверная работа (leaddrive-v2, автодеплой) — `[сервер]`
 
-- [ ] approve/reject эндпоинты (Manager approvals → рабочий workflow).
+- [x] approve/reject эндпоинты (Manager approvals → рабочий workflow) — **сделано, на проде**: HRM (mobile #32), route-change + customer decision mobile-доступны (сервер leaddrive-v2 #459, mobile #33). Все три очереди approvals actionable.
 - [ ] plan create/publish + acknowledgement/change-request (SWM-16/18).
 - [ ] bulk transfer API + audit (SWM-02).
 - [ ] promotion/points/commitment контракты + actions (SWM-09).
@@ -67,8 +67,8 @@
 
 ## Рекомендуемый порядок (чистый код первым, гейты параллельно владельцем)
 
-1. `[сервер]` approve/reject → `[код]` рабочий Manager approvals workflow.
-2. `[код]` SWM-14 полные задачи (detail/edit/recurrence) + `[сервер]` file/review.
+1. ✅ **DONE** — `[сервер]` approve/reject → `[код]` рабочий Manager approvals workflow (HRM #32 · route-change/customer сервер #459 + mobile #33, на проде).
+2. `[код]` SWM-14 полные задачи (detail/edit/recurrence) + `[сервер]` file/review. ← **текущий**
 3. `[решение+код]` KPI: решить период → подключить `/mobile/kpi` + графики (SWM-13/15).
 4. `[сервер+код]` SWM-16 visit planning → SWM-18 матрица.
 5. `[сервер+код]` SWM-09 промо/баллы/approvals.

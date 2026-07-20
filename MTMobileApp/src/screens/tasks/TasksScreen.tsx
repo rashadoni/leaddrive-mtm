@@ -8,6 +8,9 @@ import {
   RefreshControl,
 } from "react-native"
 import { useTranslation } from "react-i18next"
+import { useNavigation } from "@react-navigation/native"
+import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
 import { readOfflineTasks } from "../../services/offline-reads"
 import { flushOutbox } from "../../services/outbox"
@@ -38,6 +41,7 @@ const STATUS_LABEL_KEY: Record<string, string> = {
 
 export default function TasksScreen() {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -265,7 +269,11 @@ export default function TasksScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <View style={[styles.taskCard, isOverdue(item) && styles.taskOverdue]}>
+          <TouchableOpacity
+            style={[styles.taskCard, isOverdue(item) && styles.taskOverdue]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("TaskDetail", { task: item })}
+          >
             <View style={styles.taskTop}>
               <View style={[styles.priorityDot, { backgroundColor: priorityColor(item.priority) }]} />
               <View style={{ flex: 1 }}>
@@ -329,7 +337,7 @@ export default function TasksScreen() {
                 )}
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       />
 

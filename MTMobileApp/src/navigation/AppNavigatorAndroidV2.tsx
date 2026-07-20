@@ -19,6 +19,7 @@ import RouteScreen from "../screens/route/RouteScreen"
 import WeekScreen from "../screens/week/WeekScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
+import TaskDetailScreen from "../screens/tasks/TaskDetailScreen"
 import BaseScreen from "../screens/base/BaseScreen"
 import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
 import ContactDetailScreen from "../screens/base/ContactDetailScreen"
@@ -28,6 +29,7 @@ import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import UnsupportedRoleScreen from "../screens/auth/UnsupportedRoleScreen.android"
+import type { RawTask } from "../services/task-detail"
 
 export type RootStackParamList = {
   Main: undefined
@@ -36,6 +38,7 @@ export type RootStackParamList = {
   OrganizationDetail: { id: string; name?: string }
   ContactDetail: { id: string; name?: string }
   VisitWorkspace: { visitId: string; name?: string }
+  TaskDetail: { task: RawTask }
   GpsHistory: undefined
 }
 
@@ -197,6 +200,7 @@ export default function AppNavigatorAndroidV2() {
             <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
             <Stack.Screen name="ContactDetail" component={ContactDetailScreen} />
             <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
+            <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
             <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
           </>
         ) : hasServer ? (
