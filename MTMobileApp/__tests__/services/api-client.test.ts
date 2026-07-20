@@ -534,4 +534,25 @@ describe("ApiClient — fullLogout", () => {
     await client.customerCreateDecision("cc-2", "APPROVED")
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
   })
+
+  it("updateTaskFields PUTs to the mobile task endpoint with the given fields", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.updateTaskFields("task-1", { title: "New", description: "d", priority: "HIGH" })
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-1")
+    expect(opts.method).toBe("PUT")
+    expect(JSON.parse(opts.body)).toEqual({ title: "New", description: "d", priority: "HIGH" })
+  })
+
+  it("updateTaskFields forwards an explicit null description (clear)", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.updateTaskFields("task-2", { description: null })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ description: null })
+  })
 })

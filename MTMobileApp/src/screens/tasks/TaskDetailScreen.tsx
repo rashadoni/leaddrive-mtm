@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useMemo, useState } from "react"
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native"
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
@@ -6,6 +6,11 @@ import { useTranslation } from "react-i18next"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { toTaskDetail, taskTimeline, type TaskTimelineKey } from "../../services/task-detail"
+import { api } from "../../services/api"
+import { useAuthStore } from "../../store/auth"
+import { isManagerRole } from "../../auth/roles"
+import EditTaskModal, { type TaskEditFields } from "../../components/EditTaskModal"
+import FeedbackToast from "../../components/FeedbackToast"
 
 const STATUS_KEY: Record<string, string> = {
   PENDING: "task.statusToDo",
@@ -13,6 +18,13 @@ const STATUS_KEY: Record<string, string> = {
   COMPLETED: "task.statusDone",
   CANCELLED: "task.statusCancelled",
   OVERDUE: "task.statusOverdue",
+}
+
+const PRIORITY_KEY: Record<string, string> = {
+  LOW: "task.priorityLow",
+  MEDIUM: "task.priorityMedium",
+  HIGH: "task.priorityHigh",
+  URGENT: "task.priorityUrgent",
 }
 
 const TIMELINE_KEY: Record<TaskTimelineKey, string> = {
@@ -46,7 +58,12 @@ export default function TaskDetailScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<RootStackParamList, "TaskDetail">>()
   const headerTop = useHeaderTop()
-  const task = toTaskDetail(route.params.task)
+  const [task, setTask] = useState(() => toTaskDetail(route.params.task))
+  const role = useAuthStore((s) => s.agent?.role)
+  const canEdit = isManagerRole(role)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
   const timeline = taskTimeline(task)
 
   const fmtDate = (iso: string) =>
@@ -55,7 +72,33 @@ export default function TaskDetailScreen() {
     new Date(iso).toLocaleString(i18n.language, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 
   const statusLabel = t(STATUS_KEY[task.status] ?? "task.statusToDo")
+  const priorityLabel = t(PRIORITY_KEY[task.priority] ?? "task.priorityMedium")
   const color = priorityColor(task.priority)
+  const editInitial = useMemo<TaskEditFields>(
+    () => ({ title: task.title, description: task.description, priority: task.priority }),
+    [task.title, task.description, task.priority],
+  )
+
+  const handleSave = async (fields: TaskEditFields) => {
+    if (saving) return
+    setSaving(true)
+    try {
+      const res = await api.updateTaskFields(task.id, {
+        title: fields.title,
+        description: fields.description,
+        priority: fields.priority,
+      })
+      if (res?.success) {
+        setTask((prev) => ({ ...prev, title: fields.title, description: fields.description, priority: fields.priority }))
+        setEditing(false)
+        setToast({ visible: true, type: "success", title: t("task.editSaved") })
+      }
+    } catch (e: any) {
+      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.editFailed") })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -72,8 +115,15 @@ export default function TaskDetailScreen() {
             <Text style={styles.headerEyebrow}>{t("task.detailTitle")}</Text>
             <Text style={styles.headerTitle} numberOfLines={3}>{task.title}</Text>
           </View>
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusBadgeText}>{statusLabel}</Text>
+          <View style={styles.headerRight}>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusBadgeText}>{statusLabel}</Text>
+            </View>
+            {canEdit && (
+              <TouchableOpacity style={styles.editBtn} onPress={() => setEditing(true)}>
+                <Text style={styles.editBtnText}>{t("task.editButton")}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -89,7 +139,7 @@ export default function TaskDetailScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t("task.sectionDetails")}</Text>
           <Field label={t("task.fieldStatus")} value={statusLabel} />
-          <Field label={t("task.fieldPriority")} value={task.priority} valueColor={color} />
+          <Field label={t("task.fieldPriority")} value={priorityLabel} valueColor={color} />
           {task.dueDate ? <Field label={t("task.fieldDue")} value={fmtDate(task.dueDate)} /> : null}
           {task.agentName ? <Field label={t("task.fieldAssignee")} value={task.agentName} /> : null}
           {task.customerName ? (
@@ -145,6 +195,22 @@ export default function TaskDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      {canEdit && (
+        <EditTaskModal
+          visible={editing}
+          saving={saving}
+          initial={editInitial}
+          onCancel={() => setEditing(false)}
+          onSave={handleSave}
+        />
+      )}
+      <FeedbackToast
+        visible={toast.visible}
+        type={toast.type}
+        title={toast.title}
+        onDismiss={() => setToast((s) => ({ ...s, visible: false }))}
+      />
     </View>
   )
 }
@@ -173,8 +239,11 @@ const styles = StyleSheet.create({
   headerMain: { flex: 1, gap: 2 },
   headerEyebrow: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.6 },
   headerTitle: { color: "#fff", fontSize: 20, fontWeight: "800", letterSpacing: -0.3 },
-  statusBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, marginTop: 2, backgroundColor: "rgba(255,255,255,0.18)" },
+  headerRight: { alignItems: "flex-end", gap: 6, marginTop: 2 },
+  statusBadge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "rgba(255,255,255,0.18)" },
   statusBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  editBtn: { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5, backgroundColor: "#fff" },
+  editBtnText: { color: "#6C63FF", fontSize: 12, fontWeight: "800" },
 
   scroll: { padding: 16, paddingBottom: 40, gap: 12 },
   card: {

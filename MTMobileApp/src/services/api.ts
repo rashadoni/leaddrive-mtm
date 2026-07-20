@@ -551,6 +551,21 @@ class ApiClient {
     })
   }
 
+  /**
+   * Manager task-metadata edit. Hits the mobile-only endpoint gated on
+   * TEAM_DECIDE + agent scope server-side (not the org-scoped web PUT).
+   * Only defined fields are sent; description can be cleared with null.
+   */
+  async updateTaskFields(
+    id: string,
+    fields: { title?: string; description?: string | null; priority?: string; dueDate?: string | null },
+  ) {
+    return this.request(`/mobile/tasks/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(fields),
+    })
+  }
+
   // --- Photos ---
 
   async getPhotos() {

@@ -7,7 +7,8 @@
     "ok": "OK",
     "cancel": "Ləğv et",
     "retry": "Yenidən cəhd et",
-    "offlineCached": "Oflayn — yadda saxlanmış məlumatlar göstərilir"
+    "offlineCached": "Oflayn — yadda saxlanmış məlumatlar göstərilir",
+    "save": "Saxla"
   },
   "errorBoundary": {
     "title": "Nəsə səhv getdi",
@@ -136,7 +137,18 @@
     "recurDaily": "Gündəlik",
     "recurWeekly": "Həftəlik",
     "recurMonthly": "Aylıq",
-    "recurEvery": "Hər {{n}}"
+    "recurEvery": "Hər {{n}}",
+    "editTitle": "Tapşırığı redaktə et",
+    "editButton": "Redaktə et",
+    "labelTitle": "Başlıq",
+    "labelDescription": "Təsvir",
+    "saving": "Yadda saxlanılır…",
+    "editSaved": "Tapşırıq yeniləndi",
+    "editFailed": "Tapşırığı yeniləmək mümkün olmadı",
+    "priorityLow": "Aşağı",
+    "priorityMedium": "Orta",
+    "priorityHigh": "Yüksək",
+    "priorityUrgent": "Təcili"
   },
   "organizations": {
     "title": "Təşkilatlar",

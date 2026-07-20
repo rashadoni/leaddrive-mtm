@@ -7,7 +7,8 @@
     "ok": "OK",
     "cancel": "Cancel",
     "retry": "Retry",
-    "offlineCached": "Offline — showing saved data"
+    "offlineCached": "Offline — showing saved data",
+    "save": "Save"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -136,7 +137,18 @@
     "recurDaily": "Daily",
     "recurWeekly": "Weekly",
     "recurMonthly": "Monthly",
-    "recurEvery": "Every {{n}}"
+    "recurEvery": "Every {{n}}",
+    "editTitle": "Edit task",
+    "editButton": "Edit",
+    "labelTitle": "Title",
+    "labelDescription": "Description",
+    "saving": "Saving…",
+    "editSaved": "Task updated",
+    "editFailed": "Couldn't update the task",
+    "priorityLow": "Low",
+    "priorityMedium": "Medium",
+    "priorityHigh": "High",
+    "priorityUrgent": "Urgent"
   },
   "organizations": {
     "title": "Organizations",

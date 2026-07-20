@@ -7,7 +7,8 @@
     "ok": "OK",
     "cancel": "Отмена",
     "retry": "Повторить",
-    "offlineCached": "Офлайн — показаны сохранённые данные"
+    "offlineCached": "Офлайн — показаны сохранённые данные",
+    "save": "Сохранить"
   },
   "errorBoundary": {
     "title": "Что-то пошло не так",
@@ -136,7 +137,18 @@
     "recurDaily": "Ежедневно",
     "recurWeekly": "Еженедельно",
     "recurMonthly": "Ежемесячно",
-    "recurEvery": "Каждые {{n}}"
+    "recurEvery": "Каждые {{n}}",
+    "editTitle": "Изменить задачу",
+    "editButton": "Изменить",
+    "labelTitle": "Название",
+    "labelDescription": "Описание",
+    "saving": "Сохранение…",
+    "editSaved": "Задача обновлена",
+    "editFailed": "Не удалось обновить задачу",
+    "priorityLow": "Низкий",
+    "priorityMedium": "Средний",
+    "priorityHigh": "Высокий",
+    "priorityUrgent": "Срочный"
   },
   "organizations": {
     "title": "Организации",
