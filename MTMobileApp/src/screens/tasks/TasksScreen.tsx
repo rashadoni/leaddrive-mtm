@@ -16,10 +16,12 @@ import { readOfflineTasks } from "../../services/offline-reads"
 import { flushOutbox } from "../../services/outbox"
 import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../services/task-outbox"
 import { useAuthStore } from "../../store/auth"
+import { isManagerRole } from "../../auth/roles"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import NotesModal from "../../components/NotesModal"
+import AgentPickerModal, { type PickableAgent } from "../../components/AgentPickerModal"
 import HintCard from "../../components/HintCard"
 
 interface Task {
@@ -56,6 +58,13 @@ export default function TasksScreen() {
   const [notesVisible, setNotesVisible] = useState(false)
   const [pendingCompleteTask, setPendingCompleteTask] = useState<Task | null>(null)
   const [pendingSync, setPendingSync] = useState(0)
+  const isManager = isManagerRole(useAuthStore((s) => s.agent?.role))
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [pickerVisible, setPickerVisible] = useState(false)
+  const [team, setTeam] = useState<PickableAgent[]>([])
+  const [teamLoading, setTeamLoading] = useState(false)
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const refreshPending = useCallback(async () => {
     try {
@@ -151,6 +160,55 @@ export default function TasksScreen() {
     await applyTaskStatus(task, "COMPLETED", notes || undefined, t("task.completedToastTitle"), t("task.completeFailed"))
   }
 
+  // --- Bulk selection (managers): long-press to select, then reassign. ---
+  const enterSelect = (id: string) => {
+    if (!isManager) return
+    setSelectMode(true)
+    setSelectedIds(new Set([id]))
+  }
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()) }
+
+  const openReassign = async () => {
+    if (selectedIds.size === 0) return
+    setPickerVisible(true)
+    setTeamLoading(true)
+    try {
+      const res = await api.getManagerTeam()
+      setTeam((res?.data?.agents || []).map((a: any) => ({ id: a.id, name: a.name, role: a.role })))
+    } catch {
+      setTeam([])
+    } finally {
+      setTeamLoading(false)
+    }
+  }
+
+  const doReassign = async (agentId: string) => {
+    if (bulkBusy) return
+    setBulkBusy(true)
+    const ids = Array.from(selectedIds)
+    try {
+      const res = await api.bulkReassignTasks(ids, agentId)
+      if (res?.success) {
+        setPickerVisible(false)
+        exitSelect()
+        setToast({ visible: true, type: "success", title: t("bulk.reassigned", { n: res.data?.reassigned ?? ids.length }) })
+        fetchTasks()
+      }
+    } catch (e: any) {
+      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("bulk.reassignFailed") })
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
   const filtered = tasks.filter((t) => t.status === activeTab)
   const urgentCount = tasks.filter(t => t.priority === "HIGH" || t.priority === "URGENT").length
   const overdueCount = tasks.filter(t => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "COMPLETED").length
@@ -189,6 +247,23 @@ export default function TasksScreen() {
           )}
         </View>
       </View>
+
+      {/* Bulk selection bar (managers) */}
+      {selectMode && (
+        <View style={styles.selectBar}>
+          <TouchableOpacity onPress={exitSelect} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={styles.selectCancel}>{t("common.cancel")}</Text>
+          </TouchableOpacity>
+          <Text style={styles.selectCount}>{t("bulk.selected", { n: selectedIds.size })}</Text>
+          <TouchableOpacity
+            style={[styles.selectAction, selectedIds.size === 0 && styles.btnDisabled]}
+            disabled={selectedIds.size === 0}
+            onPress={openReassign}
+          >
+            <Text style={styles.selectActionText}>{t("bulk.reassign")}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Stats */}
       <View style={styles.statsCard}>
@@ -268,13 +343,21 @@ export default function TasksScreen() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const selected = selectedIds.has(item.id)
+          return (
           <TouchableOpacity
-            style={[styles.taskCard, isOverdue(item) && styles.taskOverdue]}
+            style={[styles.taskCard, isOverdue(item) && styles.taskOverdue, selected && styles.taskSelected]}
             activeOpacity={0.85}
-            onPress={() => navigation.navigate("TaskDetail", { task: item })}
+            onPress={() => (selectMode ? toggleSelect(item.id) : navigation.navigate("TaskDetail", { task: item }))}
+            onLongPress={() => enterSelect(item.id)}
           >
             <View style={styles.taskTop}>
+              {selectMode && (
+                <View style={[styles.checkbox, selected && styles.checkboxOn]}>
+                  {selected && <Text style={styles.checkboxTick}>✓</Text>}
+                </View>
+              )}
               <View style={[styles.priorityDot, { backgroundColor: priorityColor(item.priority) }]} />
               <View style={{ flex: 1 }}>
                 <View style={styles.taskHeader}>
@@ -311,7 +394,7 @@ export default function TasksScreen() {
             </View>
 
             {/* Action buttons */}
-            {item.status !== "COMPLETED" && (
+            {!selectMode && item.status !== "COMPLETED" && (
               <View style={styles.taskActions}>
                 {item.status === "PENDING" && (
                   <TouchableOpacity
@@ -338,7 +421,8 @@ export default function TasksScreen() {
               </View>
             )}
           </TouchableOpacity>
-        )}
+          )
+        }}
       />
 
       <NotesModal
@@ -347,6 +431,16 @@ export default function TasksScreen() {
         message={t("task.resultModalMessage")}
         onCancel={() => { setNotesVisible(false); setPendingCompleteTask(null) }}
         onSubmit={(text) => { setNotesVisible(false); handleCompleteWithNotes(text) }}
+      />
+
+      <AgentPickerModal
+        visible={pickerVisible}
+        title={t("bulk.reassignTitle")}
+        agents={team}
+        loading={teamLoading}
+        busy={bulkBusy}
+        onCancel={() => setPickerVisible(false)}
+        onPick={doReassign}
       />
 
       <FeedbackToast
@@ -513,6 +607,16 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   taskOverdue: { borderLeftWidth: 3, borderLeftColor: "#ef4444" },
+  taskSelected: { borderColor: "#6C63FF", backgroundColor: "#f5f3ff" },
+  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: "#c7d2fe", alignItems: "center", justifyContent: "center", marginTop: 1 },
+  checkboxOn: { backgroundColor: "#6C63FF", borderColor: "#6C63FF" },
+  checkboxTick: { color: "#fff", fontSize: 13, fontWeight: "900" },
+  selectBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 16, marginTop: 12, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: "#eef2ff", borderWidth: 1, borderColor: "#c7d2fe" },
+  selectCancel: { fontSize: 13, fontWeight: "700", color: "#64748b" },
+  selectCount: { fontSize: 14, fontWeight: "800", color: "#4338ca" },
+  selectAction: { backgroundColor: "#6C63FF", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  selectActionText: { color: "#fff", fontSize: 13, fontWeight: "800" },
+  btnDisabled: { opacity: 0.4 },
   taskTop: { flexDirection: "row", gap: 10 },
   priorityDot: { width: 4, height: 4, borderRadius: 2, marginTop: 8 },
   taskHeader: { flexDirection: "row", alignItems: "center", marginBottom: 6, gap: 6 },

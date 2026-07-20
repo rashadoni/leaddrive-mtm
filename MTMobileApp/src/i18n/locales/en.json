@@ -364,5 +364,13 @@
     "visitCheckin": "Check-in works within 100 m of the customer. Take photos before checking out.",
     "tasksStatus": "Tap “Start Task” when you begin a task and “Complete” when you finish — your manager sees the status live.",
     "dashboardRefresh": "Your day at a glance. Pull down to refresh the numbers."
+  },
+  "bulk": {
+    "selected": "{{n}} selected",
+    "reassign": "Reassign",
+    "reassignTitle": "Reassign to…",
+    "reassigned": "{{n}} reassigned",
+    "reassignFailed": "Couldn't reassign tasks",
+    "noAgents": "No team members"
   }
 }

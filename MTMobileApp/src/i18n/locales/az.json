@@ -364,5 +364,13 @@
     "visitCheckin": "Check-in müştəridən 100 m məsafədə işləyir. Ziyarəti bitirməzdən əvvəl foto çəkin.",
     "tasksStatus": "Tapşırığa başlayanda «Başla», bitirəndə «Tamamla» düyməsinə toxunun — menecer statusu dərhal görür.",
     "dashboardRefresh": "Gününüz bir baxışda. Rəqəmləri yeniləmək üçün aşağı çəkin."
+  },
+  "bulk": {
+    "selected": "Seçildi: {{n}}",
+    "reassign": "Yenidən təyin et",
+    "reassignTitle": "Kimə təyin etmək…",
+    "reassigned": "Yenidən təyin edildi: {{n}}",
+    "reassignFailed": "Yenidən təyin etmək mümkün olmadı",
+    "noAgents": "Komanda üzvü yoxdur"
   }
 }

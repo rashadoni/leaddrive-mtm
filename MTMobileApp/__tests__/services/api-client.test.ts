@@ -599,4 +599,16 @@ describe("ApiClient — fullLogout", () => {
     expect(opts.method).toBe("POST")
     expect(JSON.parse(opts.body)).toEqual({ reason: "photos missing" })
   })
+
+  it("bulkReassignTasks POSTs the ids + agent to the bulk endpoint", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await client.bulkReassignTasks(["t1", "t2"], "agent-9")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/bulk-reassign")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ taskIds: ["t1", "t2"], agentId: "agent-9" })
+  })
 })

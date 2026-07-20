@@ -552,6 +552,18 @@ class ApiClient {
   }
 
   /**
+   * Manager bulk reassignment: move a batch of tasks to another agent
+   * (TEAM_DECIDE + scope gated). Returns { reassigned } — how many actually
+   * moved after the server's scope filter.
+   */
+  async bulkReassignTasks(taskIds: string[], agentId: string) {
+    return this.request(`/mobile/tasks/bulk-reassign`, {
+      method: "POST",
+      body: JSON.stringify({ taskIds, agentId }),
+    })
+  }
+
+  /**
    * Manager task-metadata edit. Hits the mobile-only endpoint gated on
    * TEAM_DECIDE + agent scope server-side (not the org-scoped web PUT).
    * Only defined fields are sent; description can be cleared with null.
