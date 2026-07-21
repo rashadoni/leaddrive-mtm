@@ -23,7 +23,7 @@ import { api } from "../services/api"
 import { markMobileOffline, runMobileSync } from "../services/sync-engine"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
-import { canTrackFieldLocation } from "../auth/roles"
+import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
 import { version as APP_VERSION } from "../../package.json"
 
@@ -64,7 +64,7 @@ function AppContent() {
 
   const flushPendingOperations = useCallback(() => {
     const auth = useAuthStore.getState()
-    if (!auth.isLoggedIn || !auth.agent) return
+    if (!auth.isLoggedIn || !auth.agent || !canExecuteFieldWork(auth.agent.role)) return
     runMobileSync().catch(() => {})
   }, [])
 

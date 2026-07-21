@@ -253,7 +253,7 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.headerActions}>
-            <SyncStatusChip inverse />
+            {workspace === "agent" && <SyncStatusChip inverse />}
             {!privileged && workspace === "agent" && (
               <Pressable
                 accessibilityRole="button"

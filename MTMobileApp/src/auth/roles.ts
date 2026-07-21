@@ -15,3 +15,13 @@ export function isManagerRole(role?: string | null) {
 export function canTrackFieldLocation(role?: string | null) {
   return normalizeRole(role) === "AGENT"
 }
+
+/**
+ * Offline field data belongs to the agent workspace. Team roles use the
+ * dedicated manager endpoints and must not call FIELD_EXECUTE-only sync
+ * routes, otherwise a healthy manager session is incorrectly marked as a
+ * failed/offline sync after the server returns 403.
+ */
+export function canExecuteFieldWork(role?: string | null) {
+  return normalizeRole(role) === "AGENT"
+}

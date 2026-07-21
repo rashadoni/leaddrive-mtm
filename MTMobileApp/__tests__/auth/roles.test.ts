@@ -1,4 +1,4 @@
-import { canTrackFieldLocation, isManagerRole, normalizeRole } from "../../src/auth/roles"
+import { canExecuteFieldWork, canTrackFieldLocation, isManagerRole, normalizeRole } from "../../src/auth/roles"
 
 describe("mobile roles", () => {
   it("normalizes known roles and fails closed for unknown values", () => {
@@ -22,5 +22,13 @@ describe("mobile roles", () => {
     expect(canTrackFieldLocation("MANAGER")).toBe(false)
     expect(canTrackFieldLocation("ADMIN")).toBe(false)
     expect(canTrackFieldLocation(undefined)).toBe(false)
+  })
+
+  it("allows offline field sync only for an agent", () => {
+    expect(canExecuteFieldWork("AGENT")).toBe(true)
+    expect(canExecuteFieldWork("SUPERVISOR")).toBe(false)
+    expect(canExecuteFieldWork("MANAGER")).toBe(false)
+    expect(canExecuteFieldWork("ADMIN")).toBe(false)
+    expect(canExecuteFieldWork(undefined)).toBe(false)
   })
 })

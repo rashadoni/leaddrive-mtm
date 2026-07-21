@@ -20,6 +20,7 @@ import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } 
 import { useHintsStore } from "../../store/hints"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { hasCapability } from "../../services/bootstrap"
+import { canExecuteFieldWork } from "../../auth/roles"
 import { version as APP_VERSION } from "../../../package.json"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 
@@ -38,6 +39,8 @@ export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const canTrack = useBootstrapStore((s) => hasCapability(s.capabilities, "FIELD_TRACK"))
+  const canSyncField = useBootstrapStore((s) => hasCapability(s.capabilities, "FIELD_EXECUTE"))
+    || canExecuteFieldWork(agent?.role)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [profile, setProfile] = useState<any>(null)
@@ -167,9 +170,11 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>{t("profile.connectionTitle")}</Text>
         <InfoRow label={t("profile.infoServer")} value={serverDomain || "—"} />
         <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
-        <View style={styles.syncCenterRow}>
-          <SyncStatusChip />
-        </View>
+        {canSyncField && (
+          <View style={styles.syncCenterRow}>
+            <SyncStatusChip />
+          </View>
+        )}
       </View>
 
 
