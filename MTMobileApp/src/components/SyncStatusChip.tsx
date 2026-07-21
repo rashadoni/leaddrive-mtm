@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
+import Geolocation from "@react-native-community/geolocation"
 import { api } from "../services/api"
 import { getOfflineScope } from "../services/offline-scope"
 import {
@@ -32,10 +33,13 @@ function conflictCode(operation: OutboxOperation) {
 function conflictTranslationKey(code: string) {
   const known: Record<string, string> = {
     MTM_VISIT_OUT_OF_ZONE: "syncCenter.conflictOutOfZone",
+    MTM_VISIT_FORCE_FORBIDDEN: "syncCenter.conflictForceForbidden",
     MTM_VISIT_ALREADY_ACTIVE: "syncCenter.conflictActiveVisit",
-    MTM_VISIT_ROUTE_MISMATCH: "syncCenter.conflictRouteMismatch",
+    MTM_ROUTE_POINT_NOT_AVAILABLE: "syncCenter.conflictRouteUnavailable",
+    MTM_ROUTE_TARGET_MISMATCH: "syncCenter.conflictRouteMismatch",
+    MTM_VISIT_CUSTOMER_NOT_FOUND: "syncCenter.conflictCustomerMissing",
     MTM_VISIT_REQUIREMENTS_INCOMPLETE: "syncCenter.conflictRequirements",
-    MTM_VISIT_INVALID_STATUS: "syncCenter.conflictVisitStatus",
+    MTM_VISIT_STATUS_INVALID: "syncCenter.conflictVisitStatus",
   }
   return known[code] ?? "syncCenter.conflictGeneric"
 }
@@ -44,6 +48,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const { t, i18n } = useTranslation()
   const [visible, setVisible] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<OutboxOperation[]>([])
   const { phase, pending, mediaPending, lastSyncedAt, lastError } = useSyncStatusStore()
 
@@ -74,9 +79,12 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
   const syncNow = async () => {
     setBusyId("sync")
+    setActionError(null)
     try {
       await runMobileSync()
       await reload()
+    } catch {
+      setActionError(t("syncCenter.actionFailed"))
     } finally {
       setBusyId(null)
     }
@@ -84,10 +92,25 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
   const retry = async (operation: OutboxOperation, force = false) => {
     setBusyId(operation.operationId)
+    setActionError(null)
+    const refreshLocation = !force && conflictCode(operation) === "MTM_VISIT_OUT_OF_ZONE"
     try {
-      await retryOutboxConflict(operation.operationId, force ? { force: true } : undefined)
+      let dataPatch: Record<string, unknown> | undefined = force ? { force: true } : undefined
+      if (refreshLocation) {
+        const position = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          Geolocation.getCurrentPosition(
+            (result) => resolve({ latitude: result.coords.latitude, longitude: result.coords.longitude }),
+            reject,
+            { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 },
+          )
+        })
+        dataPatch = { checkInLat: position.latitude, checkInLng: position.longitude, force: false }
+      }
+      await retryOutboxConflict(operation.operationId, dataPatch)
       await runMobileSync()
       await reload()
+    } catch {
+      setActionError(t(refreshLocation ? "syncCenter.retryLocationFailed" : "syncCenter.actionFailed"))
     } finally {
       setBusyId(null)
     }
@@ -95,9 +118,12 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
   const discard = async (operation: OutboxOperation) => {
     setBusyId(operation.operationId)
+    setActionError(null)
     try {
       await acknowledgeOutboxOperation(operation.operationId)
       await reload()
+    } catch {
+      setActionError(t("syncCenter.actionFailed"))
     } finally {
       setBusyId(null)
     }
@@ -162,6 +188,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                 : t("syncCenter.neverSynced")}
             </Text>
             {lastError ? <Text style={styles.errorText}>{t("syncCenter.lastError", { value: lastError })}</Text> : null}
+            {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
 
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
               {conflicts.length === 0 ? (
@@ -181,9 +208,6 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                   <View key={operation.operationId} style={styles.conflictCard}>
                     <Text style={styles.conflictTitle}>{t(conflictTranslationKey(code))}</Text>
                     <Text style={styles.conflictCode}>{code}</Text>
-                    {operation.conflict?.error ? (
-                      <Text style={styles.conflictBody}>{operation.conflict.error}</Text>
-                    ) : null}
                     <View style={styles.actionRow}>
                       <Pressable
                         accessibilityRole="button"

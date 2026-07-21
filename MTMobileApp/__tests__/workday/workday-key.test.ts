@@ -3,6 +3,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 )
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { setOfflineScope } from "../../src/services/offline-scope"
 import { useWorkdayStore, workdayKey } from "../../src/store/workday"
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
@@ -11,6 +12,7 @@ describe("workday identity", () => {
   beforeEach(async () => {
     await AsyncStorage.clear()
     jest.clearAllMocks()
+    setOfflineScope("tenant-a", "agent-a")
     useWorkdayStore.setState({ activeWorkday: null, hydrated: false })
   })
 

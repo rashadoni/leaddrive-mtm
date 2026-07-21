@@ -32,11 +32,16 @@
     "discard": "Discard local change",
     "forceRetry": "Override & retry",
     "conflictOutOfZone": "Check-in is outside the allowed zone",
+    "conflictForceForbidden": "Your role cannot override the check-in zone",
     "conflictActiveVisit": "Another visit is already active",
+    "conflictRouteUnavailable": "The route point is no longer available",
     "conflictRouteMismatch": "The visit no longer matches the published route",
+    "conflictCustomerMissing": "The customer is no longer available",
     "conflictRequirements": "Visit requirements are incomplete",
     "conflictVisitStatus": "The visit status changed on the server",
-    "conflictGeneric": "Saved change conflicts with server data"
+    "conflictGeneric": "Saved change conflicts with server data",
+    "actionFailed": "The action could not be completed. Try again.",
+    "retryLocationFailed": "Current GPS position is unavailable. Move into the visit zone and try again."
   },
   "errorBoundary": {
     "title": "Something went wrong",

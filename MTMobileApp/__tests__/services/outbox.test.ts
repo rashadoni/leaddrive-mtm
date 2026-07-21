@@ -55,12 +55,13 @@ describe("durable sync outbox", () => {
 
     await retryOutboxConflict(item.operationId, { checkInLat: 40.4, checkInLng: 49.8 })
     expect(await conflictOutboxOperations()).toEqual([])
-    expect(await pendingOutboxOperations()).toEqual([
+    const retried = await pendingOutboxOperations()
+    expect(retried).toEqual([
       expect.objectContaining({
-        operationId: item.operationId,
         data: expect.objectContaining({ checkInLat: 40.4, checkInLng: 49.8 }),
       }),
     ])
+    expect(retried[0].operationId).not.toBe(item.operationId)
   })
 
   it("persists operations and acknowledges them by id", async () => {

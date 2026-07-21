@@ -145,6 +145,12 @@ export async function retryOutboxConflict(operationId: string, dataPatch?: Recor
       item.operationId === operationId && item.scopeKey === scope && item.status === "conflict"
         ? {
             ...item,
+            // The server idempotently pins both successful and conflicting
+            // operationIds. A user-directed retry must therefore be a new
+            // operation while retaining the same entity payload/client id;
+            // reusing the old id would only replay the pinned conflict.
+            operationId: createOperationId(),
+            clientTimestamp: Date.now(),
             data: dataPatch ? { ...item.data, ...dataPatch } : item.data,
             status: "pending" as const,
             conflict: undefined,

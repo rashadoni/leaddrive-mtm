@@ -32,11 +32,16 @@
     "discard": "Lokal dəyişikliyi sil",
     "forceRetry": "Təsdiqlə və təkrarla",
     "conflictOutOfZone": "Giriş icazə verilən zonadan kənardadır",
+    "conflictForceForbidden": "Rolunuz giriş zonasını keçməyə icazə vermir",
     "conflictActiveVisit": "Başqa ziyarət artıq aktivdir",
+    "conflictRouteUnavailable": "Marşrut nöqtəsi artıq əlçatan deyil",
     "conflictRouteMismatch": "Ziyarət artıq dərc olunmuş marşruta uyğun deyil",
+    "conflictCustomerMissing": "Müştəri artıq əlçatan deyil",
     "conflictRequirements": "Ziyarətin məcburi şərtləri tamamlanmayıb",
     "conflictVisitStatus": "Ziyarət statusu serverdə dəyişib",
-    "conflictGeneric": "Saxlanmış dəyişiklik server məlumatları ilə ziddiyyət təşkil edir"
+    "conflictGeneric": "Saxlanmış dəyişiklik server məlumatları ilə ziddiyyət təşkil edir",
+    "actionFailed": "Əməliyyatı tamamlamaq mümkün olmadı. Yenidən cəhd edin.",
+    "retryLocationFailed": "Cari GPS mövqeyi əlçatan deyil. Ziyarət zonasına daxil olub yenidən cəhd edin."
   },
   "errorBoundary": {
     "title": "Nəsə səhv getdi",
