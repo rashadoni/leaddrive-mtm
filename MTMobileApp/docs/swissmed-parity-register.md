@@ -6,6 +6,11 @@
 **Target:** LeadDrive MTM for Agent and Manager, tablet-first with smartphone support
 **Out of scope:** LeadShelf planograms and shelf-management functions
 
+The detailed pharmaceutical implementation packages derived from the same 18
+photographs are maintained in `mtm-swissmed-parity-gaps.md`. That document is
+normative for doctor/clinic assignments, KOL/scoring, psychotype, Target/MOI,
+per-brand potential, relationship history, promotions, and contact-by-day planning.
+
 ## Purpose and evidence
 
 This is the working contract for functional parity. A row is not complete merely because a similarly named API, database table, or mock screen exists. Completion requires the role permissions, user workflow, responsive UI, offline behavior where applicable, audit trail, and acceptance scenario described here.
