@@ -2,6 +2,8 @@ import { create } from "zustand"
 import { api } from "../services/api"
 import { kpiScopeKey, useKpiStore } from "./kpi"
 import { useBootstrapStore } from "./bootstrap"
+import { clearOfflineScope, setOfflineScope } from "../services/offline-scope"
+import { useSyncStatusStore } from "./sync-status"
 
 interface Agent {
   id: string
@@ -55,6 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     useKpiStore.getState().clearScope()
     const result = await api.login(email, password)
     if (result.success) {
+      setOfflineScope(result.data.agent?.organizationId, result.data.agent?.id)
       useKpiStore.getState().setScope(
         kpiScopeKey(result.data.agent?.organizationId, result.data.agent?.id),
       )
@@ -68,6 +71,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     useKpiStore.getState().clearScope()
     useBootstrapStore.getState().clear()
     await api.logout()
+    clearOfflineScope()
+    useSyncStatusStore.getState().clear()
     set({ isLoggedIn: false, agent: null, revokedReason: null })
   },
 
@@ -77,6 +82,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     // api.logout() to avoid double-work or recursion.
     useKpiStore.getState().clearScope()
     useBootstrapStore.getState().clear()
+    clearOfflineScope()
+    useSyncStatusStore.getState().clear()
     set({ isLoggedIn: false, agent: null, revokedReason: reason })
   },
 
@@ -88,6 +95,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     useKpiStore.getState().clearScope()
     useBootstrapStore.getState().clear()
     await api.fullLogout()
+    clearOfflineScope()
+    useSyncStatusStore.getState().clear()
     // Also clear revokedReason so a revoked-banner from the previous tenant
     // doesn't carry over to the next tenant's login screen.
     set({ isLoggedIn: false, hasServer: false, serverDomain: "", companyName: "", agent: null, revokedReason: null })
@@ -114,6 +123,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const loggedIn = await api.isLoggedIn()
       if (loggedIn) {
         const agent = await api.getStoredAgent()
+        setOfflineScope(agent?.organizationId, agent?.id)
         useKpiStore.getState().setScope(
           kpiScopeKey(agent?.organizationId, agent?.id),
         )
@@ -126,6 +136,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           isLoading: false,
         })
       } else {
+        clearOfflineScope()
+        useSyncStatusStore.getState().clear()
         set({
           isLoggedIn: false,
           hasServer: true,
@@ -136,6 +148,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         })
       }
     } catch {
+      clearOfflineScope()
+      useSyncStatusStore.getState().clear()
       set({ isLoggedIn: false, hasServer: false, agent: null, isLoading: false })
     }
   },

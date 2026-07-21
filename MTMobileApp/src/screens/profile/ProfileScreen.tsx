@@ -15,6 +15,7 @@ import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
+import SyncStatusChip from "../../components/SyncStatusChip"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { useHintsStore } from "../../store/hints"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -166,6 +167,9 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>{t("profile.connectionTitle")}</Text>
         <InfoRow label={t("profile.infoServer")} value={serverDomain || "—"} />
         <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
+        <View style={styles.syncCenterRow}>
+          <SyncStatusChip />
+        </View>
       </View>
 
 
@@ -333,6 +337,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#f1f5f9",
   },
+  syncCenterRow: { marginTop: 14, alignItems: "flex-start" },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -15,11 +15,17 @@ import {
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import { useTranslation } from "react-i18next"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { useNavigation } from "@react-navigation/native"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
 import { enqueueMediaUpload } from "../../services/media-outbox"
+import {
+  queueVisitCheckIn,
+  queueVisitCheckOut,
+  readOptimisticVisit,
+  reconcileOptimisticVisit,
+  type OptimisticVisit,
+} from "../../services/visit-outbox"
+import { runMobileSync } from "../../services/sync-engine"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
@@ -27,9 +33,6 @@ import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import HintCard from "../../components/HintCard"
-import { RootStackParamList } from "../../navigation/AppNavigator"
-
-type NavProp = NativeStackNavigationProp<RootStackParamList>
 
 interface Visit {
   id: string
@@ -39,6 +42,7 @@ interface Visit {
   duration?: number
   customer: { id: string; name: string; address?: string }
   notes?: string
+  pendingCheckOut?: boolean
 }
 
 interface Customer {
@@ -75,7 +79,6 @@ function distanceColor(meters: number): string {
 
 export default function VisitScreen() {
   const { t, i18n } = useTranslation()
-  const navigation = useNavigation<NavProp>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [visits, setVisits] = useState<Visit[]>([])
@@ -105,9 +108,6 @@ export default function VisitScreen() {
   // Customer search
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Pending check-in customer (for confirm flow)
-  const [pendingCustomer, setPendingCustomer] = useState<Customer | null>(null)
-
   // Pending geofence resolve (for async confirm flow)
   const [pendingGeofenceResolve, setPendingGeofenceResolve] = useState<((v: boolean) => void) | null>(null)
 
@@ -131,14 +131,31 @@ export default function VisitScreen() {
       ])
       if (visitsRes.success) {
         const list = visitsRes.data?.visits || []
-        setVisits(list)
-        setActiveVisit(list.find((v: Visit) => v.status === "CHECKED_IN") || null)
+        const serverActive = list.find((v: Visit) => v.status === "CHECKED_IN") || null
+        const reconciled = await reconcileOptimisticVisit(
+          serverActive
+            ? { ...serverActive, status: "CHECKED_IN", pendingCheckOut: false } as OptimisticVisit
+            : null,
+        )
+        setVisits(reconciled && !list.some((visit: Visit) => visit.id === reconciled.id)
+          ? [reconciled, ...list]
+          : list)
+        setActiveVisit(reconciled)
       }
       if (customersRes.success) {
         setCustomers(customersRes.data?.customers || [])
       }
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") console.warn("Failed to fetch visits:", e.message)
+      try {
+        const optimistic = await readOptimisticVisit()
+        if (optimistic) {
+          setActiveVisit(optimistic)
+          setVisits((current) => current.some((visit) => visit.id === optimistic.id)
+            ? current
+            : [optimistic, ...current])
+        }
+      } catch {}
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -227,7 +244,6 @@ export default function VisitScreen() {
 
   const handleCheckIn = (customer: Customer) => {
     if (mutating || activeVisit) return
-    setPendingCustomer(customer)
     setConfirm({
       visible: true,
       icon: "📋",
@@ -309,21 +325,21 @@ export default function VisitScreen() {
         }
       }
 
-      const res = await api.checkIn({
-        customerId: customer.id,
+      const { visit } = await queueVisitCheckIn({
+        customer: { id: customer.id, name: customer.name, address: customer.address },
         latitude: coords?.latitude,
         longitude: coords?.longitude,
-        ...(forceCheckIn && { force: true }),
+        force: forceCheckIn,
       })
-      if (res.success) {
-        showToast("success", t("visit.checkedInTitle"), t("visit.checkedInBody", { name: customer.name }))
-        fetchData()
-      } else if (res.error) {
-        // Backend error messages are English; surfacing them in AZ/RU UI mixes
-        // locales. Show localized title + log backend detail for ops.
-        console.warn("[VisitScreen] check-in blocked:", res.error)
-        showToast("error", t("visit.checkInBlocked"), t("visit.checkInFailed"))
-      }
+      setActiveVisit(visit)
+      setVisits((current) => [visit, ...current.filter((entry) => entry.id !== visit.id)])
+      showToast("success", t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: customer.name }))
+      runMobileSync().then(async (result) => {
+        await fetchData()
+        if (result.conflicted > 0) {
+          showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+        }
+      }).catch(() => {})
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-in error:", e?.message ?? e)
@@ -345,15 +361,26 @@ export default function VisitScreen() {
     try {
       const coords = await getCoords()
       if (coords === undefined) { setMutating(false); return }
-      const res = await api.checkOut(activeVisit.id, {
+      const currentVisit: OptimisticVisit = {
+        id: activeVisit.id,
+        status: "CHECKED_IN",
+        checkInAt: activeVisit.checkInAt,
+        customer: activeVisit.customer,
+        pendingCheckOut: activeVisit.pendingCheckOut === true,
+      }
+      const { visit } = await queueVisitCheckOut(currentVisit, {
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         notes: notes || undefined,
       })
-      if (res.success) {
-        showToast("success", t("visit.checkedOutTitle"), t("visit.checkedOutBody"))
-        fetchData()
-      }
+      setActiveVisit(visit)
+      showToast("success", t("visit.checkOutQueuedTitle"), t("visit.checkOutQueuedBody"))
+      runMobileSync().then(async (result) => {
+        await fetchData()
+        if (result.conflicted > 0) {
+          showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+        }
+      }).catch(() => {})
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-out error:", e?.message ?? e)
@@ -402,7 +429,7 @@ export default function VisitScreen() {
           showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
           await enqueueMediaUpload({ filePath: path, visitId: activeVisit.id, category: "VISIT", latitude: uploadCoords?.latitude, longitude: uploadCoords?.longitude })
-          showToast("success", "Photo queued", "It will upload when connection returns.")
+          showToast("success", t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }
     }
@@ -481,6 +508,9 @@ export default function VisitScreen() {
               {t("visit.elapsedMin", { n: elapsedMin })}
               {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
             </Text>
+            {activeVisit.pendingCheckOut && (
+              <Text style={styles.pendingSyncText}>{t("visit.checkOutPending")}</Text>
+            )}
           </View>
           <View style={styles.activeBtns}>
             <TouchableOpacity
@@ -491,9 +521,9 @@ export default function VisitScreen() {
               <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
+              style={[styles.checkOutBtn, (mutating || activeVisit.pendingCheckOut) && { opacity: 0.5 }]}
               onPress={handleCheckOut}
-              disabled={mutating}
+              disabled={mutating || activeVisit.pendingCheckOut}
             >
               {mutating ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -718,7 +748,7 @@ export default function VisitScreen() {
         type={toast.type}
         title={toast.title}
         message={toast.message}
-        onDismiss={() => setToast(t => ({ ...t, visible: false }))}
+        onDismiss={() => setToast(current => ({ ...current, visible: false }))}
       />
     </View>
   )
@@ -797,6 +827,7 @@ const styles = StyleSheet.create({
   activeLabel: { fontSize: 10, color: "#15803d", textTransform: "uppercase", fontWeight: "700", letterSpacing: 0.5 },
   activeName: { fontSize: 15, fontWeight: "700", color: "#0B0B1E", marginTop: 2 },
   activeTime: { fontSize: 11, color: "#64748b", marginTop: 3 },
+  pendingSyncText: { fontSize: 11, color: "#b45309", marginTop: 3, fontWeight: "700" },
   activeBtns: { gap: 6 },
   photoBtn: {
     backgroundColor: "#6C63FF",

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { getOfflineScope, requireOfflineScope } from "./offline-scope"
 
 const STORAGE_KEY = "@mtm_sync_outbox_v1"
 
@@ -10,9 +11,25 @@ export type OutboxOperation = {
   clientTimestamp: number
   attempts: number
   nextAttemptAt: number
+  scopeKey: string
+  status: "pending" | "conflict"
+  conflict?: {
+    error?: string
+    serverData?: Record<string, unknown>
+    recordedAt: number
+  }
 }
 
-function operationId() {
+export type OutboxPushResult = {
+  operationId: string
+  status: string
+  error?: string
+  serverData?: Record<string, unknown>
+}
+
+let storageQueue: Promise<void> = Promise.resolve()
+
+function createOperationId() {
   return `mtm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
@@ -31,22 +48,38 @@ async function write(items: OutboxOperation[]) {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items))
 }
 
+function serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = storageQueue.then(operation)
+  storageQueue = result.then(() => undefined, () => undefined)
+  return result
+}
+
+function inCurrentScope(item: OutboxOperation, scope = getOfflineScope()) {
+  return Boolean(scope) && item.scopeKey === scope
+}
+
 export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entity" | "op" | "data">) {
   const item: OutboxOperation = {
     ...input,
-    operationId: operationId(),
+    operationId: createOperationId(),
     clientTimestamp: Date.now(),
     attempts: 0,
     nextAttemptAt: 0,
+    scopeKey: requireOfflineScope(),
+    status: "pending",
   }
-  const items = await read()
-  items.push(item)
-  await write(items)
+  await serializeMutation(async () => {
+    const items = await read()
+    items.push(item)
+    await write(items)
+  })
   return item
 }
 
 export async function pendingOutboxOperations(now = Date.now()) {
-  return (await read()).filter((item) => item.nextAttemptAt <= now)
+  return (await read()).filter((item) => (
+    inCurrentScope(item) && item.status !== "conflict" && item.nextAttemptAt <= now
+  ))
 }
 
 /**
@@ -55,50 +88,110 @@ export async function pendingOutboxOperations(now = Date.now()) {
  * is what a "N awaiting sync" UI indicator needs to count.
  */
 export async function allOutboxOperations(): Promise<OutboxOperation[]> {
-  return read()
+  return (await read()).filter((item) => inCurrentScope(item))
 }
 
 export async function acknowledgeOutboxOperation(operationIdToRemove: string) {
-  await write((await read()).filter((item) => item.operationId !== operationIdToRemove))
+  const scope = requireOfflineScope()
+  await serializeMutation(async () => {
+    await write((await read()).filter((item) => (
+      item.operationId !== operationIdToRemove || item.scopeKey !== scope
+    )))
+  })
 }
 
 export async function deferOutboxOperation(operationIdToDefer: string, now = Date.now()) {
-  const items = await read()
-  const next = items.map((item) => {
-    if (item.operationId !== operationIdToDefer) return item
-    const attempts = item.attempts + 1
-    return { ...item, attempts, nextAttemptAt: now + Math.min(15 * 60_000, 2 ** attempts * 1_000) }
+  const scope = requireOfflineScope()
+  await serializeMutation(async () => {
+    const items = await read()
+    const next = items.map((item) => {
+      if (item.operationId !== operationIdToDefer || item.scopeKey !== scope) return item
+      const attempts = item.attempts + 1
+      return { ...item, attempts, nextAttemptAt: now + Math.min(15 * 60_000, 2 ** attempts * 1_000) }
+    })
+    await write(next)
   })
-  await write(next)
+}
+
+export async function markOutboxConflict(operationId: string, result: OutboxPushResult) {
+  const scope = requireOfflineScope()
+  await serializeMutation(async () => {
+    const items = await read()
+    await write(items.map((item) => (
+      item.operationId === operationId && item.scopeKey === scope
+        ? {
+            ...item,
+            status: "conflict" as const,
+            conflict: {
+              ...(result.error ? { error: result.error } : {}),
+              ...(result.serverData ? { serverData: result.serverData } : {}),
+              recordedAt: Date.now(),
+            },
+          }
+        : item
+    )))
+  })
+}
+
+export async function conflictOutboxOperations() {
+  return (await allOutboxOperations()).filter((item) => item.status === "conflict")
+}
+
+export async function retryOutboxConflict(operationId: string, dataPatch?: Record<string, unknown>) {
+  const scope = requireOfflineScope()
+  await serializeMutation(async () => {
+    const items = await read()
+    await write(items.map((item) => (
+      item.operationId === operationId && item.scopeKey === scope && item.status === "conflict"
+        ? {
+            ...item,
+            data: dataPatch ? { ...item.data, ...dataPatch } : item.data,
+            status: "pending" as const,
+            conflict: undefined,
+            attempts: 0,
+            nextAttemptAt: 0,
+          }
+        : item
+    )))
+  })
 }
 
 export async function clearOutbox() {
-  await AsyncStorage.removeItem(STORAGE_KEY)
+  const scope = getOfflineScope()
+  if (!scope) return
+  await serializeMutation(async () => {
+    await write((await read()).filter((item) => item.scopeKey !== scope))
+  })
 }
 
 export async function flushOutbox(
-  send: (operations: OutboxOperation[]) => Promise<{ results?: Array<{ operationId: string; status: string }> }>,
+  send: (operations: OutboxOperation[]) => Promise<{ results?: OutboxPushResult[] }>,
 ) {
   const pending = await pendingOutboxOperations()
-  if (pending.length === 0) return { sent: 0, deferred: 0 }
+  if (pending.length === 0) return { sent: 0, deferred: 0, conflicted: 0 }
   try {
     const response = await send(pending)
     const resultById = new Map((response.results ?? []).map((result) => [result.operationId, result.status]))
     let sent = 0
     let deferred = 0
+    let conflicted = 0
     for (const item of pending) {
       const status = resultById.get(item.operationId)
-      if (status === "ok" || status === "conflict") {
+      if (status === "ok") {
         await acknowledgeOutboxOperation(item.operationId)
         sent += 1
+      } else if (status === "conflict") {
+        const result = response.results?.find((entry) => entry.operationId === item.operationId)
+        await markOutboxConflict(item.operationId, result ?? { operationId: item.operationId, status })
+        conflicted += 1
       } else {
         await deferOutboxOperation(item.operationId)
         deferred += 1
       }
     }
-    return { sent, deferred }
+    return { sent, deferred, conflicted }
   } catch {
     for (const item of pending) await deferOutboxOperation(item.operationId)
-    return { sent: 0, deferred: pending.length }
+    return { sent: 0, deferred: pending.length, conflicted: 0 }
   }
 }

@@ -11,10 +11,12 @@ import {
   flushMediaOutbox,
   pendingMediaUploads,
 } from "../../src/services/media-outbox"
+import { setOfflineScope } from "../../src/services/offline-scope"
 
 describe("durable media outbox", () => {
   beforeEach(async () => {
     await AsyncStorage.clear()
+    setOfflineScope("org-1", "agent-1")
   })
 
   it("persists media metadata and removes an acknowledged upload", async () => {
@@ -30,6 +32,18 @@ describe("durable media outbox", () => {
     expect((await pendingMediaUploads()).map((entry) => entry.id)).toEqual([item.id])
     await acknowledgeMediaUpload(item.id)
     expect(await pendingMediaUploads()).toEqual([])
+  })
+
+  it("serializes concurrent enqueues without losing either upload", async () => {
+    await Promise.all([
+      enqueueMediaUpload({ filePath: "/cache/first.jpg" }),
+      enqueueMediaUpload({ filePath: "/cache/second.jpg" }),
+    ])
+
+    expect((await pendingMediaUploads()).map((item) => item.filePath).sort()).toEqual([
+      "/cache/first.jpg",
+      "/cache/second.jpg",
+    ])
   })
 
   it("defers an upload with exponential backoff", async () => {

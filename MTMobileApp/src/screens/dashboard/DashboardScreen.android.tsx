@@ -18,6 +18,7 @@ import { useDashboardLayoutStore } from "../../store/dashboard-layout"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { isManagerRole } from "../../auth/roles"
+import SyncStatusChip from "../../components/SyncStatusChip"
 import { fieldTheme } from "../../theme/fieldTheme"
 import {
   LAYOUT_TOUCH_TARGETS,
@@ -252,6 +253,7 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.headerActions}>
+            <SyncStatusChip inverse />
             {!privileged && workspace === "agent" && (
               <Pressable
                 accessibilityRole="button"

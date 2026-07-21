@@ -7,10 +7,12 @@ import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../src/servic
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
 import ru from "../../src/i18n/locales/ru.json"
+import { setOfflineScope } from "../../src/services/offline-scope"
 
 describe("durable task mutations", () => {
   beforeEach(async () => {
     await AsyncStorage.clear()
+    setOfflineScope("org-1", "agent-1")
   })
 
   it("queues a task status update as a sync-push operation", async () => {
@@ -40,7 +42,7 @@ describe("durable task mutations", () => {
     const send = jest.fn().mockResolvedValue({ results: [{ operationId: op.operationId, status: "ok" }] })
     const result = await flushOutbox(send)
     expect(send).toHaveBeenCalledTimes(1)
-    expect(result).toEqual({ sent: 1, deferred: 0 })
+    expect(result).toEqual({ sent: 1, deferred: 0, conflicted: 0 })
     expect(await countPendingTaskUpdates()).toBe(0)
   })
 

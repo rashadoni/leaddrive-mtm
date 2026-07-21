@@ -20,9 +20,7 @@ import { useWorkdayStore, workdayKey } from "../store/workday"
 import { useBootstrapStore } from "../store/bootstrap"
 import { startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
-import { flushOutbox } from "../services/outbox"
-import { flushMediaOutbox, MediaOutboxItem } from "../services/media-outbox"
-import { pullAndApplySync } from "../services/sync-cache"
+import { markMobileOffline, runMobileSync } from "../services/sync-engine"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { canTrackFieldLocation } from "../auth/roles"
@@ -67,10 +65,7 @@ function AppContent() {
   const flushPendingOperations = useCallback(() => {
     const auth = useAuthStore.getState()
     if (!auth.isLoggedIn || !auth.agent) return
-    flushOutbox((operations) => api.syncPush(operations))
-      .then(() => pullAndApplySync(auth.agent!.organizationId, auth.agent!.id, (since) => api.syncPull(since)))
-      .catch(() => {})
-    flushMediaOutbox((item: MediaOutboxItem) => api.uploadPhoto(item)).catch(() => {})
+    runMobileSync().catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -85,6 +80,8 @@ function AppContent() {
     const unsubscribe = NetInfo.addEventListener((state) => {
       if (state.isConnected && state.isInternetReachable !== false) {
         flushPendingOperations()
+      } else if (state.isConnected === false || state.isInternetReachable === false) {
+        markMobileOffline().catch(() => {})
       }
     })
     return unsubscribe

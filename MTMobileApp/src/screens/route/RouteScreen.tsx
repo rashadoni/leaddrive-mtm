@@ -1,7 +1,4 @@
 import React, { useEffect, useState, useCallback, useRef } from "react"
-import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import { RootStackParamList } from "../../navigation/AppNavigator"
 import {
   View,
   Text,
@@ -21,6 +18,15 @@ import { useTranslation } from "react-i18next"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
+import { enqueueMediaUpload } from "../../services/media-outbox"
+import {
+  queueVisitCheckIn,
+  queueVisitCheckOut,
+  readOptimisticVisit,
+  reconcileOptimisticVisit,
+  type OptimisticVisit,
+} from "../../services/visit-outbox"
+import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -201,7 +207,6 @@ function PointBottomSheet({
 export default function RouteScreen() {
   const { t, i18n } = useTranslation()
   const agent = useAuthStore((s) => s.agent)
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [route, setRoute] = useState<Route | null>(null)
@@ -213,7 +218,7 @@ export default function RouteScreen() {
   const [sheetVisible, setSheetVisible] = useState(false)
 
   // Active visit state
-  const [activeVisit, setActiveVisit] = useState<{ id: string; checkInAt: string; customer: { id: string; name: string } } | null>(null)
+  const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
   const [photoCount, setPhotoCount] = useState(0)
@@ -236,14 +241,21 @@ export default function RouteScreen() {
         const visits = res.data?.visits || res.data || []
         const list = Array.isArray(visits) ? visits : []
         const active = list.find((v: any) => v.status === "CHECKED_IN") || null
-        setActiveVisit(active)
-        if (!active) { setPhotoCount(0) }
+        const reconciled = await reconcileOptimisticVisit(
+          active ? { ...active, status: "CHECKED_IN", pendingCheckOut: false } : null,
+        )
+        setActiveVisit(reconciled)
+        if (!reconciled) { setPhotoCount(0) }
       }
     } catch {
       // Network error/timeout — keep the previous state. Nulling it here
       // would hide the active-visit banner (with the check-out and photo
       // buttons) mid-visit whenever a pull-to-refresh times out on a weak
       // signal; the server truth lands on the next successful fetch.
+      try {
+        const optimistic = await readOptimisticVisit()
+        if (optimistic) setActiveVisit(optimistic)
+      } catch {}
     }
   }, [])
 
@@ -321,10 +333,10 @@ export default function RouteScreen() {
       // rep still sees today's assigned route offline. Only fill when we have
       // nothing live displayed, so a failed refresh never overwrites fresher
       // server data with the cached copy.
-      const agent = useAuthStore.getState().agent
-      if (agent) {
+      const authAgent = useAuthStore.getState().agent
+      if (authAgent) {
         try {
-          const cached = await readOfflineRoute(agent.organizationId, agent.id)
+          const cached = await readOfflineRoute(authAgent.organizationId, authAgent.id)
           if (cached) {
             setRoute((prev) => prev ?? cached)
             setOffline(true)
@@ -369,6 +381,7 @@ export default function RouteScreen() {
   // so the agent doesn't have to switch tabs to snap a store photo).
   const handlePhotoTaken = async (path: string) => {
     if (!activeVisit) return
+    let uploadCoords: { latitude: number; longitude: number } | null = null
     try {
       let coords: { latitude: number; longitude: number } | null = null
       try {
@@ -380,6 +393,7 @@ export default function RouteScreen() {
           )
         })
       } catch {}
+      uploadCoords = coords
       await api.uploadPhoto({
         filePath: path,
         visitId: activeVisit.id,
@@ -393,7 +407,14 @@ export default function RouteScreen() {
         if (e?.code === "MAX_PHOTOS_REACHED") {
           Alert.alert(t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
-          Alert.alert(t("visit.uploadFailedTitle"), t("visit.uploadFailedBody"))
+          await enqueueMediaUpload({
+            filePath: path,
+            visitId: activeVisit.id,
+            category: "VISIT",
+            latitude: uploadCoords?.latitude,
+            longitude: uploadCoords?.longitude,
+          })
+          Alert.alert(t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }
     }
@@ -474,25 +495,24 @@ export default function RouteScreen() {
         forceCheckIn = true
       }
 
-      const res = await api.checkIn({
-        customerId: point.customer.id,
+      const { visit } = await queueVisitCheckIn({
+        customer: point.customer,
         latitude: coords?.latitude,
         longitude: coords?.longitude,
-        ...(forceCheckIn && { force: true }),
+        force: forceCheckIn,
+        routeId: route?.id,
+        routePointId: point.id,
       })
-      if (res.success) {
-        setSheetVisible(false)
-        setSelectedPoint(null)
-        Alert.alert(
-          t("visit.checkedInTitle"),
-          t("visit.checkedInBody", { name: point.customer.name }),
-          [{ text: t("common.ok"), onPress: () => { fetchRoute(); fetchActiveVisit() } }],
-        )
-      } else if (res.error) {
-        // Backend errors in EN — log + show localized message instead of leaking
-        console.warn("[RouteScreen] check-in blocked:", res.error)
-        Alert.alert(t("visit.checkInBlocked"), t("visit.checkInFailed"))
-      }
+      setActiveVisit(visit)
+      setSheetVisible(false)
+      setSelectedPoint(null)
+      Alert.alert(t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: point.customer.name }))
+      runMobileSync().then(async (result) => {
+        await Promise.all([fetchRoute(), fetchActiveVisit()])
+        if (result.conflicted > 0) {
+          Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+        }
+      }).catch(() => {})
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
         console.warn("[RouteScreen] check-in error:", e?.message ?? e)
@@ -523,18 +543,19 @@ export default function RouteScreen() {
           )
         })
       } catch {}
-      const res = await api.checkOut(activeVisit.id, {
+      const { visit } = await queueVisitCheckOut(activeVisit, {
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         notes: notes || undefined,
       })
-      if (res.success) {
-        Alert.alert(t("visit.checkedOutTitle"), t("visit.checkedOutBody"))
-        setActiveVisit(null)
-        setPhotoCount(0)
-        fetchRoute()
-        fetchActiveVisit()
-      }
+      setActiveVisit(visit)
+      Alert.alert(t("visit.checkOutQueuedTitle"), t("visit.checkOutQueuedBody"))
+      runMobileSync().then(async (result) => {
+        await Promise.all([fetchRoute(), fetchActiveVisit()])
+        if (result.conflicted > 0) {
+          Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+        }
+      }).catch(() => {})
     } catch (e: any) {
       if (e.message !== "SESSION_EXPIRED") {
         console.warn("[RouteScreen] check-out error:", e?.message ?? e)
@@ -690,6 +711,9 @@ export default function RouteScreen() {
                     {t("visit.elapsedMin", { n: elapsedMin })}
                     {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
                   </Text>
+                  {activeVisit.pendingCheckOut && (
+                    <Text style={styles.pendingSyncText}>{t("visit.checkOutPending")}</Text>
+                  )}
                 </View>
                 <View style={styles.activeBtns}>
                   <TouchableOpacity
@@ -700,9 +724,9 @@ export default function RouteScreen() {
                     <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.checkOutBtn, mutating && { opacity: 0.5 }]}
+                    style={[styles.checkOutBtn, (mutating || activeVisit.pendingCheckOut) && { opacity: 0.5 }]}
                     onPress={handleCheckOut}
-                    disabled={mutating}
+                    disabled={mutating || activeVisit.pendingCheckOut}
                   >
                     {mutating ? (
                       <ActivityIndicator size="small" color="#fff" />
@@ -989,6 +1013,7 @@ const styles = StyleSheet.create({
   activeLabel: { fontSize: 10, color: "#15803d", textTransform: "uppercase", fontWeight: "700", letterSpacing: 0.5 },
   activeName: { fontSize: 15, fontWeight: "700", color: "#0B0B1E", marginTop: 2 },
   activeTime: { fontSize: 11, color: "#64748b", marginTop: 3 },
+  pendingSyncText: { fontSize: 11, color: "#b45309", marginTop: 3, fontWeight: "700" },
   activeBtns: { gap: 6 },
   photoBtn: {
     backgroundColor: "#6C63FF",
