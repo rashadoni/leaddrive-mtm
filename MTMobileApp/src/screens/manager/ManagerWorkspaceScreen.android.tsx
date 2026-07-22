@@ -17,7 +17,7 @@ import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../ser
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
 /** Which approval queue a decision targets — each hits its own decision endpoint. */
-type ApprovalKind = "hrm" | "routeChange" | "customer"
+type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange"
 
 const SCREEN_META: Record<
   ManagerWorkspaceKind,
@@ -90,7 +90,9 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
         ? await api.hrmDecision(id, decision, note)
         : queue === "routeChange"
           ? await api.routeChangeDecision(id, decision, note)
-          : await api.customerCreateDecision(id, decision, note)
+          : queue === "customer"
+            ? await api.customerCreateDecision(id, decision, note)
+            : await api.contactChangeDecision(id, decision, note || (decision === "APPROVED" ? t("managerShell.contactChangeApprovedNote") : t("managerShell.contactChangeRejectedNote")))
       if (res?.success) {
         setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
         reload()
@@ -187,6 +189,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
               <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide("hrm", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "hrm", id })} />
               <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} busyId={busyId} onApprove={(id) => decide("routeChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "routeChange", id })} />
               <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} busyId={busyId} onApprove={(id) => decide("customer", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "customer", id })} />
+              <ApprovalSection title={t("managerShell.approvalsContactChanges")} items={approvals.contactChanges} t={t} busyId={busyId} onApprove={(id) => decide("contactChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "contactChange", id })} />
             </View>
           ) : (
             <StatusPanel icon="checkmark-done-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.approvalsEmpty")} body={t(meta.bodyKey)} />
@@ -236,6 +239,7 @@ function ApprovalSection({ title, items, t, busyId, onApprove, onReject }: {
           <View style={styles.itemMain}>
             <Text style={styles.itemTitle}>{it.primary}</Text>
             <Text style={styles.itemMeta} numberOfLines={2}>{it.agentName}{it.reason ? ` · ${it.reason}` : ""}</Text>
+            {!!it.details && <Text style={styles.itemDetails}>{it.details}</Text>}
           </View>
           {actionable && (
             <View style={styles.decisionBtns}>
@@ -355,6 +359,7 @@ const styles = StyleSheet.create({
   itemMain: { flex: 1 },
   itemTitle: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.ink },
   itemMeta: { fontSize: 12, color: fieldTheme.color.inkMuted, marginTop: 2 },
+  itemDetails: { fontSize: 12, lineHeight: 17, color: fieldTheme.color.ink, marginTop: 6 },
   itemPill: { backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
   itemPillText: { fontSize: 10, fontWeight: "700", color: fieldTheme.color.primaryStrong },
   section: { gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },

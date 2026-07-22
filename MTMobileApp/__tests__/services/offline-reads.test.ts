@@ -8,6 +8,7 @@ import {
   matchesContactSearch,
   matchesOrganizationSearch,
   readOfflineContacts,
+  readOfflineContactDetail,
   readOfflineOrganizations,
   readOfflineRoute,
   readOfflineTasks,
@@ -247,11 +248,15 @@ describe("offline task reads (durable sync cache)", () => {
   })
 
   describe("offline contacts", () => {
-    it("maps a cached contact record to the list shape (no workplace offline)", () => {
+    it("maps the preferred phone and active primary workplace into the offline row", () => {
       const c = mapCachedContact({
-        id: "k1", displayName: "Dr. A", specialtyName: "Cardio", type: "DOCTOR", category: "A", phone: "+994", email: "a@x.az",
+        id: "k1", displayName: "Dr. A", specialtyName: "Cardio", type: "DOCTOR", category: "A", phone: "+994", mobilePhone: "+99450", email: "a@x.az",
+        workplaces: [
+          { id: "old", endedOn: "2025-12-31", customer: { name: "Old Clinic" } },
+          { id: "current", isPrimary: true, endedOn: null, customer: { name: "Central Clinic" } },
+        ],
       })
-      expect(c).toEqual({ id: "k1", name: "Dr. A", specialty: "Cardio", type: "DOCTOR", category: "A", phone: "+994", workplace: undefined })
+      expect(c).toEqual({ id: "k1", name: "Dr. A", specialty: "Cardio", type: "DOCTOR", category: "A", phone: "+99450", workplace: "Central Clinic" })
     })
 
     it("matches search across name, specialty and phone", () => {
@@ -283,6 +288,14 @@ describe("offline task reads (durable sync cache)", () => {
       expect(cardio.map((c) => c.id)).toEqual(["k1", "k2"])
       expect(await readOfflineContacts("tenant-b", "agent-a")).toEqual([])
     })
+
+    it("reads the full contact snapshot and cache version for offline detail", async () => {
+      await applySyncChanges("tenant-a", "agent-a", { contacts: { updated: [{ id: "k1", displayName: "Dr A", mobilePhone: "+99450", workplaces: [{ id: "w1", customerId: "c1" }] }] } }, "2026-07-21T09:00:00.000Z")
+      const detail = await readOfflineContactDetail("tenant-a", "agent-a", "k1")
+      expect(detail?.record).toMatchObject({ id: "k1", mobilePhone: "+99450", workplaces: [{ id: "w1" }] })
+      expect(detail?.version).toBe("2026-07-21T09:00:00.000Z")
+      expect(await readOfflineContactDetail("tenant-a", "agent-a", "missing")).toBeNull()
+    })
   })
 
   describe("i18n contract", () => {
@@ -292,6 +305,17 @@ describe("offline task reads (durable sync cache)", () => {
         const value = (locale as { common: { offlineCached?: unknown } }).common.offlineCached
         expect(typeof value).toBe("string")
         expect((value as string).length).toBeGreaterThan(0)
+      },
+    )
+
+    it.each([["en", en], ["ru", ru], ["az", az]])(
+      "GAP-003 duplicate workflow copy is complete in %s",
+      (_lang, locale) => {
+        const contacts = (locale as { contacts: Record<string, unknown> }).contacts
+        for (const key of ["reportDuplicate", "duplicateTitle", "duplicateSearch", "markDuplicate", "validationDuplicate"]) {
+          expect(typeof contacts[key]).toBe("string")
+          expect((contacts[key] as string).length).toBeGreaterThan(0)
+        }
       },
     )
 

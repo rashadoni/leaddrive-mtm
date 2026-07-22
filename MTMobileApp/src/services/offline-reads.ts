@@ -247,18 +247,23 @@ export interface CachedContact {
 
 /**
  * Map a cached `contacts` record (from the sync-pull contacts entity) to the
- * ContactsList shape. The cached contact carries no workplace (the sync-pull
- * select is flat), so `workplace` is left undefined offline — a lighter version
- * of the online row.
+ * ContactsList shape. GAP-003 sync records carry the full phone set and current
+ * workplaces, so the offline row remains useful instead of falling back to the
+ * old flat snapshot.
  */
 export function mapCachedContact(record: SyncRecord): CachedContact {
+  const workplaces = Array.isArray(record.workplaces) ? record.workplaces as SyncRecord[] : []
+  const activeWorkplaces = workplaces.filter((workplace) => workplace.endedOn == null)
+  const primary = activeWorkplaces.find((workplace) => workplace.isPrimary === true) ?? activeWorkplaces[0]
+  const customer = primary?.customer && typeof primary.customer === "object" ? primary.customer as SyncRecord : undefined
   return {
     id: String(record.id),
     name: str(record.displayName) ?? "",
     specialty: str(record.specialtyName),
     type: str(record.type),
     category: str(record.category),
-    phone: str(record.phone),
+    phone: str(record.mobilePhone) ?? str(record.phone) ?? str(record.workPhone),
+    workplace: str(customer?.name),
   }
 }
 
@@ -285,4 +290,17 @@ export async function readOfflineContacts(
   const list = (state.entities.contacts ?? []).map(mapCachedContact)
   const filtered = search ? list.filter((contact) => matchesContactSearch(contact, search)) : list
   return filtered.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** Full GAP-003 contact snapshot from the scoped sync cache. The server ships
+ * workplaces and pharma master fields in the contacts entity; pending review
+ * and audit history stay online-authoritative and are intentionally absent. */
+export async function readOfflineContactDetail(
+  tenantId: string | null | undefined,
+  agentId: string | null | undefined,
+  contactId: string,
+): Promise<{ record: SyncRecord; version: string | null } | null> {
+  const state = await readSyncCache(tenantId, agentId)
+  const record = (state.entities.contacts ?? []).find((contact) => String(contact.id) === contactId)
+  return record ? { record, version: state.version } : null
 }

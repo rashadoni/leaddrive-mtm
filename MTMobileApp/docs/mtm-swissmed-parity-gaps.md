@@ -83,6 +83,13 @@ due-date quick set, bulk reassign, files read).
 - Агентские правки могут переходить в `PENDING_REVIEW`, а не менять master-data
   без контроля.
 
+**Реализация GAP-003:** полный responsive contact detail/edit для телефона и
+планшета; direct Manager/Admin mutation и отдельная idempotent Agent review queue;
+effective-dated workplace history; поиск/сообщение о дубле; audit trail; полный
+Agent-scoped offline snapshot. Фармацевтический scoring, per-brand строки и единый
+relationship timeline намеренно остаются в GAP-004, GAP-005 и GAP-006, а не
+маскируются внутри этой главы.
+
 ## GAP-004 — Фармацевтический скоринг врача
 
 **Связь:** SWM-04. **Роли:** Agent observe; Manager validate; Admin configure.
@@ -249,4 +256,3 @@ due-date quick set, bulk reassign, timeline и files-read сохраняются
 и заканчивается проверяемым результатом в LeadDrive MTM. Нельзя закрывать GAP по
 наличию таблицы Prisma, API-заготовки, preview-widget или happy path без офлайна,
 scope, audit и error/conflict states.
-

@@ -179,7 +179,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 3, contact detail with workplace, personal, contact, address, product, and brand information.
 
 **Target roles:** Agent reads/requests edits; Manager edits permitted records; Admin governs dictionaries/mastering.
-**Current state: Partial.** A contact detail card (`src/screens/base/ContactDetailScreen.tsx`) against `GET /contacts/[id]` now shows contact info (tap-to-call/email), the list of workplaces (organizations the person works at, each cross-navigating to the organization card), and a brand-potential summary. Reached by tapping a row in the “База / Контакты” list. Missing: MOI/Target/psychotype, per-brand product detail, edit/request, full personal schema, and offline caching.
+**Current state: Partial (GAP-003 implemented; later cross-gap tabs remain).** `ContactDetailScreen.tsx` now provides the full personal/professional, communication, home-address, verification/consent/source and duplicate-mastering fields; effective-dated workplace add/edit/end; tap-to-call/email/WhatsApp; audited history; and the aggregate potential summary. Manager/Admin edits are authoritative and concurrency-checked. Agent edits and duplicate reports create idempotent review requests, expose the exact payload in the Manager approval queue, and do not mutate master data before approval. The assigned Agent receives the same core card plus workplaces in the durable sync cache. Still missing here because they belong to GAP-004…006: MOI/Target/psychotype and scoring, per-brand product rows, and the unified visit/task/promotion/file relationship timeline.
 
 **Data**
 
@@ -743,7 +743,7 @@ This ordering prevents visually complete dashboards and calendars from being bui
 - SWM-09 pharmacy promotions / points / approvals.
 - SWM-02 bulk transfer and SWM-08 dense table / saved views (Manager/Admin; web-first candidates).
 - SWM-13/15 KPI charts, formulas, drill-down and coverage/cancellation widgets.
-- Contact detail visit-history + offline detail caches; SWM-12 Manager live team map real data.
+- Contact relationship timeline beyond master-data audit; SWM-12 Manager live team map real data.
 
 ## Changelog — 2026-07-19 (Android, merged to main)
 

@@ -242,7 +242,7 @@ class ApiClient {
     }
 
     if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`
+      headers.Authorization = `Bearer ${this.token}`
     }
 
     const controller = new AbortController()
@@ -476,6 +476,13 @@ class ApiClient {
     return this.request(`/customer-create-requests/${id}/decision`, {
       method: "POST",
       body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
+    })
+  }
+
+  async contactChangeDecision(id: string, decision: "APPROVED" | "REJECTED", comment: string) {
+    return this.request(`/contact-change-requests/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, comment }),
     })
   }
 
@@ -740,6 +747,28 @@ class ApiClient {
 
   async getContact(id: string, signal?: AbortSignal) {
     return this.request(`/contacts/${id}`, { signal })
+  }
+
+  async updateContact(id: string, fields: Record<string, unknown>) {
+    return this.request(`/contacts/${id}`, { method: "PUT", body: JSON.stringify(fields) })
+  }
+
+  async submitContactChange(id: string, data: {
+    idempotencyKey: string
+    reason: string
+    expectedContactUpdatedAt: string
+    kind: "CONTACT_UPDATE" | "WORKPLACE_UPSERT" | "WORKPLACE_END" | "DUPLICATE_REPORT"
+    payload: object
+  }) {
+    return this.request(`/contacts/${id}/change-requests`, { method: "POST", body: JSON.stringify(data) })
+  }
+
+  async upsertContactWorkplace(id: string, data: object) {
+    return this.request(`/contacts/${id}/workplaces`, { method: "PUT", body: JSON.stringify(data) })
+  }
+
+  async endContactWorkplace(id: string, workplaceId: string) {
+    return this.request(`/contacts/${id}/workplaces/${workplaceId}`, { method: "DELETE" })
   }
 
   async previewContactTransfer(data: {
