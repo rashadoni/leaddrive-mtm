@@ -41,6 +41,33 @@ export interface ContactHistoryItem {
   actorName?: string
 }
 
+export interface DoctorAssessment {
+  id: string
+  clientAssessmentId: string
+  office?: string
+  patientsPerMonth?: number
+  bedCount?: number
+  isKol: boolean
+  kolLevel?: string
+  profile?: string
+  psychotype?: string
+  granularCategory?: string
+  actualScore?: number
+  targetScore?: number
+  periodStart: string
+  periodEnd?: string
+  source: string
+  formulaVersion: string
+  formulaName?: string
+  formulaSignedAt?: string
+  status: string
+  reviewComment?: string
+  reviewedAt?: string
+  enteredByName?: string
+  reviewedByName?: string
+  createdAt?: string
+}
+
 export interface ContactDetail {
   id: string
   updatedAt: string
@@ -84,6 +111,7 @@ export interface ContactDetail {
   potential: PotentialSummary | null
   changeRequests: ContactChangeRequest[]
   history: ContactHistoryItem[]
+  doctorAssessments: DoctorAssessment[]
   canManage: boolean
   canRequestChanges: boolean
 }
@@ -103,6 +131,7 @@ export function toContactDetail(raw: any, envelope?: any): ContactDetail {
   const workplaces = Array.isArray(raw?.workplaces) ? raw.workplaces : []
   const requests = Array.isArray(raw?.changeRequests) ? raw.changeRequests : []
   const history = Array.isArray(envelope?.history) ? envelope.history : []
+  const assessments = Array.isArray(raw?.doctorAssessments) ? raw.doctorAssessments : []
   return {
     id: String(raw?.id ?? ""),
     updatedAt: opt(raw?.updatedAt) ?? "",
@@ -176,6 +205,32 @@ export function toContactDetail(raw: any, envelope?: any): ContactDetail {
       entity: opt(item?.entity) ?? "",
       createdAt: opt(item?.createdAt),
       actorName: opt(item?.agent?.name),
+    })),
+    doctorAssessments: assessments.map((assessment: any) => ({
+      id: String(assessment?.id ?? ""),
+      clientAssessmentId: opt(assessment?.clientAssessmentId) ?? "",
+      office: opt(assessment?.office),
+      patientsPerMonth: assessment?.patientsPerMonth == null ? undefined : Number(assessment.patientsPerMonth),
+      bedCount: assessment?.bedCount == null ? undefined : Number(assessment.bedCount),
+      isKol: Boolean(assessment?.isKol),
+      kolLevel: opt(assessment?.kolLevel),
+      profile: opt(assessment?.profile),
+      psychotype: opt(assessment?.psychotype),
+      granularCategory: opt(assessment?.granularCategory),
+      actualScore: assessment?.actualScore == null ? undefined : Number(assessment.actualScore),
+      targetScore: assessment?.targetScore == null ? undefined : Number(assessment.targetScore),
+      periodStart: date(assessment?.periodStart) ?? "",
+      periodEnd: date(assessment?.periodEnd),
+      source: opt(assessment?.source) ?? "",
+      formulaVersion: opt(assessment?.formulaVersion) ?? "",
+      formulaName: opt(assessment?.formula?.name),
+      formulaSignedAt: opt(assessment?.formula?.signedAt),
+      status: opt(assessment?.status) ?? "PENDING",
+      reviewComment: opt(assessment?.reviewComment),
+      reviewedAt: opt(assessment?.reviewedAt),
+      enteredByName: opt(assessment?.enteredByAgent?.name),
+      reviewedByName: opt(assessment?.reviewedByAgent?.name),
+      createdAt: opt(assessment?.createdAt),
     })),
     canManage: Boolean(envelope?.capabilities?.canManage),
     canRequestChanges: Boolean(envelope?.capabilities?.canRequestChanges),

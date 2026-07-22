@@ -771,6 +771,24 @@ class ApiClient {
     return this.request(`/contacts/${id}/workplaces/${workplaceId}`, { method: "DELETE" })
   }
 
+  async getDoctorScoringFormulas(signal?: AbortSignal) {
+    return this.request("/doctor-scoring/formulas", { signal })
+  }
+
+  async createDoctorAssessment(contactId: string, data: object) {
+    return this.request(`/contacts/${contactId}/assessments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async decideDoctorAssessment(id: string, decision: "VERIFIED" | "REJECTED", comment: string) {
+    return this.request(`/doctor-assessments/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, comment }),
+    })
+  }
+
   async previewContactTransfer(data: {
     contactIds: string[]
     sourceAgentId: string

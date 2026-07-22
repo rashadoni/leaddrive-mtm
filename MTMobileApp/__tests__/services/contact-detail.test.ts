@@ -49,10 +49,50 @@ describe("contact detail mapping", () => {
     const detail = toContactDetail({ id: "k2", displayName: "Solo" })
     expect(detail.workplaces).toEqual([])
     expect(detail.phone).toBeUndefined()
+    expect(detail.doctorAssessments).toEqual([])
+  })
+
+  it("maps append-only pharmaceutical doctor scoring for live and offline cards", () => {
+    const detail = toContactDetail({
+      id: "k4",
+      displayName: "Dr Leyla",
+      doctorAssessments: [{
+        id: "score-1",
+        clientAssessmentId: "mobile-score-1",
+        office: "12",
+        patientsPerMonth: 320,
+        bedCount: 40,
+        isKol: true,
+        kolLevel: "Regional",
+        psychotype: "Analytical",
+        granularCategory: "B2",
+        actualScore: "72.5000",
+        targetScore: "80.0000",
+        periodStart: "2026-07-01T00:00:00.000Z",
+        source: "MANAGER_INTERVIEW",
+        formulaVersion: "2026.1",
+        formula: { name: "Doctor score", signedAt: "2026-06-30T12:00:00.000Z" },
+        status: "VERIFIED",
+        enteredByAgent: { name: "Manager" },
+      }],
+    })
+    expect(detail.doctorAssessments).toHaveLength(1)
+    expect(detail.doctorAssessments[0]).toMatchObject({
+      id: "score-1",
+      patientsPerMonth: 320,
+      isKol: true,
+      granularCategory: "B2",
+      actualScore: 72.5,
+      periodStart: "2026-07-01",
+      formulaVersion: "2026.1",
+      formulaName: "Doctor score",
+      status: "VERIFIED",
+      enteredByName: "Manager",
+    })
   })
 
   describe("i18n contract", () => {
-    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory"] as const
+    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory", "tab_scoring", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED"] as const
     it.each([["en", en], ["ru", ru], ["az", az]])(
       "contacts detail keys present in %s",
       (_lang, locale) => {
