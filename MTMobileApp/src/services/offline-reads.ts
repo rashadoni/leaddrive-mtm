@@ -161,35 +161,60 @@ export interface CachedOrganization {
   id: string
   name: string
   code?: string
+  objectType?: string
   category?: string
+  status?: string
   address?: string
+  region?: string
+  administrativeDistrict?: string
+  locality?: string
+  cityDistrict?: string
   city?: string
+  district?: string
+  specialization?: string
+  organizationKind?: string
+  territoryCode?: string
+  managingManagerId?: string
   phone?: string
 }
 
 /**
- * Map a cached `customers` record to the Organizations screen shape. The
- * sync-pull customer carries fewer fields than GET /organizations (no
- * objectType / status / counts), so the offline card is a lighter version of
- * the same object — id, name, code, category, address, city, phone.
+ * Map a cached `customers` record to the Organizations screen shape. Counts
+ * and related agent names remain online-only, while the complete published
+ * master-data slice stays usable during fieldwork without connectivity.
  */
 export function mapCachedOrganization(record: SyncRecord): CachedOrganization {
   return {
     id: String(record.id),
     name: str(record.name) ?? "",
     code: str(record.code),
+    objectType: str(record.objectType),
     category: str(record.category),
+    status: str(record.status),
     address: str(record.address),
+    region: str(record.region),
+    administrativeDistrict: str(record.administrativeDistrict),
+    locality: str(record.locality),
+    cityDistrict: str(record.cityDistrict),
     city: str(record.city),
+    district: str(record.district),
+    specialization: str(record.specialization),
+    organizationKind: str(record.organizationKind),
+    territoryCode: str(record.territoryCode),
+    managingManagerId: str(record.managingManagerId),
     phone: str(record.phone),
   }
 }
 
-/** Client-side mirror of the server search (name/code/address/phone/city). */
+/** Client-side mirror of the server master-data search while offline. */
 export function matchesOrganizationSearch(org: CachedOrganization, query: string): boolean {
   const q = query.trim().toLowerCase()
   if (!q) return true
-  return [org.name, org.code, org.address, org.phone, org.city].some(
+  return [
+    org.name, org.code, org.address, org.phone, org.city, org.region,
+    org.administrativeDistrict, org.locality, org.cityDistrict,
+    org.specialization, org.organizationKind, org.territoryCode,
+  ].some(
     (value) => value != null && value.toLowerCase().includes(q),
   )
 }

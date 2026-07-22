@@ -640,19 +640,89 @@ class ApiClient {
   // --- Organizations (field master data) ---
 
   async getOrganizations(
-    params?: { search?: string; page?: number; limit?: number },
+    params?: {
+      search?: string
+      page?: number
+      limit?: number
+      category?: string
+      status?: string
+      objectType?: string
+      region?: string
+      administrativeDistrict?: string
+      locality?: string
+      cityDistrict?: string
+      specialization?: string
+      organizationKind?: string
+      territoryCode?: string
+      managingManagerId?: string
+      assignedAgentId?: string
+      assignmentState?: "ASSIGNED" | "UNASSIGNED"
+      sort?: "name" | "updatedAt" | "city" | "category" | "status"
+      direction?: "asc" | "desc"
+    },
     signal?: AbortSignal,
   ) {
     const query = new URLSearchParams()
     if (params?.search) query.set("search", params.search)
     if (params?.page) query.set("page", String(params.page))
     if (params?.limit) query.set("limit", String(params.limit))
+    for (const key of [
+      "category", "status", "objectType", "region", "administrativeDistrict",
+      "locality", "cityDistrict", "specialization", "organizationKind",
+      "territoryCode", "managingManagerId", "assignedAgentId", "assignmentState",
+      "sort", "direction",
+    ] as const) {
+      if (params?.[key]) query.set(key, params[key] as string)
+    }
     const qs = query.toString()
     return this.request(`/organizations${qs ? `?${qs}` : ""}`, { signal })
   }
 
   async getOrganization(id: string, signal?: AbortSignal) {
     return this.request(`/organizations/${id}`, { signal })
+  }
+
+  async getOrganizationFacets(signal?: AbortSignal) {
+    return this.request("/organizations/facets", { signal })
+  }
+
+  async getOrganizationViews(signal?: AbortSignal) {
+    return this.request("/organizations/views", { signal })
+  }
+
+  async createOrganizationView(data: {
+    name: string
+    filters: Record<string, unknown>
+    columns: string[]
+    isDefault?: boolean
+  }) {
+    return this.request("/organizations/views", { method: "POST", body: JSON.stringify(data) })
+  }
+
+  async deleteOrganizationView(id: string) {
+    return this.request(`/organizations/views/${id}`, { method: "DELETE" })
+  }
+
+  async previewOrganizationAssignment(data: {
+    organizationIds: string[]
+    mode: "ASSIGN" | "UNASSIGN"
+    targetAgentId?: string | null
+    effectiveFrom: string
+    reason: string
+  }) {
+    return this.request("/organization-assignments/preview", { method: "POST", body: JSON.stringify(data) })
+  }
+
+  async executeOrganizationAssignment(data: {
+    organizationIds: string[]
+    mode: "ASSIGN" | "UNASSIGN"
+    targetAgentId?: string | null
+    effectiveFrom: string
+    reason: string
+    previewToken: string
+    idempotencyKey: string
+  }) {
+    return this.request("/organization-assignments", { method: "POST", body: JSON.stringify(data) })
   }
 
   async getContacts(

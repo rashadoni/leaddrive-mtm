@@ -81,7 +81,7 @@ export default function OrganizationDetailScreen() {
             {detail && (
               <Text style={styles.headerSubtitle}>
                 {detail.objectType ? t(OBJECT_TYPE_KEY[detail.objectType] ?? "organizations.objectOther") : ""}
-                {detail.city ? `${detail.objectType ? " · " : ""}${detail.city}` : ""}
+                {detail.locality || detail.city ? `${detail.objectType ? " · " : ""}${detail.locality || detail.city}` : ""}
               </Text>
             )}
           </View>
@@ -118,6 +118,21 @@ export default function OrganizationDetailScreen() {
                 {detail.code ? <Field label={t("organizations.fieldCode")} value={detail.code} /> : null}
                 {detail.contactPerson ? <Field label={t("organizations.fieldContactPerson")} value={detail.contactPerson} /> : null}
                 {detail.notes ? <Field label={t("organizations.fieldNotes")} value={detail.notes} /> : null}
+              </View>
+
+              {/* SwissMed-compatible organization master data and ownership. */}
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>{t("organizations.masterData")}</Text>
+                {detail.region ? <Field label={t("organizations.region")} value={detail.region} /> : null}
+                {detail.administrativeDistrict ? <Field label={t("organizations.adminDistrict")} value={detail.administrativeDistrict} /> : null}
+                {detail.locality ? <Field label={t("organizations.locality")} value={detail.locality} /> : null}
+                {detail.cityDistrict ? <Field label={t("organizations.cityDistrict")} value={detail.cityDistrict} /> : null}
+                {detail.specialization ? <Field label={t("organizations.specialization")} value={detail.specialization} /> : null}
+                {detail.organizationKind ? <Field label={t("organizations.organizationKind")} value={detail.organizationKind} /> : null}
+                {detail.status ? <Field label={t("organizations.status")} value={detail.status} /> : null}
+                {detail.territoryCode ? <Field label={t("organizations.territory")} value={detail.territoryCode} /> : null}
+                {detail.managingManagerName ? <Field label={t("organizations.manager")} value={detail.managingManagerName} /> : null}
+                {detail.assignedAgentNames.length > 0 ? <Field label={t("organizations.assignedAgent")} value={detail.assignedAgentNames.join(", ")} /> : null}
               </View>
 
               {/* Contacts */}

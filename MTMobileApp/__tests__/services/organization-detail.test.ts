@@ -13,11 +13,23 @@ describe("organization detail mapping", () => {
       category: "A",
       status: "ACTIVE",
       address: "Nizami 12",
+      region: "Absheron",
+      administrativeDistrict: "Yasamal",
+      locality: "Baku",
+      cityDistrict: "Central",
       city: "Baku",
       district: "Yasamal",
+      specialization: "Cardiology",
+      organizationKind: "Private clinic",
+      territoryCode: "T-01",
       phone: "+994100",
       contactPerson: "Ms. R",
       notes: "VIP",
+      managingManager: { id: "manager-1", name: "Manager One" },
+      agentAssignments: [
+        { agent: { id: "agent-1", name: "Agent One" } },
+        { agent: { id: "agent-1", name: "Agent One" } },
+      ],
       contactWorkplaces: [
         { isPrimary: true, position: "Head", contact: { id: "k1", displayName: "Dr. A", specialtyName: "Cardio", type: "DOCTOR", phone: "+994111" } },
         { isPrimary: false, contact: { id: "k2", displayName: "Dr. B", type: "DOCTOR" } },
@@ -29,6 +41,10 @@ describe("organization detail mapping", () => {
 
     expect(detail.name).toBe("Central Clinic")
     expect(detail.district).toBe("Yasamal")
+    expect(detail.region).toBe("Absheron")
+    expect(detail.organizationKind).toBe("Private clinic")
+    expect(detail.managingManagerName).toBe("Manager One")
+    expect(detail.assignedAgentNames).toEqual(["Agent One"])
     expect(detail.contacts).toHaveLength(2)
     expect(detail.contacts[0]).toEqual({
       id: "k1", name: "Dr. A", specialty: "Cardio", type: "DOCTOR", phone: "+994111", isPrimary: true, position: "Head",
@@ -44,11 +60,15 @@ describe("organization detail mapping", () => {
     const detail = toOrganizationDetail({ id: "c2", name: "Solo" })
     expect(detail.contacts).toEqual([])
     expect(detail.visits).toEqual([])
+    expect(detail.assignedAgentNames).toEqual([])
     expect(detail.phone).toBeUndefined()
   })
 
   describe("i18n contract", () => {
-    const KEYS = ["detailRequisites", "detailVisits", "detailNoContacts", "detailOfflineNote", "fieldCode"] as const
+    const KEYS = [
+      "detailRequisites", "detailVisits", "detailNoContacts", "detailOfflineNote", "fieldCode",
+      "masterData", "specialization", "organizationKind", "status",
+    ] as const
     it.each([["en", en], ["ru", ru], ["az", az]])(
       "organizations detail keys present in %s",
       (_lang, locale) => {

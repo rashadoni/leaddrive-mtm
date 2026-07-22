@@ -173,9 +173,20 @@ describe("offline task reads (durable sync cache)", () => {
         id: "c1",
         name: "Clinic One",
         code: "CL-1",
+        objectType: "CLINIC",
         category: "A",
+        status: "ACTIVE",
         address: "Baku, Nizami 12",
+        region: "Absheron",
+        administrativeDistrict: "Yasamal",
+        locality: "Baku",
+        cityDistrict: "Central",
         city: "Baku",
+        district: "Yasamal",
+        specialization: "Cardiology",
+        organizationKind: "Private clinic",
+        territoryCode: "T-01",
+        managingManagerId: "manager-1",
         phone: "+994501112233",
         latitude: 40.4,
         longitude: 49.8,
@@ -184,9 +195,20 @@ describe("offline task reads (durable sync cache)", () => {
         id: "c1",
         name: "Clinic One",
         code: "CL-1",
+        objectType: "CLINIC",
         category: "A",
+        status: "ACTIVE",
         address: "Baku, Nizami 12",
+        region: "Absheron",
+        administrativeDistrict: "Yasamal",
+        locality: "Baku",
+        cityDistrict: "Central",
         city: "Baku",
+        district: "Yasamal",
+        specialization: "Cardiology",
+        organizationKind: "Private clinic",
+        territoryCode: "T-01",
+        managingManagerId: "manager-1",
         phone: "+994501112233",
       })
     })
@@ -196,6 +218,7 @@ describe("offline task reads (durable sync cache)", () => {
       expect(matchesOrganizationSearch(org, "aptek")).toBe(true)
       expect(matchesOrganizationSearch(org, "ap7")).toBe(true)
       expect(matchesOrganizationSearch(org, "ganja")).toBe(true)
+      expect(matchesOrganizationSearch(mapCachedOrganization({ id: "c2", name: "X", specialization: "Cardiology" }), "cardio")).toBe(true)
       expect(matchesOrganizationSearch(org, "")).toBe(true)
       expect(matchesOrganizationSearch(org, "moscow")).toBe(false)
     })
