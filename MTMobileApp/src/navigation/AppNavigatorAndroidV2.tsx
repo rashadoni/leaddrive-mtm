@@ -31,6 +31,7 @@ import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.an
 import ContactTransferScreen from "../screens/manager/ContactTransferScreen.android"
 import UnsupportedRoleScreen from "../screens/auth/UnsupportedRoleScreen.android"
 import type { RawTask } from "../services/task-detail"
+import { tabNamesForNavGroup, type AppTabName } from "./role-tabs"
 
 export type RootStackParamList = {
   Main: undefined
@@ -64,6 +65,34 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
 const TeamScreen = () => <ManagerWorkspaceScreen kind="team" />
 const PlanningScreen = () => <ManagerWorkspaceScreen kind="planning" />
 const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
+
+const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
+  Home: DashboardScreen,
+  Week: WeekScreen,
+  Route: RouteScreen,
+  Visits: VisitScreen,
+  Tasks: TasksScreen,
+  Base: BaseScreen,
+  Profile: ProfileScreen,
+  Overview: DashboardScreen,
+  Team: TeamScreen,
+  Planning: PlanningScreen,
+  Approvals: ApprovalsScreen,
+}
+
+const TAB_LABEL_KEYS: Record<AppTabName, string> = {
+  Home: "navV2.home",
+  Week: "navV2.week",
+  Route: "navV2.route",
+  Visits: "navV2.visits",
+  Tasks: "navV2.tasks",
+  Base: "navV2.base",
+  Profile: "navV2.profile",
+  Overview: "navV2.overview",
+  Team: "navV2.team",
+  Planning: "navV2.planning",
+  Approvals: "navV2.approvals",
+}
 
 function tabOptions(name: string, label: string) {
   return {
@@ -146,25 +175,14 @@ function MainTabs() {
         tabBarLabelStyle: styles.tabLabel,
       }}
     >
-      {manager ? (
-        <>
-          <Tab.Screen name="Overview" component={DashboardScreen} options={tabOptions("Overview", t("navV2.overview"))} />
-          <Tab.Screen name="Team" component={TeamScreen} options={tabOptions("Team", t("navV2.team"))} />
-          <Tab.Screen name="Planning" component={PlanningScreen} options={tabOptions("Planning", t("navV2.planning"))} />
-          <Tab.Screen name="Approvals" component={ApprovalsScreen} options={tabOptions("Approvals", t("navV2.approvals"))} />
-          <Tab.Screen name="Profile" component={ProfileScreen} options={tabOptions("Profile", t("navV2.profile"))} />
-        </>
-      ) : (
-        <>
-          <Tab.Screen name="Home" component={DashboardScreen} options={tabOptions("Home", t("navV2.home"))} />
-          <Tab.Screen name="Week" component={WeekScreen} options={tabOptions("Week", t("navV2.week"))} />
-          <Tab.Screen name="Route" component={RouteScreen} options={tabOptions("Route", t("navV2.route"))} />
-          <Tab.Screen name="Visits" component={VisitScreen} options={tabOptions("Visits", t("navV2.visits"))} />
-          <Tab.Screen name="Tasks" component={TasksScreen} options={tabOptions("Tasks", t("navV2.tasks"))} />
-          <Tab.Screen name="Base" component={BaseScreen} options={tabOptions("Base", t("navV2.base"))} />
-          <Tab.Screen name="Profile" component={ProfileScreen} options={tabOptions("Profile", t("navV2.profile"))} />
-        </>
-      )}
+      {tabNamesForNavGroup(manager ? "team" : "field").map((name) => (
+        <Tab.Screen
+          key={name}
+          name={name}
+          component={TAB_COMPONENTS[name]}
+          options={tabOptions(name, t(TAB_LABEL_KEYS[name]))}
+        />
+      ))}
     </Tab.Navigator>
   )
 }
