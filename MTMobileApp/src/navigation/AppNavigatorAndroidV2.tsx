@@ -28,6 +28,7 @@ import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
+import ContactTransferScreen from "../screens/manager/ContactTransferScreen.android"
 import UnsupportedRoleScreen from "../screens/auth/UnsupportedRoleScreen.android"
 import type { RawTask } from "../services/task-detail"
 
@@ -40,6 +41,7 @@ export type RootStackParamList = {
   VisitWorkspace: { visitId: string; name?: string }
   TaskDetail: { task: RawTask }
   GpsHistory: undefined
+  ContactTransfer: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -202,6 +204,7 @@ export default function AppNavigatorAndroidV2() {
             <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
             <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
+            <Stack.Screen name="ContactTransfer" component={ContactTransferScreen} />
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">
