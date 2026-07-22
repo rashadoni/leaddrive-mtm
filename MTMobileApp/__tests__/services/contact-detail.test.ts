@@ -91,8 +91,52 @@ describe("contact detail mapping", () => {
     })
   })
 
+  it("maps per-brand potential history, validation provenance and evidence visits", () => {
+    const detail = toContactDetail({
+      id: "k5",
+      displayName: "Dr Brand",
+      fieldPotentials: [{
+        id: "potential-1",
+        clientPotentialId: "mobile-potential-1",
+        brandExternalId: "brand-acc",
+        brandName: "ACC",
+        productExternalId: "acc-200",
+        productName: "ACC 200 mg",
+        categoryLabel: "B2",
+        potentialValue: "80.00",
+        coverageValue: "25.00",
+        periodStart: "2026-07-01T00:00:00.000Z",
+        source: "FIELD_INTERVIEW",
+        status: "VERIFIED",
+        agent: { id: "agent-1", name: "Agent A" },
+        enteredByAgent: { name: "Agent A" },
+        reviewedByAgent: { name: "Manager" },
+        evidenceVisits: [{ visit: { id: "visit-1", checkInAt: "2026-07-03T08:00:00.000Z", status: "CHECKED_OUT", customer: { name: "Central Clinic" } } }],
+      }],
+    }, {
+      capabilities: { canRecordBrandPotential: true, canReviewBrandPotential: false, brandPotentialPerAgent: true },
+      eligibleBrandPotentialVisits: [{ id: "visit-2", agentId: "agent-1", checkInAt: "2026-07-10T08:00:00.000Z", customer: { name: "North Clinic" } }],
+    })
+    expect(detail.brandPotentials[0]).toMatchObject({
+      id: "potential-1",
+      brandName: "ACC",
+      productName: "ACC 200 mg",
+      categoryLabel: "B2",
+      potentialValue: 80,
+      coverageValue: 25,
+      coveragePct: 31.3,
+      status: "VERIFIED",
+      agentName: "Agent A",
+      reviewedByName: "Manager",
+    })
+    expect(detail.brandPotentials[0].evidenceVisits[0]).toMatchObject({ id: "visit-1", customerName: "Central Clinic" })
+    expect(detail.brandPotentialEligibleVisits[0]).toMatchObject({ id: "visit-2", agentId: "agent-1", customerName: "North Clinic" })
+    expect(detail.canRecordBrandPotential).toBe(true)
+    expect(detail.brandPotentialPerAgent).toBe(true)
+  })
+
   describe("i18n contract", () => {
-    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory", "tab_scoring", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED"] as const
+    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory", "tab_scoring", "tab_brands", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED"] as const
     it.each([["en", en], ["ru", ru], ["az", az]])(
       "contacts detail keys present in %s",
       (_lang, locale) => {
@@ -103,5 +147,13 @@ describe("contact detail mapping", () => {
         }
       },
     )
+  })
+
+  describe("brand potential i18n contract", () => {
+    const KEYS = ["workflow", "heroTitle", "add", "newVersion", "evidenceVisits", "queued", "syncConflict", "status_PENDING", "status_VERIFIED", "status_REJECTED", "status_ENDED"] as const
+    it.each([["en", en], ["ru", ru], ["az", az]])("potential keys present in %s", (_lang, locale) => {
+      const ns = (locale as { potential: Record<string, unknown> }).potential
+      for (const key of KEYS) expect(typeof ns[key]).toBe("string")
+    })
   })
 })

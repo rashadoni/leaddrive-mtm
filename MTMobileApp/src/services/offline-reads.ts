@@ -299,8 +299,13 @@ export async function readOfflineContactDetail(
   tenantId: string | null | undefined,
   agentId: string | null | undefined,
   contactId: string,
-): Promise<{ record: SyncRecord; version: string | null } | null> {
+): Promise<{ record: SyncRecord; version: string | null; eligibleVisits: SyncRecord[] } | null> {
   const state = await readSyncCache(tenantId, agentId)
   const record = (state.entities.contacts ?? []).find((contact) => String(contact.id) === contactId)
-  return record ? { record, version: state.version } : null
+  if (!record) return null
+  const eligibleVisits = (state.entities.visits ?? [])
+    .filter((visit) => String(visit.contactId ?? "") === contactId && String(visit.status ?? "") === "CHECKED_OUT")
+    .sort((a, b) => String(b.checkInAt ?? "").localeCompare(String(a.checkInAt ?? "")))
+    .slice(0, 25)
+  return { record, version: state.version, eligibleVisits }
 }

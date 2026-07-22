@@ -1,9 +1,9 @@
 /**
  * Aggregates the per-brand MtmFieldPotential rows returned inside the
  * organization/contact detail payloads into a single potential-vs-coverage
- * summary (SWM-04). The rows carry no brand names (only external ids), so a
- * readable card shows the summed potential, the summed coverage and the
- * coverage percentage rather than an unlabeled per-brand list.
+ * summary (SWM-04). GAP-005 also exposes the individual name snapshots in a
+ * dedicated brand workspace; this helper remains the compact aggregate used
+ * by organization/contact overview cards.
  *
  * potentialValue / coverageValue arrive as Prisma Decimal — serialized as
  * strings over JSON — so they are coerced with Number().
