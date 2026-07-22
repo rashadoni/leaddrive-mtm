@@ -4,6 +4,9 @@ import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
@@ -48,6 +51,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
   const meta = SCREEN_META[kind]
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tablet = isTabletWidth(width)
   const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
   const [locations, setLocations] = useState<Array<{ agentId: string; latitude: number | null; longitude: number | null; accuracy: number | null; battery: number | null; recordedAt: string | null }>>([])
@@ -115,10 +119,19 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
 
       <ScrollView contentContainerStyle={[styles.content, tablet && styles.contentTablet]}>
         {kind === "team" ? (
-          team.length > 0 ? (
-          <View style={styles.teamList}>
-            {team.map((agent) => (
-              <View key={agent.id} style={styles.agentRow}>
+          <>
+            <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
+              <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.onColor} /></View>
+              <View style={styles.transferActionCopy}>
+                <Text style={styles.transferActionTitle}>{t("managerShell.transferContacts")}</Text>
+                <Text style={styles.transferActionBody}>{t("managerShell.transferContactsBody")}</Text>
+              </View>
+              <Icon name="chevron-forward" size={21} color={fieldTheme.color.primary} />
+            </Pressable>
+            {team.length > 0 ? (
+              <View style={styles.teamList}>
+                {team.map((agent) => (
+                  <View key={agent.id} style={styles.agentRow}>
                 <View style={[styles.presenceDot, { backgroundColor: agent.isOnline ? fieldTheme.color.success : fieldTheme.color.border }]} />
                 <View style={styles.agentCopy}>
                   <Text style={styles.agentName}>{agent.name}</Text>
@@ -145,12 +158,13 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
                 })()}
                 </View>
                 <Text style={styles.agentState}>{agent.isOnline ? "ONLINE" : "OFFLINE"}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-          ) : (
-            <StatusPanel icon="people-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.teamEmpty")} body={t(meta.bodyKey)} />
-          )
+            ) : (
+              <StatusPanel icon="people-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.teamEmpty")} body={t(meta.bodyKey)} />
+            )}
+          </>
         ) : kind === "planning" ? (
           planning.length > 0 ? (
             <View style={styles.itemList}>
@@ -295,6 +309,11 @@ const styles = StyleSheet.create({
   statusTitle: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
   statusBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19 },
   teamList: { gap: fieldTheme.space.sm },
+  transferAction: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  transferActionIcon: { width: 46, height: 46, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
+  transferActionCopy: { flex: 1, gap: 3 },
+  transferActionTitle: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
+  transferActionBody: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17 },
   agentRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   presenceDot: { width: 10, height: 10, borderRadius: fieldTheme.radius.pill },
   agentCopy: { flex: 1, gap: 2 },

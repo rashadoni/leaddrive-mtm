@@ -426,8 +426,8 @@ class ApiClient {
     return this.request(`/mobile/sync/pull?${query.toString()}`)
   }
 
-  async getManagerTeam(signal?: AbortSignal) {
-    return this.request("/mobile/manager/team", { signal })
+  async getManagerTeam(signal?: AbortSignal, includeInactive = false) {
+    return this.request(`/mobile/manager/team${includeInactive ? "?includeInactive=1" : ""}`, { signal })
   }
 
   async getManagerLocations(signal?: AbortSignal) {
@@ -656,19 +656,47 @@ class ApiClient {
   }
 
   async getContacts(
-    params?: { search?: string; page?: number; limit?: number },
+    params?: { search?: string; page?: number; limit?: number; ownerAgentId?: string },
     signal?: AbortSignal,
   ) {
     const query = new URLSearchParams()
     if (params?.search) query.set("search", params.search)
     if (params?.page) query.set("page", String(params.page))
     if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.ownerAgentId) query.set("ownerAgentId", params.ownerAgentId)
     const qs = query.toString()
     return this.request(`/contacts${qs ? `?${qs}` : ""}`, { signal })
   }
 
   async getContact(id: string, signal?: AbortSignal) {
     return this.request(`/contacts/${id}`, { signal })
+  }
+
+  async previewContactTransfer(data: {
+    contactIds: string[]
+    sourceAgentId: string
+    targetAgentId: string
+    effectiveFrom: string
+  }) {
+    return this.request("/contact-transfers/preview", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async executeContactTransfer(data: {
+    contactIds: string[]
+    sourceAgentId: string
+    targetAgentId: string
+    effectiveFrom: string
+    previewToken: string
+    idempotencyKey: string
+    reason: string
+  }) {
+    return this.request("/contact-transfers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
   }
 
   // --- Week / agenda ---
