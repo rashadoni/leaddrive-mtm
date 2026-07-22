@@ -113,6 +113,14 @@ relationship timeline намеренно остаются в GAP-004, GAP-005 и
   подтверждающим оценку.
 - MTM хранит внешний brand/product ID и snapshot имени; планограммы не подключаются.
 
+**Реализация GAP-005:** append-only/idempotent измерения врач × агент × бренд;
+snapshot названий без runtime-зависимости от LeadShelf; tenant-policy измерения по
+агенту; Agent submission → Manager/Supervisor/Admin review; завершение периода и
+новая версия без перезаписи истории; явные evidence-ссылки на завершённые визиты;
+tenant/team scope; live + offline contact payload; отдельная адаптивная вкладка
+«Бренды» с вводом, историей, coverage и drill-down в визит. Production acceptance
+фиксируется только после PR → CI → merge → автоматического deploy и runtime smoke.
+
 ## GAP-006 — История взаимоотношений
 
 **Связь:** SWM-03, SWM-04, SWM-06.

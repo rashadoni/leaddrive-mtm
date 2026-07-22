@@ -296,6 +296,27 @@ describe("offline task reads (durable sync cache)", () => {
       expect(detail?.version).toBe("2026-07-21T09:00:00.000Z")
       expect(await readOfflineContactDetail("tenant-a", "agent-a", "missing")).toBeNull()
     })
+
+    it("offers only checked-out visits for the selected contact as brand-potential evidence", async () => {
+      await applySyncChanges(
+        "tenant-a",
+        "agent-a",
+        {
+          contacts: { updated: [{ id: "k1", displayName: "Dr A" }] },
+          visits: {
+            updated: [
+              { id: "v-old", contactId: "k1", status: "CHECKED_OUT", checkInAt: "2026-07-20T08:00:00.000Z" },
+              { id: "v-new", contactId: "k1", status: "CHECKED_OUT", checkInAt: "2026-07-21T08:00:00.000Z" },
+              { id: "v-active", contactId: "k1", status: "CHECKED_IN", checkInAt: "2026-07-22T08:00:00.000Z" },
+              { id: "v-other", contactId: "k2", status: "CHECKED_OUT", checkInAt: "2026-07-22T08:00:00.000Z" },
+            ],
+          },
+        },
+        "2026-07-21T09:00:00.000Z",
+      )
+      const detail = await readOfflineContactDetail("tenant-a", "agent-a", "k1")
+      expect(detail?.eligibleVisits.map((visit) => visit.id)).toEqual(["v-new", "v-old"])
+    })
   })
 
   describe("i18n contract", () => {

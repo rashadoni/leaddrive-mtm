@@ -789,6 +789,27 @@ class ApiClient {
     })
   }
 
+  async createBrandPotential(contactId: string, data: object) {
+    return this.request(`/contacts/${contactId}/brand-potentials`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async decideBrandPotential(id: string, decision: "VERIFIED" | "REJECTED", comment: string) {
+    return this.request(`/field-potentials/${id}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, comment }),
+    })
+  }
+
+  async endBrandPotential(id: string, periodEnd: string, reason: string) {
+    return this.request(`/field-potentials/${id}/end`, {
+      method: "POST",
+      body: JSON.stringify({ periodEnd, reason }),
+    })
+  }
+
   async previewContactTransfer(data: {
     contactIds: string[]
     sourceAgentId: string

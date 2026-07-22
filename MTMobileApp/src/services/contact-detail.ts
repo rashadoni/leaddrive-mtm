@@ -68,6 +68,47 @@ export interface DoctorAssessment {
   createdAt?: string
 }
 
+export interface BrandPotentialEvidenceVisit {
+  id: string
+  checkInAt?: string
+  checkOutAt?: string
+  status?: string
+  customerName?: string
+}
+
+export interface BrandPotential {
+  id: string
+  clientPotentialId: string
+  brandExternalId: string
+  brandName: string
+  productExternalId?: string
+  productName?: string
+  category?: string
+  categoryLabel?: string
+  potentialValue: number
+  coverageValue: number
+  coveragePct: number
+  periodStart: string
+  periodEnd?: string
+  source: string
+  formulaVersion?: string
+  status: string
+  reviewComment?: string
+  reviewedAt?: string
+  closedAt?: string
+  supersedesPotentialId?: string
+  agentId?: string
+  agentName?: string
+  enteredByName?: string
+  reviewedByName?: string
+  createdAt?: string
+  evidenceVisits: BrandPotentialEvidenceVisit[]
+}
+
+export interface BrandPotentialEligibleVisit extends BrandPotentialEvidenceVisit {
+  agentId?: string
+}
+
 export interface ContactDetail {
   id: string
   updatedAt: string
@@ -112,6 +153,11 @@ export interface ContactDetail {
   changeRequests: ContactChangeRequest[]
   history: ContactHistoryItem[]
   doctorAssessments: DoctorAssessment[]
+  brandPotentials: BrandPotential[]
+  brandPotentialEligibleVisits: BrandPotentialEligibleVisit[]
+  canRecordBrandPotential: boolean
+  canReviewBrandPotential: boolean
+  brandPotentialPerAgent: boolean
   canManage: boolean
   canRequestChanges: boolean
 }
@@ -132,6 +178,8 @@ export function toContactDetail(raw: any, envelope?: any): ContactDetail {
   const requests = Array.isArray(raw?.changeRequests) ? raw.changeRequests : []
   const history = Array.isArray(envelope?.history) ? envelope.history : []
   const assessments = Array.isArray(raw?.doctorAssessments) ? raw.doctorAssessments : []
+  const potentials = Array.isArray(raw?.fieldPotentials) ? raw.fieldPotentials : []
+  const eligibleVisits = Array.isArray(envelope?.eligibleBrandPotentialVisits) ? envelope.eligibleBrandPotentialVisits : []
   return {
     id: String(raw?.id ?? ""),
     updatedAt: opt(raw?.updatedAt) ?? "",
@@ -232,6 +280,56 @@ export function toContactDetail(raw: any, envelope?: any): ContactDetail {
       reviewedByName: opt(assessment?.reviewedByAgent?.name),
       createdAt: opt(assessment?.createdAt),
     })),
+    brandPotentials: potentials.map((potential: any) => {
+      const potentialValue = Number(potential?.potentialValue) || 0
+      const coverageValue = Number(potential?.coverageValue) || 0
+      const evidence = Array.isArray(potential?.evidenceVisits) ? potential.evidenceVisits : []
+      return {
+        id: String(potential?.id ?? ""),
+        clientPotentialId: opt(potential?.clientPotentialId) ?? "",
+        brandExternalId: opt(potential?.brandExternalId) ?? "",
+        brandName: opt(potential?.brandName) ?? opt(potential?.brandExternalId) ?? "",
+        productExternalId: opt(potential?.productExternalId),
+        productName: opt(potential?.productName),
+        category: opt(potential?.category),
+        categoryLabel: opt(potential?.categoryLabel),
+        potentialValue,
+        coverageValue,
+        coveragePct: potentialValue > 0 ? Math.round((coverageValue / potentialValue) * 1000) / 10 : 0,
+        periodStart: date(potential?.periodStart) ?? "",
+        periodEnd: date(potential?.periodEnd),
+        source: opt(potential?.source) ?? "",
+        formulaVersion: opt(potential?.formulaVersion),
+        status: opt(potential?.status) ?? "PENDING",
+        reviewComment: opt(potential?.reviewComment),
+        reviewedAt: opt(potential?.reviewedAt),
+        closedAt: opt(potential?.closedAt),
+        supersedesPotentialId: opt(potential?.supersedesPotentialId),
+        agentId: opt(potential?.agentId),
+        agentName: opt(potential?.agent?.name),
+        enteredByName: opt(potential?.enteredByAgent?.name),
+        reviewedByName: opt(potential?.reviewedByAgent?.name),
+        createdAt: opt(potential?.createdAt),
+        evidenceVisits: evidence.map((link: any) => ({
+          id: String(link?.visit?.id ?? link?.visitId ?? ""),
+          checkInAt: opt(link?.visit?.checkInAt),
+          checkOutAt: opt(link?.visit?.checkOutAt),
+          status: opt(link?.visit?.status),
+          customerName: opt(link?.visit?.customer?.name),
+        })),
+      }
+    }),
+    brandPotentialEligibleVisits: eligibleVisits.map((visit: any) => ({
+      id: String(visit?.id ?? ""),
+      checkInAt: opt(visit?.checkInAt),
+      checkOutAt: opt(visit?.checkOutAt),
+      status: opt(visit?.status),
+      customerName: opt(visit?.customer?.name),
+      agentId: opt(visit?.agentId),
+    })),
+    canRecordBrandPotential: Boolean(envelope?.capabilities?.canRecordBrandPotential),
+    canReviewBrandPotential: Boolean(envelope?.capabilities?.canReviewBrandPotential),
+    brandPotentialPerAgent: envelope?.capabilities?.brandPotentialPerAgent !== false,
     canManage: Boolean(envelope?.capabilities?.canManage),
     canRequestChanges: Boolean(envelope?.capabilities?.canRequestChanges),
   }

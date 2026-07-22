@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { RootStackParamList } from "../../navigation/AppNavigator"
 import { api } from "../../services/api"
-import { toContactDetail, type ContactDetail, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
+import { toContactDetail, type BrandPotential, type ContactDetail, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
 import { readOfflineContactDetail } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -26,10 +26,13 @@ import ContactDuplicateModal from "../../components/ContactDuplicateModal"
 import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import DoctorAssessmentModal, { type DoctorAssessmentFields } from "../../components/DoctorAssessmentModal"
+import BrandPotentialModal, { type BrandPotentialFields } from "../../components/BrandPotentialModal"
+import { queueBrandPotentialCreate, queueBrandPotentialEnd } from "../../services/brand-potential-outbox"
+import { runMobileSync } from "../../services/sync-engine"
 
 const TYPE_KEY: Record<string, string> = { DOCTOR: "contacts.typeDoctor", PHARMACIST: "contacts.typePharmacist", OTHER: "contacts.typeOther" }
 const OBJECT_TYPE_KEY: Record<string, string> = { PHARMACY: "organizations.objectPharmacy", CLINIC: "organizations.objectClinic", STORE: "organizations.objectStore", OTHER: "organizations.objectOther" }
-type Section = "overview" | "scoring" | "workplaces" | "requests" | "history"
+type Section = "overview" | "scoring" | "brands" | "workplaces" | "requests" | "history"
 
 function operationKey(kind: string): string {
   return `contact-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -55,6 +58,10 @@ export default function ContactDetailScreen() {
   const [workplace, setWorkplace] = useState<ContactWorkplace | null>(null)
   const [duplicateVisible, setDuplicateVisible] = useState(false)
   const [assessmentVisible, setAssessmentVisible] = useState(false)
+  const [potentialVisible, setPotentialVisible] = useState(false)
+  const [potentialPrevious, setPotentialPrevious] = useState<BrandPotential | null>(null)
+  const [potentialDecision, setPotentialDecision] = useState<{ potential: BrandPotential; decision: "VERIFIED" | "REJECTED" } | null>(null)
+  const [endPotential, setEndPotential] = useState<BrandPotential | null>(null)
   const [assessmentDecision, setAssessmentDecision] = useState<{ assessment: DoctorAssessment; decision: "VERIFIED" | "REJECTED" } | null>(null)
   const [endWorkplace, setEndWorkplace] = useState<ContactWorkplace | null>(null)
   const [busy, setBusy] = useState(false)
@@ -72,14 +79,22 @@ export default function ContactDetailScreen() {
       if (error.message === "SESSION_EXPIRED") return
       const cached = await readOfflineContactDetail(agent?.organizationId, agent?.id, id)
       if (cached) {
-        setDetail(toContactDetail(cached.record))
+        const role = String(agent?.role ?? "").toUpperCase()
+        setDetail(toContactDetail(cached.record, {
+          eligibleBrandPotentialVisits: cached.eligibleVisits,
+          capabilities: {
+            canRecordBrandPotential: role === "AGENT",
+            canReviewBrandPotential: ["ADMIN", "MANAGER", "SUPERVISOR"].includes(role),
+            brandPotentialPerAgent: true,
+          },
+        }))
         setOfflineVersion(cached.version)
       }
       setOffline(true)
     } finally {
       setLoading(false)
     }
-  }, [agent?.id, agent?.organizationId, id])
+  }, [agent?.id, agent?.organizationId, agent?.role, id])
 
   useEffect(() => { fetchDetail() }, [fetchDetail])
 
@@ -215,6 +230,116 @@ export default function ContactDetailScreen() {
     } finally { setBusy(false) }
   }
 
+  const savePotential = async (fields: BrandPotentialFields) => {
+    if (!detail) return
+    setBusy(true)
+    try {
+      const isAgent = String(agent?.role ?? "").toUpperCase() === "AGENT"
+      if (!isAgent) {
+        const response = await api.createBrandPotential(detail.id, fields)
+        if (!response?.success) return
+        setPotentialVisible(false)
+        setPotentialPrevious(null)
+        setSection("brands")
+        setToast({ visible: true, type: "success", title: t("potential.saved") })
+        await fetchDetail()
+        return
+      }
+
+      await queueBrandPotentialCreate(detail.id, fields)
+      const evidenceById = new Map(detail.brandPotentialEligibleVisits.map((visit) => [visit.id, visit]))
+      const optimistic: BrandPotential = {
+        id: fields.clientPotentialId,
+        clientPotentialId: fields.clientPotentialId,
+        brandExternalId: fields.brandExternalId,
+        brandName: fields.brandName,
+        productExternalId: fields.productExternalId ?? undefined,
+        productName: fields.productName ?? undefined,
+        categoryLabel: fields.categoryLabel ?? undefined,
+        potentialValue: fields.potentialValue,
+        coverageValue: fields.coverageValue,
+        coveragePct: fields.potentialValue > 0 ? Math.round((fields.coverageValue / fields.potentialValue) * 1000) / 10 : 0,
+        periodStart: fields.periodStart,
+        periodEnd: fields.periodEnd ?? undefined,
+        source: fields.source,
+        status: "PENDING",
+        supersedesPotentialId: fields.supersedesPotentialId ?? undefined,
+        agentId: agent?.id,
+        agentName: agent?.name,
+        enteredByName: agent?.name,
+        createdAt: new Date().toISOString(),
+        evidenceVisits: fields.evidenceVisitIds.map((visitId) => evidenceById.get(visitId) ?? { id: visitId }),
+      }
+      setDetail((current) => current ? { ...current, brandPotentials: [optimistic, ...current.brandPotentials] } : current)
+      setPotentialVisible(false)
+      setPotentialPrevious(null)
+      setSection("brands")
+      setToast({ visible: true, type: "success", title: t("potential.queued") })
+      runMobileSync().then(async (result) => {
+        if (result.success && result.conflicted === 0) {
+          await fetchDetail()
+          setToast({ visible: true, type: "success", title: t("potential.saved") })
+        } else if (result.conflicted > 0) {
+          setToast({ visible: true, type: "error", title: t("potential.syncConflict") })
+        }
+      }).catch(() => undefined)
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: error?.message || t("common.error") })
+    } finally { setBusy(false) }
+  }
+
+  const decidePotential = async (comment: string) => {
+    if (!potentialDecision) return
+    const target = potentialDecision
+    setPotentialDecision(null)
+    setBusy(true)
+    try {
+      const response = await api.decideBrandPotential(target.potential.id, target.decision, comment)
+      if (response?.success) {
+        setToast({ visible: true, type: "success", title: t(target.decision === "VERIFIED" ? "potential.verified" : "potential.rejected") })
+        await fetchDetail()
+      }
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: error?.message || t("common.error") })
+    } finally { setBusy(false) }
+  }
+
+  const confirmEndPotential = async (reason: string) => {
+    if (!endPotential) return
+    const target = endPotential
+    setEndPotential(null)
+    setBusy(true)
+    try {
+      const periodEnd = new Date().toISOString().slice(0, 10)
+      const isAgent = String(agent?.role ?? "").toUpperCase() === "AGENT"
+      if (!isAgent) {
+        const response = await api.endBrandPotential(target.id, periodEnd, reason)
+        if (!response?.success) return
+        setToast({ visible: true, type: "success", title: t("potential.periodEnded") })
+        await fetchDetail()
+        return
+      }
+      await queueBrandPotentialEnd(target.id, periodEnd, reason)
+      setDetail((current) => current ? {
+        ...current,
+        brandPotentials: current.brandPotentials.map((item) => item.id === target.id
+          ? { ...item, status: "ENDED", periodEnd, reviewComment: reason, closedAt: new Date().toISOString() }
+          : item),
+      } : current)
+      setToast({ visible: true, type: "success", title: t("potential.queued") })
+      runMobileSync().then(async (result) => {
+        if (result.success && result.conflicted === 0) {
+          await fetchDetail()
+          setToast({ visible: true, type: "success", title: t("potential.periodEnded") })
+        } else if (result.conflicted > 0) {
+          setToast({ visible: true, type: "error", title: t("potential.syncConflict") })
+        }
+      }).catch(() => undefined)
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: error?.message || t("common.error") })
+    } finally { setBusy(false) }
+  }
+
   const open = (url: string) => Linking.openURL(url).catch(() => {})
   const quickPhone = detail?.mobilePhone || detail?.phone || detail?.workPhone
 
@@ -241,7 +366,7 @@ export default function ContactDetailScreen() {
       {loading ? <View style={styles.center}><ActivityIndicator size="large" color="#6C63FF" /></View> : (
         <>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabs, tablet && styles.tabsTablet]}>
-            {(["overview", "scoring", "workplaces", "requests", "history"] as Section[]).map((key) => (
+            {(["overview", "scoring", "brands", "workplaces", "requests", "history"] as Section[]).map((key) => (
               <Pressable key={key} onPress={() => setSection(key)} style={[styles.tab, tablet && styles.tabTablet, section === key && styles.tabActive]}>
                 <Text style={[styles.tabText, section === key && styles.tabTextActive]}>{t(`contacts.tab_${key}`)}{key === "requests" && pendingCount > 0 ? ` (${pendingCount})` : ""}</Text>
               </Pressable>
@@ -251,6 +376,7 @@ export default function ContactDetailScreen() {
             {offline && <View style={styles.offlineBanner}><Text style={styles.offlineDot}>●</Text><Text style={styles.offlineBannerText}>{t("contacts.detailOfflineCached")}{offlineVersion ? ` · ${new Date(offlineVersion).toLocaleString(i18n.language)}` : ""}</Text></View>}
             {detail && section === "overview" && <Overview detail={detail} tablet={tablet} t={t} />}
             {detail && section === "scoring" && <Scoring detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={() => setAssessmentVisible(true)} onDecision={(assessment, decision) => setAssessmentDecision({ assessment, decision })} />}
+            {detail && section === "brands" && <BrandPotentials detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={(previous) => { setPotentialPrevious(previous ?? null); setPotentialVisible(true) }} onDecision={(potential, decision) => setPotentialDecision({ potential, decision })} onEnd={setEndPotential} onVisit={(visitId, visitName) => navigation.navigate("VisitWorkspace", { visitId, name: visitName })} />}
             {detail && section === "workplaces" && (
               <View style={styles.card}>
                 <View style={styles.cardHeader}><Text style={styles.cardTitle}>{t("contacts.detailWorkplaces")} · {detail.workplaces.length}</Text>{canChange && <Pressable style={styles.addBtn} onPress={() => { setWorkplace(null); setWorkplaceVisible(true) }}><Text style={styles.addBtnText}>＋ {t("contacts.addWorkplace")}</Text></Pressable>}</View>
@@ -278,8 +404,11 @@ export default function ContactDetailScreen() {
       {detail && <ContactWorkplaceModal visible={workplaceVisible} workplace={workplace} agentRequest={agentRequest} busy={busy} onCancel={() => { setWorkplaceVisible(false); setWorkplace(null) }} onSubmit={saveWorkplace} />}
       {detail && <ContactDuplicateModal visible={duplicateVisible} currentContactId={detail.id} agentRequest={agentRequest} busy={busy} onCancel={() => setDuplicateVisible(false)} onSubmit={markDuplicate} />}
       {detail && <DoctorAssessmentModal visible={assessmentVisible} busy={busy} onCancel={() => setAssessmentVisible(false)} onSubmit={saveAssessment} />}
+      {detail && <BrandPotentialModal visible={potentialVisible} busy={busy} previous={potentialPrevious} eligibleVisits={detail.brandPotentialEligibleVisits} onCancel={() => { setPotentialVisible(false); setPotentialPrevious(null) }} onSubmit={savePotential} />}
       <NotesModal visible={endWorkplace !== null} title={t("contacts.endWorkplaceTitle")} message={t("contacts.endWorkplaceMessage")} onCancel={() => setEndWorkplace(null)} onSubmit={confirmEndWorkplace} />
       <NotesModal visible={assessmentDecision !== null} title={t(assessmentDecision?.decision === "REJECTED" ? "contacts.scoringRejectTitle" : "contacts.scoringVerifyTitle")} message={t("contacts.scoringDecisionMessage")} onCancel={() => setAssessmentDecision(null)} onSubmit={decideAssessment} />
+      <NotesModal visible={potentialDecision !== null} title={t(potentialDecision?.decision === "REJECTED" ? "potential.rejectTitle" : "potential.verifyTitle")} message={t("potential.decisionMessage")} onCancel={() => setPotentialDecision(null)} onSubmit={decidePotential} />
+      <NotesModal visible={endPotential !== null} title={t("potential.endTitle")} message={t("potential.endMessage")} onCancel={() => setEndPotential(null)} onSubmit={confirmEndPotential} />
       <FeedbackToast visible={toast.visible} type={toast.type} title={toast.title} onDismiss={() => setToast((state) => ({ ...state, visible: false }))} />
     </View>
   )
@@ -346,7 +475,79 @@ function Scoring({
   )
 }
 
-function Metric({ label, value, strong }: { label: string; value?: number; strong?: boolean }) {
+function BrandPotentials({
+  detail,
+  offline,
+  tablet,
+  locale,
+  t,
+  onAdd,
+  onDecision,
+  onEnd,
+  onVisit,
+}: {
+  detail: ContactDetail
+  offline: boolean
+  tablet: boolean
+  locale: string
+  t: (key: string) => string
+  onAdd: (previous?: BrandPotential) => void
+  onDecision: (potential: BrandPotential, decision: "VERIFIED" | "REJECTED") => void
+  onEnd: (potential: BrandPotential) => void
+  onVisit: (visitId: string, visitName?: string) => void
+}) {
+  const active = detail.brandPotentials.filter((item) => !["ENDED", "REJECTED"].includes(item.status))
+  const totalPotential = active.reduce((sum, item) => sum + item.potentialValue, 0)
+  const totalCoverage = active.reduce((sum, item) => sum + item.coverageValue, 0)
+  const totalPct = totalPotential > 0 ? Math.round((totalCoverage / totalPotential) * 1000) / 10 : 0
+  return (
+    <View style={styles.brandStack}>
+      <View style={styles.brandHero}>
+        <View style={styles.brandHeroCopy}>
+          <Text style={styles.brandEyebrow}>{t("potential.workflow")}</Text>
+          <Text style={styles.brandHeroTitle}>{t("potential.title")}</Text>
+          <Text style={styles.brandHeroBody}>{detail.brandPotentialPerAgent ? t("potential.perAgentOn") : t("potential.perAgentOff")}</Text>
+        </View>
+        <View style={styles.brandHeroMetrics}>
+          <Metric label={t("potential.potential")} value={totalPotential} />
+          <Metric label={t("potential.coverage")} value={totalCoverage} />
+          <Metric label={t("potential.percent")} value={`${totalPct}%`} strong />
+        </View>
+        {detail.canRecordBrandPotential && <Pressable style={styles.scoreAdd} onPress={() => onAdd()}><Icon name="add" size={19} color="#F8FCFA" /><Text style={styles.scoreAddText}>{t("potential.add")}</Text></Pressable>}
+      </View>
+
+      {detail.brandPotentials.length === 0 ? <View style={styles.card}><Text style={styles.emptyRow}>{t("potential.empty")}</Text></View> : (
+        <View style={[styles.brandGrid, tablet && styles.brandGridTablet]}>
+          {detail.brandPotentials.map((item) => {
+            const clampedPct = Math.max(0, Math.min(item.coveragePct, 100))
+            return (
+              <View key={item.id} style={[styles.brandCard, tablet && styles.brandCardTablet]}>
+                <View style={styles.brandTop}>
+                  <View style={styles.brandMark}><Text style={styles.brandMarkText}>{item.brandName.slice(0, 2).toUpperCase()}</Text></View>
+                  <View style={styles.brandIdentity}><Text style={styles.brandName}>{item.brandName || item.brandExternalId}</Text><Text style={styles.brandProduct}>{item.productName || item.productExternalId || item.brandExternalId}</Text></View>
+                  <View style={[styles.statusBadge, item.status === "VERIFIED" ? styles.statusVerified : item.status === "REJECTED" ? styles.statusRejected : item.status === "ENDED" ? styles.statusEnded : styles.statusPending]}><Text style={styles.statusText}>{t(`potential.status_${item.status}`)}</Text></View>
+                </View>
+                <View style={styles.brandNumbers}><Metric label={t("potential.potential")} value={item.potentialValue} /><Metric label={t("potential.coverage")} value={item.coverageValue} /><Metric label={t("potential.percent")} value={`${item.coveragePct}%`} strong /></View>
+                <View style={styles.coverageTrack}><View style={[styles.coverageFill, { width: `${clampedPct}%` }]} /></View>
+                <Text style={styles.brandMeta}>{[item.agentName, item.categoryLabel || item.category, `${item.periodStart}${item.periodEnd ? ` → ${item.periodEnd}` : ""}`].filter(Boolean).join(" · ")}</Text>
+                <Text style={styles.brandMeta}>{[item.source, item.formulaVersion, item.enteredByName, item.createdAt ? new Date(item.createdAt).toLocaleString(locale) : ""].filter(Boolean).join(" · ")}</Text>
+                {!!item.reviewComment && <Text style={styles.reviewComment}>{item.reviewComment}</Text>}
+                {item.evidenceVisits.length > 0 && <View style={styles.evidenceList}><Text style={styles.evidenceTitle}>{t("potential.evidenceVisits")}</Text>{item.evidenceVisits.map((visit) => <Pressable key={visit.id} onPress={() => onVisit(visit.id, visit.customerName)} style={styles.evidenceLink}><Icon name="navigate-circle-outline" size={18} color="#08705A" /><Text style={styles.evidenceLinkText}>{visit.customerName || t("potential.visit")} · {visit.checkInAt ? new Date(visit.checkInAt).toLocaleDateString(locale) : visit.id}</Text><Icon name="chevron-forward" size={16} color="#86978F" /></Pressable>)}</View>}
+                <View style={styles.brandActions}>
+                  {detail.canRecordBrandPotential && item.status !== "ENDED" && <Pressable style={styles.brandActionSecondary} onPress={() => onAdd(item)}><Text style={styles.brandActionSecondaryText}>{t("potential.newVersion")}</Text></Pressable>}
+                  {detail.canRecordBrandPotential && item.status !== "ENDED" && <Pressable style={styles.brandActionSecondary} onPress={() => onEnd(item)}><Text style={styles.brandActionSecondaryText}>{t("potential.end")}</Text></Pressable>}
+                  {!offline && detail.canReviewBrandPotential && item.status === "PENDING" && <><Pressable style={styles.rejectButton} onPress={() => onDecision(item, "REJECTED")}><Text style={styles.rejectButtonText}>{t("potential.reject")}</Text></Pressable><Pressable style={styles.verifyButton} onPress={() => onDecision(item, "VERIFIED")}><Icon name="checkmark" size={18} color="#F8FCFA" /><Text style={styles.verifyButtonText}>{t("potential.verify")}</Text></Pressable></>}
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      )}
+    </View>
+  )
+}
+
+function Metric({ label, value, strong }: { label: string; value?: number | string; strong?: boolean }) {
   return <View style={styles.metric}><Text style={[styles.metricValue, strong && styles.metricValueStrong]}>{value ?? "—"}</Text><Text style={styles.metricLabel}>{label}</Text></View>
 }
 
@@ -397,8 +598,10 @@ const styles = StyleSheet.create({
   scoreHeroCopy: { flex: 1, minWidth: 210 }, scoreEyebrow: { color: "#08705A", fontSize: 10, fontWeight: "900", letterSpacing: 0.8, textTransform: "uppercase" }, scoreHeroTitle: { color: "#13231F", fontSize: 21, fontWeight: "900", marginTop: 5 }, scoreHeroBody: { color: "#5E7069", fontSize: 12, lineHeight: 18, marginTop: 5 },
   scoreRing: { width: 88, height: 88, borderRadius: 44, borderWidth: 8, borderColor: "#08705A", alignItems: "center", justifyContent: "center", backgroundColor: "#FBFDFC" }, scoreRingValue: { color: "#055342", fontSize: 20, fontWeight: "900" }, scoreRingLabel: { color: "#5E7069", fontSize: 9, fontWeight: "800", textTransform: "uppercase" }, scoreEmptyIcon: { width: 64, height: 64, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "#FBFDFC" },
   scoreAdd: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 15, borderRadius: 12, backgroundColor: "#08705A" }, scoreAddText: { color: "#F8FCFA", fontSize: 13, fontWeight: "900" },
-  assessment: { padding: 16, borderRadius: 18, backgroundColor: "#FBFDFC", borderWidth: 1, borderColor: "#D6E3DC", gap: 13 }, assessmentTablet: { padding: 20 }, assessmentTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }, statusBadge: { minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: 999 }, statusVerified: { backgroundColor: "#DAEFE4" }, statusRejected: { backgroundColor: "#FDE6DF" }, statusPending: { backgroundColor: "#FAEECF" }, statusText: { color: "#13231F", fontSize: 10, fontWeight: "900" }, assessmentPeriod: { color: "#5E7069", fontSize: 12, fontWeight: "700" }, currentPill: { marginLeft: "auto", color: "#7155B7", backgroundColor: "#ECE6F7", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, fontSize: 10, fontWeight: "900" },
+  assessment: { padding: 16, borderRadius: 18, backgroundColor: "#FBFDFC", borderWidth: 1, borderColor: "#D6E3DC", gap: 13 }, assessmentTablet: { padding: 20 }, assessmentTop: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }, statusBadge: { minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: 999 }, statusVerified: { backgroundColor: "#DAEFE4" }, statusRejected: { backgroundColor: "#FDE6DF" }, statusEnded: { backgroundColor: "#E8EDF2" }, statusPending: { backgroundColor: "#FAEECF" }, statusText: { color: "#13231F", fontSize: 10, fontWeight: "900" }, assessmentPeriod: { color: "#5E7069", fontSize: 12, fontWeight: "700" }, currentPill: { marginLeft: "auto", color: "#7155B7", backgroundColor: "#ECE6F7", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, fontSize: 10, fontWeight: "900" },
   assessmentMetrics: { flexDirection: "row", flexWrap: "wrap", borderRadius: 14, backgroundColor: "#F1F6F3", overflow: "hidden" }, metric: { minWidth: 120, flex: 1, paddingVertical: 13, paddingHorizontal: 10, alignItems: "center" }, metricValue: { color: "#13231F", fontSize: 18, fontWeight: "800" }, metricValueStrong: { color: "#08705A", fontSize: 23 }, metricLabel: { color: "#5E7069", fontSize: 9, fontWeight: "800", textTransform: "uppercase", marginTop: 3, textAlign: "center" },
   assessmentFacts: { gap: 7 }, fact: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: 8 }, factText: { flex: 1, color: "#33443E", fontSize: 12, lineHeight: 17 }, reviewComment: { color: "#33443E", fontSize: 12, lineHeight: 18, padding: 11, borderRadius: 10, backgroundColor: "#F1F6F3" }, assessmentMeta: { color: "#86978F", fontSize: 10 },
   reviewActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 }, rejectButton: { minHeight: 48, minWidth: 104, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: 11, borderWidth: 1, borderColor: "#EDB9AD", backgroundColor: "#FBFDFC" }, rejectButtonText: { color: "#A43B25", fontSize: 13, fontWeight: "900" }, verifyButton: { minHeight: 48, minWidth: 120, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: 11, backgroundColor: "#08705A" }, verifyButtonText: { color: "#F8FCFA", fontSize: 13, fontWeight: "900" },
+  brandStack: { gap: 14 }, brandHero: { padding: 18, borderRadius: 20, backgroundColor: "#ECE6F7", borderWidth: 1, borderColor: "#D7C8ED", gap: 14 }, brandHeroCopy: { minWidth: 210 }, brandEyebrow: { color: "#7155B7", fontSize: 10, fontWeight: "900", letterSpacing: 0.8, textTransform: "uppercase" }, brandHeroTitle: { color: "#241A38", fontSize: 22, fontWeight: "900", marginTop: 5 }, brandHeroBody: { color: "#6D607E", fontSize: 12, lineHeight: 18, marginTop: 5 }, brandHeroMetrics: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 14, overflow: "hidden" },
+  brandGrid: { gap: 12 }, brandGridTablet: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }, brandCard: { padding: 16, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", gap: 12 }, brandCardTablet: { width: "49%" }, brandTop: { flexDirection: "row", alignItems: "center", gap: 10 }, brandMark: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#ECE6F7" }, brandMarkText: { color: "#7155B7", fontSize: 13, fontWeight: "900" }, brandIdentity: { flex: 1 }, brandName: { color: "#13231F", fontSize: 16, fontWeight: "900" }, brandProduct: { color: "#64748b", fontSize: 11, marginTop: 3 }, brandNumbers: { flexDirection: "row", backgroundColor: "#F8FAFC", borderRadius: 13, overflow: "hidden" }, coverageTrack: { height: 7, borderRadius: 99, backgroundColor: "#E8EDF2", overflow: "hidden" }, coverageFill: { height: "100%", borderRadius: 99, backgroundColor: "#7155B7" }, brandMeta: { color: "#64748b", fontSize: 11, lineHeight: 16 }, evidenceList: { gap: 7 }, evidenceTitle: { color: "#33443E", fontSize: 11, fontWeight: "900", textTransform: "uppercase" }, evidenceLink: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 10, backgroundColor: "#F1F6F3", paddingHorizontal: 10 }, evidenceLinkText: { flex: 1, color: "#08705A", fontSize: 12, fontWeight: "800" }, brandActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }, brandActionSecondary: { minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#D7C8ED", backgroundColor: "#FBF9FE" }, brandActionSecondaryText: { color: "#7155B7", fontSize: 12, fontWeight: "900" },
 })
