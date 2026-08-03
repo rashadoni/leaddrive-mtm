@@ -17,12 +17,16 @@
 import * as Sentry from "@sentry/react-native"
 import { buildSentryConfig } from "./sentry-config"
 
-// TODO(deploy): replace with real DSN OR wire `react-native-config` to
-// load from `.env` at build time. Empty string = init silently skipped
-// on development. On production builds (`__DEV__ === false`) the empty
-// string now triggers a console.warn — visible in logcat — so a release
-// that forgot to set DSN is caught before QA leaves the building.
-const DSN: string = ""
+// Project `mtm-mobile` in the `lead-drive` org, EU data region (note the
+// `.de.` host — the organization's storage location is Europe and cannot be
+// changed after creation). A DSN is not a credential: it only authorizes
+// SENDING events, carries no read access, and ships inside every copy of the
+// app anyway — so it lives in the repo rather than in a build secret.
+//
+// Set to "" to mute crash reporting entirely (e.g. an offline-only build).
+// On production builds an empty value triggers a console.warn in logcat, so a
+// release that lost its DSN is caught before QA leaves the building.
+const DSN: string = "https://4c0cb8245b40ddd3f2d77cc336fe8727@o4511404827803648.ingest.de.sentry.io/4511848200405072"
 
 // __DEV__ is the standard RN flag — true on metro/JS-dev, false on
 // release builds. Production / staging differentiation is determined
