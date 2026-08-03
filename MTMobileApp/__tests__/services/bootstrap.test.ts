@@ -77,3 +77,24 @@ describe("bootstrap store", () => {
     expect(useBootstrapStore.getState().data).toBeNull()
   })
 })
+
+// The photo plaque burns a customer name and GPS into the image itself, so an
+// unknown answer must resolve to "don't draw it". Anything other than an
+// explicit `true` is treated as off.
+describe("bootstrap policies — photo watermark", () => {
+  it("reads an explicit opt-in", () => {
+    expect(toBootstrap({ policies: { photoWatermark: true } }).policies.photoWatermark).toBe(true)
+  })
+
+  it("is off when the tenant disabled it", () => {
+    expect(toBootstrap({ policies: { photoWatermark: false } }).policies.photoWatermark).toBe(false)
+  })
+
+  it("is off when an older server omits policies entirely", () => {
+    expect(toBootstrap({ capabilities: [] }).policies.photoWatermark).toBe(false)
+  })
+
+  it.each([null, undefined, "true", 1, {}, []])("is off for a non-boolean value: %p", (value) => {
+    expect(toBootstrap({ policies: { photoWatermark: value } }).policies.photoWatermark).toBe(false)
+  })
+})

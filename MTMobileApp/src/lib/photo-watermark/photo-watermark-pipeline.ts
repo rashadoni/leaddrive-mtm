@@ -33,6 +33,13 @@ export interface PhotoWatermarkPipelineInput {
     capturedAt: Date
   }
   maxLastKnownAgeMs?: number
+  /**
+   * Burn the visible plaque into the image. Deliberately REQUIRED and without
+   * a default — every caller must state the tenant's answer. A default here
+   * would let a new call site silently reintroduce a privacy leak that the
+   * tenant switched off.
+   */
+  burnVisibleWatermark: boolean
 }
 
 export interface PhotoWatermarkPipelineOutput {
@@ -48,12 +55,16 @@ const MAX_LAST_KNOWN_AGE_MS_DEFAULT = 5 * 60_000 // spec §5 — 5 min
  *
  *  1. Decide effective GPS: current → last-known (if fresh) → null.
  *  2. Compose the 4-line watermark text (composeWatermarkText).
- *  3. Burn visible watermark into the JPEG via react-native-image-marker.
+ *  3. Burn visible watermark into the JPEG via react-native-image-marker —
+ *     ONLY when `burnVisibleWatermark` is set. Otherwise the original file
+ *     passes through untouched and step 4 writes EXIF into it directly.
  *  4. Re-inject EXIF tags via piexifjs (Software, Make, Model,
  *     ImageDescription with agent/visit/customer JSON, DateTimeOriginal,
  *     GPS lat/lng). image-marker resaves the JPEG without EXIF, so this
  *     step is required — without it the backend validator would flag
- *     every upload as `missing_required_tag`.
+ *     every upload as `missing_required_tag`. It runs regardless of the
+ *     plaque: the server decides APPROVED/PENDING purely from EXIF, so
+ *     provenance and upload acceptance are unaffected by turning it off.
  *
  * Returns the path of the watermarked file and the effective location
  * that ended up in EXIF (null if GPS truly unavailable).
@@ -70,6 +81,7 @@ export async function photoWatermarkPipeline(
     location,
     lastKnownLocation,
     maxLastKnownAgeMs = MAX_LAST_KNOWN_AGE_MS_DEFAULT,
+    burnVisibleWatermark,
   } = input
 
   // 1. Effective location decision
@@ -94,29 +106,35 @@ export async function photoWatermarkPipeline(
     location: effectiveLocation,
   })
 
-  // 3. Burn visible watermark
+  // 3. Burn visible watermark — only when the tenant asked for it. The plaque
+  //    lives inside the pixels, so a photo that leaves the CRM carries the
+  //    customer name and coordinates with it; tenants opt in deliberately.
+  //    EXIF provenance below is written either way, so turning the plaque off
+  //    costs nothing in traceability inside the system.
   const uri = photoPath.startsWith("file://") ? photoPath : `file://${photoPath}`
-  const watermarkedPath = await ImageMarker.markText({
-    backgroundImage: { src: { uri } },
-    watermarkTexts: [
-      {
-        text: watermarkText,
-        position: { position: "bottomRight" },
-        style: {
-          color: "#FFFFFF",
-          fontSize: 14,
-          fontName: "Arial",
-          textBackgroundStyle: {
-            paddingX: 8,
-            paddingY: 6,
-            color: "rgba(0,0,0,0.6)",
+  const watermarkedPath = burnVisibleWatermark
+    ? await ImageMarker.markText({
+        backgroundImage: { src: { uri } },
+        watermarkTexts: [
+          {
+            text: watermarkText,
+            position: { position: "bottomRight" },
+            style: {
+              color: "#FFFFFF",
+              fontSize: 14,
+              fontName: "Arial",
+              textBackgroundStyle: {
+                paddingX: 8,
+                paddingY: 6,
+                color: "rgba(0,0,0,0.6)",
+              },
+            },
           },
-        },
-      },
-    ],
-    quality: 90,
-    saveFormat: "jpg",
-  } as Parameters<typeof ImageMarker.markText>[0])
+        ],
+        quality: 90,
+        saveFormat: "jpg",
+      } as Parameters<typeof ImageMarker.markText>[0])
+    : photoPath
 
   // 4. Re-inject EXIF tags
   const watermarkedB64 = await RNFS.readFile(watermarkedPath, "base64")
@@ -137,7 +155,9 @@ export async function photoWatermarkPipeline(
     agentId: agent.id,
     visitId: visit?.id ?? null,
     customerId: customer?.id ?? null,
-    watermarked: true,
+    // Reports what actually happened to the pixels. Claiming `true` on a photo
+    // with no plaque would be a provenance record that contradicts the file.
+    watermarked: burnVisibleWatermark,
   })
 
   exifObj.Exif[TV.ExifIFD.DateTimeOriginal] = formatExifDateTime(timestamp)

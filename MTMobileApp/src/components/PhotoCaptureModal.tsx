@@ -15,13 +15,18 @@ import {
   useCameraPermission,
 } from "react-native-vision-camera"
 import { photoWatermarkPipeline } from "../lib/photo-watermark"
+import { useBootstrapStore } from "../store/bootstrap"
 
 /**
- * M1-2: when this context is passed, every captured photo gets a
- * burned-in watermark (date / agent / customer / GPS) and EXIF tags
- * (Software, Make, Model, ImageDescription, DateTimeOriginal, GPS)
- * before being handed to `onPhotoTaken`. Callers that don't need a
- * watermark (e.g. debug screens) can simply omit the prop.
+ * M1-2: when this context is passed, every captured photo gets EXIF tags
+ * (Software, Make, Model, ImageDescription, DateTimeOriginal, GPS) before
+ * being handed to `onPhotoTaken`. Callers that don't need provenance (e.g.
+ * debug screens) can simply omit the prop.
+ *
+ * The VISIBLE plaque (date / agent / customer / GPS drawn onto the image) is
+ * a separate, tenant-controlled decision read from bootstrap policies — it is
+ * off unless the organization enabled it, because the plaque leaves the CRM
+ * inside the file. EXIF provenance is written either way.
  */
 export interface WatermarkContext {
   agent: { id: string; name: string; code: string }
@@ -47,6 +52,12 @@ export default function PhotoCaptureModal({ visible, onClose, onPhotoTaken, wate
   const [capturing, setCapturing] = useState(false)
   const [flash, setFlash] = useState<"off" | "on">("off")
   const [previewPath, setPreviewPath] = useState<string | null>(null)
+  // Tenant policy, server-authoritative. Null bootstrap (not yet loaded, or
+  // the call failed) resolves to `false` — the direction that cannot leak a
+  // customer name into a file we no longer control.
+  const burnVisibleWatermark = useBootstrapStore(
+    (state) => state.data?.policies.photoWatermark === true,
+  )
 
   const handleCapture = async () => {
     if (!camera.current || capturing) return
@@ -71,6 +82,7 @@ export default function PhotoCaptureModal({ visible, onClose, onPhotoTaken, wate
             customer: watermark.customer,
             location: currentLocation,
             lastKnownLocation: lastKnown ?? undefined,
+            burnVisibleWatermark,
           })
           finalPath = watermarkedPath
         } catch (e: any) {

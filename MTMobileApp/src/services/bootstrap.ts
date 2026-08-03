@@ -17,11 +17,27 @@ export type NavGroup = "field" | "team" | "none"
 
 const KNOWN_CAPABILITIES: readonly MobileCapability[] = ["FIELD_EXECUTE", "FIELD_TRACK", "TEAM_READ", "TEAM_DECIDE"]
 
+/**
+ * Tenant policies the field app must obey. Server-authoritative — the app
+ * keeps no local override, so a tenant decision cannot be undone by a stale
+ * build.
+ */
+export interface BootstrapPolicies {
+  /**
+   * Burn a visible plaque (time, agent, customer, GPS) into field photos.
+   * Defaults to FALSE when the server omits it: the plaque travels inside the
+   * image, so a forwarded photo would leak a customer name and coordinates
+   * irreversibly. An unknown answer must not switch that on.
+   */
+  photoWatermark: boolean
+}
+
 export interface BootstrapData {
   tenant: { id: string; name: string; slug: string } | null
   principal: { id: string; name: string; email: string; role: string } | null
   capabilities: MobileCapability[]
   timezone: string | null
+  policies: BootstrapPolicies
   workday: BootstrapWorkday | null
 }
 
@@ -66,6 +82,9 @@ export function toBootstrap(raw: any): BootstrapData {
       : null,
     capabilities,
     timezone: str(raw?.timezone) ?? null,
+    // Strict `=== true`: anything else (missing field, older server, junk)
+    // resolves to "no plaque", which is the non-leaking direction.
+    policies: { photoWatermark: record(raw?.policies)?.photoWatermark === true },
     workday: workday
       ? {
           id: String(workday.id ?? ""),

@@ -57,6 +57,7 @@ const baseInput: PhotoWatermarkPipelineInput = {
   visit: { id: "visit-1" },
   customer: { id: "customer-1", name: "Bravo Supermarket #15" },
   location: { latitude: 40.4093, longitude: 49.8671 },
+  burnVisibleWatermark: true,
 }
 
 beforeEach(() => {
@@ -149,5 +150,54 @@ describe("photoWatermarkPipeline (mobile)", () => {
     const result = await photoWatermarkPipeline(baseInput)
     expect(result.watermarkedPath).toBe("/tmp/photo-watermarked.jpg")
     expect(result.watermarkedPath).not.toBe(baseInput.photoPath)
+  })
+})
+
+// The plaque carries a customer name and coordinates INSIDE the pixels, so a
+// photo forwarded outside the CRM leaks them irreversibly. Tenants opt in;
+// when they don't, nothing may be drawn — but provenance must survive intact,
+// because the server decides APPROVED/PENDING purely from EXIF.
+describe("photoWatermarkPipeline — plaque disabled by tenant policy", () => {
+  const offInput: PhotoWatermarkPipelineInput = { ...baseInput, burnVisibleWatermark: false }
+
+  it("draws nothing on the image", async () => {
+    await photoWatermarkPipeline(offInput)
+    expect(ImageMarker.markText).not.toHaveBeenCalled()
+  })
+
+  it("still writes the EXIF provenance the server validates", async () => {
+    await photoWatermarkPipeline(offInput)
+
+    expect(piexif.dump).toHaveBeenCalledTimes(1)
+    const zeroth = (piexif.dump as jest.Mock).mock.calls[0][0]["0th"]
+    expect(zeroth[305]).toBe("LeadDrive MTM Mobile")
+    const desc = JSON.parse(zeroth[270] as string)
+    expect(desc).toMatchObject({
+      agentId: "agent-1",
+      visitId: "visit-1",
+      customerId: "customer-1",
+    })
+  })
+
+  it("still writes trusted GPS into EXIF", async () => {
+    await photoWatermarkPipeline(offInput)
+    const dumpArg = (piexif.dump as jest.Mock).mock.calls[0][0]
+    expect(Object.keys(dumpArg.GPS ?? {}).length).toBeGreaterThan(0)
+  })
+
+  it("records watermarked:false rather than claiming a plaque it never drew", async () => {
+    await photoWatermarkPipeline(offInput)
+    const zeroth = (piexif.dump as jest.Mock).mock.calls[0][0]["0th"]
+    expect(JSON.parse(zeroth[270] as string).watermarked).toBe(false)
+  })
+
+  it("returns the original photo path", async () => {
+    const result = await photoWatermarkPipeline(offInput)
+    expect(result.watermarkedPath).toBe(baseInput.photoPath)
+  })
+
+  it("still resolves the effective location for the caller", async () => {
+    const result = await photoWatermarkPipeline(offInput)
+    expect(result.effectiveLocation).toEqual({ latitude: 40.4093, longitude: 49.8671 })
   })
 })
