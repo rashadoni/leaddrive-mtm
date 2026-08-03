@@ -631,6 +631,17 @@ class ApiClient {
     })
   }
 
+  // --- KPI ---
+
+  /**
+   * Personal KPI with server-owned formulas. `period` uses the server naming
+   * (day|week|month) — services/kpi.ts translates the UI's "today" into "day".
+   * The agent scope comes from the bearer token, so no agentId is passed.
+   */
+  async getKpi(period: "day" | "week" | "month", signal?: AbortSignal) {
+    return this.request(`/mobile/kpi?period=${period}`, { signal })
+  }
+
   // --- Photos ---
 
   async getPhotos() {

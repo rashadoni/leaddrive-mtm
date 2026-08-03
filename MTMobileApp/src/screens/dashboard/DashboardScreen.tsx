@@ -131,11 +131,12 @@ export default function DashboardScreen() {
               }
             />
 
-            {/* Photos card */}
+            {/* Photos card — the KPI contract does not measure photo evidence,
+                so this stays "—" rather than claiming a count of 0. */}
             <KpiCard
               label={t("dashboard.photos")}
               color="#3b82f6"
-              value={stats ? String(stats.photos.count) : "—"}
+              value={stats?.photos.count != null ? String(stats.photos.count) : "—"}
             />
           </View>
         )}

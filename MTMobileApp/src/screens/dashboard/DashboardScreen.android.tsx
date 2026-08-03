@@ -62,26 +62,61 @@ function previewMetric(id: DashboardWidgetId) {
   return { ...metric, supporting: mobileI18n.t(metric.supportingKey) }
 }
 
+/**
+ * Map server KPI onto a widget. Every branch distinguishes "nothing planned"
+ * from "nothing done": an empty denominator must not render as a 0% failure,
+ * which is what a bare `done / total` bar would show an agent with no route.
+ */
 function actualMetric(id: DashboardWidgetId, stats: KpiStats | null) {
   if (!stats) return null
   if (id === "todayRoute") {
     const total = stats.visits.total
-    return {
-      value: `${stats.visits.completed} / ${total}`,
-      supporting: total > stats.visits.completed
-        ? mobileI18n.t("dashboardV2.routeRemaining", { count: total - stats.visits.completed })
-        : mobileI18n.t("dashboardV2.routeComplete"),
-      progress: total > 0 ? stats.visits.completed / total : 0,
-    }
+    const done = stats.visits.completed
+    const supporting = total === 0
+      ? (stats.unplannedCompleted > 0
+          ? mobileI18n.t("dashboardV2.routeUnplanned", { count: stats.unplannedCompleted })
+          : mobileI18n.t("dashboardV2.routeEmpty"))
+      : total > done
+        ? mobileI18n.t("dashboardV2.routeRemaining", { count: total - done })
+        : mobileI18n.t("dashboardV2.routeComplete")
+    return { value: `${done} / ${total}`, supporting, progress: total > 0 ? done / total : 0 }
   }
   if (id === "tasks") {
     const total = stats.tasks.total
+    const done = stats.tasks.done
+    const supporting = total === 0
+      ? mobileI18n.t("dashboardV2.tasksEmpty")
+      : total > done
+        ? mobileI18n.t("dashboardV2.tasksInProgress", { count: total - done })
+        : mobileI18n.t("dashboardV2.allDone")
+    return { value: `${done} / ${total}`, supporting, progress: total > 0 ? done / total : 0 }
+  }
+  if (id === "coverage") {
+    const coverage = stats.coverage
+    if (!coverage) return null
     return {
-      value: `${stats.tasks.done} / ${total}`,
-      supporting: total > stats.tasks.done
-        ? mobileI18n.t("dashboardV2.tasksInProgress", { count: total - stats.tasks.done })
-        : mobileI18n.t("dashboardV2.allDone"),
-      progress: total > 0 ? stats.tasks.done / total : 0,
+      value: `${coverage.percentage}%`,
+      supporting: coverage.denominator === 0
+        ? mobileI18n.t("dashboardV2.coverageEmpty")
+        : mobileI18n.t("dashboardV2.coverageSupporting", {
+            covered: coverage.numerator,
+            total: coverage.denominator,
+          }),
+      progress: coverage.denominator > 0 ? coverage.numerator / coverage.denominator : 0,
+    }
+  }
+  if (id === "gps") {
+    const confirmation = stats.gps.visitConfirmation
+    if (!confirmation) return null
+    return {
+      value: `${confirmation.percentage}%`,
+      supporting: confirmation.denominator === 0
+        ? mobileI18n.t("dashboardV2.gpsEmpty")
+        : mobileI18n.t("dashboardV2.gpsSupporting", {
+            confirmed: confirmation.numerator,
+            total: confirmation.denominator,
+          }),
+      progress: confirmation.denominator > 0 ? confirmation.numerator / confirmation.denominator : 0,
     }
   }
   return null

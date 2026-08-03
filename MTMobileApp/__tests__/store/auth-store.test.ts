@@ -84,9 +84,14 @@ function primeKpiScope() {
     scopeKey: "org-old:agent-old",
     stats: {
       visits: { completed: 7, total: 8 },
-      tasks: { done: 3, total: 4 },
-      photos: { count: 5 },
+      unplannedCompleted: 0,
+      missed: 0,
+      tasks: { done: 3, total: 4, overdue: 0 },
+      coverage: null,
+      gps: { visitConfirmation: null, points: 0 },
+      photos: { count: null },
       period: "today",
+      authoritative: true,
     },
   })
 }

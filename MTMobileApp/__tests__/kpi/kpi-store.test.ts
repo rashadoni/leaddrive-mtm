@@ -1,75 +1,62 @@
 /**
  * G4 — KPI store for the Dashboard screen.
  *
- * Aggregates visit, task and photo counts from existing API
- * endpoints (orders were removed with the LeadShelf split — the server
- * no longer has an orders domain). The mobile dashboard screen relies on this store to
- * surface daily/weekly/monthly agent performance without a dedicated
- * backend endpoint.
+ * The store used to aggregate visit, task and photo counts client-side from
+ * the list endpoints. Those lists carry no date filter, so a widget captioned
+ * "today" was really counting the first page of all-time rows. The store now
+ * reads GET /mobile/kpi, where the server owns the formulas and the day
+ * period, so a widget and the web report cannot disagree.
  *
  * Covered:
- *   fetchKpi('today') — aggregates data from api calls, sets stats
+ *   fetchKpi translates the UI period ('today') into the server one ('day')
+ *   fetchKpi maps plan fulfilment, tasks, coverage and GPS confirmation
  *   fetchKpi sets loading=true during fetch, false after
  *   fetchKpi sets error on API failure
  *   setPeriod updates period and triggers refetch
- *   stats.visits reflects completed vs total from getVisits response
- *   stats.tasks reflects done vs total from getTasks response
+ *   identity isolation: no scope → no request; late responses are dropped
  */
 
 jest.mock('../../src/services/api', () => ({
-  api: {
-    getVisits: jest.fn(),
-    getTasks: jest.fn(),
-    getPhotos: jest.fn(),
-  },
+  api: { getKpi: jest.fn() },
 }))
 
 import { api } from '../../src/services/api'
 import { kpiScopeKey, useKpiStore } from '../../src/store/kpi'
 
-const mockGetVisits = api.getVisits as jest.Mock
-const mockGetTasks = api.getTasks as jest.Mock
-const mockGetPhotos = api.getPhotos as jest.Mock
+const mockGetKpi = api.getKpi as jest.Mock
 
-// REGRESSION 2026-06-12: the API wraps each array inside data.<entity>
-// ({ data: { visits: [...] } }), NOT data itself. These fixtures previously
-// put the array directly at `data`, which matched the BUGGY store code
-// (`res.data.filter(...)` on an object → "undefined is not a function", whole
-// Dashboard broke). Verified the real server shape via curl, fixtures corrected.
-const SAMPLE_VISITS = {
+/** Shape mirrors GET /mobile/kpi (protocolVersion 2). */
+const SAMPLE_KPI = {
   success: true,
   data: {
-    visits: [
-      { id: 'v-1', status: 'CHECKED_OUT' },
-      { id: 'v-2', status: 'CHECKED_IN' },
-      { id: 'v-3', status: 'CHECKED_OUT' },
-    ],
+    protocolVersion: 2,
+    source: 'LEADDRIVE',
+    period: { kind: 'day', anchor: '2026-08-03', start: '2026-08-03', endExclusive: '2026-08-04' },
+    formula: { authoritative: true },
+    visits: {
+      planned: 7,
+      completedPlanned: 4,
+      completedTotal: 5,
+      unplannedCompleted: 1,
+      missed: 0,
+      fulfillment: { numerator: 4, denominator: 7, percentage: 57.1 },
+    },
+    coverage: { overall: { numerator: 5, denominator: 8, percentage: 62.5 } },
+    tasks: {
+      assigned: 4,
+      completed: 2,
+      overdue: 1,
+      completion: { numerator: 2, denominator: 4, percentage: 50 },
+    },
+    gps: {
+      visitConfirmation: { numerator: 5, denominator: 5, percentage: 100 },
+      points: 120,
+    },
   },
 }
 
-const SAMPLE_TASKS = {
-  success: true,
-  data: {
-    tasks: [
-      { id: 't-1', status: 'DONE' },
-      { id: 't-2', status: 'COMPLETED' },
-      { id: 't-3', status: 'TODO' },
-      { id: 't-4', status: 'IN_PROGRESS' },
-    ],
-  },
-}
-
-const SAMPLE_PHOTOS = {
-  success: true,
-  data: {
-    photos: [
-      { id: 'p-1' },
-      { id: 'p-2' },
-      { id: 'p-3' },
-      { id: 'p-4' },
-      { id: 'p-5' },
-    ],
-  },
+function kpiWith(overrides: Record<string, unknown>) {
+  return { success: true, data: { ...SAMPLE_KPI.data, ...overrides } }
 }
 
 function resetStore() {
@@ -96,25 +83,28 @@ function deferred<T>() {
 beforeEach(() => {
   jest.clearAllMocks()
   resetStore()
-  mockGetVisits.mockResolvedValue(SAMPLE_VISITS)
-  mockGetTasks.mockResolvedValue(SAMPLE_TASKS)
-  mockGetPhotos.mockResolvedValue(SAMPLE_PHOTOS)
+  mockGetKpi.mockResolvedValue(SAMPLE_KPI)
 })
 
 // ─── fetchKpi ─────────────────────────────────────────────────────────────────
 
 describe('fetchKpi', () => {
-  it("calls getVisits, getTasks, getPhotos in parallel", async () => {
+  it("asks the server for 'day' when the UI period is 'today'", async () => {
     await useKpiStore.getState().fetchKpi('today')
-    expect(mockGetVisits).toHaveBeenCalledTimes(1)
-    expect(mockGetTasks).toHaveBeenCalledTimes(1)
-    expect(mockGetPhotos).toHaveBeenCalledTimes(1)
+    expect(mockGetKpi).toHaveBeenCalledTimes(1)
+    expect(mockGetKpi).toHaveBeenCalledWith('day')
+  })
+
+  it('passes week and month through unchanged', async () => {
+    await useKpiStore.getState().fetchKpi('week')
+    expect(mockGetKpi).toHaveBeenLastCalledWith('week')
+    await useKpiStore.getState().fetchKpi('month')
+    expect(mockGetKpi).toHaveBeenLastCalledWith('month')
   })
 
   it('sets stats after successful fetch', async () => {
     await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    expect(stats).not.toBeNull()
+    expect(useKpiStore.getState().stats).not.toBeNull()
   })
 
   it('sets loading=false after fetch completes', async () => {
@@ -134,7 +124,6 @@ describe('fetchKpi', () => {
   })
 
   it('sets error=null on successful fetch', async () => {
-    // First set an error state
     useKpiStore.setState({ error: 'Previous error' })
     await useKpiStore.getState().fetchKpi('today')
     expect(useKpiStore.getState().error).toBeNull()
@@ -149,63 +138,66 @@ describe('fetchKpi', () => {
 // ─── stats.visits ─────────────────────────────────────────────────────────────
 
 describe('stats.visits', () => {
-  it('counts CHECKED_OUT visits as completed', async () => {
+  it('reports route progress as completed planned stops out of planned stops', async () => {
     await useKpiStore.getState().fetchKpi('today')
     const { stats } = useKpiStore.getState()
-    // SAMPLE_VISITS has 2 CHECKED_OUT
-    expect(stats?.visits.completed).toBe(2)
+    expect(stats?.visits).toEqual({ completed: 4, total: 7 })
   })
 
-  it('counts all visits as total', async () => {
+  it('keeps unplanned work visible instead of hiding it in the plan ratio', async () => {
     await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    // SAMPLE_VISITS has 3 total
-    expect(stats?.visits.total).toBe(3)
+    expect(useKpiStore.getState().stats?.unplannedCompleted).toBe(1)
   })
 
-  it('handles empty visits array', async () => {
-    mockGetVisits.mockResolvedValue({ success: true, data: { visits: [] } })
+  it('handles a day with nothing planned', async () => {
+    mockGetKpi.mockResolvedValue(kpiWith({
+      visits: { planned: 0, completedPlanned: 0, completedTotal: 0, unplannedCompleted: 0, missed: 0 },
+    }))
     await useKpiStore.getState().fetchKpi('today')
     const { stats } = useKpiStore.getState()
-    expect(stats?.visits.completed).toBe(0)
-    expect(stats?.visits.total).toBe(0)
+    expect(stats?.visits).toEqual({ completed: 0, total: 0 })
   })
 })
 
 // ─── stats.tasks ──────────────────────────────────────────────────────────────
 
 describe('stats.tasks', () => {
-  it('counts tasks with status DONE or COMPLETED as done', async () => {
+  it('maps the server task counters including overdue', async () => {
     await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    // SAMPLE_TASKS has 2 DONE/COMPLETED
-    expect(stats?.tasks.done).toBe(2)
+    expect(useKpiStore.getState().stats?.tasks).toEqual({ done: 2, total: 4, overdue: 1 })
   })
 
-  it('counts all tasks as total', async () => {
+  it('handles a day with no tasks', async () => {
+    mockGetKpi.mockResolvedValue(kpiWith({ tasks: { assigned: 0, completed: 0, overdue: 0 } }))
+    await useKpiStore.getState().fetchKpi('today')
+    expect(useKpiStore.getState().stats?.tasks).toEqual({ done: 0, total: 0, overdue: 0 })
+  })
+})
+
+// ─── coverage and GPS ─────────────────────────────────────────────────────────
+
+describe('stats.coverage and stats.gps', () => {
+  it('carries the server ratios through untouched', async () => {
     await useKpiStore.getState().fetchKpi('today')
     const { stats } = useKpiStore.getState()
-    // SAMPLE_TASKS has 4 total
-    expect(stats?.tasks.total).toBe(4)
+    expect(stats?.coverage).toEqual({ numerator: 5, denominator: 8, percentage: 62.5 })
+    expect(stats?.gps.visitConfirmation).toEqual({ numerator: 5, denominator: 5, percentage: 100 })
+    expect(stats?.gps.points).toBe(120)
   })
 
-  it('handles empty tasks array', async () => {
-    mockGetTasks.mockResolvedValue({ success: true, data: { tasks: [] } })
+  it('reports a truncated server window as non-authoritative', async () => {
+    mockGetKpi.mockResolvedValue(kpiWith({ formula: { authoritative: false } }))
     await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    expect(stats?.tasks.done).toBe(0)
-    expect(stats?.tasks.total).toBe(0)
+    expect(useKpiStore.getState().stats?.authoritative).toBe(false)
   })
 })
 
 // ─── stats.photos ─────────────────────────────────────────────────────────────
 
 describe('stats.photos', () => {
-  it('counts all photos', async () => {
+  it('is unknown rather than zero — the KPI contract does not measure photos', async () => {
     await useKpiStore.getState().fetchKpi('today')
-    const { stats } = useKpiStore.getState()
-    // SAMPLE_PHOTOS has 5 photos
-    expect(stats?.photos.count).toBe(5)
+    expect(useKpiStore.getState().stats?.photos.count).toBeNull()
   })
 })
 
@@ -213,19 +205,19 @@ describe('stats.photos', () => {
 
 describe('fetchKpi — error handling', () => {
   it('sets error message on API failure', async () => {
-    mockGetVisits.mockRejectedValue(new Error('Network error'))
+    mockGetKpi.mockRejectedValue(new Error('Network error'))
     await useKpiStore.getState().fetchKpi('today')
     expect(useKpiStore.getState().error).toBe('Network error')
   })
 
   it('keeps stats=null on API failure', async () => {
-    mockGetVisits.mockRejectedValue(new Error('Timeout'))
+    mockGetKpi.mockRejectedValue(new Error('Timeout'))
     await useKpiStore.getState().fetchKpi('today')
     expect(useKpiStore.getState().stats).toBeNull()
   })
 
   it('sets loading=false after error', async () => {
-    mockGetVisits.mockRejectedValue(new Error('Timeout'))
+    mockGetKpi.mockRejectedValue(new Error('Timeout'))
     await useKpiStore.getState().fetchKpi('today')
     expect(useKpiStore.getState().loading).toBe(false)
   })
@@ -257,28 +249,25 @@ describe('KPI identity isolation', () => {
 
     await useKpiStore.getState().fetchKpi('today')
 
-    expect(mockGetVisits).not.toHaveBeenCalled()
-    expect(mockGetTasks).not.toHaveBeenCalled()
-    expect(mockGetPhotos).not.toHaveBeenCalled()
+    expect(mockGetKpi).not.toHaveBeenCalled()
     expect(useKpiStore.getState().stats).toBeNull()
   })
 
   it('drops a delayed Agent A response after switching to Agent B', async () => {
-    const delayedAgentA = deferred<typeof SAMPLE_VISITS>()
-    const agentBVisits = {
-      success: true,
-      data: { visits: [{ id: 'b-1', status: 'CHECKED_IN' }] },
-    }
+    const delayedAgentA = deferred<typeof SAMPLE_KPI>()
+    const agentBKpi = kpiWith({
+      visits: { planned: 1, completedPlanned: 0, completedTotal: 0, unplannedCompleted: 0, missed: 0 },
+    })
 
-    mockGetVisits.mockReset()
-    mockGetVisits
-      .mockResolvedValueOnce(SAMPLE_VISITS)
+    mockGetKpi.mockReset()
+    mockGetKpi
+      .mockResolvedValueOnce(SAMPLE_KPI)
       .mockImplementationOnce(() => delayedAgentA.promise)
-      .mockResolvedValueOnce(agentBVisits)
+      .mockResolvedValueOnce(agentBKpi)
 
     useKpiStore.getState().setScope('org-a:agent-a')
     await useKpiStore.getState().fetchKpi('today')
-    expect(useKpiStore.getState().stats?.visits.total).toBe(3)
+    expect(useKpiStore.getState().stats?.visits.total).toBe(7)
 
     const pendingAgentARefresh = useKpiStore.getState().fetchKpi('today')
     expect(useKpiStore.getState().loading).toBe(true)
@@ -291,7 +280,7 @@ describe('KPI identity isolation', () => {
     expect(useKpiStore.getState().scopeKey).toBe('org-b:agent-b')
     expect(useKpiStore.getState().stats?.visits.total).toBe(1)
 
-    delayedAgentA.resolve(SAMPLE_VISITS)
+    delayedAgentA.resolve(SAMPLE_KPI)
     await pendingAgentARefresh
 
     expect(useKpiStore.getState().scopeKey).toBe('org-b:agent-b')
@@ -310,17 +299,15 @@ describe('setPeriod', () => {
 
   it('calls fetchKpi after setting period', () => {
     let called = false
-    // Intercept at the api level (cleaner than spying on state method)
-    mockGetVisits.mockImplementation(() => {
+    mockGetKpi.mockImplementation(() => {
       called = true
-      return Promise.resolve(SAMPLE_VISITS)
+      return Promise.resolve(SAMPLE_KPI)
     })
     useKpiStore.getState().setPeriod('month')
     expect(called).toBe(true)
   })
 
   it('sets stats.period to match the new period', async () => {
-    // Directly call fetchKpi with 'month' and await it
     await useKpiStore.getState().fetchKpi('month')
     expect(useKpiStore.getState().stats?.period).toBe('month')
   })

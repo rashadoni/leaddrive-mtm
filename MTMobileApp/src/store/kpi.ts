@@ -1,14 +1,8 @@
 import { create } from "zustand"
 import { api } from "../services/api"
+import { serverPeriod, toKpiStats, type KpiPeriod, type KpiStats } from "../services/kpi"
 
-export type KpiPeriod = "today" | "week" | "month"
-
-export interface KpiStats {
-  visits: { completed: number; total: number }
-  tasks: { done: number; total: number }
-  photos: { count: number }
-  period: KpiPeriod
-}
+export type { KpiPeriod, KpiStats } from "../services/kpi"
 
 interface KpiState {
   stats: KpiStats | null
@@ -76,31 +70,11 @@ export const useKpiStore = create<KpiState>((set, get) => ({
     set({ loading: true, error: null, requestGeneration })
 
     try {
-      const [visitsRes, tasksRes, photosRes] = await Promise.all([
-        api.getVisits(),
-        api.getTasks(),
-        api.getPhotos(),
-      ])
-
-      // The API wraps each array inside data.<entity>
-      // ({ data: { visits: [...] } }) — NOT data itself. Reading data directly
-      // gave an OBJECT, and `obj.filter()` threw "undefined is not a function",
-      // breaking the whole Dashboard (reproduced on the emulator 2026-06-12).
-      const visits: { id: string; status: string }[] = visitsRes?.data?.visits ?? []
-      const tasks: { id: string; status: string }[] = tasksRes?.data?.tasks ?? []
-      const photos: unknown[] = photosRes?.data?.photos ?? []
-
-      const completedVisits = visits.filter((v) => v.status === "CHECKED_OUT").length
-      const doneTasks = tasks.filter(
-        (t) => t.status === "DONE" || t.status === "COMPLETED"
-      ).length
-
-      const stats: KpiStats = {
-        visits: { completed: completedVisits, total: visits.length },
-        tasks: { done: doneTasks, total: tasks.length },
-        photos: { count: photos.length },
-        period: effectivePeriod,
-      }
+      // Server-owned formulas, one call. This used to count /visits, /tasks and
+      // /photos client-side — but those lists carry no date filter, so a widget
+      // captioned "today" was really counting the first page of all-time rows.
+      const payload = await api.getKpi(serverPeriod(effectivePeriod))
+      const stats = toKpiStats(payload, effectivePeriod)
 
       if (
         get().scopeKey !== scopeKey ||
