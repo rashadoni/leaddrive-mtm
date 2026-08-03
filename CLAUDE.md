@@ -22,6 +22,11 @@ Android-first) + admin-panel/backend (легаси, не трогать без �
 2. `MTMobileApp/App.tsx` → `ANDROID_VERSION_CODE` (Sentry-релиз)
 3. `MTMobileApp/package.json` → version (его читает build-local.sh и CI)
 
+Версия из `package.json` вдобавок штампуется в EXIF (Model) каждого полевого
+фото как provenance — держать её строго `major.minor.patch` без суффиксов:
+сервер валидирует тег по `/^v\d+\.\d+\.\d+$/` и иначе отклоняет загрузку с
+`invalid_model`. Формат стережёт `__tests__/photo-watermark/provenance-constants.test.ts`.
+
 ## Подпись
 
 - Релизный ключ `MTMobileApp/android/app/mtm-release.keystore` живёт только

@@ -47,6 +47,7 @@ jest.mock("react-native-fs", () => ({
 
 import ImageMarker from "react-native-image-marker"
 import piexif from "piexifjs"
+import { version as packageVersion } from "../../package.json"
 import { photoWatermarkPipeline, PhotoWatermarkPipelineInput } from "../../src/lib/photo-watermark"
 
 const baseInput: PhotoWatermarkPipelineInput = {
@@ -81,7 +82,7 @@ describe("photoWatermarkPipeline (mobile)", () => {
     expect(call.watermarkTexts[0].position.position).toBe("bottomRight")
   })
 
-  it("C3: writes Software + ImageDescription EXIF tags via piexif.dump", async () => {
+  it("C3: writes Software + Make + Model + ImageDescription EXIF tags via piexif.dump", async () => {
     await photoWatermarkPipeline(baseInput)
 
     expect(piexif.dump).toHaveBeenCalledTimes(1)
@@ -92,6 +93,10 @@ describe("photoWatermarkPipeline (mobile)", () => {
     // `TagValues` on its declared shape — using the runtime constants by
     // number keeps the test type-safe without an `as any` cast.
     expect(zeroth[305]).toBe("LeadDrive MTM Mobile")
+    // 271 = Make, 272 = Model. Model is the build-provenance claim: it must be
+    // the version this APK actually is, not a literal someone forgot to bump.
+    expect(zeroth[271]).toBe("LeadDrive MTM")
+    expect(zeroth[272]).toBe(`v${packageVersion}`)
     const descRaw = zeroth[270]
     expect(typeof descRaw).toBe("string")
     expect(JSON.parse(descRaw)).toMatchObject({
