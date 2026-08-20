@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
+import Icon from "react-native-vector-icons/Ionicons"
 import { useAuthStore } from "../../store/auth"
 import { api, REVOKED_REASON } from "../../services/api"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 interface Props {
   serverDomain: string
@@ -22,52 +26,45 @@ interface Props {
 
 export default function LoginScreen({ serverDomain, companyName, onSwitchServer }: Props) {
   const { t } = useTranslation()
+  const { width } = useWindowDimensions()
+  const tablet = isTabletWidth(width)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [loading, setLoading] = useState(false)
-  const login = useAuthStore((s) => s.login)
-  const revokedReason = useAuthStore((s) => s.revokedReason)
-  const clearRevokedReason = useAuthStore((s) => s.clearRevokedReason)
+  const [error, setError] = useState<string | null>(null)
+  const login = useAuthStore((state) => state.login)
+  const revokedReason = useAuthStore((state) => state.revokedReason)
+  const clearRevokedReason = useAuthStore((state) => state.clearRevokedReason)
 
-  // Load saved credentials
   useEffect(() => {
-    api.getSavedCredentials().then((creds) => {
-      if (creds) {
-        setEmail(creds.email)
-        setPassword(creds.password)
-        setRememberMe(true)
-      }
-    })
+    api.getSavedCredentials().then((credentials) => {
+      if (!credentials) return
+      setEmail(credentials.email)
+      setPassword(credentials.password)
+      setRememberMe(true)
+    }).catch(() => {})
   }, [])
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert(t("common.error"), t("auth.validationMissing"))
+    if (loading) return
+    if (!email.trim() || !password) {
+      setError(t("auth.validationMissing"))
       return
     }
 
-    // Clear the revoked banner when the user makes a new login attempt
     clearRevokedReason()
-
+    setError(null)
     setLoading(true)
     try {
-      await login(email.trim().toLowerCase(), password)
-
-      // Save credentials if "Remember me" is checked
-      if (rememberMe) {
-        await api.saveCredentials(email.trim().toLowerCase(), password)
-      } else {
-        await api.clearCredentials()
-      }
+      const normalizedEmail = email.trim().toLowerCase()
+      await login(normalizedEmail, password)
+      if (rememberMe) await api.saveCredentials(normalizedEmail, password)
+      else await api.clearCredentials()
     } catch (e: any) {
-      // Backend errors come back in English; using e.message directly
-      // would mix EN error text inside an AZ/RU UI. Always show the
-      // localized "invalid credentials" line; backend detail goes to
-      // Sentry / console for ops triage.
       console.warn("[LoginScreen] login failed:", e?.message ?? e)
-      Alert.alert(t("auth.loginFailedTitle"), t("auth.invalidCredentials"))
+      setError(t("auth.invalidCredentialsHelp"))
     } finally {
       setLoading(false)
     }
@@ -75,256 +72,352 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={styles.card}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>R&F</Text>
-          </View>
-          <Text style={styles.title}>Route & Field</Text>
-          <Text style={styles.subtitle}>{companyName}</Text>
-        </View>
-
-        {/* Access revoked banner — shown after a mid-session 401 (fired agent, suspended org) */}
-        {revokedReason === REVOKED_REASON && (
-          <View style={styles.revokedBanner}>
-            <Text style={styles.revokedTitle}>{t("auth.accessRevokedTitle")}</Text>
-            <Text style={styles.revokedBody}>{t("auth.accessRevokedBody")}</Text>
-          </View>
-        )}
-
-        {/* Server badge */}
-        <TouchableOpacity style={styles.serverBadge} onPress={onSwitchServer}>
-          <Text style={styles.serverText}>{serverDomain}</Text>
-          <Text style={styles.serverChange}>{t("common.change")}</Text>
-        </TouchableOpacity>
-
-        <View style={styles.form}>
-          <Text style={styles.label}>{t("auth.email")}</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="agent@company.com"
-            placeholderTextColor="#94a3b8"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoCorrect={false}
-          />
-
-          <Text style={styles.label}>{t("auth.password")}</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t("auth.passwordPlaceholder")}
-              placeholderTextColor="#94a3b8"
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Text style={styles.eyeText}>{showPassword ? "🙈" : "👁️"}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Remember me */}
-          <TouchableOpacity
-            style={styles.rememberRow}
-            onPress={() => setRememberMe(!rememberMe)}
-          >
-            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-              {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={[styles.shell, tablet && styles.shellTablet]}>
+          <View style={[styles.intro, tablet && styles.introTablet]}>
+            <View style={styles.brandMark}>
+              <Icon name="navigate" size={30} color={fieldTheme.color.onColor} />
             </View>
-            <Text style={styles.rememberText}>{t("auth.rememberMe")}</Text>
-          </TouchableOpacity>
+            <Text style={styles.brand}>LeadDrive Field</Text>
+            <Text style={styles.introTitle}>{t("auth.welcomeTitle")}</Text>
+            <Text style={styles.introBody}>{t("auth.welcomeBody")}</Text>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>{t("auth.signIn")}</Text>
+            <View style={styles.steps}>
+              <View style={styles.step}>
+                <View style={[styles.stepNumber, styles.stepNumberDone]}>
+                  <Icon name="checkmark" size={18} color={fieldTheme.color.primaryStrong} />
+                </View>
+                <View style={styles.stepCopy}>
+                  <Text style={styles.stepTitleMuted}>{t("server.stepCompany")}</Text>
+                  <Text style={styles.stepBody} numberOfLines={2}>{companyName || serverDomain}</Text>
+                </View>
+              </View>
+              <View style={[styles.step, styles.stepActive]}>
+                <View style={[styles.stepNumber, styles.stepNumberActive]}>
+                  <Text style={styles.stepNumberTextActive}>2</Text>
+                </View>
+                <View style={styles.stepCopy}>
+                  <Text style={styles.stepTitle}>{t("server.stepAccount")}</Text>
+                  <Text style={styles.stepBody}>{t("server.stepAccountBody")}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={[styles.formPanel, tablet && styles.formPanelTablet]}>
+            <View style={styles.progressRow}>
+              <Text style={styles.progressText}>{t("auth.stepProgress")}</Text>
+              <View style={styles.progressTrack}>
+                <View style={styles.progressValue} />
+              </View>
+            </View>
+
+            <View style={styles.companyCard}>
+              <View style={styles.companyIcon}>
+                <Icon name="business" size={21} color={fieldTheme.color.primary} />
+              </View>
+              <View style={styles.companyCopy}>
+                <Text style={styles.companyCaption}>{t("auth.selectedCompany")}</Text>
+                <Text style={styles.companyName} numberOfLines={1}>{companyName || serverDomain}</Text>
+                <Text style={styles.companyDomain} numberOfLines={1}>{serverDomain}</Text>
+              </View>
+              <Pressable
+                testID="switch-tenant"
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.changeCompany")}
+                onPress={onSwitchServer}
+                style={({ pressed }) => [styles.changeButton, pressed && styles.pressed]}
+              >
+                <Icon name="swap-horizontal" size={18} color={fieldTheme.color.primary} />
+                <Text style={styles.changeText}>{t("common.change")}</Text>
+              </Pressable>
+            </View>
+
+            <Text style={styles.formTitle}>{t("auth.accountTitle")}</Text>
+            <Text style={styles.formBody}>{t("auth.accountHelp")}</Text>
+
+            {revokedReason === REVOKED_REASON && (
+              <View style={styles.revokedBanner} accessibilityLiveRegion="polite">
+                <Icon name="lock-closed" size={21} color={fieldTheme.color.danger} />
+                <View style={styles.errorCopy}>
+                  <Text style={styles.errorTitle}>{t("auth.accessRevokedTitle")}</Text>
+                  <Text style={styles.errorText}>{t("auth.accessRevokedBody")}</Text>
+                </View>
+              </View>
             )}
-          </TouchableOpacity>
-        </View>
 
-        <Text style={styles.footer}>Powered by LeadDrive CRM</Text>
-      </View>
+            <Text style={styles.label}>{t("auth.email")}</Text>
+            <View style={[styles.inputWrap, error && !email.trim() && styles.inputWrapError]}>
+              <Icon name="mail-outline" size={21} color={fieldTheme.color.inkMuted} />
+              <TextInput
+                testID="login-email"
+                style={styles.input}
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value)
+                  if (error) setError(null)
+                }}
+                placeholder="agent@company.com"
+                placeholderTextColor="#81928B"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoCorrect={false}
+                autoComplete="email"
+                returnKeyType="next"
+                editable={!loading}
+                accessibilityLabel={t("auth.email")}
+              />
+            </View>
+
+            <Text style={styles.label}>{t("auth.password")}</Text>
+            <View style={[styles.inputWrap, error && !password && styles.inputWrapError]}>
+              <Icon name="key-outline" size={21} color={fieldTheme.color.inkMuted} />
+              <TextInput
+                testID="login-password"
+                style={styles.input}
+                value={password}
+                onChangeText={(value) => {
+                  setPassword(value)
+                  if (error) setError(null)
+                }}
+                placeholder={t("auth.passwordPlaceholder")}
+                placeholderTextColor="#81928B"
+                secureTextEntry={!showPassword}
+                autoComplete="current-password"
+                returnKeyType="go"
+                editable={!loading}
+                onSubmitEditing={() => { handleLogin().catch(() => {}) }}
+                accessibilityLabel={t("auth.password")}
+              />
+              <Pressable
+                testID="toggle-password"
+                accessibilityRole="button"
+                accessibilityLabel={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
+                accessibilityState={{ expanded: showPassword }}
+                onPress={() => setShowPassword((current) => !current)}
+                style={({ pressed }) => [styles.eyeButton, pressed && styles.pressed]}
+              >
+                <Icon
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={23}
+                  color={fieldTheme.color.inkMuted}
+                />
+              </Pressable>
+            </View>
+
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: rememberMe }}
+              accessibilityLabel={t("auth.rememberMe")}
+              onPress={() => setRememberMe((current) => !current)}
+              style={({ pressed }) => [styles.rememberRow, pressed && styles.pressed]}
+            >
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                {rememberMe && <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />}
+              </View>
+              <View style={styles.rememberCopy}>
+                <Text style={styles.rememberText}>{t("auth.rememberMe")}</Text>
+                <Text style={styles.rememberHint}>{t("auth.rememberHint")}</Text>
+              </View>
+            </Pressable>
+
+            {error && (
+              <View style={styles.errorBox} accessibilityLiveRegion="polite">
+                <Icon name="alert-circle" size={21} color={fieldTheme.color.danger} />
+                <View style={styles.errorCopy}>
+                  <Text style={styles.errorTitle}>{t("auth.loginFailedTitle")}</Text>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              </View>
+            )}
+
+            <Pressable
+              testID="login-submit"
+              accessibilityRole="button"
+              accessibilityLabel={t("auth.signIn")}
+              accessibilityState={{ disabled: loading }}
+              onPress={() => { handleLogin().catch(() => {}) }}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                loading && styles.disabled,
+                pressed && !loading && styles.primaryPressed,
+              ]}
+            >
+              {loading ? (
+                <>
+                  <ActivityIndicator color={fieldTheme.color.onColor} />
+                  <Text style={styles.primaryText}>{t("auth.signingIn")}</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.primaryText}>{t("auth.signIn")}</Text>
+                  <Icon name="arrow-forward" size={21} color={fieldTheme.color.onColor} />
+                </>
+              )}
+            </Pressable>
+
+            <Text style={styles.helpText}>{t("auth.loginHelp")}</Text>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F4F5F9",
+  root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: fieldTheme.space.lg,
+    paddingVertical: fieldTheme.space.xl,
   },
-  card: {
-    backgroundColor: "#fff",
+  shell: {
+    width: "100%",
+    maxWidth: 1040,
+    alignSelf: "center",
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.lg,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    overflow: "hidden",
+  },
+  shellTablet: { flexDirection: "row", minHeight: 670 },
+  intro: { padding: fieldTheme.space.xl, backgroundColor: fieldTheme.color.primaryStrong },
+  introTablet: { width: "39%", padding: fieldTheme.space.xxl, justifyContent: "center" },
+  brandMark: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fieldTheme.color.primary,
+    marginBottom: fieldTheme.space.md,
+  },
+  brand: { color: fieldTheme.color.onColor, fontSize: 17, fontWeight: "800", letterSpacing: 0.2 },
+  introTitle: { color: fieldTheme.color.onColor, fontSize: 30, lineHeight: 36, fontWeight: "900", marginTop: fieldTheme.space.xl },
+  introBody: { color: "#D8E9E2", fontSize: 16, lineHeight: 23, marginTop: fieldTheme.space.sm },
+  steps: { gap: fieldTheme.space.md, marginTop: fieldTheme.space.xl },
+  step: { flexDirection: "row", alignItems: "flex-start", opacity: 0.8 },
+  stepActive: { opacity: 1 },
+  stepNumber: {
+    width: 32,
+    height: 32,
     borderRadius: 16,
-    padding: 32,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  logoContainer: {
     alignItems: "center",
-    marginBottom: 16,
-  },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#6C63FF",
     justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#7E9F94",
   },
-  logoText: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0B0B1E",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#64748b",
-    marginTop: 4,
-  },
-  serverBadge: {
+  stepNumberDone: { backgroundColor: fieldTheme.color.onColor, borderColor: fieldTheme.color.onColor },
+  stepNumberActive: { backgroundColor: fieldTheme.color.coral, borderColor: fieldTheme.color.coral },
+  stepNumberTextActive: { color: fieldTheme.color.onColor, fontWeight: "900" },
+  stepCopy: { flex: 1, marginLeft: fieldTheme.space.md },
+  stepTitle: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "800" },
+  stepTitleMuted: { color: "#D8E9E2", fontSize: 15, fontWeight: "700" },
+  stepBody: { color: "#BAD0C7", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  formPanel: { padding: fieldTheme.space.xl },
+  formPanelTablet: { flex: 1, padding: 40, justifyContent: "center" },
+  progressRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, marginBottom: fieldTheme.space.lg },
+  progressText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "800" },
+  progressTrack: { flex: 1, height: 6, borderRadius: 3, backgroundColor: fieldTheme.color.surfaceStrong, overflow: "hidden" },
+  progressValue: { width: "100%", height: "100%", backgroundColor: fieldTheme.color.primary, borderRadius: 3 },
+  companyCard: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#f0f0ff",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 20,
+    gap: fieldTheme.space.md,
+    backgroundColor: fieldTheme.color.primarySoft,
+    borderRadius: fieldTheme.radius.md,
+    padding: fieldTheme.space.md,
+    marginBottom: fieldTheme.space.xl,
   },
-  serverText: {
-    fontSize: 12,
-    color: "#6C63FF",
-    fontWeight: "600",
-  },
-  serverChange: {
-    fontSize: 11,
-    color: "#94a3b8",
-    textDecorationLine: "underline",
-  },
-  form: {
+  companyIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface },
+  companyCopy: { flex: 1 },
+  companyCaption: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  companyName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900", marginTop: 1 },
+  companyDomain: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 1 },
+  changeButton: {
+    minHeight: LAYOUT_TOUCH_TARGETS.compact,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
+    paddingHorizontal: fieldTheme.space.sm,
+    borderRadius: fieldTheme.radius.sm,
   },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#334155",
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  input: {
-    backgroundColor: "#F4F5F9",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: "#0B0B1E",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  passwordRow: {
+  changeText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
+  formTitle: { color: fieldTheme.color.ink, fontSize: 27, lineHeight: 33, fontWeight: "900" },
+  formBody: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, marginTop: fieldTheme.space.sm, marginBottom: fieldTheme.space.lg },
+  label: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800", marginTop: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
+  inputWrap: {
+    minHeight: 56,
+    borderWidth: 1.5,
+    borderColor: fieldTheme.color.border,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    paddingLeft: fieldTheme.space.lg,
   },
-  eyeButton: {
-    padding: 10,
-  },
-  eyeText: {
-    fontSize: 20,
-  },
-  rememberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 14,
-    gap: 8,
-  },
+  inputWrapError: { borderColor: fieldTheme.color.danger },
+  input: { flex: 1, minHeight: 54, paddingHorizontal: fieldTheme.space.md, color: fieldTheme.color.ink, fontSize: 16 },
+  eyeButton: { minWidth: LAYOUT_TOUCH_TARGETS.compact, minHeight: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center" },
+  rememberRow: { minHeight: 54, flexDirection: "row", alignItems: "center", marginTop: fieldTheme.space.md },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 7,
     borderWidth: 2,
-    borderColor: "#d1d5db",
+    borderColor: fieldTheme.color.border,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
   },
-  checkboxChecked: {
-    backgroundColor: "#6C63FF",
-    borderColor: "#6C63FF",
-  },
-  checkmark: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  rememberText: {
-    fontSize: 13,
-    color: "#64748b",
-  },
-  button: {
-    backgroundColor: "#6C63FF",
-    borderRadius: 10,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  footer: {
-    textAlign: "center",
-    color: "#94a3b8",
-    fontSize: 12,
-    marginTop: 24,
-  },
+  checkboxChecked: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  rememberCopy: { flex: 1, marginLeft: fieldTheme.space.md },
+  rememberText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  rememberHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, marginTop: 1 },
   revokedBanner: {
-    backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.sm,
+    backgroundColor: fieldTheme.color.dangerSoft,
+    borderRadius: fieldTheme.radius.md,
+    padding: fieldTheme.space.md,
+    marginBottom: fieldTheme.space.md,
   },
-  revokedTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#B91C1C",
-    marginBottom: 2,
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.sm,
+    backgroundColor: fieldTheme.color.dangerSoft,
+    borderRadius: fieldTheme.radius.md,
+    padding: fieldTheme.space.md,
+    marginTop: fieldTheme.space.md,
   },
-  revokedBody: {
-    fontSize: 12,
-    color: "#7F1D1D",
-    lineHeight: 16,
+  errorCopy: { flex: 1 },
+  errorTitle: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
+  errorText: { color: "#762A2A", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  primaryButton: {
+    minHeight: 56,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.coral,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    marginTop: fieldTheme.space.lg,
+    paddingHorizontal: fieldTheme.space.lg,
   },
+  primaryPressed: { backgroundColor: "#842F1E", transform: [{ scale: 0.99 }] },
+  primaryText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
+  disabled: { opacity: 0.65 },
+  helpText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center", marginTop: fieldTheme.space.md },
+  pressed: { opacity: 0.72 },
 })
