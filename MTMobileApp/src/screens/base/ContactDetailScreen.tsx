@@ -553,7 +553,7 @@ function FriendlySummary({
 }) {
   const address = [snapshot.primaryWorkplace?.city, snapshot.primaryWorkplace?.address].filter(Boolean).join(", ")
   const currentAssessment = detail.doctorAssessments[0]
-  const managementAvailable = canChange || (!offline && detail.canManage) || detail.canRecordBrandPotential
+  const managementAvailable = detail.canManage || detail.canRequestChanges || detail.canRecordBrandPotential
   const hasSecondaryContact = Boolean(
     (onCall && primaryAction !== "call")
     || (onWhatsapp && primaryAction !== "whatsapp")
@@ -678,6 +678,7 @@ function FriendlySummary({
           muted
         >
           <View style={styles.manageGrid}>
+            {offline && !detail.canRecordBrandPotential && <Text style={styles.manageOfflineNote}>{t("contacts.friendlyManageOffline")}</Text>}
             {canChange && <ManageAction icon="create-outline" label={agentRequest ? t("contacts.requestChange") : t("common.change")} onPress={onEdit} />}
             {canChange && detail.status !== "DUPLICATE" && detail.status !== "MERGED" && <ManageAction icon="git-compare-outline" label={t("contacts.reportDuplicate")} onPress={onDuplicate} />}
             {canChange && <ManageAction icon="business-outline" label={t("contacts.addWorkplace")} onPress={onAddWorkplace} />}
@@ -1012,6 +1013,7 @@ const styles = StyleSheet.create({
   navigateBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
   rowBadge: { minWidth: 26, textAlign: "center", color: fieldTheme.color.amber, backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 7, paddingVertical: 4, fontSize: 10, fontWeight: "900" },
   manageGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  manageOfflineNote: { flex: 1, minWidth: 220, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 18, padding: 10 },
   manageAction: { minHeight: 50, minWidth: 150, flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 12, borderRadius: 12, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   manageActionText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", textAlign: "center" },
   sectionReturn: { gap: 10, marginBottom: fieldTheme.space.md },
