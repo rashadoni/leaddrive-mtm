@@ -30,8 +30,9 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth } from "../../theme/layoutBreakpoints"
+import { taskWorkflowStatus, type TaskWorkflowStatus } from "./tasks-workflow-state"
 
-type TaskStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED"
+type TaskStatus = TaskWorkflowStatus
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
 
 interface Task {
@@ -39,6 +40,7 @@ interface Task {
   title: string
   description?: string | null
   status: string
+  persistedStatus?: string | null
   priority: string
   dueDate?: string | null
   result?: string | null
@@ -384,13 +386,13 @@ function daysFromToday(iso?: string | null): number | null {
 
 function isOverdue(task: Task): boolean {
   const days = daysFromToday(task.dueDate)
-  return days !== null && days < 0 && task.status !== "COMPLETED"
+  return days !== null && days < 0 && taskWorkflowStatus(task) !== "COMPLETED"
 }
 
 function dueText(task: Task, copy: FriendlyCopy, language: string): string {
   const days = daysFromToday(task.dueDate)
   if (days === null) return copy.noDue
-  if (task.status === "COMPLETED") {
+  if (taskWorkflowStatus(task) === "COMPLETED") {
     return new Date(task.dueDate as string).toLocaleDateString(language, { day: "numeric", month: "short" })
   }
   if (days < 0) return copy.overdueDays(Math.abs(days))
@@ -519,7 +521,11 @@ export default function TasksScreen() {
     failureMessage: string,
   ) => {
     setUpdatingTaskId(task.id)
-    setTasks((previous) => previous.map((item) => (item.id === task.id ? { ...item, status: newStatus, result: result ?? item.result } : item)))
+    setTasks((previous) => previous.map((item) => (
+      item.id === task.id
+        ? { ...item, status: newStatus, persistedStatus: newStatus, result: result ?? item.result }
+        : item
+    )))
     try {
       await queueTaskStatusUpdate(task.id, newStatus, result)
       const flush = await flushOutbox((operations) => api.syncPush(operations))
@@ -638,14 +644,14 @@ export default function TasksScreen() {
   }
 
   const filtered = useMemo(
-    () => sortTasks(tasks.filter((task) => task.status === activeTab)),
+    () => sortTasks(tasks.filter((task) => taskWorkflowStatus(task) === activeTab)),
     [activeTab, tasks],
   )
   const focusedTask = filtered.find((task) => task.id === focusedTaskId) ?? filtered[0] ?? null
   const overdueCount = tasks.filter(isOverdue).length
-  const dueTodayCount = tasks.filter((task) => daysFromToday(task.dueDate) === 0 && task.status !== "COMPLETED").length
-  const inProgressCount = tasks.filter((task) => task.status === "IN_PROGRESS").length
-  const pendingCount = tasks.filter((task) => task.status === "PENDING").length
+  const dueTodayCount = tasks.filter((task) => daysFromToday(task.dueDate) === 0 && taskWorkflowStatus(task) !== "COMPLETED").length
+  const inProgressCount = tasks.filter((task) => taskWorkflowStatus(task) === "IN_PROGRESS").length
+  const pendingCount = tasks.filter((task) => taskWorkflowStatus(task) === "PENDING").length
   const recommendedTab: TaskStatus | null = inProgressCount > 0 ? "IN_PROGRESS" : pendingCount > 0 ? "PENDING" : null
   const focusMessage = inProgressCount > 0
     ? copy.focusActive
@@ -956,7 +962,7 @@ function TaskCard({
   const priorityCopy = copy.priority[priority]
   const visual = priorityVisual(priority)
   const overdue = isOverdue(task)
-  const status = STATUS_TABS.includes(task.status as TaskStatus) ? task.status as TaskStatus : "PENDING"
+  const status = taskWorkflowStatus(task)
   const customerName = task.customer?.name?.trim()
   const progress = taskProgress(task)
   return (
@@ -1052,7 +1058,7 @@ function TaskDetailPanel({
   const priority = normalizedPriority(task.priority)
   const priorityCopy = copy.priority[priority]
   const visual = priorityVisual(priority)
-  const status = STATUS_TABS.includes(task.status as TaskStatus) ? task.status as TaskStatus : "PENDING"
+  const status = taskWorkflowStatus(task)
   const progress = taskProgress(task)
   return (
     <ScrollView contentContainerStyle={styles.detailContent} showsVerticalScrollIndicator={false}>

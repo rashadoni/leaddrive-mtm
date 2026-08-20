@@ -13,6 +13,7 @@ export interface RawTask {
   title: string
   description?: string | null
   status?: string | null
+  persistedStatus?: string | null
   priority?: string | null
   dueDate?: string | null
   startedAt?: string | null
@@ -41,6 +42,7 @@ export interface TaskDetail {
   title: string
   description: string | null
   status: string
+  persistedStatus: string
   priority: string
   dueDate: string | null
   startedAt: string | null
@@ -81,6 +83,7 @@ export function toTaskDetail(raw: RawTask): TaskDetail {
     title: raw.title,
     description: str(raw.description),
     status: str(raw.status) ?? "PENDING",
+    persistedStatus: str(raw.persistedStatus) ?? str(raw.status) ?? "PENDING",
     priority: str(raw.priority) ?? "MEDIUM",
     dueDate: str(raw.dueDate),
     startedAt: str(raw.startedAt),
