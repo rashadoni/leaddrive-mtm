@@ -1,11 +1,9 @@
 name: Build Android APK
 
 # Builds the MTMobileApp release APK and publishes it as a workflow artifact.
-# Signing: if the MTM_RELEASE_KEYSTORE_B64 secret is set (base64 of
-# mtm-release.keystore), the APK is signed with the real release key and can
-# update existing installs. Without the secret, build.gradle falls back to the
-# debug keystore — the APK installs fine but CANNOT update an install signed
-# with the release key (uninstall/reinstall required).
+# Signing is fail-closed: a release is never produced with the debug key.
+# This guarantees that every published APK can update an existing production
+# install instead of failing with Android's "invalid package" message.
 
 on:
   push:
@@ -53,7 +51,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: MTMobileApp/package-lock.json
 
@@ -71,18 +69,18 @@ jobs:
       - name: Run tests
         run: npx jest --ci
 
-      - name: Materialize release keystore (optional)
+      - name: Materialize required release keystore
         if: steps.scope.outputs.build == 'true'
         env:
           KEYSTORE_B64: ${{ secrets.MTM_RELEASE_KEYSTORE_B64 }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > android/app/mtm-release.keystore
-            echo "Release keystore materialized — APK will be release-signed."
-          else
-            echo "No MTM_RELEASE_KEYSTORE_B64 secret — falling back to debug signing."
-            echo "::warning::APK will be DEBUG-signed: it installs, but cannot update an existing release-signed install."
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::MTM_RELEASE_KEYSTORE_B64 is required. Refusing to publish a debug-signed release."
+            exit 1
           fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/mtm-release.keystore
+          chmod 600 android/app/mtm-release.keystore
+          test -s android/app/mtm-release.keystore
 
       - name: Build release APK
         if: steps.scope.outputs.build == 'true'
@@ -100,11 +98,30 @@ jobs:
           echo "file=$OUT" >> "$GITHUB_OUTPUT"
           ls -lh "$OUT"
 
+      - name: Verify package, version and release signature
+        if: steps.scope.outputs.build == 'true'
+        env:
+          APK_FILE: ${{ steps.apk.outputs.file }}
+          EXPECTED_VERSION: ${{ steps.apk.outputs.version }}
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          test -n "$AAPT"
+          "$APKSIGNER" verify --verbose --print-certs "$APK_FILE"
+          BADGING=$("$AAPT" dump badging "$APK_FILE" | head -n 1)
+          printf '%s\n' "$BADGING"
+          printf '%s\n' "$BADGING" | grep -q "name='com.mtmobileapp'"
+          printf '%s\n' "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'"
+          sha256sum "$APK_FILE" | tee "$APK_FILE.sha256"
+
       - uses: actions/upload-artifact@v4
         if: steps.scope.outputs.build == 'true'
         with:
           name: leaddrive-mtm-apk-v${{ steps.apk.outputs.version }}
-          path: MTMobileApp/${{ steps.apk.outputs.file }}
+          path: |
+            MTMobileApp/${{ steps.apk.outputs.file }}
+            MTMobileApp/${{ steps.apk.outputs.file }}.sha256
           retention-days: 30
           if-no-files-found: error
 
@@ -116,8 +133,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v${{ steps.apk.outputs.version }}-build${{ github.run_number }}"
+          SHA256=$(cut -d ' ' -f 1 "${{ steps.apk.outputs.file }}.sha256")
           gh release create "$TAG" --prerelease \
             --title "MTM App ${TAG}" \
-            --notes "CI build of ${GITHUB_SHA} (branch ${GITHUB_REF_NAME})" \
+            --notes "CI build of ${GITHUB_SHA} (branch ${GITHUB_REF_NAME}). SHA-256: ${SHA256}" \
             --target "${GITHUB_SHA}" || true
-          gh release upload "$TAG" "${{ steps.apk.outputs.file }}" --clobber
+          gh release upload "$TAG" \
+            "${{ steps.apk.outputs.file }}" \
+            "${{ steps.apk.outputs.file }}.sha256" \
+            --clobber
