@@ -67,9 +67,11 @@ export default function ProfileScreen() {
         api.getProfile().catch(() => null),
         api.getAlerts({ resolved: false }).catch(() => null),
       ])
-      if (profileResult?.success) setProfile(profileResult.data)
-      if (alertsResult?.success) setAlerts(alertsResult.data?.alerts || [])
-      setLoadError(!profileResult && !alertsResult)
+      const profileLoaded = profileResult?.success === true
+      const alertsLoaded = alertsResult?.success === true
+      if (profileLoaded) setProfile(profileResult.data)
+      if (alertsLoaded) setAlerts(alertsResult.data?.alerts || [])
+      setLoadError(!profileLoaded && !alertsLoaded)
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") setLoadError(true)
     } finally {
@@ -157,10 +159,10 @@ export default function ProfileScreen() {
       <SectionCard icon="cloud-done-outline" title={t("profile.connectionTitle")}>
         <InfoRow icon="business-outline" label={t("profile.infoServer")} value={serverDomain || "—"} />
         <InfoRow
-          icon="checkmark-circle-outline"
+          icon={loadError ? "cloud-offline-outline" : "checkmark-circle-outline"}
           label={t("profile.infoStatus")}
-          value={t("profile.statusConnected")}
-          valueColor={fieldTheme.color.success}
+          value={t(loadError ? "profile.statusNotConfirmed" : "profile.statusConnected")}
+          valueColor={loadError ? fieldTheme.color.amber : fieldTheme.color.success}
         />
         {canSyncField ? <View style={styles.syncRow}><SyncStatusChip /></View> : null}
       </SectionCard>

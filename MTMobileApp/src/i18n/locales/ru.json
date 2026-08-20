@@ -607,6 +607,7 @@
     "infoServer": "Сервер",
     "infoStatus": "Статус",
     "statusConnected": "Подключено",
+    "statusNotConfirmed": "Связь не подтверждена",
     "logoutTitle": "Выйти",
     "logoutMessage": "Вы уверены, что хотите выйти? Придётся войти заново.",
     "logoutConfirm": "Выйти",

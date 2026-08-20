@@ -606,6 +606,7 @@
     "infoServer": "Server",
     "infoStatus": "Status",
     "statusConnected": "Qoşulu",
+    "statusNotConfirmed": "Bağlantı təsdiqlənməyib",
     "logoutTitle": "Çıxış",
     "logoutMessage": "Hesabınızdan çıxmaq istədiyinizə əminsiniz? Yenidən daxil olmalı olacaqsınız.",
     "logoutConfirm": "Çıxış",

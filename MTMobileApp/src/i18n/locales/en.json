@@ -655,6 +655,7 @@
     "infoServer": "Server",
     "infoStatus": "Status",
     "statusConnected": "Connected",
+    "statusNotConfirmed": "Connection not confirmed",
     "logoutTitle": "Logout",
     "logoutMessage": "Are you sure you want to logout? You'll need to sign in again.",
     "logoutConfirm": "Logout",
