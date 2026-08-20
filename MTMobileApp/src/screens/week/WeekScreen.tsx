@@ -16,10 +16,17 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
-import { toWeekData, shiftDateKey, type WeekData, type WeekDay } from "../../services/week"
+import {
+  toWeekData,
+  shiftDateKey,
+  type WeekData,
+  type WeekDay,
+  type WeekTaskItem,
+} from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTabletWidth } from "../../theme/layoutBreakpoints"
+import { useAuthStore } from "../../store/auth"
 
 type CalendarLanguage = "ru" | "az" | "en"
 
@@ -52,6 +59,24 @@ const CALENDAR_COPY = {
     nextWeek: "Следующая неделя",
     visitsShort: "Визиты",
     tasksShort: "Задачи",
+    noAgenda: "На этот день планов нет",
+    noAgendaBody: "Новые визиты или задачи появятся здесь автоматически.",
+    noTasks: "Задач на этот день нет",
+    noTasksBody: "Если руководитель назначит задачу, она появится здесь.",
+    openTask: "Открыть задачу",
+    untitledTask: "Задача без названия",
+    taskPending: "К выполнению",
+    taskInProgress: "В работе",
+    taskCompleted: "Готово",
+    taskOverdue: "Просрочено",
+    taskCancelled: "Отменено",
+    taskStatus: "Задача",
+    priorityLow: "Обычная",
+    priorityMedium: "Важная",
+    priorityHigh: "Высокая",
+    priorityUrgent: "Срочная",
+    priorityLabel: "Приоритет",
+    client: "Клиент",
   },
   az: {
     title: "Təqvim",
@@ -81,6 +106,24 @@ const CALENDAR_COPY = {
     nextWeek: "Növbəti həftə",
     visitsShort: "Ziyarət",
     tasksShort: "Tapşırıq",
+    noAgenda: "Bu gün üçün plan yoxdur",
+    noAgendaBody: "Yeni ziyarət və ya tapşırıq burada avtomatik görünəcək.",
+    noTasks: "Bu gün üçün tapşırıq yoxdur",
+    noTasksBody: "Rəhbər tapşırıq verəndə burada görünəcək.",
+    openTask: "Tapşırığı aç",
+    untitledTask: "Adsız tapşırıq",
+    taskPending: "Görüləcək",
+    taskInProgress: "İcrada",
+    taskCompleted: "Tamam",
+    taskOverdue: "Gecikib",
+    taskCancelled: "Ləğv edilib",
+    taskStatus: "Tapşırıq",
+    priorityLow: "Adi",
+    priorityMedium: "Vacib",
+    priorityHigh: "Yüksək",
+    priorityUrgent: "Təcili",
+    priorityLabel: "Prioritet",
+    client: "Müştəri",
   },
   en: {
     title: "Calendar",
@@ -110,8 +153,28 @@ const CALENDAR_COPY = {
     nextWeek: "Next week",
     visitsShort: "Visits",
     tasksShort: "Tasks",
+    noAgenda: "Nothing is planned for this day",
+    noAgendaBody: "New visits or tasks will appear here automatically.",
+    noTasks: "No tasks planned for this day",
+    noTasksBody: "A task will appear here when your manager assigns it.",
+    openTask: "Open task",
+    untitledTask: "Untitled task",
+    taskPending: "To do",
+    taskInProgress: "In progress",
+    taskCompleted: "Done",
+    taskOverdue: "Overdue",
+    taskCancelled: "Cancelled",
+    taskStatus: "Task",
+    priorityLow: "Routine",
+    priorityMedium: "Important",
+    priorityHigh: "High",
+    priorityUrgent: "Urgent",
+    priorityLabel: "Priority",
+    client: "Client",
   },
 } as const
+
+type Copy = typeof CALENDAR_COPY[CalendarLanguage]
 
 export function calendarLanguage(language: string): CalendarLanguage {
   if (language.toLowerCase().startsWith("az")) return "az"
@@ -121,6 +184,82 @@ export function calendarLanguage(language: string): CalendarLanguage {
 
 export function calendarLayout(width: number): "phone" | "tablet" {
   return isTabletWidth(width) ? "tablet" : "phone"
+}
+
+type AgendaTaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+
+function normalizedTaskPriority(priority?: string | null): AgendaTaskPriority {
+  const value = String(priority || "MEDIUM").toUpperCase()
+  return value === "LOW" || value === "HIGH" || value === "URGENT" ? value : "MEDIUM"
+}
+
+function taskStatusPresentation(task: WeekTaskItem, copy: Copy) {
+  const status = String(task.status || "PENDING").toUpperCase()
+  if (status === "COMPLETED") {
+    return {
+      label: copy.taskCompleted,
+      icon: "checkmark-circle" as const,
+      ink: fieldTheme.color.success,
+      fill: fieldTheme.color.successSoft,
+    }
+  }
+  const dueAt = task.dueDate ? new Date(task.dueDate).getTime() : Number.NaN
+  if (status === "OVERDUE" || (
+    status !== "COMPLETED"
+    && status !== "CANCELLED"
+    && Number.isFinite(dueAt)
+    && dueAt < Date.now()
+  )) {
+    return {
+      label: copy.taskOverdue,
+      icon: "alert-circle" as const,
+      ink: fieldTheme.color.danger,
+      fill: fieldTheme.color.dangerSoft,
+    }
+  }
+  if (status === "IN_PROGRESS") {
+    return {
+      label: copy.taskInProgress,
+      icon: "play-circle" as const,
+      ink: fieldTheme.color.blue,
+      fill: fieldTheme.color.blueSoft,
+    }
+  }
+  if (status === "CANCELLED") {
+    return {
+      label: copy.taskCancelled,
+      icon: "close-circle" as const,
+      ink: fieldTheme.color.inkMuted,
+      fill: fieldTheme.color.surfaceStrong,
+    }
+  }
+  if (status === "PENDING") {
+    return {
+      label: copy.taskPending,
+      icon: "time" as const,
+      ink: fieldTheme.color.amber,
+      fill: fieldTheme.color.amberSoft,
+    }
+  }
+  return {
+    label: copy.taskStatus,
+    icon: "ellipse" as const,
+    ink: fieldTheme.color.inkMuted,
+    fill: fieldTheme.color.surfaceStrong,
+  }
+}
+
+function taskPriorityPresentation(priority: string | null | undefined, copy: Copy) {
+  switch (normalizedTaskPriority(priority)) {
+    case "URGENT":
+      return { label: copy.priorityUrgent, ink: fieldTheme.color.danger, fill: fieldTheme.color.dangerSoft }
+    case "HIGH":
+      return { label: copy.priorityHigh, ink: fieldTheme.color.coral, fill: fieldTheme.color.coralSoft }
+    case "LOW":
+      return { label: copy.priorityLow, ink: fieldTheme.color.success, fill: fieldTheme.color.successSoft }
+    default:
+      return { label: copy.priorityMedium, ink: fieldTheme.color.amber, fill: fieldTheme.color.amberSoft }
+  }
 }
 
 function dateFromKey(dateKey: string): Date | null {
@@ -163,6 +302,7 @@ export default function WeekScreen() {
   const { width } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
+  const myAgentId = useAuthStore((state) => state.agent?.id)
   const [anchor, setAnchor] = useState<string | null>(null)
   const [data, setData] = useState<WeekData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -257,6 +397,12 @@ export default function WeekScreen() {
     navigation.navigate("VisitWorkspace", { visitId: id, name })
   }
 
+  const openTask = (task: WeekTaskItem) => {
+    navigation.navigate("TaskDetail", {
+      task: { ...task, agentId: task.agentId ?? myAgentId ?? null },
+    })
+  }
+
   const refreshControl = (
     <RefreshControl
       refreshing={refreshing}
@@ -348,6 +494,7 @@ export default function WeekScreen() {
                     t={t}
                     touchTarget={touchTarget}
                     onVisitPress={openVisit}
+                    onTaskPress={openTask}
                   />
                 ) : (
                   <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
@@ -368,6 +515,7 @@ export default function WeekScreen() {
                   t={t}
                   touchTarget={touchTarget}
                   onVisitPress={openVisit}
+                  onTaskPress={openTask}
                   onLayout={(event) => { phoneDayY.current[day.date] = event.nativeEvent.layout.y }}
                 />
               ))}
@@ -615,7 +763,7 @@ function DaySelector({ day, lang, selected, touchTarget, todayLabel, visitsLabel
           {day.isToday && <Text style={styles.todayTag}>{todayLabel}</Text>}
         </View>
         <Text style={styles.daySelectorMeta}>
-          {day.isWorkingDay
+          {day.isWorkingDay || day.visitsTotal > 0 || day.tasksTotal > 0
             ? `${visitsLabel} ${day.visitsCompleted}/${day.visitsTotal} · ${tasksLabel} ${day.tasksCompleted}/${day.tasksTotal}`
             : day.nonWorkingReason || "—"}
         </Text>
@@ -625,16 +773,16 @@ function DaySelector({ day, lang, selected, touchTarget, todayLabel, visitsLabel
   )
 }
 
-type Copy = typeof CALENDAR_COPY[CalendarLanguage]
-
-function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress }: {
+function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }: {
   day: WeekDay
   lang: string
   copy: Copy
   t: (key: string, options?: any) => string
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
+  onTaskPress: (task: WeekTaskItem) => void
 }) {
+  const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
     <View>
       <Text style={styles.sectionEyebrow}>{copy.dayPlan}</Text>
@@ -652,30 +800,41 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress }: {
       </View>
 
       {day.isWorkingDay ? (
-        <>
-          <View style={styles.dayMetrics}>
-            <DayMetric icon="navigate-outline" value={String(day.plannedStops)} label={copy.routeStops} />
-            <DayMetric icon="checkmark-circle-outline" value={`${day.visitsCompleted}/${day.visitsTotal}`} label={copy.visitsDone} />
-            <DayMetric icon="checkbox-outline" value={`${day.tasksCompleted}/${day.tasksTotal}`} label={copy.tasksDone} />
-          </View>
-          <VisitList day={day} copy={copy} touchTarget={touchTarget} onVisitPress={onVisitPress} />
-        </>
+        <View style={styles.dayMetrics}>
+          <DayMetric icon="navigate-outline" value={String(day.plannedStops)} label={copy.routeStops} />
+          <DayMetric icon="checkmark-circle-outline" value={`${day.visitsCompleted}/${day.visitsTotal}`} label={copy.visitsDone} />
+          <DayMetric icon="checkbox-outline" value={`${day.tasksCompleted}/${day.tasksTotal}`} label={copy.tasksDone} />
+        </View>
+      ) : hasAgenda ? (
+        <DayOffNotice reason={day.nonWorkingReason || t("week.dayOff")} />
       ) : (
         <DayOffState reason={day.nonWorkingReason || t("week.dayOff")} />
+      )}
+
+      {(day.isWorkingDay || hasAgenda) && (
+        <DayAgenda
+          day={day}
+          copy={copy}
+          touchTarget={touchTarget}
+          onVisitPress={onVisitPress}
+          onTaskPress={onTaskPress}
+        />
       )}
     </View>
   )
 }
 
-function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onLayout }: {
+function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onLayout }: {
   day: WeekDay
   lang: string
   copy: Copy
   t: (key: string, options?: any) => string
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
+  onTaskPress: (task: WeekTaskItem) => void
   onLayout: (event: LayoutChangeEvent) => void
 }) {
+  const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
     <View style={[styles.phoneDay, day.isToday && styles.phoneDayToday]} onLayout={onLayout}>
       <View style={styles.phoneDayHeading}>
@@ -695,16 +854,26 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onLayout }: {
       </View>
 
       {day.isWorkingDay ? (
-        <>
-          <View style={styles.phoneMetrics}>
-            <CompactMetric icon="navigate-outline" value={String(day.plannedStops)} label={copy.routeStops} />
-            <CompactMetric icon="checkmark-circle-outline" value={`${day.visitsCompleted}/${day.visitsTotal}`} label={copy.visitsDone} />
-            <CompactMetric icon="checkbox-outline" value={`${day.tasksCompleted}/${day.tasksTotal}`} label={copy.tasksDone} />
-          </View>
-          <VisitList day={day} copy={copy} touchTarget={touchTarget} onVisitPress={onVisitPress} compact />
-        </>
+        <View style={styles.phoneMetrics}>
+          <CompactMetric icon="navigate-outline" value={String(day.plannedStops)} label={copy.routeStops} />
+          <CompactMetric icon="checkmark-circle-outline" value={`${day.visitsCompleted}/${day.visitsTotal}`} label={copy.visitsDone} />
+          <CompactMetric icon="checkbox-outline" value={`${day.tasksCompleted}/${day.tasksTotal}`} label={copy.tasksDone} />
+        </View>
+      ) : hasAgenda ? (
+        <DayOffNotice reason={day.nonWorkingReason || t("week.dayOff")} compact />
       ) : (
         <Text style={styles.dayOffText}>{day.nonWorkingReason || t("week.dayOff")}</Text>
+      )}
+
+      {(day.isWorkingDay || hasAgenda) && (
+        <DayAgenda
+          day={day}
+          copy={copy}
+          touchTarget={touchTarget}
+          onVisitPress={onVisitPress}
+          onTaskPress={onTaskPress}
+          compact
+        />
       )}
     </View>
   )
@@ -728,6 +897,160 @@ function CompactMetric({ icon, value, label }: { icon: string; value: string; la
         <Text style={styles.compactMetricValue}>{value}</Text>
       </View>
       <Text style={styles.compactMetricLabel}>{label}</Text>
+    </View>
+  )
+}
+
+function DayAgenda({ day, copy, touchTarget, onVisitPress, onTaskPress, compact = false }: {
+  day: WeekDay
+  copy: Copy
+  touchTarget: number
+  onVisitPress: (id: string, name: string) => void
+  onTaskPress: (task: WeekTaskItem) => void
+  compact?: boolean
+}) {
+  const agendaEmpty = day.visitsTotal === 0
+    && day.tasksTotal === 0
+    && day.visits.length === 0
+    && day.tasks.length === 0
+  if (agendaEmpty) {
+    return (
+      <View style={[styles.agendaEmpty, compact && styles.agendaEmptyCompact]}>
+        <Icon name="calendar-clear-outline" size={22} color={fieldTheme.color.inkMuted} />
+        <View style={styles.noticeCopy}>
+          <Text style={styles.visitEmptyTitle}>{copy.noAgenda}</Text>
+          <Text style={styles.visitEmptyBody}>{copy.noAgendaBody}</Text>
+        </View>
+      </View>
+    )
+  }
+  return (
+    <>
+      <AgendaSection
+        icon="checkmark-circle-outline"
+        label={copy.visitsShort}
+        count={day.visitsTotal}
+        compact={compact}
+      >
+        <VisitList
+          day={day}
+          copy={copy}
+          touchTarget={touchTarget}
+          onVisitPress={onVisitPress}
+          compact={compact}
+        />
+      </AgendaSection>
+      <AgendaSection
+        icon="checkbox-outline"
+        label={copy.tasksShort}
+        count={day.tasksTotal}
+        compact={compact}
+      >
+        <TaskList
+          tasks={day.tasks}
+          copy={copy}
+          touchTarget={touchTarget}
+          onTaskPress={onTaskPress}
+          compact={compact}
+        />
+      </AgendaSection>
+    </>
+  )
+}
+
+function AgendaSection({ icon, label, count, compact, children }: {
+  icon: string
+  label: string
+  count: number
+  compact: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <View style={[styles.agendaSection, compact && styles.agendaSectionCompact]}>
+      <View style={styles.agendaHeading}>
+        <Icon name={icon} size={18} color={fieldTheme.color.primary} />
+        <Text style={styles.agendaHeadingText}>{label}</Text>
+        <View style={styles.agendaCount}>
+          <Text style={styles.agendaCountText}>{count}</Text>
+        </View>
+      </View>
+      {children}
+    </View>
+  )
+}
+
+function TaskList({ tasks, copy, touchTarget, onTaskPress, compact = false }: {
+  tasks: WeekTaskItem[]
+  copy: Copy
+  touchTarget: number
+  onTaskPress: (task: WeekTaskItem) => void
+  compact?: boolean
+}) {
+  if (tasks.length === 0) {
+    return (
+      <View style={[styles.visitEmpty, compact && styles.visitEmptyCompact]}>
+        <Icon name="checkbox-outline" size={22} color={fieldTheme.color.inkMuted} />
+        <View style={styles.noticeCopy}>
+          <Text style={styles.visitEmptyTitle}>{copy.noTasks}</Text>
+          {!compact && <Text style={styles.visitEmptyBody}>{copy.noTasksBody}</Text>}
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.visitList}>
+      {tasks.map((task) => {
+        const status = taskStatusPresentation(task, copy)
+        const priority = taskPriorityPresentation(task.priority, copy)
+        const title = task.title || copy.untitledTask
+        const customerName = task.customer?.name || null
+        return (
+          <Pressable
+            key={task.id}
+            accessibilityRole="button"
+            accessibilityLabel={[
+              copy.openTask,
+              title,
+              status.label,
+              priority.label,
+              customerName,
+            ].filter(Boolean).join(", ")}
+            onPress={() => onTaskPress(task)}
+            style={({ pressed }) => [
+              styles.taskRow,
+              { minHeight: touchTarget },
+              pressed && styles.visitRowPressed,
+            ]}
+          >
+            <View style={[styles.taskStatusIcon, { backgroundColor: status.fill }]}>
+              <Icon name={status.icon} size={21} color={status.ink} />
+            </View>
+            <View style={styles.visitCopy}>
+              <Text style={styles.taskTitle} numberOfLines={2}>{title}</Text>
+              {task.description ? (
+                <Text style={styles.taskDescription} numberOfLines={compact ? 1 : 2}>{task.description}</Text>
+              ) : null}
+              <View style={styles.taskSignals}>
+                <View style={[styles.taskSignal, { backgroundColor: status.fill }]}>
+                  <Text style={[styles.taskSignalText, { color: status.ink }]}>{status.label}</Text>
+                </View>
+                <View style={[styles.taskSignal, { backgroundColor: priority.fill }]}>
+                  <Icon name="flag-outline" size={13} color={priority.ink} />
+                  <Text style={[styles.taskSignalText, { color: priority.ink }]}>{copy.priorityLabel}: {priority.label}</Text>
+                </View>
+              </View>
+              {customerName ? (
+                <View style={styles.taskCustomer}>
+                  <Icon name="business-outline" size={14} color={fieldTheme.color.inkMuted} />
+                  <Text style={styles.taskCustomerText} numberOfLines={1}>{copy.client}: {customerName}</Text>
+                </View>
+              ) : null}
+            </View>
+            <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+          </Pressable>
+        )
+      })}
     </View>
   )
 }
@@ -783,6 +1106,15 @@ function VisitList({ day, copy, touchTarget, onVisitPress, compact = false }: {
           </Pressable>
         )
       })}
+    </View>
+  )
+}
+
+function DayOffNotice({ reason, compact = false }: { reason: string; compact?: boolean }) {
+  return (
+    <View style={[styles.dayOffNotice, compact && styles.dayOffNoticeCompact]}>
+      <Icon name="moon-outline" size={20} color={fieldTheme.color.inkMuted} />
+      <Text style={styles.dayOffNoticeText}>{reason}</Text>
     </View>
   )
 }
@@ -952,7 +1284,15 @@ const styles = StyleSheet.create({
   compactMetricTop: { flexDirection: "row", alignItems: "center", gap: 6 },
   compactMetricValue: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   compactMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 9, lineHeight: 12, fontWeight: "600", marginTop: 3 },
-  visitList: { gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xl },
+  agendaSection: { marginTop: fieldTheme.space.xl, gap: fieldTheme.space.sm },
+  agendaSectionCompact: { marginTop: fieldTheme.space.lg },
+  agendaEmpty: { minHeight: 82, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, marginTop: fieldTheme.space.xl },
+  agendaEmptyCompact: { marginTop: fieldTheme.space.lg },
+  agendaHeading: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  agendaHeadingText: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  agendaCount: { minWidth: 28, height: 24, alignItems: "center", justifyContent: "center", paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  agendaCountText: { color: fieldTheme.color.primary, fontSize: 11, lineHeight: 15, fontWeight: "900" },
+  visitList: { gap: fieldTheme.space.sm },
   visitRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   visitRowCompact: { marginTop: 0 },
   visitRowPressed: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
@@ -960,11 +1300,23 @@ const styles = StyleSheet.create({
   visitName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   visitStatus: { color: fieldTheme.color.blue, fontSize: 11, lineHeight: 15, fontWeight: "700", marginTop: 2 },
   visitStatusDone: { color: fieldTheme.color.success },
-  visitEmpty: { minHeight: 82, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, marginTop: fieldTheme.space.xl },
-  visitEmptyCompact: { minHeight: 56, marginTop: fieldTheme.space.md },
+  visitEmpty: { minHeight: 82, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
+  visitEmptyCompact: { minHeight: 56 },
   visitEmptyTitle: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   visitEmptyBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  taskRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  taskStatusIcon: { width: 40, height: 40, flexShrink: 0, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  taskTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  taskDescription: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
+  taskSignals: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: fieldTheme.space.sm },
+  taskSignal: { minHeight: 26, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill },
+  taskSignalText: { fontSize: 10, lineHeight: 14, fontWeight: "800" },
+  taskCustomer: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: fieldTheme.space.sm },
+  taskCustomerText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "600" },
   dayOffText: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, fontWeight: "600", marginTop: fieldTheme.space.md },
+  dayOffNotice: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, marginTop: fieldTheme.space.xl },
+  dayOffNoticeCompact: { marginTop: fieldTheme.space.md },
+  dayOffNoticeText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   dayOffState: { minHeight: 180, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, marginTop: fieldTheme.space.xl, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
   dayOffStateText: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, fontWeight: "700" },
 })

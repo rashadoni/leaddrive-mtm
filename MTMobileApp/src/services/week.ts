@@ -4,11 +4,23 @@
  * unit-tested. Backed by the server GET /mobile/week seven-day contract.
  */
 
+import type { RawTask } from "./task-detail"
+
 export interface WeekVisitItem {
   id: string
   name: string
   status: string
   checkInAt?: string
+}
+
+/**
+ * A task returned inside `/mobile/week`. The endpoint intentionally sends the
+ * same core fields consumed by TaskDetail, so tapping an agenda row can open a
+ * useful offline-first detail immediately without another network request.
+ */
+export interface WeekTaskItem extends RawTask {
+  status: string
+  priority: string
 }
 
 export interface WeekDay {
@@ -24,6 +36,7 @@ export interface WeekDay {
   visitsTotal: number
   visitsCompleted: number
   visits: WeekVisitItem[]
+  tasks: WeekTaskItem[]
 }
 
 export interface WeekSummary {
@@ -62,6 +75,7 @@ function mapDay(raw: any): WeekDay {
     0,
   )
   const visitItems = Array.isArray(raw?.visits?.items) ? raw.visits.items : []
+  const taskItems = Array.isArray(raw?.tasks?.items) ? raw.tasks.items : []
   return {
     date: String(raw?.date ?? ""),
     isToday: Boolean(raw?.isToday),
@@ -79,6 +93,18 @@ function mapDay(raw: any): WeekDay {
       name: optStr(v?.customer?.name) ?? optStr(v?.contact?.displayName) ?? "",
       status: optStr(v?.status) ?? "",
       checkInAt: optStr(v?.checkInAt),
+    })),
+    tasks: taskItems.map((task: any) => ({
+      id: String(task?.id ?? ""),
+      title: optStr(task?.title) ?? "",
+      description: optStr(task?.description),
+      status: optStr(task?.status) ?? "PENDING",
+      priority: optStr(task?.priority) ?? "MEDIUM",
+      dueDate: optStr(task?.dueDate),
+      completedAt: optStr(task?.completedAt),
+      customer: task?.customer
+        ? { name: optStr(task.customer.name) }
+        : null,
     })),
   }
 }
