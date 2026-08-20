@@ -27,6 +27,7 @@ import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
+import TodayScreen from "../screens/today/TodayScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ContactTransferScreen from "../screens/manager/ContactTransferScreen.android"
@@ -69,7 +70,7 @@ const PlanningScreen = () => <ManagerWorkspaceScreen kind="planning" />
 const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 
 const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
-  Today: DashboardScreen,
+  Today: TodayScreen,
   Calendar: WeekScreen,
   Route: RouteScreen,
   Tasks: TasksScreen,
