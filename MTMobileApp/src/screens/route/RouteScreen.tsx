@@ -39,6 +39,12 @@ import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTabletWidth } from "../../theme/layoutBreakpoints"
+import {
+  routeScreenPresentation,
+  type RouteBannerMode,
+  type RouteDataOrigin,
+  type RouteLoadIssue,
+} from "./route-screen-state"
 
 interface RoutePoint {
   id: string
@@ -100,8 +106,14 @@ const ROUTE_COPY = {
     loading: "Получаем маршрут и ваши визиты…",
     offlineTitle: "Нет связи — работаем офлайн",
     offlineBody: "Показываем сохранённый маршрут. Действия отправятся, когда интернет вернётся.",
+    retainedTitle: "Связь потеряна",
+    retainedBody: "Показываем маршрут, открытый ранее. Новые действия отправятся, когда интернет вернётся.",
+    offlineUnavailableTitle: "Маршрут не загрузился",
+    offlineUnavailableBody: "Нет связи, а сохранённого маршрута на сегодня нет. Проверьте интернет и попробуйте снова.",
     slowTitle: "Сервер отвечает медленно",
     slowBody: "Маршрут не исчез. Попробуйте обновить ещё раз.",
+    slowUnavailableBody: "Не удалось загрузить маршрут, и сохранённой копии на сегодня нет. Попробуйте снова.",
+    retry: "Попробовать снова",
     hint: "Потяните список вниз для обновления. Зелёная карточка всегда показывает одно главное действие.",
     dismissHint: "Скрыть подсказку",
     close: "Закрыть",
@@ -149,8 +161,14 @@ const ROUTE_COPY = {
     loading: "Marşrut və ziyarətlər yüklənir…",
     offlineTitle: "Bağlantı yoxdur — oflayn işləyirik",
     offlineBody: "Yadda saxlanmış marşrut göstərilir. Əməliyyatlar internet qayıdanda göndəriləcək.",
+    retainedTitle: "Bağlantı kəsildi",
+    retainedBody: "Əvvəl açılmış marşrut göstərilir. Yeni əməliyyatlar bağlantı bərpa olunanda göndəriləcək.",
+    offlineUnavailableTitle: "Marşrut yüklənmədi",
+    offlineUnavailableBody: "Bağlantı yoxdur və bu gün üçün yadda saxlanmış marşrut tapılmadı. İnterneti yoxlayın və yenidən cəhd edin.",
     slowTitle: "Server gec cavab verir",
     slowBody: "Marşrut itməyib. Yenidən yeniləməyə çalışın.",
+    slowUnavailableBody: "Marşrutu yükləmək mümkün olmadı və bu gün üçün yadda saxlanmış nüsxə yoxdur. Yenidən cəhd edin.",
+    retry: "Yenidən cəhd et",
     hint: "Yeniləmək üçün siyahını aşağı çəkin. Yaşıl kart həmişə bir əsas əməliyyat göstərir.",
     dismissHint: "Məsləhəti gizlət",
     close: "Bağla",
@@ -198,8 +216,14 @@ const ROUTE_COPY = {
     loading: "Loading your route and visits…",
     offlineTitle: "No connection — working offline",
     offlineBody: "Showing the saved route. Actions will send when the connection returns.",
+    retainedTitle: "Connection lost",
+    retainedBody: "Showing the route opened earlier. New actions will send when the connection returns.",
+    offlineUnavailableTitle: "Route could not load",
+    offlineUnavailableBody: "There is no connection and no saved route for today. Check your connection and try again.",
     slowTitle: "The server is responding slowly",
     slowBody: "Your route has not disappeared. Try refreshing again.",
+    slowUnavailableBody: "The route could not load and there is no saved copy for today. Try again.",
+    retry: "Try again",
     hint: "Pull the list down to refresh. The green panel always shows one main action.",
     dismissHint: "Hide hint",
     close: "Close",
@@ -354,26 +378,32 @@ function JourneySteps({
 }
 
 function ConnectionBanner({
-  offline,
-  slowConnection,
+  mode,
   copy,
 }: {
-  offline: boolean
-  slowConnection: boolean
+  mode: RouteBannerMode
   copy: (typeof ROUTE_COPY)[RouteLanguage]
 }) {
-  if (!offline && !slowConnection) return null
-  const slowOnly = slowConnection && !offline
+  if (!mode) return null
+  const slowOnly = mode === "slow-retained"
+  const cached = mode === "cached"
   return (
-    <View style={[styles.connectionBanner, slowOnly && styles.connectionBannerSlow]}>
+    <View
+      style={[styles.connectionBanner, slowOnly && styles.connectionBannerSlow]}
+      accessibilityLiveRegion="polite"
+    >
       <Icon
         name={slowOnly ? "speedometer-outline" : "cloud-offline-outline"}
         size={22}
         color={slowOnly ? fieldTheme.color.amber : fieldTheme.color.coral}
       />
       <View style={styles.connectionCopy}>
-        <Text style={styles.connectionTitle}>{slowOnly ? copy.slowTitle : copy.offlineTitle}</Text>
-        <Text style={styles.connectionBody}>{slowOnly ? copy.slowBody : copy.offlineBody}</Text>
+        <Text style={styles.connectionTitle}>
+          {slowOnly ? copy.slowTitle : cached ? copy.offlineTitle : copy.retainedTitle}
+        </Text>
+        <Text style={styles.connectionBody}>
+          {slowOnly ? copy.slowBody : cached ? copy.offlineBody : copy.retainedBody}
+        </Text>
       </View>
     </View>
   )
@@ -704,8 +734,8 @@ export default function RouteScreen() {
   const [notesVisible, setNotesVisible] = useState(false)
   const [photoCount, setPhotoCount] = useState(0)
   const [cameraVisible, setCameraVisible] = useState(false)
-  const [slowConnection, setSlowConnection] = useState(false)
-  const [offline, setOffline] = useState(false)
+  const [routeOrigin, setRouteOrigin] = useState<RouteDataOrigin>("none")
+  const [loadIssue, setLoadIssue] = useState<RouteLoadIssue>("none")
 
   const fetchActiveVisit = useCallback(async () => {
     try {
@@ -744,12 +774,12 @@ export default function RouteScreen() {
   }, [activeVisit])
 
   const fetchRoute = useCallback(async (signal?: AbortSignal) => {
-    setSlowConnection(false)
+    setLoadIssue("none")
     const today = localRouteDateKey()
     try {
       let response = await api.getRoutes(today, signal)
       if (!response.success || !response.data?.routes?.length) response = await api.getRoutes(undefined, signal)
-      setOffline(false)
+      if (!response.success) throw new Error(response.error || "ROUTE_LOAD_FAILED")
       if (response.success && response.data?.routes?.length > 0) {
         const activeStatuses = new Set(["PLANNED", "IN_PROGRESS"])
         const activeForToday = response.data.routes
@@ -758,6 +788,7 @@ export default function RouteScreen() {
         const routeData = activeForToday[0]
         if (!routeData) {
           setRoute(null)
+          setRouteOrigin("none")
           return
         }
         if (routeData.id) {
@@ -769,14 +800,17 @@ export default function RouteScreen() {
             )
           })
           const detail = await api.getRoute(routeData.id, coords ?? undefined, signal)
-          if (detail.success) {
+          if (detail.success && detail.data) {
             setRoute(detail.data)
+            setRouteOrigin("live")
             return
           }
         }
         setRoute(routeData)
+        setRouteOrigin("live")
       } else {
         setRoute(null)
+        setRouteOrigin("none")
       }
     } catch (error: any) {
       if (error.message === "ABORTED" || error.message === "SESSION_EXPIRED") return
@@ -786,14 +820,14 @@ export default function RouteScreen() {
           const cached = await readOfflineRoute(authAgent.organizationId, authAgent.id)
           if (cached && routeDateKey(cached.date) === today) {
             setRoute(cached)
-            setOffline(true)
+            setRouteOrigin("cache")
           }
         } catch {}
       }
       if (error.message === "REQUEST_TIMEOUT") {
-        setSlowConnection(true)
+        setLoadIssue("timeout")
       } else {
-        setOffline(true)
+        setLoadIssue("offline")
         console.warn("Failed to fetch route:", error.message)
       }
     } finally {
@@ -835,6 +869,12 @@ export default function RouteScreen() {
         : focusPoint
           ? 2
           : 1
+  const presentation = routeScreenPresentation({
+    loading,
+    hasRoute: Boolean(route),
+    routeOrigin,
+    issue: loadIssue,
+  })
 
   useEffect(() => {
     if (selectedPointId && !sortedPoints.some((point) => point.id === selectedPointId)) setSelectedPointId(null)
@@ -1066,19 +1106,46 @@ export default function RouteScreen() {
     </View>
   )
 
-  const emptyState = loading ? (
+  const emptyMode = presentation.empty ?? "no-route"
+  const emptyError = emptyMode === "offline-unavailable" || emptyMode === "slow-unavailable"
+  const emptyState = emptyMode === "loading" ? (
     <View style={styles.emptyState}>
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.emptyTitle}>{copy.loading}</Text>
     </View>
   ) : (
-    <View style={styles.emptyState}>
-      <View style={styles.emptyIcon}>
-        <Icon name="calendar-outline" size={30} color={fieldTheme.color.primary} />
+    <View style={styles.emptyState} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
+      <View style={[
+        styles.emptyIcon,
+        emptyMode === "offline-unavailable" && styles.emptyIconOffline,
+        emptyMode === "slow-unavailable" && styles.emptyIconSlow,
+      ]}>
+        <Icon
+          name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : "calendar-outline"}
+          size={30}
+          color={emptyMode === "offline-unavailable" ? fieldTheme.color.coral : emptyMode === "slow-unavailable" ? fieldTheme.color.amber : fieldTheme.color.primary}
+        />
       </View>
-      <Text style={styles.emptyTitle}>{slowConnection ? copy.slowTitle : t("route.noRouteTitle")}</Text>
-      <Text style={styles.emptyBody}>{slowConnection ? copy.slowBody : t("route.noRouteHint")}</Text>
-      <ActionButton label={copy.refresh} icon="refresh" onPress={() => { setLoading(true); fetchRoute() }} tone="secondary" />
+      <Text style={styles.emptyTitle}>
+        {emptyMode === "offline-unavailable"
+          ? copy.offlineUnavailableTitle
+          : emptyMode === "slow-unavailable"
+            ? copy.slowTitle
+            : t("route.noRouteTitle")}
+      </Text>
+      <Text style={styles.emptyBody}>
+        {emptyMode === "offline-unavailable"
+          ? copy.offlineUnavailableBody
+          : emptyMode === "slow-unavailable"
+            ? copy.slowUnavailableBody
+            : t("route.noRouteHint")}
+      </Text>
+      <ActionButton
+        label={emptyError ? copy.retry : copy.refresh}
+        icon="refresh"
+        onPress={() => { setLoading(true); fetchRoute() }}
+        tone="secondary"
+      />
     </View>
   )
 
@@ -1087,7 +1154,7 @@ export default function RouteScreen() {
       <View style={styles.container}>
         {header}
         <View style={styles.tabletTop}>
-          <ConnectionBanner offline={offline} slowConnection={slowConnection} copy={copy} />
+          <ConnectionBanner mode={presentation.banner} copy={copy} />
           <JourneySteps activeStep={currentStep} copy={copy} compact={false} />
           {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
         </View>
@@ -1151,7 +1218,7 @@ export default function RouteScreen() {
           <>
             {header}
             <View style={styles.phoneMain}>
-              <ConnectionBanner offline={offline} slowConnection={slowConnection} copy={copy} />
+              <ConnectionBanner mode={presentation.banner} copy={copy} />
               <JourneySteps activeStep={currentStep} copy={copy} compact />
               {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : emptyState}
               {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
@@ -1422,6 +1489,8 @@ const styles = StyleSheet.create({
   completeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   emptyState: { alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xxl, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, marginTop: fieldTheme.space.lg },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  emptyIconOffline: { backgroundColor: fieldTheme.color.coralSoft },
+  emptyIconSlow: { backgroundColor: fieldTheme.color.amberSoft },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
 
