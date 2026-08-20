@@ -1,20 +1,24 @@
-import React, { useEffect, useState, useCallback, useRef } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
+  ActivityIndicator,
   Alert,
+  FlatList,
   Linking,
   Modal,
-  Animated,
-  Platform,
-  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import Icon from "react-native-vector-icons/Ionicons"
+import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
@@ -28,11 +32,13 @@ import {
 } from "../../services/visit-outbox"
 import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
+import { useHintsStore } from "../../store/hints"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
-import HintCard from "../../components/HintCard"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { LAYOUT_TOUCH_TARGETS, isTabletWidth } from "../../theme/layoutBreakpoints"
 
 interface RoutePoint {
   id: string
@@ -54,12 +60,174 @@ interface Route {
   points: RoutePoint[]
 }
 
+type RouteLanguage = "ru" | "az" | "en"
+
+const ROUTE_COPY = {
+  ru: {
+    title: "Маршрут на сегодня",
+    subtitle: "Идите по точкам по порядку — приложение подскажет следующий шаг.",
+    plannedRoute: "Плановый маршрут",
+    plannedRouteBody: "Точки, которые менеджер включил в план на сегодня.",
+    nextStop: "Следующая точка",
+    selectedStop: "Выбранная точка",
+    activeVisit: "Сейчас идёт визит",
+    routeComplete: "Маршрут выполнен",
+    routeCompleteBody: "Все плановые точки на сегодня посещены.",
+    progress: "{{done}} из {{total}} точек готово",
+    remaining: "Осталось: {{count}}",
+    openMaps: "Построить путь",
+    alreadyHere: "Я уже на месте",
+    arrivedCheckIn: "Я приехал — начать визит",
+    takePhoto: "Сделать фото",
+    takeAnotherPhoto: "Добавить ещё фото",
+    finishVisit: "Завершить визит",
+    finishingVisit: "Завершение…",
+    waitingForSync: "Ожидает отправки",
+    photos: "Фото: {{count}}",
+    visitTimer: "Визит идёт {{minutes}} мин",
+    recommended: "Рекомендуем идти по порядку. Следующая: {{name}}.",
+    visited: "Посещено",
+    skipped: "Пропущено",
+    planned: "В плане",
+    stopNumber: "Точка {{number}}",
+    distanceAway: "До точки {{distance}}",
+    noAddress: "Адрес не указан. Можно начать визит, когда вы на месте.",
+    chooseStop: "Выберите точку слева, чтобы увидеть следующий шаг.",
+    unplannedTitle: "Нужен визит вне маршрута?",
+    unplannedBody: "Откройте «Визиты» для клиента, которого нет в сегодняшнем плане.",
+    openVisits: "Открыть внеплановый визит",
+    refresh: "Обновить маршрут",
+    loading: "Получаем маршрут и ваши визиты…",
+    offlineTitle: "Нет связи — работаем офлайн",
+    offlineBody: "Показываем сохранённый маршрут. Действия отправятся, когда интернет вернётся.",
+    slowTitle: "Сервер отвечает медленно",
+    slowBody: "Маршрут не исчез. Попробуйте обновить ещё раз.",
+    hint: "Потяните список вниз для обновления. Зелёная карточка всегда показывает одно главное действие.",
+    dismissHint: "Скрыть подсказку",
+    close: "Закрыть",
+    step1: "Точка",
+    step2: "Путь",
+    step3: "Приезд",
+    step4: "Визит",
+    step5: "Готово",
+    currentStep: "Шаг {{step}} из 5: {{label}}",
+  },
+  az: {
+    title: "Bugünkü marşrut",
+    subtitle: "Nöqtələri ardıcıllıqla keçin — tətbiq növbəti addımı göstərəcək.",
+    plannedRoute: "Planlı marşrut",
+    plannedRouteBody: "Menecerin bu gün üçün plana əlavə etdiyi nöqtələr.",
+    nextStop: "Növbəti nöqtə",
+    selectedStop: "Seçilmiş nöqtə",
+    activeVisit: "Ziyarət davam edir",
+    routeComplete: "Marşrut tamamlandı",
+    routeCompleteBody: "Bu günün bütün planlı nöqtələri ziyarət edilib.",
+    progress: "{{total}} nöqtədən {{done}} hazırdır",
+    remaining: "Qalıb: {{count}}",
+    openMaps: "Yolu aç",
+    alreadyHere: "Artıq buradayam",
+    arrivedCheckIn: "Gəldim — ziyarətə başla",
+    takePhoto: "Foto çək",
+    takeAnotherPhoto: "Daha bir foto əlavə et",
+    finishVisit: "Ziyarəti bitir",
+    finishingVisit: "Ziyarət bitirilir…",
+    waitingForSync: "Göndərilmə gözlənilir",
+    photos: "Foto: {{count}}",
+    visitTimer: "Ziyarət {{minutes}} dəqiqədir davam edir",
+    recommended: "Ardıcıllıqla getmək məsləhətdir. Növbəti: {{name}}.",
+    visited: "Ziyarət edilib",
+    skipped: "Buraxılıb",
+    planned: "Plandadır",
+    stopNumber: "Nöqtə {{number}}",
+    distanceAway: "Nöqtəyə {{distance}}",
+    noAddress: "Ünvan göstərilməyib. Məkanda olduqda ziyarətə başlaya bilərsiniz.",
+    chooseStop: "Növbəti addımı görmək üçün soldan nöqtə seçin.",
+    unplannedTitle: "Marşrutdan kənar ziyarət lazımdır?",
+    unplannedBody: "Bugünkü planda olmayan müştəri üçün «Ziyarətlər» bölməsini açın.",
+    openVisits: "Plandan kənar ziyarəti aç",
+    refresh: "Marşrutu yenilə",
+    loading: "Marşrut və ziyarətlər yüklənir…",
+    offlineTitle: "Bağlantı yoxdur — oflayn işləyirik",
+    offlineBody: "Yadda saxlanmış marşrut göstərilir. Əməliyyatlar internet qayıdanda göndəriləcək.",
+    slowTitle: "Server gec cavab verir",
+    slowBody: "Marşrut itməyib. Yenidən yeniləməyə çalışın.",
+    hint: "Yeniləmək üçün siyahını aşağı çəkin. Yaşıl kart həmişə bir əsas əməliyyat göstərir.",
+    dismissHint: "Məsləhəti gizlət",
+    close: "Bağla",
+    step1: "Nöqtə",
+    step2: "Yol",
+    step3: "Gəliş",
+    step4: "Ziyarət",
+    step5: "Hazır",
+    currentStep: "5 addımdan {{step}}: {{label}}",
+  },
+  en: {
+    title: "Today's route",
+    subtitle: "Follow the stops in order — the app will show the next step.",
+    plannedRoute: "Planned route",
+    plannedRouteBody: "Stops your manager included in today's plan.",
+    nextStop: "Next stop",
+    selectedStop: "Selected stop",
+    activeVisit: "Visit in progress",
+    routeComplete: "Route complete",
+    routeCompleteBody: "Every planned stop for today has been visited.",
+    progress: "{{done}} of {{total}} stops complete",
+    remaining: "Left: {{count}}",
+    openMaps: "Get directions",
+    alreadyHere: "I'm already here",
+    arrivedCheckIn: "I've arrived — start visit",
+    takePhoto: "Take a photo",
+    takeAnotherPhoto: "Add another photo",
+    finishVisit: "Finish visit",
+    finishingVisit: "Finishing…",
+    waitingForSync: "Waiting to send",
+    photos: "Photos: {{count}}",
+    visitTimer: "Visit active for {{minutes}} min",
+    recommended: "Following the planned order is recommended. Next: {{name}}.",
+    visited: "Visited",
+    skipped: "Skipped",
+    planned: "Planned",
+    stopNumber: "Stop {{number}}",
+    distanceAway: "{{distance}} away",
+    noAddress: "No address is saved. You can start the visit when you are there.",
+    chooseStop: "Choose a stop on the left to see the next action.",
+    unplannedTitle: "Need an unplanned visit?",
+    unplannedBody: "Open Visits for a customer who is not in today's planned route.",
+    openVisits: "Open unplanned visit",
+    refresh: "Refresh route",
+    loading: "Loading your route and visits…",
+    offlineTitle: "No connection — working offline",
+    offlineBody: "Showing the saved route. Actions will send when the connection returns.",
+    slowTitle: "The server is responding slowly",
+    slowBody: "Your route has not disappeared. Try refreshing again.",
+    hint: "Pull the list down to refresh. The green panel always shows one main action.",
+    dismissHint: "Hide hint",
+    close: "Close",
+    step1: "Stop",
+    step2: "Travel",
+    step3: "Arrive",
+    step4: "Visit",
+    step5: "Done",
+    currentStep: "Step {{step}} of 5: {{label}}",
+  },
+} as const
+
 const GEOFENCE_DEFAULT = 100
 
+function routeLanguage(language: string): RouteLanguage {
+  if (language.toLowerCase().startsWith("az")) return "az"
+  if (language.toLowerCase().startsWith("en")) return "en"
+  return "ru"
+}
+
+export function routeLayout(width: number): "phone" | "tablet" {
+  return isTabletWidth(width) ? "tablet" : "phone"
+}
+
 function distanceColor(meters: number): string {
-  if (meters < GEOFENCE_DEFAULT) return "#22c55e"
-  if (meters < 500) return "#f59e0b"
-  return "#ef4444"
+  if (meters < GEOFENCE_DEFAULT) return fieldTheme.color.success
+  if (meters < 500) return fieldTheme.color.amber
+  return fieldTheme.color.danger
 }
 
 function formatDistance(meters: number): string {
@@ -67,157 +235,470 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`
 }
 
-// --- Bottom Sheet Component ---
-function PointBottomSheet({
-  visible,
-  point,
-  onClose,
-  onNavigate,
-  onCheckIn,
-  mutating,
+function localRouteDateKey(now: Date = new Date()): string {
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-")
+}
+
+function routeDateKey(value: unknown): string | null {
+  if (typeof value !== "string") return null
+  return value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? null
+}
+
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const radius = 6_371_000
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180
+  const deltaLat = toRadians(lat2 - lat1)
+  const deltaLon = toRadians(lon2 - lon1)
+  const a = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(deltaLon / 2) ** 2
+  return 2 * radius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function renderTemplate(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{{${key}}}`, String(value)),
+    template,
+  )
+}
+
+function pointStatus(point: RoutePoint, copy: (typeof ROUTE_COPY)[RouteLanguage]) {
+  if (point.status === "VISITED") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success }
+  if (point.status === "SKIPPED") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger }
+  return { label: copy.planned, icon: "ellipse-outline" as const, color: fieldTheme.color.inkMuted }
+}
+
+function ActionButton({
+  label,
+  icon,
+  onPress,
+  disabled = false,
+  tone = "primary",
 }: {
-  visible: boolean
-  point: RoutePoint | null
-  onClose: () => void
-  onNavigate: (point: RoutePoint) => void
-  onCheckIn: (point: RoutePoint) => void
-  mutating: boolean
+  label: string
+  icon: string
+  onPress: () => void
+  disabled?: boolean
+  tone?: "primary" | "secondary" | "danger"
 }) {
-  const { t, i18n } = useTranslation()
-  const slideAnim = useRef(new Animated.Value(400)).current
-  const backdropAnim = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }),
-        Animated.timing(backdropAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      ]).start()
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 400, duration: 200, useNativeDriver: true }),
-        Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start()
-    }
-  }, [visible, slideAnim, backdropAnim])
-
-  if (!point) return null
-
-  const isVisited = point.status === "VISITED"
-  const dist = point.distanceMeters
-  const isNear = dist != null && dist < GEOFENCE_DEFAULT
-
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[styles.sheetBackdrop, { opacity: backdropAnim }]}>
-        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={onClose} />
-      </Animated.View>
-      <Animated.View style={[styles.sheetContainer, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Handle bar */}
-        <View style={styles.sheetHandle} />
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionButton,
+        tone === "secondary" && styles.actionButtonSecondary,
+        tone === "danger" && styles.actionButtonDanger,
+        disabled && styles.buttonDisabled,
+        pressed && !disabled && styles.buttonPressed,
+      ]}
+    >
+      <Icon
+        name={icon}
+        size={21}
+        color={tone === "secondary" ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
+      />
+      <Text style={[styles.actionButtonText, tone === "secondary" && styles.actionButtonTextSecondary]}>
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
 
-        {/* Customer info */}
-        <View style={styles.sheetHeader}>
-          <View style={[styles.sheetAvatar, isVisited && { backgroundColor: "#dcfce7" }]}>
-            <Text style={[styles.sheetAvatarText, isVisited && { color: "#22c55e" }]}>
-              {isVisited ? "✓" : point.customer.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sheetName}>{point.customer.name}</Text>
-            {point.customer.address && (
-              <View style={styles.sheetAddressRow}>
-                <Text style={styles.sheetAddressIcon}>📍</Text>
-                <Text style={styles.sheetAddress}>{point.customer.address}</Text>
+function JourneySteps({
+  activeStep,
+  copy,
+  compact,
+}: {
+  activeStep: number
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+  compact: boolean
+}) {
+  const labels = [copy.step1, copy.step2, copy.step3, copy.step4, copy.step5]
+  return (
+    <View style={styles.stepsWrap} accessibilityLabel={renderTemplate(copy.currentStep, { step: activeStep, label: labels[activeStep - 1] })}>
+      <View style={styles.stepsRow}>
+        {labels.map((label, index) => {
+          const step = index + 1
+          const done = step < activeStep
+          const current = step === activeStep
+          return (
+            <React.Fragment key={label}>
+              <View style={styles.stepItem}>
+                <View style={[styles.stepCircle, done && styles.stepCircleDone, current && styles.stepCircleCurrent]}>
+                  {done ? (
+                    <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
+                  ) : (
+                    <Text style={[styles.stepNumber, current && styles.stepNumberCurrent]}>{step}</Text>
+                  )}
+                </View>
+                {!compact && <Text style={[styles.stepLabel, current && styles.stepLabelCurrent]}>{label}</Text>}
               </View>
-            )}
+              {index < labels.length - 1 && <View style={[styles.stepLine, done && styles.stepLineDone]} />}
+            </React.Fragment>
+          )
+        })}
+      </View>
+      {compact && (
+        <Text style={styles.currentStepText}>
+          {renderTemplate(copy.currentStep, { step: activeStep, label: labels[activeStep - 1] })}
+        </Text>
+      )}
+    </View>
+  )
+}
+
+function ConnectionBanner({
+  offline,
+  slowConnection,
+  copy,
+}: {
+  offline: boolean
+  slowConnection: boolean
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+}) {
+  if (!offline && !slowConnection) return null
+  const slowOnly = slowConnection && !offline
+  return (
+    <View style={[styles.connectionBanner, slowOnly && styles.connectionBannerSlow]}>
+      <Icon
+        name={slowOnly ? "speedometer-outline" : "cloud-offline-outline"}
+        size={22}
+        color={slowOnly ? fieldTheme.color.amber : fieldTheme.color.coral}
+      />
+      <View style={styles.connectionCopy}>
+        <Text style={styles.connectionTitle}>{slowOnly ? copy.slowTitle : copy.offlineTitle}</Text>
+        <Text style={styles.connectionBody}>{slowOnly ? copy.slowBody : copy.offlineBody}</Text>
+      </View>
+    </View>
+  )
+}
+
+function RouteSummary({
+  route,
+  done,
+  total,
+  remaining,
+  language,
+  copy,
+}: {
+  route: Route
+  done: number
+  total: number
+  remaining: number
+  language: string
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+}) {
+  const completion = total > 0 ? Math.round((done / total) * 100) : 0
+  return (
+    <View style={styles.summary}>
+      <View style={styles.summaryHeading}>
+        <View style={styles.summaryIcon}>
+          <Icon name="git-branch-outline" size={22} color={fieldTheme.color.primaryStrong} />
+        </View>
+        <View style={styles.summaryCopy}>
+          <Text style={styles.summaryEyebrow}>{copy.plannedRoute}</Text>
+          <Text style={styles.summaryTitle} numberOfLines={1}>{route.name || copy.title}</Text>
+          <Text style={styles.summaryDate}>
+            {new Date(route.date).toLocaleDateString(language, { weekday: "long", day: "numeric", month: "long" })}
+          </Text>
+          <Text style={styles.summaryBody}>{copy.plannedRouteBody}</Text>
+        </View>
+        <View style={styles.remainingPill}>
+          <Text style={styles.remainingText}>{renderTemplate(copy.remaining, { count: remaining })}</Text>
+        </View>
+      </View>
+      <View style={styles.progressHeader}>
+        <Text style={styles.progressText}>{renderTemplate(copy.progress, { done, total })}</Text>
+        <Text style={styles.progressPercent}>{completion}%</Text>
+      </View>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, { width: `${completion}%` }]} />
+      </View>
+    </View>
+  )
+}
+
+function StopRow({
+  point,
+  index,
+  selected,
+  recommended,
+  onPress,
+  language,
+  copy,
+}: {
+  point: RoutePoint
+  index: number
+  selected: boolean
+  recommended: boolean
+  onPress: () => void
+  language: string
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+}) {
+  const status = pointStatus(point, copy)
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${renderTemplate(copy.stopNumber, { number: index + 1 })}. ${point.customer.name}. ${status.label}`}
+      style={({ pressed }) => [styles.stopRow, selected && styles.stopRowSelected, pressed && styles.stopRowPressed]}
+    >
+      <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, point.status === "VISITED" && styles.stopNumberDone]}>
+        {point.status === "VISITED" ? (
+          <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />
+        ) : (
+          <Text style={[styles.stopNumberText, recommended && styles.stopNumberTextRecommended]}>{index + 1}</Text>
+        )}
+      </View>
+      <View style={styles.stopCopy}>
+        <View style={styles.stopTitleRow}>
+          <Text style={[styles.stopName, point.status === "VISITED" && styles.stopNameDone]} numberOfLines={1}>
+            {point.customer.name}
+          </Text>
+          <View style={styles.stopStatus}>
+            <Icon name={status.icon} size={14} color={status.color} />
+            <Text style={[styles.stopStatusText, { color: status.color }]}>{status.label}</Text>
           </View>
         </View>
-
-        {/* Distance & status chips */}
-        <View style={styles.sheetChips}>
-          {isVisited ? (
-            <View style={[styles.chip, { backgroundColor: "#dcfce7" }]}>
-              <Text style={[styles.chipText, { color: "#22c55e" }]}>
-                {t("route.visitedAtTime", {
-                  time: point.visitedAt
-                    ? new Date(point.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })
-                    : "",
-                })}
+        {point.customer.address ? <Text style={styles.stopAddress} numberOfLines={1}>{point.customer.address}</Text> : null}
+        <View style={styles.stopMeta}>
+          {point.visitedAt ? (
+            <View style={styles.metaItem}>
+              <Icon name="checkmark-circle-outline" size={15} color={fieldTheme.color.success} />
+              <Text style={[styles.metaText, { color: fieldTheme.color.success }]}>
+                {new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
               </Text>
             </View>
-          ) : (
-            <>
-              {dist != null && (
-                <View style={[styles.chip, { backgroundColor: distanceColor(dist) + "18" }]}>
-                  <Text style={[styles.chipText, { color: distanceColor(dist) }]}>
-                    {isNear ? "📍 " : "📏 "}{formatDistance(dist)}
-                  </Text>
-                </View>
-              )}
-              {point.plannedTime && (
-                <View style={[styles.chip, { backgroundColor: "#f0f0ff" }]}>
-                  <Text style={[styles.chipText, { color: "#6C63FF" }]}>
-                    🕐 {new Date(point.plannedTime).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
-                  </Text>
-                </View>
-              )}
-              <View style={[styles.chip, { backgroundColor: "#f8fafc" }]}>
-                <Text style={[styles.chipText, { color: "#94a3b8" }]}>
-                  {t("route.positionInRoute", { position: point.orderIndex + 1 })}
-                </Text>
-              </View>
-            </>
-          )}
+          ) : point.plannedTime ? (
+            <View style={styles.metaItem}>
+              <Icon name="time-outline" size={15} color={fieldTheme.color.inkMuted} />
+              <Text style={styles.metaText}>
+                {new Date(point.plannedTime).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
+              </Text>
+            </View>
+          ) : null}
+          {point.distanceMeters != null && point.status !== "VISITED" ? (
+            <View style={styles.metaItem}>
+              <Icon name="navigate-outline" size={15} color={distanceColor(point.distanceMeters)} />
+              <Text style={[styles.metaText, { color: distanceColor(point.distanceMeters) }]}>
+                {formatDistance(point.distanceMeters)}
+              </Text>
+            </View>
+          ) : null}
         </View>
+      </View>
+      <Icon name="chevron-forward" size={20} color={selected ? fieldTheme.color.primary : fieldTheme.color.border} />
+    </Pressable>
+  )
+}
 
-        {/* Action buttons */}
-        {!isVisited && (
-          <View style={styles.sheetActions}>
-            {point.customer.address && (
-              <TouchableOpacity
-                style={styles.sheetNavBtn}
-                onPress={() => { onClose(); onNavigate(point) }}
-              >
-                <Text style={styles.sheetNavIcon}>🧭</Text>
-                <Text style={styles.sheetNavText}>{t("route.navigate")}</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[styles.sheetCheckInBtn, mutating && { opacity: 0.6 }]}
-              onPress={() => onCheckIn(point)}
+function InlineHint({ text, dismissLabel }: { text: string; dismissLabel: string }) {
+  const enabled = useHintsStore((state) => state.enabled)
+  const dismissed = useHintsStore((state) => state.dismissed)
+  const hydrated = useHintsStore((state) => state.hydrated)
+  const dismiss = useHintsStore((state) => state.dismiss)
+  const id = "route.pullRefresh"
+  if (!hydrated || !enabled || dismissed.includes(id)) return null
+  return (
+    <View style={styles.hint}>
+      <Icon name="information-circle-outline" size={22} color={fieldTheme.color.blue} />
+      <Text style={styles.hintText}>{text}</Text>
+      <Pressable
+        onPress={() => dismiss(id)}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={dismissLabel}
+        style={styles.hintClose}
+      >
+        <Icon name="close" size={20} color={fieldTheme.color.inkMuted} />
+      </Pressable>
+    </View>
+  )
+}
+
+function UnplannedVisitCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; onPress: () => void }) {
+  return (
+    <View style={styles.unplannedCard}>
+      <View style={styles.unplannedHeading}>
+        <Icon name="add-circle-outline" size={23} color={fieldTheme.color.blue} />
+        <Text style={styles.unplannedTitle}>{copy.unplannedTitle}</Text>
+      </View>
+      <Text style={styles.unplannedBody}>{copy.unplannedBody}</Text>
+      <ActionButton label={copy.openVisits} icon="arrow-forward" onPress={onPress} tone="secondary" />
+    </View>
+  )
+}
+
+function PointActionPanel({
+  point,
+  nextPoint,
+  activeVisit,
+  navigationStarted,
+  photoCount,
+  elapsedMin,
+  mutating,
+  language,
+  copy,
+  onNavigate,
+  onCheckIn,
+  onPhoto,
+  onCheckOut,
+}: {
+  point: RoutePoint | null
+  nextPoint: RoutePoint | null
+  activeVisit: OptimisticVisit | null
+  navigationStarted: boolean
+  photoCount: number
+  elapsedMin: number
+  mutating: boolean
+  language: string
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+  onNavigate: (point: RoutePoint) => void
+  onCheckIn: (point: RoutePoint) => void
+  onPhoto: () => void
+  onCheckOut: () => void
+}) {
+  if (activeVisit) {
+    const pending = activeVisit.pendingCheckOut
+    const photoFirst = photoCount === 0
+    return (
+      <View style={styles.actionPanel}>
+        <View style={styles.actionEyebrowRow}>
+          <View style={styles.liveDot} />
+          <Text style={styles.actionEyebrow}>{copy.activeVisit}</Text>
+        </View>
+        <Text style={styles.actionTitle}>{activeVisit.customer?.name}</Text>
+        {activeVisit.customer?.address ? <Text style={styles.actionAddress}>{activeVisit.customer.address}</Text> : null}
+        <View style={styles.visitFacts}>
+          <View style={styles.factPill}>
+            <Icon name="time-outline" size={17} color={fieldTheme.color.primaryStrong} />
+            <Text style={styles.factText}>{renderTemplate(copy.visitTimer, { minutes: elapsedMin })}</Text>
+          </View>
+          <View style={styles.factPill}>
+            <Icon name="camera-outline" size={17} color={fieldTheme.color.primaryStrong} />
+            <Text style={styles.factText}>{renderTemplate(copy.photos, { count: photoCount })}</Text>
+          </View>
+        </View>
+        {pending ? (
+          <ActionButton label={copy.waitingForSync} icon="cloud-upload-outline" onPress={() => {}} disabled />
+        ) : photoFirst ? (
+          <>
+            <ActionButton label={copy.takePhoto} icon="camera" onPress={onPhoto} disabled={mutating} />
+            <ActionButton label={copy.finishVisit} icon="checkmark-circle-outline" onPress={onCheckOut} disabled={mutating} tone="secondary" />
+          </>
+        ) : (
+          <>
+            <ActionButton
+              label={mutating ? copy.finishingVisit : copy.finishVisit}
+              icon={mutating ? "hourglass-outline" : "checkmark-circle"}
+              onPress={onCheckOut}
               disabled={mutating}
-            >
-              <Text style={styles.sheetCheckInIcon}>{mutating ? "⏳" : "📋"}</Text>
-              <Text style={styles.sheetCheckInText}>{mutating ? t("route.checkingIn") : t("visit.checkInButton")}</Text>
-            </TouchableOpacity>
-          </View>
+            />
+            <ActionButton label={copy.takeAnotherPhoto} icon="camera-outline" onPress={onPhoto} disabled={mutating} tone="secondary" />
+          </>
         )}
+      </View>
+    )
+  }
 
-        {isVisited && (
-          <View style={styles.sheetVisitedNote}>
-            <Text style={styles.sheetVisitedText}>{t("route.alreadyVisited")}</Text>
+  if (!point) {
+    return (
+      <View style={styles.actionPanelEmpty}>
+        <Icon name="hand-left-outline" size={30} color={fieldTheme.color.primary} />
+        <Text style={styles.actionEmptyText}>{copy.chooseStop}</Text>
+      </View>
+    )
+  }
+
+  const visited = point.status === "VISITED"
+  const skipped = point.status === "SKIPPED"
+  const isRecommended = nextPoint?.id === point.id
+  const hasDirections = Boolean(point.customer.address || (point.customer.latitude != null && point.customer.longitude != null))
+  const showDirections = !navigationStarted && hasDirections
+
+  return (
+    <View style={styles.actionPanel}>
+      <Text style={styles.actionEyebrow}>{isRecommended ? copy.nextStop : copy.selectedStop}</Text>
+      <Text style={styles.actionTitle}>{point.customer.name}</Text>
+      {point.customer.address ? <Text style={styles.actionAddress}>{point.customer.address}</Text> : <Text style={styles.actionAddress}>{copy.noAddress}</Text>}
+      <View style={styles.detailFacts}>
+        <View style={styles.detailFact}>
+          <Icon name="list-outline" size={18} color={fieldTheme.color.inkMuted} />
+          <Text style={styles.detailFactText}>{renderTemplate(copy.stopNumber, { number: point.orderIndex + 1 })}</Text>
+        </View>
+        {point.plannedTime ? (
+          <View style={styles.detailFact}>
+            <Icon name="time-outline" size={18} color={fieldTheme.color.inkMuted} />
+            <Text style={styles.detailFactText}>
+              {new Date(point.plannedTime).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
+            </Text>
           </View>
-        )}
-      </Animated.View>
-    </Modal>
+        ) : null}
+        {point.distanceMeters != null ? (
+          <View style={styles.detailFact}>
+            <Icon name="navigate-outline" size={18} color={distanceColor(point.distanceMeters)} />
+            <Text style={[styles.detailFactText, { color: distanceColor(point.distanceMeters) }]}>
+              {renderTemplate(copy.distanceAway, { distance: formatDistance(point.distanceMeters) })}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+      {!isRecommended && nextPoint && !visited && !skipped ? (
+        <View style={styles.recommendation}>
+          <Icon name="information-circle-outline" size={19} color={fieldTheme.color.amber} />
+          <Text style={styles.recommendationText}>{renderTemplate(copy.recommended, { name: nextPoint.customer.name })}</Text>
+        </View>
+      ) : null}
+      {visited ? (
+        <View style={styles.completedState}>
+          <Icon name="checkmark-circle" size={27} color={fieldTheme.color.success} />
+          <Text style={styles.completedStateText}>{copy.visited}</Text>
+        </View>
+      ) : skipped ? (
+        <View style={styles.completedState}>
+          <Icon name="remove-circle" size={27} color={fieldTheme.color.danger} />
+          <Text style={styles.completedStateText}>{copy.skipped}</Text>
+        </View>
+      ) : showDirections ? (
+        <>
+          <ActionButton label={copy.openMaps} icon="navigate" onPress={() => onNavigate(point)} />
+          <ActionButton label={copy.alreadyHere} icon="location-outline" onPress={() => onCheckIn(point)} disabled={mutating} tone="secondary" />
+        </>
+      ) : (
+        <ActionButton
+          label={mutating ? copy.finishingVisit : copy.arrivedCheckIn}
+          icon={mutating ? "hourglass-outline" : "log-in-outline"}
+          onPress={() => onCheckIn(point)}
+          disabled={mutating}
+        />
+      )}
+    </View>
   )
 }
 
 export default function RouteScreen() {
   const { t, i18n } = useTranslation()
-  const agent = useAuthStore((s) => s.agent)
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const agent = useAuthStore((state) => state.agent)
+  const { width } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
+  const tablet = routeLayout(width) === "tablet"
+  const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
+  const copy = ROUTE_COPY[routeLanguage(i18n.language)]
   const [route, setRoute] = useState<Route | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [mutating, setMutating] = useState(false)
-  const [_agentCoords, setAgentCoords] = useState<{ latitude: number; longitude: number } | null>(null)
-  const [selectedPoint, setSelectedPoint] = useState<RoutePoint | null>(null)
-  const [sheetVisible, setSheetVisible] = useState(false)
-
-  // Active visit state
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
+  const [phonePanelVisible, setPhonePanelVisible] = useState(false)
+  const [navigationStartedFor, setNavigationStartedFor] = useState<string | null>(null)
   const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
@@ -226,32 +707,21 @@ export default function RouteScreen() {
   const [slowConnection, setSlowConnection] = useState(false)
   const [offline, setOffline] = useState(false)
 
-  useEffect(() => {
-    Geolocation.getCurrentPosition(
-      (pos) => setAgentCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-    )
-  }, [])
-
   const fetchActiveVisit = useCallback(async () => {
     try {
-      const res = await api.getVisits({ limit: 10 })
-      if (res.success) {
-        const visits = res.data?.visits || res.data || []
+      const response = await api.getVisits({ limit: 10 })
+      if (response.success) {
+        const visits = response.data?.visits || response.data || []
         const list = Array.isArray(visits) ? visits : []
-        const active = list.find((v: any) => v.status === "CHECKED_IN") || null
+        const active = list.find((visit: any) => visit.status === "CHECKED_IN") || null
         const reconciled = await reconcileOptimisticVisit(
           active ? { ...active, status: "CHECKED_IN", pendingCheckOut: false } : null,
         )
         setActiveVisit(reconciled)
-        if (!reconciled) { setPhotoCount(0) }
+        if (!reconciled) setPhotoCount(0)
       }
     } catch {
-      // Network error/timeout — keep the previous state. Nulling it here
-      // would hide the active-visit banner (with the check-out and photo
-      // buttons) mid-visit whenever a pull-to-refresh times out on a weak
-      // signal; the server truth lands on the next successful fetch.
+      // Keep the local visit visible when a refresh fails in weak coverage.
       try {
         const optimistic = await readOptimisticVisit()
         if (optimistic) setActiveVisit(optimistic)
@@ -259,126 +729,128 @@ export default function RouteScreen() {
     }
   }, [])
 
-  // Elapsed time timer for active visit
   useEffect(() => {
-    if (!activeVisit) { setElapsedMin(0); return }
-    const calc = () => {
-      const diff = Date.now() - new Date(activeVisit.checkInAt).getTime()
-      setElapsedMin(Math.floor(diff / 60000))
+    if (!activeVisit) {
+      setElapsedMin(0)
+      return
     }
-    calc()
-    const interval = setInterval(calc, 30000)
+    const update = () => {
+      const difference = Date.now() - new Date(activeVisit.checkInAt).getTime()
+      setElapsedMin(Math.floor(difference / 60000))
+    }
+    update()
+    const interval = setInterval(update, 30000)
     return () => clearInterval(interval)
   }, [activeVisit])
 
   const fetchRoute = useCallback(async (signal?: AbortSignal) => {
     setSlowConnection(false)
+    const today = localRouteDateKey()
     try {
-      const _now = new Date()
-      const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`
-      let res = await api.getRoutes(today, signal)
-      if (!res.success || !res.data?.routes?.length) {
-        res = await api.getRoutes(undefined, signal)
-      }
-      // Reaching here means the network responded (a failure would have
-      // thrown) — we are online, so clear any stale offline indicator.
+      let response = await api.getRoutes(today, signal)
+      if (!response.success || !response.data?.routes?.length) response = await api.getRoutes(undefined, signal)
       setOffline(false)
-      if (res.success && res.data?.routes?.length > 0) {
-        const now = new Date()
-        now.setHours(0, 0, 0, 0)
-        // Picker history:
-        //  v1: sorted ASC by date, took [0] — older route won when
-        //      two routes shared a date.
-        //  v2 (1.1.1): server now returns date DESC + createdAt DESC,
-        //      mobile filters to ACTIVE_STATUS and `date >= today`,
-        //      with fallback to res.data.routes[0] if empty.
-        //  v3 (this turn): the fallback was masking real "no route
-        //      today" scenarios — when an admin created a route with
-        //      a past date by mistake (e.g. typed 14.04 in DD.MM/MM.DD
-        //      confusion), there was no active route for today and
-        //      the fallback silently showed yesterday's COMPLETED
-        //      route, looking like "old route stuck." Now: no
-        //      fallback. If no active route matches, render the
-        //      empty state and let the agent ask their supervisor.
-        const ACTIVE_STATUS = new Set(["PLANNED", "IN_PROGRESS"])
-        const activeForToday = res.data.routes.filter((r: any) =>
-          new Date(r.date) >= now && ACTIVE_STATUS.has(r.status)
-        )
+      if (response.success && response.data?.routes?.length > 0) {
+        const activeStatuses = new Set(["PLANNED", "IN_PROGRESS"])
+        const activeForToday = response.data.routes
+          .filter((candidate: any) => routeDateKey(candidate.date) === today && activeStatuses.has(candidate.status))
+          .sort((left: any, right: any) => Number(right.status === "IN_PROGRESS") - Number(left.status === "IN_PROGRESS"))
         const routeData = activeForToday[0]
         if (!routeData) {
           setRoute(null)
           return
         }
-        if (routeData?.id) {
+        if (routeData.id) {
           const coords = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
             Geolocation.getCurrentPosition(
-              (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+              (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
               () => resolve(null),
-              { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+              { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
             )
           })
-          if (coords) setAgentCoords(coords)
           const detail = await api.getRoute(routeData.id, coords ?? undefined, signal)
-          if (detail.success) { setRoute(detail.data); return }
+          if (detail.success) {
+            setRoute(detail.data)
+            return
+          }
         }
         setRoute(routeData)
       } else {
         setRoute(null)
       }
-    } catch (e: any) {
-      // ABORTED = superseded/unmounted request; leave state untouched.
-      if (e.message === "ABORTED") return
-      if (e.message === "SESSION_EXPIRED") return
-      // Network/timeout failure — fall back to the durable sync cache so the
-      // rep still sees today's assigned route offline. Only fill when we have
-      // nothing live displayed, so a failed refresh never overwrites fresher
-      // server data with the cached copy.
+    } catch (error: any) {
+      if (error.message === "ABORTED" || error.message === "SESSION_EXPIRED") return
       const authAgent = useAuthStore.getState().agent
       if (authAgent) {
         try {
           const cached = await readOfflineRoute(authAgent.organizationId, authAgent.id)
-          if (cached) {
-            setRoute((prev) => prev ?? cached)
+          if (cached && routeDateKey(cached.date) === today) {
+            setRoute(cached)
             setOffline(true)
           }
         } catch {}
       }
-      if (e.message === "REQUEST_TIMEOUT") setSlowConnection(true)
-      else console.warn("Failed to fetch route:", e.message)
+      if (error.message === "REQUEST_TIMEOUT") {
+        setSlowConnection(true)
+      } else {
+        setOffline(true)
+        console.warn("Failed to fetch route:", error.message)
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }, [])
 
-  // Initial load + keep fresh: refetch on tab focus, on return from
-  // background and every 60s, so a route assigned in the admin panel
-  // appears by itself (fetchRoute/fetchActiveVisit are silent — they never
-  // flip loading flags on, so polling doesn't flash spinners).
   useAutoRefresh(
     useCallback(() => {
       fetchRoute()
       fetchActiveVisit()
-    }, [fetchRoute, fetchActiveVisit])
+    }, [fetchRoute, fetchActiveVisit]),
   )
 
-  const sortedPoints = route?.points ? [...route.points].sort((a, b) => a.orderIndex - b.orderIndex) : []
-  const displayTotalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0
-  const displayVisitedPoints = sortedPoints.length > 0
-    ? sortedPoints.filter((p) => p.status === "VISITED").length
+  const sortedPoints = useMemo(
+    () => route?.points ? [...route.points].sort((left, right) => left.orderIndex - right.orderIndex) : [],
+    [route?.points],
+  )
+  const totalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0
+  const visitedPoints = sortedPoints.length > 0
+    ? sortedPoints.filter((point) => point.status === "VISITED").length
     : route?.visitedPoints ?? 0
-  const completion = displayTotalPoints > 0
-    ? Math.round((displayVisitedPoints / displayTotalPoints) * 100)
-    : 0
-  const remaining = Math.max(displayTotalPoints - displayVisitedPoints, 0)
+  const remaining = Math.max(totalPoints - visitedPoints, 0)
+  const nextPoint = sortedPoints.find((point) => point.status === "PENDING") ?? null
+  const activeRoutePoint = activeVisit?.routePointId
+    ? sortedPoints.find((point) => point.id === activeVisit.routePointId) ?? null
+    : null
+  const selectedPoint = selectedPointId
+    ? sortedPoints.find((point) => point.id === selectedPointId) ?? null
+    : null
+  const focusPoint = activeRoutePoint ?? selectedPoint ?? nextPoint ?? sortedPoints[0] ?? null
+  const currentStep = remaining === 0 && totalPoints > 0
+    ? 5
+    : activeVisit
+      ? activeVisit.pendingCheckOut ? 5 : 4
+      : focusPoint && navigationStartedFor === focusPoint.id
+        ? 3
+        : focusPoint
+          ? 2
+          : 1
 
-  const handlePointPress = (point: RoutePoint) => {
-    setSelectedPoint(point)
-    setSheetVisible(true)
+  useEffect(() => {
+    if (selectedPointId && !sortedPoints.some((point) => point.id === selectedPointId)) setSelectedPointId(null)
+  }, [selectedPointId, sortedPoints])
+
+  const refresh = () => {
+    setRefreshing(true)
+    fetchRoute()
+    fetchActiveVisit()
   }
 
-  // Visit-level photo straight from the active-visit banner (mirrors VisitScreen
-  // so the agent doesn't have to switch tabs to snap a store photo).
+  const handlePointPress = (point: RoutePoint) => {
+    setSelectedPointId(point.id)
+    if (!tablet) setPhonePanelVisible(true)
+  }
+
   const handlePhotoTaken = async (path: string) => {
     if (!activeVisit) return
     let uploadCoords: { latitude: number; longitude: number } | null = null
@@ -387,9 +859,9 @@ export default function RouteScreen() {
       try {
         coords = await new Promise((resolve, reject) => {
           Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+            (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+            reject,
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
           )
         })
       } catch {}
@@ -401,10 +873,10 @@ export default function RouteScreen() {
         latitude: coords?.latitude,
         longitude: coords?.longitude,
       })
-      setPhotoCount((c) => c + 1)
-    } catch (e: any) {
-      if (e?.message !== "SESSION_EXPIRED") {
-        if (e?.code === "MAX_PHOTOS_REACHED") {
+      setPhotoCount((count) => count + 1)
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") {
+        if (error?.code === "MAX_PHOTOS_REACHED") {
           Alert.alert(t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
           await enqueueMediaUpload({
@@ -414,6 +886,7 @@ export default function RouteScreen() {
             latitude: uploadCoords?.latitude,
             longitude: uploadCoords?.longitude,
           })
+          setPhotoCount((count) => count + 1)
           Alert.alert(t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }
@@ -421,10 +894,17 @@ export default function RouteScreen() {
   }
 
   const handleNavigate = (point: RoutePoint) => {
-    if (point.customer.address) {
-      const addr = encodeURIComponent(point.customer.address)
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${addr}`)
-    }
+    const query = point.customer.address
+      ? point.customer.address
+      : point.customer.latitude != null && point.customer.longitude != null
+        ? `${point.customer.latitude},${point.customer.longitude}`
+        : ""
+    if (!query) return
+    setNavigationStartedFor(point.id)
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`).catch(() => {
+      setNavigationStartedFor(null)
+      Alert.alert(t("common.error"), copy.noAddress)
+    })
   }
 
   const handleCheckIn = async (point: RoutePoint) => {
@@ -435,35 +915,22 @@ export default function RouteScreen() {
       try {
         coords = await new Promise((resolve, reject) => {
           Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+            (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+            reject,
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
           )
         })
       } catch {
-        // Fresh GPS failed — fall back to cached position from location
-        // service silently. Location service streams continuous updates
-        // in the background, so the cached fix is typically <30s old.
-        // The downstream geofence check (below) is the only gate that
-        // matters; a modal here read as an error to users even when the
-        // cached accuracy was excellent (e.g. 10m).
-        //
-        // Staleness guard: if the background service died (Android killed
-        // the foreground process, permission revoked mid-session) the
-        // cache can grow arbitrarily old. Reject cache > STALE_LIMIT and
-        // fall through to the Retry alert so the user retries fresh GPS
-        // rather than checking in against a hours-old fix.
-        const STALE_LIMIT = 120_000 // 2 min
-        const cacheFresh = lastKnownPosition && (Date.now() - lastKnownPosition.timestamp) < STALE_LIMIT
+        const staleLimit = 120_000
+        const cacheFresh = lastKnownPosition && Date.now() - lastKnownPosition.timestamp < staleLimit
         if (cacheFresh) {
           coords = { latitude: lastKnownPosition!.latitude, longitude: lastKnownPosition!.longitude }
         } else {
-          // No fresh cached position — only allow retry
           await new Promise<void>((resolve) => {
             Alert.alert(
               t("route.locationUnavailableTitle"),
               t("route.locationUnavailableBody"),
-              [{ text: t("common.retry"), onPress: () => resolve() }]
+              [{ text: t("common.retry"), onPress: () => resolve() }],
             )
           })
           setMutating(false)
@@ -471,13 +938,16 @@ export default function RouteScreen() {
         }
       }
 
-      // F-28 client-gate: only SUPERVISOR/MANAGER/ADMIN see the "Try
-      // Anyway" override button. AGENT-role users get a single Cancel
-      // because the server would 403 the force=true POST anyway. This
-      // matches VisitScreen.tsx behavior and avoids a misleading
-      // success-looking button that actually fails server-side.
+      const measuredDistance = coords && point.customer.latitude != null && point.customer.longitude != null
+        ? Math.round(haversineDistance(
+            coords.latitude,
+            coords.longitude,
+            point.customer.latitude,
+            point.customer.longitude,
+          ))
+        : point.distanceMeters
       let forceCheckIn = false
-      if (coords && point.distanceMeters != null && point.distanceMeters > GEOFENCE_DEFAULT) {
+      if (coords && measuredDistance != null && measuredDistance > GEOFENCE_DEFAULT) {
         const canOverride = api.canForceCheckIn
         const proceed = await new Promise<boolean>((resolve) => {
           const buttons: Array<{ text: string; onPress: () => void; style?: "cancel" }> = canOverride
@@ -487,11 +957,14 @@ export default function RouteScreen() {
               ]
             : [{ text: t("common.ok"), onPress: () => resolve(false) }]
           const message = canOverride
-            ? t("visit.tooFarBody", { distance: formatDistance(point.distanceMeters!), name: point.customer.name, max: GEOFENCE_DEFAULT })
-            : t("route.tooFarSupervisorBody", { distance: formatDistance(point.distanceMeters!), name: point.customer.name, max: GEOFENCE_DEFAULT })
+            ? t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT })
+            : t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT })
           Alert.alert(t("visit.tooFarTitle"), message, buttons)
         })
-        if (!proceed) { setMutating(false); return }
+        if (!proceed) {
+          setMutating(false)
+          return
+        }
         forceCheckIn = true
       }
 
@@ -504,18 +977,16 @@ export default function RouteScreen() {
         routePointId: point.id,
       })
       setActiveVisit(visit)
-      setSheetVisible(false)
-      setSelectedPoint(null)
+      setPhonePanelVisible(false)
+      setSelectedPointId(point.id)
       Alert.alert(t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: point.customer.name }))
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
-        if (result.conflicted > 0) {
-          Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
-        }
+        if (result.conflicted > 0) Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
       }).catch(() => {})
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") {
-        console.warn("[RouteScreen] check-in error:", e?.message ?? e)
+    } catch (error: any) {
+      if (error.message !== "SESSION_EXPIRED") {
+        console.warn("[RouteScreen] check-in error:", error?.message ?? error)
         Alert.alert(t("common.error"), t("visit.checkInFailed"))
       }
     } finally {
@@ -523,7 +994,6 @@ export default function RouteScreen() {
     }
   }
 
-  // Check-out flow
   const handleCheckOut = () => {
     if (!activeVisit || mutating) return
     setNotesVisible(true)
@@ -537,9 +1007,9 @@ export default function RouteScreen() {
       try {
         coords = await new Promise((resolve, reject) => {
           Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+            (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+            reject,
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
           )
         })
       } catch {}
@@ -552,299 +1022,195 @@ export default function RouteScreen() {
       Alert.alert(t("visit.checkOutQueuedTitle"), t("visit.checkOutQueuedBody"))
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
-        if (result.conflicted > 0) {
-          Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
-        }
+        if (result.conflicted > 0) Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
       }).catch(() => {})
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") {
-        console.warn("[RouteScreen] check-out error:", e?.message ?? e)
-        if (e?.code === "PHOTO_REQUIRED") {
-          Alert.alert(t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
-        } else {
-          Alert.alert(t("common.error"), t("visit.checkOutFailed"))
-        }
+    } catch (error: any) {
+      if (error.message !== "SESSION_EXPIRED") {
+        console.warn("[RouteScreen] check-out error:", error?.message ?? error)
+        if (error?.code === "PHOTO_REQUIRED") Alert.alert(t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
+        else Alert.alert(t("common.error"), t("visit.checkOutFailed"))
       }
     } finally {
       setMutating(false)
     }
   }
 
-  const nextPendingIdx = sortedPoints.findIndex((p) => p.status === "PENDING")
+  const actionPanel = (
+    <PointActionPanel
+      point={focusPoint}
+      nextPoint={nextPoint}
+      activeVisit={activeVisit}
+      navigationStarted={Boolean(focusPoint && navigationStartedFor === focusPoint.id)}
+      photoCount={photoCount}
+      elapsedMin={elapsedMin}
+      mutating={mutating}
+      language={i18n.language}
+      copy={copy}
+      onNavigate={handleNavigate}
+      onCheckIn={handleCheckIn}
+      onPhoto={() => setCameraVisible(true)}
+      onCheckOut={handleCheckOut}
+    />
+  )
+
+  const header = (
+    <View style={[styles.header, { paddingTop: headerTop }]}>
+      <View style={styles.headerIcon}>
+        <Icon name="navigate" size={23} color={fieldTheme.color.onColor} />
+      </View>
+      <View style={styles.headerCopy}>
+        <Text style={styles.headerTitle}>{copy.title}</Text>
+        <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
+        {agent?.name ? <Text style={styles.agentName}>{agent.name}</Text> : null}
+      </View>
+    </View>
+  )
+
+  const emptyState = loading ? (
+    <View style={styles.emptyState}>
+      <ActivityIndicator color={fieldTheme.color.primary} />
+      <Text style={styles.emptyTitle}>{copy.loading}</Text>
+    </View>
+  ) : (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyIcon}>
+        <Icon name="calendar-outline" size={30} color={fieldTheme.color.primary} />
+      </View>
+      <Text style={styles.emptyTitle}>{slowConnection ? copy.slowTitle : t("route.noRouteTitle")}</Text>
+      <Text style={styles.emptyBody}>{slowConnection ? copy.slowBody : t("route.noRouteHint")}</Text>
+      <ActionButton label={copy.refresh} icon="refresh" onPress={() => { setLoading(true); fetchRoute() }} tone="secondary" />
+    </View>
+  )
+
+  if (tablet) {
+    return (
+      <View style={styles.container}>
+        {header}
+        <View style={styles.tabletTop}>
+          <ConnectionBanner offline={offline} slowConnection={slowConnection} copy={copy} />
+          <JourneySteps activeStep={currentStep} copy={copy} compact={false} />
+          {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
+        </View>
+        <View style={styles.tabletBody}>
+          <View style={styles.tabletListPane}>
+            <View style={styles.sectionHeading}>
+              <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+              <Text style={styles.sectionCount}>{t("route.stopsCount", { n: totalPoints })}</Text>
+            </View>
+            <FlatList
+              data={sortedPoints}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[styles.tabletListContent, sortedPoints.length === 0 && styles.listGrow]}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
+              ListEmptyComponent={emptyState}
+              renderItem={({ item, index }) => (
+                <StopRow
+                  point={item}
+                  index={index}
+                  selected={focusPoint?.id === item.id}
+                  recommended={nextPoint?.id === item.id}
+                  onPress={() => handlePointPress(item)}
+                  language={i18n.language}
+                  copy={copy}
+                />
+              )}
+            />
+          </View>
+          <ScrollView style={styles.tabletActionPane} contentContainerStyle={[styles.tabletActionContent, { paddingBottom: touchTarget }]}>
+            {remaining === 0 && totalPoints > 0 && !activeVisit ? (
+              <View style={styles.completeCard}>
+                <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
+                <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
+                <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
+              </View>
+            ) : actionPanel}
+            <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
+            <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
+          </ScrollView>
+        </View>
+        <NotesModal
+          visible={notesVisible}
+          title={t("visit.checkOutButton")}
+          message={t("visit.checkOutNotes")}
+          onCancel={() => setNotesVisible(false)}
+          onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
+        />
+        <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
-      {/* The whole screen scrolls inside this FlatList so the
-          pull-to-refresh gesture works anywhere — including the empty
-          "no route" state (before, the RefreshControl existed only when
-          there were points, so pulling on an empty screen did nothing).
-          The purple header lives in ListHeaderComponent too: the summary
-          card's marginTop:-14 overlap only renders when both are siblings
-          inside the scroll content (a negative top margin on the FIRST
-          scroll child gets clipped to the list bounds on Android). */}
       <FlatList
         data={sortedPoints}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: tabBarPadding, flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); fetchRoute(); fetchActiveVisit() }}
-            tintColor="#6C63FF"
-            colors={["#6C63FF"]}
-          />
-        }
+        contentContainerStyle={[styles.phoneContent, { paddingBottom: tabBarPadding }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
         ListHeaderComponent={
           <>
-            {/* Header with gradient feel */}
-            <View style={[styles.header, { paddingTop: headerTop }]}>
-              <View style={styles.headerContent}>
-                <View>
-                  <Text style={styles.greeting}>
-                    {agent?.name
-                      ? t("route.greeting", { name: agent.name.split(" ")[0] })
-                      : t("route.greetingNoName")}
-                  </Text>
-                  <Text style={styles.date}>
-                    {new Date().toLocaleDateString(i18n.language, { weekday: "long", month: "long", day: "numeric" })}
-                  </Text>
+            {header}
+            <View style={styles.phoneMain}>
+              <ConnectionBanner offline={offline} slowConnection={slowConnection} copy={copy} />
+              <JourneySteps activeStep={currentStep} copy={copy} compact />
+              {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : emptyState}
+              {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
+                <View style={styles.completeCard}>
+                  <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
+                  <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
+                  <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
                 </View>
-                {route && (
-                  <View style={styles.headerBadge}>
-                    <Text style={styles.headerBadgeNum}>{remaining}</Text>
-                    <Text style={styles.headerBadgeLabel}>{t("route.leftLabel")}</Text>
-                  </View>
-                )}
-              </View>
+              ) : route ? actionPanel : null}
+              {sortedPoints.length > 0 ? (
+                <View style={styles.sectionHeading}>
+                  <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+                  <Text style={styles.sectionCount}>{t("route.stopsCount", { n: totalPoints })}</Text>
+                </View>
+              ) : null}
             </View>
-
-            {/* Offline indicator — cache-backed route when the network is unreachable */}
-            {offline && (
-              <View style={styles.offlineBanner}>
-                <Text style={styles.offlineDot}>●</Text>
-                <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
-              </View>
-            )}
-
-            {/* Route summary card */}
-            {route ? (
-              <View style={styles.summaryCard}>
-                <View style={styles.summaryTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.summaryTitle}>{route.name || t("route.fallbackName")}</Text>
-                    <Text style={styles.summaryDate}>
-                      {new Date(route.date).toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" })}
-                      {new Date(route.date).toDateString() === new Date().toDateString() && (
-                        <Text style={{ color: "#6C63FF" }}>{"  "}{t("route.todaySuffix")}</Text>
-                      )}
-                    </Text>
-                  </View>
-                  <View style={[
-                    styles.statusPill,
-                    route.status === "COMPLETED" ? styles.statusCompleted : styles.statusPlanned,
-                  ]}>
-                    <Text style={[
-                      styles.statusPillText,
-                      { color: route.status === "COMPLETED" ? "#22c55e" : "#6C63FF" },
-                    ]}>
-                      {route.status === "IN_PROGRESS"
-                        ? t("route.statusInProgress")
-                        : route.status === "COMPLETED"
-                          ? t("route.statusCompleted")
-                          : route.status === "PLANNED"
-                            ? t("route.statusPlanned")
-                            : route.status}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Stats row */}
-                <View style={styles.statsRow}>
-                  <StatBox value={displayTotalPoints} label={t("route.statTotal")} color="#0B0B1E" />
-                  <View style={styles.statDivider} />
-                  <StatBox value={displayVisitedPoints} label={t("route.statVisited")} color="#22c55e" />
-                  <View style={styles.statDivider} />
-                  <StatBox value={remaining} label={t("route.statLeft")} color={remaining > 0 ? "#f59e0b" : "#22c55e"} />
-                  <View style={styles.statDivider} />
-                  <StatBox value={`${completion}%`} label={t("route.statDone")} color="#6C63FF" />
-                </View>
-
-                {/* Progress bar */}
-                <View style={styles.progressTrack}>
-                  <View style={[
-                    styles.progressBar,
-                    { width: `${Math.max(completion, 2)}%` },
-                    completion === 100 && { backgroundColor: "#22c55e" },
-                  ]} />
-                </View>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.emptyCard}
-                onPress={() => { setLoading(true); fetchRoute() }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.emptyIconWrap}>
-                  <Text style={styles.emptyIcon}>{slowConnection ? "📡" : "📍"}</Text>
-                </View>
-                <Text style={styles.emptyTitle}>
-                  {loading ? t("route.loadingRoute") : slowConnection ? t("route.connectionSlow") : t("route.noRouteTitle")}
-                </Text>
-                <Text style={styles.emptySubtitle}>
-                  {loading ? t("route.fetching") : slowConnection ? t("route.connectionSlowHint") : t("route.noRouteHint")}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <HintCard id="route.pullRefresh" text={t("hints.routePull")} />
-
-            {/* Active visit banner */}
-            {activeVisit && (
-              <View style={styles.activeBanner}>
-                <View style={styles.activePulseOuter}>
-                  <View style={styles.activePulseInner} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.activeLabel}>{t("visit.activeLabel")}</Text>
-                  <Text style={styles.activeName}>{activeVisit.customer?.name || t("common.customer")}</Text>
-                  <Text style={styles.activeTime}>
-                    {t("visit.elapsedMin", { n: elapsedMin })}
-                    {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
-                  </Text>
-                  {activeVisit.pendingCheckOut && (
-                    <Text style={styles.pendingSyncText}>{t("visit.checkOutPending")}</Text>
-                  )}
-                </View>
-                <View style={styles.activeBtns}>
-                  <TouchableOpacity
-                    style={styles.photoBtn}
-                    onPress={() => setCameraVisible(true)}
-                    disabled={mutating}
-                  >
-                    <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.checkOutBtn, (mutating || activeVisit.pendingCheckOut) && { opacity: 0.5 }]}
-                    onPress={handleCheckOut}
-                    disabled={mutating || activeVisit.pendingCheckOut}
-                  >
-                    {mutating ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.checkOutText}>{t("visit.checkOutButton")}</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Section header */}
-            {sortedPoints.length > 0 && (
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                <Text style={styles.sectionCount}>{t("route.stopsCount", { n: sortedPoints.length })}</Text>
-              </View>
-            )}
           </>
         }
-        renderItem={({ item, index }) => {
-          const isVisited = item.status === "VISITED"
-          const isSkipped = item.status === "SKIPPED"
-          const isPending = item.status === "PENDING"
-          const isNext = index === nextPendingIdx
-          const dist = item.distanceMeters
-
-          return (
-            <TouchableOpacity
-              style={styles.pointRow}
+        renderItem={({ item, index }) => (
+          <View style={styles.phoneRowWrap}>
+            <StopRow
+              point={item}
+              index={index}
+              selected={focusPoint?.id === item.id}
+              recommended={nextPoint?.id === item.id}
               onPress={() => handlePointPress(item)}
-              activeOpacity={0.7}
-            >
-              {/* Timeline */}
-              <View style={styles.timeline}>
-                <View style={[
-                  styles.dot,
-                  isVisited && styles.dotVisited,
-                  isSkipped && styles.dotSkipped,
-                  isNext && styles.dotNext,
-                ]}>
-                  {isVisited && <Text style={styles.dotIcon}>✓</Text>}
-                  {isSkipped && <Text style={styles.dotIcon}>✕</Text>}
-                  {isPending && (
-                    <Text style={[styles.dotNum, isNext && { color: "#fff" }]}>{index + 1}</Text>
-                  )}
-                </View>
-                {index < sortedPoints.length - 1 && (
-                  <View style={[
-                    styles.connector,
-                    isVisited && { backgroundColor: "#22c55e" },
-                  ]} />
-                )}
-              </View>
-
-              {/* Card */}
-              <View style={[
-                styles.card,
-                isVisited && styles.cardVisited,
-                isNext && styles.cardNext,
-              ]}>
-                <View style={styles.cardBody}>
-                  <Text style={[styles.cardName, isVisited && styles.cardNameVisited]} numberOfLines={1}>
-                    {item.customer.name}
-                  </Text>
-                  {item.customer.address && (
-                    <Text style={styles.cardAddress} numberOfLines={1}>{item.customer.address}</Text>
-                  )}
-
-                  {/* Meta row */}
-                  <View style={styles.cardMeta}>
-                    {item.plannedTime && (
-                      <View style={styles.metaTag}>
-                        <Text style={styles.metaText}>
-                          🕐 {new Date(item.plannedTime).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
-                        </Text>
-                      </View>
-                    )}
-                    {item.visitedAt && (
-                      <View style={[styles.metaTag, { backgroundColor: "#dcfce7" }]}>
-                        <Text style={[styles.metaText, { color: "#22c55e" }]}>
-                          ✓ {new Date(item.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })}
-                        </Text>
-                      </View>
-                    )}
-                    {isPending && dist != null && (
-                      <View style={[styles.metaTag, { backgroundColor: distanceColor(dist) + "15" }]}>
-                        <Text style={[styles.metaText, { color: distanceColor(dist) }]}>
-                          {formatDistance(dist)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-
-                {/* Right side action hint */}
-                {isPending && (
-                  <View style={styles.cardArrow}>
-                    <Text style={{ color: isNext ? "#6C63FF" : "#cbd5e1", fontSize: 18 }}>›</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          )
-        }}
+              language={i18n.language}
+              copy={copy}
+            />
+          </View>
+        )}
+        ListFooterComponent={
+          <View style={styles.phoneFooter}>
+            <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
+            <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
+          </View>
+        }
       />
 
-      {/* Bottom Sheet */}
-      <PointBottomSheet
-        visible={sheetVisible}
-        point={selectedPoint}
-        onClose={() => { setSheetVisible(false); setSelectedPoint(null) }}
-        onNavigate={handleNavigate}
-        onCheckIn={handleCheckIn}
-        mutating={mutating}
-      />
+      <Modal visible={phonePanelVisible} transparent animationType="slide" onRequestClose={() => setPhonePanelVisible(false)}>
+        <View style={styles.modalLayer}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setPhonePanelVisible(false)} accessibilityLabel={copy.close} />
+          <View style={styles.phoneSheet}>
+            <View style={styles.sheetTopRow}>
+              <View style={styles.sheetHandle} />
+              <Pressable
+                onPress={() => setPhonePanelVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel={copy.close}
+                style={styles.sheetClose}
+              >
+                <Icon name="close" size={22} color={fieldTheme.color.ink} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.sheetContent}>{actionPanel}</ScrollView>
+          </View>
+        </View>
+      </Modal>
 
-      {/* Check-out notes modal */}
       <NotesModal
         visible={notesVisible}
         title={t("visit.checkOutButton")}
@@ -852,372 +1218,233 @@ export default function RouteScreen() {
         onCancel={() => setNotesVisible(false)}
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />
-
-      {/* Visit-level photo capture from the active-visit banner */}
-      <PhotoCaptureModal
-        visible={cameraVisible}
-        onClose={() => setCameraVisible(false)}
-        onPhotoTaken={handlePhotoTaken}
-      />
-    </View>
-  )
-}
-
-function StatBox({ value, label, color }: { value: number | string; label: string; color: string }) {
-  return (
-    <View style={styles.statBox}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
+  container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  phoneContent: { flexGrow: 1 },
+  phoneMain: { paddingHorizontal: fieldTheme.space.lg },
+  phoneRowWrap: { paddingHorizontal: fieldTheme.space.lg },
+  phoneFooter: { paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+  listGrow: { flexGrow: 1, justifyContent: "center" },
 
-  // --- Header ---
   header: {
-    backgroundColor: "#6C63FF",
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerContent: {
+    backgroundColor: fieldTheme.color.primaryStrong,
+    paddingHorizontal: fieldTheme.space.xl,
+    paddingBottom: fieldTheme.space.xl,
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  greeting: { color: "#fff", fontSize: 24, fontWeight: "800", letterSpacing: -0.3 },
-  date: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 4 },
-  headerBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  headerBadgeNum: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  headerBadgeLabel: { color: "rgba(255,255,255,0.7)", fontSize: 10, textTransform: "uppercase" },
-
-  // --- Offline banner ---
-  offlineBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: "#fff7ed",
-    borderWidth: 1,
-    borderColor: "#fed7aa",
-  },
-  offlineDot: { color: "#f59e0b", fontSize: 10 },
-  offlineBannerText: { color: "#b45309", fontSize: 12, fontWeight: "600" },
-
-  // --- Summary Card ---
-  summaryCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: -14,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: "#6C63FF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  summaryTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    gap: fieldTheme.space.md,
     alignItems: "flex-start",
-    marginBottom: 16,
   },
-  summaryTitle: { fontSize: 17, fontWeight: "700", color: "#0B0B1E" },
-  summaryDate: { fontSize: 12, color: "#94a3b8", marginTop: 3 },
-  statusPill: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusCompleted: { backgroundColor: "#dcfce7" },
-  statusPlanned: { backgroundColor: "#f0f0ff" },
-  statusPillText: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
-
-  statsRow: {
-    flexDirection: "row",
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: "rgba(248,252,250,0.14)",
     alignItems: "center",
-    marginBottom: 16,
-  },
-  statBox: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 22, fontWeight: "800" },
-  statLabel: { fontSize: 9, color: "#94a3b8", marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 28, backgroundColor: "#f1f5f9" },
-
-  progressTrack: {
-    height: 6,
-    backgroundColor: "#f1f5f9",
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#6C63FF",
-    borderRadius: 3,
-  },
-
-  // --- Empty ---
-  emptyCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderRadius: 16,
-    padding: 40,
-    alignItems: "center",
-  },
-  emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#f0f0ff",
     justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
   },
-  emptyIcon: { fontSize: 28 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#0B0B1E", marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: "#94a3b8", textAlign: "center" },
+  headerCopy: { flex: 1 },
+  headerTitle: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "800", letterSpacing: -0.4 },
+  headerSubtitle: { color: "#CFE5DD", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
+  agentName: { color: "#AFCFC4", fontSize: 12, fontWeight: "700", marginTop: fieldTheme.space.sm },
 
-  // --- Active visit banner ---
-  activeBanner: {
-    backgroundColor: "#dcfce7",
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 16,
-    padding: 14,
+  connectionBanner: {
     flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#86efac",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.coralSoft,
+    borderWidth: 1,
+    borderColor: "#E9B9AC",
+    marginTop: fieldTheme.space.md,
   },
-  activePulseOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(34,197,94,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  activePulseInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22c55e" },
-  activeLabel: { fontSize: 10, color: "#15803d", textTransform: "uppercase", fontWeight: "700", letterSpacing: 0.5 },
-  activeName: { fontSize: 15, fontWeight: "700", color: "#0B0B1E", marginTop: 2 },
-  activeTime: { fontSize: 11, color: "#64748b", marginTop: 3 },
-  pendingSyncText: { fontSize: 11, color: "#b45309", marginTop: 3, fontWeight: "700" },
-  activeBtns: { gap: 6 },
-  photoBtn: {
-    backgroundColor: "#6C63FF",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  photoBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  checkOutBtn: {
-    backgroundColor: "#ef4444",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  checkOutText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  connectionBannerSlow: { backgroundColor: fieldTheme.color.amberSoft, borderColor: "#E6CF97" },
+  connectionCopy: { flex: 1 },
+  connectionTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  connectionBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
 
-  // --- Section header ---
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 8,
+  stepsWrap: {
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    paddingHorizontal: fieldTheme.space.md,
+    paddingVertical: fieldTheme.space.md,
+    marginTop: fieldTheme.space.md,
   },
-  sectionTitle: { fontSize: 13, fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 },
-  sectionCount: { fontSize: 12, color: "#94a3b8" },
-
-  // --- Timeline & Points ---
-  pointRow: { flexDirection: "row", marginHorizontal: 16, marginBottom: 0 },
-
-  timeline: { width: 40, alignItems: "center" },
-  dot: {
+  stepsRow: { flexDirection: "row", alignItems: "flex-start" },
+  stepItem: { width: 50, alignItems: "center" },
+  stepCircle: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#f1f5f9",
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2.5,
-    borderColor: "#e2e8f0",
-  },
-  dotVisited: { backgroundColor: "#22c55e", borderColor: "#22c55e" },
-  dotSkipped: { backgroundColor: "#ef4444", borderColor: "#ef4444" },
-  dotNext: { backgroundColor: "#6C63FF", borderColor: "#6C63FF" },
-  dotIcon: { color: "#fff", fontSize: 13, fontWeight: "800" },
-  dotNum: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
-  connector: {
-    width: 2.5,
-    flex: 1,
-    backgroundColor: "#e2e8f0",
-    borderRadius: 1,
-    marginVertical: 2,
-  },
-
-  card: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 14,
-    marginLeft: 10,
-    marginBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
+    backgroundColor: fieldTheme.color.surfaceStrong,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: fieldTheme.color.border,
   },
-  cardVisited: { backgroundColor: "#fafafa", borderColor: "#e8e8e8" },
-  cardNext: {
-    borderColor: "#6C63FF",
-    borderWidth: 1.5,
-    shadowColor: "#6C63FF",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  cardBody: { flex: 1 },
-  cardName: { fontSize: 14, fontWeight: "700", color: "#0B0B1E" },
-  cardNameVisited: { color: "#94a3b8", textDecorationLine: "line-through" },
-  cardAddress: { fontSize: 11, color: "#94a3b8", marginTop: 3 },
-  cardMeta: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  metaTag: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  metaText: { fontSize: 10, fontWeight: "600", color: "#64748b" },
-  cardArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#f8fafc",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
+  stepCircleDone: { backgroundColor: fieldTheme.color.success, borderColor: fieldTheme.color.success },
+  stepCircleCurrent: { backgroundColor: fieldTheme.color.primaryStrong, borderColor: fieldTheme.color.primaryStrong },
+  stepNumber: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
+  stepNumberCurrent: { color: fieldTheme.color.onColor },
+  stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "700", marginTop: 5, textAlign: "center" },
+  stepLabelCurrent: { color: fieldTheme.color.primaryStrong },
+  stepLine: { flex: 1, height: 2, backgroundColor: fieldTheme.color.border, marginTop: 14 },
+  stepLineDone: { backgroundColor: fieldTheme.color.success },
+  currentStepText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800", textAlign: "center", marginTop: fieldTheme.space.sm },
 
-  // --- Bottom Sheet ---
-  sheetBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-  sheetContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === "ios" ? 40 : 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#e2e8f0",
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 20,
-  },
-  sheetHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 16,
-  },
-  sheetAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: "#f0f0ff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sheetAvatarText: { fontSize: 22, fontWeight: "800", color: "#6C63FF" },
-  sheetName: { fontSize: 18, fontWeight: "700", color: "#0B0B1E" },
-  sheetAddressRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  sheetAddressIcon: { fontSize: 12 },
-  sheetAddress: { fontSize: 13, color: "#64748b", flex: 1 },
-
-  sheetChips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
-  },
-  chip: {
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipText: { fontSize: 12, fontWeight: "600" },
-
-  sheetActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  sheetNavBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#f8fafc",
-    borderRadius: 14,
-    paddingVertical: 16,
+  summary: {
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.md,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: fieldTheme.color.border,
+    padding: fieldTheme.space.lg,
+    marginTop: fieldTheme.space.md,
   },
-  sheetNavIcon: { fontSize: 20 },
-  sheetNavText: { fontSize: 15, fontWeight: "600", color: "#334155" },
-  sheetCheckInBtn: {
-    flex: 1.5,
+  summaryHeading: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
+  summaryIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  summaryCopy: { flex: 1 },
+  summaryEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
+  summaryTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "800", marginTop: 2 },
+  summaryDate: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700", marginTop: 3 },
+  summaryBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  remainingPill: { backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 10, paddingVertical: 6 },
+  remainingText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "800" },
+  progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: fieldTheme.space.lg },
+  progressText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
+  progressPercent: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
+  progressTrack: { height: 8, borderRadius: 4, backgroundColor: fieldTheme.color.surfaceStrong, overflow: "hidden", marginTop: fieldTheme.space.sm },
+  progressFill: { height: "100%", borderRadius: 4, backgroundColor: fieldTheme.color.success },
+
+  actionPanel: {
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.lg,
+    borderWidth: 2,
+    borderColor: fieldTheme.color.primary,
+    padding: fieldTheme.space.xl,
+    marginTop: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
+  },
+  actionPanelEmpty: {
+    minHeight: 220,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.xl,
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.lg,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+  },
+  actionEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 21, textAlign: "center", maxWidth: 320 },
+  actionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },
+  actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  actionTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 29, fontWeight: "900", letterSpacing: -0.4 },
+  actionAddress: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
+  visitFacts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
+  factPill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 11, paddingVertical: 7 },
+  factText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
+  detailFacts: { gap: fieldTheme.space.sm },
+  detailFact: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  detailFactText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "600" },
+  recommendation: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft },
+  recommendationText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "600" },
+  completedState: { minHeight: 52, flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.successSoft },
+  completedStateText: { color: fieldTheme.color.success, fontSize: 15, fontWeight: "800" },
+
+  actionButton: {
+    minHeight: 52,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primaryStrong,
+    paddingHorizontal: fieldTheme.space.lg,
+    paddingVertical: fieldTheme.space.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#6C63FF",
-    borderRadius: 14,
-    paddingVertical: 16,
+    gap: fieldTheme.space.sm,
   },
-  sheetCheckInIcon: { fontSize: 18 },
-  sheetCheckInText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  actionButtonSecondary: { backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  actionButtonDanger: { backgroundColor: fieldTheme.color.danger },
+  actionButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  actionButtonTextSecondary: { color: fieldTheme.color.primaryStrong },
+  buttonDisabled: { opacity: 0.5 },
+  buttonPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
 
-  sheetVisitedNote: {
-    backgroundColor: "#f0fdf4",
-    borderRadius: 12,
-    padding: 14,
+  sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: fieldTheme.space.xl, marginBottom: fieldTheme.space.sm },
+  sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
+  sectionCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  stopRow: {
+    minHeight: 86,
+    flexDirection: "row",
     alignItems: "center",
+    gap: fieldTheme.space.md,
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    padding: fieldTheme.space.md,
+    marginBottom: fieldTheme.space.sm,
   },
-  sheetVisitedText: { fontSize: 13, color: "#22c55e", fontWeight: "600" },
+  stopRowSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
+  stopRowPressed: { opacity: 0.78 },
+  stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
+  stopNumberRecommended: { backgroundColor: fieldTheme.color.primaryStrong },
+  stopNumberDone: { backgroundColor: fieldTheme.color.success },
+  stopNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
+  stopNumberTextRecommended: { color: fieldTheme.color.onColor },
+  stopCopy: { flex: 1, minWidth: 0 },
+  stopTitleRow: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "center" },
+  stopName: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  stopNameDone: { color: fieldTheme.color.inkMuted },
+  stopStatus: { flexDirection: "row", alignItems: "center", gap: 3 },
+  stopStatusText: { fontSize: 10, fontWeight: "800" },
+  stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 3 },
+  stopMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: fieldTheme.space.sm },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+
+  completeCard: { alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.successSoft, borderRadius: fieldTheme.radius.lg, padding: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
+  completeTitle: { color: fieldTheme.color.success, fontSize: 20, fontWeight: "900" },
+  completeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  emptyState: { alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xxl, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, marginTop: fieldTheme.space.lg },
+  emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center" },
+  emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
+
+  unplannedCard: { gap: fieldTheme.space.md, paddingTop: fieldTheme.space.xl, marginTop: fieldTheme.space.xl, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  unplannedHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  unplannedTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
+  unplannedBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
+  hint: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.blueSoft, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
+  hintText: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 18 },
+  hintClose: { width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: "center", justifyContent: "center" },
+
+  tabletTop: { paddingHorizontal: fieldTheme.space.xl },
+  tabletBody: { flex: 1, flexDirection: "row", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
+  tabletListPane: { flex: 1, minWidth: 280, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, overflow: "hidden" },
+  tabletListContent: { padding: fieldTheme.space.lg, paddingTop: 0 },
+  tabletActionPane: { flex: 1, minWidth: 300 },
+  tabletActionContent: { paddingBottom: fieldTheme.space.xl },
+
+  modalLayer: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(19,35,31,0.48)" },
+  phoneSheet: { maxHeight: "82%", backgroundColor: fieldTheme.color.canvas, borderTopLeftRadius: fieldTheme.radius.lg, borderTopRightRadius: fieldTheme.radius.lg },
+  sheetTopRow: { minHeight: 52, alignItems: "center", justifyContent: "center" },
+  sheetHandle: { width: 42, height: 5, borderRadius: 3, backgroundColor: fieldTheme.color.border },
+  sheetClose: { position: "absolute", right: fieldTheme.space.md, top: 4, width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  sheetContent: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl },
 })
