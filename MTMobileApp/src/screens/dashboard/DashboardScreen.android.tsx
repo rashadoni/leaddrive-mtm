@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
+import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import { i18n as mobileI18n } from "../../i18n/index.android"
 import { useKpiStore, type KpiStats } from "../../store/kpi"
@@ -38,29 +39,11 @@ import {
   sanitizeWidgetIds,
   widgetsForWorkspace,
 } from "./dashboard-layout"
-
-const PREVIEW_VALUES: Record<
-  DashboardWidgetId,
-  { value: string; supportingKey: string; progress?: number }
-> = {
-  todayRoute: { value: "4 / 7", supportingKey: "dashboardV2.previewValues.todayRoute", progress: 0.57 },
-  weekPlan: { value: "18", supportingKey: "dashboardV2.previewValues.weekPlan", progress: 0.72 },
-  tasks: { value: "3", supportingKey: "dashboardV2.previewValues.tasks", progress: 0.66 },
-  coverage: { value: "71%", supportingKey: "dashboardV2.previewValues.coverage", progress: 0.71 },
-  gps: { value: "97%", supportingKey: "dashboardV2.previewValues.gps", progress: 0.97 },
-  promotions: { value: "2", supportingKey: "dashboardV2.previewValues.promotions", progress: 0.5 },
-  teamPulse: { value: "7 / 9", supportingKey: "dashboardV2.previewValues.teamPulse", progress: 0.78 },
-  teamMap: { value: "9", supportingKey: "dashboardV2.previewValues.teamMap", progress: 0.88 },
-  planFact: { value: "82%", supportingKey: "dashboardV2.previewValues.planFact", progress: 0.82 },
-  approvals: { value: "5", supportingKey: "dashboardV2.previewValues.approvals", progress: 0.45 },
-  teamCoverage: { value: "68%", supportingKey: "dashboardV2.previewValues.teamCoverage", progress: 0.68 },
-  exceptions: { value: "3", supportingKey: "dashboardV2.previewValues.exceptions", progress: 0.3 },
-}
-
-function previewMetric(id: DashboardWidgetId) {
-  const metric = PREVIEW_VALUES[id]
-  return { ...metric, supporting: mobileI18n.t(metric.supportingKey) }
-}
+import { api } from "../../services/api"
+import {
+  toManagerDashboardStats,
+  type ManagerDashboardStats,
+} from "../../services/manager-dashboard"
 
 /**
  * Map server KPI onto a widget. Every branch distinguishes "nothing planned"
@@ -122,8 +105,81 @@ function actualMetric(id: DashboardWidgetId, stats: KpiStats | null) {
   return null
 }
 
+const MANAGER_COPY = {
+  ru: {
+    online: (online: number, total: number) => `${online} из ${total} сотрудников сейчас в сети`,
+    noTeam: "В вашей команде пока нет сотрудников",
+    currentGps: (count: number) => `${count} сотрудников передают свежую геопозицию`,
+    gpsAttention: (count: number) => `${count} позициям нужна проверка`,
+    gpsOk: "Все доступные позиции актуальны",
+    noRoutes: "На сегодня маршруты не запланированы",
+    routeProgress: (visited: number, total: number, routes: number) => `${visited} из ${total} точек · маршрутов: ${routes}`,
+    approvals: (count: number) => count > 0 ? `Нужно проверить: ${count}` : "Новых запросов нет",
+    exceptions: (count: number) => count > 0 ? `Проверьте GPS у ${count} сотрудников` : "Критичных отклонений не найдено",
+  },
+  az: {
+    online: (online: number, total: number) => `${total} əməkdaşdan ${online}-i indi onlayndır`,
+    noTeam: "Komandanızda hələ əməkdaş yoxdur",
+    currentGps: (count: number) => `${count} əməkdaş aktual mövqe göndərir`,
+    gpsAttention: (count: number) => `${count} mövqeni yoxlamaq lazımdır`,
+    gpsOk: "Bütün mövcud mövqelər aktualdır",
+    noRoutes: "Bu gün üçün marşrut planlaşdırılmayıb",
+    routeProgress: (visited: number, total: number, routes: number) => `${total} nöqtədən ${visited}-i · marşrut: ${routes}`,
+    approvals: (count: number) => count > 0 ? `Yoxlanmalı: ${count}` : "Yeni sorğu yoxdur",
+    exceptions: (count: number) => count > 0 ? `${count} əməkdaşın GPS-ni yoxlayın` : "Kritik yayınma yoxdur",
+  },
+  en: {
+    online: (online: number, total: number) => `${online} of ${total} team members are online`,
+    noTeam: "There are no team members in your scope yet",
+    currentGps: (count: number) => `${count} team members have a current position`,
+    gpsAttention: (count: number) => `${count} positions need attention`,
+    gpsOk: "All available positions are current",
+    noRoutes: "No routes are planned for today",
+    routeProgress: (visited: number, total: number, routes: number) => `${visited} of ${total} stops · ${routes} routes`,
+    approvals: (count: number) => count > 0 ? `${count} requests need review` : "No new requests",
+    exceptions: (count: number) => count > 0 ? `Check GPS for ${count} team members` : "No critical exceptions found",
+  },
+} as const
+
+function managerMetric(id: DashboardWidgetId, stats: ManagerDashboardStats | null) {
+  if (!stats) return null
+  const language = mobileI18n.language?.startsWith("az") ? "az" : mobileI18n.language?.startsWith("ru") ? "ru" : "en"
+  const copy = MANAGER_COPY[language]
+  if (id === "teamPulse") {
+    return {
+      value: `${stats.online} / ${stats.teamTotal}`,
+      supporting: stats.teamTotal > 0 ? copy.online(stats.online, stats.teamTotal) : copy.noTeam,
+      progress: stats.teamTotal > 0 ? stats.online / stats.teamTotal : 0,
+    }
+  }
+  if (id === "teamMap") {
+    return {
+      value: String(stats.currentLocations),
+      supporting: stats.gpsAttention > 0 ? copy.gpsAttention(stats.gpsAttention) : copy.gpsOk,
+      progress: stats.teamTotal > 0 ? stats.currentLocations / stats.teamTotal : 0,
+    }
+  }
+  if (id === "planFact") {
+    return {
+      value: stats.plannedStops > 0 ? `${Math.round(stats.visitedStops / stats.plannedStops * 100)}%` : "—",
+      supporting: stats.routes > 0
+        ? copy.routeProgress(stats.visitedStops, stats.plannedStops, stats.routes)
+        : copy.noRoutes,
+      progress: stats.plannedStops > 0 ? stats.visitedStops / stats.plannedStops : 0,
+    }
+  }
+  if (id === "approvals") {
+    return { value: String(stats.approvals), supporting: copy.approvals(stats.approvals), progress: undefined }
+  }
+  if (id === "exceptions") {
+    return { value: String(stats.gpsAttention), supporting: copy.exceptions(stats.gpsAttention), progress: undefined }
+  }
+  return null
+}
+
 export default function DashboardScreen() {
   const { t, i18n } = useTranslation()
+  const navigation = useNavigation<any>()
   const { width, height } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -132,6 +188,9 @@ export default function DashboardScreen() {
   const [focusedWidget, setFocusedWidget] = useState<DashboardWidgetId | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [workdayBusy, setWorkdayBusy] = useState(false)
+  const [managerStats, setManagerStats] = useState<ManagerDashboardStats | null>(null)
+  const [managerLoading, setManagerLoading] = useState(false)
+  const [managerError, setManagerError] = useState<string | null>(null)
 
   const agent = useAuthStore((state) => state.agent)
   const privileged = isManagerRole(agent?.role)
@@ -164,12 +223,31 @@ export default function DashboardScreen() {
     .map((id) => DASHBOARD_WIDGETS.find((widget) => widget.id === id))
     .filter((widget): widget is DashboardWidgetDefinition => Boolean(widget))
 
+  const fetchManagerSummary = useCallback(async () => {
+    setManagerLoading(true)
+    setManagerError(null)
+    try {
+      const [team, locations, planning, approvals] = await Promise.all([
+        api.getManagerTeam(),
+        api.getManagerLocations(),
+        api.getManagerPlanning(),
+        api.getManagerApprovals(),
+      ])
+      setManagerStats(toManagerDashboardStats(team?.data, locations?.data, planning?.data, approvals?.data))
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setManagerError(t("common.error"))
+    } finally {
+      setManagerLoading(false)
+    }
+  }, [t])
+
   useEffect(() => {
     setFocusedWidget(null)
     setCustomizing(false)
     setMessage(null)
     if (workspace === "agent") fetchKpi()
-  }, [fetchKpi, workspace])
+    else void fetchManagerSummary()
+  }, [fetchKpi, fetchManagerSummary, workspace])
 
   const save = useCallback(
     (ids: DashboardWidgetId[]) => {
@@ -228,16 +306,20 @@ export default function DashboardScreen() {
       : deviceClass === "phone"
         ? 196
         : Math.max(208, Math.min(440, (availableHeight - gap * (rows - 1)) / rows))
-  const managerPreview = __DEV__ && workspace === "manager"
-  const dataAvailable = workspace === "agent" && stats !== null
-  const dataStateKey = managerPreview
-    ? "dashboardV2.preview"
-    : dataAvailable ? "dashboardV2.actual" : "dashboardV2.unavailable"
+  const dataAvailable = workspace === "agent" ? stats !== null : managerStats !== null
+  const dataStateKey = dataAvailable ? "dashboardV2.actual" : "dashboardV2.unavailable"
   const today = new Date().toLocaleDateString(i18n.language, {
     weekday: "long",
     day: "numeric",
     month: "long",
   })
+
+  const openManagerWidget = (id: DashboardWidgetId) => {
+    if (id === "planFact") navigation.navigate("Planning")
+    else if (id === "approvals") navigation.navigate("Approvals")
+    else if (id === "exceptions" && managerStats?.approvals) navigation.navigate("Approvals")
+    else navigation.navigate("Team")
+  }
 
   if (focusedWidget) {
     const definition = DASHBOARD_WIDGETS.find((widget) => widget.id === focusedWidget)
@@ -257,8 +339,8 @@ export default function DashboardScreen() {
           <View style={styles.focusBody}>
             <DashboardWidget
               definition={definition}
-              metric={managerPreview ? previewMetric(definition.id) : actualMetric(definition.id, stats)}
-              preview={managerPreview}
+              metric={workspace === "manager" ? managerMetric(definition.id, managerStats) : actualMetric(definition.id, stats)}
+              preview={false}
               width={Math.max(280, screenWidth - horizontalPadding * 2)}
               height={Math.max(360, height - headerTop - 120)}
               focused
@@ -310,6 +392,26 @@ export default function DashboardScreen() {
               </Pressable>
             )}
 
+            {workspace === "manager" && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("managerShell.refresh", { defaultValue: "Refresh" })}
+                disabled={managerLoading}
+                onPress={() => { void fetchManagerSummary() }}
+                style={({ pressed }) => [
+                  styles.customizeButton,
+                  expandedTablet && styles.expandedTouchHeight,
+                  managerLoading && styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {managerLoading
+                  ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
+                  : <Icon name="refresh" size={19} color={fieldTheme.color.primaryStrong} />}
+                <Text style={styles.customizeText}>{t("managerShell.refresh", { defaultValue: "Refresh" })}</Text>
+              </Pressable>
+            )}
+
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ expanded: customizing }}
@@ -332,16 +434,14 @@ export default function DashboardScreen() {
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: tabBarPadding }}
-        refreshControl={
-          workspace === "agent" ? (
-            <RefreshControl
-              refreshing={loading && stats !== null}
-              onRefresh={() => fetchKpi()}
-              tintColor={fieldTheme.color.primary}
-              colors={[fieldTheme.color.primary]}
-            />
-          ) : undefined
-        }
+        refreshControl={(
+          <RefreshControl
+            refreshing={workspace === "agent" ? loading && stats !== null : managerLoading}
+            onRefresh={() => workspace === "agent" ? fetchKpi() : void fetchManagerSummary()}
+            tintColor={fieldTheme.color.primary}
+            colors={[fieldTheme.color.primary]}
+          />
+        )}
       >
         {customizing && (
           <View style={[styles.customizer, { marginHorizontal: horizontalPadding }]}>
@@ -438,14 +538,14 @@ export default function DashboardScreen() {
             {t(workspace === "manager" ? "dashboardV2.managerWorkspace" : "dashboardV2.agentWorkspace")}
           </Text>
           <View style={styles.dataState}>
-            <View style={[styles.dataDot, managerPreview ? styles.previewDot : dataAvailable ? styles.liveDot : styles.unavailableDot]} />
+            <View style={[styles.dataDot, dataAvailable ? styles.liveDot : styles.unavailableDot]} />
             <Text style={styles.dataStateText}>
               {t(dataStateKey)}
             </Text>
           </View>
         </View>
 
-        {loading && !stats && workspace === "agent" ? (
+        {(workspace === "agent" ? loading && !stats : managerLoading && !managerStats) ? (
           <View style={styles.loader}><ActivityIndicator color={fieldTheme.color.primary} /></View>
         ) : (
           <View
@@ -461,11 +561,11 @@ export default function DashboardScreen() {
               <DashboardWidget
                 key={widget.id}
                 definition={widget}
-                metric={managerPreview ? previewMetric(widget.id) : actualMetric(widget.id, stats)}
-                preview={managerPreview}
+                metric={workspace === "manager" ? managerMetric(widget.id, managerStats) : actualMetric(widget.id, stats)}
+                preview={false}
                 width={cardWidth}
                 height={cardHeight}
-                onPress={() => setFocusedWidget(widget.id)}
+                onPress={() => workspace === "manager" ? openManagerWidget(widget.id) : setFocusedWidget(widget.id)}
               />
             ))}
           </View>
@@ -473,6 +573,9 @@ export default function DashboardScreen() {
 
         {error && workspace === "agent" && (
           <Text style={[styles.message, { marginHorizontal: horizontalPadding }]}>{error}</Text>
+        )}
+        {managerError && workspace === "manager" && (
+          <Text style={[styles.message, { marginHorizontal: horizontalPadding }]}>{managerError}</Text>
         )}
       </ScrollView>
     </View>
