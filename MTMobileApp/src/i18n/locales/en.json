@@ -304,6 +304,13 @@
     "column_contacts": "Contacts",
     "column_visits": "Visits"
   },
+  "baseHub": {
+    "eyebrow": "My base",
+    "title": "Clients",
+    "organizationsBody": "Find a pharmacy, clinic, or another organization.",
+    "contactsBody": "Find a doctor, pharmacist, or another contact person.",
+    "back": "Back"
+  },
   "contacts": {
     "title": "Contacts",
     "searchPlaceholder": "Search by name, specialty, phone…",

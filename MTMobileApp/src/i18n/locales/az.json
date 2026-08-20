@@ -304,6 +304,13 @@
     "column_contacts": "Kontaktlar",
     "column_visits": "Ziyarətlər"
   },
+  "baseHub": {
+    "eyebrow": "Mənim bazam",
+    "title": "Müştərilər",
+    "organizationsBody": "Aptek, klinika və ya başqa təşkilatı tapın.",
+    "contactsBody": "Həkim, əczaçı və ya digər əlaqəli şəxsi tapın.",
+    "back": "Geri"
+  },
   "contacts": {
     "title": "Kontaktlar",
     "searchPlaceholder": "Ad, ixtisas, telefon üzrə axtarış…",
