@@ -1,16 +1,19 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
   ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
   Switch,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -22,7 +25,9 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { hasCapability } from "../../services/bootstrap"
 import { canExecuteFieldWork } from "../../auth/roles"
 import { version as APP_VERSION } from "../../../package.json"
-import { RootStackParamList } from "../../navigation/AppNavigator"
+import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 interface MtmAlert {
   id: string
@@ -37,35 +42,48 @@ interface MtmAlert {
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const { width } = useWindowDimensions()
+  const twoColumn = isExpandedTabletWidth(width)
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
-  const canTrack = useBootstrapStore((s) => hasCapability(s.capabilities, "FIELD_TRACK"))
-  const canSyncField = useBootstrapStore((s) => hasCapability(s.capabilities, "FIELD_EXECUTE"))
+  const canTrack = useBootstrapStore((state) => hasCapability(state.capabilities, "FIELD_TRACK"))
+  const canSyncField = useBootstrapStore((state) => hasCapability(state.capabilities, "FIELD_EXECUTE"))
     || canExecuteFieldWork(agent?.role)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [profile, setProfile] = useState<any>(null)
   const [alerts, setAlerts] = useState<MtmAlert[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [confirmAction, setConfirmAction] = useState<"logout" | "switch" | null>(null)
-  // Trigger re-render after setLocale so the toggle reflects current state.
   const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(getCurrentLocale())
-  const hintsEnabled = useHintsStore((s) => s.enabled)
-  const setHintsEnabled = useHintsStore((s) => s.setEnabled)
+  const hintsEnabled = useHintsStore((state) => state.enabled)
+  const setHintsEnabled = useHintsStore((state) => state.setEnabled)
 
-  const onPickLocale = async (loc: SupportedLocale) => {
-    await setLocale(loc)
-    setCurrentLocale(loc)
-  }
-
-  useEffect(() => {
-    Promise.all([
-      api.getProfile().catch(() => null),
-      api.getAlerts({ resolved: false }).catch(() => null),
-    ]).then(([profileRes, alertsRes]) => {
-      if (profileRes?.success) setProfile(profileRes.data)
-      if (alertsRes?.success) setAlerts(alertsRes.data?.alerts || [])
-    }).finally(() => setLoading(false))
+  const load = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true)
+    try {
+      const [profileResult, alertsResult] = await Promise.all([
+        api.getProfile().catch(() => null),
+        api.getAlerts({ resolved: false }).catch(() => null),
+      ])
+      if (profileResult?.success) setProfile(profileResult.data)
+      if (alertsResult?.success) setAlerts(alertsResult.data?.alerts || [])
+      setLoadError(!profileResult && !alertsResult)
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setLoadError(true)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  const onPickLocale = async (locale: SupportedLocale) => {
+    await setLocale(locale)
+    setCurrentLocale(locale)
+  }
 
   const handleConfirm = () => {
     if (confirmAction === "logout") logout()
@@ -78,170 +96,205 @@ export default function ProfileScreen() {
     ? Math.round((summary.routeVisited / summary.routePoints) * 100)
     : 0
 
-  const severityColor = (cat?: string) => {
-    switch (cat) {
-      case "CRITICAL": return "#ef4444"
-      case "WARNING": return "#f59e0b"
-      default: return "#3b82f6"
-    }
-  }
-
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
-        <ActivityIndicator size="large" color="#6C63FF" />
-        <Text style={{ color: "#94a3b8", marginTop: 12, fontSize: 13 }}>{t("profile.loadingProfile")}</Text>
+      <View style={styles.loadingState}>
+        <ActivityIndicator size="large" color={fieldTheme.color.primary} />
+        <Text style={styles.loadingText}>{t("profile.loadingProfile")}</Text>
       </View>
     )
   }
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: tabBarPadding }}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {agent?.name?.charAt(0)?.toUpperCase() || "?"}
-          </Text>
-        </View>
-        <Text style={styles.name}>{agent?.name}</Text>
-        <Text style={styles.role}>{agent?.role}</Text>
-        <Text style={styles.org}>{agent?.organizationName}</Text>
-      </View>
-
-      {/* Today's Summary */}
-      {summary && (
-        <View style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>{t("profile.performanceTitle")}</Text>
+  const mainColumn = (
+    <View style={styles.column}>
+      {summary ? (
+        <SectionCard icon="analytics-outline" title={t("profile.performanceTitle")}>
           <View style={styles.statsRow}>
-            <StatBox value={summary?.visits ?? 0} label={t("profile.statVisits")} color="#0B0B1E" />
-            <View style={styles.statDivider} />
-            <StatBox value={summary?.tasksCompleted ?? 0} label={t("profile.statTasks")} color="#22c55e" />
-            <View style={styles.statDivider} />
-            <StatBox value={`${completionPct}%`} label={t("profile.statRoute")} color="#6C63FF" />
+            <StatBox value={summary.visits ?? 0} label={t("profile.statVisits")} color={fieldTheme.color.blue} />
+            <StatBox value={summary.tasksCompleted ?? 0} label={t("profile.statTasks")} color={fieldTheme.color.success} />
+            <StatBox value={`${completionPct}%`} label={t("profile.statRoute")} color={fieldTheme.color.primary} />
           </View>
-
-          {/* Progress bar */}
           <View style={styles.progressTrack}>
-            <View style={[styles.progressBar, { width: `${Math.max(completionPct, 2)}%` }]} />
+            <View style={[styles.progressBar, { width: `${Math.max(0, Math.min(completionPct, 100))}%` }]} />
           </View>
           <Text style={styles.progressLabel}>
             {t("profile.routeProgressTemplate", {
-              visited: summary?.routeVisited ?? 0,
-              total: summary?.routePoints ?? 0,
+              visited: summary.routeVisited ?? 0,
+              total: summary.routePoints ?? 0,
             })}
           </Text>
-        </View>
-      )}
+        </SectionCard>
+      ) : null}
 
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.sectionTitle}>{t("profile.alertsTitle")}</Text>
-            <View style={styles.alertBadge}>
-              <Text style={styles.alertBadgeText}>{alerts.length}</Text>
-            </View>
-          </View>
-          {alerts.slice(0, 5).map((a) => (
-            <View key={a.id} style={styles.alertRow}>
-              <View style={[styles.alertDot, { backgroundColor: severityColor(a.category) }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.alertTitle}>{a.title || a.type?.replace(/_/g, " ")}</Text>
-                {a.description && <Text style={styles.alertDesc} numberOfLines={1}>{a.description}</Text>}
+      {alerts.length > 0 ? (
+        <SectionCard icon="notifications-outline" title={t("profile.alertsTitle")} count={alerts.length}>
+          {alerts.slice(0, 5).map((alert) => (
+            <View key={alert.id} style={styles.alertRow}>
+              <View style={[styles.alertIcon, { backgroundColor: severityTint(alert.category) }]}>
+                <Icon name="alert-outline" size={18} color={severityColor(alert.category)} />
               </View>
-              <Text style={styles.alertTime}>
-                {new Date(a.createdAt).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
+              <View style={styles.alertCopy}>
+                <Text style={styles.alertTitle}>{alert.title || alert.type?.replace(/_/g, " ")}</Text>
+                {alert.description ? <Text style={styles.alertDescription} numberOfLines={2}>{alert.description}</Text> : null}
+              </View>
+              <Text style={styles.alertDate}>
+                {new Date(alert.createdAt).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
               </Text>
             </View>
           ))}
-        </View>
-      )}
+        </SectionCard>
+      ) : null}
 
-      {/* Contact Info */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>{t("profile.contactInfoTitle")}</Text>
-        <InfoRow label={t("profile.infoEmail")} value={agent?.email || "—"} />
-        <InfoRow label={t("profile.infoPhone")} value={agent?.phone || "—"} />
-      </View>
+      <SectionCard icon="person-outline" title={t("profile.contactInfoTitle")}>
+        <InfoRow icon="mail-outline" label={t("profile.infoEmail")} value={agent?.email || "—"} />
+        <InfoRow icon="call-outline" label={t("profile.infoPhone")} value={agent?.phone || "—"} />
+      </SectionCard>
+    </View>
+  )
 
-      {/* Server info */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>{t("profile.connectionTitle")}</Text>
-        <InfoRow label={t("profile.infoServer")} value={serverDomain || "—"} />
-        <InfoRow label={t("profile.infoStatus")} value={t("profile.statusConnected")} valueColor="#22c55e" />
-        {canSyncField && (
-          <View style={styles.syncCenterRow}>
-            <SyncStatusChip />
-          </View>
-        )}
-      </View>
+  const settingsColumn = (
+    <View style={styles.column}>
+      <SectionCard icon="cloud-done-outline" title={t("profile.connectionTitle")}>
+        <InfoRow icon="business-outline" label={t("profile.infoServer")} value={serverDomain || "—"} />
+        <InfoRow
+          icon="checkmark-circle-outline"
+          label={t("profile.infoStatus")}
+          value={t("profile.statusConnected")}
+          valueColor={fieldTheme.color.success}
+        />
+        {canSyncField ? <View style={styles.syncRow}><SyncStatusChip /></View> : null}
+      </SectionCard>
 
-
-      {/* Language switcher (M1-1a) */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>{t("profile.language")}</Text>
+      <SectionCard icon="language-outline" title={t("profile.language")}>
         <View style={styles.localeRow}>
-          {SUPPORTED_LOCALES.map((loc) => (
-            <TouchableOpacity
-              key={loc}
-              style={[styles.localeBtn, currentLocale === loc && styles.localeBtnActive]}
-              onPress={() => onPickLocale(loc)}
-              accessibilityRole="button"
-              accessibilityLabel={t(`profile.language${loc.charAt(0).toUpperCase() + loc.slice(1)}` as any)}
-            >
-              <Text
-                style={[
-                  styles.localeBtnText,
-                  currentLocale === loc && styles.localeBtnTextActive,
+          {SUPPORTED_LOCALES.map((locale) => {
+            const selected = currentLocale === locale
+            const label = t(`profile.language${locale.charAt(0).toUpperCase() + locale.slice(1)}` as any)
+            return (
+              <Pressable
+                key={locale}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={label}
+                onPress={() => { void onPickLocale(locale) }}
+                style={({ pressed }) => [
+                  styles.localeButton,
+                  selected && styles.localeButtonSelected,
+                  pressed && styles.pressed,
                 ]}
               >
-                {t(`profile.language${loc.charAt(0).toUpperCase() + loc.slice(1)}` as any)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                {selected ? <Icon name="checkmark-circle" size={18} color={fieldTheme.color.onColor} /> : null}
+                <Text style={[styles.localeText, selected && styles.localeTextSelected]}>{label}</Text>
+              </Pressable>
+            )
+          })}
         </View>
-      </View>
+      </SectionCard>
 
-      {/* Hints toggle: OFF hides every 💡 hint, ON also restores dismissed ones */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>{t("profile.hintsTitle")}</Text>
-        <View style={styles.hintsRow}>
-          <Text style={styles.hintsLabel}>{t("profile.hintsShow")}</Text>
+      <SectionCard icon="help-circle-outline" title={t("profile.hintsTitle")}>
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleCopy}>
+            <Text style={styles.toggleLabel}>{t("profile.hintsShow")}</Text>
+            <Text style={styles.toggleNote}>{t("profile.hintsNote")}</Text>
+          </View>
           <Switch
             value={hintsEnabled}
             onValueChange={setHintsEnabled}
-            trackColor={{ false: "#e2e8f0", true: "#c7c3ff" }}
-            thumbColor={hintsEnabled ? "#6C63FF" : "#94a3b8"}
+            trackColor={{ false: fieldTheme.color.border, true: fieldTheme.color.primarySoft }}
+            thumbColor={hintsEnabled ? fieldTheme.color.primary : fieldTheme.color.inkMuted}
           />
         </View>
-        <Text style={styles.hintsNote}>{t("profile.hintsNote")}</Text>
+      </SectionCard>
+
+      {canTrack ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate("GpsHistory")}
+          style={({ pressed }) => [styles.navigationCard, pressed && styles.pressed]}
+        >
+          <View style={styles.navigationIcon}>
+            <Icon name="map-outline" size={22} color={fieldTheme.color.blue} />
+          </View>
+          <Text style={styles.navigationText}>{t("profile.gpsHistory")}</Text>
+          <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+        </Pressable>
+      ) : null}
+
+      <View style={styles.accountActions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setConfirmAction("switch")}
+          style={({ pressed }) => [styles.secondaryAction, pressed && styles.pressed]}
+        >
+          <Icon name="business-outline" size={20} color={fieldTheme.color.primaryStrong} />
+          <Text style={styles.secondaryActionText}>{t("profile.switchServer")}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setConfirmAction("logout")}
+          style={({ pressed }) => [styles.dangerAction, pressed && styles.pressed]}
+        >
+          <Icon name="log-out-outline" size={20} color={fieldTheme.color.danger} />
+          <Text style={styles.dangerActionText}>{t("profile.logout")}</Text>
+        </Pressable>
       </View>
+    </View>
+  )
 
-      {/* My GPS history (agents with field tracking) */}
-      {canTrack && (
-        <TouchableOpacity style={styles.gpsBtn} onPress={() => navigation.navigate("GpsHistory")}>
-          <Text style={styles.gpsText}>{t("profile.gpsHistory")}</Text>
-          <Text style={styles.gpsChevron}>›</Text>
-        </TouchableOpacity>
-      )}
+  return (
+    <View style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: tabBarPadding }}
+        refreshControl={(
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { void load(true) }}
+            colors={[fieldTheme.color.primary]}
+            tintColor={fieldTheme.color.primary}
+          />
+        )}
+      >
+        <View style={[styles.header, { paddingTop: headerTop }]}>
+          <View style={styles.headerInner}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.back")}
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+            >
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+            </Pressable>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{agent?.name?.charAt(0)?.toUpperCase() || "?"}</Text>
+            </View>
+            <View style={styles.identity}>
+              <Text style={styles.name}>{agent?.name || agent?.email}</Text>
+              <Text style={styles.role}>{agent?.role}</Text>
+              {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
+            </View>
+          </View>
+        </View>
 
-      {/* Actions */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={() => setConfirmAction("logout")}>
-        <Text style={styles.logoutText}>{t("profile.logout")}</Text>
-      </TouchableOpacity>
+        {loadError ? (
+          <View style={styles.errorBanner}>
+            <Icon name="cloud-offline-outline" size={21} color={fieldTheme.color.amber} />
+            <Text style={styles.errorText}>{t("profile.loadError")}</Text>
+            <Pressable accessibilityRole="button" onPress={() => { void load(true) }} style={styles.retryButton}>
+              <Text style={styles.retryText}>{t("common.retry")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
-      <TouchableOpacity style={styles.switchBtn} onPress={() => setConfirmAction("switch")}>
-        <Text style={styles.switchText}>{t("profile.switchServer")}</Text>
-      </TouchableOpacity>
+        <View style={[styles.content, twoColumn && styles.contentTwoColumn]}>
+          {mainColumn}
+          {settingsColumn}
+        </View>
+        <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
+      </ScrollView>
 
-      <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
-
-      {/* Confirm sheets */}
       <ConfirmSheet
         visible={confirmAction === "logout"}
-        icon="👋"
-        iconColor="#ef4444"
+        iconColor={fieldTheme.color.danger}
         title={t("profile.logoutTitle")}
         message={t("profile.logoutMessage")}
         confirmText={t("profile.logoutConfirm")}
@@ -252,8 +305,7 @@ export default function ProfileScreen() {
       />
       <ConfirmSheet
         visible={confirmAction === "switch"}
-        icon="🔄"
-        iconColor="#6C63FF"
+        iconColor={fieldTheme.color.primary}
         title={t("profile.switchTitle")}
         message={t("profile.switchMessage")}
         confirmText={t("profile.switchConfirm")}
@@ -262,7 +314,27 @@ export default function ProfileScreen() {
         onCancel={() => setConfirmAction(null)}
         onConfirm={handleConfirm}
       />
-    </ScrollView>
+    </View>
+  )
+}
+
+function SectionCard({ icon, title, count, children }: {
+  icon: string
+  title: string
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeading}>
+        <View style={styles.cardTitleRow}>
+          <Icon name={icon} size={20} color={fieldTheme.color.primary} />
+          <Text style={styles.cardTitle}>{title}</Text>
+        </View>
+        {count != null ? <View style={styles.countBadge}><Text style={styles.countText}>{count}</Text></View> : null}
+      </View>
+      {children}
+    </View>
   )
 }
 
@@ -275,188 +347,92 @@ function StatBox({ value, label, color }: { value: number | string; label: strin
   )
 }
 
-function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+function InfoRow({ icon, label, value, valueColor }: { icon: string; label: string; value: string; valueColor?: string }) {
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, valueColor ? { color: valueColor } : null]}>{value}</Text>
+      <View style={styles.infoIcon}><Icon name={icon} size={18} color={fieldTheme.color.inkMuted} /></View>
+      <View style={styles.infoCopy}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={[styles.infoValue, valueColor ? { color: valueColor } : null]} numberOfLines={2}>{value}</Text>
+      </View>
     </View>
   )
 }
 
+function severityColor(category?: string) {
+  if (category === "CRITICAL") return fieldTheme.color.danger
+  if (category === "WARNING") return fieldTheme.color.amber
+  return fieldTheme.color.blue
+}
+
+function severityTint(category?: string) {
+  if (category === "CRITICAL") return fieldTheme.color.dangerSoft
+  if (category === "WARNING") return fieldTheme.color.amberSoft
+  return fieldTheme.color.blueSoft
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
-
-  // Header
-  header: {
-    backgroundColor: "#6C63FF",
-    paddingBottom: 32,
-    alignItems: "center",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  avatarText: { color: "#fff", fontSize: 32, fontWeight: "800" },
-  name: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  role: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: "600" },
-  org: { color: "rgba(255,255,255,0.5)", fontSize: 12, marginTop: 4 },
-
-  // Summary
-  summaryCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: -14,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: "#6C63FF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  sectionTitle: { fontSize: 11, fontWeight: "700", color: "#94a3b8", marginBottom: 14, textTransform: "uppercase", letterSpacing: 0.5 },
-  statsRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  statBox: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 22, fontWeight: "800" },
-  statLabel: { fontSize: 9, color: "#94a3b8", marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 28, backgroundColor: "#f1f5f9" },
-  progressTrack: { height: 6, backgroundColor: "#f1f5f9", borderRadius: 3, overflow: "hidden" },
-  progressBar: { height: "100%", backgroundColor: "#6C63FF", borderRadius: 3 },
-  progressLabel: { fontSize: 10, color: "#94a3b8", marginTop: 8, textAlign: "center" },
-
-  // Cards
-  card: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  syncCenterRow: { marginTop: 14, alignItems: "flex-start" },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  // Alerts
-  alertBadge: {
-    backgroundColor: "#fef2f2",
-    borderRadius: 10,
-    minWidth: 22,
-    height: 22,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 6,
-    marginBottom: 14,
-  },
-  alertBadgeText: { color: "#ef4444", fontSize: 11, fontWeight: "700" },
-  alertRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f8fafc",
-    gap: 10,
-  },
-  alertDot: { width: 8, height: 8, borderRadius: 4 },
-  alertTitle: { fontSize: 13, fontWeight: "600", color: "#0B0B1E" },
-  alertDesc: { fontSize: 11, color: "#64748b", marginTop: 2 },
-  alertTime: { fontSize: 10, color: "#94a3b8" },
-
-  // Info rows
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f8fafc",
-  },
-  infoLabel: { fontSize: 13, color: "#94a3b8", flex: 1 },
-  infoValue: { fontSize: 13, fontWeight: "600", color: "#0B0B1E" },
-
-  // Action buttons
-  logoutBtn: {
-    marginHorizontal: 16,
-    marginTop: 24,
-    backgroundColor: "#fef2f2",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#fecaca",
-  },
-  logoutText: { color: "#ef4444", fontSize: 15, fontWeight: "700" },
-  switchBtn: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    backgroundColor: "#f0f0ff",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e0e0ff",
-  },
-  switchText: { color: "#6C63FF", fontSize: 15, fontWeight: "700" },
-  gpsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginHorizontal: 16,
-    marginTop: 10,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  gpsText: { color: "#0B0B1E", fontSize: 15, fontWeight: "600" },
-  gpsChevron: { color: "#cbd5e1", fontSize: 20, fontWeight: "300" },
-  // M1-1a language switcher
-  localeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 4,
-  },
-  localeBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#1f1f3a",
-    alignItems: "center",
-    backgroundColor: "transparent",
-  },
-  localeBtnActive: {
-    backgroundColor: "#6C63FF",
-    borderColor: "#6C63FF",
-  },
-  localeBtnText: {
-    color: "#94a3b8",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  localeBtnTextActive: {
-    color: "#fff",
-  },
-  // Hints toggle
-  hintsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  hintsLabel: { fontSize: 14, fontWeight: "600", color: "#0B0B1E" },
-  hintsNote: { fontSize: 11, color: "#94a3b8", marginTop: 8, lineHeight: 15 },
-  version: { textAlign: "center", color: "#cbd5e1", fontSize: 11, marginTop: 20, marginBottom: 10 },
+  screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  loadingState: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.canvas },
+  loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "600" },
+  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
+  headerInner: { width: "100%", maxWidth: 1120, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  backButton: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.14)" },
+  avatar: { width: 58, height: 58, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
+  avatarText: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "900" },
+  identity: { flex: 1, minWidth: 0 },
+  name: { color: fieldTheme.color.onColor, fontSize: 24, lineHeight: 30, fontWeight: "900" },
+  role: { color: fieldTheme.color.primarySoft, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
+  organization: { color: "#CFE3DA", marginTop: 3, fontSize: 13, fontWeight: "600" },
+  errorBanner: { width: "100%", maxWidth: 1120, alignSelf: "center", marginTop: fieldTheme.space.lg, padding: fieldTheme.space.md, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#E7CB8A", backgroundColor: fieldTheme.color.amberSoft },
+  errorText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
+  retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  retryText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
+  content: { width: "100%", maxWidth: 1120, alignSelf: "center", padding: fieldTheme.space.lg, gap: fieldTheme.space.lg },
+  contentTwoColumn: { flexDirection: "row", alignItems: "flex-start", padding: fieldTheme.space.xl, gap: fieldTheme.space.xl },
+  column: { flex: 1, minWidth: 0, gap: fieldTheme.space.lg },
+  card: { padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  cardHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.lg },
+  cardTitleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  cardTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900" },
+  countBadge: { minWidth: 30, height: 30, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.coralSoft },
+  countText: { color: fieldTheme.color.coral, fontSize: 13, fontWeight: "900" },
+  statsRow: { flexDirection: "row", gap: fieldTheme.space.sm },
+  statBox: { flex: 1, minHeight: 82, padding: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas },
+  statValue: { fontSize: 22, fontWeight: "900" },
+  statLabel: { marginTop: 3, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", textAlign: "center" },
+  progressTrack: { height: 8, marginTop: fieldTheme.space.lg, overflow: "hidden", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong },
+  progressBar: { height: "100%", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
+  progressLabel: { marginTop: fieldTheme.space.sm, color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700", textAlign: "center" },
+  alertRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  alertIcon: { width: 38, height: 38, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
+  alertCopy: { flex: 1, minWidth: 0 },
+  alertTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  alertDescription: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  alertDate: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  infoRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  infoIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas },
+  infoCopy: { flex: 1, minWidth: 0 },
+  infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  infoValue: { marginTop: 2, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  syncRow: { marginTop: fieldTheme.space.md, alignItems: "flex-start" },
+  localeRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
+  localeButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, minWidth: 104, flexGrow: 1, paddingHorizontal: fieldTheme.space.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas },
+  localeButtonSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primary },
+  localeText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  localeTextSelected: { color: fieldTheme.color.onColor },
+  toggleRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  toggleCopy: { flex: 1, minWidth: 0 },
+  toggleLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  toggleNote: { marginTop: 4, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  navigationCard: { minHeight: 64, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  navigationIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.blueSoft },
+  navigationText: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  accountActions: { gap: fieldTheme.space.sm },
+  secondaryAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.primarySoft },
+  secondaryActionText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
+  dangerAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#EDBEBE", backgroundColor: fieldTheme.color.dangerSoft },
+  dangerActionText: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
+  version: { marginBottom: fieldTheme.space.lg, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "600", textAlign: "center" },
+  pressed: { opacity: 0.72 },
 })
