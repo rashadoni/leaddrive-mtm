@@ -500,12 +500,23 @@
   },
   "gpsHistory": {
     "title": "GPS tarixçəm",
+    "eyebrow": "İş günü",
+    "subtitle": "Burada yalnız server tərəfindən təsdiqlənmiş öz nöqtələriniz göstərilir.",
+    "back": "Geri",
     "today": "Bu gün",
+    "previousDay": "Əvvəlki gün",
+    "nextDay": "Növbəti gün",
     "statKm": "km",
     "statPoints": "nöqtə",
     "statInterval": "interval",
     "empty": "Bu gün üçün GPS nöqtəsi yoxdur",
-    "offlineNote": "GPS tarixçəsi oflayn əlçatan deyil"
+    "emptyHelp": "GPS yalnız açıq iş günü zamanı yazılır. «Bu gün» ekranında iş gününü başladın.",
+    "offlineNote": "Hazırda bağlantı yoxdur. Tarixçə yenilənməmiş ola bilər.",
+    "trackingHint": "GPS iş günü başladıqdan sonra açılır və iş günü bitəndə dayanır.",
+    "lastPoint": "Son təsdiqlənmiş nöqtə",
+    "accuracy": "dəqiqlik ±{{value}} m",
+    "speed": "{{value}} km/s",
+    "battery": "batareya {{value}}%"
   },
   "route": {
     "greeting": "Salam, {{name}}!",

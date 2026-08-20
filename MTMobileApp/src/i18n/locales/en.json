@@ -549,12 +549,23 @@
   },
   "gpsHistory": {
     "title": "My GPS history",
+    "eyebrow": "Workday",
+    "subtitle": "Only your own server-confirmed points are shown here.",
+    "back": "Back",
     "today": "Today",
+    "previousDay": "Previous day",
+    "nextDay": "Next day",
     "statKm": "km",
     "statPoints": "points",
     "statInterval": "interval",
     "empty": "No GPS points for this day",
-    "offlineNote": "GPS history isn't available offline"
+    "emptyHelp": "GPS is recorded only during an open workday. Start the day from the Today screen.",
+    "offlineNote": "You're offline. The history may not be up to date.",
+    "trackingHint": "GPS starts after you open your workday and stops when you end it.",
+    "lastPoint": "Latest confirmed point",
+    "accuracy": "accuracy ±{{value}} m",
+    "speed": "{{value}} km/h",
+    "battery": "battery {{value}}%"
   },
   "route": {
     "greeting": "Hello, {{name}}!",
