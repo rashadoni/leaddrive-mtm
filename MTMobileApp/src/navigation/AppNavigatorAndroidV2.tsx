@@ -26,6 +26,7 @@ import ContactDetailScreen from "../screens/base/ContactDetailScreen"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
+import MoreScreen from "../screens/more/MoreScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ContactTransferScreen from "../screens/manager/ContactTransferScreen.android"
@@ -41,7 +42,10 @@ export type RootStackParamList = {
   ContactDetail: { id: string; name?: string }
   VisitWorkspace: { visitId: string; name?: string }
   TaskDetail: { task: RawTask }
+  Visits: undefined
+  Base: undefined
   GpsHistory: undefined
+  Profile: undefined
   ContactTransfer: undefined
 }
 
@@ -49,13 +53,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>()
 const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
-  Home: { active: "home", inactive: "home-outline" },
-  Week: { active: "calendar-number", inactive: "calendar-number-outline" },
+  Today: { active: "today", inactive: "today-outline" },
+  Calendar: { active: "calendar-number", inactive: "calendar-number-outline" },
   Route: { active: "navigate", inactive: "navigate-outline" },
-  Visits: { active: "checkmark-circle", inactive: "checkmark-circle-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
-  Base: { active: "business", inactive: "business-outline" },
-  Profile: { active: "person", inactive: "person-outline" },
+  More: { active: "ellipsis-horizontal-circle", inactive: "ellipsis-horizontal-circle-outline" },
   Overview: { active: "grid", inactive: "grid-outline" },
   Team: { active: "people", inactive: "people-outline" },
   Planning: { active: "calendar", inactive: "calendar-outline" },
@@ -67,13 +69,11 @@ const PlanningScreen = () => <ManagerWorkspaceScreen kind="planning" />
 const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 
 const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
-  Home: DashboardScreen,
-  Week: WeekScreen,
+  Today: DashboardScreen,
+  Calendar: WeekScreen,
   Route: RouteScreen,
-  Visits: VisitScreen,
   Tasks: TasksScreen,
-  Base: BaseScreen,
-  Profile: ProfileScreen,
+  More: MoreScreen,
   Overview: DashboardScreen,
   Team: TeamScreen,
   Planning: PlanningScreen,
@@ -81,13 +81,11 @@ const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
 }
 
 const TAB_LABEL_KEYS: Record<AppTabName, string> = {
-  Home: "navV2.home",
-  Week: "navV2.week",
+  Today: "navV2.today",
+  Calendar: "navV2.calendar",
   Route: "navV2.route",
-  Visits: "navV2.visits",
   Tasks: "navV2.tasks",
-  Base: "navV2.base",
-  Profile: "navV2.profile",
+  More: "navV2.more",
   Overview: "navV2.overview",
   Team: "navV2.team",
   Planning: "navV2.planning",
@@ -98,7 +96,7 @@ function tabOptions(name: string, label: string) {
   return {
     title: label,
     tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => {
-      const icon = ICONS[name] ?? ICONS.Home
+      const icon = ICONS[name] ?? ICONS.Today
       return <Icon name={focused ? icon.active : icon.inactive} size={22} color={color} />
     },
   }
@@ -131,7 +129,7 @@ function MainTabs() {
   return (
     <Tab.Navigator
       key={manager ? "manager-tabs" : "agent-tabs"}
-      initialRouteName={manager ? "Overview" : "Home"}
+      initialRouteName={manager ? "Overview" : "Today"}
       screenOptions={{
         headerShown: false,
         tabBarPosition: tablet ? "left" : "bottom",
@@ -221,7 +219,10 @@ export default function AppNavigatorAndroidV2() {
             <Stack.Screen name="ContactDetail" component={ContactDetailScreen} />
             <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+            <Stack.Screen name="Visits" component={VisitScreen} />
+            <Stack.Screen name="Base" component={BaseScreen} />
             <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ContactTransfer" component={ContactTransferScreen} />
           </>
         ) : hasServer ? (
