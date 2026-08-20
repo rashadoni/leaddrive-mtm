@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react"
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native"
+import React, { useCallback, useMemo, useRef, useState } from "react"
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native"
 import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import Icon from "react-native-vector-icons/Ionicons"
@@ -9,10 +9,19 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { isTabletWidth } from "../../theme/layoutBreakpoints"
+import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
 import { toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
 import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../services/manager-approvals"
+import {
+  formatManagerEvidenceAge,
+  managerAgentTruth,
+  normalizeManagerLocations,
+  type ManagerAgentTruth,
+  type ManagerLocationEvidence,
+  type ManagerTeamAgent,
+} from "../../services/manager-location-truth"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -53,34 +62,66 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
   const meta = SCREEN_META[kind]
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tablet = isTabletWidth(width)
-  const [team, setTeam] = useState<Array<{ id: string; name: string; role: string; isOnline: boolean; workday: { status: string } | null }>>([])
-  const [locations, setLocations] = useState<Array<{ agentId: string; latitude: number | null; longitude: number | null; accuracy: number | null; battery: number | null; recordedAt: string | null }>>([])
+  const expandedTablet = isExpandedTabletWidth(width)
+  const [team, setTeam] = useState<ManagerTeamAgent[]>([])
+  const [locations, setLocations] = useState<ManagerLocationEvidence[]>([])
   const [planning, setPlanning] = useState<PlanningRoute[]>([])
   const [approvals, setApprovals] = useState<ManagerApprovals | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null)
+  const [observedAt, setObservedAt] = useState(() => Date.now())
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<{ kind: ApprovalKind; id: string } | null>(null)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
+  const requestId = useRef(0)
 
-  const reload = useCallback(() => {
-    setLoading(true)
+  const reload = useCallback(async (mode: "initial" | "manual" | "silent" = "initial") => {
+    const currentRequestId = ++requestId.current
+    setObservedAt(Date.now())
+    if (mode === "initial") setLoading(true)
+    if (mode === "manual") setRefreshing(true)
     const request = kind === "team"
       ? Promise.all([api.getManagerTeam(), api.getManagerLocations()])
       : kind === "planning"
         ? api.getManagerPlanning()
         : api.getManagerApprovals()
-    request.then((response: any) => {
-        if (kind === "team") {
-          setTeam(response?.[0]?.data?.agents || [])
-          setLocations(response?.[1]?.data?.locations || [])
-        } else if (kind === "planning") setPlanning(toPlanningRoutes(response?.data))
-        else setApprovals(toApprovals(response?.data))
-      })
-      .catch(() => { setTeam([]); setPlanning([]); setApprovals(null) })
-      .finally(() => setLoading(false))
+    try {
+      const response: any = await request
+      if (currentRequestId !== requestId.current) return
+      if (kind === "team") {
+        setTeam(Array.isArray(response?.[0]?.data?.agents) ? response[0].data.agents : [])
+        setLocations(normalizeManagerLocations(response?.[1]?.data?.locations))
+      } else if (kind === "planning") {
+        setPlanning(toPlanningRoutes(response?.data))
+      } else {
+        setApprovals(toApprovals(response?.data))
+      }
+      setLoadError(false)
+      const receivedAt = Date.now()
+      setUpdatedAt(receivedAt)
+      setObservedAt(receivedAt)
+    } catch (error: any) {
+      if (currentRequestId !== requestId.current || error?.message === "SESSION_EXPIRED") return
+      // Keep the last trustworthy snapshot on a weak connection. Replacing it
+      // with an empty roster would make employees appear to have disappeared.
+      setLoadError(true)
+    } finally {
+      if (currentRequestId === requestId.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    }
   }, [kind])
 
-  useEffect(() => { reload() }, [reload])
+  useAutoRefresh(useCallback(() => { void reload(updatedAt == null ? "initial" : "silent") }, [reload, updatedAt]))
+
+  const teamRows = useMemo(() => {
+    return team.map((agent) => ({ agent, truth: managerAgentTruth(agent, locations, observedAt) }))
+  }, [locations, observedAt, team])
+  const onlineCount = teamRows.filter(({ truth }) => truth.isOnline).length
+  const gpsAttentionCount = teamRows.filter(({ truth }) => truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES").length
 
   const decide = async (queue: ApprovalKind, id: string, decision: "APPROVED" | "REJECTED", note?: string) => {
     if (busyId) return
@@ -119,7 +160,17 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, tablet && styles.contentTablet]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, tablet && styles.contentTablet]}
+        refreshControl={(
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { void reload("manual") }}
+            colors={[fieldTheme.color.primary]}
+            tintColor={fieldTheme.color.primary}
+          />
+        )}
+      >
         {kind === "team" ? (
           <>
             <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
@@ -130,41 +181,53 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
               </View>
               <Icon name="chevron-forward" size={21} color={fieldTheme.color.primary} />
             </Pressable>
-            {team.length > 0 ? (
-              <View style={styles.teamList}>
-                {team.map((agent) => (
-                  <View key={agent.id} style={styles.agentRow}>
-                <View style={[styles.presenceDot, { backgroundColor: agent.isOnline ? fieldTheme.color.success : fieldTheme.color.border }]} />
-                <View style={styles.agentCopy}>
-                  <Text style={styles.agentName}>{agent.name}</Text>
-                  <Text style={styles.agentMeta}>{agent.role} · {agent.workday?.status || t("dashboardV2.unavailable")}</Text>
-                {(() => {
-                  const location = locations.find((item) => item.agentId === agent.id)
-                  if (!location || location.latitude == null || location.longitude == null) return <Text style={styles.locationMeta}>Location unavailable</Text>
-                  const coords = `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
-                  const accuracy = location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)}m`
-                  const battery = location.battery == null ? "" : ` · ${Math.round(location.battery)}%`
-                  const recordedAt = location.recordedAt ? ` · ${new Date(location.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""
-                  return (
-                    <View style={styles.locationBlock}>
-                      <Text style={styles.locationMeta}>{coords}{accuracy}{battery}{recordedAt}</Text>
-                      <Pressable
-                        accessibilityRole="link"
-                        accessibilityLabel="Open location on map"
-                        onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`)}
-                      >
-                        <Text style={styles.mapLink}>Open on map</Text>
-                      </Pressable>
-                    </View>
-                  )
-                })()}
+            <View style={[styles.teamSnapshot, expandedTablet && styles.teamSnapshotTablet]}>
+              <View style={styles.snapshotCopy}>
+                <Text style={styles.snapshotTitle}>{t("managerShell.teamSnapshot", { defaultValue: "Team status" })}</Text>
+                <Text style={styles.snapshotMeta}>
+                  {updatedAt
+                    ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatTimestamp(updatedAt) })
+                    : t("common.loading")}
+                </Text>
+              </View>
+              <View style={styles.snapshotCounts}>
+                <SummaryCount color={fieldTheme.color.success} value={onlineCount} label={t("managerShell.online", { defaultValue: "Online" })} />
+                <SummaryCount color={fieldTheme.color.inkMuted} value={Math.max(0, teamRows.length - onlineCount)} label={t("managerShell.offline", { defaultValue: "Offline" })} />
+                <SummaryCount color={fieldTheme.color.amber} value={gpsAttentionCount} label={t("managerShell.gpsNeedsAttention", { defaultValue: "GPS attention" })} />
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("managerShell.refreshTeam", { defaultValue: "Refresh team status" })}
+                disabled={refreshing}
+                style={({ pressed }) => [styles.refreshButton, pressed && styles.buttonPressed, refreshing && styles.buttonDisabled]}
+                onPress={() => { void reload("manual") }}
+              >
+                <Icon name="refresh" size={19} color={fieldTheme.color.primaryStrong} />
+                <Text style={styles.refreshButtonText}>{t("managerShell.refresh", { defaultValue: "Refresh" })}</Text>
+              </Pressable>
+            </View>
+            {loadError && (
+              <View style={styles.errorNotice}>
+                <Icon name="cloud-offline-outline" size={21} color={fieldTheme.color.amber} />
+                <View style={styles.errorCopy}>
+                  <Text style={styles.errorTitle}>{t("managerShell.teamLoadError", { defaultValue: "Could not refresh team status" })}</Text>
+                  <Text style={styles.errorBody}>{t("managerShell.teamSnapshotPreserved", { defaultValue: "The last loaded information is still shown." })}</Text>
                 </View>
-                <Text style={styles.agentState}>{agent.isOnline ? "ONLINE" : "OFFLINE"}</Text>
-                  </View>
+              </View>
+            )}
+            {teamRows.length > 0 ? (
+              <View style={[styles.teamList, expandedTablet && styles.teamListTablet]}>
+                {teamRows.map(({ agent, truth }) => (
+                  <AgentTruthCard key={agent.id} agent={agent} truth={truth} t={t} tablet={expandedTablet} />
                 ))}
               </View>
             ) : (
-              <StatusPanel icon="people-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.teamEmpty")} body={t(meta.bodyKey)} />
+              <StatusPanel
+                icon={loadError ? "cloud-offline-outline" : "people-outline"}
+                color={loadError ? fieldTheme.color.amber : meta.color}
+                title={loading ? t("common.loading") : loadError ? t("managerShell.teamLoadError", { defaultValue: "Could not load team status" }) : t("managerShell.teamEmpty")}
+                body={loadError ? t("managerShell.pullToRetry", { defaultValue: "Pull down or tap Refresh to try again." }) : t(meta.bodyKey)}
+              />
             )}
           </>
         ) : kind === "planning" ? (
@@ -205,6 +268,148 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
         onSubmit={(note) => { const target = rejectTarget; setRejectTarget(null); if (target) decide(target.kind, target.id, "REJECTED", note) }}
       />
       <FeedbackToast visible={toast.visible} type={toast.type} title={toast.title} onDismiss={() => setToast((s) => ({ ...s, visible: false }))} />
+    </View>
+  )
+}
+
+function formatTimestamp(value: number | string) {
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return "—"
+  return date.toLocaleString([], {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function ageLabel(ageMs: number | null, t: any) {
+  const age = formatManagerEvidenceAge(ageMs)
+  if (!age) return t("managerShell.timeUnknown", { defaultValue: "time unknown" })
+  const key = age.unit === "minute"
+    ? "managerShell.minutesAgo"
+    : age.unit === "hour"
+      ? "managerShell.hoursAgo"
+      : "managerShell.daysAgo"
+  return t(key, { count: age.value, defaultValue: `${age.value} ${age.unit}${age.value === 1 ? "" : "s"} ago` })
+}
+
+function workdayLabel(status: string | null | undefined, t: any) {
+  if (status === "STARTED") return t("managerShell.workdayStarted", { defaultValue: "Workday started" })
+  if (status === "PAUSED") return t("managerShell.workdayPaused", { defaultValue: "Workday paused" })
+  if (status === "COMPLETED") return t("managerShell.workdayCompleted", { defaultValue: "Workday completed" })
+  return t("managerShell.workdayNotStarted", { defaultValue: "Workday not started" })
+}
+
+function SummaryCount({ color, value, label }: { color: string; value: number; label: string }) {
+  return (
+    <View style={styles.summaryCount}>
+      <View style={[styles.summaryDot, { backgroundColor: color }]} />
+      <Text style={styles.summaryValue}>{value}</Text>
+      <Text style={styles.summaryLabel}>{label}</Text>
+    </View>
+  )
+}
+
+function AgentTruthCard({ agent, truth, t, tablet }: {
+  agent: ManagerTeamAgent
+  truth: ManagerAgentTruth
+  t: any
+  tablet: boolean
+}) {
+  const location = truth.location
+  const currentPosition = truth.isOnline && truth.gpsFreshness === "FRESH"
+  const gpsConfig = truth.gpsFreshness === "FRESH"
+    ? currentPosition
+      ? { icon: "locate", color: fieldTheme.color.success, tint: fieldTheme.color.successSoft, label: t("managerShell.gpsFresh", { defaultValue: "GPS current" }) }
+      : { icon: "time", color: fieldTheme.color.blue, tint: fieldTheme.color.blueSoft, label: t("managerShell.gpsRecent", { defaultValue: "Recent GPS point" }) }
+    : truth.gpsFreshness === "DELAYED"
+      ? { icon: "time", color: fieldTheme.color.blue, tint: fieldTheme.color.blueSoft, label: t("managerShell.gpsDelayed", { defaultValue: "GPS delayed" }) }
+      : truth.gpsFreshness === "STALE"
+        ? { icon: "time-outline", color: fieldTheme.color.amber, tint: fieldTheme.color.amberSoft, label: t("managerShell.gpsStale", { defaultValue: "Old GPS point" }) }
+        : { icon: "location-outline", color: fieldTheme.color.inkMuted, tint: fieldTheme.color.surfaceStrong, label: t("managerShell.noCoordinates", { defaultValue: "No GPS position" }) }
+  const lastSeen = truth.lastSeenAt
+    ? t("managerShell.lastSeenAt", { defaultValue: "Last app activity: {{time}}", time: formatTimestamp(truth.lastSeenAt) })
+    : t("managerShell.neverSeen", { defaultValue: "No app activity recorded" })
+  const locationTitle = currentPosition
+    ? t("managerShell.currentPosition", { defaultValue: "Current position" })
+    : t("managerShell.lastKnownPosition", { defaultValue: "Last known position" })
+
+  const openMap = () => {
+    if (!location) return
+    void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`)
+  }
+
+  return (
+    <View style={[styles.agentCard, tablet && styles.agentCardTablet]}>
+      <View style={styles.agentHeader}>
+        <View style={[styles.agentAvatar, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+          <Icon name="person" size={22} color={truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted} />
+        </View>
+        <View style={styles.agentCopy}>
+          <Text style={styles.agentName}>{agent.name}</Text>
+          <Text style={styles.agentMeta}>{agent.role} · {workdayLabel(agent.workday?.status, t)}</Text>
+        </View>
+        <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+          <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
+          <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
+            {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.presenceEvidence}>
+        <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
+        <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
+      </View>
+
+      <View style={[styles.locationPanel, { backgroundColor: gpsConfig.tint }]}>
+        <View style={styles.locationHeading}>
+          <View style={styles.locationTitleRow}>
+            <Icon name={gpsConfig.icon} size={19} color={gpsConfig.color} />
+            <Text style={[styles.locationTitle, { color: gpsConfig.color }]}>
+              {location ? locationTitle : gpsConfig.label}
+            </Text>
+          </View>
+          <View style={[styles.gpsPill, { borderColor: gpsConfig.color }]}>
+            <Text style={[styles.gpsPillText, { color: gpsConfig.color }]}>{gpsConfig.label}</Text>
+          </View>
+        </View>
+
+        {location ? (
+          <>
+            <Text style={styles.locationDescription}>
+              {currentPosition
+                ? t("managerShell.positionReceived", { defaultValue: "Received {{age}}", age: ageLabel(truth.locationAgeMs, t) })
+                : t("managerShell.historicalPositionReceived", { defaultValue: "Historical point from {{age}}", age: ageLabel(truth.locationAgeMs, t) })}
+            </Text>
+            <Text style={styles.locationDetails}>
+              {location.recordedAt ? formatTimestamp(location.recordedAt) : t("managerShell.timeUnknown", { defaultValue: "Time unknown" })}
+              {location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)} m`}
+              {location.battery == null ? "" : ` · ${Math.round(location.battery)}%`}
+            </Text>
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={currentPosition
+                ? t("managerShell.openCurrentPosition", { defaultValue: "Open current position on map" })
+                : t("managerShell.openLastKnownPosition", { defaultValue: "Open last known position on map" })}
+              style={({ pressed }) => [styles.mapButton, tablet && styles.mapButtonTablet, pressed && styles.buttonPressed]}
+              onPress={openMap}
+            >
+              <Icon name={currentPosition ? "map-outline" : "time-outline"} size={18} color={fieldTheme.color.primaryStrong} />
+              <Text style={styles.mapButtonText}>
+                {currentPosition
+                  ? t("managerShell.openCurrentPosition", { defaultValue: "Open current position" })
+                  : t("managerShell.openLastKnownPosition", { defaultValue: "Open last known position" })}
+              </Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.locationDescription}>
+            {t("managerShell.noCoordinatesBody", { defaultValue: "This employee has not sent a GPS position yet." })}
+          </Text>
+        )}
+      </View>
     </View>
   )
 }
@@ -292,7 +497,7 @@ const styles = StyleSheet.create({
   title: { color: fieldTheme.color.ink, fontSize: 30, fontWeight: "800", letterSpacing: -0.7 },
   body: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, maxWidth: 680 },
   content: { padding: fieldTheme.space.lg, gap: fieldTheme.space.xl },
-  contentTablet: { padding: fieldTheme.space.xl, maxWidth: 1180 },
+  contentTablet: { width: "100%", padding: fieldTheme.space.xl, maxWidth: 1180, alignSelf: "center" },
   statusPanel: {
     flexDirection: "row",
     alignItems: "center",
@@ -312,48 +517,127 @@ const styles = StyleSheet.create({
   statusCopy: { flex: 1, gap: 3 },
   statusTitle: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
   statusBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19 },
-  teamList: { gap: fieldTheme.space.sm },
+  teamSnapshot: {
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.lg,
+    backgroundColor: fieldTheme.color.surface,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+  },
+  teamSnapshotTablet: { flexDirection: "row", alignItems: "center" },
+  snapshotCopy: { flex: 1, gap: 3 },
+  snapshotTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
+  snapshotMeta: { color: fieldTheme.color.inkMuted, fontSize: 12 },
+  snapshotCounts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
+  summaryCount: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    borderRadius: fieldTheme.radius.pill,
+    backgroundColor: fieldTheme.color.canvas,
+  },
+  summaryDot: { width: 8, height: 8, borderRadius: fieldTheme.radius.pill },
+  summaryValue: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
+  summaryLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  refreshButton: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primarySoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
+  },
+  refreshButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
+  buttonPressed: { opacity: 0.72 },
+  buttonDisabled: { opacity: 0.55 },
+  errorNotice: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.amberSoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.amber,
+  },
+  errorCopy: { flex: 1, gap: 2 },
+  errorTitle: { color: fieldTheme.color.amber, fontSize: 14, fontWeight: "900" },
+  errorBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
+  teamList: { gap: fieldTheme.space.md },
+  teamListTablet: { flexDirection: "row", flexWrap: "wrap" },
   transferAction: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
   transferActionIcon: { width: 46, height: 46, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
   transferActionCopy: { flex: 1, gap: 3 },
   transferActionTitle: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
   transferActionBody: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17 },
-  agentRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  presenceDot: { width: 10, height: 10, borderRadius: fieldTheme.radius.pill },
-  agentCopy: { flex: 1, gap: 2 },
-  agentName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
-  agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12 },
-  locationBlock: { gap: 2 },
-  locationMeta: { color: fieldTheme.color.blue, fontSize: 11, fontWeight: "700" },
-  mapLink: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "800" },
-  agentState: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
-  skeletonGrid: { gap: fieldTheme.space.md },
-  skeletonGridTablet: { flexDirection: "row", flexWrap: "wrap" },
-  skeleton: {
-    minHeight: 154,
-    padding: fieldTheme.space.lg,
+  agentCard: {
     gap: fieldTheme.space.md,
+    padding: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.lg,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
     borderColor: fieldTheme.color.border,
+  },
+  agentCardTablet: { width: "48%" },
+  agentHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  agentAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: fieldTheme.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  presenceDot: { width: 10, height: 10, borderRadius: fieldTheme.radius.pill },
+  agentCopy: { flex: 1, gap: 2 },
+  agentName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
+  agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  presencePill: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    borderRadius: fieldTheme.radius.pill,
+  },
+  presenceText: { fontSize: 11, fontWeight: "900" },
+  presenceEvidence: {
+    minHeight: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+  },
+  presenceEvidenceText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  locationPanel: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md },
+  locationHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  locationTitleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  locationTitle: { flex: 1, fontSize: 14, fontWeight: "900" },
+  gpsPill: { minHeight: 28, justifyContent: "center", paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, borderWidth: 1 },
+  gpsPillText: { fontSize: 10, fontWeight: "900" },
+  locationDescription: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19 },
+  locationDetails: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
+  mapButton: {
+    minHeight: 44,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    paddingHorizontal: 12,
+    borderRadius: fieldTheme.radius.md,
     backgroundColor: fieldTheme.color.surface,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
   },
-  skeletonTablet: { width: "48%" },
-  skeletonDot: { width: 38, height: 38, borderRadius: fieldTheme.radius.md },
-  skeletonLineStrong: {
-    height: 14,
-    width: "62%",
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.surfaceStrong,
-  },
-  skeletonLine: {
-    height: 9,
-    width: "88%",
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.surfaceStrong,
-  },
-  skeletonLineShort: { width: "46%" },
-
+  mapButtonTablet: { minHeight: 48 },
+  mapButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   itemList: { gap: fieldTheme.space.sm },
   itemCard: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border },
   itemMain: { flex: 1 },
