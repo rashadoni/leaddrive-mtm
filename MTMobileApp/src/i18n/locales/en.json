@@ -318,6 +318,8 @@
     "empty": "No contacts assigned yet",
     "emptySearch": "Nothing matches your search",
     "loading": "Loading contacts…",
+    "loadError": "We couldn't load contacts",
+    "loadErrorBody": "Check your connection and try again. Previously saved contacts will appear here automatically.",
     "offlineUnavailable": "Contacts aren't available offline",
     "typeDoctor": "Doctor",
     "typePharmacist": "Pharmacist",

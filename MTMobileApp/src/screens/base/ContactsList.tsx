@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -48,8 +48,11 @@ export default function ContactsList() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const lastLoadedTermRef = useRef<string | null>(null)
+  const hasLoadedTermRef = useRef(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400)
@@ -61,17 +64,37 @@ export default function ContactsList() {
       const response = await api.getContacts(term ? { search: term } : undefined)
       if (response.success) {
         setContacts((response.data?.contacts || []).map(toContactListItem))
+        lastLoadedTermRef.current = term
+        hasLoadedTermRef.current = true
         setOffline(false)
+        setLoadError(false)
+      } else {
+        throw new Error("CONTACTS_LOAD_FAILED")
       }
     } catch (error: any) {
       if (error.message !== "SESSION_EXPIRED") {
         const agent = useAuthStore.getState().agent
+        let cached: ContactListItem[] = []
+        let cacheAvailable = false
         if (agent) {
           try {
-            setContacts(await readOfflineContacts(agent.organizationId, agent.id, term))
+            cached = await readOfflineContacts(agent.organizationId, agent.id, term)
+            cacheAvailable = cached.length > 0
+            if (!cacheAvailable && term) {
+              cacheAvailable = (await readOfflineContacts(agent.organizationId, agent.id, "")).length > 0
+            }
           } catch {}
         }
+        const sameInMemoryQuery = hasLoadedTermRef.current && lastLoadedTermRef.current === term
+        if (cached.length > 0 || (cacheAvailable && term)) {
+          setContacts(cached)
+          lastLoadedTermRef.current = term
+          hasLoadedTermRef.current = true
+        } else if (!sameInMemoryQuery) {
+          setContacts([])
+        }
         setOffline(true)
+        setLoadError(!cacheAvailable && !sameInMemoryQuery)
       }
     } finally {
       setLoading(false)
@@ -116,7 +139,7 @@ export default function ContactsList() {
           )}
         </View>
 
-        {offline && (
+        {offline && !loadError && (
           <View style={styles.offlineBanner} accessibilityLiveRegion="polite">
             <Icon name="cloud-offline-outline" size={19} color={fieldTheme.color.amber} />
             <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
@@ -146,16 +169,36 @@ export default function ContactsList() {
               {loading ? (
                 <ActivityIndicator color={fieldTheme.color.primary} />
               ) : (
-                <Icon name={debouncedSearch ? "search-outline" : "people-outline"} size={31} color={fieldTheme.color.primary} />
+                <Icon
+                  name={loadError ? "alert-circle-outline" : debouncedSearch ? "search-outline" : "people-outline"}
+                  size={31}
+                  color={loadError ? fieldTheme.color.danger : fieldTheme.color.primary}
+                />
               )}
             </View>
             <Text style={styles.emptyTitle}>
               {loading
                 ? t("contacts.loading")
-                : debouncedSearch
+                : loadError
+                  ? t("contacts.loadError")
+                  : debouncedSearch
                   ? t("contacts.emptySearch")
                   : t("contacts.empty")}
             </Text>
+            {loadError ? (
+              <>
+                <Text style={styles.emptyBody}>{t("contacts.loadErrorBody")}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.retry")}
+                  onPress={onRefresh}
+                  style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+                >
+                  <Icon name="refresh" size={19} color={fieldTheme.color.onColor} />
+                  <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         }
         renderItem={({ item }) => {
@@ -274,5 +317,8 @@ const styles = StyleSheet.create({
   empty: { padding: 44, alignItems: "center", flex: 1, justifyContent: "center" },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: fieldTheme.color.primarySoft, justifyContent: "center", alignItems: "center", marginBottom: fieldTheme.space.lg },
   emptyTitle: { fontSize: 16, lineHeight: 22, fontWeight: "800", color: fieldTheme.color.ink, textAlign: "center" },
+  emptyBody: { maxWidth: 380, marginTop: fieldTheme.space.sm, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  retryButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
+  retryButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   pressed: { opacity: 0.72 },
 })

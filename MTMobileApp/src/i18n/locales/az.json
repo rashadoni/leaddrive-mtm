@@ -318,6 +318,8 @@
     "empty": "Hələ təyin olunmuş kontakt yoxdur",
     "emptySearch": "Axtarışa uyğun nəticə yoxdur",
     "loading": "Kontaktlar yüklənir…",
+    "loadError": "Kontaktları yükləmək alınmadı",
+    "loadErrorBody": "İnterneti yoxlayın və yenidən cəhd edin. Əvvəl saxlanmış kontaktlar burada avtomatik görünəcək.",
     "offlineUnavailable": "Kontaktlar oflayn əlçatan deyil",
     "typeDoctor": "Həkim",
     "typePharmacist": "Əczaçı",
