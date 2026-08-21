@@ -76,7 +76,7 @@ describe("GPS history playback model", () => {
     expect(selectGpsPlaybackPoint(model, Number.NaN)).toMatchObject({ index: 0, progress: 0 })
   })
 
-  it("builds a self-contained local route scheme without external map requests", () => {
+  it("builds a raster map with a local route overlay and no remote scripts", () => {
     const model = createGpsPlaybackModel([
       { id: "a", recordedAt: "2026-08-20T09:00:00.000Z", latitude: 40.4, longitude: 49.8 },
       { id: "b", recordedAt: "2026-08-20T09:01:00.000Z", latitude: 40.41, longitude: 49.81 },
@@ -87,14 +87,17 @@ describe("GPS history playback model", () => {
       start: "Start",
       end: "End",
       current: "</script><script>unsafe()</script>",
-      localSchemeHint: "Local route scheme",
+      mapLoading: "Loading map",
+      mapUnavailable: "Map unavailable",
+      mapAttribution: "© OpenStreetMap · © CARTO",
     })
 
     expect(html).toContain('id="overlay"')
     expect(html).toContain("connect-src 'none'")
-    expect(html).toContain("Local route scheme")
+    expect(html).toContain("basemaps.cartocdn.com/light_all/")
+    expect(html).toContain("© OpenStreetMap · © CARTO")
+    expect(html).toContain("Map unavailable")
     expect(html).not.toContain("tile.openstreetmap.org")
-    expect(html).not.toContain("© OpenStreetMap")
     expect(html).not.toMatch(/<script[^>]+src=/)
     expect(html).not.toContain("</script><script>unsafe()")
   })

@@ -1,4 +1,9 @@
 import type { GpsPoint } from "../../services/gps-history"
+import {
+  cartoTileMarkup,
+  cartoTileScript,
+  cartoTileStyles,
+} from "../maps/carto-tiles"
 
 export interface GpsTimelinePoint extends GpsPoint {
   sourceIndex: number
@@ -40,7 +45,9 @@ export interface GpsRouteDocumentLabels {
   start: string
   end: string
   current: string
-  localSchemeHint: string
+  mapLoading: string
+  mapUnavailable: string
+  mapAttribution: string
 }
 
 const DEFAULT_GPS_GAP_SECONDS = 10 * 60
@@ -188,9 +195,9 @@ function htmlText(value: string): string {
 }
 
 /**
- * Builds a dependency-free, local-only route view for react-native-webview.
- * It intentionally makes no network requests: factual route segments and
- * markers remain visible over a neutral grid with no third-party disclosure.
+ * Builds a route view with a raster basemap and a separate factual GPS overlay.
+ * No remote JavaScript is executed. If map images cannot load, the route and
+ * markers remain visible over the local fallback grid.
  */
 export function buildGpsRouteDocument(
   routeSegments: GpsPlaybackPoint[][],
@@ -206,7 +213,7 @@ export function buildGpsRouteDocument(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; connect-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://*.basemaps.cartocdn.com data:; connect-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
   <style>
     * { box-sizing: border-box; }
     html, body, #route { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #dfeae5; }
@@ -219,31 +226,21 @@ export function buildGpsRouteDocument(
       background-size: 28px 28px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    #overlay { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-    .map-note {
-      position: absolute;
-      z-index: 3;
-      left: 8px;
-      right: 8px;
-      bottom: 8px;
-      width: fit-content;
-      max-width: calc(100% - 16px);
-      padding: 5px 8px;
-      border-radius: 8px;
-      background: rgba(251,253,252,.92);
-      color: #40544d;
-      font-size: 10px;
-      line-height: 13px;
-      box-shadow: 0 1px 5px rgba(19,35,31,.12);
-    }
+    #overlay { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    ${cartoTileStyles()}
   </style>
 </head>
 <body>
   <div id="route">
+    ${cartoTileMarkup({
+      loading: labels.mapLoading,
+      unavailable: labels.mapUnavailable,
+      attribution: labels.mapAttribution,
+    })}
     <svg id="overlay" role="img" aria-label="${htmlText(labels.routeLabel)}"></svg>
-    <div class="map-note">${htmlText(labels.localSchemeHint)}</div>
   </div>
   <script>
+    ${cartoTileScript()}
     (function () {
       var segments = ${scriptJson(coordinateSegments)};
       var labels = ${scriptJson(labels)};
@@ -365,6 +362,7 @@ export function buildGpsRouteDocument(
         var centerY = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
         var originX = centerX - width / 2;
         var originY = centerY - height / 2;
+        window.__renderCartoTiles(originX, originY, zoom, width, height);
         screenSegments = projectedSegments.map(function (segment) {
           return segment.map(function (point) { return { x: point.x - originX, y: point.y - originY }; });
         });

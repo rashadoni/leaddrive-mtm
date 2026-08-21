@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next"
 import { formatManagerEvidenceAge } from "../../services/manager-location-truth"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
+import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import {
   buildManagerLiveMapDocument,
   buildManagerLiveMapModel,
@@ -97,6 +98,9 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     zoomIn: t("managerShell.liveMapZoomIn", { defaultValue: "Zoom in" }),
     zoomOut: t("managerShell.liveMapZoomOut", { defaultValue: "Zoom out" }),
     fit: t("managerShell.liveMapFit", { defaultValue: "Show all employees" }),
+    mapLoading: t("managerShell.liveMapLoading", { defaultValue: "Loading map…" }),
+    mapUnavailable: t("managerShell.liveMapTilesUnavailable", { defaultValue: "Map tiles are unavailable. Server GPS markers remain visible." }),
+    mapAttribution: t("managerShell.liveMapAttribution", { defaultValue: "© OpenStreetMap · © CARTO" }),
   }), [documentMarkers, i18n.language, t])
   const webViewSource = useMemo(() => ({ html: mapDocument, baseUrl: "about:blank" }), [mapDocument])
 
@@ -215,8 +219,13 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
           <WebView
             ref={webViewRef}
             source={webViewSource}
-            originWhitelist={["about:blank"]}
+            originWhitelist={CARTO_TILE_WEBVIEW_ORIGINS}
             javaScriptEnabled
+            domStorageEnabled={false}
+            cacheEnabled
+            allowFileAccess={false}
+            allowUniversalAccessFromFileURLs={false}
+            mixedContentMode="never"
             scrollEnabled={false}
             bounces={false}
             overScrollMode="never"

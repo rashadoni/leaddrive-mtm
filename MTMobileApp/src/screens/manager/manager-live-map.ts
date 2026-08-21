@@ -3,6 +3,11 @@ import type {
   ManagerGpsFreshness,
   ManagerTeamAgent,
 } from "../../services/manager-location-truth"
+import {
+  cartoTileMarkup,
+  cartoTileScript,
+  cartoTileStyles,
+} from "../maps/carto-tiles"
 
 export type ManagerLiveMapMarkerStatus = "CURRENT" | "LAST_KNOWN" | "STALE"
 
@@ -49,6 +54,9 @@ export interface ManagerLiveMapDocumentLabels {
   zoomIn: string
   zoomOut: string
   fit: string
+  mapLoading: string
+  mapUnavailable: string
+  mapAttribution: string
 }
 
 /**
@@ -140,9 +148,9 @@ function htmlText(value: string): string {
 }
 
 /**
- * Dependency-free local WebView map. Employee coordinates are projected onto
- * a neutral reference grid without external tiles, scripts, navigation, or
- * device-location access.
+ * Raster basemap plus a separate server-evidence marker layer. No remote
+ * JavaScript or device location is used; markers remain visible over the
+ * fallback grid if every map image fails.
  */
 export function buildManagerLiveMapDocument(
   markers: ManagerLiveMapDocumentMarker[],
@@ -164,7 +172,7 @@ export function buildManagerLiveMapDocument(
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; connect-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https://*.basemaps.cartocdn.com data:; connect-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
   <style>
     * { box-sizing: border-box; }
     html, body, #map { width: 100%; height: 100%; margin: 0; overflow: hidden; }
@@ -179,7 +187,7 @@ export function buildManagerLiveMapDocument(
       color: #13231f;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    #markers { position: absolute; inset: 0; }
+    #markers { position: absolute; z-index: 2; inset: 0; }
     #markers { pointer-events: none; }
     .marker {
       position: absolute;
@@ -265,10 +273,16 @@ export function buildManagerLiveMapDocument(
       box-shadow: 0 1px 5px rgba(19,35,31,.12);
     }
     .map-note { left: 8px; right: 8px; max-width: 520px; }
+    ${cartoTileStyles()}
   </style>
 </head>
 <body>
   <main id="map" role="region" aria-label="${htmlText(labels.accessibilityLabel)}">
+    ${cartoTileMarkup({
+      loading: labels.mapLoading,
+      unavailable: labels.mapUnavailable,
+      attribution: labels.mapAttribution,
+    })}
     <div id="markers"></div>
     <section id="popup" aria-live="polite" hidden>
       <p id="popup-name"></p>
@@ -282,6 +296,7 @@ export function buildManagerLiveMapDocument(
     <div class="map-note">${htmlText(labels.tapHint)}</div>
   </main>
   <script>
+    ${cartoTileScript()}
     (function () {
       var markers = ${scriptJson(safeMarkers)};
       var worldUnit = 256;
@@ -367,6 +382,7 @@ export function buildManagerLiveMapDocument(
         var centerY = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
         var originX = centerX - width / 2;
         var originY = centerY - height / 2;
+        window.__renderCartoTiles(originX, originY, zoom, width, height);
         var screenPoints = spreadOverlaps(projected.map(function (point) {
           return { x: point.x - originX, y: point.y - originY };
         }));
