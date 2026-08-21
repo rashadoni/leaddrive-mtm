@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { WebView } from "react-native-webview"
 import { useTranslation } from "react-i18next"
@@ -9,6 +9,7 @@ import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoi
 import {
   buildManagerLiveMapDocument,
   buildManagerLiveMapModel,
+  resolveManagerLiveMapSelection,
   type ManagerLiveMapDocumentMarker,
   type ManagerLiveMapMarker,
   type ManagerLiveMapRow,
@@ -79,6 +80,7 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
   const model = useMemo(() => buildManagerLiveMapModel(rows), [rows])
+  const webViewRef = useRef<any>(null)
   const [visualError, setVisualError] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -100,8 +102,8 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
 
   useEffect(() => {
     setVisualError(false)
-    setSelectedId(null)
-  }, [mapDocument])
+    setSelectedId((current) => resolveManagerLiveMapSelection(model.markers, current))
+  }, [mapDocument, model.markers])
 
   const selectedMarker = useMemo(
     () => model.markers.find((marker) => marker.id === selectedId) ?? null,
@@ -117,6 +119,13 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     } catch {
       // Ignore malformed WebView messages. They are not location evidence.
     }
+  }, [])
+
+  const selectMarker = useCallback((id: string) => {
+    setSelectedId(id)
+    webViewRef.current?.injectJavaScript(
+      `window.__selectManagerMarker && window.__selectManagerMarker(${JSON.stringify(id)}); true;`,
+    )
   }, [])
 
   const mapHeight = expandedTablet ? 520 : tablet ? 440 : 360
@@ -149,6 +158,36 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
         />
       ) : null}
 
+      {model.markers.length > 0 ? (
+        <View style={styles.evidenceSection}>
+          <View style={styles.evidenceHeading}>
+            <View style={styles.evidenceHeadingIcon}>
+              <Icon name="cloud-done-outline" size={20} color={fieldTheme.color.primary} />
+            </View>
+            <View style={styles.evidenceHeadingCopy}>
+              <Text style={styles.evidenceTitle}>{t("managerShell.liveMapEvidenceTitle", { defaultValue: "Employees shown on the map" })}</Text>
+              <Text style={styles.evidenceBody}>{t("managerShell.liveMapEvidenceBody", { defaultValue: "Every card identifies a server-accepted GPS point. Tap a card or its marker for details." })}</Text>
+            </View>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator
+            contentContainerStyle={styles.evidenceRail}
+          >
+            {model.markers.map((marker) => (
+              <EvidenceMarkerCard
+                key={marker.id}
+                marker={marker}
+                language={i18n.language}
+                selected={marker.id === selectedId}
+                onPress={() => selectMarker(marker.id)}
+                t={t}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {model.markers.length === 0 ? (
         <View style={[styles.empty, tablet && styles.emptyTablet]}>
           {loading ? <ActivityIndicator color={fieldTheme.color.primary} size="large" /> : <Icon name={loadError ? "cloud-offline-outline" : "location-outline"} size={40} color={loadError ? fieldTheme.color.amber : fieldTheme.color.primary} />}
@@ -174,6 +213,7 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
       ) : (
         <View style={[styles.mapFrame, { height: mapHeight }]}>
           <WebView
+            ref={webViewRef}
             source={webViewSource}
             originWhitelist={["about:blank"]}
             javaScriptEnabled
@@ -182,6 +222,9 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
             overScrollMode="never"
             onShouldStartLoadWithRequest={(request) => request.url === "about:blank"}
             onMessage={onMessage}
+            onLoadEnd={() => {
+              if (selectedId) selectMarker(selectedId)
+            }}
             onError={() => setVisualError(true)}
             accessibilityLabel={t("managerShell.liveMapAccessibility", { defaultValue: "Team location overview" })}
             style={styles.webView}
@@ -221,6 +264,53 @@ function MapCount({ color, value, label }: { color: string; value: number; label
       <Text style={styles.countValue}>{value}</Text>
       <Text style={styles.countLabel}>{label}</Text>
     </View>
+  )
+}
+
+function EvidenceMarkerCard({
+  marker,
+  language,
+  selected,
+  onPress,
+  t,
+}: {
+  marker: ManagerLiveMapMarker
+  language: string
+  selected: boolean
+  onPress: () => void
+  t: any
+}) {
+  const tone = markerTone(marker)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${marker.name}. ${markerStatusLabel(marker, t)}. ${evidenceAgeLabel(marker.locationAgeMs, t)}`}
+      accessibilityHint={t("managerShell.liveMapEvidenceHint", { defaultValue: "Show this employee on the map" })}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.evidenceCard,
+        { borderColor: selected ? tone.color : fieldTheme.color.border },
+        selected && { backgroundColor: tone.tint },
+        pressed && styles.evidenceCardPressed,
+      ]}
+    >
+      <View style={[styles.evidenceMarker, { backgroundColor: tone.color }]}>
+        <Text style={styles.evidenceInitials}>{marker.initials}</Text>
+      </View>
+      <View style={styles.evidenceCardCopy}>
+        <Text style={styles.evidenceName} numberOfLines={1}>{marker.name}</Text>
+        <Text style={[styles.evidenceStatus, { color: tone.color }]} numberOfLines={2}>{markerStatusLabel(marker, t)}</Text>
+        <View style={styles.evidenceMetaRow}>
+          <Icon name="cloud-done-outline" size={14} color={fieldTheme.color.inkMuted} />
+          <Text style={styles.evidenceMeta} numberOfLines={1}>
+            {t("managerShell.liveMapServerEvidence", { defaultValue: "Accepted by server" })} · {evidenceAgeLabel(marker.locationAgeMs, t)}
+          </Text>
+        </View>
+        <Text style={styles.evidenceTimestamp} numberOfLines={1}>{formatTimestamp(marker.recordedAt, language)}</Text>
+      </View>
+      <Icon name={selected ? "checkmark-circle" : "chevron-forward"} size={21} color={selected ? tone.color : fieldTheme.color.inkMuted} />
+    </Pressable>
   )
 }
 
@@ -301,6 +391,55 @@ const styles = StyleSheet.create({
   body: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, maxWidth: 680 },
   counts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   countsTablet: { maxWidth: 390, justifyContent: "flex-end" },
+  evidenceSection: {
+    gap: fieldTheme.space.sm,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.canvas,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+  },
+  evidenceHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  evidenceHeadingIcon: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: fieldTheme.color.primarySoft,
+  },
+  evidenceHeadingCopy: { flex: 1, gap: 2 },
+  evidenceTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  evidenceBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
+  evidenceRail: { gap: fieldTheme.space.sm, paddingVertical: 2, paddingRight: fieldTheme.space.sm },
+  evidenceCard: {
+    width: 276,
+    minHeight: 112,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 2,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  evidenceCardPressed: { opacity: 0.76, transform: [{ scale: 0.99 }] },
+  evidenceMarker: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    borderWidth: 3,
+    borderColor: fieldTheme.color.surface,
+  },
+  evidenceInitials: { color: fieldTheme.color.onColor, fontSize: 12, fontWeight: "900" },
+  evidenceCardCopy: { flex: 1, gap: 2 },
+  evidenceName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900" },
+  evidenceStatus: { fontSize: 11, lineHeight: 15, fontWeight: "800" },
+  evidenceMetaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  evidenceMeta: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "700" },
+  evidenceTimestamp: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
   count: {
     minHeight: 44,
     flexDirection: "row",
