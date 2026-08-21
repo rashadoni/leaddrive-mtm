@@ -131,8 +131,12 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --pattern 'leaddrive-mtm-v1.7.0.apk' \
             --dir "$PREVIOUS_DIR"
-          NEW_CERT=$("$APKSIGNER" verify --print-certs "$APK_FILE" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
-          OLD_CERT=$("$APKSIGNER" verify --print-certs "$PREVIOUS_DIR/leaddrive-mtm-v1.7.0.apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
+          # Android build-tools 36 labels the signer as "V2 Signer" while
+          # older versions use "Signer #1 certificate". Both forms identify
+          # the same signing certificate, so accept either stable output.
+          CERT_DIGEST='s/^(Signer #[0-9]+ certificate|V[0-9.]+ Signer: certificate) SHA-256 digest: //p'
+          NEW_CERT=$("$APKSIGNER" verify --print-certs "$APK_FILE" | sed -nE "$CERT_DIGEST" | head -n 1)
+          OLD_CERT=$("$APKSIGNER" verify --print-certs "$PREVIOUS_DIR/leaddrive-mtm-v1.7.0.apk" | sed -nE "$CERT_DIGEST" | head -n 1)
           test -n "$NEW_CERT"
           test "$NEW_CERT" = "$OLD_CERT"
           printf 'Release certificate SHA-256: %s\n' "$NEW_CERT"
