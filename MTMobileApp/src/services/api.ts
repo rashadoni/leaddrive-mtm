@@ -921,6 +921,15 @@ class ApiClient {
     return this.request(`/mobile/week${qs}`, { signal })
   }
 
+  /**
+   * Optional, server-gated colleague calendar. Callers must not persist this
+   * response: the tenant can withdraw visibility at any time.
+   */
+  async getTeamSchedule(from: string, to: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ from, to })
+    return this.request(`/mobile/team-schedule?${query.toString()}`, { signal })
+  }
+
   // --- Visit workspace ---
 
   async getVisitWorkspace(id: string, signal?: AbortSignal) {
