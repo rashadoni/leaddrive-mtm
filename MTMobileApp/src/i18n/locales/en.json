@@ -605,6 +605,8 @@
     "actionNextAction": "Next action"
   },
   "gpsHistory": {
+    "accessTitle": "GPS history is available to field agents",
+    "accessBody": "You are signed in as a manager. Open Team to review employees’ latest accepted locations. “My GPS” history belongs only to a field-agent account.",
     "title": "My GPS history",
     "eyebrow": "Workday",
     "subtitle": "Only your own server-confirmed points are shown here.",

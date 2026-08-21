@@ -556,6 +556,8 @@
     "actionNextAction": "Növbəti hərəkət"
   },
   "gpsHistory": {
+    "accessTitle": "GPS tarixçəsi sahə agenti üçün əlçatandır",
+    "accessBody": "Siz rəhbər kimi daxil olmusunuz. Əməkdaşların son qəbul edilmiş koordinatlarını görmək üçün «Komanda» bölməsini açın. «Mənim GPS-im» tarixçəsi yalnız sahə agenti hesabına aiddir.",
     "title": "GPS tarixçəm",
     "eyebrow": "İş günü",
     "subtitle": "Burada yalnız server tərəfindən təsdiqlənmiş öz nöqtələriniz göstərilir.",

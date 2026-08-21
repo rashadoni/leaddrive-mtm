@@ -43,7 +43,7 @@ import {
 } from "./gps-history-model"
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
-type GpsLoadIssue = "none" | "offline" | "timeout" | "error"
+type GpsLoadIssue = "none" | "offline" | "timeout" | "access" | "error"
 
 const PLAYBACK_STEP_MS = 900
 
@@ -124,7 +124,9 @@ export default function GpsHistoryScreen() {
       const cached = historyCache.current.get(date)
       if (cached) setData(cached)
 
-      if (error.message === "REQUEST_TIMEOUT") {
+      if (error?.code === "MTM_MOBILE_CAPABILITY_REQUIRED" || error?.status === 403) {
+        setLoadIssue("access")
+      } else if (error.message === "REQUEST_TIMEOUT") {
         setLoadIssue("timeout")
       } else {
         try {
@@ -285,7 +287,7 @@ export default function GpsHistoryScreen() {
         contentContainerStyle={styles.failureScroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       >
-        <FailureState issue={loadIssue} refreshing={refreshing} t={t} onRetry={refresh} />
+        <FailureState issue={loadIssue} refreshing={refreshing} t={t} onRetry={refresh} onBack={() => navigation.goBack()} />
       </ScrollView>
     )
   } else if (data.points.length === 0) {
@@ -782,15 +784,20 @@ function SummaryCard({ icon, value, label, tone }: {
 function LoadNotice({ issue, t, onRetry }: { issue: Exclude<GpsLoadIssue, "none">; t: Translate; onRetry: () => void }) {
   const timeout = issue === "timeout"
   const offline = issue === "offline"
+  const access = issue === "access"
   const title = offline
     ? t("gpsHistory.retainedOfflineTitle")
     : timeout
       ? t("gpsHistory.retainedTimeoutTitle")
+      : access
+        ? t("gpsHistory.accessTitle")
       : t("gpsHistory.retainedErrorTitle")
   const body = offline
     ? t("gpsHistory.retainedOfflineBody")
     : timeout
       ? t("gpsHistory.retainedTimeoutBody")
+      : access
+        ? t("gpsHistory.accessBody")
       : t("gpsHistory.retainedErrorBody")
   return (
     <View style={styles.loadNotice} accessibilityLiveRegion="polite">
@@ -811,23 +818,30 @@ function FailureState({
   refreshing,
   t,
   onRetry,
+  onBack,
 }: {
   issue: GpsLoadIssue
   refreshing: boolean
   t: Translate
   onRetry: () => void
+  onBack: () => void
 }) {
   const offline = issue === "offline"
   const timeout = issue === "timeout"
+  const access = issue === "access"
   const title = offline
     ? t("gpsHistory.offlineTitle")
     : timeout
       ? t("gpsHistory.timeoutTitle")
+      : access
+        ? t("gpsHistory.accessTitle")
       : t("gpsHistory.errorTitle")
   const body = offline
     ? t("gpsHistory.offlineBody")
     : timeout
       ? t("gpsHistory.timeoutBody")
+      : access
+        ? t("gpsHistory.accessBody")
       : t("gpsHistory.errorBody")
   return (
     <View style={styles.failure} accessibilityLiveRegion="polite">
@@ -838,17 +852,17 @@ function FailureState({
       <Text style={styles.failureBody}>{body}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t("gpsHistory.retry")}
+        accessibilityLabel={access ? t("gpsHistory.back") : t("gpsHistory.retry")}
         disabled={refreshing}
-        onPress={onRetry}
+        onPress={access ? onBack : onRetry}
         style={({ pressed }) => [styles.retryButton, refreshing && styles.disabled, pressed && styles.pressed]}
       >
         {refreshing ? (
           <ActivityIndicator color={fieldTheme.color.onColor} />
         ) : (
-          <Icon name="refresh" size={21} color={fieldTheme.color.onColor} />
+          <Icon name={access ? "arrow-back" : "refresh"} size={21} color={fieldTheme.color.onColor} />
         )}
-        <Text style={styles.retryButtonText}>{t("gpsHistory.retry")}</Text>
+        <Text style={styles.retryButtonText}>{access ? t("gpsHistory.back") : t("gpsHistory.retry")}</Text>
       </Pressable>
     </View>
   )
