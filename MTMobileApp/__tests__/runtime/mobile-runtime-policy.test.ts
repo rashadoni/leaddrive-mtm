@@ -1,4 +1,5 @@
 import { mobileRuntimePolicy } from "../../src/runtime/mobile-runtime-policy"
+import { hasCapability, type MobileCapability } from "../../src/services/bootstrap"
 
 describe("mobileRuntimePolicy", () => {
   test("keeps a logged-in manager online without enabling GPS", () => {
@@ -7,6 +8,19 @@ describe("mobileRuntimePolicy", () => {
       canTrackFieldLocation: false,
       workdayHydrated: true,
       activeWorkdayMatches: false,
+    })).toEqual({
+      heartbeat: true,
+      locationTracking: false,
+    })
+  })
+
+  test("keeps one-shot manager location sharing out of background tracking", () => {
+    const managerCapabilities: MobileCapability[] = ["TEAM_READ", "SELF_LOCATION_SHARE"]
+    expect(mobileRuntimePolicy({
+      isLoggedIn: true,
+      canTrackFieldLocation: hasCapability(managerCapabilities, "FIELD_TRACK"),
+      workdayHydrated: true,
+      activeWorkdayMatches: true,
     })).toEqual({
       heartbeat: true,
       locationTracking: false,

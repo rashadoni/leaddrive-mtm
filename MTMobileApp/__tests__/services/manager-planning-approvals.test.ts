@@ -54,6 +54,12 @@ describe("managerShell i18n contract", () => {
       "liveMapLastKnownLegend",
       "liveMapStaleLegend",
       "liveMapNoCoordinatesBody",
+      "shareLocationTitle",
+      "shareLocationBody",
+      "shareLocationAction",
+      "shareLocationSuccess",
+      "shareLocationError",
+      "shareLocationPermissionDenied",
     ]) {
       expect(typeof ms[k]).toBe("string")
       expect((ms[k] as string).length).toBeGreaterThan(0)

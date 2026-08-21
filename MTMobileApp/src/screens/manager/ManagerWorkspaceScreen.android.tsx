@@ -1,5 +1,18 @@
 import React, { useCallback, useMemo, useRef, useState } from "react"
-import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native"
+import {
+  ActivityIndicator,
+  Linking,
+  PermissionsAndroid,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from "react-native"
 import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import Icon from "react-native-vector-icons/Ionicons"
@@ -11,6 +24,9 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
+import { hasCapability } from "../../services/bootstrap"
+import { captureOneShotLocation } from "../../services/self-location-share"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
 import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../services/manager-approvals"
 import {
@@ -29,6 +45,7 @@ export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
 /** Which approval queue a decision targets — each hits its own decision endpoint. */
 type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange"
+type SelfShareState = "idle" | "locating" | "sending" | "success" | "permissionDenied" | "error"
 
 const SCREEN_META: Record<
   ManagerWorkspaceKind,
@@ -69,6 +86,7 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
+  const canShareSelfLocation = useBootstrapStore((state) => hasCapability(state.capabilities, "SELF_LOCATION_SHARE"))
   const [team, setTeam] = useState<ManagerTeamAgent[]>([])
   const [locations, setLocations] = useState<ManagerLocationEvidence[]>([])
   const [planning, setPlanning] = useState<PlanningRoute[]>([])
@@ -79,6 +97,7 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const [observedAt, setObservedAt] = useState(() => Date.now())
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [selfShareState, setSelfShareState] = useState<SelfShareState>("idle")
   const [rejectTarget, setRejectTarget] = useState<{ kind: ApprovalKind; id: string } | null>(null)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
   const requestId = useRef(0)
@@ -128,6 +147,56 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   }, [locations, observedAt, team])
   const onlineCount = teamRows.filter(({ truth }) => truth.isOnline).length
   const gpsAttentionCount = teamRows.filter(({ truth }) => truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES").length
+  const selfShareBusy = selfShareState === "locating" || selfShareState === "sending"
+
+  const requestForegroundLocation = async (): Promise<boolean> => {
+    if (Platform.OS !== "android") return true
+    try {
+      const [fineGranted, coarseGranted] = await Promise.all([
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION),
+        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION),
+      ])
+      if (fineGranted || coarseGranted) return true
+      const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, {
+        title: t("managerShell.shareLocationPermissionTitle"),
+        message: t("managerShell.shareLocationPermissionBody"),
+        buttonPositive: t("permission.allow"),
+        buttonNegative: t("permission.deny"),
+      })
+      if (result === PermissionsAndroid.RESULTS.GRANTED) return true
+      // Android 12+ may grant approximate (COARSE) location when the user
+      // declines precise (FINE). A one-shot approximate point is still useful
+      // and must not be misreported as a total permission denial.
+      return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION)
+    } catch {
+      return false
+    }
+  }
+
+  const shareSelfLocation = async () => {
+    if (!canShareSelfLocation || selfShareBusy) return
+    setSelfShareState("locating")
+    const permitted = await requestForegroundLocation()
+    if (!permitted) {
+      setSelfShareState("permissionDenied")
+      setToast({ visible: true, type: "error", title: t("managerShell.shareLocationPermissionDenied") })
+      return
+    }
+
+    try {
+      const position = await captureOneShotLocation()
+      setSelfShareState("sending")
+      const response = await api.shareSelfLocation(position)
+      if (!response?.success) throw new Error("SELF_LOCATION_SHARE_FAILED")
+      setSelfShareState("success")
+      setToast({ visible: true, type: "success", title: t("managerShell.shareLocationSuccess") })
+      await reload("silent")
+    } catch (error: any) {
+      if (error?.message === "SESSION_EXPIRED") return
+      setSelfShareState("error")
+      setToast({ visible: true, type: "error", title: t("managerShell.shareLocationError") })
+    }
+  }
 
   const decide = async (queue: ApprovalKind, id: string, decision: "APPROVED" | "REJECTED", note?: string) => {
     if (busyId) return
@@ -179,6 +248,65 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
       >
         {kind === "team" ? (
           <>
+            {canShareSelfLocation && (
+              <View style={[styles.selfShareCard, expandedTablet && styles.selfShareCardTablet]}>
+                <View style={styles.selfShareIcon}>
+                  <Icon name={selfShareState === "success" ? "checkmark" : "navigate"} size={24} color={fieldTheme.color.onColor} />
+                </View>
+                <View style={styles.selfShareCopy}>
+                  <Text style={styles.selfShareTitle}>{t("managerShell.shareLocationTitle")}</Text>
+                  <Text style={styles.selfShareBody}>
+                    {selfShareState === "locating"
+                      ? t("managerShell.shareLocationLocating")
+                      : selfShareState === "sending"
+                        ? t("managerShell.shareLocationSending")
+                        : selfShareState === "success"
+                          ? t("managerShell.shareLocationSuccessBody")
+                          : selfShareState === "permissionDenied"
+                            ? t("managerShell.shareLocationPermissionDeniedBody")
+                            : selfShareState === "error"
+                              ? t("managerShell.shareLocationErrorBody")
+                              : t("managerShell.shareLocationBody")}
+                  </Text>
+                  {selfShareState === "permissionDenied" && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={t("permission.openSettings")}
+                      style={({ pressed }) => [styles.settingsLink, pressed && styles.buttonPressed]}
+                      onPress={() => { void Linking.openSettings() }}
+                    >
+                      <Icon name="settings-outline" size={17} color={fieldTheme.color.primaryStrong} />
+                      <Text style={styles.settingsLinkText}>{t("permission.openSettings")}</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("managerShell.shareLocationTitle")}
+                  accessibilityState={{ busy: selfShareBusy, disabled: selfShareBusy }}
+                  disabled={selfShareBusy}
+                  style={({ pressed }) => [styles.selfShareButton, pressed && styles.buttonPressed, selfShareBusy && styles.buttonDisabled]}
+                  onPress={() => { void shareSelfLocation() }}
+                >
+                  {selfShareBusy ? (
+                    <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+                  ) : (
+                    <Icon name={selfShareState === "success" ? "refresh" : "location"} size={20} color={fieldTheme.color.onColor} />
+                  )}
+                  <Text style={styles.selfShareButtonText}>
+                    {selfShareState === "success"
+                      ? t("managerShell.shareLocationAgain")
+                      : selfShareState === "permissionDenied" || selfShareState === "error"
+                        ? t("managerShell.shareLocationRetry")
+                        : selfShareState === "locating"
+                          ? t("managerShell.shareLocationLocatingShort")
+                          : selfShareState === "sending"
+                            ? t("managerShell.shareLocationSendingShort")
+                            : t("managerShell.shareLocationAction")}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
             <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
               <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.onColor} /></View>
               <View style={styles.transferActionCopy}>
@@ -564,6 +692,46 @@ const styles = StyleSheet.create({
   refreshButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
   buttonPressed: { opacity: 0.72 },
   buttonDisabled: { opacity: 0.55 },
+  selfShareCard: {
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.lg,
+    backgroundColor: fieldTheme.color.primarySoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
+  },
+  selfShareCardTablet: { flexDirection: "row", alignItems: "center" },
+  selfShareIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: fieldTheme.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fieldTheme.color.primary,
+  },
+  selfShareCopy: { flex: 1, gap: fieldTheme.space.xs },
+  selfShareTitle: { color: fieldTheme.color.primaryStrong, fontSize: 17, fontWeight: "900" },
+  selfShareBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19, maxWidth: 680 },
+  selfShareButton: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primary,
+  },
+  selfShareButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  settingsLink: {
+    minHeight: 40,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.sm,
+  },
+  settingsLinkText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900", textDecorationLine: "underline" },
   errorNotice: {
     minHeight: 64,
     flexDirection: "row",

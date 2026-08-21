@@ -7,15 +7,27 @@
  * Capabilities are server-authoritative (src/lib/mtm/mobile-capabilities.ts):
  *   AGENT                     -> FIELD_EXECUTE, FIELD_TRACK
  *   ADMIN/MANAGER/SUPERVISOR  -> TEAM_READ, TEAM_DECIDE
+ *   eligible team principals  -> SELF_LOCATION_SHARE (explicit one-shot only)
  *   unknown                   -> []
  */
 
-export type MobileCapability = "FIELD_EXECUTE" | "FIELD_TRACK" | "TEAM_READ" | "TEAM_DECIDE"
+export type MobileCapability =
+  | "FIELD_EXECUTE"
+  | "FIELD_TRACK"
+  | "TEAM_READ"
+  | "TEAM_DECIDE"
+  | "SELF_LOCATION_SHARE"
 
 /** Which tab set the shell should mount. */
 export type NavGroup = "field" | "team" | "none"
 
-const KNOWN_CAPABILITIES: readonly MobileCapability[] = ["FIELD_EXECUTE", "FIELD_TRACK", "TEAM_READ", "TEAM_DECIDE"]
+const KNOWN_CAPABILITIES: readonly MobileCapability[] = [
+  "FIELD_EXECUTE",
+  "FIELD_TRACK",
+  "TEAM_READ",
+  "TEAM_DECIDE",
+  "SELF_LOCATION_SHARE",
+]
 
 /**
  * Tenant policies the field app must obey. Server-authoritative — the app

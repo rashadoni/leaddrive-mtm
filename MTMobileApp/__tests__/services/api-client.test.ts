@@ -439,6 +439,32 @@ describe("ApiClient — request error handling", () => {
   })
 })
 
+describe("ApiClient — explicit self-location share", () => {
+  it("posts a one-shot position with the SELF_SHARE mode", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "valid-token"
+    const mockFetch = jest.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ success: true }),
+    })
+    ;(global.fetch as jest.Mock) = mockFetch
+
+    await api.shareSelfLocation({ latitude: 40.4093, longitude: 49.8671, accuracy: 12 })
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/location")
+    expect(options.method).toBe("POST")
+    expect(JSON.parse(options.body)).toEqual({
+      latitude: 40.4093,
+      longitude: 49.8671,
+      accuracy: 12,
+      mode: "SELF_SHARE",
+    })
+  })
+})
+
 // ─────────────────────────────────────────────────────────────────────────────
 // login / logout
 // ─────────────────────────────────────────────────────────────────────────────

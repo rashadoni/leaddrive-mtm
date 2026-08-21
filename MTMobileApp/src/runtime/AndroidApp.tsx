@@ -28,7 +28,7 @@ import { fieldTheme } from "../theme/fieldTheme"
 import { mobileRuntimePolicy } from "./mobile-runtime-policy"
 import { version as APP_VERSION } from "../../package.json"
 
-const ANDROID_VERSION_CODE = 27
+const ANDROID_VERSION_CODE = 28
 const PING_INTERVAL = 60_000
 
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)

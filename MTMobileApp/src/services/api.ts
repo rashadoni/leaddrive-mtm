@@ -420,6 +420,26 @@ class ApiClient {
     })
   }
 
+  /**
+   * Share one foreground position by explicit user action. This deliberately
+   * uses a separate method and server mode so it can never be mistaken for
+   * field-agent background tracking.
+   */
+  async shareSelfLocation(data: {
+    latitude: number
+    longitude: number
+    accuracy?: number
+    speed?: number
+    heading?: number
+    altitude?: number
+    battery?: number
+  }) {
+    return this.request("/mobile/location", {
+      method: "POST",
+      body: JSON.stringify({ ...data, mode: "SELF_SHARE" }),
+    })
+  }
+
   async getLocationHistory(date?: string, signal?: AbortSignal) {
     const qs = date ? `?date=${encodeURIComponent(date)}` : ""
     return this.request(`/mobile/location${qs}`, { signal })

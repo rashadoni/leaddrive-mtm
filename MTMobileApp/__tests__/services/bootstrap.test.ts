@@ -12,13 +12,13 @@ describe("bootstrap mapping", () => {
     const b = toBootstrap({
       tenant: { id: "o1", name: "Acme", slug: "acme" },
       principal: { id: "a1", name: "Rep", email: "r@x.az", role: "AGENT" },
-      capabilities: ["FIELD_EXECUTE", "FIELD_TRACK", "BOGUS"],
+      capabilities: ["FIELD_EXECUTE", "FIELD_TRACK", "SELF_LOCATION_SHARE", "BOGUS"],
       timezone: "Asia/Baku",
       workday: { id: "w1", status: "ACTIVE" },
     })
     expect(b.tenant).toEqual({ id: "o1", name: "Acme", slug: "acme" })
     expect(b.principal?.role).toBe("AGENT")
-    expect(b.capabilities).toEqual(["FIELD_EXECUTE", "FIELD_TRACK"])
+    expect(b.capabilities).toEqual(["FIELD_EXECUTE", "FIELD_TRACK", "SELF_LOCATION_SHARE"])
     expect(b.timezone).toBe("Asia/Baku")
     expect(b.workday).toEqual({ id: "w1", status: "ACTIVE" })
   })
@@ -37,12 +37,14 @@ describe("capability navigation", () => {
   it("maps capabilities to the nav group", () => {
     expect(navGroupFromCapabilities(["FIELD_EXECUTE", "FIELD_TRACK"])).toBe("field")
     expect(navGroupFromCapabilities(["TEAM_READ", "TEAM_DECIDE"])).toBe("team")
+    expect(navGroupFromCapabilities(["TEAM_READ", "SELF_LOCATION_SHARE"])).toBe("team")
     expect(navGroupFromCapabilities([])).toBe("none")
   })
 
   it("hasCapability checks membership", () => {
     expect(hasCapability(["FIELD_TRACK"], "FIELD_TRACK")).toBe(true)
     expect(hasCapability(["FIELD_TRACK"], "TEAM_DECIDE")).toBe(false)
+    expect(hasCapability(["TEAM_READ", "SELF_LOCATION_SHARE"], "SELF_LOCATION_SHARE")).toBe(true)
   })
 })
 
