@@ -51,6 +51,18 @@ export interface ManagerLiveMapDocumentLabels {
   fit: string
 }
 
+/**
+ * Keeps an explicit selection while it is still present and makes the only
+ * available server marker self-explanatory without requiring a first tap.
+ */
+export function resolveManagerLiveMapSelection(
+  markers: ManagerLiveMapMarker[],
+  selectedId: string | null,
+): string | null {
+  if (selectedId && markers.some((marker) => marker.id === selectedId)) return selectedId
+  return markers.length === 1 ? markers[0].id : null
+}
+
 function validLatitude(value: number): boolean {
   return Number.isFinite(value) && value >= -85.05112878 && value <= 85.05112878
 }
@@ -338,6 +350,11 @@ export function buildManagerLiveMapDocument(
         post({ type: "marker", id: marker.id });
       }
 
+      window.__selectManagerMarker = function (id) {
+        var marker = markers.find(function (item) { return item.id === id; });
+        if (marker) selectMarker(marker);
+      };
+
       function render() {
         if (!markers.length) return;
         var width = Math.max(document.documentElement.clientWidth, window.innerWidth || 320);
@@ -377,6 +394,7 @@ export function buildManagerLiveMapDocument(
           button.onclick = function () { selectMarker(marker); };
           markerLayer.appendChild(button);
         });
+        if (markers.length === 1 && selectedId === null) selectMarker(markers[0]);
       }
 
       document.getElementById("zoom-in").onclick = function () {

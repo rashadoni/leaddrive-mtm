@@ -89,7 +89,7 @@ function planningError(code: string): Error & { code: string } {
   return error
 }
 
-export default function ManagerPlanningWorkspace() {
+export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => void } = {}) {
   const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
@@ -511,6 +511,11 @@ export default function ManagerPlanningWorkspace() {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={[styles.headerInner, tablet && styles.headerInnerTablet]}>
+          {onClose ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={t("contactTransfer.back")} onPress={onClose} style={({ pressed }) => [styles.headerBack, pressed && styles.pressed]}>
+              <Icon name="arrow-back" size={24} color={fieldTheme.color.onColor} />
+            </Pressable>
+          ) : null}
           <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{t("managerShell.planEyebrow")}</Text>
@@ -670,8 +675,17 @@ export default function ManagerPlanningWorkspace() {
                   })}
                 </View>
               </>
+            ) : debouncedSearch ? (
+              <InlineEmpty icon="search-outline" text={t("managerShell.planNoSearchResults")} />
             ) : (
-              <InlineEmpty icon={debouncedSearch ? "search-outline" : "business-outline"} text={t(debouncedSearch ? "managerShell.planNoSearchResults" : "managerShell.planNoTargets")} />
+              <Notice
+                tone="neutral"
+                icon="people-circle-outline"
+                title={t("managerShell.planNoTargets")}
+                body={t("managerShell.planNoTargetsBody")}
+                action={t("managerShell.planRefreshTargets")}
+                onAction={() => setTargetReload((value) => value + 1)}
+              />
             )}
             {!firstEditableDate ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
             <PrimaryAction
@@ -912,6 +926,7 @@ const styles = StyleSheet.create({
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
   headerInner: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, width: "100%", maxWidth: 1180, alignSelf: "center" },
   headerInnerTablet: { paddingVertical: fieldTheme.space.sm },
+  headerBack: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: "rgba(255,255,255,0.12)" },
   headerIcon: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
   headerCopy: { flex: 1, gap: 2 },
   eyebrow: { color: "#BBD6CB", fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
