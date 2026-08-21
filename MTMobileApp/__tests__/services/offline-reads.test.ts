@@ -6,6 +6,7 @@ import {
   mapCachedRoute,
   mapCachedTask,
   matchesContactSearch,
+  matchesOfflineOrganizationFilters,
   matchesOrganizationSearch,
   readOfflineContacts,
   readOfflineContactDetail,
@@ -224,6 +225,32 @@ describe("offline task reads (durable sync cache)", () => {
       expect(matchesOrganizationSearch(org, "moscow")).toBe(false)
     })
 
+    it("applies every cached master-data filter without pretending missing ownership data exists", () => {
+      const org = mapCachedOrganization({
+        id: "c1",
+        name: "Zeytun Aptek",
+        objectType: "PHARMACY",
+        category: "A",
+        status: "ACTIVE",
+        region: "Baku",
+        administrativeDistrict: "Nasimi",
+        specialization: "Retail",
+        managingManagerId: "m-1",
+      })
+
+      expect(matchesOfflineOrganizationFilters(org, {
+        objectType: "PHARMACY",
+        category: "A",
+        status: "ACTIVE",
+        region: "baku",
+        administrativeDistrict: "NASIMI",
+        specialization: "Retail",
+        managingManagerId: "m-1",
+      })).toBe(true)
+      expect(matchesOfflineOrganizationFilters(org, { category: "B" })).toBe(false)
+      expect(matchesOfflineOrganizationFilters(org, { search: "zeytun", status: "INACTIVE" })).toBe(false)
+    })
+
     it("reads, filters and sorts cached organizations for the scope", async () => {
       await applySyncChanges(
         "tenant-a",
@@ -243,6 +270,8 @@ describe("offline task reads (durable sync cache)", () => {
       expect(all.map((o) => o.name)).toEqual(["Alpha Clinic", "Beta Store", "Zeta Pharmacy"])
       const baku = await readOfflineOrganizations("tenant-a", "agent-a", "baku")
       expect(baku.map((o) => o.id)).toEqual(["c1", "c2"])
+      const ganjaDesc = await readOfflineOrganizations("tenant-a", "agent-a", { search: "ganja", direction: "desc" })
+      expect(ganjaDesc.map((o) => o.id)).toEqual(["c3"])
       expect(await readOfflineOrganizations("tenant-b", "agent-a")).toEqual([])
     })
   })
