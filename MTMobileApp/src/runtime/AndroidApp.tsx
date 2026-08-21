@@ -25,9 +25,10 @@ import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
+import { mobileRuntimePolicy } from "./mobile-runtime-policy"
 import { version as APP_VERSION } from "../../package.json"
 
-const ANDROID_VERSION_CODE = 24
+const ANDROID_VERSION_CODE = 27
 const PING_INTERVAL = 60_000
 
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
@@ -40,11 +41,13 @@ function AppContent() {
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const mayTrack =
-    isLoggedIn &&
-    canTrackFieldLocation(agent?.role) &&
-    workdayHydrated &&
-    activeWorkday?.key === currentWorkdayKey
+  const runtimePolicy = mobileRuntimePolicy({
+    isLoggedIn,
+    canTrackFieldLocation: canTrackFieldLocation(agent?.role),
+    workdayHydrated,
+    activeWorkdayMatches: activeWorkday?.key === currentWorkdayKey,
+  })
+  const mayTrack = runtimePolicy.locationTracking
 
   const sendPing = useCallback(() => {
     api.ping().catch(() => {})
@@ -93,15 +96,25 @@ function AppContent() {
     })
   }, [])
 
+  // Presence belongs to the authenticated session, not to GPS eligibility.
+  // Managers and agents without an active workday must still remain online.
+  useEffect(() => {
+    if (!runtimePolicy.heartbeat) {
+      stopPing()
+      return stopPing
+    }
+
+    startPing()
+    return stopPing
+  }, [runtimePolicy.heartbeat, startPing, stopPing])
+
   useEffect(() => {
     let cancelled = false
 
     if (!mayTrack) {
       stopTracking().catch(() => {})
-      stopPing()
       return () => {
         stopTracking().catch(() => {})
-        stopPing()
       }
     }
 
@@ -146,13 +159,11 @@ function AppContent() {
       startTracking().catch(() => {})
     }
 
-    startPing()
     return () => {
       cancelled = true
       stopTracking().catch(() => {})
-      stopPing()
     }
-  }, [mayTrack, startPing, stopPing])
+  }, [mayTrack])
 
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
@@ -161,10 +172,10 @@ function AppContent() {
         const auth = useAuthStore.getState()
         const workday = useWorkdayStore.getState()
         const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
+        if (auth.isLoggedIn) sendPing()
         if (auth.isLoggedIn && canTrackFieldLocation(auth.agent?.role) &&
             workday.activeWorkday?.key === latestKey) {
           startTracking().catch(() => {})
-          sendPing()
         }
       }
       appStateRef.current = nextState
