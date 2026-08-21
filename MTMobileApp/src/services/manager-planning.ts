@@ -276,9 +276,15 @@ export function toPlanningDetailedRoute(raw: any): PlanningDetailedRoute | null 
   const routeDate = dateKey(raw?.date)
   const points = Array.isArray(raw?.points) ? raw.points : []
   const rawAssignments: unknown[] = Array.isArray(raw?.assignments) ? raw.assignments : []
-  const assignments: PlanningRouteAssignment[] = rawAssignments.flatMap((assignment): PlanningRouteAssignment[] => {
-    const agentId = str(assignment?.agentId) ?? str(assignment?.agent?.id)
-    const role = str(assignment?.role)
+  const assignments: PlanningRouteAssignment[] = rawAssignments.flatMap((assignmentRaw): PlanningRouteAssignment[] => {
+    const assignment = assignmentRaw && typeof assignmentRaw === "object"
+      ? assignmentRaw as Record<string, unknown>
+      : {}
+    const nestedAgent = assignment.agent && typeof assignment.agent === "object"
+      ? assignment.agent as Record<string, unknown>
+      : {}
+    const agentId = str(assignment.agentId) ?? str(nestedAgent.id)
+    const role = str(assignment.role)
     return agentId && role ? [{ agentId, role }] : []
   })
   const rawAgentId = str(raw?.agentId) ?? str(raw?.agent?.id) ?? ""
