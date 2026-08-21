@@ -1,6 +1,7 @@
 import {
   buildManagerLiveMapDocument,
   buildManagerLiveMapModel,
+  resolveManagerLiveMapSelection,
   type ManagerLiveMapDocumentMarker,
   type ManagerLiveMapRow,
 } from "../../src/screens/manager/manager-live-map"
@@ -101,6 +102,19 @@ describe("manager live map truth model", () => {
     expect(model.noCoordinatesCount).toBe(1)
   })
 
+  it("automatically selects only an unambiguous single server marker", () => {
+    const current = buildManagerLiveMapModel([row("only", "Only Agent", {})]).markers
+    const multiple = buildManagerLiveMapModel([
+      row("first", "First Agent", {}),
+      row("second", "Second Agent", {}),
+    ]).markers
+
+    expect(resolveManagerLiveMapSelection(current, null)).toBe("only")
+    expect(resolveManagerLiveMapSelection(multiple, null)).toBeNull()
+    expect(resolveManagerLiveMapSelection(multiple, "second")).toBe("second")
+    expect(resolveManagerLiveMapSelection(current, "missing")).toBe("only")
+  })
+
   it("builds a local-only map document without external requests, device geolocation, or raw script injection", () => {
     const marker: ManagerLiveMapDocumentMarker = {
       ...buildManagerLiveMapModel([row("safe", "</script><script>bad()</script>", {})]).markers[0],
@@ -117,6 +131,8 @@ describe("manager live map truth model", () => {
     })
 
     expect(html).toContain("ReactNativeWebView.postMessage")
+    expect(html).toContain("window.__selectManagerMarker")
+    expect(html).toContain("markers.length === 1 && selectedId === null")
     expect(html).toContain("connect-src 'none'")
     expect(html).toContain("\\u003c/script>")
     expect(html).not.toContain("</script><script>bad()")
