@@ -42,7 +42,9 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
     api.getSavedCredentials().then((credentials) => {
       if (!credentials) return
       setEmail(credentials.email)
-      setPassword(credentials.password)
+      // Passwords are never persisted. Only the email convenience field is
+      // restored; every new session still requires the user's password.
+      setPassword("")
       setRememberMe(true)
     }).catch(() => {})
   }, [])
@@ -60,7 +62,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
     try {
       const normalizedEmail = email.trim().toLowerCase()
       await login(normalizedEmail, password)
-      if (rememberMe) await api.saveCredentials(normalizedEmail, password)
+      if (rememberMe) await api.saveCredentials(normalizedEmail)
       else await api.clearCredentials()
     } catch (e: any) {
       console.warn("[LoginScreen] login failed:", e?.message ?? e)

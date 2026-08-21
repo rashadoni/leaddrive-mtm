@@ -64,6 +64,10 @@ class ApiClient {
         console.warn("Failed to parse stored agent:", e)
       }
     }
+    // Security migration: older builds stored { email, password } as plain
+    // JSON in AsyncStorage. Keep only the convenience email and erase the
+    // password even when the user is already signed in and never sees Login.
+    await this.getSavedCredentials()
   }
 
   /** Role of the currently authenticated agent, or null if not signed in. */
@@ -212,16 +216,30 @@ class ApiClient {
 
   // --- Saved credentials ---
 
-  async saveCredentials(email: string, password: string) {
-    await AsyncStorage.setItem(STORAGE_KEY_CREDENTIALS, JSON.stringify({ email, password }))
+  async saveCredentials(email: string) {
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) {
+      await this.clearCredentials()
+      return
+    }
+    await AsyncStorage.setItem(STORAGE_KEY_CREDENTIALS, JSON.stringify({ email: normalizedEmail }))
   }
 
-  async getSavedCredentials(): Promise<{ email: string; password: string } | null> {
+  async getSavedCredentials(): Promise<{ email: string } | null> {
     const raw = await AsyncStorage.getItem(STORAGE_KEY_CREDENTIALS)
     if (!raw) return null
     try {
-      return JSON.parse(raw)
+      const parsed = JSON.parse(raw) as { email?: unknown; password?: unknown }
+      const email = typeof parsed?.email === "string" ? parsed.email.trim().toLowerCase() : ""
+      if (!email) {
+        await AsyncStorage.removeItem(STORAGE_KEY_CREDENTIALS)
+        return null
+      }
+      const safe = JSON.stringify({ email })
+      if (raw !== safe) await AsyncStorage.setItem(STORAGE_KEY_CREDENTIALS, safe)
+      return { email }
     } catch {
+      await AsyncStorage.removeItem(STORAGE_KEY_CREDENTIALS)
       return null
     }
   }
