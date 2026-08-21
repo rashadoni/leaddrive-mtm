@@ -200,7 +200,8 @@ export function toPlanningContactTarget(raw: any): PlanningTarget | null {
   // (for example PROSPECT or MERGED) must remain selectable when their
   // workplace is valid for the route date.
   const status = str(raw?.status) ?? "INACTIVE"
-  const workplaces = (Array.isArray(raw?.workplaces) ? raw.workplaces : [])
+  const rawWorkplaces: unknown[] = Array.isArray(raw?.workplaces) ? raw.workplaces : []
+  const workplaces = rawWorkplaces
     .map(toPlanningWorkplace)
     .filter((workplace): workplace is PlanningWorkplace => workplace !== null)
   const soleWorkplace = workplaces.length === 1 ? workplaces[0] : undefined
@@ -274,7 +275,8 @@ export function toPlanningDetailedRoute(raw: any): PlanningDetailedRoute | null 
   if (!id) return null
   const routeDate = dateKey(raw?.date)
   const points = Array.isArray(raw?.points) ? raw.points : []
-  const assignments = (Array.isArray(raw?.assignments) ? raw.assignments : []).flatMap((assignment: any): PlanningRouteAssignment[] => {
+  const rawAssignments: unknown[] = Array.isArray(raw?.assignments) ? raw.assignments : []
+  const assignments: PlanningRouteAssignment[] = rawAssignments.flatMap((assignment): PlanningRouteAssignment[] => {
     const agentId = str(assignment?.agentId) ?? str(assignment?.agent?.id)
     const role = str(assignment?.role)
     return agentId && role ? [{ agentId, role }] : []

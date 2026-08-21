@@ -78,7 +78,7 @@ function uniqueTargets(assignments: PlanningAssignedTarget[], routes: PlanningDe
 
 function detailedRoutesFromResponses(responses: any[]): PlanningDetailedRoute[] {
   return responses.flatMap((response: any) => {
-    const rows = Array.isArray(response?.data?.routes) ? response.data.routes : []
+    const rows: unknown[] = Array.isArray(response?.data?.routes) ? response.data.routes : []
     return rows.map(toPlanningDetailedRoute).filter((route): route is PlanningDetailedRoute => route !== null)
   })
 }
@@ -170,7 +170,8 @@ export default function ManagerPlanningWorkspace() {
     setAgentError(false)
     try {
       const response = await api.getManagerTeam()
-      const next = (Array.isArray(response?.data?.agents) ? response.data.agents : [])
+      const rawAgents: unknown[] = Array.isArray(response?.data?.agents) ? response.data.agents : []
+      const next = rawAgents
         .map(toPlanningAgent)
         .filter((agent): agent is PlanningAgent => agent !== null)
       setAgents(next)
@@ -230,7 +231,7 @@ export default function ManagerPlanningWorkspace() {
       : api.getContacts({ search: debouncedSearch || undefined, page: 1, limit: 50 }, controller.signal)
     request.then((response: any) => {
       if (controller.signal.aborted) return
-      const rawRows = targetKind === "organization"
+      const rawRows: unknown[] = targetKind === "organization"
         ? (Array.isArray(response?.data?.organizations) ? response.data.organizations : [])
         : (Array.isArray(response?.data?.contacts) ? response.data.contacts : [])
       const mapper = targetKind === "organization" ? toPlanningOrganizationTarget : toPlanningContactTarget

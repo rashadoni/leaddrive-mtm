@@ -122,7 +122,8 @@ export default function OrganizationExplorerScreen() {
       const response = await api.getOrganizations({ ...filters, page: nextPage, limit: 50 }, controller.signal)
       if (currentRequestId !== requestId.current) return
       if (response.success) {
-        const nextRows = (response.data?.organizations ?? []).map(toExplorerOrganization)
+        const rawOrganizations: unknown[] = Array.isArray(response.data?.organizations) ? response.data.organizations : []
+        const nextRows: ExplorerOrganization[] = rawOrganizations.map(toExplorerOrganization)
         setRows((current) => append ? [...current, ...nextRows] : nextRows)
         setTotal(Number(response.data?.total ?? nextRows.length))
         setPage(nextPage)

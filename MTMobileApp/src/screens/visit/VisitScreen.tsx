@@ -670,7 +670,7 @@ export default function VisitScreen() {
 
   const handlePhotoTaken = async (path: string) => {
     if (!activeVisit) return
-    let uploadCoords: { latitude: number; longitude: number } | null = null
+    let uploadCoords: { latitude: number; longitude: number } | undefined
     try {
       try {
         uploadCoords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
@@ -683,7 +683,9 @@ export default function VisitScreen() {
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
           )
         })
-      } catch {}
+      } catch {
+        uploadCoords = undefined
+      }
       await api.uploadPhoto({
         filePath: path,
         visitId: activeVisit.id,

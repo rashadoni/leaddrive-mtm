@@ -92,10 +92,13 @@ export function createGpsPlaybackModel(
   let missingCoordinateCount = 0
   let invalidTimestampCount = 0
   const timelinePoints: GpsTimelinePoint[] = ordered.map((point) => {
-    const coordinatesValid = validLatitude(point.latitude) && validLongitude(point.longitude)
-    if (!coordinatesValid) missingCoordinateCount += 1
+    if (!validLatitude(point.latitude) || !validLongitude(point.longitude)) {
+      missingCoordinateCount += 1
+      if (point.timestampMs == null) invalidTimestampCount += 1
+      return { ...point, playbackIndex: null }
+    }
     if (point.timestampMs == null) invalidTimestampCount += 1
-    if (!coordinatesValid || point.timestampMs == null) {
+    if (point.timestampMs == null) {
       return { ...point, playbackIndex: null }
     }
 
