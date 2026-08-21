@@ -40,7 +40,21 @@ describe("manager approvals mapping", () => {
 describe("managerShell i18n contract", () => {
   it.each([["en"], ["ru"], ["az"]])("has empty-state + approval-section keys in %s", (lang) => {
     const ms = (mobileResources as Record<string, { managerShell: Record<string, unknown> }>)[lang].managerShell
-    for (const k of ["planningEmpty", "approvalsEmpty", "approvalsHrm", "approvalsRouteChanges", "approvalsCustomers", "approvalsContactChanges", "routeFallback"]) {
+    for (const k of [
+      "planningEmpty",
+      "approvalsEmpty",
+      "approvalsHrm",
+      "approvalsRouteChanges",
+      "approvalsCustomers",
+      "approvalsContactChanges",
+      "routeFallback",
+      "liveMapTitle",
+      "liveMapBody",
+      "liveMapCurrentLegend",
+      "liveMapLastKnownLegend",
+      "liveMapStaleLegend",
+      "liveMapNoCoordinatesBody",
+    ]) {
       expect(typeof ms[k]).toBe("string")
       expect((ms[k] as string).length).toBeGreaterThan(0)
     }

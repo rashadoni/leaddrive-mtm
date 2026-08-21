@@ -22,6 +22,8 @@ import {
   type ManagerTeamAgent,
 } from "../../services/manager-location-truth"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
+import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
+import ManagerLiveMap from "./ManagerLiveMap.android"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -56,6 +58,10 @@ const SCREEN_META: Record<
 }
 
 export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspaceKind }) {
+  return kind === "planning" ? <ManagerPlanningWorkspace /> : <ManagerReadWorkspace kind={kind} />
+}
+
+function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
@@ -215,6 +221,7 @@ export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspac
                 </View>
               </View>
             )}
+            <ManagerLiveMap rows={teamRows} loading={loading} loadError={loadError} />
             {teamRows.length > 0 ? (
               <View style={[styles.teamList, expandedTablet && styles.teamListTablet]}>
                 {teamRows.map(({ agent, truth }) => (
