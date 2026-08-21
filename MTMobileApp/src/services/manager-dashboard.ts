@@ -5,6 +5,10 @@ import {
 } from "./manager-location-truth"
 
 export interface ManagerDashboardStats {
+  /** Client receipt time for this complete four-endpoint snapshot. */
+  updatedAt: number
+  /** True when refresh failed and the retained values may no longer be current. */
+  stale: boolean
   teamTotal: number
   online: number
   currentLocations: number
@@ -52,6 +56,8 @@ export function toManagerDashboardStats(
     .reduce((total, key) => total + rows(approvalsSource, key).length, 0)
 
   return {
+    updatedAt: nowMs,
+    stale: false,
     teamTotal: team.length,
     online: truths.filter((truth) => truth.isOnline).length,
     currentLocations: truths.filter((truth) => truth.isOnline && truth.gpsFreshness === "FRESH").length,
@@ -61,4 +67,11 @@ export function toManagerDashboardStats(
     plannedStops: routes.reduce((total, route) => total + finiteCount(route?.totalPoints), 0),
     approvals: approvalRows,
   }
+}
+
+/** Preserve the last truthful values after a failed refresh, but never call them live. */
+export function markManagerDashboardStatsStale(
+  stats: ManagerDashboardStats | null,
+): ManagerDashboardStats | null {
+  return stats ? { ...stats, stale: true } : null
 }

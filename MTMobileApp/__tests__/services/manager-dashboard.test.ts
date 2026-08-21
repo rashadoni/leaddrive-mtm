@@ -1,4 +1,7 @@
-import { toManagerDashboardStats } from "../../src/services/manager-dashboard"
+import {
+  markManagerDashboardStatsStale,
+  toManagerDashboardStats,
+} from "../../src/services/manager-dashboard"
 
 describe("toManagerDashboardStats", () => {
   const now = Date.parse("2026-08-20T12:00:00.000Z")
@@ -20,6 +23,8 @@ describe("toManagerDashboardStats", () => {
       { hrm: [{}], routeChanges: [{}, {}], customers: [], contactChanges: [{}] },
       now,
     )).toEqual({
+      updatedAt: now,
+      stale: false,
       teamTotal: 2,
       online: 1,
       currentLocations: 1,
@@ -33,6 +38,8 @@ describe("toManagerDashboardStats", () => {
 
   it("does not manufacture values when a response branch is missing", () => {
     expect(toManagerDashboardStats({}, {}, {}, {}, now)).toEqual({
+      updatedAt: now,
+      stale: false,
       teamTotal: 0,
       online: 0,
       currentLocations: 0,
@@ -42,5 +49,14 @@ describe("toManagerDashboardStats", () => {
       plannedStops: 0,
       approvals: 0,
     })
+  })
+
+  it("retains the last values but marks them stale after a refresh error", () => {
+    const fresh = toManagerDashboardStats({}, {}, {}, {}, now)
+    const stale = markManagerDashboardStatsStale(fresh)
+
+    expect(stale).toEqual({ ...fresh, stale: true })
+    expect(stale?.updatedAt).toBe(now)
+    expect(markManagerDashboardStatsStale(null)).toBeNull()
   })
 })
