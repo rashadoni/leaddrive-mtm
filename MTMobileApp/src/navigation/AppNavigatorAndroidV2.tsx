@@ -30,6 +30,8 @@ import MoreScreen from "../screens/more/MoreScreen"
 import TodayScreen from "../screens/today/TodayScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
+import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
+import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
 import ContactTransferScreen from "../screens/manager/ContactTransferScreen.android"
 import UnsupportedRoleScreen from "../screens/auth/UnsupportedRoleScreen.android"
 import type { RawTask } from "../services/task-detail"
@@ -48,6 +50,7 @@ export type RootStackParamList = {
   GpsHistory: undefined
   Profile: undefined
   ContactTransfer: undefined
+  PlanningBuilder: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -66,7 +69,8 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
 }
 
 const TeamScreen = () => <ManagerWorkspaceScreen kind="team" />
-const PlanningScreen = () => <ManagerWorkspaceScreen kind="planning" />
+const PlanningScreen = ManagerPlanningCalendarScreen
+const PlanningBuilderScreen = ({ navigation }: { navigation: { goBack: () => void } }) => <ManagerPlanningWorkspace onClose={() => navigation.goBack()} />
 const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 
 const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
@@ -225,6 +229,7 @@ export default function AppNavigatorAndroidV2() {
             <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ContactTransfer" component={ContactTransferScreen} />
+            <Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">

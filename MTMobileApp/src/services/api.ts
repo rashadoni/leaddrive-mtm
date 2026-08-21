@@ -457,6 +457,11 @@ class ApiClient {
     return this.request(`/mobile/manager/planning${qs}`, { signal })
   }
 
+  async getManagerPlanningRange(from: string, to: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ from, to })
+    return this.request(`/mobile/manager/planning?${query.toString()}`, { signal })
+  }
+
   async getManagerApprovals(signal?: AbortSignal) {
     return this.request("/mobile/manager/approvals", { signal })
   }
