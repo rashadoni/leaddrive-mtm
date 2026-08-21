@@ -69,6 +69,9 @@ jobs:
       - name: Run tests
         run: npx jest --ci
 
+      - name: Run TypeScript check
+        run: npx tsc --noEmit
+
       - name: Materialize required release keystore
         if: steps.scope.outputs.build == 'true'
         env:
@@ -92,9 +95,12 @@ jobs:
         id: apk
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          VERSION_CODE=$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' android/app/build.gradle | head -n 1)
+          test -n "$VERSION_CODE"
           OUT="leaddrive-mtm-v${VERSION}.apk"
           cp android/app/build/outputs/apk/release/app-release.apk "$OUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "file=$OUT" >> "$GITHUB_OUTPUT"
           ls -lh "$OUT"
 
@@ -103,6 +109,8 @@ jobs:
         env:
           APK_FILE: ${{ steps.apk.outputs.file }}
           EXPECTED_VERSION: ${{ steps.apk.outputs.version }}
+          EXPECTED_VERSION_CODE: ${{ steps.apk.outputs.version_code }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
@@ -113,6 +121,21 @@ jobs:
           printf '%s\n' "$BADGING"
           printf '%s\n' "$BADGING" | grep -q "name='com.mtmobileapp'"
           printf '%s\n' "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'"
+          printf '%s\n' "$BADGING" | grep -q "versionCode='$EXPECTED_VERSION_CODE'"
+
+          # Pin the update path to the certificate of the latest official V1
+          # APK. A different key would make Android reject an in-place update.
+          PREVIOUS_DIR="$RUNNER_TEMP/previous-mtm-apk"
+          mkdir -p "$PREVIOUS_DIR"
+          gh release download v1.7.0-build137 \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'leaddrive-mtm-v1.7.0.apk' \
+            --dir "$PREVIOUS_DIR"
+          NEW_CERT=$("$APKSIGNER" verify --print-certs "$APK_FILE" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
+          OLD_CERT=$("$APKSIGNER" verify --print-certs "$PREVIOUS_DIR/leaddrive-mtm-v1.7.0.apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)
+          test -n "$NEW_CERT"
+          test "$NEW_CERT" = "$OLD_CERT"
+          printf 'Release certificate SHA-256: %s\n' "$NEW_CERT"
           sha256sum "$APK_FILE" | tee "$APK_FILE.sha256"
 
       - uses: actions/upload-artifact@v4
