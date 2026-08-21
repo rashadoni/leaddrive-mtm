@@ -503,6 +503,49 @@ class ApiClient {
     return this.request(`/routes/${id}${qs}`, { signal })
   }
 
+  /** Manager planning read: fetch one scoped agent's full routes and points. */
+  async getRoutesForAgent(date: string, agentId: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ date, agentId, limit: "200" })
+    return this.request(`/routes?${query.toString()}`, { signal })
+  }
+
+  /** Create a real server-side route draft. Publishing is a separate action. */
+  async createRouteDraft(data: {
+    agentId: string
+    date: string
+    name?: string | null
+    notes?: string | null
+    points: Array<{ customerId: string; contactId?: string; plannedTime?: string | null }>
+  }) {
+    return this.request("/routes", {
+      method: "POST",
+      body: JSON.stringify({ ...data, status: "DRAFT" }),
+    })
+  }
+
+  /** Update an existing draft without inventing a second route for that day. */
+  async updateRouteDraft(id: string, data: {
+    expectedVersion: number
+    agentId?: string
+    date?: string
+    name?: string | null
+    notes?: string | null
+    points: Array<{ customerId: string; contactId?: string; plannedTime?: string | null }>
+  }) {
+    return this.request(`/routes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  }
+
+  /** Publish a saved draft. The server remains authoritative for conflicts. */
+  async publishRoute(id: string, expectedVersion: number, overrideReason?: string) {
+    return this.request(`/routes/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ expectedVersion, ...(overrideReason ? { overrideReason } : {}) }),
+    })
+  }
+
   // --- Visits ---
 
   async checkIn(data: {
