@@ -14,7 +14,6 @@ export type DashboardWidgetId =
   | "teamMap"
   | "planFact"
   | "approvals"
-  | "teamCoverage"
   | "exceptions"
 
 export interface DashboardWidgetDefinition {
@@ -38,9 +37,17 @@ export const DASHBOARD_WIDGETS: DashboardWidgetDefinition[] = [
   { id: "teamMap", workspace: "manager", labelKey: "dashboardV2.widgets.teamMap", captionKey: "dashboardV2.widgets.teamMapCaption", icon: "map", color: "#2E73D2", tint: "#DFEBFA" },
   { id: "planFact", workspace: "manager", labelKey: "dashboardV2.widgets.planFact", captionKey: "dashboardV2.widgets.planFactCaption", icon: "analytics", color: "#7155B7", tint: "#ECE6F7" },
   { id: "approvals", workspace: "manager", labelKey: "dashboardV2.widgets.approvals", captionKey: "dashboardV2.widgets.approvalsCaption", icon: "shield-checkmark", color: "#8B5A00", tint: "#FAEECF" },
-  { id: "teamCoverage", workspace: "manager", labelKey: "dashboardV2.widgets.teamCoverage", captionKey: "dashboardV2.widgets.teamCoverageCaption", icon: "aperture", color: "#B74874", tint: "#F8E3EC" },
   { id: "exceptions", workspace: "manager", labelKey: "dashboardV2.widgets.exceptions", captionKey: "dashboardV2.widgets.exceptionsCaption", icon: "warning", color: "#C73B3B", tint: "#F8E1E1" },
 ]
+
+export type ManagerDashboardDestination = "Team" | "Planning" | "Approvals"
+
+/** Every manager card opens the screen that owns the evidence shown on it. */
+export function managerWidgetDestination(id: DashboardWidgetId): ManagerDashboardDestination {
+  if (id === "planFact") return "Planning"
+  if (id === "approvals") return "Approvals"
+  return "Team"
+}
 
 export function deviceClassFor(width: number, height: number): DashboardDeviceClass {
   if (!isTabletWidth(width)) return "phone"

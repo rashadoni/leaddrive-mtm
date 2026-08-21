@@ -1,22 +1,27 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
-  View,
-  Text,
+  ActivityIndicator,
   FlatList,
-  TextInput,
+  Pressable,
   RefreshControl,
-  TouchableOpacity,
   StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
-import { RootStackParamList } from "../../navigation/AppNavigator"
+import Icon from "react-native-vector-icons/Ionicons"
+import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
 import { readOfflineContacts } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 const TYPE_KEY: Record<string, string> = {
   DOCTOR: "contacts.typeDoctor",
@@ -24,25 +29,30 @@ const TYPE_KEY: Record<string, string> = {
   OTHER: "contacts.typeOther",
 }
 
-function categoryColor(category?: string): string {
+function categoryColors(category?: string): { strong: string; soft: string } {
   switch (category) {
-    case "A": return "#22c55e"
-    case "B": return "#3b82f6"
-    case "C": return "#f59e0b"
-    default: return "#94a3b8"
+    case "A": return { strong: fieldTheme.color.success, soft: fieldTheme.color.successSoft }
+    case "B": return { strong: fieldTheme.color.blue, soft: fieldTheme.color.blueSoft }
+    case "C": return { strong: fieldTheme.color.amber, soft: fieldTheme.color.amberSoft }
+    default: return { strong: fieldTheme.color.inkMuted, soft: fieldTheme.color.surfaceStrong }
   }
 }
 
 export default function ContactsList() {
   const { t } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const { width } = useWindowDimensions()
+  const tablet = isTabletWidth(width)
   const tabBarPadding = useTabBarPadding()
   const [contacts, setContacts] = useState<ContactListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const lastLoadedTermRef = useRef<string | null>(null)
+  const hasLoadedTermRef = useRef(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400)
@@ -51,23 +61,40 @@ export default function ContactsList() {
 
   const fetchContacts = useCallback(async (term: string) => {
     try {
-      const res = await api.getContacts(term ? { search: term } : undefined)
-      if (res.success) {
-        setContacts((res.data?.contacts || []).map(toContactListItem))
+      const response = await api.getContacts(term ? { search: term } : undefined)
+      if (response.success) {
+        setContacts((response.data?.contacts || []).map(toContactListItem))
+        lastLoadedTermRef.current = term
+        hasLoadedTermRef.current = true
         setOffline(false)
+        setLoadError(false)
+      } else {
+        throw new Error("CONTACTS_LOAD_FAILED")
       }
-    } catch (e: any) {
-      // SESSION_EXPIRED is handled by the api interceptor; anything else is a
-      // network/timeout failure — fall back to the durable contacts cache
-      // (populated once the server sync-pull contacts entity is deployed).
-      if (e.message !== "SESSION_EXPIRED") {
+    } catch (error: any) {
+      if (error.message !== "SESSION_EXPIRED") {
         const agent = useAuthStore.getState().agent
+        let cached: ContactListItem[] = []
+        let cacheAvailable = false
         if (agent) {
           try {
-            setContacts(await readOfflineContacts(agent.organizationId, agent.id, term))
+            cached = await readOfflineContacts(agent.organizationId, agent.id, term)
+            cacheAvailable = cached.length > 0
+            if (!cacheAvailable && term) {
+              cacheAvailable = (await readOfflineContacts(agent.organizationId, agent.id, "")).length > 0
+            }
           } catch {}
         }
+        const sameInMemoryQuery = hasLoadedTermRef.current && lastLoadedTermRef.current === term
+        if (cached.length > 0 || (cacheAvailable && term)) {
+          setContacts(cached)
+          lastLoadedTermRef.current = term
+          hasLoadedTermRef.current = true
+        } else if (!sameInMemoryQuery) {
+          setContacts([])
+        }
         setOffline(true)
+        setLoadError(!cacheAvailable && !sameInMemoryQuery)
       }
     } finally {
       setLoading(false)
@@ -86,161 +113,212 @@ export default function ContactsList() {
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.searchCard}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t("contacts.searchPlaceholder")}
-          placeholderTextColor="#94a3b8"
-          returnKeyType="search"
-          autoCorrect={false}
-        />
+      <View style={styles.searchArea}>
+        <View style={styles.searchBox}>
+          <Icon name="search" size={21} color={fieldTheme.color.inkMuted} />
+          <TextInput
+            testID="contacts-search"
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t("contacts.searchPlaceholder")}
+            placeholderTextColor="#81928B"
+            returnKeyType="search"
+            autoCorrect={false}
+            accessibilityLabel={t("contacts.searchPlaceholder")}
+          />
+          {search.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("common.clear")}
+              onPress={() => setSearch("")}
+              style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
+            >
+              <Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} />
+            </Pressable>
+          )}
+        </View>
+
+        {offline && !loadError && (
+          <View style={styles.offlineBanner} accessibilityLiveRegion="polite">
+            <Icon name="cloud-offline-outline" size={19} color={fieldTheme.color.amber} />
+            <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
+          </View>
+        )}
       </View>
 
-      {offline && (
-        <View style={styles.offlineBanner}>
-          <Text style={styles.offlineDot}>●</Text>
-          <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
-        </View>
-      )}
-
       <FlatList
+        key={tablet ? "contacts-tablet" : "contacts-phone"}
         data={contacts}
+        numColumns={tablet ? 2 : 1}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding, flexGrow: 1 }}
+        contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadding }]}
+        columnWrapperStyle={tablet ? styles.tabletRow : undefined}
         keyboardShouldPersistTaps="handled"
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6C63FF" colors={["#6C63FF"]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={fieldTheme.color.primary}
+            colors={[fieldTheme.color.primary]}
+          />
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
+          <View style={styles.empty} accessibilityLiveRegion="polite">
             <View style={styles.emptyIconWrap}>
-              <Text style={styles.emptyIcon}>🧑‍⚕️</Text>
+              {loading ? (
+                <ActivityIndicator color={fieldTheme.color.primary} />
+              ) : (
+                <Icon
+                  name={loadError ? "alert-circle-outline" : debouncedSearch ? "search-outline" : "people-outline"}
+                  size={31}
+                  color={loadError ? fieldTheme.color.danger : fieldTheme.color.primary}
+                />
+              )}
             </View>
             <Text style={styles.emptyTitle}>
               {loading
                 ? t("contacts.loading")
-                : debouncedSearch
+                : loadError
+                  ? t("contacts.loadError")
+                  : debouncedSearch
                   ? t("contacts.emptySearch")
                   : t("contacts.empty")}
             </Text>
+            {loadError ? (
+              <>
+                <Text style={styles.emptyBody}>{t("contacts.loadErrorBody")}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.retry")}
+                  onPress={onRefresh}
+                  style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+                >
+                  <Icon name="refresh" size={19} color={fieldTheme.color.onColor} />
+                  <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate("ContactDetail", { id: item.id, name: item.name })}
-          >
-            <View style={styles.cardTop}>
-              <View style={styles.cardMain}>
-                <Text style={styles.cardName}>{item.name}</Text>
-                <Text style={styles.cardSub}>
-                  {item.specialty || (item.type ? t(TYPE_KEY[item.type] ?? "contacts.typeOther") : "")}
-                </Text>
+        renderItem={({ item }) => {
+          const category = categoryColors(item.category)
+          const typeLabel = item.type ? t(TYPE_KEY[item.type] ?? "contacts.typeOther") : t("contacts.typeOther")
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${item.name}. ${item.specialty || typeLabel}`}
+              accessibilityHint={t("common.openDetails")}
+              onPress={() => navigation.navigate("ContactDetail", { id: item.id, name: item.name })}
+              style={({ pressed }) => [styles.card, tablet && styles.cardTablet, pressed && styles.cardPressed]}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.name?.trim().charAt(0).toUpperCase() || "?"}</Text>
               </View>
-              {item.category && (
-                <View style={[styles.categoryBadge, { backgroundColor: categoryColor(item.category) + "18" }]}>
-                  <Text style={[styles.categoryText, { color: categoryColor(item.category) }]}>{item.category}</Text>
-                </View>
-              )}
-            </View>
 
-            {item.workplace && <Text style={styles.cardWorkplace} numberOfLines={1}>🏢 {item.workplace}</Text>}
+              <View style={styles.cardContent}>
+                <View style={styles.nameRow}>
+                  <View style={styles.nameCopy}>
+                    <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
+                    <Text style={styles.cardSub} numberOfLines={1}>{item.specialty || typeLabel}</Text>
+                  </View>
+                  {item.category && (
+                    <View style={[styles.categoryBadge, { backgroundColor: category.soft }]}>
+                      <Text style={[styles.categoryText, { color: category.strong }]}>{item.category}</Text>
+                    </View>
+                  )}
+                </View>
 
-            <View style={styles.cardChips}>
-              {item.type && (
-                <View style={styles.chip}>
-                  <Text style={styles.chipText}>{t(TYPE_KEY[item.type] ?? "contacts.typeOther")}</Text>
+                {item.workplace && (
+                  <View style={styles.detailRow}>
+                    <Icon name="business-outline" size={16} color={fieldTheme.color.inkMuted} />
+                    <Text style={styles.detailText} numberOfLines={1}>{item.workplace}</Text>
+                  </View>
+                )}
+                {item.phone && (
+                  <View style={styles.detailRow}>
+                    <Icon name="call-outline" size={16} color={fieldTheme.color.inkMuted} />
+                    <Text style={styles.detailText} numberOfLines={1}>{item.phone}</Text>
+                  </View>
+                )}
+
+                <View style={styles.cardFooter}>
+                  <View style={styles.typeChip}>
+                    <Text style={styles.typeText}>{typeLabel}</Text>
+                  </View>
+                  <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
                 </View>
-              )}
-              {item.phone && (
-                <View style={styles.chip}>
-                  <Text style={styles.chipText}>📞 {item.phone}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
+              </View>
+            </Pressable>
+          )
+        }}
       />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1 },
-  searchCard: {
+  wrap: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  searchArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+  searchBox: {
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    shadowColor: "#6C63FF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.md,
+    paddingLeft: fieldTheme.space.lg,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
   },
-  searchIcon: { fontSize: 15, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: "#0B0B1E", paddingVertical: 10 },
-
+  searchInput: { flex: 1, minHeight: 52, fontSize: 15, color: fieldTheme.color.ink, paddingHorizontal: fieldTheme.space.md },
+  clearButton: { minWidth: LAYOUT_TOUCH_TARGETS.compact, minHeight: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center" },
   offlineBanner: {
+    minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: "#fff7ed",
+    gap: fieldTheme.space.sm,
+    marginTop: fieldTheme.space.md,
+    paddingHorizontal: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: fieldTheme.color.amberSoft,
     borderWidth: 1,
-    borderColor: "#fed7aa",
+    borderColor: "#EED49B",
   },
-  offlineDot: { color: "#f59e0b", fontSize: 10 },
-  offlineBannerText: { color: "#b45309", fontSize: 12, fontWeight: "600" },
-
+  offlineBannerText: { flex: 1, color: fieldTheme.color.amber, fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  listContent: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.md, flexGrow: 1 },
+  tabletRow: { gap: fieldTheme.space.md },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 16,
-    marginTop: 10,
+    minHeight: 132,
+    flexDirection: "row",
+    gap: fieldTheme.space.md,
+    backgroundColor: fieldTheme.color.surface,
+    borderRadius: fieldTheme.radius.md,
+    padding: fieldTheme.space.lg,
+    marginBottom: fieldTheme.space.md,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: fieldTheme.color.border,
   },
-  cardTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  cardMain: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: "700", color: "#0B0B1E" },
-  cardSub: { fontSize: 12, color: "#64748b", marginTop: 2 },
-  categoryBadge: { borderRadius: 8, minWidth: 26, paddingHorizontal: 8, paddingVertical: 4, alignItems: "center" },
-  categoryText: { fontSize: 12, fontWeight: "800" },
-  cardWorkplace: { fontSize: 12, color: "#64748b", marginTop: 8 },
-
-  cardChips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
-  chip: { backgroundColor: "#f8fafc", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  chipText: { fontSize: 11, color: "#64748b", fontWeight: "500" },
-
-  empty: { padding: 40, alignItems: "center", flex: 1, justifyContent: "center" },
-  emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#f0f0ff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  emptyIcon: { fontSize: 28 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#0B0B1E", textAlign: "center" },
+  cardTablet: { flex: 1 },
+  cardPressed: { backgroundColor: fieldTheme.color.surfaceStrong, transform: [{ scale: 0.995 }] },
+  avatar: { width: 48, height: 48, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  avatarText: { color: fieldTheme.color.primaryStrong, fontSize: 19, fontWeight: "900" },
+  cardContent: { flex: 1 },
+  nameRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
+  nameCopy: { flex: 1 },
+  cardName: { fontSize: 16, lineHeight: 21, fontWeight: "900", color: fieldTheme.color.ink },
+  cardSub: { fontSize: 13, color: fieldTheme.color.inkMuted, marginTop: 2 },
+  categoryBadge: { borderRadius: 9, minWidth: 30, paddingHorizontal: 9, paddingVertical: 5, alignItems: "center" },
+  categoryText: { fontSize: 12, fontWeight: "900" },
+  detailRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
+  detailText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  cardFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: fieldTheme.space.md },
+  typeChip: { backgroundColor: fieldTheme.color.surfaceStrong, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm, paddingVertical: 4 },
+  typeText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
+  empty: { padding: 44, alignItems: "center", flex: 1, justifyContent: "center" },
+  emptyIconWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: fieldTheme.color.primarySoft, justifyContent: "center", alignItems: "center", marginBottom: fieldTheme.space.lg },
+  emptyTitle: { fontSize: 16, lineHeight: 22, fontWeight: "800", color: fieldTheme.color.ink, textAlign: "center" },
+  emptyBody: { maxWidth: 380, marginTop: fieldTheme.space.sm, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
+  retryButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
+  retryButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  pressed: { opacity: 0.72 },
 })

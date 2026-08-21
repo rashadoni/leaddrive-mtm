@@ -64,6 +64,10 @@ class ApiClient {
         console.warn("Failed to parse stored agent:", e)
       }
     }
+    // Security migration: older builds stored { email, password } as plain
+    // JSON in AsyncStorage. Keep only the convenience email and erase the
+    // password even when the user is already signed in and never sees Login.
+    await this.getSavedCredentials()
   }
 
   /** Role of the currently authenticated agent, or null if not signed in. */
@@ -212,16 +216,30 @@ class ApiClient {
 
   // --- Saved credentials ---
 
-  async saveCredentials(email: string, password: string) {
-    await AsyncStorage.setItem(STORAGE_KEY_CREDENTIALS, JSON.stringify({ email, password }))
+  async saveCredentials(email: string) {
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) {
+      await this.clearCredentials()
+      return
+    }
+    await AsyncStorage.setItem(STORAGE_KEY_CREDENTIALS, JSON.stringify({ email: normalizedEmail }))
   }
 
-  async getSavedCredentials(): Promise<{ email: string; password: string } | null> {
+  async getSavedCredentials(): Promise<{ email: string } | null> {
     const raw = await AsyncStorage.getItem(STORAGE_KEY_CREDENTIALS)
     if (!raw) return null
     try {
-      return JSON.parse(raw)
+      const parsed = JSON.parse(raw) as { email?: unknown; password?: unknown }
+      const email = typeof parsed?.email === "string" ? parsed.email.trim().toLowerCase() : ""
+      if (!email) {
+        await AsyncStorage.removeItem(STORAGE_KEY_CREDENTIALS)
+        return null
+      }
+      const safe = JSON.stringify({ email })
+      if (raw !== safe) await AsyncStorage.setItem(STORAGE_KEY_CREDENTIALS, safe)
+      return { email }
     } catch {
+      await AsyncStorage.removeItem(STORAGE_KEY_CREDENTIALS)
       return null
     }
   }
@@ -501,6 +519,49 @@ class ApiClient {
       ? `?latitude=${coords.latitude}&longitude=${coords.longitude}`
       : ""
     return this.request(`/routes/${id}${qs}`, { signal })
+  }
+
+  /** Manager planning read: fetch one scoped agent's full routes and points. */
+  async getRoutesForAgent(date: string, agentId: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ date, agentId, limit: "200" })
+    return this.request(`/routes?${query.toString()}`, { signal })
+  }
+
+  /** Create a real server-side route draft. Publishing is a separate action. */
+  async createRouteDraft(data: {
+    agentId: string
+    date: string
+    name?: string | null
+    notes?: string | null
+    points: Array<{ customerId: string; contactId?: string; plannedTime?: string | null }>
+  }) {
+    return this.request("/routes", {
+      method: "POST",
+      body: JSON.stringify({ ...data, status: "DRAFT" }),
+    })
+  }
+
+  /** Update an existing draft without inventing a second route for that day. */
+  async updateRouteDraft(id: string, data: {
+    expectedVersion: number
+    agentId?: string
+    date?: string
+    name?: string | null
+    notes?: string | null
+    points: Array<{ customerId: string; contactId?: string; plannedTime?: string | null }>
+  }) {
+    return this.request(`/routes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    })
+  }
+
+  /** Publish a saved draft. The server remains authoritative for conflicts. */
+  async publishRoute(id: string, expectedVersion: number, overrideReason?: string) {
+    return this.request(`/routes/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ expectedVersion, ...(overrideReason ? { overrideReason } : {}) }),
+    })
   }
 
   // --- Visits ---

@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 )
-import { enqueueOutboxOperation, flushOutbox } from "../../src/services/outbox"
+import { enqueueOutboxOperation, flushOutbox, markOutboxConflict } from "../../src/services/outbox"
 import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../src/services/task-outbox"
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
@@ -54,6 +54,16 @@ describe("durable task mutations", () => {
     expect(result.deferred).toBe(1)
     // still persisted for the next lifecycle flush
     expect(await countPendingTaskUpdates()).toBe(1)
+  })
+
+  it("does not describe a conflicted task update as waiting to send", async () => {
+    const op = await queueTaskStatusUpdate("t1", "IN_PROGRESS")
+    await markOutboxConflict(op.operationId, {
+      operationId: op.operationId,
+      status: "conflict",
+      error: "Task changed elsewhere",
+    })
+    expect(await countPendingTaskUpdates()).toBe(0)
   })
 
   it.each([["en", en], ["ru", ru], ["az", az]])(

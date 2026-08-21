@@ -178,6 +178,22 @@ export interface CachedOrganization {
   phone?: string
 }
 
+export interface OfflineOrganizationFilters {
+  search?: string
+  category?: string
+  status?: string
+  objectType?: string
+  region?: string
+  administrativeDistrict?: string
+  locality?: string
+  cityDistrict?: string
+  specialization?: string
+  organizationKind?: string
+  territoryCode?: string
+  managingManagerId?: string
+  direction?: "asc" | "desc"
+}
+
 /**
  * Map a cached `customers` record to the Organizations screen shape. Counts
  * and related agent names remain online-only, while the complete published
@@ -219,6 +235,32 @@ export function matchesOrganizationSearch(org: CachedOrganization, query: string
   )
 }
 
+/** Filters that can be proven from the organization fields held in the cache. */
+export function matchesOfflineOrganizationFilters(
+  org: CachedOrganization,
+  filters: OfflineOrganizationFilters,
+): boolean {
+  if (filters.search && !matchesOrganizationSearch(org, filters.search)) return false
+  const exactFields: Array<keyof Omit<OfflineOrganizationFilters, "search" | "direction">> = [
+    "category",
+    "status",
+    "objectType",
+    "region",
+    "administrativeDistrict",
+    "locality",
+    "cityDistrict",
+    "specialization",
+    "organizationKind",
+    "territoryCode",
+    "managingManagerId",
+  ]
+  return exactFields.every((field) => {
+    const expected = filters[field]
+    if (!expected) return true
+    return String(org[field] ?? "").toLocaleLowerCase() === expected.toLocaleLowerCase()
+  })
+}
+
 /**
  * Load the agent's assigned organizations from the durable cache, filtered by
  * the same search terms the server honours and sorted by name. Used as the
@@ -227,12 +269,16 @@ export function matchesOrganizationSearch(org: CachedOrganization, query: string
 export async function readOfflineOrganizations(
   tenantId: string | null | undefined,
   agentId: string | null | undefined,
-  search?: string,
+  searchOrFilters?: string | OfflineOrganizationFilters,
 ): Promise<CachedOrganization[]> {
   const state = await readSyncCache(tenantId, agentId)
   const list = (state.entities.customers ?? []).map(mapCachedOrganization)
-  const filtered = search ? list.filter((org) => matchesOrganizationSearch(org, search)) : list
-  return filtered.sort((a, b) => a.name.localeCompare(b.name))
+  const filters = typeof searchOrFilters === "string"
+    ? { search: searchOrFilters }
+    : searchOrFilters ?? {}
+  const filtered = list.filter((org) => matchesOfflineOrganizationFilters(org, filters))
+  const direction = filters.direction === "desc" ? -1 : 1
+  return filtered.sort((a, b) => direction * a.name.localeCompare(b.name))
 }
 
 export interface CachedContact {

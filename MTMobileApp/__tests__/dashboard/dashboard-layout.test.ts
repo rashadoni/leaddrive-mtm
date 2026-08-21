@@ -2,8 +2,10 @@ import {
   dashboardColumns,
   deviceClassFor,
   layoutStorageKey,
+  managerWidgetDestination,
   moveWidget,
   sanitizeWidgetIds,
+  widgetsForWorkspace,
 } from "../../src/screens/dashboard/dashboard-layout"
 import {
   LAYOUT_BREAKPOINTS,
@@ -67,7 +69,25 @@ describe("dashboard layout", () => {
       "teamCoverage",
       "exceptions",
       "todayRoute",
-    ])).toHaveLength(6)
+    ])).toEqual(["teamPulse", "teamMap", "planFact", "approvals", "exceptions"])
+  })
+
+  it("offers only manager widgets backed by the four manager read models", () => {
+    expect(widgetsForWorkspace("manager").map((widget) => widget.id)).toEqual([
+      "teamPulse",
+      "teamMap",
+      "planFact",
+      "approvals",
+      "exceptions",
+    ])
+  })
+
+  it("opens every manager metric at the screen that owns its evidence", () => {
+    expect(managerWidgetDestination("teamPulse")).toBe("Team")
+    expect(managerWidgetDestination("teamMap")).toBe("Team")
+    expect(managerWidgetDestination("exceptions")).toBe("Team")
+    expect(managerWidgetDestination("planFact")).toBe("Planning")
+    expect(managerWidgetDestination("approvals")).toBe("Approvals")
   })
 
   it("reorders without mutating the source", () => {

@@ -28,5 +28,5 @@ export function queueTaskStatusUpdate(
 /** Count of queued task operations awaiting sync (for the pending indicator). */
 export async function countPendingTaskUpdates(): Promise<number> {
   const ops = await allOutboxOperations()
-  return ops.filter((op) => op.entity === "tasks").length
+  return ops.filter((op) => op.entity === "tasks" && op.status === "pending").length
 }

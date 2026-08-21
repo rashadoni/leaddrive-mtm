@@ -17,7 +17,31 @@ describe("week/agenda mapping", () => {
           isWeekend: false,
           isWorkingDay: true,
           routes: [{ points: [{}, {}, {}] }],
-          tasks: { total: 2, completed: 1 },
+          tasks: {
+            total: 2,
+            completed: 1,
+            items: [
+              {
+                id: "task-1",
+                title: "Send visit report",
+                description: "Attach the signed form",
+                status: "IN_PROGRESS",
+                priority: "HIGH",
+                dueDate: "2026-07-13T15:00:00.000Z",
+                completedAt: null,
+                customer: { id: "customer-1", name: "Clinic A" },
+              },
+              {
+                id: "task-2",
+                title: "Confirm next appointment",
+                status: "COMPLETED",
+                priority: "LOW",
+                dueDate: "2026-07-13T17:00:00.000Z",
+                completedAt: "2026-07-13T14:00:00.000Z",
+                customer: null,
+              },
+            ],
+          },
           visits: {
             total: 3,
             completed: 2,
@@ -51,7 +75,29 @@ describe("week/agenda mapping", () => {
       { id: "vv1", name: "Clinic A", status: "CHECKED_OUT", checkInAt: undefined },
       { id: "vv2", name: "Dr B", status: "CHECKED_IN", checkInAt: undefined },
     ])
-    expect(data.days[1]).toMatchObject({ isWorkingDay: false, nonWorkingReason: "Weekend", plannedStops: 0 })
+    expect(data.days[0].tasks).toEqual([
+      {
+        id: "task-1",
+        title: "Send visit report",
+        description: "Attach the signed form",
+        status: "IN_PROGRESS",
+        priority: "HIGH",
+        dueDate: "2026-07-13T15:00:00.000Z",
+        completedAt: undefined,
+        customer: { name: "Clinic A" },
+      },
+      {
+        id: "task-2",
+        title: "Confirm next appointment",
+        description: undefined,
+        status: "COMPLETED",
+        priority: "LOW",
+        dueDate: "2026-07-13T17:00:00.000Z",
+        completedAt: "2026-07-13T14:00:00.000Z",
+        customer: null,
+      },
+    ])
+    expect(data.days[1]).toMatchObject({ isWorkingDay: false, nonWorkingReason: "Weekend", plannedStops: 0, tasks: [] })
     expect(data.summary).toEqual({
       visits: 3, visitsCompleted: 2, tasks: 2, tasksCompleted: 1, plannedStops: 3, visitedStops: 2, coveragePct: 66.7,
     })
@@ -61,6 +107,26 @@ describe("week/agenda mapping", () => {
     const data = toWeekData({})
     expect(data.days).toEqual([])
     expect(data.summary.coveragePct).toBe(0)
+  })
+
+  it("normalizes incomplete agenda tasks for TaskDetail navigation", () => {
+    const data = toWeekData({
+      days: [{
+        date: "2026-07-15",
+        tasks: { total: 1, completed: 0, items: [{ id: 42, title: null }] },
+      }],
+    })
+
+    expect(data.days[0].tasks).toEqual([{
+      id: "42",
+      title: "",
+      description: undefined,
+      status: "PENDING",
+      priority: "MEDIUM",
+      dueDate: undefined,
+      completedAt: undefined,
+      customer: null,
+    }])
   })
 })
 

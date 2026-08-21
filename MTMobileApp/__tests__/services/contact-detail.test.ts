@@ -136,7 +136,7 @@ describe("contact detail mapping", () => {
   })
 
   describe("i18n contract", () => {
-    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory", "tab_scoring", "tab_brands", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED"] as const
+    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory", "tab_scoring", "tab_brands", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED", "friendlyNextStep", "primary_call", "primary_none", "friendlyMoreDetails", "friendlyManage", "friendlyOfflineTitle"] as const
     it.each([["en", en], ["ru", ru], ["az", az]])(
       "contacts detail keys present in %s",
       (_lang, locale) => {

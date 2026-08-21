@@ -27,7 +27,7 @@ import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
 import { version as APP_VERSION } from "../../package.json"
 
-const ANDROID_VERSION_CODE = 23
+const ANDROID_VERSION_CODE = 24
 const PING_INTERVAL = 60_000
 
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)

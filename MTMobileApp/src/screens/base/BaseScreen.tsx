@@ -1,75 +1,162 @@
 import React, { useState } from "react"
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
+import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import OrganizationsList from "./OrganizationsList"
 import ContactsList from "./ContactsList"
 
 type BaseTab = "organizations" | "contacts"
 
-/**
- * "База" hub — the Agent master-data section. A segmented control switches
- * between the assigned organizations (SWM-01/07) and contacts (SWM-05); each
- * list owns its own search / fetch / offline handling.
- */
+const TABS: Array<{ key: BaseTab; icon: string; labelKey: string; bodyKey: string }> = [
+  {
+    key: "organizations",
+    icon: "business-outline",
+    labelKey: "organizations.title",
+    bodyKey: "baseHub.organizationsBody",
+  },
+  {
+    key: "contacts",
+    icon: "people-outline",
+    labelKey: "contacts.title",
+    bodyKey: "baseHub.contactsBody",
+  },
+]
+
+/** A simple search hub for the agent's assigned organizations and contacts. */
 export default function BaseScreen() {
   const { t } = useTranslation()
+  const navigation = useNavigation()
+  const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
+  const tablet = isTabletWidth(width)
   const [tab, setTab] = useState<BaseTab>("organizations")
+  const active = TABS.find((item) => item.key === tab) ?? TABS[0]
+  const canGoBack = navigation.canGoBack()
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
-        <Text style={styles.headerTitle}>{t("navV2.base")}</Text>
-        <View style={styles.segment}>
-          {(["organizations", "contacts"] as const).map((key) => {
-            const active = tab === key
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[styles.segmentBtn, active && styles.segmentBtnActive]}
-                onPress={() => setTab(key)}
-                activeOpacity={0.8}
+        <View style={styles.headerInner}>
+          <View style={styles.titleRow}>
+            {canGoBack && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("baseHub.back")}
+                onPress={() => navigation.goBack()}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  tablet && styles.backButtonTablet,
+                  pressed && styles.pressed,
+                ]}
               >
-                <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                  {t(key === "organizations" ? "organizations.title" : "contacts.title")}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
+                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              </Pressable>
+            )}
+            <View style={styles.titleCopy}>
+              <Text style={styles.eyebrow}>{t("baseHub.eyebrow")}</Text>
+              <Text style={styles.headerTitle}>{t("baseHub.title")}</Text>
+              <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
+            </View>
+          </View>
+
+          <View style={[styles.segment, tablet && styles.segmentTablet]}>
+            {TABS.map((item) => {
+              const selected = tab === item.key
+              return (
+                <Pressable
+                  key={item.key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={t(item.labelKey)}
+                  onPress={() => setTab(item.key)}
+                  style={({ pressed }) => [
+                    styles.segmentButton,
+                    tablet && styles.segmentButtonTablet,
+                    selected && styles.segmentButtonActive,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Icon
+                    name={selected ? item.icon.replace("-outline", "") : item.icon}
+                    size={21}
+                    color={selected ? fieldTheme.color.primaryStrong : "#C8DDD4"}
+                  />
+                  <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>
+                    {t(item.labelKey)}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
         </View>
       </View>
 
-      {tab === "organizations" ? <OrganizationsList /> : <ContactsList />}
+      <View style={styles.content}>
+        {tab === "organizations" ? <OrganizationsList /> : <ContactsList />}
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
+  container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
-    backgroundColor: "#6C63FF",
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: fieldTheme.color.primaryStrong,
+    paddingBottom: fieldTheme.space.lg,
+    paddingHorizontal: fieldTheme.space.lg,
   },
-  headerTitle: { color: "#fff", fontSize: 24, fontWeight: "800", letterSpacing: -0.3 },
+  headerInner: { width: "100%", maxWidth: 1100, alignSelf: "center" },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
+  backButton: {
+    width: LAYOUT_TOUCH_TARGETS.compact,
+    height: LAYOUT_TOUCH_TARGETS.compact,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  backButtonTablet: {
+    width: LAYOUT_TOUCH_TARGETS.expandedTablet,
+    height: LAYOUT_TOUCH_TARGETS.expandedTablet,
+  },
+  titleCopy: { flex: 1 },
+  eyebrow: {
+    color: "#BBD6CB",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
+  },
+  headerTitle: { color: fieldTheme.color.onColor, fontSize: 29, lineHeight: 35, fontWeight: "900", marginTop: 2 },
+  headerSubtitle: { color: "#D7E9E1", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
   segment: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 12,
-    padding: 4,
-    marginTop: 14,
-    gap: 4,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: fieldTheme.radius.md,
+    padding: fieldTheme.space.xs,
+    marginTop: fieldTheme.space.lg,
+    gap: fieldTheme.space.xs,
   },
-  segmentBtn: {
+  segmentTablet: { maxWidth: 560 },
+  segmentButton: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 9,
+    minHeight: LAYOUT_TOUCH_TARGETS.compact,
+    paddingHorizontal: fieldTheme.space.sm,
+    borderRadius: fieldTheme.radius.sm,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
   },
-  segmentBtnActive: { backgroundColor: "#fff" },
-  segmentText: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.85)" },
-  segmentTextActive: { color: "#6C63FF" },
+  segmentButtonTablet: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet },
+  segmentButtonActive: { backgroundColor: fieldTheme.color.surface },
+  segmentText: { fontSize: 14, fontWeight: "800", color: "#D7E9E1" },
+  segmentTextActive: { color: fieldTheme.color.primaryStrong },
+  content: { flex: 1 },
+  pressed: { opacity: 0.72 },
 })

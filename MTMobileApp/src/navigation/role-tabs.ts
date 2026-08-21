@@ -1,7 +1,7 @@
 import type { NavGroup } from "../services/bootstrap"
 
-export const MANAGER_TAB_NAMES = ["Overview", "Team", "Planning", "Approvals", "Base", "Profile"] as const
-export const AGENT_TAB_NAMES = ["Home", "Week", "Route", "Visits", "Tasks", "Base", "Profile"] as const
+export const MANAGER_TAB_NAMES = ["Overview", "Team", "Planning", "Approvals", "More"] as const
+export const AGENT_TAB_NAMES = ["Today", "Calendar", "Route", "Tasks", "More"] as const
 
 export type AppTabName = typeof MANAGER_TAB_NAMES[number] | typeof AGENT_TAB_NAMES[number]
 

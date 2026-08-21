@@ -285,6 +285,20 @@ describe("ApiClient — init", () => {
     expect(client._agentName).toBe("Rauf")
     expect(client._agentCode).toBe("RA1")
   })
+
+  it("sanitizes legacy saved passwords even when login is not opened", async () => {
+    ;(AsyncStorage.getItem as jest.Mock).mockImplementation((key: string) => {
+      if (key === "@mtm_saved_login") {
+        return Promise.resolve(JSON.stringify({ email: "AGENT@EXAMPLE.COM", password: "legacy-secret" }))
+      }
+      return Promise.resolve(null)
+    })
+    await api.init()
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      "@mtm_saved_login",
+      JSON.stringify({ email: "agent@example.com" }),
+    )
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -292,18 +306,35 @@ describe("ApiClient — init", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("ApiClient — credentials", () => {
-  it("saveCredentials + getSavedCredentials round-trip", async () => {
+  it("stores only a normalized email and never a password", async () => {
     ;(AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined)
     ;(AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
-      JSON.stringify({ email: "rauf@mars.az", password: "secret" }),
+      JSON.stringify({ email: "rauf@mars.az" }),
     )
-    await api.saveCredentials("rauf@mars.az", "secret")
+    await api.saveCredentials(" Rauf@Mars.AZ ")
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       "@mtm_saved_login",
-      JSON.stringify({ email: "rauf@mars.az", password: "secret" }),
+      JSON.stringify({ email: "rauf@mars.az" }),
     )
     const creds = await api.getSavedCredentials()
-    expect(creds).toEqual({ email: "rauf@mars.az", password: "secret" })
+    expect(creds).toEqual({ email: "rauf@mars.az" })
+  })
+
+  it("removes a legacy plaintext password while retaining the email", async () => {
+    ;(AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
+      JSON.stringify({ email: "Rauf@Mars.AZ", password: "must-not-remain" }),
+    )
+    await expect(api.getSavedCredentials()).resolves.toEqual({ email: "rauf@mars.az" })
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+      "@mtm_saved_login",
+      JSON.stringify({ email: "rauf@mars.az" }),
+    )
+  })
+
+  it("deletes malformed saved-login data", async () => {
+    ;(AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce("not-json")
+    await expect(api.getSavedCredentials()).resolves.toBeNull()
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith("@mtm_saved_login")
   })
 
   it("getSavedCredentials returns null when nothing stored", async () => {

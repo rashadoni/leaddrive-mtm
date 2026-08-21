@@ -400,7 +400,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 10, selected employee/date/time GPS history with distance, stops, and organization list.
 
 **Target roles:** Manager; Agent may view only their own history.
-**Current state: Partial.** Background GPS sending, a process-memory last-position cache, heartbeat, and `getLocationHistory()` exist. Android V2 gates collection locally to an authenticated Agent with an explicit persisted workday start/end; this is not a durable GPS cache or a server-authoritative shift. Manager roles cannot activate field tracking. There is still no history screen, map dependency, employee/date/time filters, stop detection UI, replay, organization/visit correlation, server-authoritative workday enforcement, or completed physical-device privacy/lifecycle proof.
+**Current state: Partial.** Background GPS sending, heartbeat, `getLocationHistory()`, and an Agent self-history screen now exist. The server requires an authenticated active workday (or a matching completed workday for a queued historical point), binds every accepted coordinate to that workday, and rejects timestamps outside its boundary. The screen has tenant-timezone day navigation, factual distance/point/interval summaries, a local-only route scheme, ordered point playback, session cache/error states, and explicit notices for unusable coordinates, invalid timestamps, and large GPS gaps. Manager employee/team filters, authoritative stop/visit/anomaly records, organization/visit correlation, durable offline history, export/retention controls, and completed physical-device privacy/lifecycle proof are still missing; the client intentionally does not infer them from raw points.
 
 **Data and filters**
 
@@ -431,7 +431,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 11, full physical route across a territory with point sequence and route line.
 
 **Target roles:** Manager and Agent self-view.
-**Current state: Partial.** `RouteScreen` shows an ordered planned route, point statuses, distances, planned time, completion, and external navigation. Android V2 can send GPS points while its client-local Agent workday gate is active; the server does not yet prove or enforce the shift boundary. The route list now falls back to the durable sync cache when offline, but there is still no in-app map, actual route line, full-day replay, stop overlay, plan-vs-fact comparison, or proven offline replay continuity.
+**Current state: Partial.** `RouteScreen` shows the ordered planned route, while Agent `My GPS` now shows a separate factual actual-route line and full-day raw-point playback. Accepted points are server-bound to a valid workday, and the actual line is split at detected time gaps instead of inventing continuity, stops, visits, or plan/fact. Missing capabilities remain: authoritative stop/visit correlation and anomaly classification, one combined planned-vs-actual comparison, and proven durable offline replay continuity.
 
 **Data/filter/actions/status**
 
@@ -457,7 +457,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 12, current map of employees across Azerbaijan with employee list and latest activity time.
 
 **Target roles:** Manager/Supervisor.
-**Current state: Partial.** A role-safe Manager workspace now exists with Overview, Team, Planning, Approvals, and Profile navigation. Team/Planning/Approvals are honest data-unavailable shells, not completed workflows. Agents can send location and a 60-second heartbeat only while the client-local workday gate is active, and profile alerts exist; server-authoritative shift enforcement is still absent. There is still no connected team list, live map, markers, clustering, last-seen status, battery, scope filters, or Manager live-data API in this app.
+**Current state: Partial.** The role-safe Manager workspace now loads the server-scoped team and accepted location evidence. Its local-only map shows current, last-known, and stale markers without external tiles or device-location substitution; fit/zoom, marker detail, online status, timestamp, accuracy, explicit no-coordinate counts, and 60-second/focus refresh are implemented. The server also enforces the authenticated agent's workday when accepting GPS. Still missing are team/department filters and search, clustering, current-visit/route/history drill-down, visible battery detail, push/WebSocket real-time, and completed physical-device proof.
 
 **Data and filters**
 

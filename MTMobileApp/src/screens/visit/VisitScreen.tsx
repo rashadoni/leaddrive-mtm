@@ -1,20 +1,24 @@
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
   ActivityIndicator,
+  FlatList,
+  Linking,
   PermissionsAndroid,
   Platform,
-  Linking,
-  TextInput,
+  Pressable,
+  RefreshControl,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
+import { useNavigation } from "@react-navigation/native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
+import Icon from "react-native-vector-icons/Ionicons"
 import { lastKnownPosition } from "../../services/location"
 import { api } from "../../services/api"
 import { enqueueMediaUpload } from "../../services/media-outbox"
@@ -26,13 +30,19 @@ import {
   type OptimisticVisit,
 } from "../../services/visit-outbox"
 import { runMobileSync } from "../../services/sync-engine"
-import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
-import HintCard from "../../components/HintCard"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import {
+  filterVisitCustomers,
+  visitScreenLanguage,
+  visitScreenLayout,
+} from "./visit-screen-model"
 
 interface Visit {
   id: string
@@ -55,13 +65,186 @@ interface Customer {
   distanceMeters?: number
 }
 
+type LoadState = "loading" | "ready" | "offline" | "error"
+
+const VISIT_COPY = {
+  ru: {
+    eyebrow: "Работа в поле",
+    title: "Визиты",
+    subtitle: "Плановые визиты начинайте из Маршрута. Здесь — внеплановый визит и история.",
+    back: "Назад",
+    plannedTitle: "Визит уже есть в плане?",
+    plannedBody: "Откройте «Маршрут»: там сохранены порядок точек, навигация и плановый чек-ин.",
+    openRoute: "Открыть маршрут",
+    manualEyebrow: "Внеплановый визит",
+    manualTitle: "Выберите клиента",
+    manualBody: "Используйте этот шаг, только если клиента нет в сегодняшнем маршруте.",
+    search: "Имя клиента",
+    searchPlaceholder: "Например, Центральная клиника",
+    clearSearch: "Очистить поиск",
+    nearest: "Доступные клиенты",
+    searchResults: "Результаты поиска",
+    resultsCount: "Показано: {{count}}",
+    selected: "Выбран",
+    choose: "Выбрать клиента",
+    start: "Начать внеплановый визит",
+    starting: "Проверяем GPS…",
+    chooseFirst: "Сначала выберите клиента из списка.",
+    noClientsTitle: "Нет доступных клиентов",
+    noClientsBody: "Обновите экран. Если список всё равно пуст, попросите менеджера проверить назначения.",
+    noSearchTitle: "Клиент не найден",
+    noSearchBody: "Проверьте написание или очистите поиск.",
+    activeEyebrow: "Визит идёт сейчас",
+    activeBody: "Сначала добавьте нужное фото, затем завершите визит и оставьте результат.",
+    elapsed: "Идёт {{count}} мин",
+    photos: "Фото: {{count}}",
+    addPhoto: "Добавить фото",
+    finish: "Завершить визит",
+    finishing: "Сохраняем…",
+    waitingSync: "Завершение сохранено на устройстве и ждёт синхронизации.",
+    historyEyebrow: "Последние записи",
+    historyTitle: "История визитов",
+    historyCount: "{{count}} записей",
+    loadingTitle: "Загружаем визиты и клиентов",
+    loadingBody: "Сверяем последние данные с сервером.",
+    offlineTitle: "Сейчас нет связи",
+    offlineBody: "Показываем уже загруженные данные. Новые действия сохранятся на устройстве и синхронизируются позже.",
+    errorTitle: "Не удалось загрузить визиты",
+    errorBody: "Проверьте интернет и попробуйте снова.",
+    retry: "Попробовать снова",
+    refresh: "Обновить",
+    emptyHistoryTitle: "Истории пока нет",
+    emptyHistoryBody: "Плановый визит начните в «Маршруте». Для внепланового визита выберите клиента в соответствующем блоке.",
+    activeStatus: "Активен",
+    completeStatus: "Завершён",
+    pendingStatus: "Ждёт синхронизации",
+    noAddress: "Адрес не указан",
+    noTime: "Время не указано",
+    duration: "{{count}} мин",
+    cancel: "Отмена",
+  },
+  az: {
+    eyebrow: "Sahə işi",
+    title: "Ziyarətlər",
+    subtitle: "Planlı ziyarətləri Marşrutdan başladın. Burada plansız ziyarət və tarixçə var.",
+    back: "Geri",
+    plannedTitle: "Ziyarət artıq plandadır?",
+    plannedBody: "«Marşrut»u açın: nöqtələrin sırası, naviqasiya və planlı giriş oradadır.",
+    openRoute: "Marşrutu aç",
+    manualEyebrow: "Plansız ziyarət",
+    manualTitle: "Müştəri seçin",
+    manualBody: "Bu addımı yalnız müştəri bugünkü marşrutda olmadıqda istifadə edin.",
+    search: "Müştərinin adı",
+    searchPlaceholder: "Məsələn, Mərkəzi Klinika",
+    clearSearch: "Axtarışı təmizlə",
+    nearest: "Əlçatan müştərilər",
+    searchResults: "Axtarış nəticələri",
+    resultsCount: "Göstərilir: {{count}}",
+    selected: "Seçilib",
+    choose: "Müştəri seç",
+    start: "Plansız ziyarətə başla",
+    starting: "GPS yoxlanılır…",
+    chooseFirst: "Əvvəlcə siyahıdan müştəri seçin.",
+    noClientsTitle: "Əlçatan müştəri yoxdur",
+    noClientsBody: "Ekranı yeniləyin. Siyahı yenə boşdursa, təyinatları menecerlə yoxlayın.",
+    noSearchTitle: "Müştəri tapılmadı",
+    noSearchBody: "Yazılışı yoxlayın və ya axtarışı təmizləyin.",
+    activeEyebrow: "Ziyarət indi davam edir",
+    activeBody: "Lazım olan fotonu əlavə edin, sonra ziyarəti bitirib nəticəni yazın.",
+    elapsed: "{{count}} dəq davam edir",
+    photos: "Foto: {{count}}",
+    addPhoto: "Foto əlavə et",
+    finish: "Ziyarəti bitir",
+    finishing: "Yadda saxlanılır…",
+    waitingSync: "Bitirmə cihazda saxlanılıb və sinxronizasiyanı gözləyir.",
+    historyEyebrow: "Son qeydlər",
+    historyTitle: "Ziyarət tarixçəsi",
+    historyCount: "{{count}} qeyd",
+    loadingTitle: "Ziyarətlər və müştərilər yüklənir",
+    loadingBody: "Son məlumatlar serverlə yoxlanılır.",
+    offlineTitle: "Hazırda bağlantı yoxdur",
+    offlineBody: "Əvvəl yüklənmiş məlumatlar göstərilir. Yeni əməliyyatlar cihazda saxlanıb sonra sinxronlaşacaq.",
+    errorTitle: "Ziyarətləri yükləmək alınmadı",
+    errorBody: "İnterneti yoxlayın və yenidən cəhd edin.",
+    retry: "Yenidən cəhd et",
+    refresh: "Yenilə",
+    emptyHistoryTitle: "Tarixçə hələ boşdur",
+    emptyHistoryBody: "Planlı ziyarəti «Marşrut»dan başladın. Plansız ziyarət bölməsində müştəri seçin.",
+    activeStatus: "Aktiv",
+    completeStatus: "Tamamlanıb",
+    pendingStatus: "Sinxronizasiya gözlənilir",
+    noAddress: "Ünvan göstərilməyib",
+    noTime: "Vaxt göstərilməyib",
+    duration: "{{count}} dəq",
+    cancel: "Ləğv et",
+  },
+  en: {
+    eyebrow: "Field work",
+    title: "Visits",
+    subtitle: "Start planned visits from Route. This screen is for an unplanned visit and history.",
+    back: "Back",
+    plannedTitle: "Already in today's plan?",
+    plannedBody: "Open Route for the stop order, navigation and the planned check-in.",
+    openRoute: "Open route",
+    manualEyebrow: "Unplanned visit",
+    manualTitle: "Choose a client",
+    manualBody: "Use this step only when the client is not on today's route.",
+    search: "Client name",
+    searchPlaceholder: "For example, Central Clinic",
+    clearSearch: "Clear search",
+    nearest: "Available clients",
+    searchResults: "Search results",
+    resultsCount: "Showing {{count}}",
+    selected: "Selected",
+    choose: "Choose client",
+    start: "Start unplanned visit",
+    starting: "Checking GPS…",
+    chooseFirst: "Choose a client from the list first.",
+    noClientsTitle: "No clients are available",
+    noClientsBody: "Refresh this screen. If it stays empty, ask your manager to check assignments.",
+    noSearchTitle: "Client not found",
+    noSearchBody: "Check the spelling or clear the search.",
+    activeEyebrow: "Visit in progress",
+    activeBody: "Add any required photo, then finish the visit and record the result.",
+    elapsed: "In progress for {{count}} min",
+    photos: "Photos: {{count}}",
+    addPhoto: "Add photo",
+    finish: "Finish visit",
+    finishing: "Saving…",
+    waitingSync: "Completion is saved on this device and is waiting to sync.",
+    historyEyebrow: "Recent records",
+    historyTitle: "Visit history",
+    historyCount: "{{count}} records",
+    loadingTitle: "Loading visits and clients",
+    loadingBody: "Checking the latest server data.",
+    offlineTitle: "You're offline",
+    offlineBody: "Showing previously loaded data. New actions will stay on this device and sync later.",
+    errorTitle: "We couldn't load visits",
+    errorBody: "Check your connection and try again.",
+    retry: "Try again",
+    refresh: "Refresh",
+    emptyHistoryTitle: "No visit history yet",
+    emptyHistoryBody: "Start a planned visit in Route. Choose a client in the Unplanned visit section when needed.",
+    activeStatus: "Active",
+    completeStatus: "Completed",
+    pendingStatus: "Waiting to sync",
+    noAddress: "No address provided",
+    noTime: "Time not provided",
+    duration: "{{count}} min",
+    cancel: "Cancel",
+  },
+} as const
+
 const GEOFENCE_DEFAULT = 100
+const MAX_CACHED_LOCATION_AGE_MS = 120_000
 
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000
-  const toRad = (d: number) => (d * Math.PI) / 180
-  const p1 = toRad(lat1), p2 = toRad(lat2)
-  const dp = toRad(lat2 - lat1), dl = toRad(lon2 - lon1)
+  const toRad = (degrees: number) => (degrees * Math.PI) / 180
+  const p1 = toRad(lat1)
+  const p2 = toRad(lat2)
+  const dp = toRad(lat2 - lat1)
+  const dl = toRad(lon2 - lon1)
   const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
@@ -71,19 +254,62 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`
 }
 
-function distanceColor(meters: number): string {
-  if (meters < GEOFENCE_DEFAULT) return "#22c55e"
-  if (meters < 500) return "#f59e0b"
-  return "#ef4444"
+function distanceTone(meters: number): { color: string; background: string } {
+  if (meters < GEOFENCE_DEFAULT) {
+    return { color: fieldTheme.color.success, background: fieldTheme.color.successSoft }
+  }
+  if (meters < 500) {
+    return { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft }
+  }
+  return { color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft }
+}
+
+function categoryTone(category?: string): { color: string; background: string } {
+  switch (category) {
+    case "A":
+      return { color: fieldTheme.color.primaryStrong, background: fieldTheme.color.primarySoft }
+    case "B":
+      return { color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft }
+    case "C":
+      return { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft }
+    default:
+      return { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong }
+  }
+}
+
+function visitDate(value: string | undefined): Date | null {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatVisitStart(value: string | undefined, language: string): string {
+  const date = visitDate(value)
+  return date?.toLocaleString(language, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }) ?? ""
+}
+
+function formatVisitClock(value: string | undefined, language: string): string {
+  const date = visitDate(value)
+  return date?.toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" }) ?? ""
 }
 
 export default function VisitScreen() {
   const { t, i18n } = useTranslation()
-  const tabBarPadding = useTabBarPadding()
+  const navigation = useNavigation<any>()
+  const insets = useSafeAreaInsets()
+  const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
+  const tablet = visitScreenLayout(width) === "tablet"
+  const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
+  const copy = VISIT_COPY[visitScreenLanguage(i18n.language)]
   const [visits, setVisits] = useState<Visit[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadState, setLoadState] = useState<LoadState>("loading")
   const [refreshing, setRefreshing] = useState(false)
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null)
   const [mutating, setMutating] = useState(false)
@@ -92,107 +318,144 @@ export default function VisitScreen() {
   const [photoCount, setPhotoCount] = useState(0)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [agentCoords, setAgentCoords] = useState<{ latitude: number; longitude: number } | null>(null)
-
-  // Toast state
-  const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error" | "warning" | "info"; title: string; message?: string }>({
-    visible: false, type: "success", title: "",
-  })
-
-  // Confirm sheet state
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [pendingGeofenceResolve, setPendingGeofenceResolve] = useState<((value: boolean) => void) | null>(null)
+  const [toast, setToast] = useState<{
+    visible: boolean
+    type: "success" | "error" | "warning" | "info"
+    title: string
+    message?: string
+  }>({ visible: false, type: "success", title: "" })
   const [confirm, setConfirm] = useState<{
-    visible: boolean; icon?: string; iconColor?: string; title: string; message: string;
-    confirmText?: string; confirmColor?: string; destructive?: boolean;
+    visible: boolean
+    title: string
+    message: string
+    confirmText?: string
+    confirmColor?: string
+    destructive?: boolean
     onConfirm: () => void
   }>({ visible: false, title: "", message: "", onConfirm: () => {} })
 
-  // Customer search
-  const [searchQuery, setSearchQuery] = useState("")
-
-  // Pending geofence resolve (for async confirm flow)
-  const [pendingGeofenceResolve, setPendingGeofenceResolve] = useState<((v: boolean) => void) | null>(null)
-
-  const showToast = (type: "success" | "error" | "warning" | "info", title: string, message?: string) => {
-    setToast({ visible: true, type, title, message })
-  }
+  const showToast = (
+    type: "success" | "error" | "warning" | "info",
+    title: string,
+    message?: string,
+  ) => setToast({ visible: true, type, title, message })
 
   useEffect(() => {
     Geolocation.getCurrentPosition(
-      (pos) => setAgentCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      (position) => setAgentCoords({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      }),
       () => {},
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     )
   }, [])
 
   const fetchData = useCallback(async () => {
     try {
-      const [visitsRes, customersRes] = await Promise.all([
+      const [visitsResponse, customersResponse] = await Promise.all([
         api.getVisits({ limit: 20 }),
         api.getCustomers(),
       ])
-      if (visitsRes.success) {
-        const list = visitsRes.data?.visits || []
-        const serverActive = list.find((v: Visit) => v.status === "CHECKED_IN") || null
+      const visitsLoaded = visitsResponse.success === true
+      const customersLoaded = customersResponse.success === true
+      if (!visitsLoaded && !customersLoaded) {
+        throw new Error("VISITS_LOAD_FAILED")
+      }
+
+      if (visitsLoaded) {
+        const list: Visit[] = visitsResponse.data?.visits || []
+        const serverActive = list.find((visit) => visit.status === "CHECKED_IN") || null
         const reconciled = await reconcileOptimisticVisit(
           serverActive
             ? { ...serverActive, status: "CHECKED_IN", pendingCheckOut: false } as OptimisticVisit
             : null,
         )
-        setVisits(reconciled && !list.some((visit: Visit) => visit.id === reconciled.id)
+        setVisits(reconciled && !list.some((visit) => visit.id === reconciled.id)
           ? [reconciled, ...list]
           : list)
         setActiveVisit(reconciled)
       }
-      if (customersRes.success) {
-        setCustomers(customersRes.data?.customers || [])
+      if (customersLoaded) {
+        setCustomers(customersResponse.data?.customers || [])
       }
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") console.warn("Failed to fetch visits:", e.message)
+      setLoadState(visitsLoaded && customersLoaded ? "ready" : "offline")
+    } catch (error: any) {
+      if (error.message !== "SESSION_EXPIRED") {
+        console.warn("Failed to fetch visits:", error.message)
+      }
+      let optimistic: OptimisticVisit | null = null
       try {
-        const optimistic = await readOptimisticVisit()
+        optimistic = await readOptimisticVisit()
         if (optimistic) {
           setActiveVisit(optimistic)
-          setVisits((current) => current.some((visit) => visit.id === optimistic.id)
+          setVisits((current) => current.some((visit) => visit.id === optimistic?.id)
             ? current
-            : [optimistic, ...current])
+            : [optimistic as OptimisticVisit, ...current])
         }
       } catch {}
+      setLoadState((current) => optimistic || current !== "loading" ? "offline" : "error")
     } finally {
-      setLoading(false)
       setRefreshing(false)
     }
   }, [])
 
-  // Initial load + keep fresh (focus / foreground / 60s poll) — the visit
-  // list and the active-visit banner follow server state by themselves.
   useAutoRefresh(fetchData)
 
   useEffect(() => {
-    if (!activeVisit) { setElapsedMin(0); return }
-    const calc = () => {
-      const diff = Date.now() - new Date(activeVisit.checkInAt).getTime()
-      setElapsedMin(Math.floor(diff / 60000))
+    if (!activeVisit) {
+      setElapsedMin(0)
+      return
     }
-    calc()
-    const interval = setInterval(calc, 30000)
+    const calculate = () => {
+      const difference = Date.now() - new Date(activeVisit.checkInAt).getTime()
+      setElapsedMin(Math.max(0, Math.floor(difference / 60000)))
+    }
+    calculate()
+    const interval = setInterval(calculate, 30000)
     return () => clearInterval(interval)
   }, [activeVisit])
 
-  const customersWithDistance: Customer[] = React.useMemo(() => {
+  const customersWithDistance = useMemo<Customer[]>(() => {
     if (!agentCoords) return customers
     return [...customers]
-      .map((c) => {
-        if (c.latitude != null && c.longitude != null) {
-          return { ...c, distanceMeters: Math.round(haversineDistance(agentCoords.latitude, agentCoords.longitude, c.latitude, c.longitude)) }
+      .map((customer) => {
+        if (customer.latitude == null || customer.longitude == null) return customer
+        return {
+          ...customer,
+          distanceMeters: Math.round(haversineDistance(
+            agentCoords.latitude,
+            agentCoords.longitude,
+            customer.latitude,
+            customer.longitude,
+          )),
         }
-        return c
       })
-      .sort((a, b) => {
-        if (a.distanceMeters == null && b.distanceMeters == null) return 0
-        if (a.distanceMeters == null) return 1
-        if (b.distanceMeters == null) return -1
-        return a.distanceMeters - b.distanceMeters
+      .sort((first, second) => {
+        if (first.distanceMeters == null && second.distanceMeters == null) return 0
+        if (first.distanceMeters == null) return 1
+        if (second.distanceMeters == null) return -1
+        return first.distanceMeters - second.distanceMeters
       })
-  }, [customers, agentCoords])
+  }, [agentCoords, customers])
+
+  const visibleCustomers = useMemo(
+    () => filterVisitCustomers(customersWithDistance, searchQuery, tablet ? 20 : 12),
+    [customersWithDistance, searchQuery, tablet],
+  )
+  const selectedCustomer = useMemo(
+    () => customersWithDistance.find((customer) => customer.id === selectedCustomerId) ?? null,
+    [customersWithDistance, selectedCustomerId],
+  )
+
+  useEffect(() => {
+    if (selectedCustomerId && !customersWithDistance.some((customer) => customer.id === selectedCustomerId)) {
+      setSelectedCustomerId(null)
+    }
+  }, [customersWithDistance, selectedCustomerId])
 
   const requestLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS !== "android") return true
@@ -209,13 +472,14 @@ export default function VisitScreen() {
       if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
         setConfirm({
           visible: true,
-          icon: "⚙️",
-          iconColor: "#ef4444",
           title: t("permission.locationDeniedTitle"),
           message: t("permission.locationDeniedBody"),
           confirmText: t("permission.openSettings"),
-          confirmColor: "#6C63FF",
-          onConfirm: () => { setConfirm(c => ({ ...c, visible: false })); Linking.openSettings() },
+          confirmColor: fieldTheme.color.danger,
+          onConfirm: () => {
+            setConfirm((current) => ({ ...current, visible: false }))
+            Linking.openSettings()
+          },
         })
       }
       return false
@@ -227,17 +491,19 @@ export default function VisitScreen() {
   const getCoords = async (): Promise<{ latitude: number; longitude: number } | null> => {
     const hasPermission = await requestLocationPermission()
     if (!hasPermission) return null
-
     try {
       return await new Promise((resolve, reject) => {
         Geolocation.getCurrentPosition(
-          (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-          (err) => reject(err),
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+          (position) => resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }),
+          reject,
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
         )
       })
     } catch {
-      setToast({ visible: true, type: "error", title: t("common.error"), message: t("visit.gpsSignalLost") })
+      showToast("error", t("common.error"), t("visit.gpsSignalLost"))
       return null
     }
   }
@@ -246,13 +512,12 @@ export default function VisitScreen() {
     if (mutating || activeVisit) return
     setConfirm({
       visible: true,
-      icon: "📋",
-      iconColor: "#6C63FF",
       title: t("visit.checkInPromptTitle", { name: customer.name }),
       message: customer.address || t("visit.noAddress"),
       confirmText: t("visit.checkInButton"),
+      confirmColor: fieldTheme.color.primary,
       onConfirm: () => {
-        setConfirm(c => ({ ...c, visible: false }))
+        setConfirm((current) => ({ ...current, visible: false }))
         performCheckIn(customer)
       },
     })
@@ -263,28 +528,35 @@ export default function VisitScreen() {
     setMutating(true)
     try {
       let coords = await getCoords()
-      // If fresh GPS fails, try cached position from background tracking
-      if (!coords && lastKnownPosition) {
-        coords = { latitude: lastKnownPosition.latitude, longitude: lastKnownPosition.longitude }
+      const cachedPositionIsFresh = lastKnownPosition
+        ? Date.now() - lastKnownPosition.timestamp <= MAX_CACHED_LOCATION_AGE_MS
+        : false
+      if (!coords && lastKnownPosition && cachedPositionIsFresh) {
+        coords = {
+          latitude: lastKnownPosition.latitude,
+          longitude: lastKnownPosition.longitude,
+        }
         showToast(
           "warning",
           t("visit.usingLastPosition"),
-          t("visit.lastPositionAccuracy", { accuracy: lastKnownPosition.accuracy?.toFixed(0) || "?" }),
+          t("visit.lastPositionAccuracy", {
+            accuracy: lastKnownPosition.accuracy?.toFixed(0) || "?",
+          }),
         )
       }
       if (!coords) {
         showToast("error", t("visit.gpsUnavailable"), t("visit.gpsCantDetermine"))
-        setMutating(false)
         return
       }
 
-      // Geofence check — warn if beyond GEOFENCE_DEFAULT meters but allow
-      // override only for SUPERVISOR/MANAGER/ADMIN (F-28 client-gate).
-      // AGENT role would 403 server-side on force=true, so don't even
-      // surface the override prompt — show a toast instead and bail.
       let forceCheckIn = false
       if (customer.latitude != null && customer.longitude != null) {
-        const distance = Math.round(haversineDistance(coords.latitude, coords.longitude, customer.latitude, customer.longitude))
+        const distance = Math.round(haversineDistance(
+          coords.latitude,
+          coords.longitude,
+          customer.latitude,
+          customer.longitude,
+        ))
         if (distance > GEOFENCE_DEFAULT) {
           if (!api.canForceCheckIn) {
             showToast(
@@ -296,15 +568,12 @@ export default function VisitScreen() {
                 max: GEOFENCE_DEFAULT,
               }),
             )
-            setMutating(false)
             return
           }
           const proceed = await new Promise<boolean>((resolve) => {
-            setPendingGeofenceResolve(() => (v: boolean) => resolve(v))
+            setPendingGeofenceResolve(() => (value: boolean) => resolve(value))
             setConfirm({
               visible: true,
-              icon: "📏",
-              iconColor: "#ef4444",
               title: t("visit.tooFarTitle"),
               message: t("visit.tooFarBody", {
                 distance: formatDistance(distance),
@@ -312,37 +581,42 @@ export default function VisitScreen() {
                 max: GEOFENCE_DEFAULT,
               }),
               confirmText: t("visit.checkInAnyway"),
-              confirmColor: "#ef4444",
+              confirmColor: fieldTheme.color.danger,
               onConfirm: () => {
-                setConfirm(c => ({ ...c, visible: false }))
+                setConfirm((current) => ({ ...current, visible: false }))
                 setPendingGeofenceResolve(null)
                 resolve(true)
               },
             })
           })
-          if (!proceed) { setMutating(false); return }
+          if (!proceed) return
           forceCheckIn = true
         }
       }
 
       const { visit } = await queueVisitCheckIn({
         customer: { id: customer.id, name: customer.name, address: customer.address },
-        latitude: coords?.latitude,
-        longitude: coords?.longitude,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
         force: forceCheckIn,
       })
       setActiveVisit(visit)
       setVisits((current) => [visit, ...current.filter((entry) => entry.id !== visit.id)])
-      showToast("success", t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: customer.name }))
+      setSelectedCustomerId(null)
+      showToast(
+        "success",
+        t("visit.checkInQueuedTitle"),
+        t("visit.checkInQueuedBody", { name: customer.name }),
+      )
       runMobileSync().then(async (result) => {
         await fetchData()
         if (result.conflicted > 0) {
           showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
         }
       }).catch(() => {})
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") {
-        console.warn("[VisitScreen] check-in error:", e?.message ?? e)
+    } catch (error: any) {
+      if (error.message !== "SESSION_EXPIRED") {
+        console.warn("[VisitScreen] check-in error:", error?.message ?? error)
         showToast("error", t("common.error"), t("visit.checkInFailed"))
       }
     } finally {
@@ -360,7 +634,6 @@ export default function VisitScreen() {
     setMutating(true)
     try {
       const coords = await getCoords()
-      if (coords === undefined) { setMutating(false); return }
       const currentVisit: OptimisticVisit = {
         id: activeVisit.id,
         status: "CHECKED_IN",
@@ -381,10 +654,10 @@ export default function VisitScreen() {
           showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
         }
       }).catch(() => {})
-    } catch (e: any) {
-      if (e.message !== "SESSION_EXPIRED") {
-        console.warn("[VisitScreen] check-out error:", e?.message ?? e)
-        if (e?.code === "PHOTO_REQUIRED") {
+    } catch (error: any) {
+      if (error.message !== "SESSION_EXPIRED") {
+        console.warn("[VisitScreen] check-out error:", error?.message ?? error)
+        if (error?.code === "PHOTO_REQUIRED") {
           showToast("error", t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
         } else {
           showToast("error", t("common.error"), t("visit.checkOutFailed"))
@@ -397,303 +670,179 @@ export default function VisitScreen() {
 
   const handlePhotoTaken = async (path: string) => {
     if (!activeVisit) return
-    let uploadCoords: { latitude: number; longitude: number } | null = null
+    let uploadCoords: { latitude: number; longitude: number } | undefined
     try {
-      let coords: { latitude: number; longitude: number } | null = null
       try {
-        coords = await new Promise((resolve, reject) => {
+        uploadCoords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
           Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+            (position) => resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            }),
+            reject,
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
           )
         })
-      } catch {}
-      uploadCoords = coords
+      } catch {
+        uploadCoords = undefined
+      }
       await api.uploadPhoto({
         filePath: path,
         visitId: activeVisit.id,
         category: "VISIT",
-        latitude: coords?.latitude,
-        longitude: coords?.longitude,
+        latitude: uploadCoords?.latitude,
+        longitude: uploadCoords?.longitude,
       })
-      setPhotoCount((c) => c + 1)
+      setPhotoCount((count) => count + 1)
       showToast("success", t("visit.photoSavedTitle"), t("visit.photoSavedBody"))
-    } catch (e: any) {
-      console.warn("[VisitScreen] photo upload error:", e?.message ?? e)
-      // SESSION_EXPIRED → the auth transition (handleRevoked) already navigates
-      // the user away; suppress the upload-failed toast so they don't see a
-      // confusing upload error on top of the revoked-logout flow.
-      if (e?.message !== "SESSION_EXPIRED") {
-        if (e?.code === "MAX_PHOTOS_REACHED") {
+    } catch (error: any) {
+      console.warn("[VisitScreen] photo upload error:", error?.message ?? error)
+      if (error?.message !== "SESSION_EXPIRED") {
+        if (error?.code === "MAX_PHOTOS_REACHED") {
           showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
-          await enqueueMediaUpload({ filePath: path, visitId: activeVisit.id, category: "VISIT", latitude: uploadCoords?.latitude, longitude: uploadCoords?.longitude })
+          await enqueueMediaUpload({
+            filePath: path,
+            visitId: activeVisit.id,
+            category: "VISIT",
+            latitude: uploadCoords?.latitude,
+            longitude: uploadCoords?.longitude,
+          })
           showToast("success", t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }
     }
   }
 
-  const checkedInCount = visits.filter(v => v.status === "CHECKED_IN").length
-  const checkedOutCount = visits.filter(v => v.status === "CHECKED_OUT").length
-  const avgDuration = visits.filter(v => v.duration).reduce((sum, v) => sum + (v.duration || 0), 0) / Math.max(visits.filter(v => v.duration).length, 1)
-
-  const categoryColor = (cat?: string) => {
-    switch (cat) {
-      case "A": return "#6C63FF"
-      case "B": return "#3b82f6"
-      case "C": return "#f59e0b"
-      default: return "#94a3b8"
-    }
+  const refresh = () => {
+    setRefreshing(true)
+    fetchData()
   }
+
+  const retry = () => {
+    setLoadState((current) => current === "error" ? "loading" : current)
+    fetchData()
+  }
+
+  const openRoute = () => navigation.navigate("Main", { screen: "Route" })
+
+  const commonPanelProps = {
+    copy,
+    activeVisit,
+    elapsedMin,
+    photoCount,
+    mutating,
+    customers: visibleCustomers,
+    totalCustomers: customersWithDistance.length,
+    selectedCustomer,
+    searchQuery,
+    loadState,
+    tablet,
+    touchTarget,
+    onOpenRoute: openRoute,
+    onSearch: setSearchQuery,
+    onClearSearch: () => setSearchQuery(""),
+    onSelectCustomer: (customer: Customer) => setSelectedCustomerId(customer.id),
+    onCheckIn: () => selectedCustomer && handleCheckIn(selectedCustomer),
+    onPhoto: () => setCameraVisible(true),
+    onCheckOut: handleCheckOut,
+    onRetry: retry,
+  }
+
+  const history = (
+    <HistoryPanel
+      copy={copy}
+      visits={visits}
+      loadState={loadState}
+      language={i18n.language}
+      tablet={tablet}
+      refreshing={refreshing}
+      bottomPadding={Math.max(insets.bottom, fieldTheme.space.lg)}
+      onRefresh={refresh}
+      onRetry={retry}
+    />
+  )
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>{t("visit.title")}</Text>
-            <Text style={styles.headerSubtitle}>
-              {new Date().toLocaleDateString(i18n.language, { weekday: "short", month: "short", day: "numeric" })}
-            </Text>
-          </View>
-          {visits.length > 0 && (
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeNum}>{visits.length}</Text>
-              <Text style={styles.headerBadgeLabel}>{t("visit.todayLabel")}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Summary stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{visits.length}</Text>
-          <Text style={styles.statLabel}>{t("visit.statTotal")}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statCard}>
-          <Text style={[styles.statValue, { color: "#22c55e" }]}>{checkedInCount}</Text>
-          <Text style={styles.statLabel}>{t("visit.statActive")}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statCard}>
-          <Text style={[styles.statValue, { color: "#6C63FF" }]}>{checkedOutCount}</Text>
-          <Text style={styles.statLabel}>{t("visit.statDone")}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statCard}>
-          <Text style={[styles.statValue, { color: "#f59e0b" }]}>
-            {avgDuration > 0 ? `${Math.round(avgDuration)}` : "—"}
-          </Text>
-          <Text style={styles.statLabel}>{t("visit.statAvgMin")}</Text>
-        </View>
-      </View>
-
-      <HintCard id="visit.checkin" text={t("hints.visitCheckin")} />
-
-      {/* Active visit banner */}
-      {activeVisit && (
-        <View style={styles.activeBanner}>
-          <View style={styles.activePulseOuter}>
-            <View style={styles.activePulseInner} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.activeLabel}>{t("visit.activeLabel")}</Text>
-            <Text style={styles.activeName}>{activeVisit.customer?.name || t("common.customer")}</Text>
-            <Text style={styles.activeTime}>
-              {t("visit.elapsedMin", { n: elapsedMin })}
-              {photoCount > 0 ? `  •  ${t("visit.photosCount", { n: photoCount })}` : ""}
-            </Text>
-            {activeVisit.pendingCheckOut && (
-              <Text style={styles.pendingSyncText}>{t("visit.checkOutPending")}</Text>
+        <View style={styles.headerInner}>
+          <View style={styles.headerRow}>
+            {navigation.canGoBack() && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={copy.back}
+                onPress={() => navigation.goBack()}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  { width: touchTarget, height: touchTarget },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              </Pressable>
             )}
-          </View>
-          <View style={styles.activeBtns}>
-            <TouchableOpacity
-              style={styles.photoBtn}
-              onPress={() => setCameraVisible(true)}
-              disabled={mutating}
-            >
-              <Text style={styles.photoBtnText}>📷 {photoCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.checkOutBtn, (mutating || activeVisit.pendingCheckOut) && { opacity: 0.5 }]}
-              onPress={handleCheckOut}
-              disabled={mutating || activeVisit.pendingCheckOut}
-            >
-              {mutating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.checkOutText}>{t("visit.checkOutButton")}</Text>
-              )}
-            </TouchableOpacity>
+            <View style={styles.headerCopy}>
+              <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+              <Text style={styles.headerTitle}>{copy.title}</Text>
+              <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
+            </View>
           </View>
         </View>
-      )}
-
-      {/* Quick check-in */}
-      {!activeVisit && customersWithDistance.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t("visit.quickCheckIn")}</Text>
-            <Text style={styles.sectionCount}>{t("visit.nearbyCount", { n: customersWithDistance.length })}</Text>
-          </View>
-
-          {/* Search input */}
-          <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>{"\uD83D\uDD0D"}</Text>
-            <TextInput
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder={t("visit.searchPlaceholder")}
-              placeholderTextColor="#94a3b8"
-              returnKeyType="search"
-              clearButtonMode="while-editing"
-            />
-          </View>
-
-          {searchQuery.trim() ? (
-            /* Filtered vertical list when searching */
-            <ScrollView style={styles.searchResults} keyboardShouldPersistTaps="handled">
-              {customersWithDistance
-                .filter((c) => c.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
-                .map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.searchResultRow, mutating && { opacity: 0.5 }]}
-                    onPress={() => handleCheckIn(item)}
-                    disabled={mutating}
-                  >
-                    <View style={[styles.customerAvatar, { backgroundColor: categoryColor(item.category), width: 36, height: 36, borderRadius: 12 }]}>
-                      <Text style={[styles.customerInitial, { fontSize: 14 }]}>
-                        {item.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={styles.searchResultName} numberOfLines={1}>{item.name}</Text>
-                      {item.address && (
-                        <Text style={styles.searchResultAddress} numberOfLines={1}>{item.address}</Text>
-                      )}
-                    </View>
-                    {item.distanceMeters != null && (
-                      <View style={[styles.distanceTag, { backgroundColor: distanceColor(item.distanceMeters) + "15" }]}>
-                        <Text style={[styles.distanceText, { color: distanceColor(item.distanceMeters) }]}>
-                          {formatDistance(item.distanceMeters)}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              {customersWithDistance.filter((c) => c.name.toLowerCase().includes(searchQuery.trim().toLowerCase())).length === 0 && (
-                <Text style={styles.noResults}>{t("visit.noCustomersFound")}</Text>
-              )}
-            </ScrollView>
-          ) : (
-            /* Original horizontal scroll of nearest customers */
-            <FlatList
-              horizontal
-              data={customersWithDistance.slice(0, 10)}
-              keyExtractor={(c) => c.id}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.customerChip, mutating && { opacity: 0.5 }]}
-                  onPress={() => handleCheckIn(item)}
-                  disabled={mutating}
-                >
-                  <View style={[styles.customerAvatar, { backgroundColor: categoryColor(item.category) }]}>
-                    <Text style={styles.customerInitial}>
-                      {item.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  {item.category && (
-                    <View style={[styles.categoryBadge, { backgroundColor: categoryColor(item.category) + "20" }]}>
-                      <Text style={[styles.categoryText, { color: categoryColor(item.category) }]}>{item.category}</Text>
-                    </View>
-                  )}
-                  <Text style={styles.customerName} numberOfLines={1}>{item.name}</Text>
-                  {item.distanceMeters != null && (
-                    <View style={[styles.distanceTag, { backgroundColor: distanceColor(item.distanceMeters) + "15" }]}>
-                      <Text style={[styles.distanceText, { color: distanceColor(item.distanceMeters) }]}>
-                        {formatDistance(item.distanceMeters)}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          )}
-        </View>
-      )}
-
-      {/* Recent visits */}
-      <View style={styles.sectionHeader2}>
-        <Text style={styles.sectionTitle}>{t("visit.todayVisits")}</Text>
-        <Text style={styles.sectionCount}>{t("visit.visitsCount", { n: visits.length })}</Text>
       </View>
-      <FlatList
-        data={visits}
-        keyExtractor={(v) => v.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarPadding }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor="#6C63FF" colors={["#6C63FF"]} />
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <View style={styles.emptyIconWrap}>
-              <Text style={styles.emptyIcon}>📋</Text>
-            </View>
-            <Text style={styles.emptyTitle}>
-              {loading ? t("common.loading") : t("visit.noVisitsToday")}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {!loading ? t("visit.emptyHint") : t("visit.fetching")}
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={[styles.visitCard, item.status === "CHECKED_IN" && styles.visitCardActive]}>
-            <View style={[styles.visitDot, { backgroundColor: item.status === "CHECKED_IN" ? "#22c55e" : "#6C63FF" }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.visitCustomer}>{item.customer?.name || "—"}</Text>
-              {item.customer?.address && (
-                <Text style={styles.visitAddress} numberOfLines={1}>{item.customer.address}</Text>
-              )}
-              <Text style={styles.visitTime}>
-                {new Date(item.checkInAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                {item.checkOutAt
-                  ? ` → ${new Date(item.checkOutAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                  : ""}
-              </Text>
-            </View>
-            <View style={styles.visitRight}>
-              {item.status === "CHECKED_IN" ? (
-                <View style={styles.liveTag}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>{t("visit.liveBadge")}</Text>
-                </View>
-              ) : (
-                <Text style={styles.visitDuration}>
-                  {item.duration ? t("visit.durationMin", { n: item.duration }) : "—"}
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-      />
 
-      {/* Modals */}
+      {tablet ? (
+        <View style={styles.tabletBody}>
+          <ScrollView
+            style={styles.tabletActionPane}
+            contentContainerStyle={[styles.actionContent, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xl) }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <VisitActionPanel {...commonPanelProps} />
+          </ScrollView>
+          <View style={styles.tabletHistoryPane}>{history}</View>
+        </View>
+      ) : (
+        <FlatList
+          data={visits}
+          keyExtractor={(visit) => visit.id}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[styles.phoneContent, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xl) }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              tintColor={fieldTheme.color.primary}
+              colors={[fieldTheme.color.primary]}
+            />
+          }
+          ListHeaderComponent={
+            <>
+              <VisitActionPanel {...commonPanelProps} />
+              <HistoryHeading copy={copy} count={visits.length} />
+            </>
+          }
+          ListEmptyComponent={
+            loadState === "loading"
+              ? null
+              : loadState === "error"
+                ? null
+                : <EmptyHistory copy={copy} />
+          }
+          renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={i18n.language} />}
+        />
+      )}
+
       <NotesModal
         visible={notesVisible}
         title={t("visit.checkOutButton")}
         message={t("visit.checkOutNotes")}
         onCancel={() => setNotesVisible(false)}
-        onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
+        onSubmit={(text) => {
+          setNotesVisible(false)
+          performCheckOut(text)
+        }}
       />
       <PhotoCaptureModal
         visible={cameraVisible}
@@ -713,29 +862,27 @@ export default function VisitScreen() {
                   name: activeVisit.customer.name,
                 },
                 getLocation: getCoords,
-                getLastKnownLocation: () =>
-                  lastKnownPosition
-                    ? {
-                        latitude: lastKnownPosition.latitude,
-                        longitude: lastKnownPosition.longitude,
-                        capturedAt: new Date(lastKnownPosition.timestamp),
-                      }
-                    : null,
+                getLastKnownLocation: () => lastKnownPosition
+                  ? {
+                      latitude: lastKnownPosition.latitude,
+                      longitude: lastKnownPosition.longitude,
+                      capturedAt: new Date(lastKnownPosition.timestamp),
+                    }
+                  : null,
               }
             : undefined
         }
       />
       <ConfirmSheet
         visible={confirm.visible}
-        icon={confirm.icon}
-        iconColor={confirm.iconColor}
         title={confirm.title}
         message={confirm.message}
+        cancelText={copy.cancel}
         confirmText={confirm.confirmText}
         confirmColor={confirm.confirmColor}
         destructive={confirm.destructive}
         onCancel={() => {
-          setConfirm(c => ({ ...c, visible: false }))
+          setConfirm((current) => ({ ...current, visible: false }))
           if (pendingGeofenceResolve) {
             pendingGeofenceResolve(false)
             setPendingGeofenceResolve(null)
@@ -748,241 +895,711 @@ export default function VisitScreen() {
         type={toast.type}
         title={toast.title}
         message={toast.message}
-        onDismiss={() => setToast(current => ({ ...current, visible: false }))}
+        onDismiss={() => setToast((current) => ({ ...current, visible: false }))}
       />
     </View>
   )
 }
 
+type Copy = { [Key in keyof typeof VISIT_COPY.ru]: string }
+
+function VisitActionPanel({
+  copy,
+  activeVisit,
+  elapsedMin,
+  photoCount,
+  mutating,
+  customers,
+  totalCustomers,
+  selectedCustomer,
+  searchQuery,
+  loadState,
+  tablet,
+  touchTarget,
+  onOpenRoute,
+  onSearch,
+  onClearSearch,
+  onSelectCustomer,
+  onCheckIn,
+  onPhoto,
+  onCheckOut,
+  onRetry,
+}: {
+  copy: Copy
+  activeVisit: Visit | null
+  elapsedMin: number
+  photoCount: number
+  mutating: boolean
+  customers: Customer[]
+  totalCustomers: number
+  selectedCustomer: Customer | null
+  searchQuery: string
+  loadState: LoadState
+  tablet: boolean
+  touchTarget: number
+  onOpenRoute: () => void
+  onSearch: (value: string) => void
+  onClearSearch: () => void
+  onSelectCustomer: (customer: Customer) => void
+  onCheckIn: () => void
+  onPhoto: () => void
+  onCheckOut: () => void
+  onRetry: () => void
+}) {
+  if (activeVisit) {
+    return (
+      <View style={styles.actionStack}>
+        {loadState === "offline" && <StateNotice kind="offline" copy={copy} onRetry={onRetry} />}
+        <View style={[styles.activeCard, tablet && styles.cardTablet]}>
+          <View style={styles.sectionIconRow}>
+            <View style={[styles.sectionIcon, { backgroundColor: fieldTheme.color.successSoft }]}>
+              <Icon name="location" size={23} color={fieldTheme.color.success} />
+            </View>
+            <View style={styles.sectionTitleCopy}>
+              <Text style={[styles.sectionEyebrow, { color: fieldTheme.color.success }]}>{copy.activeEyebrow}</Text>
+              <Text style={styles.sectionTitle}>{activeVisit.customer?.name || "—"}</Text>
+            </View>
+          </View>
+          <Text style={styles.sectionBody}>{copy.activeBody}</Text>
+
+          <View style={styles.activeMeta}>
+            <MetaPill icon="time-outline" text={copy.elapsed.replace("{{count}}", String(elapsedMin))} />
+            <MetaPill icon="camera-outline" text={copy.photos.replace("{{count}}", String(photoCount))} />
+          </View>
+
+          {activeVisit.customer?.address && (
+            <View style={styles.addressRow}>
+              <Icon name="pin-outline" size={18} color={fieldTheme.color.inkMuted} />
+              <Text style={styles.addressText}>{activeVisit.customer.address}</Text>
+            </View>
+          )}
+
+          {activeVisit.pendingCheckOut && (
+            <View style={styles.pendingNotice} accessibilityLiveRegion="polite">
+              <Icon name="cloud-upload-outline" size={20} color={fieldTheme.color.amber} />
+              <Text style={styles.pendingText}>{copy.waitingSync}</Text>
+            </View>
+          )}
+
+          <View style={styles.secondaryActionRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.addPhoto}
+              disabled={mutating}
+              onPress={onPhoto}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                { minHeight: touchTarget },
+                mutating && styles.disabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Icon name="camera-outline" size={21} color={fieldTheme.color.primary} />
+              <Text style={styles.secondaryButtonText}>{copy.addPhoto}</Text>
+            </Pressable>
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.finish}
+            accessibilityState={{ disabled: mutating || activeVisit.pendingCheckOut }}
+            disabled={mutating || activeVisit.pendingCheckOut}
+            onPress={onCheckOut}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              styles.finishButton,
+              { minHeight: touchTarget },
+              (mutating || activeVisit.pendingCheckOut) && styles.disabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            {mutating
+              ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+              : <Icon name="checkmark-circle-outline" size={22} color={fieldTheme.color.onColor} />}
+            <Text style={styles.primaryButtonText}>{mutating ? copy.finishing : copy.finish}</Text>
+          </Pressable>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.actionStack}>
+      <View style={styles.routeGuide}>
+        <View style={styles.routeGuideIcon}>
+          <Icon name="navigate-outline" size={23} color={fieldTheme.color.blue} />
+        </View>
+        <View style={styles.routeGuideCopy}>
+          <Text style={styles.routeGuideTitle}>{copy.plannedTitle}</Text>
+          <Text style={styles.routeGuideBody}>{copy.plannedBody}</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copy.openRoute}
+          onPress={onOpenRoute}
+          style={({ pressed }) => [styles.routeButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+        >
+          <Text style={styles.routeButtonText}>{copy.openRoute}</Text>
+          <Icon name="arrow-forward" size={18} color={fieldTheme.color.blue} />
+        </Pressable>
+      </View>
+
+      {loadState === "offline" && <StateNotice kind="offline" copy={copy} onRetry={onRetry} />}
+
+      <View style={[styles.manualCard, tablet && styles.cardTablet]}>
+        <View style={styles.sectionIconRow}>
+          <View style={styles.sectionIcon}>
+            <Icon name="person-add-outline" size={23} color={fieldTheme.color.primary} />
+          </View>
+          <View style={styles.sectionTitleCopy}>
+            <Text style={styles.sectionEyebrow}>{copy.manualEyebrow}</Text>
+            <Text style={styles.sectionTitle}>{copy.manualTitle}</Text>
+          </View>
+        </View>
+        <Text style={styles.sectionBody}>{copy.manualBody}</Text>
+
+        <Text style={styles.fieldLabel}>{copy.search}</Text>
+        <View style={[styles.searchBox, { minHeight: touchTarget }]}>
+          <Icon name="search-outline" size={21} color={fieldTheme.color.inkMuted} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={onSearch}
+            placeholder={copy.searchPlaceholder}
+            placeholderTextColor={fieldTheme.color.inkMuted}
+            returnKeyType="search"
+            style={styles.searchInput}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.clearSearch}
+              onPress={onClearSearch}
+              style={[styles.clearButton, { width: touchTarget, height: touchTarget }]}
+            >
+              <Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} />
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.customerListHeader}>
+          <Text style={styles.customerListTitle}>{searchQuery.trim() ? copy.searchResults : copy.nearest}</Text>
+          <Text style={styles.customerListCount}>{copy.resultsCount.replace("{{count}}", String(customers.length))}</Text>
+        </View>
+
+        {loadState === "loading" ? (
+          <LoadingState copy={copy} compact />
+        ) : loadState === "error" && totalCustomers === 0 ? (
+          <StateNotice kind="error" copy={copy} onRetry={onRetry} />
+        ) : customers.length === 0 ? (
+          <View style={styles.customerEmpty}>
+            <Icon
+              name={searchQuery.trim() ? "search-outline" : "people-outline"}
+              size={30}
+              color={fieldTheme.color.primary}
+            />
+            <Text style={styles.customerEmptyTitle}>{searchQuery.trim() ? copy.noSearchTitle : copy.noClientsTitle}</Text>
+            <Text style={styles.customerEmptyBody}>{searchQuery.trim() ? copy.noSearchBody : copy.noClientsBody}</Text>
+          </View>
+        ) : (
+          <View style={styles.customerList}>
+            {customers.map((customer) => (
+              <CustomerRow
+                key={customer.id}
+                customer={customer}
+                selected={customer.id === selectedCustomer?.id}
+                copy={copy}
+                touchTarget={touchTarget}
+                onPress={() => onSelectCustomer(customer)}
+              />
+            ))}
+          </View>
+        )}
+
+        {selectedCustomer ? (
+          <View style={styles.selectionSummary} accessibilityLiveRegion="polite">
+            <Icon name="checkmark-circle" size={22} color={fieldTheme.color.success} />
+            <View style={styles.selectionCopy}>
+              <Text style={styles.selectionLabel}>{copy.selected}</Text>
+              <Text style={styles.selectionName}>{selectedCustomer.name}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.prerequisite}>
+            <Icon name="information-circle-outline" size={19} color={fieldTheme.color.inkMuted} />
+            <Text style={styles.prerequisiteText}>{copy.chooseFirst}</Text>
+          </View>
+        )}
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copy.start}
+          accessibilityState={{ disabled: !selectedCustomer || mutating }}
+          disabled={!selectedCustomer || mutating}
+          onPress={onCheckIn}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            { minHeight: touchTarget },
+            (!selectedCustomer || mutating) && styles.disabled,
+            pressed && styles.pressed,
+          ]}
+        >
+          {mutating
+            ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+            : <Icon name="log-in-outline" size={22} color={fieldTheme.color.onColor} />}
+          <Text style={styles.primaryButtonText}>{mutating ? copy.starting : copy.start}</Text>
+        </Pressable>
+      </View>
+    </View>
+  )
+}
+
+function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
+  customer: Customer
+  selected: boolean
+  copy: Copy
+  touchTarget: number
+  onPress: () => void
+}) {
+  const category = categoryTone(customer.category)
+  const distance = customer.distanceMeters == null ? null : distanceTone(customer.distanceMeters)
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${copy.choose}: ${customer.name}`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.customerRow,
+        { minHeight: touchTarget + 18 },
+        selected && styles.customerRowSelected,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={[styles.customerAvatar, { backgroundColor: category.background }]}>
+        <Text style={[styles.customerInitial, { color: category.color }]}>
+          {customer.name.charAt(0).toLocaleUpperCase()}
+        </Text>
+      </View>
+      <View style={styles.customerCopy}>
+        <Text style={styles.customerName} numberOfLines={1}>{customer.name}</Text>
+        <Text style={styles.customerAddress} numberOfLines={1}>{customer.address || copy.noAddress}</Text>
+      </View>
+      <View style={styles.customerMeta}>
+        {customer.category && (
+          <View style={[styles.smallPill, { backgroundColor: category.background }]}>
+            <Text style={[styles.smallPillText, { color: category.color }]}>{customer.category}</Text>
+          </View>
+        )}
+        {distance && customer.distanceMeters != null && (
+          <View style={[styles.smallPill, { backgroundColor: distance.background }]}>
+            <Text style={[styles.smallPillText, { color: distance.color }]}>
+              {formatDistance(customer.distanceMeters)}
+            </Text>
+          </View>
+        )}
+      </View>
+      <Icon
+        name={selected ? "checkmark-circle" : "ellipse-outline"}
+        size={24}
+        color={selected ? fieldTheme.color.success : fieldTheme.color.border}
+      />
+    </Pressable>
+  )
+}
+
+function HistoryPanel({
+  copy,
+  visits,
+  loadState,
+  language,
+  tablet,
+  refreshing,
+  bottomPadding,
+  onRefresh,
+  onRetry,
+}: {
+  copy: Copy
+  visits: Visit[]
+  loadState: LoadState
+  language: string
+  tablet: boolean
+  refreshing: boolean
+  bottomPadding: number
+  onRefresh: () => void
+  onRetry: () => void
+}) {
+  return (
+    <FlatList
+      data={visits}
+      keyExtractor={(visit) => visit.id}
+      contentContainerStyle={[styles.historyContent, { paddingBottom: bottomPadding }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={fieldTheme.color.primary}
+          colors={[fieldTheme.color.primary]}
+        />
+      }
+      ListHeaderComponent={
+        <HistoryHeading copy={copy} count={visits.length} />
+      }
+      ListEmptyComponent={
+        loadState === "loading"
+          ? <LoadingState copy={copy} />
+          : loadState === "error"
+            ? <StateNotice kind="error" copy={copy} onRetry={onRetry} />
+            : <EmptyHistory copy={copy} tablet={tablet} />
+      }
+      renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={language} />}
+    />
+  )
+}
+
+function HistoryHeading({ copy, count }: { copy: Copy; count: number }) {
+  return (
+    <View style={styles.historyHeading}>
+      <View>
+        <Text style={styles.sectionEyebrow}>{copy.historyEyebrow}</Text>
+        <Text style={styles.historyTitle}>{copy.historyTitle}</Text>
+      </View>
+      <View style={styles.historyCountPill}>
+        <Text style={styles.historyCount}>{copy.historyCount.replace("{{count}}", String(count))}</Text>
+      </View>
+    </View>
+  )
+}
+
+function VisitRow({ visit, copy, language }: { visit: Visit; copy: Copy; language: string }) {
+  const active = visit.status === "CHECKED_IN"
+  const pending = visit.pendingCheckOut === true
+  const startTime = formatVisitStart(visit.checkInAt, language)
+  const endTime = formatVisitClock(visit.checkOutAt, language)
+  const tone = pending
+    ? { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft, icon: "cloud-upload-outline" }
+    : active
+      ? { color: fieldTheme.color.success, background: fieldTheme.color.successSoft, icon: "radio-outline" }
+      : { color: fieldTheme.color.primary, background: fieldTheme.color.primarySoft, icon: "checkmark-outline" }
+  const status = pending ? copy.pendingStatus : active ? copy.activeStatus : copy.completeStatus
+  return (
+    <View style={[styles.visitRow, active && styles.visitRowActive]}>
+      <View style={[styles.visitStatusIcon, { backgroundColor: tone.background }]}>
+        <Icon name={tone.icon} size={21} color={tone.color} />
+      </View>
+      <View style={styles.visitCopy}>
+        <Text style={styles.visitName} numberOfLines={1}>{visit.customer?.name || "—"}</Text>
+        <Text style={styles.visitAddress} numberOfLines={1}>{visit.customer?.address || copy.noAddress}</Text>
+        <View style={styles.visitMetaRow}>
+          <Text style={styles.visitTime}>{startTime || copy.noTime}{endTime ? ` – ${endTime}` : ""}</Text>
+          {visit.duration != null && (
+            <Text style={styles.visitDuration}>{copy.duration.replace("{{count}}", String(visit.duration))}</Text>
+          )}
+        </View>
+      </View>
+      <View style={[styles.statusPill, { backgroundColor: tone.background }]}>
+        <Text style={[styles.statusText, { color: tone.color }]}>{status}</Text>
+      </View>
+    </View>
+  )
+}
+
+function StateNotice({ kind, copy, onRetry }: {
+  kind: "offline" | "error"
+  copy: Copy
+  onRetry: () => void
+}) {
+  const offline = kind === "offline"
+  const color = offline ? fieldTheme.color.amber : fieldTheme.color.danger
+  const background = offline ? fieldTheme.color.amberSoft : fieldTheme.color.dangerSoft
+  return (
+    <View style={[styles.stateNotice, { backgroundColor: background }]} accessibilityLiveRegion="polite">
+      <Icon name={offline ? "cloud-offline-outline" : "alert-circle-outline"} size={23} color={color} />
+      <View style={styles.stateNoticeCopy}>
+        <Text style={[styles.stateNoticeTitle, { color }]}>{offline ? copy.offlineTitle : copy.errorTitle}</Text>
+        <Text style={styles.stateNoticeBody}>{offline ? copy.offlineBody : copy.errorBody}</Text>
+      </View>
+      <Pressable accessibilityRole="button" onPress={onRetry} style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
+        <Icon name="refresh" size={18} color={color} />
+        <Text style={[styles.retryText, { color }]}>{offline ? copy.refresh : copy.retry}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function LoadingState({ copy, compact = false }: { copy: Copy; compact?: boolean }) {
+  return (
+    <View style={[styles.loadingState, compact && styles.loadingStateCompact]} accessibilityLiveRegion="polite">
+      <ActivityIndicator size={compact ? "small" : "large"} color={fieldTheme.color.primary} />
+      <View style={styles.loadingCopy}>
+        <Text style={styles.loadingTitle}>{copy.loadingTitle}</Text>
+        {!compact && <Text style={styles.loadingBody}>{copy.loadingBody}</Text>}
+      </View>
+    </View>
+  )
+}
+
+function EmptyHistory({ copy, tablet = false }: { copy: Copy; tablet?: boolean }) {
+  return (
+    <View style={[styles.emptyHistory, tablet && styles.emptyHistoryTablet]} accessibilityLiveRegion="polite">
+      <View style={styles.emptyIconWrap}>
+        <Icon name="time-outline" size={32} color={fieldTheme.color.primary} />
+      </View>
+      <Text style={styles.emptyTitle}>{copy.emptyHistoryTitle}</Text>
+      <Text style={styles.emptyBody}>{copy.emptyHistoryBody}</Text>
+    </View>
+  )
+}
+
+function MetaPill({ icon, text }: { icon: string; text: string }) {
+  return (
+    <View style={styles.metaPill}>
+      <Icon name={icon} size={16} color={fieldTheme.color.inkMuted} />
+      <Text style={styles.metaPillText}>{text}</Text>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
-
-  // Header
+  container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
-    backgroundColor: "#6C63FF",
-    paddingBottom: 28,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    backgroundColor: fieldTheme.color.primaryStrong,
+    paddingHorizontal: fieldTheme.space.lg,
+    paddingBottom: fieldTheme.space.lg,
   },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center" },
+  headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
+  backButton: {
     alignItems: "center",
-  },
-  headerTitle: { color: "#fff", fontSize: 24, fontWeight: "800", letterSpacing: -0.3 },
-  headerSubtitle: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 4 },
-  headerBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  headerBadgeNum: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  headerBadgeLabel: { color: "rgba(255,255,255,0.7)", fontSize: 10, textTransform: "uppercase" },
-
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginTop: -14,
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: "#6C63FF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  statCard: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 20, fontWeight: "800", color: "#0B0B1E" },
-  statLabel: { fontSize: 9, color: "#94a3b8", marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 28, backgroundColor: "#f1f5f9" },
-
-  // Active visit
-  activeBanner: {
-    backgroundColor: "#dcfce7",
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#86efac",
-  },
-  activePulseOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(34,197,94,0.2)",
     justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
-  activePulseInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22c55e" },
-  activeLabel: { fontSize: 10, color: "#15803d", textTransform: "uppercase", fontWeight: "700", letterSpacing: 0.5 },
-  activeName: { fontSize: 15, fontWeight: "700", color: "#0B0B1E", marginTop: 2 },
-  activeTime: { fontSize: 11, color: "#64748b", marginTop: 3 },
-  pendingSyncText: { fontSize: 11, color: "#b45309", marginTop: 3, fontWeight: "700" },
-  activeBtns: { gap: 6 },
-  photoBtn: {
-    backgroundColor: "#6C63FF",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
+  headerCopy: { flex: 1 },
+  eyebrow: {
+    color: "#BBD6CB",
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.7,
   },
-  photoBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  checkOutBtn: {
-    backgroundColor: "#ef4444",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
+  headerTitle: {
+    color: fieldTheme.color.onColor,
+    fontSize: 29,
+    lineHeight: 35,
+    fontWeight: "900",
+    marginTop: 2,
   },
-  checkOutText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-
-  // Sections
-  section: { paddingHorizontal: 16, marginTop: 16 },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
+  headerSubtitle: {
+    color: "#D7E9E1",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: fieldTheme.space.xs,
+    maxWidth: 760,
   },
-  sectionHeader2: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
+  phoneContent: {
+    flexGrow: 1,
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
+    padding: fieldTheme.space.lg,
   },
-  sectionTitle: { fontSize: 12, fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 },
-  sectionCount: { fontSize: 11, color: "#94a3b8" },
-
-  // Search
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    height: 36,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  searchIcon: { fontSize: 14, marginRight: 6 },
-  searchInput: {
+  tabletBody: {
     flex: 1,
-    fontSize: 13,
-    color: "#0B0B1E",
-    paddingVertical: 0,
-    height: 36,
-  },
-  searchResults: {
-    maxHeight: 200,
-  },
-  searchResultRow: {
+    width: "100%",
+    maxWidth: 1180,
+    alignSelf: "center",
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
+    gap: fieldTheme.space.lg,
+    paddingHorizontal: fieldTheme.space.lg,
   },
-  searchResultName: { fontSize: 13, fontWeight: "600", color: "#0B0B1E" },
-  searchResultAddress: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
-  noResults: { fontSize: 13, color: "#94a3b8", textAlign: "center", paddingVertical: 16 },
-
-  // Customer chips
-  customerChip: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 12,
-    marginRight: 10,
-    alignItems: "center",
-    width: 84,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+  tabletActionPane: { flex: 0.92 },
+  tabletHistoryPane: { flex: 1.08 },
+  actionContent: { paddingVertical: fieldTheme.space.lg },
+  actionStack: { gap: fieldTheme.space.md },
+  routeGuide: {
+    backgroundColor: fieldTheme.color.blueSoft,
     borderWidth: 1,
-    borderColor: "#f8fafc",
+    borderColor: "#B8D0F0",
+    borderRadius: fieldTheme.radius.md,
+    padding: fieldTheme.space.md,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
   },
-  customerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+  routeGuideIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  customerInitial: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  categoryBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 4 },
-  categoryText: { fontSize: 9, fontWeight: "700" },
-  customerName: { fontSize: 10, color: "#334155", textAlign: "center", fontWeight: "500" },
-  distanceTag: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4 },
-  distanceText: { fontSize: 9, fontWeight: "700" },
-
-  // Empty state
-  empty: { padding: 40, alignItems: "center" },
-  emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#f0f0ff",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  emptyIcon: { fontSize: 28 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#0B0B1E", marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: "#94a3b8", textAlign: "center" },
-
-  // Visit cards
-  visitCard: {
-    backgroundColor: "#fff",
     borderRadius: 14,
-    padding: 14,
-    marginBottom: 8,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  routeGuideCopy: { flex: 1, minWidth: 190 },
+  routeGuideTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  routeGuideBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  routeButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.xs,
+    paddingHorizontal: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  routeButtonText: { color: fieldTheme.color.blue, fontSize: 13, fontWeight: "900" },
+  manualCard: {
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: fieldTheme.color.border,
+    borderRadius: fieldTheme.radius.lg,
+    padding: fieldTheme.space.lg,
   },
-  visitCardActive: {
-    borderColor: "#86efac",
-    backgroundColor: "#fafffe",
+  activeCard: {
+    backgroundColor: fieldTheme.color.surface,
+    borderWidth: 1,
+    borderColor: "#A9D8C1",
+    borderRadius: fieldTheme.radius.lg,
+    padding: fieldTheme.space.lg,
   },
-  visitDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
-  visitCustomer: { fontSize: 14, fontWeight: "700", color: "#0B0B1E" },
-  visitAddress: { fontSize: 11, color: "#94a3b8", marginTop: 2 },
-  visitTime: { fontSize: 11, color: "#64748b", marginTop: 4 },
-  visitRight: { alignItems: "flex-end" },
-  visitDuration: { fontSize: 14, fontWeight: "700", color: "#6C63FF" },
-  liveTag: {
-    backgroundColor: "#dcfce7",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  cardTablet: { padding: fieldTheme.space.xl },
+  sectionIconRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  sectionIcon: {
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+    backgroundColor: fieldTheme.color.primarySoft,
+  },
+  sectionTitleCopy: { flex: 1 },
+  sectionEyebrow: {
+    color: fieldTheme.color.primary,
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  sectionTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 2 },
+  sectionBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.md },
+  fieldLabel: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800", marginTop: fieldTheme.space.lg, marginBottom: fieldTheme.space.sm },
+  searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: fieldTheme.space.sm,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: fieldTheme.color.canvas,
+    paddingHorizontal: fieldTheme.space.md,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#22c55e" },
-  liveText: { fontSize: 10, fontWeight: "700", color: "#22c55e" },
+  searchInput: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, paddingVertical: 0 },
+  clearButton: { alignItems: "center", justifyContent: "center" },
+  customerListHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: fieldTheme.space.sm,
+    marginTop: fieldTheme.space.lg,
+    marginBottom: fieldTheme.space.sm,
+  },
+  customerListTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
+  customerListCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  customerList: { gap: fieldTheme.space.sm },
+  customerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.sm,
+    paddingVertical: fieldTheme.space.sm,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.canvas,
+  },
+  customerRowSelected: { borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.successSoft },
+  customerAvatar: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  customerInitial: { fontSize: 17, fontWeight: "900" },
+  customerCopy: { flex: 1, minWidth: 0 },
+  customerName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  customerAddress: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  customerMeta: { alignItems: "flex-end", gap: 3 },
+  smallPill: { minHeight: 22, justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
+  smallPillText: { fontSize: 10, fontWeight: "900" },
+  customerEmpty: { alignItems: "center", paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.xl },
+  customerEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.sm },
+  customerEmptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: fieldTheme.space.xs },
+  selectionSummary: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+    marginTop: fieldTheme.space.lg,
+    paddingHorizontal: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.sm,
+    backgroundColor: fieldTheme.color.successSoft,
+  },
+  selectionCopy: { flex: 1 },
+  selectionLabel: { color: fieldTheme.color.success, fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5 },
+  selectionName: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900", marginTop: 1 },
+  prerequisite: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
+  prerequisiteText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  primaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    backgroundColor: fieldTheme.color.primary,
+    borderRadius: fieldTheme.radius.md,
+    marginTop: fieldTheme.space.md,
+    paddingHorizontal: fieldTheme.space.lg,
+  },
+  finishButton: { backgroundColor: fieldTheme.color.coral },
+  primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
+  activeMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
+  metaPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },
+  metaPillText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
+  addressRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
+  addressText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
+  pendingNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
+  pendingText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "700" },
+  secondaryActionRow: { flexDirection: "row", marginTop: fieldTheme.space.lg },
+  secondaryButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md },
+  secondaryButtonText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
+  historyContent: { flexGrow: 1, paddingVertical: fieldTheme.space.lg },
+  historyHeading: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
+  historyTitle: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 27, fontWeight: "900", marginTop: 2 },
+  historyCountPill: { minHeight: 32, justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },
+  historyCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
+  visitRow: { minHeight: 88, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
+  visitRowActive: { borderColor: "#A9D8C1" },
+  visitStatusIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  visitCopy: { flex: 1, minWidth: 0 },
+  visitName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  visitAddress: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  visitMetaRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
+  visitTime: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  visitDuration: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "900" },
+  statusPill: { minHeight: 30, maxWidth: 120, justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
+  statusText: { fontSize: 10, lineHeight: 13, fontWeight: "900", textAlign: "center" },
+  stateNotice: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
+  stateNoticeCopy: { flex: 1, minWidth: 190 },
+  stateNoticeTitle: { fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  stateNoticeBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, paddingHorizontal: fieldTheme.space.sm },
+  retryText: { fontSize: 12, fontWeight: "900" },
+  loadingState: { minHeight: 220, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xl },
+  loadingStateCompact: { minHeight: 110, flexDirection: "row", padding: fieldTheme.space.md },
+  loadingCopy: { alignItems: "center" },
+  loadingTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900", textAlign: "center" },
+  loadingBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: fieldTheme.space.xs },
+  emptyHistory: { minHeight: 260, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
+  emptyHistoryTablet: { minHeight: 360 },
+  emptyIconWrap: { width: 66, height: 66, alignItems: "center", justifyContent: "center", borderRadius: 22, backgroundColor: fieldTheme.color.primarySoft },
+  emptyTitle: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 22, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.lg },
+  emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 430, marginTop: fieldTheme.space.sm },
+  disabled: { opacity: 0.42 },
+  pressed: { opacity: 0.72 },
 })

@@ -59,6 +59,14 @@ describe("toTaskDetail", () => {
     expect(toTaskDetail({ ...base, progress: 33.6 }).progress).toBe(34)
     expect(toTaskDetail(base).progress).toBeNull()
   })
+
+  it("keeps the persisted workflow status behind a derived overdue label", () => {
+    expect(toTaskDetail({
+      ...base,
+      status: "OVERDUE",
+      persistedStatus: "PENDING",
+    })).toMatchObject({ status: "OVERDUE", persistedStatus: "PENDING" })
+  })
 })
 
 describe("taskTimeline", () => {

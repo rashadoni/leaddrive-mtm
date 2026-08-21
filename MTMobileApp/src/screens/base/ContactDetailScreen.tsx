@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from "react-native"
@@ -14,7 +13,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native"
 import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
-import { RootStackParamList } from "../../navigation/AppNavigator"
+import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { toContactDetail, type BrandPotential, type ContactDetail, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
 import { readOfflineContactDetail } from "../../services/offline-reads"
@@ -29,10 +28,12 @@ import DoctorAssessmentModal, { type DoctorAssessmentFields } from "../../compon
 import BrandPotentialModal, { type BrandPotentialFields } from "../../components/BrandPotentialModal"
 import { queueBrandPotentialCreate, queueBrandPotentialEnd } from "../../services/brand-potential-outbox"
 import { runMobileSync } from "../../services/sync-engine"
+import { fieldTheme } from "../../theme/fieldTheme"
+import { buildContactSnapshot, selectContactPrimaryAction, type ContactPrimaryAction, type ContactPrimaryActionKind } from "./contact-detail-state"
 
 const TYPE_KEY: Record<string, string> = { DOCTOR: "contacts.typeDoctor", PHARMACIST: "contacts.typePharmacist", OTHER: "contacts.typeOther" }
 const OBJECT_TYPE_KEY: Record<string, string> = { PHARMACY: "organizations.objectPharmacy", CLINIC: "organizations.objectClinic", STORE: "organizations.objectStore", OTHER: "organizations.objectOther" }
-type Section = "overview" | "scoring" | "brands" | "workplaces" | "requests" | "history"
+type Section = "summary" | "overview" | "scoring" | "brands" | "workplaces" | "requests" | "history"
 
 function operationKey(kind: string): string {
   return `contact-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -50,9 +51,13 @@ export default function ContactDetailScreen() {
 
   const [detail, setDetail] = useState<ContactDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [offline, setOffline] = useState(false)
   const [offlineVersion, setOfflineVersion] = useState<string | null>(null)
-  const [section, setSection] = useState<Section>("overview")
+  const [section, setSection] = useState<Section>("summary")
+  const [detailsExpanded, setDetailsExpanded] = useState(false)
+  const [manageExpanded, setManageExpanded] = useState(false)
   const [editVisible, setEditVisible] = useState(false)
   const [workplaceVisible, setWorkplaceVisible] = useState(false)
   const [workplace, setWorkplace] = useState<ContactWorkplace | null>(null)
@@ -67,16 +72,21 @@ export default function ContactDetailScreen() {
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
 
-  const fetchDetail = useCallback(async () => {
+  const fetchDetail = useCallback(async (refresh = false) => {
+    if (refresh) setRefreshing(true)
     try {
       const res = await api.getContact(id)
       if (res.success && res.data?.contact) {
         setDetail(toContactDetail(res.data.contact, res.data))
         setOffline(false)
         setOfflineVersion(null)
+        setLoadError(false)
+      } else {
+        setLoadError(true)
+        setOffline(true)
       }
     } catch (error: any) {
-      if (error.message === "SESSION_EXPIRED") return
+      if (error?.message === "SESSION_EXPIRED") return
       const cached = await readOfflineContactDetail(agent?.organizationId, agent?.id, id)
       if (cached) {
         const role = String(agent?.role ?? "").toUpperCase()
@@ -89,10 +99,14 @@ export default function ContactDetailScreen() {
           },
         }))
         setOfflineVersion(cached.version)
+        setLoadError(false)
+      } else {
+        setLoadError(true)
       }
       setOffline(true)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [agent?.id, agent?.organizationId, agent?.role, id])
 
@@ -102,8 +116,6 @@ export default function ContactDetailScreen() {
   const canChange = Boolean(detail && !offline && (detail.canManage || detail.canRequestChanges))
   const title = detail?.name || name || ""
   const subtitle = detail ? detail.specialty || (detail.type ? t(TYPE_KEY[detail.type] ?? "contacts.typeOther") : "") : ""
-  const pendingCount = detail?.changeRequests.filter((request) => ["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"].includes(request.status)).length ?? 0
-
   const saveContact = async (fields: ContactEditFields, reason: string) => {
     if (!detail) return
     setBusy(true)
@@ -342,42 +354,68 @@ export default function ContactDetailScreen() {
 
   const open = (url: string) => Linking.openURL(url).catch(() => {})
   const quickPhone = detail?.mobilePhone || detail?.phone || detail?.workPhone
+  const snapshot = detail ? buildContactSnapshot(detail) : null
+  const primaryAction: ContactPrimaryAction = detail ? selectContactPrimaryAction(detail, canChange) : { kind: "none" }
+
+  const runPrimaryAction = () => {
+    if (!detail) return
+    if (primaryAction.kind === "call" && primaryAction.value) open(`tel:${primaryAction.value}`)
+    else if (primaryAction.kind === "whatsapp" && primaryAction.value) open(`https://wa.me/${primaryAction.value.replace(/\D/g, "")}`)
+    else if (primaryAction.kind === "email" && primaryAction.value) open(`mailto:${primaryAction.value}`)
+    else if (primaryAction.kind === "workplace" && primaryAction.workplace) navigation.navigate("OrganizationDetail", { id: primaryAction.workplace.customerId, name: primaryAction.workplace.name })
+    else if (primaryAction.kind === "edit") setEditVisible(true)
+    else setSection("overview")
+  }
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}><Text style={styles.backIcon}>‹</Text></TouchableOpacity>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("baseHub.back")} style={styles.backBtn} onPress={() => navigation.goBack()}><Icon name="arrow-back" size={22} color={fieldTheme.color.onColor} /><Text style={styles.backText}>{t("baseHub.back")}</Text></Pressable>
           <View style={styles.avatar}><Text style={styles.avatarText}>{title.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()}</Text></View>
           <View style={styles.headerMain}><Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>{!!subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}</View>
           {detail?.category && <View style={styles.categoryBadge}><Text style={styles.categoryText}>{detail.category}</Text></View>}
         </View>
-        {detail && (
-          <View style={styles.quickActions}>
-            {!!quickPhone && <QuickAction icon="call" label={t("contacts.call")} onPress={() => open(`tel:${quickPhone}`)} />}
-            {!!detail.email && <QuickAction icon="mail" label={t("contacts.emailAction")} onPress={() => open(`mailto:${detail.email}`)} />}
-            {!!detail.whatsappPhone && <QuickAction icon="logo-whatsapp" label="WhatsApp" onPress={() => open(`https://wa.me/${detail.whatsappPhone!.replace(/\D/g, "")}`)} />}
-            {canChange && <QuickAction icon="create" label={agentRequest ? t("contacts.requestChange") : t("common.change")} onPress={() => setEditVisible(true)} emphasized />}
-            {canChange && detail.status !== "DUPLICATE" && detail.status !== "MERGED" && <QuickAction icon="git-compare-outline" label={t("contacts.reportDuplicate")} onPress={() => setDuplicateVisible(true)} />}
-          </View>
-        )}
       </View>
 
-      {loading ? <View style={styles.center}><ActivityIndicator size="large" color="#6C63FF" /></View> : (
-        <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabs, tablet && styles.tabsTablet]}>
-            {(["overview", "scoring", "brands", "workplaces", "requests", "history"] as Section[]).map((key) => (
-              <Pressable key={key} onPress={() => setSection(key)} style={[styles.tab, tablet && styles.tabTablet, section === key && styles.tabActive]}>
-                <Text style={[styles.tabText, section === key && styles.tabTextActive]}>{t(`contacts.tab_${key}`)}{key === "requests" && pendingCount > 0 ? ` (${pendingCount})` : ""}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <ScrollView contentContainerStyle={[styles.scroll, tablet && styles.scrollTablet]} keyboardShouldPersistTaps="handled">
-            {offline && <View style={styles.offlineBanner}><Text style={styles.offlineDot}>●</Text><Text style={styles.offlineBannerText}>{t("contacts.detailOfflineCached")}{offlineVersion ? ` · ${new Date(offlineVersion).toLocaleString(i18n.language)}` : ""}</Text></View>}
-            {detail && section === "overview" && <Overview detail={detail} tablet={tablet} t={t} />}
-            {detail && section === "scoring" && <Scoring detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={() => setAssessmentVisible(true)} onDecision={(assessment, decision) => setAssessmentDecision({ assessment, decision })} />}
-            {detail && section === "brands" && <BrandPotentials detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={(previous) => { setPotentialPrevious(previous ?? null); setPotentialVisible(true) }} onDecision={(potential, decision) => setPotentialDecision({ potential, decision })} onEnd={setEndPotential} onVisit={(visitId, visitName) => navigation.navigate("VisitWorkspace", { visitId, name: visitName })} />}
-            {detail && section === "workplaces" && (
+      {loading ? <LoadingState t={t} /> : loadError && !detail ? <ErrorState t={t} retrying={refreshing} onRetry={() => fetchDetail(true)} /> : (
+        <ScrollView contentContainerStyle={[styles.scroll, tablet && styles.scrollTablet]} keyboardShouldPersistTaps="handled">
+          {offline && <OfflineBanner version={offlineVersion} locale={i18n.language} retrying={refreshing} t={t} onRetry={() => fetchDetail(true)} />}
+
+          {detail && section === "summary" && snapshot && (
+            <FriendlySummary
+              detail={detail}
+              snapshot={snapshot}
+              tablet={tablet}
+              primaryAction={primaryAction.kind}
+              onPrimary={runPrimaryAction}
+              onCall={quickPhone ? () => open(`tel:${quickPhone}`) : undefined}
+              onEmail={detail.email ? () => open(`mailto:${detail.email}`) : undefined}
+              onWhatsapp={detail.whatsappPhone ? () => open(`https://wa.me/${detail.whatsappPhone!.replace(/\D/g, "")}`) : undefined}
+              onSection={setSection}
+              detailsExpanded={detailsExpanded}
+              onToggleDetails={() => setDetailsExpanded((value) => !value)}
+              manageExpanded={manageExpanded}
+              onToggleManage={() => setManageExpanded((value) => !value)}
+              canChange={canChange}
+              agentRequest={agentRequest}
+              offline={offline}
+              onEdit={() => setEditVisible(true)}
+              onDuplicate={() => setDuplicateVisible(true)}
+              onAddWorkplace={() => { setWorkplace(null); setWorkplaceVisible(true) }}
+              onAddAssessment={() => setAssessmentVisible(true)}
+              onAddPotential={() => { setPotentialPrevious(null); setPotentialVisible(true) }}
+              t={t}
+            />
+          )}
+
+          {detail && section !== "summary" && (
+            <SectionReturn title={t(`contacts.tab_${section}`)} onBack={() => setSection("summary")} t={t} />
+          )}
+          {detail && section === "overview" && <Overview detail={detail} tablet={tablet} t={t} />}
+          {detail && section === "scoring" && <Scoring detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={() => setAssessmentVisible(true)} onDecision={(assessment, decision) => setAssessmentDecision({ assessment, decision })} />}
+          {detail && section === "brands" && <BrandPotentials detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={(previous) => { setPotentialPrevious(previous ?? null); setPotentialVisible(true) }} onDecision={(potential, decision) => setPotentialDecision({ potential, decision })} onEnd={setEndPotential} onVisit={(visitId, visitName) => navigation.navigate("VisitWorkspace", { visitId, name: visitName })} />}
+          {detail && section === "workplaces" && (
               <View style={styles.card}>
                 <View style={styles.cardHeader}><Text style={styles.cardTitle}>{t("contacts.detailWorkplaces")} · {detail.workplaces.length}</Text>{canChange && <Pressable style={styles.addBtn} onPress={() => { setWorkplace(null); setWorkplaceVisible(true) }}><Text style={styles.addBtnText}>＋ {t("contacts.addWorkplace")}</Text></Pressable>}</View>
                 {detail.workplaces.length === 0 ? <Text style={styles.emptyRow}>{t("contacts.detailNoWorkplaces")}</Text> : detail.workplaces.map((item) => (
@@ -392,12 +430,10 @@ export default function ContactDetailScreen() {
                   </View>
                 ))}
               </View>
-            )}
-            {detail && section === "requests" && <Requests detail={detail} t={t} />}
-            {detail && section === "history" && <History detail={detail} t={t} locale={i18n.language} />}
-            {!detail && offline && <View style={styles.card}><Text style={styles.emptyRow}>{t("contacts.detailError")}</Text></View>}
-          </ScrollView>
-        </>
+          )}
+          {detail && section === "requests" && <Requests detail={detail} t={t} />}
+          {detail && section === "history" && <History detail={detail} t={t} locale={i18n.language} />}
+        </ScrollView>
       )}
 
       {detail && <ContactEditModal visible={editVisible} detail={detail} agentRequest={agentRequest} busy={busy} onCancel={() => setEditVisible(false)} onSubmit={saveContact} />}
@@ -412,6 +448,302 @@ export default function ContactDetailScreen() {
       <FeedbackToast visible={toast.visible} type={toast.type} title={toast.title} onDismiss={() => setToast((state) => ({ ...state, visible: false }))} />
     </View>
   )
+}
+
+function LoadingState({ t }: { t: (key: string) => string }) {
+  return (
+    <View style={styles.stateCard}>
+      <ActivityIndicator size="large" color={fieldTheme.color.primary} />
+      <Text style={styles.stateTitle}>{t("contacts.friendlyLoadingTitle")}</Text>
+      <Text style={styles.stateBody}>{t("contacts.friendlyLoadingBody")}</Text>
+    </View>
+  )
+}
+
+function ErrorState({ t, retrying, onRetry }: { t: (key: string) => string; retrying: boolean; onRetry: () => void }) {
+  return (
+    <View style={styles.stateCard}>
+      <View style={styles.stateIcon}><Icon name="cloud-offline-outline" size={30} color={fieldTheme.color.coral} /></View>
+      <Text style={styles.stateTitle}>{t("contacts.detailError")}</Text>
+      <Text style={styles.stateBody}>{t("contacts.friendlyErrorBody")}</Text>
+      <Pressable disabled={retrying} onPress={onRetry} style={({ pressed }) => [styles.retryButton, pressed && styles.pressed, retrying && styles.disabled]}>
+        {retrying ? <ActivityIndicator color={fieldTheme.color.onColor} /> : <Icon name="refresh" size={19} color={fieldTheme.color.onColor} />}
+        <Text style={styles.retryButtonText}>{t("common.retry")}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function OfflineBanner({ version, locale, retrying, t, onRetry }: { version: string | null; locale: string; retrying: boolean; t: (key: string) => string; onRetry: () => void }) {
+  return (
+    <View style={styles.offlineBanner}>
+      <View style={styles.offlineCopy}>
+        <Icon name="cloud-offline-outline" size={20} color={fieldTheme.color.amber} />
+        <View style={styles.offlineTextGroup}>
+          <Text style={styles.offlineTitle}>{t("contacts.friendlyOfflineTitle")}</Text>
+          <Text style={styles.offlineBannerText}>{t("contacts.detailOfflineCached")}{version ? ` · ${new Date(version).toLocaleString(locale)}` : ""}</Text>
+        </View>
+      </View>
+      <Pressable disabled={retrying} onPress={onRetry} style={styles.offlineRetry}>
+        {retrying ? <ActivityIndicator size="small" color={fieldTheme.color.amber} /> : <Icon name="refresh" size={18} color={fieldTheme.color.amber} />}
+        <Text style={styles.offlineRetryText}>{t("common.retry")}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+function SectionReturn({ title, onBack, t }: { title: string; onBack: () => void; t: (key: string) => string }) {
+  return (
+    <View style={styles.sectionReturn}>
+      <Pressable onPress={onBack} style={styles.sectionBack}>
+        <Icon name="arrow-back" size={19} color={fieldTheme.color.primary} />
+        <Text style={styles.sectionBackText}>{t("contacts.friendlyBackToSummary")}</Text>
+      </Pressable>
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  )
+}
+
+function FriendlySummary({
+  detail,
+  snapshot,
+  tablet,
+  primaryAction,
+  onPrimary,
+  onCall,
+  onEmail,
+  onWhatsapp,
+  onSection,
+  detailsExpanded,
+  onToggleDetails,
+  manageExpanded,
+  onToggleManage,
+  canChange,
+  agentRequest,
+  offline,
+  onEdit,
+  onDuplicate,
+  onAddWorkplace,
+  onAddAssessment,
+  onAddPotential,
+  t,
+}: {
+  detail: ContactDetail
+  snapshot: ReturnType<typeof buildContactSnapshot>
+  tablet: boolean
+  primaryAction: ContactPrimaryActionKind
+  onPrimary: () => void
+  onCall?: () => void
+  onEmail?: () => void
+  onWhatsapp?: () => void
+  onSection: (section: Section) => void
+  detailsExpanded: boolean
+  onToggleDetails: () => void
+  manageExpanded: boolean
+  onToggleManage: () => void
+  canChange: boolean
+  agentRequest: boolean
+  offline: boolean
+  onEdit: () => void
+  onDuplicate: () => void
+  onAddWorkplace: () => void
+  onAddAssessment: () => void
+  onAddPotential: () => void
+  t: (key: string, options?: any) => string
+}) {
+  const address = [snapshot.primaryWorkplace?.city, snapshot.primaryWorkplace?.address].filter(Boolean).join(", ")
+  const currentAssessment = detail.doctorAssessments[0]
+  const managementAvailable = detail.canManage || detail.canRequestChanges || detail.canRecordBrandPotential
+  const hasSecondaryContact = Boolean(
+    (onCall && primaryAction !== "call")
+    || (onWhatsapp && primaryAction !== "whatsapp")
+    || (onEmail && primaryAction !== "email"),
+  )
+  const primaryIcon: Record<ContactPrimaryActionKind, string> = {
+    call: "call",
+    whatsapp: "logo-whatsapp",
+    email: "mail",
+    workplace: "business",
+    edit: "create",
+    none: "person-circle",
+  }
+
+  return (
+    <View style={styles.friendlyStack}>
+      <View style={[styles.summaryTop, tablet && styles.summaryTopTablet]}>
+        <View style={[styles.identityCard, tablet && styles.summaryColumn]}>
+          <Text style={styles.eyebrow}>{t("contacts.friendlyAtGlance")}</Text>
+          <Text style={styles.identityName}>{detail.name}</Text>
+          <View style={styles.identityPills}>
+            {!!detail.type && <SummaryPill icon="person-outline" text={t(TYPE_KEY[detail.type] ?? "contacts.typeOther")} />}
+            {!!detail.specialty && <SummaryPill icon="medical-outline" text={detail.specialty} />}
+            {!!detail.category && <SummaryPill icon="star-outline" text={detail.category} />}
+          </View>
+          <View style={styles.workplaceSummary}>
+            <View style={styles.summaryIcon}><Icon name="business-outline" size={21} color={fieldTheme.color.primary} /></View>
+            <View style={styles.summaryCopy}>
+              <Text style={styles.summaryLabel}>{t("contacts.friendlyMainWorkplace")}</Text>
+              <Text style={styles.summaryValue}>{snapshot.primaryWorkplace?.name || t("contacts.friendlyNoWorkplace")}</Text>
+              {!!address && <Text style={styles.summaryHint}>{address}</Text>}
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.nextCard, tablet && styles.summaryColumn]}>
+          <Text style={styles.nextEyebrow}>{t("contacts.friendlyNextStep")}</Text>
+          <Text style={styles.nextTitle}>{t(`contacts.primary_${primaryAction}`)}</Text>
+          <Text style={styles.nextBody}>{t(`contacts.primary_${primaryAction}Body`)}</Text>
+          <Pressable onPress={onPrimary} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+            <Icon name={primaryIcon[primaryAction]} size={21} color={fieldTheme.color.onColor} />
+            <Text style={styles.primaryButtonText}>{t(`contacts.primary_${primaryAction}`)}</Text>
+            <Icon name="arrow-forward" size={19} color={fieldTheme.color.onColor} />
+          </Pressable>
+        </View>
+      </View>
+
+      {hasSecondaryContact && (
+        <View style={styles.contactNowCard}>
+          <View style={styles.cardHeading}>
+            <View style={styles.cardHeadingIcon}><Icon name="chatbubbles-outline" size={20} color={fieldTheme.color.primary} /></View>
+            <View style={styles.cardHeadingCopy}><Text style={styles.cardHeadingTitle}>{t("contacts.friendlyContactNow")}</Text><Text style={styles.cardHeadingBody}>{t("contacts.friendlyContactNowBody")}</Text></View>
+          </View>
+          <View style={styles.contactActions}>
+            {onCall && primaryAction !== "call" && <ContactAction icon="call-outline" label={t("contacts.call")} onPress={onCall} />}
+            {onWhatsapp && primaryAction !== "whatsapp" && <ContactAction icon="logo-whatsapp" label="WhatsApp" onPress={onWhatsapp} />}
+            {onEmail && primaryAction !== "email" && <ContactAction icon="mail-outline" label={t("contacts.emailAction")} onPress={onEmail} />}
+          </View>
+        </View>
+      )}
+
+      <View style={styles.focusHeader}>
+        <Text style={styles.focusTitle}>{t("contacts.friendlyWorkTitle")}</Text>
+        <Text style={styles.focusBody}>{t("contacts.friendlyWorkBody")}</Text>
+      </View>
+
+      <Pressable onPress={() => onSection("brands")} style={({ pressed }) => [styles.brandSummaryCard, pressed && styles.pressed]}>
+        <View style={styles.sectionCardTop}>
+          <View style={[styles.sectionCardIcon, styles.violetIcon]}><Icon name="ribbon-outline" size={23} color={fieldTheme.color.violet} /></View>
+          <View style={styles.sectionCardCopy}>
+            <Text style={styles.sectionCardTitle}>{t("contacts.tab_brands")}</Text>
+            <Text style={styles.sectionCardBody}>{snapshot.activeBrands > 0 ? t("contacts.friendlyBrandCount", { count: snapshot.activeBrands }) : t("contacts.friendlyBrandEmpty")}</Text>
+          </View>
+          {snapshot.pendingBrands > 0 && <Text style={styles.pendingBadge}>{t("contacts.friendlyPending", { count: snapshot.pendingBrands })}</Text>}
+          <Icon name="chevron-forward" size={21} color={fieldTheme.color.inkMuted} />
+        </View>
+        <View style={styles.summaryMetrics}>
+          <SummaryMetric label={t("potential.potential")} value={snapshot.activeBrands > 0 ? snapshot.activePotentialValue : "—"} />
+          <SummaryMetric label={t("potential.coverage")} value={snapshot.activeBrands > 0 ? snapshot.activeCoverageValue : "—"} />
+          <SummaryMetric label={t("potential.percent")} value={snapshot.activeBrands > 0 ? `${snapshot.activeCoveragePct}%` : "—"} accent />
+        </View>
+      </Pressable>
+
+      <View style={[styles.sectionCards, tablet && styles.sectionCardsTablet]}>
+        <SummarySectionCard
+          icon="analytics-outline"
+          title={t("contacts.tab_scoring")}
+          value={snapshot.currentScore == null ? "—" : String(snapshot.currentScore)}
+          hint={currentAssessment ? t("contacts.friendlyCurrentScore") : t("contacts.friendlyScoreEmpty")}
+          onPress={() => onSection("scoring")}
+          tablet={tablet}
+        />
+        <SummarySectionCard
+          icon="business-outline"
+          title={t("contacts.tab_workplaces")}
+          value={String(snapshot.activeWorkplaces)}
+          hint={snapshot.primaryWorkplace?.name || t("contacts.friendlyNoWorkplace")}
+          onPress={() => onSection("workplaces")}
+          tablet={tablet}
+        />
+      </View>
+
+      <Disclosure
+        icon="folder-open-outline"
+        title={t("contacts.friendlyMoreDetails")}
+        body={t("contacts.friendlyMoreDetailsBody")}
+        expanded={detailsExpanded}
+        onPress={onToggleDetails}
+      >
+        <NavigateRow icon="person-outline" title={t("contacts.tab_overview")} body={t("contacts.friendlyOverviewBody")} onPress={() => onSection("overview")} />
+        <NavigateRow icon="shield-checkmark-outline" title={t("contacts.tab_requests")} body={pendingCountText(snapshot.pendingChanges, t)} badge={snapshot.pendingChanges || undefined} onPress={() => onSection("requests")} />
+        <NavigateRow icon="time-outline" title={t("contacts.tab_history")} body={t("contacts.friendlyHistoryCount", { count: detail.history.length })} onPress={() => onSection("history")} />
+      </Disclosure>
+
+      {managementAvailable && (
+        <Disclosure
+          icon="settings-outline"
+          title={t("contacts.friendlyManage")}
+          body={offline ? t("contacts.friendlyManageOffline") : t("contacts.friendlyManageBody")}
+          expanded={manageExpanded}
+          onPress={onToggleManage}
+          muted
+        >
+          <View style={styles.manageGrid}>
+            {offline && !detail.canRecordBrandPotential && <Text style={styles.manageOfflineNote}>{t("contacts.friendlyManageOffline")}</Text>}
+            {canChange && <ManageAction icon="create-outline" label={agentRequest ? t("contacts.requestChange") : t("common.change")} onPress={onEdit} />}
+            {canChange && detail.status !== "DUPLICATE" && detail.status !== "MERGED" && <ManageAction icon="git-compare-outline" label={t("contacts.reportDuplicate")} onPress={onDuplicate} />}
+            {canChange && <ManageAction icon="business-outline" label={t("contacts.addWorkplace")} onPress={onAddWorkplace} />}
+            {detail.canManage && !offline && <ManageAction icon="analytics-outline" label={t("contacts.scoringNew")} onPress={onAddAssessment} />}
+            {detail.canRecordBrandPotential && <ManageAction icon="ribbon-outline" label={t("potential.add")} onPress={onAddPotential} />}
+          </View>
+        </Disclosure>
+      )}
+    </View>
+  )
+}
+
+function pendingCountText(count: number, t: (key: string, options?: any) => string) {
+  return count > 0 ? t("contacts.friendlyPendingChanges", { count }) : t("contacts.noChangeRequests")
+}
+
+function SummaryPill({ icon, text }: { icon: string; text: string }) {
+  return <View style={styles.summaryPill}><Icon name={icon} size={15} color={fieldTheme.color.primary} /><Text style={styles.summaryPillText}>{text}</Text></View>
+}
+
+function ContactAction({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.contactAction, pressed && styles.pressed]}><Icon name={icon} size={20} color={fieldTheme.color.primary} /><Text style={styles.contactActionText}>{label}</Text></Pressable>
+}
+
+function SummaryMetric({ label, value, accent }: { label: string; value: number | string; accent?: boolean }) {
+  return <View style={styles.summaryMetric}><Text style={[styles.summaryMetricValue, accent && styles.summaryMetricValueAccent]}>{typeof value === "number" ? value.toLocaleString() : value}</Text><Text style={styles.summaryMetricLabel}>{label}</Text></View>
+}
+
+function SummarySectionCard({ icon, title, value, hint, onPress, tablet }: { icon: string; title: string; value: string; hint: string; onPress: () => void; tablet: boolean }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.summarySectionCard, tablet && styles.summarySectionCardTablet, pressed && styles.pressed]}>
+      <View style={styles.sectionCardIcon}><Icon name={icon} size={22} color={fieldTheme.color.primary} /></View>
+      <View style={styles.sectionCardCopy}><Text style={styles.sectionCardTitle}>{title}</Text><Text style={styles.sectionCardBody} numberOfLines={2}>{hint}</Text></View>
+      <Text style={styles.sectionCardValue}>{value}</Text>
+      <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+    </Pressable>
+  )
+}
+
+function Disclosure({ icon, title, body, expanded, onPress, muted, children }: { icon: string; title: string; body: string; expanded: boolean; onPress: () => void; muted?: boolean; children: React.ReactNode }) {
+  return (
+    <View style={[styles.disclosure, muted && styles.disclosureMuted]}>
+      <Pressable onPress={onPress} accessibilityState={{ expanded }} style={styles.disclosureHeader}>
+        <View style={[styles.disclosureIcon, muted && styles.disclosureIconMuted]}><Icon name={icon} size={21} color={muted ? fieldTheme.color.inkMuted : fieldTheme.color.primary} /></View>
+        <View style={styles.disclosureCopy}><Text style={styles.disclosureTitle}>{title}</Text><Text style={styles.disclosureBody}>{body}</Text></View>
+        <Icon name={expanded ? "chevron-up" : "chevron-down"} size={22} color={fieldTheme.color.inkMuted} />
+      </Pressable>
+      {expanded && <View style={styles.disclosureContent}>{children}</View>}
+    </View>
+  )
+}
+
+function NavigateRow({ icon, title, body, badge, onPress }: { icon: string; title: string; body: string; badge?: number; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.navigateRow, pressed && styles.pressed]}>
+      <Icon name={icon} size={21} color={fieldTheme.color.primary} />
+      <View style={styles.navigateCopy}><Text style={styles.navigateTitle}>{title}</Text><Text style={styles.navigateBody}>{body}</Text></View>
+      {!!badge && <Text style={styles.rowBadge}>{badge}</Text>}
+      <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+    </Pressable>
+  )
+}
+
+function ManageAction({ icon, label, onPress }: { icon: string; label: string; onPress: () => void }) {
+  return <Pressable onPress={onPress} style={({ pressed }) => [styles.manageAction, pressed && styles.pressed]}><Icon name={icon} size={21} color={fieldTheme.color.primary} /><Text style={styles.manageActionText}>{label}</Text></Pressable>
 }
 
 function Scoring({
@@ -577,20 +909,120 @@ function History({ detail, t, locale }: { detail: ContactDetail; t: (key: string
   return <View style={styles.card}><Text style={styles.cardTitle}>{t("contacts.changeHistory")}</Text>{detail.history.length === 0 ? <Text style={styles.emptyRow}>{t("contacts.noHistory")}</Text> : detail.history.map((item) => <View key={item.id} style={styles.timelineRow}><View style={styles.historyIcon}><Icon name="time-outline" size={17} color="#4f46e5" /></View><View style={styles.timelineCopy}><Text style={styles.timelineTitle}>{item.action.replaceAll("_", " ")}</Text><Text style={styles.timelineMeta}>{[item.actorName, item.createdAt ? new Date(item.createdAt).toLocaleString(locale) : ""].filter(Boolean).join(" · ")}</Text></View></View>)}</View>
 }
 
-function QuickAction({ icon, label, onPress, emphasized }: { icon: string; label: string; onPress: () => void; emphasized?: boolean }) { return <Pressable onPress={onPress} style={[styles.quickAction, emphasized && styles.quickActionStrong]}><Icon name={icon} size={18} color="#fff" /><Text style={styles.quickActionText}>{label}</Text></Pressable> }
 function Field({ label, value }: { label: string; value?: string }) { if (!value) return null; return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><Text style={styles.fieldValue}>{value}</Text></View> }
 function Stat({ value, label, accent }: { value: number | string; label: string; accent?: boolean }) { return <View style={styles.potentialStat}><Text style={[styles.potentialValue, accent && styles.accent]}>{typeof value === "number" ? value.toLocaleString() : value}</Text><Text style={styles.potentialLabel}>{label}</Text></View> }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" }, center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { backgroundColor: "#6C63FF", paddingBottom: 15, paddingHorizontal: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }, headerRow: { flexDirection: "row", alignItems: "center", gap: 10 }, backBtn: { width: 32, height: 44, justifyContent: "center", alignItems: "center" }, backIcon: { color: "#fff", fontSize: 34, fontWeight: "300" }, avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" }, avatarText: { color: "#fff", fontSize: 14, fontWeight: "900" }, headerMain: { flex: 1 }, headerTitle: { color: "#fff", fontSize: 20, fontWeight: "900" }, headerSubtitle: { color: "rgba(255,255,255,0.78)", fontSize: 13, marginTop: 3 }, categoryBadge: { minWidth: 32, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 9, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center" }, categoryText: { color: "#fff", fontWeight: "900" },
-  quickActions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 13, marginLeft: 42 }, quickAction: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)" }, quickActionStrong: { backgroundColor: "#4338ca" }, quickActionText: { color: "#fff", fontSize: 12, fontWeight: "800" },
-  tabs: { flexGrow: 1, flexDirection: "row", paddingHorizontal: 10, paddingTop: 10, gap: 6, backgroundColor: "#F4F5F9" }, tabsTablet: { justifyContent: "center" }, tab: { minWidth: 104, minHeight: 46, paddingHorizontal: 12, alignItems: "center", justifyContent: "center", borderRadius: 11 }, tabTablet: { flex: 1, maxWidth: 210 }, tabActive: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#B7DDCE" }, tabText: { color: "#64748b", fontSize: 11, fontWeight: "800", textAlign: "center" }, tabTextActive: { color: "#08705A" },
-  scroll: { padding: 14, paddingBottom: 50 }, scrollTablet: { width: "100%", maxWidth: 1120, alignSelf: "center", padding: 22 }, overviewGrid: { gap: 12 }, overviewGridTablet: { flexDirection: "row", flexWrap: "wrap" }, halfCard: { width: "48.8%" },
-  offlineBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginBottom: 12, padding: 10, borderRadius: 10, backgroundColor: "#fff7ed", borderWidth: 1, borderColor: "#fed7aa" }, offlineDot: { color: "#f59e0b" }, offlineBannerText: { color: "#b45309", fontSize: 12, fontWeight: "700" },
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e9edf3" }, cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }, cardTitle: { flex: 1, fontSize: 12, fontWeight: "900", color: "#111827", textTransform: "uppercase", letterSpacing: 0.55, marginBottom: 8 }, addBtn: { minHeight: 40, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#ede9fe" }, addBtnText: { color: "#5b21b6", fontSize: 12, fontWeight: "900" },
+  container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: 14, paddingHorizontal: fieldTheme.space.md, borderBottomLeftRadius: fieldTheme.radius.lg, borderBottomRightRadius: fieldTheme.radius.lg },
+  headerRow: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  backBtn: { minWidth: 84, minHeight: 48, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingHorizontal: 10, borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.13)" },
+  backText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "800" },
+  avatar: { width: 46, height: 46, borderRadius: 15, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  avatarText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  headerMain: { flex: 1, minWidth: 0 },
+  headerTitle: { color: fieldTheme.color.onColor, fontSize: 20, fontWeight: "900" },
+  headerSubtitle: { color: "rgba(248,252,250,0.78)", fontSize: 13, marginTop: 3 },
+  categoryBadge: { minWidth: 38, minHeight: 38, paddingHorizontal: 9, justifyContent: "center", borderRadius: 10, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center" },
+  categoryText: { color: fieldTheme.color.onColor, fontWeight: "900" },
+  scroll: { padding: fieldTheme.space.md, paddingBottom: 56 },
+  scrollTablet: { width: "100%", maxWidth: 1120, alignSelf: "center", padding: fieldTheme.space.xl },
+  overviewGrid: { gap: fieldTheme.space.md }, overviewGridTablet: { flexDirection: "row", flexWrap: "wrap" }, halfCard: { width: "48.8%" },
+  stateCard: { flex: 1, minHeight: 300, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl, gap: fieldTheme.space.md },
+  stateIcon: { width: 64, height: 64, alignItems: "center", justifyContent: "center", borderRadius: 20, backgroundColor: fieldTheme.color.coralSoft },
+  stateTitle: { color: fieldTheme.color.ink, fontSize: 20, fontWeight: "900", textAlign: "center" },
+  stateBody: { maxWidth: 430, color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 21, textAlign: "center" },
+  retryButton: { minHeight: 50, minWidth: 150, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 18, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  retryButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  offlineBanner: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, borderWidth: 1, borderColor: "#E9D49A" },
+  offlineCopy: { minWidth: 220, flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  offlineTextGroup: { flex: 1 },
+  offlineTitle: { color: fieldTheme.color.amber, fontSize: 13, fontWeight: "900" },
+  offlineBannerText: { color: fieldTheme.color.amber, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  offlineRetry: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.62)" },
+  offlineRetryText: { color: fieldTheme.color.amber, fontSize: 12, fontWeight: "900" },
+  disabled: { opacity: 0.55 },
+  pressed: { opacity: 0.72 },
+  friendlyStack: { gap: fieldTheme.space.md },
+  summaryTop: { gap: fieldTheme.space.md },
+  summaryTopTablet: { flexDirection: "row", alignItems: "stretch" },
+  summaryColumn: { flex: 1 },
+  identityCard: { minHeight: 210, padding: 20, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  identityName: { color: fieldTheme.color.ink, fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: 7 },
+  identityPills: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
+  summaryPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  summaryPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "800" },
+  workplaceSummary: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  summaryIcon: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 13, backgroundColor: fieldTheme.color.primarySoft },
+  summaryCopy: { flex: 1 },
+  summaryLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  summaryValue: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", marginTop: 2 },
+  summaryHint: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  nextCard: { minHeight: 210, justifyContent: "center", padding: 20, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: "#B7DDCE" },
+  nextEyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  nextTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: 7 },
+  nextBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, marginTop: 5 },
+  primaryButton: { minHeight: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 18, paddingHorizontal: 16, borderRadius: 15, backgroundColor: fieldTheme.color.primary },
+  primaryButtonText: { flex: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  contactNowCard: { padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, gap: fieldTheme.space.md },
+  cardHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cardHeadingIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: fieldTheme.color.primarySoft },
+  cardHeadingCopy: { flex: 1 },
+  cardHeadingTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
+  cardHeadingBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  contactActions: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
+  contactAction: { minHeight: 48, minWidth: 112, flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 12, borderRadius: 12, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  contactActionActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  contactActionText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
+  contactActionTextActive: { color: fieldTheme.color.onColor },
+  focusHeader: { paddingHorizontal: 4, marginTop: 5 },
+  focusTitle: { color: fieldTheme.color.ink, fontSize: 19, fontWeight: "900" },
+  focusBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 18, marginTop: 3 },
+  brandSummaryCard: { padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.violetSoft, borderWidth: 1, borderColor: "#D7C8ED", gap: fieldTheme.space.md },
+  sectionCardTop: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 10 },
+  sectionCardIcon: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.primarySoft },
+  violetIcon: { backgroundColor: "rgba(255,255,255,0.7)" },
+  sectionCardCopy: { flex: 1, minWidth: 0 },
+  sectionCardTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
+  sectionCardBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  pendingBadge: { color: fieldTheme.color.amber, backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 8, paddingVertical: 5, fontSize: 10, fontWeight: "900" },
+  summaryMetrics: { flexDirection: "row", borderRadius: 13, backgroundColor: "rgba(255,255,255,0.72)", overflow: "hidden" },
+  summaryMetric: { flex: 1, minHeight: 68, alignItems: "center", justifyContent: "center", paddingHorizontal: 7 },
+  summaryMetricValue: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
+  summaryMetricValueAccent: { color: fieldTheme.color.violet },
+  summaryMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 9, fontWeight: "800", textAlign: "center", textTransform: "uppercase", marginTop: 3 },
+  sectionCards: { gap: fieldTheme.space.sm },
+  sectionCardsTablet: { flexDirection: "row" },
+  summarySectionCard: { minHeight: 84, flexDirection: "row", alignItems: "center", gap: 10, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  summarySectionCardTablet: { flex: 1 },
+  sectionCardValue: { color: fieldTheme.color.primary, fontSize: 23, fontWeight: "900" },
+  disclosure: { borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, overflow: "hidden" },
+  disclosureMuted: { backgroundColor: "#F7FAF8" },
+  disclosureHeader: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: fieldTheme.space.md, paddingVertical: 10 },
+  disclosureIcon: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 13, backgroundColor: fieldTheme.color.primarySoft },
+  disclosureIconMuted: { backgroundColor: fieldTheme.color.surfaceStrong },
+  disclosureCopy: { flex: 1 },
+  disclosureTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
+  disclosureBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  disclosureContent: { padding: fieldTheme.space.sm, paddingTop: 0 },
+  navigateRow: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  navigateCopy: { flex: 1 },
+  navigateTitle: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  navigateBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  rowBadge: { minWidth: 26, textAlign: "center", color: fieldTheme.color.amber, backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 7, paddingVertical: 4, fontSize: 10, fontWeight: "900" },
+  manageGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  manageOfflineNote: { flex: 1, minWidth: 220, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 18, padding: 10 },
+  manageAction: { minHeight: 50, minWidth: 150, flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 12, borderRadius: 12, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  manageActionText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", textAlign: "center" },
+  sectionReturn: { gap: 10, marginBottom: fieldTheme.space.md },
+  sectionBack: { minHeight: 48, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 12, borderRadius: 12, backgroundColor: fieldTheme.color.primarySoft },
+  sectionBackText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
+  sectionTitle: { color: fieldTheme.color.ink, fontSize: 24, fontWeight: "900" },
+  card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e9edf3" }, cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 }, cardTitle: { flex: 1, fontSize: 12, fontWeight: "900", color: "#111827", textTransform: "uppercase", letterSpacing: 0.55, marginBottom: 8 }, addBtn: { minHeight: 48, paddingHorizontal: 12, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#ede9fe" }, addBtnText: { color: "#5b21b6", fontSize: 12, fontWeight: "900" },
   field: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 6, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#f1f5f9" }, fieldLabel: { width: "42%", color: "#64748b", fontSize: 12, fontWeight: "700" }, fieldValue: { flex: 1, color: "#1e293b", fontSize: 13, fontWeight: "600" }, emptyRow: { color: "#94a3b8", fontSize: 13, paddingVertical: 8 },
-  workplaceRow: { flexDirection: "row", gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#f1f5f9" }, workplaceMain: { flex: 1 }, workplaceTitleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 7 }, rowName: { color: "#0f172a", fontSize: 15, fontWeight: "900" }, rowSub: { color: "#64748b", fontSize: 12, marginTop: 4 }, dateMeta: { color: "#94a3b8", fontSize: 11, marginTop: 5 }, primaryPill: { color: "#92400e", backgroundColor: "#fef3c7", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" }, endedPill: { color: "#64748b", backgroundColor: "#f1f5f9", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" }, rowActions: { flexDirection: "row", gap: 5 }, iconBtn: { width: 42, height: 42, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" },
+  workplaceRow: { flexDirection: "row", gap: 10, paddingVertical: 12, borderTopWidth: 1, borderTopColor: "#f1f5f9" }, workplaceMain: { flex: 1 }, workplaceTitleRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 7 }, rowName: { color: "#0f172a", fontSize: 15, fontWeight: "900" }, rowSub: { color: "#64748b", fontSize: 12, marginTop: 4 }, dateMeta: { color: "#94a3b8", fontSize: 11, marginTop: 5 }, primaryPill: { color: "#92400e", backgroundColor: "#fef3c7", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" }, endedPill: { color: "#64748b", backgroundColor: "#f1f5f9", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" }, rowActions: { flexDirection: "row", gap: 5 }, iconBtn: { width: 48, height: 48, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0" },
   potentialCard: { width: "100%" }, potentialRow: { flexDirection: "row" }, potentialStat: { flex: 1, alignItems: "center" }, potentialValue: { color: "#0f172a", fontSize: 20, fontWeight: "900" }, potentialLabel: { color: "#94a3b8", fontSize: 10, textTransform: "uppercase", marginTop: 3, textAlign: "center" }, accent: { color: "#6C63FF" },
   timelineRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 10, borderTopWidth: 1, borderTopColor: "#f1f5f9" }, timelineDot: { width: 11, height: 11, borderRadius: 99 }, dotSuccess: { backgroundColor: "#22c55e" }, dotError: { backgroundColor: "#ef4444" }, dotPending: { backgroundColor: "#f59e0b" }, historyIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: "#ede9fe", alignItems: "center", justifyContent: "center" }, timelineCopy: { flex: 1 }, timelineTitle: { color: "#0f172a", fontSize: 13, fontWeight: "900" }, timelineMeta: { color: "#64748b", fontSize: 12, lineHeight: 17, marginTop: 3 },
   scoringStack: { gap: 14 },
@@ -603,5 +1035,5 @@ const styles = StyleSheet.create({
   assessmentFacts: { gap: 7 }, fact: { minHeight: 28, flexDirection: "row", alignItems: "center", gap: 8 }, factText: { flex: 1, color: "#33443E", fontSize: 12, lineHeight: 17 }, reviewComment: { color: "#33443E", fontSize: 12, lineHeight: 18, padding: 11, borderRadius: 10, backgroundColor: "#F1F6F3" }, assessmentMeta: { color: "#86978F", fontSize: 10 },
   reviewActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 }, rejectButton: { minHeight: 48, minWidth: 104, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: 11, borderWidth: 1, borderColor: "#EDB9AD", backgroundColor: "#FBFDFC" }, rejectButtonText: { color: "#A43B25", fontSize: 13, fontWeight: "900" }, verifyButton: { minHeight: 48, minWidth: 120, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: 11, backgroundColor: "#08705A" }, verifyButtonText: { color: "#F8FCFA", fontSize: 13, fontWeight: "900" },
   brandStack: { gap: 14 }, brandHero: { padding: 18, borderRadius: 20, backgroundColor: "#ECE6F7", borderWidth: 1, borderColor: "#D7C8ED", gap: 14 }, brandHeroCopy: { minWidth: 210 }, brandEyebrow: { color: "#7155B7", fontSize: 10, fontWeight: "900", letterSpacing: 0.8, textTransform: "uppercase" }, brandHeroTitle: { color: "#241A38", fontSize: 22, fontWeight: "900", marginTop: 5 }, brandHeroBody: { color: "#6D607E", fontSize: 12, lineHeight: 18, marginTop: 5 }, brandHeroMetrics: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 14, overflow: "hidden" },
-  brandGrid: { gap: 12 }, brandGridTablet: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }, brandCard: { padding: 16, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", gap: 12 }, brandCardTablet: { width: "49%" }, brandTop: { flexDirection: "row", alignItems: "center", gap: 10 }, brandMark: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#ECE6F7" }, brandMarkText: { color: "#7155B7", fontSize: 13, fontWeight: "900" }, brandIdentity: { flex: 1 }, brandName: { color: "#13231F", fontSize: 16, fontWeight: "900" }, brandProduct: { color: "#64748b", fontSize: 11, marginTop: 3 }, brandNumbers: { flexDirection: "row", backgroundColor: "#F8FAFC", borderRadius: 13, overflow: "hidden" }, coverageTrack: { height: 7, borderRadius: 99, backgroundColor: "#E8EDF2", overflow: "hidden" }, coverageFill: { height: "100%", borderRadius: 99, backgroundColor: "#7155B7" }, brandMeta: { color: "#64748b", fontSize: 11, lineHeight: 16 }, evidenceList: { gap: 7 }, evidenceTitle: { color: "#33443E", fontSize: 11, fontWeight: "900", textTransform: "uppercase" }, evidenceLink: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 10, backgroundColor: "#F1F6F3", paddingHorizontal: 10 }, evidenceLinkText: { flex: 1, color: "#08705A", fontSize: 12, fontWeight: "800" }, brandActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }, brandActionSecondary: { minHeight: 44, justifyContent: "center", paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#D7C8ED", backgroundColor: "#FBF9FE" }, brandActionSecondaryText: { color: "#7155B7", fontSize: 12, fontWeight: "900" },
+  brandGrid: { gap: 12 }, brandGridTablet: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }, brandCard: { padding: 16, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", gap: 12 }, brandCardTablet: { width: "49%" }, brandTop: { flexDirection: "row", alignItems: "center", gap: 10 }, brandMark: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#ECE6F7" }, brandMarkText: { color: "#7155B7", fontSize: 13, fontWeight: "900" }, brandIdentity: { flex: 1 }, brandName: { color: "#13231F", fontSize: 16, fontWeight: "900" }, brandProduct: { color: "#64748b", fontSize: 11, marginTop: 3 }, brandNumbers: { flexDirection: "row", backgroundColor: "#F8FAFC", borderRadius: 13, overflow: "hidden" }, coverageTrack: { height: 7, borderRadius: 99, backgroundColor: "#E8EDF2", overflow: "hidden" }, coverageFill: { height: "100%", borderRadius: 99, backgroundColor: "#7155B7" }, brandMeta: { color: "#64748b", fontSize: 11, lineHeight: 16 }, evidenceList: { gap: 7 }, evidenceTitle: { color: "#33443E", fontSize: 11, fontWeight: "900", textTransform: "uppercase" }, evidenceLink: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 10, backgroundColor: "#F1F6F3", paddingHorizontal: 10 }, evidenceLinkText: { flex: 1, color: "#08705A", fontSize: 12, fontWeight: "800" }, brandActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }, brandActionSecondary: { minHeight: 48, justifyContent: "center", paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#D7C8ED", backgroundColor: "#FBF9FE" }, brandActionSecondaryText: { color: "#7155B7", fontSize: 12, fontWeight: "900" },
 })
