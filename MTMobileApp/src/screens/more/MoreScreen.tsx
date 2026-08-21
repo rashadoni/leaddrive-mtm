@@ -76,6 +76,11 @@ const CONTACT_TRANSFER_ACTION: MoreAction = {
   iconBackground: fieldTheme.color.coralSoft,
 }
 
+const MANAGER_ACTIONS = [
+  ...COMMON_ACTIONS.filter((action) => action.route !== "GpsHistory"),
+  CONTACT_TRANSFER_ACTION,
+]
+
 export default function MoreScreen() {
   const { t } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -89,7 +94,9 @@ export default function MoreScreen() {
     ? navGroupFromCapabilities(capabilities) === "team"
     : isManagerRole(role)
   const tablet = isTabletWidth(width)
-  const actions = manager ? [...COMMON_ACTIONS, CONTACT_TRANSFER_ACTION] : COMMON_ACTIONS
+  // Personal GPS history requires FIELD_TRACK. Managers use the team map and
+  // must not be sent to an endpoint that correctly answers 403 for their role.
+  const actions = manager ? MANAGER_ACTIONS : COMMON_ACTIONS
 
   const open = (route: MoreRoute) => {
     switch (route) {

@@ -41,6 +41,7 @@ import {
   type GpsPlaybackSelection,
   type GpsTimelinePoint,
 } from "./gps-history-model"
+import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 type GpsLoadIssue = "none" | "offline" | "timeout" | "access" | "error"
@@ -553,7 +554,9 @@ function RoutePlaybackCard({
       start: t("gpsHistory.routeStart"),
       end: t("gpsHistory.routeEnd"),
       current: t("gpsHistory.routeCurrent"),
-      localSchemeHint: t("gpsHistory.localSchemeHint"),
+      mapLoading: t("gpsHistory.mapLoading"),
+      mapUnavailable: t("gpsHistory.mapUnavailable"),
+      mapAttribution: t("gpsHistory.mapAttribution"),
     }),
     [language, model.routeSegments, t],
   )
@@ -626,10 +629,10 @@ function RoutePlaybackCard({
           <WebView
             ref={webViewRef}
             source={webViewSource}
-            originWhitelist={["about:blank"]}
+            originWhitelist={CARTO_TILE_WEBVIEW_ORIGINS}
             javaScriptEnabled
             domStorageEnabled={false}
-            cacheEnabled={false}
+            cacheEnabled
             allowFileAccess={false}
             allowUniversalAccessFromFileURLs={false}
             mixedContentMode="never"

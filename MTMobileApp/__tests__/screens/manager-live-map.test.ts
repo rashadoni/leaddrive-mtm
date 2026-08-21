@@ -115,7 +115,7 @@ describe("manager live map truth model", () => {
     expect(resolveManagerLiveMapSelection(current, "missing")).toBe("only")
   })
 
-  it("builds a local-only map document without external requests, device geolocation, or raw script injection", () => {
+  it("builds a raster map without remote scripts, device geolocation, or raw script injection", () => {
     const marker: ManagerLiveMapDocumentMarker = {
       ...buildManagerLiveMapModel([row("safe", "</script><script>bad()</script>", {})]).markers[0],
       statusLabel: "Current position",
@@ -128,6 +128,9 @@ describe("manager live map truth model", () => {
       zoomIn: "Zoom in",
       zoomOut: "Zoom out",
       fit: "Show all employees",
+      mapLoading: "Loading map",
+      mapUnavailable: "Map unavailable",
+      mapAttribution: "© OpenStreetMap · © CARTO",
     })
 
     expect(html).toContain("ReactNativeWebView.postMessage")
@@ -135,10 +138,12 @@ describe("manager live map truth model", () => {
     expect(html).toContain("markers.length === 1 && selectedId === null")
     expect(html).toContain("connect-src 'none'")
     expect(html).toContain("\\u003c/script>")
+    expect(html).toContain("basemaps.cartocdn.com/light_all/")
+    expect(html).toContain("© OpenStreetMap · © CARTO")
+    expect(html).toContain("Map unavailable")
     expect(html).not.toContain("</script><script>bad()")
-    expect(html).not.toContain("https://")
-    expect(html).not.toContain("http://")
     expect(html).not.toContain("tile.openstreetmap.org")
+    expect(html).not.toMatch(/<script[^>]+src=/)
     expect(html).not.toContain("navigator.geolocation")
     expect(html).not.toContain("getCurrentPosition")
   })
