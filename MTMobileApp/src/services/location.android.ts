@@ -15,6 +15,16 @@ const MAX_ACCURACY = 50
 const RETRY_DELAY = 5_000
 const MAX_RETRIES = 3
 
+// Android can keep the native service alive slightly longer than the React
+// screen lifecycle. Explicitly binding every coordinate to the local workday
+// keeps delayed uploads honest: they cannot accidentally become a point for a
+// later shift, and the server can reject points captured after “End day”.
+let activeTrackingWorkdayId: string | null = null
+
+export function setTrackingWorkdayId(workdayId: string | null) {
+  activeTrackingWorkdayId = workdayId?.trim() || null
+}
+
 const backgroundOptions = {
   taskName: "MTM GPS Tracking",
   taskIcon: {
@@ -47,17 +57,45 @@ async function backgroundTask(taskData: { delay?: number } | undefined) {
   }
 }
 
+function uploadPosition(position: {
+  coords: {
+    latitude: number
+    longitude: number
+    accuracy: number | null
+    speed: number | null
+    heading: number | null
+    altitude: number | null
+  }
+  timestamp: number
+}): Promise<unknown> {
+  const { latitude, longitude, accuracy, speed, heading, altitude } = position.coords
+  const capturedAt = Number.isFinite(position.timestamp) ? position.timestamp : Date.now()
+  lastKnownPosition = {
+    latitude,
+    longitude,
+    accuracy: accuracy || 0,
+    timestamp: capturedAt,
+  }
+  const recordedAt = new Date(capturedAt).toISOString()
+  const clientLocationId = `gps-${Math.trunc(capturedAt)}-${latitude.toFixed(5)}-${longitude.toFixed(5)}`
+  return api.sendLocation({
+    latitude,
+    longitude,
+    accuracy: accuracy || undefined,
+    speed: speed ? speed * 3.6 : undefined,
+    heading: heading || undefined,
+    altitude: altitude || undefined,
+    ...(activeTrackingWorkdayId ? { workdayId: activeTrackingWorkdayId } : {}),
+    recordedAt,
+    clientLocationId,
+  })
+}
+
 function pollAndSendAsync(retryCount = 0): Promise<void> {
   return new Promise((resolve) => {
     Geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude, accuracy, speed, heading, altitude } = position.coords
-        lastKnownPosition = {
-          latitude,
-          longitude,
-          accuracy: accuracy || 0,
-          timestamp: Date.now(),
-        }
+        const { accuracy } = position.coords
 
         if (accuracy && accuracy > MAX_ACCURACY && retryCount < MAX_RETRIES) {
           setTimeout(() => {
@@ -66,15 +104,7 @@ function pollAndSendAsync(retryCount = 0): Promise<void> {
           return
         }
 
-        api
-          .sendLocation({
-            latitude,
-            longitude,
-            accuracy: accuracy || undefined,
-            speed: speed ? speed * 3.6 : undefined,
-            heading: heading || undefined,
-            altitude: altitude || undefined,
-          })
+        uploadPosition(position)
           .catch((error) => {
             if (error?.message === "SESSION_EXPIRED") stopTracking().catch(() => {})
           })
@@ -88,21 +118,7 @@ function pollAndSendAsync(retryCount = 0): Promise<void> {
 
         Geolocation.getCurrentPosition(
           (position) => {
-            lastKnownPosition = {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy || 0,
-              timestamp: Date.now(),
-            }
-            api
-              .sendLocation({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy || undefined,
-                speed: position.coords.speed ? position.coords.speed * 3.6 : undefined,
-                heading: position.coords.heading || undefined,
-                altitude: position.coords.altitude || undefined,
-              })
+            uploadPosition(position)
               .catch((error) => {
                 if (error?.message === "SESSION_EXPIRED") stopTracking().catch(() => {})
               })

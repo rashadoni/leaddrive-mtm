@@ -32,6 +32,7 @@ import {
 } from "../../services/visit-outbox"
 import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { useHintsStore } from "../../store/hints"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -102,6 +103,9 @@ const ROUTE_COPY = {
     unplannedTitle: "Нужен визит вне маршрута?",
     unplannedBody: "Откройте «Визиты» для клиента, которого нет в сегодняшнем плане.",
     openVisits: "Открыть внеплановый визит",
+    planOwnRouteTitle: "Хотите составить свой маршрут?",
+    planOwnRouteBody: "Выберите день, добавьте своих клиентов и сохраните план. Редактировать его можете только вы.",
+    planOwnRoute: "Составить мой маршрут",
     refresh: "Обновить маршрут",
     loading: "Получаем маршрут и ваши визиты…",
     offlineTitle: "Нет связи — работаем офлайн",
@@ -157,6 +161,9 @@ const ROUTE_COPY = {
     unplannedTitle: "Marşrutdan kənar ziyarət lazımdır?",
     unplannedBody: "Bugünkü planda olmayan müştəri üçün «Ziyarətlər» bölməsini açın.",
     openVisits: "Plandan kənar ziyarəti aç",
+    planOwnRouteTitle: "Öz marşrutunuzu qurmaq istəyirsiniz?",
+    planOwnRouteBody: "Günü seçin, öz müştərilərinizi əlavə edin və planı yadda saxlayın. Onu yalnız siz redaktə edə bilərsiniz.",
+    planOwnRoute: "Mənim marşrutumu qur",
     refresh: "Marşrutu yenilə",
     loading: "Marşrut və ziyarətlər yüklənir…",
     offlineTitle: "Bağlantı yoxdur — oflayn işləyirik",
@@ -212,6 +219,9 @@ const ROUTE_COPY = {
     unplannedTitle: "Need an unplanned visit?",
     unplannedBody: "Open Visits for a customer who is not in today's planned route.",
     openVisits: "Open unplanned visit",
+    planOwnRouteTitle: "Want to create your own route?",
+    planOwnRouteBody: "Choose a day, add your customers and save the plan. Only you can edit it.",
+    planOwnRoute: "Create my route",
     refresh: "Refresh route",
     loading: "Loading your route and visits…",
     offlineTitle: "No connection — working offline",
@@ -565,6 +575,19 @@ function UnplannedVisitCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[Route
   )
 }
 
+function OwnRoutePlanningCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; onPress: () => void }) {
+  return (
+    <View style={styles.ownRouteCard}>
+      <View style={styles.unplannedHeading}>
+        <Icon name="calendar-outline" size={23} color={fieldTheme.color.primaryStrong} />
+        <Text style={styles.unplannedTitle}>{copy.planOwnRouteTitle}</Text>
+      </View>
+      <Text style={styles.unplannedBody}>{copy.planOwnRouteBody}</Text>
+      <ActionButton label={copy.planOwnRoute} icon="add-circle-outline" onPress={onPress} tone="secondary" />
+    </View>
+  )
+}
+
 function PointActionPanel({
   point,
   nextPoint,
@@ -716,6 +739,12 @@ export default function RouteScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const agent = useAuthStore((state) => state.agent)
+  const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  // This shortcut is for field agents only. Managers keep their existing
+  // team-planning workspace, so they are never sent into a locked "my route"
+  // screen by mistake.
+  const canPlanOwnRoutes = String(agent?.role).toUpperCase() === "AGENT"
+    && ownRoutePlanningPolicy
   const { width } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -1192,6 +1221,9 @@ export default function RouteScreen() {
               </View>
             ) : actionPanel}
             <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
+            {canPlanOwnRoutes ? (
+              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder", { mode: "self" })} />
+            ) : null}
             <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
           </ScrollView>
         </View>
@@ -1253,6 +1285,9 @@ export default function RouteScreen() {
         ListFooterComponent={
           <View style={styles.phoneFooter}>
             <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
+            {canPlanOwnRoutes ? (
+              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder", { mode: "self" })} />
+            ) : null}
             <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
           </View>
         }
@@ -1495,6 +1530,7 @@ const styles = StyleSheet.create({
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
 
   unplannedCard: { gap: fieldTheme.space.md, paddingTop: fieldTheme.space.xl, marginTop: fieldTheme.space.xl, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  ownRouteCard: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, marginTop: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: "#A9D9CA" },
   unplannedHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   unplannedTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   unplannedBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
