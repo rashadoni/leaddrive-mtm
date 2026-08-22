@@ -62,13 +62,13 @@ function route(overrides: Partial<PlanningDetailedRoute> = {}): PlanningDetailed
 }
 
 describe("friendly manager planning model", () => {
-  it("uses the tenant day around midnight and builds one/five-day horizons", () => {
+  it("uses the tenant day around midnight and builds one-day/seven-day horizons", () => {
     const instant = new Date("2026-08-20T21:30:00.000Z")
     expect(planningTodayKey(instant, "UTC")).toBe("2026-08-20")
     expect(planningTodayKey(instant, "Asia/Baku")).toBe("2026-08-21")
     expect(planningDateKeys("2026-08-30", 1)).toEqual(["2026-08-30"])
-    expect(planningDateKeys("2026-08-30", 5)).toEqual([
-      "2026-08-30", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03",
+    expect(planningDateKeys("2026-08-30", 7)).toEqual([
+      "2026-08-30", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-05",
     ])
   })
 

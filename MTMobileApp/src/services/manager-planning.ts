@@ -12,7 +12,7 @@ export interface PlanningRoute {
   total: number
 }
 
-export type PlanningHorizon = 1 | 5
+export type PlanningHorizon = 1 | 7
 export type PlanningTargetKind = "organization" | "contact"
 
 export interface PlanningAgent {
