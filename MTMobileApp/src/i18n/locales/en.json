@@ -231,6 +231,11 @@
   },
   "organizations": {
     "title": "Organizations",
+    "guideTitle": "How to work with organizations",
+    "guideBody": "First find the organization, then check its card. A manager can select records and change ownership only after reviewing the impact.",
+    "guideSearch": "Find an organization",
+    "guideSelect": "Check the card",
+    "guideAssign": "Assign ownership",
     "searchPlaceholder": "Search by name, code, address…",
     "totalTemplate": "{{n}} organizations",
     "empty": "No organizations assigned yet",
@@ -331,6 +336,11 @@
   },
   "contacts": {
     "title": "Contacts",
+    "guideTitle": "This section is about people, not organizations",
+    "guideBody": "Find a doctor, pharmacist, or other contact; check the primary workplace; then open the card for the next action.",
+    "guideSearch": "Find a person",
+    "guideWorkplace": "Check the workplace",
+    "guideOpen": "Open the card",
     "searchPlaceholder": "Search by name, specialty, phone…",
     "empty": "No contacts assigned yet",
     "emptySearch": "Nothing matches your search",

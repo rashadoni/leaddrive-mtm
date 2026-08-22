@@ -20,6 +20,7 @@ import { toContactListItem, type ContactListItem } from "../../services/contact-
 import { readOfflineContacts } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
+import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
@@ -147,6 +148,18 @@ export default function ContactsList() {
         )}
       </View>
 
+      <View style={styles.guideWrap}>
+        <MobileWorkflowGuide
+          title={t("contacts.guideTitle")}
+          body={t("contacts.guideBody")}
+          steps={[
+            { icon: "search-outline", label: t("contacts.guideSearch") },
+            { icon: "business-outline", label: t("contacts.guideWorkplace") },
+            { icon: "open-outline", label: t("contacts.guideOpen") },
+          ]}
+        />
+      </View>
+
       <FlatList
         key={tablet ? "contacts-tablet" : "contacts-phone"}
         data={contacts}
@@ -260,6 +273,7 @@ export default function ContactsList() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   searchArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+  guideWrap: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.md },
   searchBox: {
     minHeight: 54,
     flexDirection: "row",
