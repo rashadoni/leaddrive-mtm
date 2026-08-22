@@ -30,6 +30,8 @@ export interface BootstrapPolicies {
    * irreversibly. An unknown answer must not switch that on.
    */
   photoWatermark: boolean
+  /** Whether this particular field agent may create and edit only own routes. */
+  canPlanOwnRoutes: boolean
 }
 
 export interface BootstrapData {
@@ -84,7 +86,12 @@ export function toBootstrap(raw: any): BootstrapData {
     timezone: str(raw?.timezone) ?? null,
     // Strict `=== true`: anything else (missing field, older server, junk)
     // resolves to "no plaque", which is the non-leaking direction.
-    policies: { photoWatermark: record(raw?.policies)?.photoWatermark === true },
+    policies: {
+      photoWatermark: record(raw?.policies)?.photoWatermark === true,
+      // Missing means an older server: do not expose a planning action that
+      // cannot be confirmed by the server yet.
+      canPlanOwnRoutes: record(raw?.policies)?.canPlanOwnRoutes === true,
+    },
     workday: workday
       ? {
           id: String(workday.id ?? ""),

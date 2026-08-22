@@ -1,9 +1,13 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 )
+jest.mock("../../src/services/outbox", () => ({
+  enqueueOutboxOperation: jest.fn().mockResolvedValue(undefined),
+}))
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setOfflineScope } from "../../src/services/offline-scope"
+import { enqueueOutboxOperation } from "../../src/services/outbox"
 import { useWorkdayStore, workdayKey } from "../../src/store/workday"
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
@@ -34,6 +38,17 @@ describe("workday identity", () => {
     await useWorkdayStore.getState().end("tenant-a:agent-a")
     expect(useWorkdayStore.getState().activeWorkday).toBeNull()
     expect(await AsyncStorage.getItem(STORAGE_KEY)).toBeNull()
+  })
+
+  it("uses the server's FINISH action when ending a workday", async () => {
+    await useWorkdayStore.getState().start("tenant-a:agent-a")
+    await useWorkdayStore.getState().end("tenant-a:agent-a")
+
+    expect(enqueueOutboxOperation).toHaveBeenLastCalledWith(expect.objectContaining({
+      entity: "workdays",
+      op: "create",
+      data: expect.objectContaining({ action: "FINISH" }),
+    }))
   })
 
   it("does not activate the workday when persistence fails", async () => {

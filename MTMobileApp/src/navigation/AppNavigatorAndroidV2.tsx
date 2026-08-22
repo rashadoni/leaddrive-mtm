@@ -50,7 +50,7 @@ export type RootStackParamList = {
   GpsHistory: undefined
   Profile: undefined
   ContactTransfer: undefined
-  PlanningBuilder: undefined
+  PlanningBuilder: { mode?: "manager" | "self" } | undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -70,7 +70,13 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
 
 const TeamScreen = () => <ManagerWorkspaceScreen kind="team" />
 const PlanningScreen = ManagerPlanningCalendarScreen
-const PlanningBuilderScreen = ({ navigation }: { navigation: { goBack: () => void } }) => <ManagerPlanningWorkspace onClose={() => navigation.goBack()} />
+const PlanningBuilderScreen = ({
+  navigation,
+  route,
+}: {
+  navigation: { goBack: () => void }
+  route: { params?: { mode?: "manager" | "self" } }
+}) => <ManagerPlanningWorkspace onClose={() => navigation.goBack()} mode={route.params?.mode ?? "manager"} />
 const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 
 const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {

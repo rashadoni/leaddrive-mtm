@@ -23,10 +23,17 @@ import {
   type WeekDay,
   type WeekTaskItem,
 } from "../../services/week"
+import {
+  teamMeetingsForDate,
+  toTeamSchedule,
+  type TeamScheduleData,
+  type TeamScheduleMeeting,
+} from "../../services/team-schedule"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
+import { useBootstrapStore } from "../../store/bootstrap"
 
 type CalendarLanguage = "ru" | "az" | "en"
 
@@ -77,6 +84,11 @@ const CALENDAR_COPY = {
     priorityUrgent: "Срочная",
     priorityLabel: "Приоритет",
     client: "Клиент",
+    planOwnRoute: "Составить мой маршрут",
+    planOwnRouteHint: "Выберите день и клиентов — редактировать этот план сможете только вы.",
+    teamSchedule: "Встречи команды",
+    teamScheduleHint: "Показываются только опубликованные встречи коллег из вашей команды.",
+    teamTimePending: "Время уточняется",
   },
   az: {
     title: "Təqvim",
@@ -124,6 +136,11 @@ const CALENDAR_COPY = {
     priorityUrgent: "Təcili",
     priorityLabel: "Prioritet",
     client: "Müştəri",
+    planOwnRoute: "Öz marşrutumu qur",
+    planOwnRouteHint: "Günü və müştəriləri seçin — bu planı yalnız siz redaktə edə bilərsiniz.",
+    teamSchedule: "Komanda görüşləri",
+    teamScheduleHint: "Yalnız komandanızdakı əməkdaşların dərc edilmiş görüşləri göstərilir.",
+    teamTimePending: "Vaxt dəqiqləşdirilir",
   },
   en: {
     title: "Calendar",
@@ -171,6 +188,11 @@ const CALENDAR_COPY = {
     priorityUrgent: "Urgent",
     priorityLabel: "Priority",
     client: "Client",
+    planOwnRoute: "Build my route",
+    planOwnRouteHint: "Choose a day and customers — only you can edit this plan.",
+    teamSchedule: "Team meetings",
+    teamScheduleHint: "Only published meetings from colleagues on your team are shown.",
+    teamTimePending: "Time to be confirmed",
   },
 } as const
 
@@ -296,6 +318,13 @@ function formatRange(start: string, endExclusive: string, lang: string): string 
   return `${firstDate.toLocaleDateString(lang, options)} – ${lastDate.toLocaleDateString(lang, options)}`
 }
 
+function formatMeetingTime(value: string | null, lang: string): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })
+}
+
 export default function WeekScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -303,12 +332,17 @@ export default function WeekScreen() {
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const myAgentId = useAuthStore((state) => state.agent?.id)
+  const myAgentRole = useAuthStore((state) => state.agent?.role)
+  const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  const canPlanOwnRoutes = String(myAgentRole).toUpperCase() === "AGENT"
+    && ownRoutePlanningPolicy
   const [anchor, setAnchor] = useState<string | null>(null)
   const [data, setData] = useState<WeekData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [teamSchedule, setTeamSchedule] = useState<TeamScheduleData | null>(null)
   const scrollRef = useRef<ScrollView>(null)
   const phoneListY = useRef(0)
   const phoneDayY = useRef<Record<string, number>>({})
@@ -317,9 +351,23 @@ export default function WeekScreen() {
     try {
       const response = await api.getWeek(start ?? undefined)
       if (response.success && response.data) {
-        setData(toWeekData(response.data))
+        const week = toWeekData(response.data)
+        setData(week)
         setOffline(false)
+        try {
+          // The server policy is the privacy authority. A disabled or
+          // unavailable response is simply absent from this calendar — no
+          // local setting can turn colleague meetings back on.
+          const teamResponse = await api.getTeamSchedule(
+            week.weekStart,
+            shiftDateKey(week.weekEndExclusive, -1),
+          )
+          setTeamSchedule(teamResponse?.success && teamResponse.data ? toTeamSchedule(teamResponse.data) : null)
+        } catch {
+          setTeamSchedule(null)
+        }
       } else {
+        setTeamSchedule(null)
         setOffline(true)
       }
     } catch (error: any) {
@@ -327,6 +375,7 @@ export default function WeekScreen() {
       // cache yet, so every other failure must be visible instead of looking
       // like a genuinely empty calendar.
       if (error.message !== "SESSION_EXPIRED") setOffline(true)
+      setTeamSchedule(null)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -403,6 +452,10 @@ export default function WeekScreen() {
     })
   }
 
+  const openOwnRoutePlanner = () => {
+    navigation.navigate("PlanningBuilder", { mode: "self" })
+  }
+
   const refreshControl = (
     <RefreshControl
       refreshing={refreshing}
@@ -467,6 +520,27 @@ export default function WeekScreen() {
           {offline && <OfflineNotice title={copy.staleTitle} body={copy.staleBody} />}
 
           <WeekSummary data={data} title={copy.summary} t={t} tablet={tablet} />
+          {canPlanOwnRoutes ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.planOwnRoute}
+              accessibilityHint={copy.planOwnRouteHint}
+              onPress={openOwnRoutePlanner}
+              style={({ pressed }) => [styles.ownRoutePlanner, pressed && styles.pressed]}
+            >
+              <View style={styles.ownRoutePlannerIcon}>
+                <Icon name="add-circle-outline" size={24} color={fieldTheme.color.primary} />
+              </View>
+              <View style={styles.ownRoutePlannerCopy}>
+                <Text style={styles.ownRoutePlannerTitle}>{copy.planOwnRoute}</Text>
+                <Text style={styles.ownRoutePlannerBody}>{copy.planOwnRouteHint}</Text>
+              </View>
+              <Icon name="chevron-forward" size={22} color={fieldTheme.color.primary} />
+            </Pressable>
+          ) : null}
+          {teamSchedule?.enabled ? (
+            <TeamScheduleNotice title={copy.teamSchedule} body={copy.teamScheduleHint} />
+          ) : null}
 
           {tablet ? (
             <View style={styles.tabletWorkspace}>
@@ -495,6 +569,7 @@ export default function WeekScreen() {
                     touchTarget={touchTarget}
                     onVisitPress={openVisit}
                     onTaskPress={openTask}
+                    teamMeetings={teamMeetingsForDate(teamSchedule, selectedDay.date)}
                   />
                 ) : (
                   <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
@@ -516,6 +591,7 @@ export default function WeekScreen() {
                   touchTarget={touchTarget}
                   onVisitPress={openVisit}
                   onTaskPress={openTask}
+                  teamMeetings={teamMeetingsForDate(teamSchedule, day.date)}
                   onLayout={(event) => { phoneDayY.current[day.date] = event.nativeEvent.layout.y }}
                 />
               ))}
@@ -773,7 +849,7 @@ function DaySelector({ day, lang, selected, touchTarget, todayLabel, visitsLabel
   )
 }
 
-function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }: {
+function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, teamMeetings }: {
   day: WeekDay
   lang: string
   copy: Copy
@@ -781,6 +857,7 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
+  teamMeetings: TeamScheduleMeeting[]
 }) {
   const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
@@ -820,11 +897,12 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
           onTaskPress={onTaskPress}
         />
       )}
+      {teamMeetings.length > 0 ? <TeamScheduleAgenda meetings={teamMeetings} copy={copy} lang={lang} /> : null}
     </View>
   )
 }
 
-function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onLayout }: {
+function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, teamMeetings, onLayout }: {
   day: WeekDay
   lang: string
   copy: Copy
@@ -832,6 +910,7 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
+  teamMeetings: TeamScheduleMeeting[]
   onLayout: (event: LayoutChangeEvent) => void
 }) {
   const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
@@ -875,6 +954,65 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
           compact
         />
       )}
+      {teamMeetings.length > 0 ? <TeamScheduleAgenda meetings={teamMeetings} copy={copy} lang={lang} compact /> : null}
+    </View>
+  )
+}
+
+function TeamScheduleNotice({ title, body }: { title: string; body: string }) {
+  return (
+    <View style={styles.teamScheduleNotice} accessibilityLiveRegion="polite">
+      <View style={styles.teamScheduleNoticeIcon}>
+        <Icon name="people-outline" size={20} color={fieldTheme.color.blue} />
+      </View>
+      <View style={styles.noticeCopy}>
+        <Text style={styles.teamScheduleNoticeTitle}>{title}</Text>
+        <Text style={styles.teamScheduleNoticeBody}>{body}</Text>
+      </View>
+    </View>
+  )
+}
+
+function TeamScheduleAgenda({ meetings, copy, lang, compact = false }: {
+  meetings: TeamScheduleMeeting[]
+  copy: Copy
+  lang: string
+  compact?: boolean
+}) {
+  return (
+    <View style={[styles.teamScheduleSection, compact && styles.teamScheduleSectionCompact]}>
+      <View style={styles.agendaHeading}>
+        <Icon name="people-outline" size={18} color={fieldTheme.color.blue} />
+        <Text style={styles.agendaHeadingText}>{copy.teamSchedule}</Text>
+        <View style={[styles.agendaCount, styles.teamScheduleCount]}>
+          <Text style={[styles.agendaCountText, styles.teamScheduleCountText]}>{meetings.length}</Text>
+        </View>
+      </View>
+      {meetings.map((meeting) => {
+        const place = [meeting.address, meeting.city].filter(Boolean).join(", ")
+        return (
+          <View key={meeting.id} style={styles.teamMeetingCard}>
+            <View style={styles.teamMeetingTopRow}>
+              <View style={styles.teamMeetingAvatar}>
+                <Icon name="person" size={16} color={fieldTheme.color.blue} />
+              </View>
+              <Text style={styles.teamMeetingAgent} numberOfLines={1}>{meeting.agentName}</Text>
+              <View style={styles.teamMeetingTime}>
+                <Icon name="time-outline" size={14} color={fieldTheme.color.inkMuted} />
+                <Text style={styles.teamMeetingTimeText}>{formatMeetingTime(meeting.plannedTime, lang) ?? copy.teamTimePending}</Text>
+              </View>
+            </View>
+            <Text style={styles.teamMeetingCustomer} numberOfLines={1}>{meeting.customerName}</Text>
+            {meeting.contactName ? <Text style={styles.teamMeetingContact} numberOfLines={1}>{meeting.contactName}</Text> : null}
+            {place ? (
+              <View style={styles.teamMeetingPlace}>
+                <Icon name="location-outline" size={14} color={fieldTheme.color.inkMuted} />
+                <Text style={styles.teamMeetingPlaceText} numberOfLines={2}>{place}</Text>
+              </View>
+            ) : null}
+          </View>
+        )
+      })}
     </View>
   )
 }
@@ -1212,6 +1350,50 @@ const styles = StyleSheet.create({
   noticeCopy: { flex: 1 },
   offlineTitle: { color: fieldTheme.color.amber, fontSize: 14, lineHeight: 20, fontWeight: "800" },
   offlineBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, marginTop: 2 },
+  teamScheduleNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.blueSoft,
+    borderWidth: 1,
+    borderColor: "#B9D7FB",
+    marginBottom: fieldTheme.space.lg,
+  },
+  teamScheduleNoticeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fieldTheme.color.surface,
+  },
+  teamScheduleNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "800" },
+  teamScheduleNoticeBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 18, marginTop: 2 },
+  ownRoutePlanner: {
+    minHeight: 76,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primarySoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
+    marginBottom: fieldTheme.space.lg,
+  },
+  ownRoutePlannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fieldTheme.color.surface,
+  },
+  ownRoutePlannerCopy: { flex: 1, minWidth: 0 },
+  ownRoutePlannerTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  ownRoutePlannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   summarySection: { marginBottom: fieldTheme.space.xl },
   sectionEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: fieldTheme.space.sm },
   summaryStrip: {
@@ -1286,6 +1468,26 @@ const styles = StyleSheet.create({
   compactMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 9, lineHeight: 12, fontWeight: "600", marginTop: 3 },
   agendaSection: { marginTop: fieldTheme.space.xl, gap: fieldTheme.space.sm },
   agendaSectionCompact: { marginTop: fieldTheme.space.lg },
+  teamScheduleSection: { marginTop: fieldTheme.space.xl, gap: fieldTheme.space.sm },
+  teamScheduleSectionCompact: { marginTop: fieldTheme.space.lg },
+  teamScheduleCount: { backgroundColor: fieldTheme.color.blueSoft },
+  teamScheduleCountText: { color: fieldTheme.color.blue },
+  teamMeetingCard: {
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: "#F5F9FF",
+    borderWidth: 1,
+    borderColor: "#D5E7FC",
+  },
+  teamMeetingTopRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  teamMeetingAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface },
+  teamMeetingAgent: { flex: 1, minWidth: 0, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
+  teamMeetingTime: { flexDirection: "row", alignItems: "center", gap: 4 },
+  teamMeetingTimeText: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "700" },
+  teamMeetingCustomer: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: fieldTheme.space.sm },
+  teamMeetingContact: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  teamMeetingPlace: { flexDirection: "row", alignItems: "flex-start", gap: 4, marginTop: fieldTheme.space.sm },
+  teamMeetingPlaceText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
   agendaEmpty: { minHeight: 82, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, marginTop: fieldTheme.space.xl },
   agendaEmptyCompact: { marginTop: fieldTheme.space.lg },
   agendaHeading: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
