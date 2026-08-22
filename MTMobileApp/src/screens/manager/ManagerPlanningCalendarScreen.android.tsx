@@ -279,7 +279,7 @@ export default function ManagerPlanningCalendarScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
-            onPress={() => navigation.navigate("PlanningBuilder")}
+            onPress={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
             style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
           >
             <Icon name="add-circle" size={21} color={fieldTheme.color.primaryStrong} />
@@ -379,7 +379,7 @@ export default function ManagerPlanningCalendarScreen() {
           routes={selectedRoutes}
           language={i18n.language}
           copy={copy}
-          onCreate={() => navigation.navigate("PlanningBuilder")}
+          onCreate={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
         />
       </ScrollView>
     </View>
