@@ -36,6 +36,7 @@ import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
+import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
@@ -72,6 +73,7 @@ const VISIT_COPY = {
     eyebrow: "Работа в поле",
     title: "Визиты",
     subtitle: "Плановые визиты начинайте из Маршрута. Здесь — внеплановый визит и история.",
+    helpFlow: "Как провести визит:\n1. Плановый — откройте «Маршрут» и выберите точку.\n2. Внеплановый — найдите клиента ниже.\n3. Начните визит, добавьте нужные фото и нажмите «Завершить».",
     back: "Назад",
     plannedTitle: "Визит уже есть в плане?",
     plannedBody: "Откройте «Маршрут»: там сохранены порядок точек, навигация и плановый чек-ин.",
@@ -127,6 +129,7 @@ const VISIT_COPY = {
     eyebrow: "Sahə işi",
     title: "Ziyarətlər",
     subtitle: "Planlı ziyarətləri Marşrutdan başladın. Burada plansız ziyarət və tarixçə var.",
+    helpFlow: "Ziyarəti necə aparmalı:\n1. Planlıdırsa «Marşrut»u açıb nöqtəni seçin.\n2. Plansızdırsa müştərini aşağıda tapın.\n3. Ziyarətə başlayın, lazım olan fotoları əlavə edib «Bitir» düyməsinə toxunun.",
     back: "Geri",
     plannedTitle: "Ziyarət artıq plandadır?",
     plannedBody: "«Marşrut»u açın: nöqtələrin sırası, naviqasiya və planlı giriş oradadır.",
@@ -182,6 +185,7 @@ const VISIT_COPY = {
     eyebrow: "Field work",
     title: "Visits",
     subtitle: "Start planned visits from Route. This screen is for an unplanned visit and history.",
+    helpFlow: "How to complete a visit:\n1. For a planned visit, open Route and choose the stop.\n2. For an unplanned visit, find the client below.\n3. Start the visit, add required photos, then tap Finish.",
     back: "Back",
     plannedTitle: "Already in today's plan?",
     plannedBody: "Open Route for the stop order, navigation and the planned check-in.",
@@ -949,6 +953,7 @@ function VisitActionPanel({
   if (activeVisit) {
     return (
       <View style={styles.actionStack}>
+        <HintCard id="visits.flow.v2" text={copy.helpFlow} style={styles.visitHint} />
         {loadState === "offline" && <StateNotice kind="offline" copy={copy} onRetry={onRetry} />}
         <View style={[styles.activeCard, tablet && styles.cardTablet]}>
           <View style={styles.sectionIconRow}>
@@ -1025,6 +1030,7 @@ function VisitActionPanel({
 
   return (
     <View style={styles.actionStack}>
+      <HintCard id="visits.flow.v2" text={copy.helpFlow} style={styles.visitHint} />
       <View style={styles.routeGuide}>
         <View style={styles.routeGuideIcon}>
           <Icon name="navigate-outline" size={23} color={fieldTheme.color.blue} />
@@ -1417,6 +1423,7 @@ const styles = StyleSheet.create({
   tabletHistoryPane: { flex: 1.08 },
   actionContent: { paddingVertical: fieldTheme.space.lg },
   actionStack: { gap: fieldTheme.space.md },
+  visitHint: { marginHorizontal: 0, marginTop: 0, alignItems: "flex-start" },
   routeGuide: {
     backgroundColor: fieldTheme.color.blueSoft,
     borderWidth: 1,

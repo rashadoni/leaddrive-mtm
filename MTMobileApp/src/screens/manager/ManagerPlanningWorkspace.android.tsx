@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
+import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
@@ -142,6 +143,7 @@ export default function ManagerPlanningWorkspace({
   const [clock, setClock] = useState(() => new Date())
   const today = useMemo(() => planningTodayKey(clock, tenantTimezone), [clock, tenantTimezone])
   const [step, setStep] = useState<PlanningStep>(1)
+  const [forcedHelpStep, setForcedHelpStep] = useState<PlanningStep | null>(null)
   const [anchor, setAnchor] = useState(today)
   const [horizon, setHorizon] = useState<PlanningHorizon>(5)
   const dates = useMemo(() => planningDateKeys(anchor, horizon), [anchor, horizon])
@@ -168,6 +170,10 @@ export default function ManagerPlanningWorkspace({
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string } | null>(null)
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
+  const hintsEnabled = useHintsStore((state) => state.enabled)
+  const dismissedHints = useHintsStore((state) => state.dismissed)
+  const hintsHydrated = useHintsStore((state) => state.hydrated)
+  const dismissHint = useHintsStore((state) => state.dismiss)
   const planRequest = useRef(0)
   const saveRequest = useRef(0)
   const savingRef = useRef(false)
@@ -181,6 +187,10 @@ export default function ManagerPlanningWorkspace({
   const invalidAssignmentDates = useMemo(() => invalidPlanningAssignmentDates(assignments), [assignments])
   const matrixTargets = useMemo(() => uniqueTargets(assignments, routes), [assignments, routes])
   const mutableTargetCount = useMemo(() => new Set(assignments.map((target) => target.key)).size, [assignments])
+  const planningHintId = `planning.step.${step}`
+  const plannerHelpVisible = forcedHelpStep === step || (
+    hintsHydrated && hintsEnabled && !dismissedHints.includes(planningHintId)
+  )
 
   useEffect(() => {
     const refreshClock = () => setClock(new Date())
@@ -593,6 +603,30 @@ export default function ManagerPlanningWorkspace({
       >
         <StepRail step={step} hasAgent={Boolean(agentId)} hasReview={matrixTargets.length > 0} disabled={saving} onStep={setStep} t={t} />
 
+        <View style={styles.helpRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("managerShell.planHelpAction")}
+            style={({ pressed }) => [styles.helpButton, pressed && styles.pressed]}
+            onPress={() => setForcedHelpStep(step)}
+          >
+            <Icon name="help-circle-outline" size={20} color={fieldTheme.color.primaryStrong} />
+            <Text style={styles.helpButtonText}>{t("managerShell.planHelpAction")}</Text>
+          </Pressable>
+        </View>
+        {plannerHelpVisible ? (
+          <PlannerCoach
+            title={t("managerShell.planHelpTitle")}
+            body={t(`managerShell.planHelpStep${step}`)}
+            dismissLabel={t("managerShell.planHelpDismiss")}
+            tablet={tablet}
+            onDismiss={() => {
+              dismissHint(planningHintId)
+              setForcedHelpStep(null)
+            }}
+          />
+        ) : null}
+
         {planError ? (
           <Notice
             tone="warning"
@@ -860,6 +894,31 @@ function SectionIntro({ number, title, body }: { number: string; title: string; 
   )
 }
 
+function PlannerCoach({ title, body, dismissLabel, tablet, onDismiss }: { title: string; body: string; dismissLabel: string; tablet: boolean; onDismiss: () => void }) {
+  return (
+    <View style={[styles.plannerCoach, tablet && styles.plannerCoachTablet]} accessibilityLiveRegion="polite">
+      <View style={styles.plannerCoachLead}>
+        <View style={styles.plannerCoachIcon}>
+          <Icon name="bulb-outline" size={23} color={fieldTheme.color.blue} />
+        </View>
+        <View style={styles.plannerCoachCopy}>
+          <Text style={styles.plannerCoachTitle}>{title}</Text>
+          <Text style={styles.plannerCoachBody}>{body}</Text>
+        </View>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={dismissLabel}
+        onPress={onDismiss}
+        style={({ pressed }) => [styles.plannerCoachDismiss, tablet && styles.plannerCoachDismissTablet, pressed && styles.pressed]}
+      >
+        <Text style={styles.plannerCoachDismissText}>{dismissLabel}</Text>
+        <Icon name="checkmark" size={18} color={fieldTheme.color.blue} />
+      </Pressable>
+    </View>
+  )
+}
+
 function WeekSnapshot({ dates, routes, loading, language, t }: { dates: string[]; routes: PlanningDetailedRoute[]; loading: boolean; language: string; t: any }) {
   return (
     <View style={styles.weekSnapshot}>
@@ -1009,6 +1068,19 @@ const styles = StyleSheet.create({
   stepNumberTextActive: { color: fieldTheme.color.onColor },
   stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", textAlign: "center" },
   stepLabelActive: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
+  helpRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: -fieldTheme.space.sm },
+  helpButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  helpButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  plannerCoach: { gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: fieldTheme.color.blue },
+  plannerCoachTablet: { flexDirection: "row", alignItems: "center" },
+  plannerCoachLead: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
+  plannerCoachIcon: { width: 42, height: 42, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  plannerCoachCopy: { flex: 1, gap: 3 },
+  plannerCoachTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  plannerCoachBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 18 },
+  plannerCoachDismiss: { minHeight: LAYOUT_TOUCH_TARGETS.compact, alignSelf: "stretch", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  plannerCoachDismissTablet: { alignSelf: "auto" },
+  plannerCoachDismissText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "900" },
   stepBody: { gap: fieldTheme.space.lg },
   sectionIntro: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
   sectionNumber: { width: 42, height: 42, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.blue },
