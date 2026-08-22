@@ -81,11 +81,14 @@ describe("workday identity", () => {
     const ending = useWorkdayStore.getState().end("tenant-a:agent-a")
     const starting = useWorkdayStore.getState().start("tenant-a:agent-b")
     await Promise.resolve()
-    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(2)
+    // The second start must stay behind the unfinished remove. Seeing only
+    // the original start here proves the mutation queue is actually serial.
+    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(1)
 
     releaseRemove()
     await Promise.all([ending, starting])
 
+    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(2)
     expect(useWorkdayStore.getState().activeWorkday?.key).toBe("tenant-a:agent-b")
     const persisted = JSON.parse((await AsyncStorage.getItem(STORAGE_KEY)) || "null")
     expect(persisted?.key).toBe("tenant-a:agent-b")
