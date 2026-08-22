@@ -16,6 +16,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { useAuthStore } from "../../store/auth"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
@@ -49,6 +50,37 @@ import {
 
 type PlanningStep = 1 | 2 | 3
 type SaveMode = "draft" | "publish"
+type PlannerMode = "manager" | "self"
+
+const SELF_PLANNER_COPY = {
+  ru: {
+    eyebrow: "Мой план",
+    title: "Создайте свой маршрут",
+    subtitle: "Выберите день, добавьте клиентов и сохраните план. Вы редактируете только свои маршруты.",
+    agentLabel: "Ваш маршрут",
+    agentHelp: "Вы планируете встречи только для себя.",
+  },
+  az: {
+    eyebrow: "Mənim planım",
+    title: "Öz marşrutunuzu yaradın",
+    subtitle: "Günü seçin, müştəriləri əlavə edin və planı yadda saxlayın. Yalnız öz marşrutlarınızı redaktə edirsiniz.",
+    agentLabel: "Sizin marşrutunuz",
+    agentHelp: "Görüşləri yalnız özünüz üçün planlaşdırırsınız.",
+  },
+  en: {
+    eyebrow: "My plan",
+    title: "Create your route",
+    subtitle: "Choose a day, add customers and save your plan. You can edit only your own routes.",
+    agentLabel: "Your route",
+    agentHelp: "You are planning meetings only for yourself.",
+  },
+} as const
+
+function selfPlannerLanguage(language: string): keyof typeof SELF_PLANNER_COPY {
+  if (language.toLowerCase().startsWith("az")) return "az"
+  if (language.toLowerCase().startsWith("en")) return "en"
+  return "ru"
+}
 
 function routeStatusKey(status: string): string {
   switch (status) {
@@ -89,7 +121,13 @@ function planningError(code: string): Error & { code: string } {
   return error
 }
 
-export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => void } = {}) {
+export default function ManagerPlanningWorkspace({
+  onClose,
+  mode = "manager",
+}: {
+  onClose?: () => void
+  mode?: PlannerMode
+} = {}) {
   const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
@@ -97,6 +135,10 @@ export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => 
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
   const tenantTimezone = useBootstrapStore((state) => state.data?.timezone)
+  const mayPlanOwnRoutes = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  const currentAgent = useAuthStore((state) => state.agent)
+  const selfPlanning = mode === "self"
+  const selfCopy = SELF_PLANNER_COPY[selfPlannerLanguage(i18n.language)]
   const [clock, setClock] = useState(() => new Date())
   const today = useMemo(() => planningTodayKey(clock, tenantTimezone), [clock, tenantTimezone])
   const [step, setStep] = useState<PlanningStep>(1)
@@ -168,6 +210,19 @@ export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => 
   const loadAgents = useCallback(async () => {
     setLoadingAgents(true)
     setAgentError(false)
+    if (selfPlanning) {
+      if (!mayPlanOwnRoutes || !currentAgent?.id || String(currentAgent.role).toUpperCase() !== "AGENT") {
+        setAgents([])
+        setAgentId("")
+        setAgentError(true)
+      } else {
+        const self: PlanningAgent = { id: currentAgent.id, name: currentAgent.name || "—", role: "AGENT" }
+        setAgents([self])
+        setAgentId(self.id)
+      }
+      setLoadingAgents(false)
+      return
+    }
     try {
       const response = await api.getManagerTeam()
       const rawAgents: unknown[] = Array.isArray(response?.data?.agents) ? response.data.agents : []
@@ -180,7 +235,7 @@ export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => 
     } finally {
       setLoadingAgents(false)
     }
-  }, [])
+  }, [currentAgent?.id, currentAgent?.name, currentAgent?.role, mayPlanOwnRoutes, selfPlanning])
 
   const loadPlan = useCallback(async (selectedAgentId: string, selectedDates: string[], preserve = false) => {
     if (!selectedAgentId) return
@@ -518,9 +573,9 @@ export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => 
           ) : null}
           <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View>
           <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>{t("managerShell.planEyebrow")}</Text>
-            <Text style={styles.title}>{t("managerShell.planFriendlyTitle")}</Text>
-            <Text style={styles.subtitle}>{t("managerShell.planFriendlyBody")}</Text>
+            <Text style={styles.eyebrow}>{selfPlanning ? selfCopy.eyebrow : t("managerShell.planEyebrow")}</Text>
+            <Text style={styles.title}>{selfPlanning ? selfCopy.title : t("managerShell.planFriendlyTitle")}</Text>
+            <Text style={styles.subtitle}>{selfPlanning ? selfCopy.subtitle : t("managerShell.planFriendlyBody")}</Text>
           </View>
           {updatedAt ? (
             <View style={styles.updatedPill}>
@@ -582,13 +637,21 @@ export default function ManagerPlanningWorkspace({ onClose }: { onClose?: () => 
               <View style={[styles.setupPanel, styles.agentPanel]}>
                 <View style={styles.fieldHeading}>
                   <View style={styles.fieldHeadingCopy}>
-                    <Text style={styles.fieldLabel}>{t("managerShell.planMainAgent")}</Text>
-                    <Text style={styles.fieldHelp}>{t("managerShell.planMainAgentHelp")}</Text>
+                    <Text style={styles.fieldLabel}>{selfPlanning ? selfCopy.agentLabel : t("managerShell.planMainAgent")}</Text>
+                    <Text style={styles.fieldHelp}>{selfPlanning ? selfCopy.agentHelp : t("managerShell.planMainAgentHelp")}</Text>
                   </View>
                   {loadingAgents ? <ActivityIndicator color={fieldTheme.color.primary} /> : null}
                 </View>
                 {agentError ? (
-                  <InlineEmpty icon="cloud-offline-outline" text={t("managerShell.planAgentsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => { void loadAgents() } : undefined} />
+                  <InlineEmpty icon="cloud-offline-outline" text={selfPlanning ? selfCopy.agentHelp : t("managerShell.planAgentsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => { void loadAgents() } : undefined} />
+                ) : selfPlanning && selectedAgent ? (
+                  <View style={styles.agentList}>
+                    <View accessibilityRole="summary" style={[styles.agentOption, styles.agentOptionSelected]}>
+                      <View style={[styles.agentAvatar, styles.agentAvatarSelected]}><Icon name="person" size={20} color={fieldTheme.color.onColor} /></View>
+                      <Text style={[styles.agentName, styles.agentNameSelected]}>{selectedAgent.name}</Text>
+                      <Icon name="lock-closed" size={18} color={fieldTheme.color.primary} />
+                    </View>
+                  </View>
                 ) : agents.length > 0 ? (
                   <View style={styles.agentList}>
                     {agents.map((agent) => {

@@ -87,6 +87,8 @@ const CALENDAR_COPY = {
     priorityUrgent: "Срочная",
     priorityLabel: "Приоритет",
     client: "Клиент",
+    planOwnRoute: "Составить мой маршрут",
+    planOwnRouteHint: "Выберите день и клиентов — редактировать этот план сможете только вы.",
     teamMeetings: "Встречи команды",
     teamMeetingsHint: "Кто из коллег, с кем, когда и где встречается",
     teamLoading: "Обновляем встречи команды…",
@@ -150,6 +152,8 @@ const CALENDAR_COPY = {
     priorityUrgent: "Təcili",
     priorityLabel: "Prioritet",
     client: "Müştəri",
+    planOwnRoute: "Öz marşrutumu qur",
+    planOwnRouteHint: "Günü və müştəriləri seçin — bu planı yalnız siz redaktə edə bilərsiniz.",
     teamMeetings: "Komanda görüşləri",
     teamMeetingsHint: "Hansı əməkdaşın kimlə, nə vaxt və harada görüşdüyü",
     teamLoading: "Komanda görüşləri yenilənir…",
@@ -213,6 +217,8 @@ const CALENDAR_COPY = {
     priorityUrgent: "Urgent",
     priorityLabel: "Priority",
     client: "Client",
+    planOwnRoute: "Build my route",
+    planOwnRouteHint: "Choose a day and customers — only you can edit this plan.",
     teamMeetings: "Team meetings",
     teamMeetingsHint: "Who is meeting which client, when and where",
     teamLoading: "Refreshing team meetings…",
@@ -417,6 +423,10 @@ export default function WeekScreen() {
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const myAgentId = useAuthStore((state) => state.agent?.id)
+  const myAgentRole = useAuthStore((state) => state.agent?.role)
+  const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  const canPlanOwnRoutes = String(myAgentRole).toUpperCase() === "AGENT"
+    && ownRoutePlanningPolicy
   const [anchor, setAnchor] = useState<string | null>(null)
   const [data, setData] = useState<WeekData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -484,6 +494,7 @@ export default function WeekScreen() {
         setOffline(false)
         void fetchTeamSchedule(nextWeek)
       } else {
+        setTeamSchedule(null)
         setOffline(true)
       }
     } catch (error: any) {
@@ -491,6 +502,7 @@ export default function WeekScreen() {
       // cache yet, so every other failure must be visible instead of looking
       // like a genuinely empty calendar.
       if (error.message !== "SESSION_EXPIRED") setOffline(true)
+      setTeamSchedule(null)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -623,6 +635,10 @@ export default function WeekScreen() {
     })
   }
 
+  const openOwnRoutePlanner = () => {
+    navigation.navigate("PlanningBuilder", { mode: "self" })
+  }
+
   const refreshControl = (
     <RefreshControl
       refreshing={refreshing}
@@ -687,7 +703,24 @@ export default function WeekScreen() {
           {offline && <OfflineNotice title={copy.staleTitle} body={copy.staleBody} />}
 
           <WeekSummary data={data} title={copy.summary} t={t} tablet={tablet} />
-
+          {canPlanOwnRoutes ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.planOwnRoute}
+              accessibilityHint={copy.planOwnRouteHint}
+              onPress={openOwnRoutePlanner}
+              style={({ pressed }) => [styles.ownRoutePlanner, pressed && styles.pressed]}
+            >
+              <View style={styles.ownRoutePlannerIcon}>
+                <Icon name="add-circle-outline" size={24} color={fieldTheme.color.primary} />
+              </View>
+              <View style={styles.ownRoutePlannerCopy}>
+                <Text style={styles.ownRoutePlannerTitle}>{copy.planOwnRoute}</Text>
+                <Text style={styles.ownRoutePlannerBody}>{copy.planOwnRouteHint}</Text>
+              </View>
+              <Icon name="chevron-forward" size={22} color={fieldTheme.color.primary} />
+            </Pressable>
+          ) : null}
           <TeamScheduleStatus
             data={teamSchedule}
             loading={teamScheduleLoading}
@@ -1594,6 +1627,29 @@ const styles = StyleSheet.create({
   noticeCopy: { flex: 1 },
   offlineTitle: { color: fieldTheme.color.amber, fontSize: 14, lineHeight: 20, fontWeight: "800" },
   offlineBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, marginTop: 2 },
+  ownRoutePlanner: {
+    minHeight: 76,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.md,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primarySoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
+    marginBottom: fieldTheme.space.lg,
+  },
+  ownRoutePlannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: fieldTheme.color.surface,
+  },
+  ownRoutePlannerCopy: { flex: 1, minWidth: 0 },
+  ownRoutePlannerTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  ownRoutePlannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   summarySection: { marginBottom: fieldTheme.space.xl },
   teamScheduleNotice: {
     minHeight: 52,

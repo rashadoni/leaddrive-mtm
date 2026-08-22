@@ -100,3 +100,11 @@ describe("bootstrap policies — photo watermark", () => {
     expect(toBootstrap({ policies: { photoWatermark: value } }).policies.photoWatermark).toBe(false)
   })
 })
+
+describe("bootstrap policies — own route planning", () => {
+  it("requires an explicit server permission", () => {
+    expect(toBootstrap({ policies: { canPlanOwnRoutes: true } }).policies.canPlanOwnRoutes).toBe(true)
+    expect(toBootstrap({ policies: { canPlanOwnRoutes: false } }).policies.canPlanOwnRoutes).toBe(false)
+    expect(toBootstrap({ policies: {} }).policies.canPlanOwnRoutes).toBe(false)
+  })
+})

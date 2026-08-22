@@ -397,7 +397,9 @@ class ApiClient {
     return this.request("/mobile/profile")
   }
 
-  // --- Heartbeat (keep agent online) ---
+  // --- Legacy heartbeat ---
+  // Presence is GPS/workday-led; this endpoint remains only for old app
+  // versions and never represents an agent as live.
 
   async ping() {
     return this.request("/mobile/ping", { method: "POST" })
@@ -413,6 +415,12 @@ class ApiClient {
     heading?: number
     altitude?: number
     battery?: number
+    /** Bind an offline/retried point to the exact active workday. */
+    workdayId?: string
+    /** Original device capture time, not delayed upload time. */
+    recordedAt?: string
+    /** Deterministic retry key so a retried point is not duplicated. */
+    clientLocationId?: string
   }) {
     return this.request("/mobile/location", {
       method: "POST",

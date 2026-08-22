@@ -18,19 +18,16 @@ import { useHintsStore } from "../store/hints"
 import { useDashboardLayoutStore } from "../store/dashboard-layout"
 import { useWorkdayStore, workdayKey } from "../store/workday"
 import { useBootstrapStore } from "../store/bootstrap"
-import { startTracking, stopTracking } from "../services/location.android"
+import { setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { markMobileOffline, runMobileSync } from "../services/sync-engine"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
-import { mobileRuntimePolicy } from "./mobile-runtime-policy"
 import { version as APP_VERSION } from "../../package.json"
 
-const ANDROID_VERSION_CODE = 28
-const PING_INTERVAL = 60_000
-
+const ANDROID_VERSION_CODE = 29
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 function AppContent() {
@@ -39,36 +36,26 @@ function AppContent() {
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
-  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const runtimePolicy = mobileRuntimePolicy({
-    isLoggedIn,
-    canTrackFieldLocation: canTrackFieldLocation(agent?.role),
-    workdayHydrated,
-    activeWorkdayMatches: activeWorkday?.key === currentWorkdayKey,
-  })
-  const mayTrack = runtimePolicy.locationTracking
+  const activeWorkdayId = activeWorkday?.key === currentWorkdayKey
+    ? activeWorkday.workdayId
+    : null
+  const mayTrack =
+    isLoggedIn &&
+    canTrackFieldLocation(agent?.role) &&
+    workdayHydrated &&
+    activeWorkdayId !== null
 
-  const sendPing = useCallback(() => {
-    api.ping().catch(() => {})
-  }, [])
-
-  const stopPing = useCallback(() => {
-    if (!pingIntervalRef.current) return
-    clearInterval(pingIntervalRef.current)
-    pingIntervalRef.current = null
-  }, [])
-
-  const startPing = useCallback(() => {
-    if (pingIntervalRef.current) return
-    sendPing()
-    pingIntervalRef.current = setInterval(sendPing, PING_INTERVAL)
-  }, [sendPing])
-
-  const flushPendingOperations = useCallback(() => {
+  const flushPendingOperations = useCallback(async () => {
     const auth = useAuthStore.getState()
     if (!auth.isLoggedIn || !auth.agent || !canExecuteFieldWork(auth.agent.role)) return
-    runMobileSync().catch(() => {})
+    try {
+      await runMobileSync()
+    } catch {
+      // The outbox remains queued and will retry on the next connection/app
+      // foreground event. GPS tracking may still start locally for offline
+      // capture, but it cannot fabricate an online map status.
+    }
   }, [])
 
   useEffect(() => {
@@ -96,24 +83,18 @@ function AppContent() {
     })
   }, [])
 
-  // Presence belongs to the authenticated session, not to GPS eligibility.
-  // Managers and agents without an active workday must still remain online.
-  useEffect(() => {
-    if (!runtimePolicy.heartbeat) {
-      stopPing()
-      return stopPing
-    }
-
-    startPing()
-    return stopPing
-  }, [runtimePolicy.heartbeat, startPing, stopPing])
-
   useEffect(() => {
     let cancelled = false
 
-    if (!mayTrack) {
+    if (!mayTrack || !activeWorkdayId) {
+      setTrackingWorkdayId(null)
       stopTracking().catch(() => {})
+      // `end()` clears local state straight after queuing FINISH. Flush here
+      // as well as on start so an online user disappears from the live map
+      // immediately instead of waiting for a foreground/network event.
+      if (isLoggedIn) void flushPendingOperations()
       return () => {
+        setTrackingWorkdayId(null)
         stopTracking().catch(() => {})
       }
     }
@@ -125,17 +106,25 @@ function AppContent() {
       ])
         .then(async (results) => {
           if (results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] !== "granted") return
+          // Send START/FINISH straight away before emitting GPS. This closes a
+          // race where the first coordinate was rejected because the workday
+          // had only been queued locally a moment earlier.
+          await flushPendingOperations()
           const auth = useAuthStore.getState()
           const workday = useWorkdayStore.getState()
           const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
+          const latestWorkdayId = workday.activeWorkday?.key === latestKey
+            ? workday.activeWorkday.workdayId
+            : null
           if (
             cancelled ||
             !auth.isLoggedIn ||
             !canTrackFieldLocation(auth.agent?.role) ||
-            workday.activeWorkday?.key !== latestKey
+            !latestWorkdayId
           ) {
             return
           }
+          setTrackingWorkdayId(latestWorkdayId)
           await startTracking()
           if (cancelled) {
             await stopTracking()
@@ -156,34 +145,40 @@ function AppContent() {
         })
         .catch(() => {})
     } else {
+      setTrackingWorkdayId(activeWorkdayId)
       startTracking().catch(() => {})
     }
 
     return () => {
       cancelled = true
+      setTrackingWorkdayId(null)
       stopTracking().catch(() => {})
     }
-  }, [mayTrack])
+  }, [activeWorkdayId, flushPendingOperations, isLoggedIn, mayTrack])
 
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
-        flushPendingOperations()
-        const auth = useAuthStore.getState()
-        const workday = useWorkdayStore.getState()
-        const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
-        if (auth.isLoggedIn) sendPing()
-        if (auth.isLoggedIn && canTrackFieldLocation(auth.agent?.role) &&
-            workday.activeWorkday?.key === latestKey) {
-          startTracking().catch(() => {})
-        }
+        void (async () => {
+          await flushPendingOperations()
+          const auth = useAuthStore.getState()
+          const workday = useWorkdayStore.getState()
+          const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
+          const latestWorkdayId = workday.activeWorkday?.key === latestKey
+            ? workday.activeWorkday.workdayId
+            : null
+          if (auth.isLoggedIn && canTrackFieldLocation(auth.agent?.role) && latestWorkdayId) {
+            setTrackingWorkdayId(latestWorkdayId)
+            startTracking().catch(() => {})
+          }
+        })()
       }
       appStateRef.current = nextState
     }
 
     const subscription = AppState.addEventListener("change", handleAppStateChange)
     return () => subscription.remove()
-  }, [sendPing, flushPendingOperations])
+  }, [flushPendingOperations])
 
   return (
     <SafeAreaProvider>

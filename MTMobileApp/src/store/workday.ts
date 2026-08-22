@@ -78,7 +78,10 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const activeWorkday = get().activeWorkday
     if (activeWorkday?.key !== key) return
     const occurredAt = new Date().toISOString()
-    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "END", workdayId: activeWorkday.workdayId, occurredAt } })
+    // The server state machine uses FINISH (not END). Keeping the wire value
+    // aligned means that pressing “End workday” actually closes the server
+    // workday and stops live GPS, including after an offline retry.
+    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt } })
     await AsyncStorage.removeItem(STORAGE_KEY)
     if (get().activeWorkday?.key === key) set({ activeWorkday: null })
   }),
