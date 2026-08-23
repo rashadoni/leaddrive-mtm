@@ -31,6 +31,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 
 type Language = "ru" | "az" | "en"
 
@@ -147,23 +148,18 @@ function calendarLanguage(value: string): Language {
   return "ru"
 }
 
-function dateFromKey(value: string): Date | null {
-  const date = new Date(`${value}T00:00:00.000Z`)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
 function formatPeriod(anchor: string, mode: ManagerCalendarMode, language: string, from: string, to: string): string {
   if (mode === "month") {
-    return dateFromKey(anchor)?.toLocaleDateString(language, { month: "long", year: "numeric", timeZone: "UTC" }) ?? anchor
+    return formatLocalizedDate(anchor, language, { month: "long", year: "numeric", timeZone: "UTC" })
   }
   const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", timeZone: "UTC" }
-  const first = dateFromKey(from)?.toLocaleDateString(language, options) ?? from
-  const last = dateFromKey(to)?.toLocaleDateString(language, { ...options, year: "numeric" }) ?? to
+  const first = formatLocalizedDate(from, language, options)
+  const last = formatLocalizedDate(to, language, { ...options, year: "numeric" })
   return `${first} — ${last}`
 }
 
 function formatDate(value: string, language: string): string {
-  return dateFromKey(value)?.toLocaleDateString(language, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }) ?? value
+  return formatLocalizedDate(value, language, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" })
 }
 
 function dayNumber(value: string): string {
@@ -251,7 +247,7 @@ export default function ManagerPlanningCalendarScreen() {
   }, [anchor, mode, selectedDate, today, window])
 
   const dates = useMemo(() => calendarDateKeys(window.from, window.to), [window])
-  const routes = data?.routes ?? []
+  const routes = useMemo(() => data?.routes ?? [], [data?.routes])
   const agents = data?.agents ?? []
   const routesByDate = useMemo(() => {
     const grouped = new Map<string, ManagerCalendarRoute[]>()
@@ -279,7 +275,7 @@ export default function ManagerPlanningCalendarScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
-            onPress={() => navigation.navigate("PlanningBuilder")}
+            onPress={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
             style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
           >
             <Icon name="add-circle" size={21} color={fieldTheme.color.primaryStrong} />
@@ -379,7 +375,7 @@ export default function ManagerPlanningCalendarScreen() {
           routes={selectedRoutes}
           language={i18n.language}
           copy={copy}
-          onCreate={() => navigation.navigate("PlanningBuilder")}
+          onCreate={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
         />
       </ScrollView>
     </View>
@@ -411,7 +407,7 @@ function MonthGrid({ dates, anchor, today, selectedDate, routesByDate, language,
   return (
     <View>
       <View style={styles.weekdayRow}>
-        {weekdayKeys.map((date) => <Text key={date} style={styles.weekdayLabel}>{dateFromKey(date)?.toLocaleDateString(language, { weekday: "short", timeZone: "UTC" })}</Text>)}
+        {weekdayKeys.map((date) => <Text key={date} style={styles.weekdayLabel}>{formatLocalizedDate(date, language, { weekday: "short", timeZone: "UTC" })}</Text>)}
       </View>
       <View style={styles.monthGrid}>
         {dates.map((date) => {
@@ -458,7 +454,7 @@ function WeekStrip({ dates, routesByDate, selectedDate, today, language, onSelec
         const routes = routesByDate.get(date) ?? []
         return (
           <Pressable key={date} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => onSelect(date)} style={[styles.weekDay, selected && styles.weekDaySelected]}>
-            <Text style={[styles.weekDayName, selected && styles.weekDayTextSelected]}>{dateFromKey(date)?.toLocaleDateString(language, { weekday: "short", timeZone: "UTC" })}</Text>
+            <Text style={[styles.weekDayName, selected && styles.weekDayTextSelected]}>{formatLocalizedDate(date, language, { weekday: "short", timeZone: "UTC" })}</Text>
             <Text style={[styles.weekDayNumber, selected && styles.weekDayTextSelected]}>{dayNumber(date)}</Text>
             <Text style={[styles.weekDayCount, selected && styles.weekDayTextSelected]}>{routes.reduce((sum, route) => sum + route.total, 0)}</Text>
             {date === today ? <View style={styles.todayDot} /> : null}
@@ -485,7 +481,7 @@ function WeekMatrix({ dates, agents, routes, selectedDate, language, copy, onSel
           <View style={[styles.matrixAgentCell, styles.matrixHeaderCell]}><Text style={styles.matrixHeaderText}>{copy.agents}</Text></View>
           {dates.map((date) => (
             <Pressable key={date} onPress={() => onSelect(date)} style={[styles.matrixDateCell, styles.matrixHeaderCell, date === selectedDate && styles.matrixDateSelected]}>
-              <Text style={styles.matrixHeaderText}>{dateFromKey(date)?.toLocaleDateString(language, { weekday: "short", timeZone: "UTC" })}</Text>
+              <Text style={styles.matrixHeaderText}>{formatLocalizedDate(date, language, { weekday: "short", timeZone: "UTC" })}</Text>
               <Text style={styles.matrixHeaderDate}>{dayNumber(date)}</Text>
             </Pressable>
           ))}

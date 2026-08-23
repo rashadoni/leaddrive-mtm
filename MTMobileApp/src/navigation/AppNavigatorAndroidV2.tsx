@@ -50,7 +50,7 @@ export type RootStackParamList = {
   GpsHistory: undefined
   Profile: undefined
   ContactTransfer: undefined
-  PlanningBuilder: { mode?: "manager" | "self" } | undefined
+  PlanningBuilder: { mode?: "manager" | "self"; initialDate?: string; initialHorizon?: 1 | 7 } | undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -75,8 +75,15 @@ const PlanningBuilderScreen = ({
   route,
 }: {
   navigation: { goBack: () => void }
-  route: { params?: { mode?: "manager" | "self" } }
-}) => <ManagerPlanningWorkspace onClose={() => navigation.goBack()} mode={route.params?.mode ?? "manager"} />
+  route: { params?: { mode?: "manager" | "self"; initialDate?: string; initialHorizon?: 1 | 7 } }
+}) => (
+  <ManagerPlanningWorkspace
+    onClose={() => navigation.goBack()}
+    mode={route.params?.mode ?? "manager"}
+    initialDate={route.params?.initialDate}
+    initialHorizon={route.params?.initialHorizon}
+  />
+)
 const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 
 const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
