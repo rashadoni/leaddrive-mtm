@@ -21,6 +21,11 @@ describe("field workday guidance", () => {
     }
   })
 
+  it("does not allow the dashboard action before the saved workday is restored", () => {
+    expect(dashboardSource).toContain("const workdayHydrated = useWorkdayStore")
+    expect(dashboardSource).toContain("disabled={workdayBusy || !workdayHydrated}")
+  })
+
   it.each(["ru", "en", "az"] as const)("ships clear %s end-day consequences", (locale) => {
     const copy = mobileResources[locale].todayV2
     expect(copy.endDayConfirmTitle).toBeTruthy()

@@ -247,6 +247,7 @@ export default function DashboardScreen() {
   const resetLayout = useDashboardLayoutStore((state) => state.resetLayout)
 
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const startWorkday = useWorkdayStore((state) => state.start)
   const endWorkday = useWorkdayStore((state) => state.end)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
@@ -330,7 +331,7 @@ export default function DashboardScreen() {
   }
 
   const toggleWorkday = async () => {
-    if (workdayBusy) return
+    if (workdayBusy || !workdayHydrated) return
     setWorkdayBusy(true)
     setMessage(null)
     try {
@@ -344,7 +345,7 @@ export default function DashboardScreen() {
   }
 
   const requestWorkdayToggle = () => {
-    if (workdayBusy) return
+    if (workdayBusy || !workdayHydrated) return
     if (workdayActive) {
       setEndDayConfirmVisible(true)
       return
@@ -454,13 +455,14 @@ export default function DashboardScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t(workdayActive ? "dashboardV2.endDay" : "dashboardV2.startDay")}
-                accessibilityState={{ disabled: workdayBusy, selected: workdayActive }}
-                disabled={workdayBusy}
+                accessibilityState={{ disabled: workdayBusy || !workdayHydrated, selected: workdayActive }}
+                disabled={workdayBusy || !workdayHydrated}
                 onPress={requestWorkdayToggle}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   expandedTablet && styles.expandedTouchHeight,
                   workdayActive && styles.workdayButtonActive,
+                  !workdayHydrated && styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
