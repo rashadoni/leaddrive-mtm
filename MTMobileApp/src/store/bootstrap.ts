@@ -27,7 +27,7 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
         set({ data, capabilities: data.capabilities, loading: false })
         // Reconcile the local workday with the authoritative server shift.
         const key = workdayKey(data.tenant?.id, data.principal?.id)
-        void useWorkdayStore.getState().reconcileFromServer(key, data.workday)
+        await useWorkdayStore.getState().reconcileFromServer(key, data.workday)
       } else {
         set({ loading: false })
       }

@@ -96,6 +96,7 @@ export default function TodayScreen() {
   const agent = useAuthStore((state) => state.agent)
   const { stats, loading: kpiLoading, error: kpiError, fetchKpi } = useKpiStore()
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const workdaySyncError = useWorkdayStore((state) => state.syncError)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const startWorkday = useWorkdayStore((state) => state.start)
   const endWorkday = useWorkdayStore((state) => state.end)
@@ -110,7 +111,10 @@ export default function TodayScreen() {
   const [endDayConfirmVisible, setEndDayConfirmVisible] = useState(false)
 
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const workdayActive = workdayHydrated && activeWorkday?.key === currentWorkdayKey
+  const workdayMatches = workdayHydrated && activeWorkday?.key === currentWorkdayKey
+  const workdayStarting = workdayMatches && activeWorkday?.syncState === "START_PENDING"
+  const workdayEnding = workdayMatches && activeWorkday?.syncState === "FINISH_PENDING"
+  const workdayActive = workdayMatches && !workdayEnding
   const todayKey = localDateKey()
 
   const refresh = useCallback(async () => {
@@ -177,7 +181,7 @@ export default function TodayScreen() {
   }, [refresh, refreshing])
 
   const toggleWorkday = useCallback(async () => {
-    if (workdayBusy || !workdayHydrated) return
+    if (workdayBusy || workdayEnding || !workdayHydrated) return
     setWorkdayBusy(true)
     setWorkdayError(false)
     try {
@@ -188,16 +192,16 @@ export default function TodayScreen() {
     } finally {
       setWorkdayBusy(false)
     }
-  }, [currentWorkdayKey, endWorkday, startWorkday, workdayActive, workdayBusy, workdayHydrated])
+  }, [currentWorkdayKey, endWorkday, startWorkday, workdayActive, workdayBusy, workdayEnding, workdayHydrated])
 
   const requestWorkdayToggle = useCallback(() => {
-    if (workdayBusy || !workdayHydrated) return
+    if (workdayBusy || workdayEnding || !workdayHydrated) return
     if (workdayActive) {
       setEndDayConfirmVisible(true)
       return
     }
     toggleWorkday().catch(() => {})
-  }, [toggleWorkday, workdayActive, workdayBusy, workdayHydrated])
+  }, [toggleWorkday, workdayActive, workdayBusy, workdayEnding, workdayHydrated])
 
   const confirmEndDay = useCallback(() => {
     setEndDayConfirmVisible(false)
@@ -356,10 +360,18 @@ export default function TodayScreen() {
             <View style={[styles.workdayPanel, !twoPane && styles.workdayPanelSingle]}>
               <View style={styles.workdayCopy}>
                 <View style={styles.workdayTitleRow}>
-                  <View style={[styles.statusDot, workdayActive && styles.statusDotActive]} />
+                  <View style={[
+                    styles.statusDot,
+                    workdayActive && styles.statusDotActive,
+                    (workdayStarting || workdayEnding) && styles.statusDotPending,
+                  ]} />
                   <Text style={styles.workdayTitle}>
                     {t(!workdayHydrated
                       ? "todayV2.dayChecking"
+                      : workdayEnding
+                        ? "todayV2.dayEnding"
+                      : workdayStarting
+                        ? "todayV2.dayStarting"
                       : workdayActive
                         ? "todayV2.dayActive"
                         : "todayV2.dayNotStarted")}
@@ -368,27 +380,31 @@ export default function TodayScreen() {
                 <Text style={styles.workdayBody}>
                   {!workdayHydrated
                     ? t("todayV2.dayCheckingBody")
+                    : workdayEnding
+                    ? t("todayV2.dayEndingBody")
+                    : workdayStarting
+                    ? t("todayV2.dayStartingBody")
                     : workdayActive && startedAt
                     ? t("todayV2.dayStartedAt", { time: startedAt })
                     : t("todayV2.dayStartHint")}
                 </Text>
-                {workdayError ? (
+                {workdayError || workdaySyncError ? (
                   <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text>
                 ) : null}
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ selected: workdayActive, disabled: workdayBusy || !workdayHydrated }}
-                disabled={workdayBusy || !workdayHydrated}
+                accessibilityState={{ selected: workdayActive, disabled: workdayBusy || workdayEnding || !workdayHydrated }}
+                disabled={workdayBusy || workdayEnding || !workdayHydrated}
                 onPress={requestWorkdayToggle}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   workdayActive && styles.workdayButtonActive,
                   pressed && styles.pressed,
-                  (workdayBusy || !workdayHydrated) && styles.disabled,
+                  (workdayBusy || workdayEnding || !workdayHydrated) && styles.disabled,
                 ]}
               >
-                {workdayBusy || !workdayHydrated ? (
+                {workdayBusy || workdayEnding || !workdayHydrated ? (
                   <ActivityIndicator size="small" color={workdayActive ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
                 ) : (
                   <Icon
@@ -398,7 +414,11 @@ export default function TodayScreen() {
                   />
                 )}
                 <Text style={[styles.workdayButtonText, workdayActive && styles.workdayButtonTextActive]}>
-                  {t(workdayActive ? "todayV2.endDay" : "todayV2.startDay")}
+                  {t(workdayEnding
+                    ? "todayV2.endDayPendingButton"
+                    : workdayActive
+                      ? "todayV2.endDay"
+                      : "todayV2.startDay")}
                 </Text>
               </Pressable>
             </View>
@@ -739,6 +759,9 @@ const styles = StyleSheet.create({
   },
   statusDotActive: {
     backgroundColor: fieldTheme.color.success,
+  },
+  statusDotPending: {
+    backgroundColor: fieldTheme.color.amber,
   },
   workdayTitle: {
     flex: 1,

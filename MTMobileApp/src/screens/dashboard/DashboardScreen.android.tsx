@@ -247,11 +247,14 @@ export default function DashboardScreen() {
   const resetLayout = useDashboardLayoutStore((state) => state.resetLayout)
 
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const workdaySyncError = useWorkdayStore((state) => state.syncError)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const startWorkday = useWorkdayStore((state) => state.start)
   const endWorkday = useWorkdayStore((state) => state.end)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const workdayActive = activeWorkday?.key === currentWorkdayKey
+  const workdayMatches = workdayHydrated && activeWorkday?.key === currentWorkdayKey
+  const workdayEnding = workdayMatches && activeWorkday?.syncState === "FINISH_PENDING"
+  const workdayActive = workdayMatches && !workdayEnding
   const deviceClass = deviceClassFor(width, height)
   const context = useMemo(
     () => ({
@@ -331,7 +334,7 @@ export default function DashboardScreen() {
   }
 
   const toggleWorkday = async () => {
-    if (workdayBusy || !workdayHydrated) return
+    if (workdayBusy || workdayEnding || !workdayHydrated) return
     setWorkdayBusy(true)
     setMessage(null)
     try {
@@ -345,7 +348,7 @@ export default function DashboardScreen() {
   }
 
   const requestWorkdayToggle = () => {
-    if (workdayBusy || !workdayHydrated) return
+    if (workdayBusy || workdayEnding || !workdayHydrated) return
     if (workdayActive) {
       setEndDayConfirmVisible(true)
       return
@@ -454,21 +457,33 @@ export default function DashboardScreen() {
             {!privileged && workspace === "agent" && (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t(workdayActive ? "dashboardV2.endDay" : "dashboardV2.startDay")}
-                accessibilityState={{ disabled: workdayBusy || !workdayHydrated, selected: workdayActive }}
-                disabled={workdayBusy || !workdayHydrated}
+                accessibilityLabel={t(workdayEnding
+                  ? "todayV2.endDayPendingButton"
+                  : workdayActive
+                    ? "dashboardV2.endDay"
+                    : "dashboardV2.startDay")}
+                accessibilityState={{ disabled: workdayBusy || workdayEnding || !workdayHydrated, selected: workdayActive }}
+                disabled={workdayBusy || workdayEnding || !workdayHydrated}
                 onPress={requestWorkdayToggle}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   expandedTablet && styles.expandedTouchHeight,
                   workdayActive && styles.workdayButtonActive,
-                  !workdayHydrated && styles.disabled,
+                  (workdayBusy || workdayEnding || !workdayHydrated) && styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
-                <Icon name={workdayActive ? "stop-circle" : "play-circle"} size={19} color={fieldTheme.color.onColor} />
+                {workdayBusy || workdayEnding || !workdayHydrated ? (
+                  <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+                ) : (
+                  <Icon name={workdayActive ? "stop-circle" : "play-circle"} size={19} color={fieldTheme.color.onColor} />
+                )}
                 <Text style={styles.workdayText}>
-                  {t(workdayActive ? "dashboardV2.endDay" : "dashboardV2.startDay")}
+                  {t(workdayEnding
+                    ? "todayV2.endDayPendingButton"
+                    : workdayActive
+                      ? "dashboardV2.endDay"
+                      : "dashboardV2.startDay")}
                 </Text>
               </Pressable>
             )}
@@ -663,6 +678,9 @@ export default function DashboardScreen() {
 
         {error && workspace === "agent" && (
           <Text style={[styles.message, { marginHorizontal: horizontalPadding }]}>{error}</Text>
+        )}
+        {workdaySyncError && workspace === "agent" && (
+          <Text style={[styles.message, { marginHorizontal: horizontalPadding }]}>{t("todayV2.workdayError")}</Text>
         )}
         {managerError && workspace === "manager" && (
           <Text style={[styles.message, { marginHorizontal: horizontalPadding }]}>{managerError}</Text>

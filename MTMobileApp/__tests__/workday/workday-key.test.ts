@@ -2,6 +2,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 )
 jest.mock("../../src/services/outbox", () => ({
+  allOutboxOperations: jest.fn().mockResolvedValue([]),
   enqueueOutboxOperation: jest.fn().mockResolvedValue(undefined),
 }))
 
@@ -17,7 +18,7 @@ describe("workday identity", () => {
     await AsyncStorage.clear()
     jest.clearAllMocks()
     setOfflineScope("tenant-a", "agent-a")
-    useWorkdayStore.setState({ activeWorkday: null, hydrated: false })
+    useWorkdayStore.setState({ activeWorkday: null, syncError: null, hydrated: false })
   })
 
   it("isolates an active workday by tenant and user", () => {
@@ -33,11 +34,12 @@ describe("workday identity", () => {
   it("publishes start and end state only after persistence succeeds", async () => {
     await useWorkdayStore.getState().start("tenant-a:agent-a")
     expect(useWorkdayStore.getState().activeWorkday?.key).toBe("tenant-a:agent-a")
+    expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe("START_PENDING")
     expect(await AsyncStorage.getItem(STORAGE_KEY)).not.toBeNull()
 
     await useWorkdayStore.getState().end("tenant-a:agent-a")
-    expect(useWorkdayStore.getState().activeWorkday).toBeNull()
-    expect(await AsyncStorage.getItem(STORAGE_KEY)).toBeNull()
+    expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe("FINISH_PENDING")
+    expect(await AsyncStorage.getItem(STORAGE_KEY)).toContain("FINISH_PENDING")
   })
 
   it("uses the server's FINISH action when ending a workday", async () => {
@@ -61,7 +63,7 @@ describe("workday identity", () => {
 
   it("keeps the active workday when persisted end fails", async () => {
     await useWorkdayStore.getState().start("tenant-a:agent-a")
-    ;(AsyncStorage.removeItem as jest.Mock).mockRejectedValueOnce(new Error("disk unavailable"))
+    ;(AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error("disk unavailable"))
 
     await expect(useWorkdayStore.getState().end("tenant-a:agent-a"))
       .rejects.toThrow("disk unavailable")
@@ -71,24 +73,26 @@ describe("workday identity", () => {
 
   it("serializes an end followed by a new user's start", async () => {
     await useWorkdayStore.getState().start("tenant-a:agent-a")
-    let releaseRemove!: () => void
-    const removeGate = new Promise<void>((resolve) => { releaseRemove = resolve })
-    ;(AsyncStorage.removeItem as jest.Mock).mockImplementationOnce(async () => {
-      await removeGate
-      await AsyncStorage.clear()
+    let releaseFinishWrite!: () => void
+    let markFinishWriteReached!: () => void
+    const finishWriteGate = new Promise<void>((resolve) => { releaseFinishWrite = resolve })
+    const finishWriteReached = new Promise<void>((resolve) => { markFinishWriteReached = resolve })
+    ;(AsyncStorage.setItem as jest.Mock).mockImplementationOnce(async () => {
+      markFinishWriteReached()
+      await finishWriteGate
     })
 
     const ending = useWorkdayStore.getState().end("tenant-a:agent-a")
     const starting = useWorkdayStore.getState().start("tenant-a:agent-b")
-    await Promise.resolve()
-    // The second start must stay behind the unfinished remove. Seeing only
-    // the original start here proves the mutation queue is actually serial.
-    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(1)
+    await finishWriteReached
+    // The second start must stay behind the unfinished FINISH write. Seeing
+    // only the original START and pending FINISH writes proves serialization.
+    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(2)
 
-    releaseRemove()
+    releaseFinishWrite()
     await Promise.all([ending, starting])
 
-    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(2)
+    expect(AsyncStorage.setItem).toHaveBeenCalledTimes(3)
     expect(useWorkdayStore.getState().activeWorkday?.key).toBe("tenant-a:agent-b")
     const persisted = JSON.parse((await AsyncStorage.getItem(STORAGE_KEY)) || "null")
     expect(persisted?.key).toBe("tenant-a:agent-b")
