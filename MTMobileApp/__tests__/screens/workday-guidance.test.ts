@@ -1,0 +1,31 @@
+import fs from "fs"
+import path from "path"
+import { mobileResources } from "../../src/i18n/mobile-resources"
+
+describe("field workday guidance", () => {
+  const todaySource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/today/TodayScreen.tsx"),
+    "utf8",
+  )
+  const dashboardSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/dashboard/DashboardScreen.android.tsx"),
+    "utf8",
+  )
+
+  it("requires explicit confirmation before ending the day from either entry point", () => {
+    for (const source of [todaySource, dashboardSource]) {
+      expect(source).toContain("endDayConfirmVisible")
+      expect(source).toContain("<ConfirmSheet")
+      expect(source).toContain('title={t("todayV2.endDayConfirmTitle")}')
+      expect(source).toContain("onConfirm={confirmEndDay}")
+    }
+  })
+
+  it.each(["ru", "en", "az"] as const)("ships clear %s end-day consequences", (locale) => {
+    const copy = mobileResources[locale].todayV2
+    expect(copy.endDayConfirmTitle).toBeTruthy()
+    expect(copy.endDayConfirmBody).toBeTruthy()
+    expect(copy.endDayConfirmCancel).toBeTruthy()
+    expect(copy.endDayConfirmAction).toBeTruthy()
+  })
+})
