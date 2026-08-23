@@ -5,6 +5,10 @@ import {
   invalidPlanningAssignmentDates,
   lockedPlanningDates,
   planningDateKeys,
+  planningLocalTimeToIso,
+  planningTimeLabel,
+  nextPlanningTime,
+  movePlanningTarget,
   planningDraftConflictDates,
   planningPublishConflictDates,
   planningTargetForDate,
@@ -12,6 +16,7 @@ import {
   planningWriteConflictDates,
   publishablePlanningDrafts,
   removePlanningTarget,
+  updatePlanningTargetTime,
   toPlanningAgent,
   toPlanningContactTarget,
   toPlanningDetailedRoute,
@@ -191,6 +196,21 @@ describe("friendly manager planning model", () => {
     expect(assignPlanningTarget(repeated, doctor, "2026-08-25")).toEqual(repeated)
     expect(removePlanningTarget(repeated, doctor.key, "2026-08-24")).toEqual([{ ...doctor, date: "2026-08-25" }])
     expect(removePlanningTarget(repeated, doctor.key)).toEqual([])
+  })
+
+  it("stores tenant-local visit times and keeps a simple per-day order", () => {
+    const nineBaku = planningLocalTimeToIso("2026-08-24", "09:00", "Asia/Baku")
+    expect(nineBaku).toBe("2026-08-24T05:00:00.000Z")
+    expect(planningTimeLabel(nineBaku, "Asia/Baku")).toBe("09:00")
+    expect(planningLocalTimeToIso("2026-08-24", "25:00", "Asia/Baku")).toBeNull()
+
+    const rows: PlanningAssignedTarget[] = [
+      { ...clinic, date: "2026-08-24", plannedTime: nineBaku },
+      { ...doctor, date: "2026-08-24", plannedTime: planningLocalTimeToIso("2026-08-24", "09:30", "Asia/Baku") },
+    ]
+    expect(nextPlanningTime(rows, "2026-08-24", "Asia/Baku")).toBe("10:00")
+    expect(movePlanningTarget(rows, doctor.key, "2026-08-24", -1).map((target) => target.key)).toEqual([doctor.key, clinic.key])
+    expect(updatePlanningTargetTime(rows, clinic.key, "2026-08-24", null)[0].plannedTime).toBeNull()
   })
 
   it("writes only changed dirty days with expectedVersion and preserves plannedTime", () => {

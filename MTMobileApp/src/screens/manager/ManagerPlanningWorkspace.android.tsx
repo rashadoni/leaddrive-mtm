@@ -22,16 +22,25 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
 import {
+  DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
+  mobileRouteTargetLabel,
+  type MobileRouteTargetType,
+} from "../../services/bootstrap"
+import {
   assignPlanningTarget,
   buildPlanningRouteWrites,
   editablePlanningTargets,
   invalidPlanningAssignmentDates,
   lockedPlanningDates,
   lockedPlanningTargetCells,
+  movePlanningTarget,
+  nextPlanningTime,
   planningDateKeys,
   planningDraftConflictDates,
   planningPublishConflictDates,
   planningTargetForDate,
+  planningLocalTimeToIso,
+  planningTimeLabel,
   planningTodayKey,
   planningWriteConflictDates,
   publishablePlanningDrafts,
@@ -41,12 +50,12 @@ import {
   toPlanningContactTarget,
   toPlanningDetailedRoute,
   toPlanningOrganizationTarget,
+  updatePlanningTargetTime,
   type PlanningAgent,
   type PlanningAssignedTarget,
   type PlanningDetailedRoute,
   type PlanningHorizon,
   type PlanningTarget,
-  type PlanningTargetKind,
 } from "../../services/manager-planning"
 
 type PlanningStep = 1 | 2 | 3
@@ -114,6 +123,28 @@ function uniqueTargets(assignments: PlanningTarget[], routes: PlanningDetailedRo
   return [...byKey.values()].sort((left, right) => left.name.localeCompare(right.name))
 }
 
+function targetsForPlanningDay(
+  date: string,
+  assignments: PlanningAssignedTarget[],
+  routes: PlanningDetailedRoute[],
+): PlanningAssignedTarget[] {
+  const byKey = new Map<string, PlanningAssignedTarget>()
+  routes
+    .filter((route) => route.date === date && route.status !== "DRAFT")
+    .forEach((route) => route.points.forEach((target) => byKey.set(target.key, { ...target, date })))
+  assignments
+    .filter((target) => target.date === date)
+    .forEach((target) => byKey.set(target.key, target))
+  return [...byKey.values()]
+}
+
+function targetTypeIcon(target: MobileRouteTargetType): string {
+  if (target.direction === "DOCTOR") return "person-outline"
+  if (target.direction === "PHARMACY") return "medkit-outline"
+  if (target.objectType === "CLINIC") return "medical-outline"
+  return "business-outline"
+}
+
 function detailedRoutesFromResponses(responses: any[]): PlanningDetailedRoute[] {
   return responses.flatMap((response: any) => {
     const rows: unknown[] = Array.isArray(response?.data?.routes) ? response.data.routes : []
@@ -145,6 +176,7 @@ export default function ManagerPlanningWorkspace({
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
   const tenantTimezone = useBootstrapStore((state) => state.data?.timezone)
+  const configuredTargetTypes = useBootstrapStore((state) => state.data?.routeTargetTypes)
   const mayPlanOwnRoutes = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   const currentAgent = useAuthStore((state) => state.agent)
   const selfPlanning = mode === "self"
@@ -157,13 +189,17 @@ export default function ManagerPlanningWorkspace({
   const [horizon, setHorizon] = useState<PlanningHorizon>(() => initialHorizon ?? (selfPlanning ? 1 : 7))
   const dates = useMemo(() => planningDateKeys(anchor, horizon), [anchor, horizon])
   const singleDay = horizon === 1
+  const routeTargetTypes = useMemo(
+    () => configuredTargetTypes?.filter((target) => target.enabled) ?? DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
+    [configuredTargetTypes],
+  )
   const [agents, setAgents] = useState<PlanningAgent[]>([])
   const [agentId, setAgentId] = useState("")
   const [routes, setRoutes] = useState<PlanningDetailedRoute[]>([])
   const [assignments, setAssignments] = useState<PlanningAssignedTarget[]>([])
-  const [chosenTargets, setChosenTargets] = useState<PlanningTarget[]>([])
   const [dirtyDates, setDirtyDates] = useState<Set<string>>(() => new Set())
-  const [targetKind, setTargetKind] = useState<PlanningTargetKind>("organization")
+  const [activeDate, setActiveDate] = useState(anchor)
+  const [targetTypeId, setTargetTypeId] = useState("")
   const [targetSearch, setTargetSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [targetResults, setTargetResults] = useState<PlanningTarget[]>([])
@@ -192,15 +228,19 @@ export default function ManagerPlanningWorkspace({
   const previousToday = useRef(today)
 
   const selectedAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? null, [agentId, agents])
+  const activeTargetType = useMemo(
+    () => routeTargetTypes.find((target) => target.id === targetTypeId) ?? routeTargetTypes[0],
+    [routeTargetTypes, targetTypeId],
+  )
+  const targetKind = activeTargetType?.direction === "DOCTOR" ? "contact" : "organization"
   const lockedDates = useMemo(() => new Set(lockedPlanningDates(routes)), [routes])
   const lockedCells = useMemo(() => new Set(lockedPlanningTargetCells(routes)), [routes])
   const multipleDraftDates = useMemo(() => planningDraftConflictDates(routes, agentId), [agentId, routes])
   const invalidAssignmentDates = useMemo(() => invalidPlanningAssignmentDates(assignments), [assignments])
-  const matrixTargets = useMemo(() => uniqueTargets([...assignments, ...chosenTargets], routes), [assignments, chosenTargets, routes])
-  const mutableTargetCount = useMemo(() => new Set([...assignments, ...chosenTargets].map((target) => target.key)).size, [assignments, chosenTargets])
-  const unassignedTargetKeys = useMemo(() => matrixTargets
-    .filter((target) => !dates.some((date) => assignments.some((assignment) => assignment.key === target.key && assignment.date === date) || lockedCells.has(`${date}|${target.key}`)))
-    .map((target) => target.key), [assignments, dates, lockedCells, matrixTargets])
+  const matrixTargets = useMemo(() => uniqueTargets(assignments, routes), [assignments, routes])
+  const mutableTargetCount = useMemo(() => new Set(assignments.map((target) => target.key)).size, [assignments])
+  const activeDayTargets = useMemo(() => targetsForPlanningDay(activeDate, assignments, routes), [activeDate, assignments, routes])
+  const activeDateEditable = activeDate >= today && !lockedDates.has(activeDate) && !multipleDraftDates.includes(activeDate)
   const planningHintId = `planning.${singleDay ? "day" : "week"}.step.${step}`
   const planningHelpKey = step === 1
     ? (singleDay ? "managerShell.planHelpDayStep1" : "managerShell.planHelpWeekStep1")
@@ -274,7 +314,6 @@ export default function ManagerPlanningWorkspace({
     if (!preserve) {
       setRoutes([])
       setAssignments([])
-      setChosenTargets([])
     }
     try {
       const responses = await Promise.all(selectedDates.map((date) => api.getRoutesForAgent(date, selectedAgentId)))
@@ -301,6 +340,15 @@ export default function ManagerPlanningWorkspace({
   }, [agentId, dates, loadPlan])
 
   useEffect(() => {
+    if (!dates.includes(activeDate)) setActiveDate(dates[0])
+  }, [activeDate, dates])
+
+  useEffect(() => {
+    if (!activeTargetType && routeTargetTypes[0]) setTargetTypeId(routeTargetTypes[0].id)
+    else if (activeTargetType && targetTypeId !== activeTargetType.id) setTargetTypeId(activeTargetType.id)
+  }, [activeTargetType, routeTargetTypes, targetTypeId])
+
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(targetSearch.trim()), 350)
     return () => clearTimeout(timer)
   }, [targetSearch])
@@ -312,7 +360,13 @@ export default function ManagerPlanningWorkspace({
     setTargetError(false)
     setTargetResults([])
     const request = targetKind === "organization"
-      ? api.getOrganizations({ search: debouncedSearch || undefined, page: 1, limit: 50 }, controller.signal)
+      ? api.getOrganizations({
+          search: debouncedSearch || undefined,
+          page: 1,
+          limit: 50,
+          objectType: activeTargetType?.objectType ?? undefined,
+          organizationKind: activeTargetType?.organizationKind ?? undefined,
+        }, controller.signal)
       : api.getContacts({ search: debouncedSearch || undefined, page: 1, limit: 50 }, controller.signal)
     request.then((response: any) => {
       if (controller.signal.aborted) return
@@ -328,7 +382,7 @@ export default function ManagerPlanningWorkspace({
       if (!controller.signal.aborted) setLoadingTargets(false)
     })
     return () => controller.abort()
-  }, [debouncedSearch, step, targetKind, targetReload])
+  }, [activeTargetType?.objectType, activeTargetType?.organizationKind, debouncedSearch, step, targetKind, targetReload])
 
   const changeWindow = (nextAnchor: string, nextHorizon = horizon) => {
     if (saving) return
@@ -337,10 +391,10 @@ export default function ManagerPlanningWorkspace({
     contextVersion.current += 1
     setAnchor(nextAnchor)
     setHorizon(nextHorizon)
+    setActiveDate(nextAnchor)
     setStep(1)
     setRoutes([])
     setAssignments([])
-    setChosenTargets([])
     setDirtyDates(new Set())
     setSaveMessage(null)
   }
@@ -354,12 +408,9 @@ export default function ManagerPlanningWorkspace({
     setStep(1)
     setRoutes([])
     setAssignments([])
-    setChosenTargets([])
     setDirtyDates(new Set())
     setSaveMessage(null)
   }
-
-  const firstEditableDate = dates.find((date) => date >= today && !lockedDates.has(date) && !multipleDraftDates.includes(date))
 
   const markDirty = (changedDates: string[]) => {
     setDirtyDates((current) => {
@@ -370,34 +421,43 @@ export default function ManagerPlanningWorkspace({
   }
 
   const toggleTarget = (target: PlanningTarget) => {
-    if (saving || !firstEditableDate) return
-    const selected = matrixTargets.some((selectedTarget) => selectedTarget.key === target.key)
+    if (saving || !activeDateEditable) return
+    const selected = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
     if (selected) {
-      markDirty(assignments.filter((assignment) => assignment.key === target.key).map((assignment) => assignment.date))
-      setAssignments((current) => removePlanningTarget(current, target.key))
-      setChosenTargets((current) => current.filter((chosen) => chosen.key !== target.key))
+      setAssignments((current) => removePlanningTarget(current, target.key, activeDate))
     } else {
-      const resolved = planningTargetForDate(target, firstEditableDate)
+      const resolved = planningTargetForDate(target, activeDate)
       if (!resolved) return
-      setChosenTargets((current) => [...current.filter((chosen) => chosen.key !== resolved.key), resolved])
-      if (singleDay) {
-        markDirty([firstEditableDate])
-        setAssignments((current) => assignPlanningTarget(current, resolved, firstEditableDate))
-      }
+      setAssignments((current) => {
+        const time = nextPlanningTime(current, activeDate, tenantTimezone)
+        const plannedTime = planningLocalTimeToIso(activeDate, time, tenantTimezone)
+        return assignPlanningTarget(current, { ...resolved, plannedTime }, activeDate)
+      })
     }
+    markDirty([activeDate])
     setSaveMessage(null)
   }
 
-  const toggleMatrixCell = (target: PlanningTarget, date: string) => {
+  const removeDayTarget = (target: PlanningTarget, date: string) => {
     if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return
-    const selected = assignments.some((assignment) => assignment.key === target.key && assignment.date === date)
-    if (selected) {
-      setAssignments((current) => removePlanningTarget(current, target.key, date))
-    } else {
-      const resolved = planningTargetForDate(target, date)
-      if (!resolved) return
-      setAssignments((current) => assignPlanningTarget(current, resolved, date))
-    }
+    setAssignments((current) => removePlanningTarget(current, target.key, date))
+    markDirty([date])
+    setSaveMessage(null)
+  }
+
+  const changeDayTargetTime = (target: PlanningTarget, date: string, time: string): boolean => {
+    if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return false
+    const plannedTime = planningLocalTimeToIso(date, time, tenantTimezone)
+    if (!plannedTime) return false
+    setAssignments((current) => updatePlanningTargetTime(current, target.key, date, plannedTime))
+    markDirty([date])
+    setSaveMessage(null)
+    return true
+  }
+
+  const moveDayTarget = (target: PlanningTarget, date: string, direction: -1 | 1) => {
+    if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return
+    setAssignments((current) => movePlanningTarget(current, target.key, date, direction))
     markDirty([date])
     setSaveMessage(null)
   }
@@ -422,7 +482,7 @@ export default function ManagerPlanningWorkspace({
     () => [...new Set(assignments.filter((target) => lockedDates.has(target.date)).map((target) => target.date))],
     [assignments, lockedDates],
   )
-  const canSave = Boolean(agentId) && multipleDraftDates.length === 0 && invalidAssignmentDates.length === 0 && unassignedTargetKeys.length === 0 && !saving && !planError && (
+  const canSave = Boolean(agentId) && multipleDraftDates.length === 0 && invalidAssignmentDates.length === 0 && !saving && !planError && (
     (saveMode === "draft" && writes.length > 0) ||
     (saveMode === "publish" && canPublish && publishBlockedDates.length === 0 && (
       writes.some((write) => write.points.length > 0) || publishDrafts.length > 0
@@ -566,10 +626,7 @@ export default function ManagerPlanningWorkspace({
             ...current.filter((target) => !retryDates.has(target.date)),
             ...operationAssignments.filter((target) => retryDates.has(target.date)),
           ])
-          setChosenTargets((current) => current.filter((target) => operationAssignments.some((assignment) => retryDates.has(assignment.date) && assignment.key === target.key)))
           setDirtyDates(new Set(retryDates))
-        } else if (isCurrent()) {
-          setChosenTargets([])
         }
         if (isCurrent()) setSaving(false)
       }
@@ -760,25 +817,78 @@ export default function ManagerPlanningWorkspace({
               <Text style={styles.selectionSummaryText}>{t(singleDay ? "managerShell.planSelectionSummaryDay" : "managerShell.planSelectionSummaryWeek", { people: mutableTargetCount, visits: assignments.length })}</Text>
               <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.textButton, saving && styles.disabled]} onPress={() => setStep(1)}><Text style={styles.textButtonText}>{t("managerShell.planChangeSetup")}</Text></Pressable>
             </View>
-            <View style={styles.segment}>
-              {(["organization", "contact"] as PlanningTargetKind[]).map((kind) => (
-                <Pressable key={kind} accessibilityRole="tab" accessibilityState={{ selected: targetKind === kind, disabled: saving }} disabled={saving} style={[styles.segmentButton, targetKind === kind && styles.segmentButtonActive, saving && styles.disabled]} onPress={() => { setTargetKind(kind); setTargetSearch("") }}>
-                  <Icon name={kind === "organization" ? "business-outline" : "medkit-outline"} size={18} color={targetKind === kind ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
-                  <Text style={[styles.segmentText, targetKind === kind && styles.segmentTextActive]}>{t(kind === "organization" ? "managerShell.planOrganizations" : "managerShell.planContacts")}</Text>
-                </Pressable>
-              ))}
-            </View>
+
+            {!singleDay ? (
+              <WeekDayChooser
+                dates={dates}
+                activeDate={activeDate}
+                assignments={assignments}
+                routes={routes}
+                lockedDates={lockedDates}
+                multipleDraftDates={multipleDraftDates}
+                today={today}
+                timezone={tenantTimezone}
+                language={i18n.language}
+                disabled={saving}
+                onSelect={setActiveDate}
+                t={t}
+              />
+            ) : null}
+
+            <DayPlanEditor
+              date={activeDate}
+              rows={activeDayTargets}
+              lockedCells={lockedCells}
+              editable={activeDateEditable}
+              saving={saving}
+              timezone={tenantTimezone}
+              language={i18n.language}
+              onTime={changeDayTargetTime}
+              onMove={moveDayTarget}
+              onRemove={removeDayTarget}
+              t={t}
+            />
+
+            <View style={styles.targetBrowser}>
+              <View style={styles.targetBrowserHeading}>
+                <View style={styles.targetBrowserHeadingCopy}>
+                  <Text style={styles.fieldLabel}>{t("managerShell.planChooseTargetType")}</Text>
+                  <Text style={styles.fieldHelp}>{t("managerShell.planChooseTargetTypeHelp")}</Text>
+                </View>
+                <View style={styles.activeDayPill}>
+                  <Icon name="calendar-outline" size={16} color={fieldTheme.color.primaryStrong} />
+                  <Text style={styles.activeDayPillText}>{formatPlanDate(activeDate, i18n.language, true)}</Text>
+                </View>
+              </View>
+              <View style={styles.targetTypeTabs} accessibilityRole="tablist">
+                {routeTargetTypes.map((type) => {
+                  const selected = activeTargetType?.id === type.id
+                  return (
+                    <Pressable
+                      key={type.id}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected, disabled: saving || !activeDateEditable }}
+                      disabled={saving || !activeDateEditable}
+                      style={({ pressed }) => [styles.targetTypeButton, selected && styles.targetTypeButtonActive, (saving || !activeDateEditable) && styles.disabled, pressed && styles.pressed]}
+                      onPress={() => { setTargetTypeId(type.id); setTargetSearch("") }}
+                    >
+                      <Icon name={targetTypeIcon(type)} size={19} color={selected ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
+                      <Text style={[styles.targetTypeText, selected && styles.targetTypeTextActive]}>{mobileRouteTargetLabel(type, i18n.language)}</Text>
+                    </Pressable>
+                  )
+                })}
+              </View>
             <View style={styles.searchBox}>
               <Icon name="search" size={20} color={fieldTheme.color.inkMuted} />
               <TextInput
                 value={targetSearch}
                 onChangeText={setTargetSearch}
-                placeholder={t(targetKind === "organization" ? "managerShell.planSearchOrganizations" : "managerShell.planSearchContacts")}
+                placeholder={t("managerShell.planSearchTarget")}
                 placeholderTextColor={fieldTheme.color.inkMuted}
                 accessibilityLabel={t("managerShell.planSearch")}
                 style={styles.searchInput}
                 returnKeyType="search"
-                editable={!saving}
+                editable={!saving && activeDateEditable}
               />
               {targetSearch ? <Pressable accessibilityRole="button" accessibilityLabel={t("common.clear")} accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.clearButton, saving && styles.disabled]} onPress={() => setTargetSearch("")}><Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} /></Pressable> : null}
             </View>
@@ -793,16 +903,13 @@ export default function ManagerPlanningWorkspace({
                 <Text style={styles.resultCount}>{t("managerShell.planResults", { loaded: targetResults.length, total: targetTotal })}</Text>
                 <View style={[styles.targetList, tablet && styles.targetListTablet]}>
                   {targetResults.map((target) => {
-                    const selectedTarget = assignments.find((assignment) =>
-                      assignment.key === target.key && assignment.date === firstEditableDate) ??
-                      assignments.find((assignment) => assignment.key === target.key)
-                    const chosenTarget = chosenTargets.find((chosen) => chosen.key === target.key)
-                    const mutableSelection = Boolean(selectedTarget || chosenTarget)
-                    const selected = mutableSelection || matrixTargets.some((matrixTarget) => matrixTarget.key === target.key)
-                    const resolved = firstEditableDate ? planningTargetForDate(target, firstEditableDate) : null
-                    const displayTarget = selectedTarget ?? chosenTarget ?? resolved ?? target
+                    const selectedTarget = activeDayTargets.find((assignment) => assignment.key === target.key)
+                    const mutableSelection = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
+                    const selected = Boolean(selectedTarget)
+                    const resolved = planningTargetForDate(target, activeDate)
+                    const displayTarget = selectedTarget ?? resolved ?? target
                     const unavailable = !selected && !resolved
-                    const disabled = saving || (selected && !mutableSelection) || (!selected && (!firstEditableDate || !resolved))
+                    const disabled = saving || !activeDateEditable || (selected && !mutableSelection) || (!selected && !resolved)
                     return (
                       <TargetOption key={target.key} target={displayTarget} selected={selected} unavailable={unavailable} disabled={disabled} onPress={() => toggleTarget(target)} t={t} tablet={tablet} />
                     )
@@ -821,10 +928,11 @@ export default function ManagerPlanningWorkspace({
                 onAction={() => setTargetReload((value) => value + 1)}
               />
             )}
-            {!firstEditableDate ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
+            </View>
+            {!activeDateEditable ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
             <PrimaryAction
-              icon={singleDay ? "list-outline" : "grid-outline"}
-              label={t(singleDay ? "managerShell.planReviewDay" : "managerShell.planDistributeWeek")}
+              icon="checkmark-done-outline"
+              label={t(singleDay ? "managerShell.planReviewDay" : "managerShell.planReviewWeek")}
               hint={matrixTargets.length === 0 && dirtyDates.size === 0 ? t("managerShell.planSelectAtLeastOne") : undefined}
               disabled={saving || (matrixTargets.length === 0 && dirtyDates.size === 0)}
               onPress={() => setStep(3)}
@@ -840,41 +948,28 @@ export default function ManagerPlanningWorkspace({
             </View>
 
             <View style={styles.matrixHelp}>
-              <Icon name={singleDay ? "checkmark-done-outline" : "hand-left-outline"} size={19} color={fieldTheme.color.blue} />
-              <Text style={styles.matrixHelpText}>{t(singleDay ? "managerShell.planDayReviewHelp" : "managerShell.planWeekDistributionHelp")}</Text>
+              <Icon name="create-outline" size={19} color={fieldTheme.color.blue} />
+              <Text style={styles.matrixHelpText}>{t(singleDay ? "managerShell.planDayReviewHelp" : "managerShell.planWeekReviewHelp")}</Text>
             </View>
-            <View style={styles.matrixList}>
-              {matrixTargets.map((target) => singleDay ? (
-                <DailyReviewRow
-                  key={target.key}
-                  target={target}
-                  date={dates[0]}
-                  assignments={assignments}
+            <View style={styles.dayReviewList}>
+              {dates.map((date) => (
+                <DayPlanEditor
+                  key={date}
+                  date={date}
+                  rows={targetsForPlanningDay(date, assignments, routes)}
                   lockedCells={lockedCells}
+                  editable={date >= today && !lockedDates.has(date) && !multipleDraftDates.includes(date)}
                   saving={saving}
-                  onRemove={toggleMatrixCell}
-                  t={t}
-                />
-              ) : (
-                <MatrixRow
-                  key={target.key}
-                  target={target}
-                  dates={dates}
-                  assignments={assignments}
-                  lockedCells={lockedCells}
-                  lockedDates={lockedDates}
-                  multipleDraftDates={multipleDraftDates}
-                  saving={saving}
-                  today={today}
+                  timezone={tenantTimezone}
                   language={i18n.language}
-                  onToggle={toggleMatrixCell}
+                  onTime={changeDayTargetTime}
+                  onMove={moveDayTarget}
+                  onRemove={removeDayTarget}
                   t={t}
-                  tablet={expandedTablet}
                 />
               ))}
             </View>
             {matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
-            {unassignedTargetKeys.length > 0 ? <Notice tone="warning" icon="calendar-outline" title={t("managerShell.planUnassignedTitle", { count: unassignedTargetKeys.length })} body={t("managerShell.planUnassignedBody")} /> : null}
 
             <View style={styles.savePanel}>
               <Text style={styles.fieldLabel}>{t("managerShell.planFinishMode")}</Text>
@@ -897,7 +992,7 @@ export default function ManagerPlanningWorkspace({
             <PrimaryAction
               icon={saveMode === "publish" ? "send" : "save"}
               label={saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : "managerShell.planSaveDraftAction")}
-              hint={!canSave && !saving ? t(unassignedTargetKeys.length > 0 ? "managerShell.planAssignEveryTarget" : writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined}
+              hint={!canSave && !saving ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined}
               disabled={!canSave}
               onPress={confirmAndSave}
             />
@@ -1015,80 +1110,154 @@ function TargetOption({ target, selected, unavailable, disabled, onPress, t, tab
   )
 }
 
-function DailyReviewRow({ target, date, assignments, lockedCells, saving, onRemove, t }: {
-  target: PlanningTarget
-  date: string
+function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, multipleDraftDates, today, timezone, language, disabled, onSelect, t }: {
+  dates: string[]
+  activeDate: string
   assignments: PlanningAssignedTarget[]
-  lockedCells: Set<string>
-  saving: boolean
-  onRemove: (target: PlanningTarget, date: string) => void
+  routes: PlanningDetailedRoute[]
+  lockedDates: Set<string>
+  multipleDraftDates: string[]
+  today: string
+  timezone?: string | null
+  language: string
+  disabled: boolean
+  onSelect: (date: string) => void
   t: any
 }) {
-  const locked = lockedCells.has(`${date}|${target.key}`)
-  const selected = assignments.some((assignment) => assignment.key === target.key && assignment.date === date)
   return (
-    <View style={styles.dailyReviewRow}>
-      <View style={[styles.matrixIcon, locked && styles.dailyReviewIconLocked]}>
-        <Icon name={locked ? "lock-closed" : "checkmark"} size={18} color={locked ? fieldTheme.color.amber : fieldTheme.color.primaryStrong} />
+    <View style={styles.weekDayChooser} testID="mtm-mobile-week-day-list">
+      <View style={styles.weekDayHeading}>
+        <View style={styles.weekDayHeadingIcon}><Icon name="calendar-outline" size={21} color={fieldTheme.color.blue} /></View>
+        <View style={styles.weekDayHeadingCopy}>
+          <Text style={styles.fieldLabel}>{t("managerShell.planWeekDayTitle")}</Text>
+          <Text style={styles.fieldHelp}>{t("managerShell.planWeekDayBody")}</Text>
+        </View>
       </View>
-      <View style={styles.matrixTargetCopy}>
-        <Text style={styles.matrixTargetName}>{target.name}</Text>
-        <Text style={styles.matrixTargetMeta}>{target.organizationName || target.address || t("managerShell.planAddressMissing")}</Text>
+      <View style={styles.weekDayRows}>
+        {dates.map((date) => {
+          const rows = targetsForPlanningDay(date, assignments, routes)
+          const times = rows.map((row) => planningTimeLabel(row.plannedTime, timezone)).filter(Boolean).sort()
+          const locked = date < today || lockedDates.has(date) || multipleDraftDates.includes(date)
+          const selected = date === activeDate
+          return (
+            <Pressable
+              key={date}
+              accessibilityRole="tab"
+              accessibilityState={{ selected, disabled }}
+              disabled={disabled}
+              onPress={() => onSelect(date)}
+              style={({ pressed }) => [styles.weekDayRow, selected && styles.weekDayRowActive, locked && styles.weekDayRowLocked, pressed && styles.pressed]}
+            >
+              <View style={[styles.weekDayNumber, selected && styles.weekDayNumberActive]}><Text style={[styles.weekDayNumberText, selected && styles.weekDayNumberTextActive]}>{dates.indexOf(date) + 1}</Text></View>
+              <View style={styles.weekDayCopy}>
+                <Text style={[styles.weekDayDate, selected && styles.weekDayDateActive]}>{formatPlanDate(date, language)}</Text>
+                <Text style={styles.weekDaySummary}>
+                  {rows.length > 0
+                    ? t("managerShell.planDayVisits", { count: rows.length })
+                    : t("managerShell.planDayEmpty")}
+                  {times.length > 0 ? ` · ${times[0]}${times.length > 1 ? `–${times[times.length - 1]}` : ""}` : ""}
+                </Text>
+              </View>
+              {locked ? <Icon name="lock-closed" size={18} color={fieldTheme.color.amber} /> : <Icon name="chevron-forward" size={20} color={selected ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />}
+            </Pressable>
+          )
+        })}
       </View>
-      {locked ? (
-        <Text style={styles.dailyLockedText}>{t("managerShell.planLockedShort")}</Text>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${t("managerShell.planRemove")}: ${target.name}`}
-          accessibilityState={{ disabled: saving || !selected }}
-          disabled={saving || !selected}
-          onPress={() => onRemove(target, date)}
-          style={({ pressed }) => [styles.dailyRemoveButton, (saving || !selected) && styles.disabled, pressed && styles.pressed]}
-        >
-          <Icon name="trash-outline" size={19} color={fieldTheme.color.danger} />
-          <Text style={styles.dailyRemoveText}>{t("managerShell.planRemove")}</Text>
-        </Pressable>
-      )}
     </View>
   )
 }
 
-function MatrixRow({ target, dates, assignments, lockedCells, lockedDates, multipleDraftDates, saving, today, language, onToggle, t, tablet }: {
-  target: PlanningTarget
-  dates: string[]
-  assignments: PlanningAssignedTarget[]
+function normalizeClockInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4)
+  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
+}
+
+function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; disabled: boolean; label: string; onCommit: (time: string) => boolean }) {
+  const [draft, setDraft] = useState(value)
+  useEffect(() => setDraft(value), [value])
+  const commit = () => {
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(draft) || !onCommit(draft)) setDraft(value)
+  }
+  return (
+    <View style={[styles.routeTimeField, disabled && styles.routeTimeFieldDisabled]}>
+      <Icon name="time-outline" size={18} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
+      <TextInput
+        value={draft}
+        onChangeText={(next) => setDraft(normalizeClockInput(next))}
+        onBlur={commit}
+        onSubmitEditing={commit}
+        placeholder="09:00"
+        placeholderTextColor={fieldTheme.color.inkMuted}
+        keyboardType="number-pad"
+        maxLength={5}
+        editable={!disabled}
+        accessibilityLabel={label}
+        style={styles.routeTimeInput}
+      />
+    </View>
+  )
+}
+
+function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, language, onTime, onMove, onRemove, t }: {
+  date: string
+  rows: PlanningAssignedTarget[]
   lockedCells: Set<string>
-  lockedDates: Set<string>
-  multipleDraftDates: string[]
+  editable: boolean
   saving: boolean
-  today: string
+  timezone?: string | null
   language: string
-  onToggle: (target: PlanningTarget, date: string) => void
+  onTime: (target: PlanningTarget, date: string, time: string) => boolean
+  onMove: (target: PlanningTarget, date: string, direction: -1 | 1) => void
+  onRemove: (target: PlanningTarget, date: string) => void
   t: any
-  tablet: boolean
 }) {
   return (
-    <View style={[styles.matrixRow, tablet && styles.matrixRowTablet]}>
-      <View style={styles.matrixTarget}>
-        <View style={styles.matrixIcon}><Icon name={target.kind === "contact" ? "medkit" : "business"} size={18} color={fieldTheme.color.primaryStrong} /></View>
-        <View style={styles.matrixTargetCopy}><Text style={styles.matrixTargetName}>{target.name}</Text><Text style={styles.matrixTargetMeta}>{target.organizationName || target.address || t("managerShell.planAddressMissing")}</Text></View>
+    <View style={styles.dayPlanEditor} testID={`mtm-mobile-day-plan-${date}`}>
+      <View style={styles.dayPlanHeader}>
+        <View style={styles.dayPlanHeaderIcon}><Icon name="calendar" size={20} color={fieldTheme.color.onColor} /></View>
+        <View style={styles.dayPlanHeaderCopy}>
+          <Text style={styles.dayPlanDate}>{formatPlanDate(date, language)}</Text>
+          <Text style={styles.dayPlanCount}>{rows.length > 0 ? t("managerShell.planDayVisits", { count: rows.length }) : t("managerShell.planDayEmpty")}</Text>
+        </View>
+        {!editable ? <View style={styles.dayPlanLockedPill}><Icon name="lock-closed" size={14} color={fieldTheme.color.amber} /><Text style={styles.dayPlanLockedText}>{t("managerShell.planLockedShort")}</Text></View> : null}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.matrixCells}>
-        {dates.map((date) => {
-          const locked = lockedCells.has(`${date}|${target.key}`)
-          const selected = assignments.some((assignment) => assignment.key === target.key && assignment.date === date)
-          const resolved = planningTargetForDate(target, date)
-          const unavailable = !selected && resolved === null
-          const disabled = saving || locked || unavailable || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)
-          return (
-            <Pressable key={date} accessibilityRole="checkbox" accessibilityState={{ checked: locked || selected, disabled }} accessibilityLabel={`${target.name}, ${formatPlanDate(date, language)}${unavailable ? `, ${t("managerShell.planNoActiveWorkplace")}` : ""}`} disabled={disabled} onPress={() => onToggle(target, date)} style={({ pressed }) => [styles.matrixCell, selected && styles.matrixCellSelected, locked && styles.matrixCellLocked, disabled && !locked && styles.matrixCellDisabled, pressed && styles.pressed]}>
-              <Text style={[styles.matrixCellDay, (selected || locked) && styles.matrixCellDaySelected]}>{formatPlanDate(date, language, true)}</Text>
-              <Icon name={locked ? "lock-closed" : selected ? "checkmark-circle" : "add-circle-outline"} size={21} color={locked ? fieldTheme.color.amber : selected ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />
-            </Pressable>
-          )
-        })}
-      </ScrollView>
+      {rows.length === 0 ? (
+        <View style={styles.dayPlanEmpty}>
+          <Icon name="location-outline" size={24} color={fieldTheme.color.inkMuted} />
+          <Text style={styles.dayPlanEmptyText}>{t("managerShell.planDayAddHint")}</Text>
+        </View>
+      ) : (
+        <View style={styles.dayStopList}>
+          {rows.map((target, index) => {
+            const locked = lockedCells.has(`${date}|${target.key}`)
+            const controlsDisabled = saving || !editable || locked
+            return (
+              <View key={`${date}|${target.key}`} style={[styles.dayStopRow, locked && styles.dayStopRowLocked]}>
+                <View style={styles.dayStopOrder}><Text style={styles.dayStopOrderText}>{index + 1}</Text></View>
+                <View style={styles.dayStopCopy}>
+                  <Text style={styles.dayStopName}>{target.name}</Text>
+                  <Text style={styles.dayStopMeta}>{target.organizationName || target.address || t("managerShell.planAddressMissing")}</Text>
+                </View>
+                <RouteTimeInput
+                  value={planningTimeLabel(target.plannedTime, timezone)}
+                  disabled={controlsDisabled}
+                  label={`${t("managerShell.planVisitTime")}: ${target.name}`}
+                  onCommit={(time) => onTime(target, date, time)}
+                />
+                {locked ? (
+                  <Icon name="lock-closed" size={19} color={fieldTheme.color.amber} />
+                ) : (
+                  <View style={styles.dayStopActions}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planMoveUp")} accessibilityState={{ disabled: controlsDisabled || index === 0 }} disabled={controlsDisabled || index === 0} onPress={() => onMove(target, date, -1)} style={({ pressed }) => [styles.dayStopAction, (controlsDisabled || index === 0) && styles.disabled, pressed && styles.pressed]}><Icon name="arrow-up" size={19} color={fieldTheme.color.primaryStrong} /></Pressable>
+                    <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planMoveDown")} accessibilityState={{ disabled: controlsDisabled || index === rows.length - 1 }} disabled={controlsDisabled || index === rows.length - 1} onPress={() => onMove(target, date, 1)} style={({ pressed }) => [styles.dayStopAction, (controlsDisabled || index === rows.length - 1) && styles.disabled, pressed && styles.pressed]}><Icon name="arrow-down" size={19} color={fieldTheme.color.primaryStrong} /></Pressable>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`${t("managerShell.planRemove")}: ${target.name}`} accessibilityState={{ disabled: controlsDisabled }} disabled={controlsDisabled} onPress={() => onRemove(target, date)} style={({ pressed }) => [styles.dayStopAction, styles.dayStopRemove, controlsDisabled && styles.disabled, pressed && styles.pressed]}><Icon name="trash-outline" size={19} color={fieldTheme.color.danger} /></Pressable>
+                  </View>
+                )}
+              </View>
+            )
+          })}
+        </View>
+      )}
     </View>
   )
 }
@@ -1231,6 +1400,56 @@ const styles = StyleSheet.create({
   selectionSummaryText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   textButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: 8 },
   textButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  weekDayChooser: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekDayHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  weekDayHeadingIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
+  weekDayHeadingCopy: { flex: 1 },
+  weekDayRows: { gap: fieldTheme.space.sm },
+  weekDayRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekDayRowActive: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  weekDayRowLocked: { backgroundColor: fieldTheme.color.amberSoft },
+  weekDayNumber: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong },
+  weekDayNumberActive: { backgroundColor: fieldTheme.color.primary },
+  weekDayNumberText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900" },
+  weekDayNumberTextActive: { color: fieldTheme.color.onColor },
+  weekDayCopy: { flex: 1, gap: 3 },
+  weekDayDate: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textTransform: "capitalize" },
+  weekDayDateActive: { color: fieldTheme.color.primaryStrong },
+  weekDaySummary: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15 },
+  dayPlanEditor: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  dayPlanHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  dayPlanHeaderIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  dayPlanHeaderCopy: { flex: 1, gap: 2 },
+  dayPlanDate: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900", textTransform: "capitalize" },
+  dayPlanCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  dayPlanLockedPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.amberSoft },
+  dayPlanLockedText: { color: fieldTheme.color.amber, fontSize: 10, fontWeight: "900" },
+  dayPlanEmpty: { minHeight: 84, alignItems: "center", justifyContent: "center", gap: 5, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderStyle: "dashed", borderColor: fieldTheme.color.border },
+  dayPlanEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
+  dayStopList: { gap: fieldTheme.space.sm },
+  dayStopRow: { minHeight: 78, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  dayStopRowLocked: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
+  dayStopOrder: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
+  dayStopOrderText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
+  dayStopName: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
+  dayStopMeta: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
+  routeTimeField: { width: 98, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  routeTimeFieldDisabled: { borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surfaceStrong },
+  routeTimeInput: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingVertical: 0, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  dayStopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  dayStopAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  dayStopRemove: { backgroundColor: fieldTheme.color.dangerSoft },
+  targetBrowser: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  targetBrowserHeadingCopy: { flex: 1 },
+  activeDayPill: { minHeight: 38, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  activeDayPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900", textTransform: "capitalize" },
+  targetTypeTabs: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
+  targetTypeButton: { minWidth: 132, minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  targetTypeButtonActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  targetTypeText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", textAlign: "center" },
+  targetTypeTextActive: { color: fieldTheme.color.onColor },
   searchBox: { minHeight: 54, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   searchInput: { flex: 1, minHeight: 52, paddingVertical: 0, color: fieldTheme.color.ink, fontSize: 15 },
   clearButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center" },
@@ -1258,6 +1477,7 @@ const styles = StyleSheet.create({
   matrixHelp: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
   matrixHelpText: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   matrixList: { gap: fieldTheme.space.sm },
+  dayReviewList: { gap: fieldTheme.space.md },
   dailyReviewRow: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   dailyReviewIconLocked: { backgroundColor: fieldTheme.color.amberSoft },
   dailyRemoveButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.dangerSoft },

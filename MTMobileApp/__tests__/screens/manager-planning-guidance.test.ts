@@ -34,13 +34,22 @@ describe("mobile planning guidance", () => {
     expect(copy.planHelpDismiss).toBeTruthy()
   })
 
-  it("keeps one-day routes and weekly distribution as visibly different flows", () => {
+  it("keeps one-day routes and the seven-row weekly planner as visibly different flows", () => {
     expect(source).toContain("([1, 7] as PlanningHorizon[])")
     expect(source).toContain('managerShell.planRouteDate')
     expect(source).toContain('managerShell.planWeekStart')
-    expect(source).toContain("<DailyReviewRow")
-    expect(source).toContain("<MatrixRow")
-    expect(source).toContain('managerShell.planUnassignedTitle')
+    expect(source).toContain("<WeekDayChooser")
+    expect(source).toContain('testID="mtm-mobile-week-day-list"')
+    expect(source).toContain("<DayPlanEditor")
+    expect(source).toContain("planningLocalTimeToIso")
+    expect(source).not.toContain("<MatrixRow")
+  })
+
+  it("uses tenant-configured target types instead of hardcoded doctor and pharmacy tabs", () => {
+    expect(source).toContain("routeTargetTypes.map")
+    expect(source).toContain("mobileRouteTargetLabel")
+    expect(source).toContain("activeTargetType?.objectType")
+    expect(source).toContain('managerShell.planChooseTargetTypeHelp')
   })
 
   it("carries the calendar day into a new one-day route instead of asking for it again", () => {

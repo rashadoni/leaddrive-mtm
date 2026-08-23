@@ -46,12 +46,31 @@ export interface BootstrapPolicies {
   canPlanOwnRoutes: boolean
 }
 
+export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
+
+export interface MobileRouteTargetType {
+  id: string
+  labels: { az: string; ru: string; en: string }
+  direction: MobileRouteTargetDirection
+  objectType: "PHARMACY" | "CLINIC" | "STORE" | "OTHER" | null
+  organizationKind: string | null
+  enabled: boolean
+}
+
+export const DEFAULT_MOBILE_ROUTE_TARGET_TYPES: MobileRouteTargetType[] = [
+  { id: "doctors", labels: { az: "Həkimlər", ru: "Врачи", en: "Doctors" }, direction: "DOCTOR", objectType: null, organizationKind: null, enabled: true },
+  { id: "pharmacies", labels: { az: "Apteklər", ru: "Аптеки", en: "Pharmacies" }, direction: "PHARMACY", objectType: "PHARMACY", organizationKind: null, enabled: true },
+  { id: "clinics", labels: { az: "Klinikalar", ru: "Клиники", en: "Clinics" }, direction: "ORGANIZATION", objectType: "CLINIC", organizationKind: null, enabled: true },
+  { id: "organizations", labels: { az: "Digər təşkilatlar", ru: "Другие организации", en: "Other organizations" }, direction: "ORGANIZATION", objectType: "OTHER", organizationKind: null, enabled: true },
+]
+
 export interface BootstrapData {
   tenant: { id: string; name: string; slug: string } | null
   principal: { id: string; name: string; email: string; role: string } | null
   capabilities: MobileCapability[]
   timezone: string | null
   policies: BootstrapPolicies
+  routeTargetTypes: MobileRouteTargetType[]
   workday: BootstrapWorkday | null
 }
 
@@ -72,6 +91,41 @@ function str(value: unknown): string | undefined {
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+}
+
+function routeTargetTypes(value: unknown): MobileRouteTargetType[] {
+  if (!Array.isArray(value)) return DEFAULT_MOBILE_ROUTE_TARGET_TYPES.map((entry) => ({ ...entry, labels: { ...entry.labels } }))
+  const seen = new Set<string>()
+  const mapped = value.flatMap((raw): MobileRouteTargetType[] => {
+    const item = record(raw)
+    const labels = record(item?.labels)
+    const id = str(item?.id)?.trim().toLowerCase()
+    const direction = str(item?.direction) as MobileRouteTargetDirection | undefined
+    const objectType = str(item?.objectType) as MobileRouteTargetType["objectType"] | undefined
+    if (!id || seen.has(id) || !labels || !direction || !["DOCTOR", "PHARMACY", "ORGANIZATION"].includes(direction)) return []
+    const az = str(labels.az)?.trim()
+    const ru = str(labels.ru)?.trim()
+    const en = str(labels.en)?.trim()
+    if (!az || !ru || !en || item?.enabled !== true) return []
+    if (objectType && !["PHARMACY", "CLINIC", "STORE", "OTHER"].includes(objectType)) return []
+    seen.add(id)
+    return [{
+      id,
+      labels: { az, ru, en },
+      direction,
+      objectType: direction === "DOCTOR" ? null : objectType ?? null,
+      organizationKind: direction === "DOCTOR" ? null : (str(item?.organizationKind)?.trim() ?? null),
+      enabled: true,
+    }]
+  })
+  return mapped.length > 0 ? mapped : DEFAULT_MOBILE_ROUTE_TARGET_TYPES.map((entry) => ({ ...entry, labels: { ...entry.labels } }))
+}
+
+export function mobileRouteTargetLabel(target: MobileRouteTargetType, language: string): string {
+  const locale = language.toLowerCase()
+  if (locale.startsWith("az")) return target.labels.az
+  if (locale.startsWith("en")) return target.labels.en
+  return target.labels.ru
 }
 
 export function toBootstrap(raw: any): BootstrapData {
@@ -104,6 +158,7 @@ export function toBootstrap(raw: any): BootstrapData {
       // cannot be confirmed by the server yet.
       canPlanOwnRoutes: record(raw?.policies)?.canPlanOwnRoutes === true,
     },
+    routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday
       ? {
           id: String(workday.id ?? ""),

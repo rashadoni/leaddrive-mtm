@@ -152,6 +152,81 @@ export function planningDateKeys(anchor: string, horizon: PlanningHorizon): stri
   return Array.from({ length: horizon }, (_, index) => shiftPlanningDateKey(anchor, index))
 }
 
+function timezoneOffsetMinutes(timezone: string, at: Date): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(at)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  const projected = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
+  )
+  return Math.round((projected - at.getTime()) / 60_000)
+}
+
+/** Convert a tenant-local HH:mm choice into the ISO instant required by the route API. */
+export function planningLocalTimeToIso(date: string, time: string, timezone?: string | null): string | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(time)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (hour > 23 || minute > 59) return null
+  const [year, month, day] = date.split("-").map(Number)
+  const naive = new Date(Date.UTC(year, month - 1, day, hour, minute))
+  if (
+    naive.getUTCFullYear() !== year || naive.getUTCMonth() !== month - 1 ||
+    naive.getUTCDate() !== day || naive.getUTCHours() !== hour || naive.getUTCMinutes() !== minute
+  ) return null
+  const zone = timezone || "UTC"
+  try {
+    const first = new Date(naive.getTime() - timezoneOffsetMinutes(zone, naive) * 60_000)
+    const resolved = new Date(naive.getTime() - timezoneOffsetMinutes(zone, first) * 60_000)
+    return resolved.toISOString()
+  } catch {
+    return naive.toISOString()
+  }
+}
+
+/** Human HH:mm for either a server ISO instant or a legacy HH:mm value. */
+export function planningTimeLabel(value?: string | null, timezone?: string | null): string {
+  if (!value) return ""
+  if (/^\d{2}:\d{2}$/.test(value)) return value
+  const instant = new Date(value)
+  if (Number.isNaN(instant.getTime())) return ""
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: timezone || "UTC",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(instant)
+  } catch {
+    return `${String(instant.getUTCHours()).padStart(2, "0")}:${String(instant.getUTCMinutes()).padStart(2, "0")}`
+  }
+}
+
+export function nextPlanningTime(targets: PlanningAssignedTarget[], date: string, timezone?: string | null): string {
+  const used = targets
+    .filter((target) => target.date === date)
+    .map((target) => planningTimeLabel(target.plannedTime, timezone))
+    .filter((value) => /^\d{2}:\d{2}$/.test(value))
+    .map((value) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3)))
+  const minutes = used.length > 0 ? Math.max(...used) + 30 : 9 * 60
+  const bounded = Math.min(minutes, 23 * 60 + 30)
+  return `${String(Math.floor(bounded / 60)).padStart(2, "0")}:${String(bounded % 60).padStart(2, "0")}`
+}
+
 export function toPlanningAgent(raw: any): PlanningAgent | null {
   const id = str(raw?.id)
   if (!id || raw?.role !== "AGENT") return null
@@ -404,6 +479,31 @@ export function assignPlanningTarget(
 
 export function removePlanningTarget(targets: PlanningAssignedTarget[], key: string, date?: string): PlanningAssignedTarget[] {
   return targets.filter((target) => target.key !== key || (date !== undefined && target.date !== date))
+}
+
+export function updatePlanningTargetTime(
+  targets: PlanningAssignedTarget[],
+  key: string,
+  date: string,
+  plannedTime: string | null,
+): PlanningAssignedTarget[] {
+  return targets.map((target) => target.key === key && target.date === date ? { ...target, plannedTime } : target)
+}
+
+export function movePlanningTarget(
+  targets: PlanningAssignedTarget[],
+  key: string,
+  date: string,
+  direction: -1 | 1,
+): PlanningAssignedTarget[] {
+  const dayTargets = targets.filter((target) => target.date === date)
+  const index = dayTargets.findIndex((target) => target.key === key)
+  const nextIndex = index + direction
+  if (index < 0 || nextIndex < 0 || nextIndex >= dayTargets.length) return targets
+  const reordered = [...dayTargets]
+  ;[reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]]
+  let cursor = 0
+  return targets.map((target) => target.date === date ? reordered[cursor++] : target)
 }
 
 function targetToRoutePoint(target: PlanningTarget): { customerId: string; contactId?: string; plannedTime?: string | null } {

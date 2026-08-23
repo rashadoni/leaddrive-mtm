@@ -4,7 +4,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("../../src/services/api", () => ({ api: { getBootstrap: jest.fn() } }))
 
 import { api } from "../../src/services/api"
-import { toBootstrap, navGroupFromCapabilities, hasCapability } from "../../src/services/bootstrap"
+import { toBootstrap, navGroupFromCapabilities, hasCapability, mobileRouteTargetLabel } from "../../src/services/bootstrap"
 import { useBootstrapStore } from "../../src/store/bootstrap"
 
 describe("bootstrap mapping", () => {
@@ -21,6 +21,7 @@ describe("bootstrap mapping", () => {
     expect(b.capabilities).toEqual(["FIELD_EXECUTE", "FIELD_TRACK", "SELF_LOCATION_SHARE"])
     expect(b.timezone).toBe("Asia/Baku")
     expect(b.workday).toEqual({ id: "w1", status: "ACTIVE" })
+    expect(b.routeTargetTypes.map((target) => target.id)).toEqual(["doctors", "pharmacies", "clinics", "organizations"])
   })
 
   it("defaults gracefully on an empty payload", () => {
@@ -30,6 +31,23 @@ describe("bootstrap mapping", () => {
     expect(b.capabilities).toEqual([])
     expect(b.timezone).toBeNull()
     expect(b.workday).toBeNull()
+    expect(b.routeTargetTypes).toHaveLength(4)
+  })
+
+  it("uses tenant-configured planner target labels and safely falls back when malformed", () => {
+    const configured = toBootstrap({
+      routeTargetTypes: [{
+        id: "hospitals",
+        labels: { az: "Xəstəxanalar", ru: "Больницы", en: "Hospitals" },
+        direction: "ORGANIZATION",
+        objectType: "CLINIC",
+        organizationKind: "Hospital",
+        enabled: true,
+      }],
+    })
+    expect(configured.routeTargetTypes).toHaveLength(1)
+    expect(mobileRouteTargetLabel(configured.routeTargetTypes[0], "az-AZ")).toBe("Xəstəxanalar")
+    expect(toBootstrap({ routeTargetTypes: [{ id: "broken" }] }).routeTargetTypes).toHaveLength(4)
   })
 })
 
