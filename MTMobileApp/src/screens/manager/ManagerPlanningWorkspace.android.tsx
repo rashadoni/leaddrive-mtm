@@ -20,6 +20,7 @@ import { useAuthStore } from "../../store/auth"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { api } from "../../services/api"
 import {
   DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
@@ -107,10 +108,8 @@ function routeStatusKey(status: string): string {
 }
 
 function formatPlanDate(value: string, language: string, compact = false): string {
-  const date = new Date(`${value}T12:00:00.000Z`)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleDateString(language, compact
-    ? { weekday: "short", day: "2-digit", month: "short", timeZone: "UTC" }
+  return formatLocalizedDate(value, language, compact
+    ? { day: "numeric", month: "long", timeZone: "UTC" }
     : { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
 }
 
