@@ -34,7 +34,7 @@ describe("mobile planning guidance", () => {
     expect(copy.planHelpDismiss).toBeTruthy()
   })
 
-  it("keeps one-day routes and the seven-row weekly planner as visibly different flows", () => {
+  it("keeps one-day routes and the seven-day weekly planner as visibly different flows", () => {
     expect(source).toContain("([1, 7] as PlanningHorizon[])")
     expect(source).toContain('managerShell.planRouteDate')
     expect(source).toContain('managerShell.planWeekStart')
@@ -43,6 +43,15 @@ describe("mobile planning guidance", () => {
     expect(source).toContain("<DayPlanEditor")
     expect(source).toContain("planningLocalTimeToIso")
     expect(source).not.toContain("<MatrixRow")
+  })
+
+  it("keeps long planning data inside compact scrollers and the next action always reachable", () => {
+    expect(source).toContain("<PlannerActionDock")
+    expect(source).toContain("nestedScrollEnabled")
+    expect(source).toContain("styles.agentListScroller")
+    expect(source).toContain("styles.targetListScroller")
+    expect(source).toContain("horizontal nestedScrollEnabled")
+    expect(calendarSource).toContain("styles.agendaListScroller")
   })
 
   it("uses tenant-configured target types instead of hardcoded doctor and pharmacy tabs", () => {

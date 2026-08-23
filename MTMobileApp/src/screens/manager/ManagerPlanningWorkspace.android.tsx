@@ -14,7 +14,8 @@ import {
 } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
-import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
 import { useHintsStore } from "../../store/hints"
@@ -172,7 +173,7 @@ export default function ManagerPlanningWorkspace({
   const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
-  const tabBarPadding = useTabBarPadding()
+  const safeAreaInsets = useSafeAreaInsets()
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
   const tenantTimezone = useBootstrapStore((state) => state.data?.timezone)
@@ -658,6 +659,30 @@ export default function ManagerPlanningWorkspace({
     )
   }
 
+  const footerAction = step === 1
+    ? {
+        icon: "arrow-forward",
+        label: t("managerShell.planChooseStops"),
+        hint: !agentId ? t("managerShell.planChooseAgentHint") : loadingPlan ? t("managerShell.planLoadingSchedule") : undefined,
+        disabled: saving || !agentId || loadingPlan || planError || multipleDraftDates.length > 0,
+        onPress: () => setStep(2),
+      }
+    : step === 2
+      ? {
+          icon: "checkmark-done-outline",
+          label: t(singleDay ? "managerShell.planReviewDay" : "managerShell.planReviewWeek"),
+          hint: matrixTargets.length === 0 && dirtyDates.size === 0 ? t("managerShell.planSelectAtLeastOne") : undefined,
+          disabled: saving || (matrixTargets.length === 0 && dirtyDates.size === 0),
+          onPress: () => setStep(3),
+        }
+      : {
+          icon: saveMode === "publish" ? "send" : "save",
+          label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : "managerShell.planSaveDraftAction"),
+          hint: !canSave && !saving ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
+          disabled: !canSave,
+          onPress: confirmAndSave,
+        }
+
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -671,21 +696,22 @@ export default function ManagerPlanningWorkspace({
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{selfPlanning ? selfCopy.eyebrow : t("managerShell.planEyebrow")}</Text>
             <Text style={styles.title}>{selfPlanning ? selfCopy.title : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
-            <Text style={styles.subtitle}>{selfPlanning ? (singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
+            <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{selfPlanning ? (singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
           </View>
           {updatedAt ? (
             <View style={styles.updatedPill}>
               <Icon name={planError ? "cloud-offline-outline" : "checkmark-circle"} size={16} color={planError ? fieldTheme.color.amber : fieldTheme.color.primaryStrong} />
-              <Text style={styles.updatedText}>{planError ? t("managerShell.planLastLoaded") : t("managerShell.planUpdated")}</Text>
+              {tablet ? <Text style={styles.updatedText}>{planError ? t("managerShell.planLastLoaded") : t("managerShell.planUpdated")}</Text> : null}
             </View>
           ) : null}
         </View>
       </View>
 
       <ScrollView
+        style={styles.workspaceScroll}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl enabled={!saving} refreshing={refreshing} onRefresh={() => { void refresh() }} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
-        contentContainerStyle={[styles.content, tablet && styles.contentTablet, { paddingBottom: tabBarPadding + fieldTheme.space.xl }]}
+        contentContainerStyle={[styles.content, tablet && styles.contentTablet]}
       >
         <StepRail step={step} hasAgent={Boolean(agentId)} hasReview={matrixTargets.length > 0 || dirtyDates.size > 0} singleDay={singleDay} disabled={saving} onStep={setStep} t={t} />
 
@@ -779,7 +805,7 @@ export default function ManagerPlanningWorkspace({
                     </View>
                   </View>
                 ) : agents.length > 0 ? (
-                  <View style={styles.agentList}>
+                  <ScrollView nestedScrollEnabled style={styles.agentListScroller} contentContainerStyle={styles.agentList} showsVerticalScrollIndicator={agents.length > 4}>
                     {agents.map((agent) => {
                       const selected = agent.id === agentId
                       return (
@@ -790,7 +816,7 @@ export default function ManagerPlanningWorkspace({
                         </Pressable>
                       )
                     })}
-                  </View>
+                  </ScrollView>
                 ) : !loadingAgents ? <InlineEmpty icon="people-outline" text={t("managerShell.planNoAgents")} /> : null}
               </View>
             </View>
@@ -801,13 +827,6 @@ export default function ManagerPlanningWorkspace({
               <Notice tone="neutral" icon="person-add-outline" title={t("managerShell.planChooseAgentTitle")} body={t("managerShell.planChooseAgentBody")} />
             )}
             {multipleDraftDates.length > 0 ? <Notice tone="warning" icon="git-compare-outline" title={t("managerShell.planMultipleDraftsTitle")} body={t("managerShell.planMultipleDraftsBody")} /> : null}
-            <PrimaryAction
-              icon="arrow-forward"
-              label={t("managerShell.planChooseStops")}
-              hint={!agentId ? t("managerShell.planChooseAgentHint") : loadingPlan ? t("managerShell.planLoadingSchedule") : undefined}
-              disabled={saving || !agentId || loadingPlan || planError || multipleDraftDates.length > 0}
-              onPress={() => setStep(2)}
-            />
           </View>
         ) : step === 2 ? (
           <View style={styles.stepBody}>
@@ -829,6 +848,7 @@ export default function ManagerPlanningWorkspace({
                 today={today}
                 timezone={tenantTimezone}
                 language={i18n.language}
+                tablet={tablet}
                 disabled={saving}
                 onSelect={setActiveDate}
                 t={t}
@@ -901,7 +921,12 @@ export default function ManagerPlanningWorkspace({
             ) : targetResults.length > 0 ? (
               <>
                 <Text style={styles.resultCount}>{t("managerShell.planResults", { loaded: targetResults.length, total: targetTotal })}</Text>
-                <View style={[styles.targetList, tablet && styles.targetListTablet]}>
+                <ScrollView
+                  nestedScrollEnabled
+                  style={[styles.targetListScroller, tablet && styles.targetListScrollerTablet]}
+                  contentContainerStyle={[styles.targetList, tablet && styles.targetListTablet]}
+                  showsVerticalScrollIndicator={targetResults.length > (tablet ? 6 : 4)}
+                >
                   {targetResults.map((target) => {
                     const selectedTarget = activeDayTargets.find((assignment) => assignment.key === target.key)
                     const mutableSelection = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
@@ -914,7 +939,7 @@ export default function ManagerPlanningWorkspace({
                       <TargetOption key={target.key} target={displayTarget} selected={selected} unavailable={unavailable} disabled={disabled} onPress={() => toggleTarget(target)} t={t} tablet={tablet} />
                     )
                   })}
-                </View>
+                </ScrollView>
               </>
             ) : debouncedSearch ? (
               <InlineEmpty icon="search-outline" text={t("managerShell.planNoSearchResults")} />
@@ -930,13 +955,6 @@ export default function ManagerPlanningWorkspace({
             )}
             </View>
             {!activeDateEditable ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
-            <PrimaryAction
-              icon="checkmark-done-outline"
-              label={t(singleDay ? "managerShell.planReviewDay" : "managerShell.planReviewWeek")}
-              hint={matrixTargets.length === 0 && dirtyDates.size === 0 ? t("managerShell.planSelectAtLeastOne") : undefined}
-              disabled={saving || (matrixTargets.length === 0 && dirtyDates.size === 0)}
-              onPress={() => setStep(3)}
-            />
           </View>
         ) : (
           <View style={styles.stepBody}>
@@ -951,24 +969,36 @@ export default function ManagerPlanningWorkspace({
               <Icon name="create-outline" size={19} color={fieldTheme.color.blue} />
               <Text style={styles.matrixHelpText}>{t(singleDay ? "managerShell.planDayReviewHelp" : "managerShell.planWeekReviewHelp")}</Text>
             </View>
-            <View style={styles.dayReviewList}>
-              {dates.map((date) => (
-                <DayPlanEditor
-                  key={date}
-                  date={date}
-                  rows={targetsForPlanningDay(date, assignments, routes)}
-                  lockedCells={lockedCells}
-                  editable={date >= today && !lockedDates.has(date) && !multipleDraftDates.includes(date)}
-                  saving={saving}
-                  timezone={tenantTimezone}
-                  language={i18n.language}
-                  onTime={changeDayTargetTime}
-                  onMove={moveDayTarget}
-                  onRemove={removeDayTarget}
-                  t={t}
-                />
-              ))}
-            </View>
+            {!singleDay ? (
+              <WeekDayChooser
+                dates={dates}
+                activeDate={activeDate}
+                assignments={assignments}
+                routes={routes}
+                lockedDates={lockedDates}
+                multipleDraftDates={multipleDraftDates}
+                today={today}
+                timezone={tenantTimezone}
+                language={i18n.language}
+                tablet={tablet}
+                disabled={saving}
+                onSelect={setActiveDate}
+                t={t}
+              />
+            ) : null}
+            <DayPlanEditor
+              date={activeDate}
+              rows={activeDayTargets}
+              lockedCells={lockedCells}
+              editable={activeDateEditable}
+              saving={saving}
+              timezone={tenantTimezone}
+              language={i18n.language}
+              onTime={changeDayTargetTime}
+              onMove={moveDayTarget}
+              onRemove={removeDayTarget}
+              t={t}
+            />
             {matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
 
             <View style={styles.savePanel}>
@@ -989,16 +1019,17 @@ export default function ManagerPlanningWorkspace({
               {multipleDraftDates.length > 0 ? <Notice tone="warning" icon="git-compare-outline" title={t("managerShell.planMultipleDraftsTitle")} body={t("managerShell.planMultipleDraftsBody")} /> : null}
               {invalidAssignmentDates.length > 0 ? <Notice tone="warning" icon="business-outline" title={t("managerShell.planNoActiveWorkplace")} body={t("managerShell.planResolveWarnings")} /> : null}
             </View>
-            <PrimaryAction
-              icon={saveMode === "publish" ? "send" : "save"}
-              label={saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : "managerShell.planSaveDraftAction")}
-              hint={!canSave && !saving ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined}
-              disabled={!canSave}
-              onPress={confirmAndSave}
-            />
           </View>
         )}
       </ScrollView>
+      <PlannerActionDock
+        action={footerAction}
+        backLabel={t("contactTransfer.back")}
+        showBack={step > 1}
+        disabled={saving}
+        bottomInset={Math.max(safeAreaInsets.bottom, fieldTheme.space.sm)}
+        onBack={() => setStep(step === 3 ? 2 : 1)}
+      />
     </View>
   )
 }
@@ -1110,7 +1141,7 @@ function TargetOption({ target, selected, unavailable, disabled, onPress, t, tab
   )
 }
 
-function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, multipleDraftDates, today, timezone, language, disabled, onSelect, t }: {
+function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, multipleDraftDates, today, timezone, language, tablet, disabled, onSelect, t }: {
   dates: string[]
   activeDate: string
   assignments: PlanningAssignedTarget[]
@@ -1120,6 +1151,7 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
   today: string
   timezone?: string | null
   language: string
+  tablet: boolean
   disabled: boolean
   onSelect: (date: string) => void
   t: any
@@ -1133,7 +1165,7 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
           <Text style={styles.fieldHelp}>{t("managerShell.planWeekDayBody")}</Text>
         </View>
       </View>
-      <View style={styles.weekDayRows}>
+      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekDayRows}>
         {dates.map((date) => {
           const rows = targetsForPlanningDay(date, assignments, routes)
           const times = rows.map((row) => planningTimeLabel(row.plannedTime, timezone)).filter(Boolean).sort()
@@ -1146,7 +1178,7 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
               accessibilityState={{ selected, disabled }}
               disabled={disabled}
               onPress={() => onSelect(date)}
-              style={({ pressed }) => [styles.weekDayRow, selected && styles.weekDayRowActive, locked && styles.weekDayRowLocked, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.weekDayRow, tablet && styles.weekDayRowTablet, selected && styles.weekDayRowActive, locked && styles.weekDayRowLocked, pressed && styles.pressed]}
             >
               <View style={[styles.weekDayNumber, selected && styles.weekDayNumberActive]}><Text style={[styles.weekDayNumberText, selected && styles.weekDayNumberTextActive]}>{dates.indexOf(date) + 1}</Text></View>
               <View style={styles.weekDayCopy}>
@@ -1162,7 +1194,7 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
             </Pressable>
           )
         })}
-      </View>
+      </ScrollView>
     </View>
   )
 }
@@ -1328,72 +1360,88 @@ function InlineEmpty({ icon, text, action, onAction }: { icon: string; text: str
   )
 }
 
-function PrimaryAction({ icon, label, hint, disabled, onPress }: { icon: string; label: string; hint?: string; disabled?: boolean; onPress: () => void }) {
+function PlannerActionDock({ action, backLabel, showBack, disabled, bottomInset, onBack }: {
+  action: { icon: string; label: string; hint?: string; disabled: boolean; onPress: () => void }
+  backLabel: string
+  showBack: boolean
+  disabled: boolean
+  bottomInset: number
+  onBack: () => void
+}) {
   return (
-    <View style={styles.primaryActionWrap}>
-      {hint ? <Text style={styles.primaryActionHint}>{hint}</Text> : null}
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryAction, disabled && styles.primaryActionDisabled, pressed && styles.pressed]}>
-        <Text style={styles.primaryActionText}>{label}</Text>
-        <Icon name={icon} size={22} color={fieldTheme.color.onColor} />
-      </Pressable>
+    <View style={[styles.actionDock, { paddingBottom: bottomInset }]}>
+      {action.hint ? <Text numberOfLines={1} style={styles.actionDockHint}>{action.hint}</Text> : null}
+      <View style={styles.actionDockRow}>
+        {showBack ? (
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onBack} style={({ pressed }) => [styles.backAction, disabled && styles.disabled, pressed && styles.pressed]}>
+            <Icon name="arrow-back" size={20} color={fieldTheme.color.primaryStrong} />
+            <Text style={styles.backActionText}>{backLabel}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable accessibilityRole="button" accessibilityState={{ disabled: action.disabled }} disabled={action.disabled} onPress={action.onPress} style={({ pressed }) => [styles.primaryAction, action.disabled && styles.primaryActionDisabled, pressed && styles.pressed]}>
+          <Text numberOfLines={1} style={styles.primaryActionText}>{action.label}</Text>
+          <Icon name={action.icon} size={21} color={fieldTheme.color.onColor} />
+        </Pressable>
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
-  headerInner: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, width: "100%", maxWidth: 1180, alignSelf: "center" },
-  headerInnerTablet: { paddingVertical: fieldTheme.space.sm },
+  workspaceScroll: { flex: 1 },
+  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.sm },
+  headerInner: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, width: "100%", maxWidth: 1180, alignSelf: "center" },
+  headerInnerTablet: { paddingVertical: fieldTheme.space.xs },
   headerBack: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: "rgba(255,255,255,0.12)" },
-  headerIcon: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
+  headerIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
   headerCopy: { flex: 1, gap: 2 },
-  eyebrow: { color: "#BBD6CB", fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
-  title: { color: fieldTheme.color.onColor, fontSize: 25, lineHeight: 30, fontWeight: "900" },
-  subtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 18, maxWidth: 720 },
-  updatedPill: { minHeight: 36, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  title: { color: fieldTheme.color.onColor, fontSize: 21, lineHeight: 25, fontWeight: "900" },
+  subtitle: { color: "#D7E9E1", fontSize: 11, lineHeight: 15, maxWidth: 720 },
+  updatedPill: { minWidth: 34, minHeight: 34, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
   updatedText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "800" },
-  content: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: fieldTheme.space.md, gap: fieldTheme.space.md },
-  contentTablet: { padding: fieldTheme.space.xl, gap: fieldTheme.space.lg },
-  stepRail: { flexDirection: "row", alignItems: "flex-start", paddingHorizontal: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm },
-  stepTab: { width: 76, alignItems: "center", gap: 5 },
-  stepConnector: { flex: 1, height: 2, marginTop: 17, backgroundColor: fieldTheme.color.border },
+  content: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: 10, paddingBottom: fieldTheme.space.md, gap: 10 },
+  contentTablet: { padding: fieldTheme.space.md, gap: fieldTheme.space.md },
+  stepRail: { minHeight: 52, flexDirection: "row", alignItems: "flex-start", paddingHorizontal: fieldTheme.space.sm, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  stepTab: { width: 70, alignItems: "center", gap: 3 },
+  stepConnector: { flex: 1, height: 2, marginTop: 14, backgroundColor: fieldTheme.color.border },
   stepConnectorActive: { backgroundColor: fieldTheme.color.primary },
-  stepNumber: { width: 36, height: 36, borderRadius: fieldTheme.radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong, borderWidth: 1, borderColor: fieldTheme.color.border },
+  stepNumber: { width: 30, height: 30, borderRadius: fieldTheme.radius.pill, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong, borderWidth: 1, borderColor: fieldTheme.color.border },
   stepNumberActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
   stepNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
   stepNumberTextActive: { color: fieldTheme.color.onColor },
-  stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", textAlign: "center" },
+  stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "700", textAlign: "center" },
   stepLabelActive: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
-  helpRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: -fieldTheme.space.sm },
+  helpRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: -6 },
   helpButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   helpButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  plannerCoach: { gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: fieldTheme.color.blue },
+  plannerCoach: { gap: fieldTheme.space.sm, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: fieldTheme.color.blue },
   plannerCoachTablet: { flexDirection: "row", alignItems: "center" },
-  plannerCoachLead: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
-  plannerCoachIcon: { width: 42, height: 42, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  plannerCoachLead: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
+  plannerCoachIcon: { width: 34, height: 34, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surface },
   plannerCoachCopy: { flex: 1, gap: 3 },
   plannerCoachTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   plannerCoachBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 18 },
   plannerCoachDismiss: { minHeight: LAYOUT_TOUCH_TARGETS.compact, alignSelf: "stretch", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
   plannerCoachDismissTablet: { alignSelf: "auto" },
   plannerCoachDismissText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "900" },
-  stepBody: { gap: fieldTheme.space.lg },
-  sectionIntro: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
-  sectionNumber: { width: 42, height: 42, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.blue },
-  sectionNumberText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
+  stepBody: { gap: 10 },
+  sectionIntro: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
+  sectionNumber: { width: 34, height: 34, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.blue },
+  sectionNumberText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   sectionIntroCopy: { flex: 1, gap: 3 },
-  sectionTitle: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 26, fontWeight: "900" },
-  sectionBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, maxWidth: 760 },
+  sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 22, fontWeight: "900" },
+  sectionBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, maxWidth: 760 },
   setupGrid: { gap: fieldTheme.space.md },
   setupGridTablet: { flexDirection: "row", alignItems: "stretch" },
-  setupPanel: { flex: 1, gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  agentPanel: { minHeight: 210 },
-  fieldLabel: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
-  fieldHelp: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  setupPanel: { flex: 1, gap: 10, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  agentPanel: { minHeight: 170 },
+  fieldLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
+  fieldHelp: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, marginTop: 1 },
   fieldHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   fieldHeadingCopy: { flex: 1 },
-  dateNavigator: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
+  dateNavigator: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.xs, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
   dateCopy: { flex: 1, alignItems: "center", gap: 5 },
   dateTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900", textAlign: "center" },
@@ -1404,21 +1452,22 @@ const styles = StyleSheet.create({
   segmentButtonActive: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
   segmentText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "800", textAlign: "center" },
   segmentTextActive: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
-  agentList: { gap: fieldTheme.space.sm },
-  agentOption: { minHeight: 54, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  agentListScroller: { maxHeight: 190 },
+  agentList: { gap: 6, paddingRight: 2 },
+  agentOption: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   agentOptionSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
-  agentAvatar: { width: 38, height: 38, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  agentAvatar: { width: 34, height: 34, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
   agentAvatarSelected: { backgroundColor: fieldTheme.color.primary },
   agentName: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   agentNameSelected: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
-  weekSnapshot: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekSnapshot: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   snapshotHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   snapshotTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
   snapshotBody: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   dayRail: { gap: fieldTheme.space.sm },
-  daySnapshot: { width: 142, minHeight: 128, gap: 4, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  daySnapshot: { width: 116, minHeight: 96, gap: 2, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   daySnapshotDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900", textTransform: "capitalize" },
-  daySnapshotValue: { color: fieldTheme.color.blue, fontSize: 25, lineHeight: 30, fontWeight: "900" },
+  daySnapshotValue: { color: fieldTheme.color.blue, fontSize: 20, lineHeight: 24, fontWeight: "900" },
   daySnapshotLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   dayStatuses: { gap: 4, marginTop: 3 },
   dayEmpty: { color: fieldTheme.color.inkMuted, fontSize: 10 },
@@ -1435,40 +1484,41 @@ const styles = StyleSheet.create({
   noticeBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   noticeAction: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: 10 },
   noticeActionText: { fontSize: 12, fontWeight: "900" },
-  selectionSummary: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  selectionSummary: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, paddingVertical: 4, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   selectionSummaryText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   textButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: 8 },
   textButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  weekDayChooser: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  weekDayHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  weekDayHeadingIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
+  weekDayChooser: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekDayHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  weekDayHeadingIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.blueSoft },
   weekDayHeadingCopy: { flex: 1 },
-  weekDayRows: { gap: fieldTheme.space.sm },
-  weekDayRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekDayRows: { gap: 7, paddingRight: 2 },
+  weekDayRow: { width: 174, minHeight: 58, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 8, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekDayRowTablet: { width: 184 },
   weekDayRowActive: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
   weekDayRowLocked: { backgroundColor: fieldTheme.color.amberSoft },
-  weekDayNumber: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong },
+  weekDayNumber: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong },
   weekDayNumberActive: { backgroundColor: fieldTheme.color.primary },
   weekDayNumberText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900" },
   weekDayNumberTextActive: { color: fieldTheme.color.onColor },
   weekDayCopy: { flex: 1, gap: 3 },
-  weekDayDate: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textTransform: "capitalize" },
+  weekDayDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900", textTransform: "capitalize" },
   weekDayDateActive: { color: fieldTheme.color.primaryStrong },
   weekDaySummary: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15 },
-  dayPlanEditor: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  dayPlanHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  dayPlanHeaderIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  dayPlanEditor: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  dayPlanHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  dayPlanHeaderIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary },
   dayPlanHeaderCopy: { flex: 1, gap: 2 },
-  dayPlanDate: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900", textTransform: "capitalize" },
+  dayPlanDate: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900", textTransform: "capitalize" },
   dayPlanCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   dayPlanLockedPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.amberSoft },
   dayPlanLockedText: { color: fieldTheme.color.amber, fontSize: 10, fontWeight: "900" },
-  dayPlanEmpty: { minHeight: 84, alignItems: "center", justifyContent: "center", gap: 5, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderStyle: "dashed", borderColor: fieldTheme.color.border },
+  dayPlanEmpty: { minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderStyle: "dashed", borderColor: fieldTheme.color.border },
   dayPlanEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
-  dayStopList: { gap: fieldTheme.space.sm },
-  dayStopRow: { minHeight: 78, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  dayStopList: { gap: 6 },
+  dayStopRow: { minHeight: 66, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, padding: 7, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   dayStopRowLocked: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
-  dayStopOrder: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
+  dayStopOrder: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
   dayStopOrderText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
   dayStopName: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
@@ -1485,29 +1535,31 @@ const styles = StyleSheet.create({
   dayStopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   dayStopAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
   dayStopRemove: { backgroundColor: fieldTheme.color.dangerSoft },
-  targetBrowser: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  targetBrowser: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   targetBrowserHeadingCopy: { flex: 1 },
-  activeDayPill: { minHeight: 38, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  activeDayPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
   activeDayPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900", textTransform: "capitalize" },
-  targetTypeTabs: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  targetTypeButton: { minWidth: 132, minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  targetTypeTabs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  targetTypeButton: { minWidth: 104, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 9, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetTypeButtonActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
   targetTypeText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", textAlign: "center" },
   targetTypeTextActive: { color: fieldTheme.color.onColor },
-  searchBox: { minHeight: 54, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  searchInput: { flex: 1, minHeight: 52, paddingVertical: 0, color: fieldTheme.color.ink, fontSize: 15 },
+  searchBox: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  searchInput: { flex: 1, minHeight: 46, paddingVertical: 0, color: fieldTheme.color.ink, fontSize: 14 },
   clearButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center" },
   scopeNote: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
-  loadingBlock: { minHeight: 150, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm },
+  loadingBlock: { minHeight: 96, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 13 },
   resultCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
-  targetList: { gap: fieldTheme.space.sm },
+  targetListScroller: { maxHeight: 278 },
+  targetListScrollerTablet: { maxHeight: 326 },
+  targetList: { gap: 6, paddingRight: 2 },
   targetListTablet: { flexDirection: "row", flexWrap: "wrap" },
-  targetOption: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  targetOption: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: 9, paddingVertical: 7, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetOptionTablet: { width: "49%" },
   targetOptionSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
-  targetMark: { width: 42, height: 42, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  targetMark: { width: 36, height: 36, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
   targetMarkSelected: { backgroundColor: fieldTheme.color.primary },
   targetCopy: { flex: 1, gap: 2 },
   targetName: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
@@ -1515,7 +1567,7 @@ const styles = StyleSheet.create({
   targetProblem: { color: fieldTheme.color.danger, fontSize: 11, fontWeight: "800" },
   targetAction: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
   targetActionSelected: { color: fieldTheme.color.danger },
-  inlineEmpty: { minHeight: 132, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  inlineEmpty: { minHeight: 92, alignItems: "center", justifyContent: "center", gap: 6, padding: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   inlineEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
   inlineEmptyAction: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: 16, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   inlineEmptyActionText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
@@ -1542,13 +1594,16 @@ const styles = StyleSheet.create({
   matrixCellDisabled: { opacity: 0.48 },
   matrixCellDay: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800", textTransform: "capitalize" },
   matrixCellDaySelected: { color: fieldTheme.color.ink, fontWeight: "900" },
-  savePanel: { gap: fieldTheme.space.sm, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  savePanel: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   permissionNote: { color: fieldTheme.color.amber, fontSize: 11, lineHeight: 16, fontWeight: "800" },
-  primaryActionWrap: { gap: fieldTheme.space.sm, alignItems: "stretch", marginTop: fieldTheme.space.sm },
-  primaryActionHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
-  primaryAction: { minHeight: 58, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  actionDock: { gap: 4, paddingTop: 7, paddingHorizontal: 10, backgroundColor: fieldTheme.color.surface, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, shadowColor: fieldTheme.color.ink, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -3 }, elevation: 9 },
+  actionDockHint: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "700", textAlign: "center" },
+  actionDockRow: { width: "100%", maxWidth: 1180, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 8 },
+  backAction: { minWidth: 100, minHeight: 50, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  backActionText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
+  primaryAction: { minHeight: 50, flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   primaryActionDisabled: { backgroundColor: fieldTheme.color.inkMuted, opacity: 0.48 },
-  primaryActionText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
+  primaryActionText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   pressed: { opacity: 0.72 },
   disabled: { opacity: 0.48 },
   disabledText: { opacity: 0.5 },

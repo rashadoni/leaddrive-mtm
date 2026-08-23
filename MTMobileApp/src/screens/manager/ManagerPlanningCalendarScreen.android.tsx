@@ -271,7 +271,7 @@ export default function ManagerPlanningCalendarScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
             <Text style={styles.title}>{copy.title}</Text>
-            <Text style={styles.subtitle}>{copy.subtitle}</Text>
+            <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -526,22 +526,26 @@ function DayAgenda({ date, routes, language, copy, onCreate }: {
         <View><Text style={styles.agendaEyebrow}>{copy.routes}</Text><Text style={styles.agendaTitle}>{copy.dayTitle.replace("{{date}}", formatDate(date, language))}</Text></View>
         <View style={styles.agendaCount}><Text style={styles.agendaCountText}>{routes.length}</Text></View>
       </View>
-      {routes.length > 0 ? routes.map((route) => {
-        const colors = routeColors(route)
-        const ratio = route.total > 0 ? Math.min(1, route.visited / route.total) : 0
-        return (
-          <View key={route.id} style={styles.agendaCard}>
-            <View style={[styles.agentAvatar, { backgroundColor: colors.fill }]}><Text style={[styles.agentAvatarText, { color: colors.ink }]}>{route.agentName.slice(0, 2).toUpperCase()}</Text></View>
-            <View style={styles.agendaCardCopy}>
-              <Text style={styles.agentName}>{route.agentName}</Text>
-              {route.name ? <Text style={styles.routeName} numberOfLines={1}>{route.name}</Text> : null}
-              <Text style={styles.progressLabel}>{copy.progress.replace("{{visited}}", String(route.visited)).replace("{{total}}", String(route.total))}</Text>
-              <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${ratio * 100}%`, backgroundColor: colors.ink }]} /></View>
-            </View>
-            <View style={[styles.statusPill, { backgroundColor: colors.fill }]}><Text style={[styles.statusText, { color: colors.ink }]}>{statusLabel(route, copy)}</Text></View>
-          </View>
-        )
-      }) : (
+      {routes.length > 0 ? (
+        <ScrollView nestedScrollEnabled style={styles.agendaListScroller} contentContainerStyle={styles.agendaList} showsVerticalScrollIndicator={routes.length > 4}>
+          {routes.map((route) => {
+            const colors = routeColors(route)
+            const ratio = route.total > 0 ? Math.min(1, route.visited / route.total) : 0
+            return (
+              <View key={route.id} style={styles.agendaCard}>
+                <View style={[styles.agentAvatar, { backgroundColor: colors.fill }]}><Text style={[styles.agentAvatarText, { color: colors.ink }]}>{route.agentName.slice(0, 2).toUpperCase()}</Text></View>
+                <View style={styles.agendaCardCopy}>
+                  <Text style={styles.agentName}>{route.agentName}</Text>
+                  {route.name ? <Text style={styles.routeName} numberOfLines={1}>{route.name}</Text> : null}
+                  <Text style={styles.progressLabel}>{copy.progress.replace("{{visited}}", String(route.visited)).replace("{{total}}", String(route.total))}</Text>
+                  <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${ratio * 100}%`, backgroundColor: colors.ink }]} /></View>
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: colors.fill }]}><Text style={[styles.statusText, { color: colors.ink }]}>{statusLabel(route, copy)}</Text></View>
+              </View>
+            )
+          })}
+        </ScrollView>
+      ) : (
         <View style={styles.dayEmpty}>
           <View style={styles.emptyIcon}><Icon name="location-outline" size={28} color={fieldTheme.color.inkMuted} /></View>
           <Text style={styles.emptyTitle}>{copy.noDayRoutes}</Text>
@@ -555,36 +559,36 @@ function DayAgenda({ date, routes, language, copy, onCreate }: {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
-  headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center", flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: fieldTheme.space.md },
-  headerInnerTablet: { paddingVertical: fieldTheme.space.sm, flexWrap: "nowrap" },
-  headerIcon: { width: 50, height: 50, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
+  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.sm },
+  headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  headerInnerTablet: { paddingVertical: fieldTheme.space.xs },
+  headerIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
   headerCopy: { flex: 1, minWidth: 220, gap: 2 },
-  eyebrow: { color: "#BBD6CB", fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
-  title: { color: fieldTheme.color.onColor, fontSize: 26, lineHeight: 31, fontWeight: "900" },
-  subtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 18, maxWidth: 680 },
-  createButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 15, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
-  createButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
-  content: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: fieldTheme.space.md, gap: fieldTheme.space.md },
-  contentTablet: { padding: fieldTheme.space.xl, gap: fieldTheme.space.lg },
-  guide: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, paddingVertical: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: "#BED4F0" },
-  guideText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "700" },
-  controls: { gap: fieldTheme.space.md },
+  eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  title: { color: fieldTheme.color.onColor, fontSize: 21, lineHeight: 25, fontWeight: "900" },
+  subtitle: { color: "#D7E9E1", fontSize: 11, lineHeight: 15, maxWidth: 680 },
+  createButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 11, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  createButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
+  content: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: 10, gap: 10 },
+  contentTablet: { padding: fieldTheme.space.md, gap: fieldTheme.space.md },
+  guide: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: 10, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: "#BED4F0" },
+  guideText: { flex: 1, color: fieldTheme.color.ink, fontSize: 11, lineHeight: 15, fontWeight: "700" },
+  controls: { gap: 8 },
   controlsTablet: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  segment: { minHeight: 48, flexDirection: "row", padding: 4, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, borderWidth: 1, borderColor: fieldTheme.color.border },
-  segmentButton: { flex: 1, minWidth: 112, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 12 },
+  segment: { minHeight: 46, flexDirection: "row", padding: 2, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, borderWidth: 1, borderColor: fieldTheme.color.border },
+  segmentButton: { flex: 1, minWidth: 96, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderRadius: 10 },
   segmentButtonActive: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary, shadowColor: fieldTheme.color.ink, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1 },
   segmentText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "800" },
   segmentTextActive: { color: fieldTheme.color.primaryStrong },
   periodNavigator: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm },
-  squareButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  periodCopy: { minHeight: 48, minWidth: 190, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm },
-  periodTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900", textTransform: "capitalize", textAlign: "center" },
-  todayLink: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "800", marginTop: 2 },
-  summaryRow: { flexDirection: "row", gap: fieldTheme.space.sm },
-  summaryCard: { flex: 1, minHeight: 78, flexDirection: "row", alignItems: "center", gap: 7, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  summaryIcon: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 11, backgroundColor: fieldTheme.color.primarySoft },
-  summaryValue: { color: fieldTheme.color.ink, fontSize: 21, fontWeight: "900" },
+  squareButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  periodCopy: { minHeight: LAYOUT_TOUCH_TARGETS.compact, minWidth: 160, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm },
+  periodTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textTransform: "capitalize", textAlign: "center" },
+  todayLink: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "800" },
+  summaryRow: { flexDirection: "row", gap: 6 },
+  summaryCard: { flex: 1, minHeight: 60, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  summaryIcon: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: fieldTheme.color.primarySoft },
+  summaryValue: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
   summaryLabel: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   notice: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, borderWidth: 1, borderColor: fieldTheme.color.amber },
   noticeCopy: { flex: 1, gap: 2 },
@@ -592,14 +596,14 @@ const styles = StyleSheet.create({
   noticeBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: fieldTheme.space.md },
   retryText: { color: fieldTheme.color.amber, fontSize: 13, fontWeight: "900" },
-  loadingBlock: { minHeight: 260, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  loadingBlock: { minHeight: 180, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "700" },
-  calendarCard: { overflow: "hidden", borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  calendarCard: { overflow: "hidden", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   weekdayRow: { flexDirection: "row", backgroundColor: fieldTheme.color.surfaceStrong, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
-  weekdayLabel: { width: "14.2857%", paddingVertical: 10, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900", textAlign: "center", textTransform: "uppercase" },
+  weekdayLabel: { width: "14.2857%", paddingVertical: 6, color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "900", textAlign: "center", textTransform: "uppercase" },
   monthGrid: { flexDirection: "row", flexWrap: "wrap" },
-  monthCell: { width: "14.2857%", minHeight: 74, padding: 5, gap: 4, borderRightWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
-  monthCellTablet: { minHeight: 112, padding: 8 },
+  monthCell: { width: "14.2857%", minHeight: 60, padding: 4, gap: 2, borderRightWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  monthCellTablet: { minHeight: 88, padding: 6 },
   monthCellOutside: { backgroundColor: "#F3F6F4", opacity: 0.58 },
   monthCellSelected: { backgroundColor: fieldTheme.color.primarySoft, borderWidth: 2, borderColor: fieldTheme.color.primary },
   monthCellTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -614,19 +618,19 @@ const styles = StyleSheet.create({
   routeChipCompact: { minHeight: 22, paddingHorizontal: 5 },
   routeChipText: { fontSize: 9, fontWeight: "800" },
   moreText: { color: fieldTheme.color.inkMuted, fontSize: 9, fontWeight: "700" },
-  weekStrip: { padding: fieldTheme.space.sm, gap: fieldTheme.space.sm },
-  weekDay: { width: 72, minHeight: 100, alignItems: "center", justifyContent: "center", gap: 3, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekStrip: { padding: 6, gap: 6 },
+  weekDay: { width: 66, minHeight: 76, alignItems: "center", justifyContent: "center", gap: 2, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   weekDaySelected: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
   weekDayName: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
-  weekDayNumber: { color: fieldTheme.color.ink, fontSize: 22, fontWeight: "900" },
+  weekDayNumber: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
   weekDayCount: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "900" },
   weekDayTextSelected: { color: fieldTheme.color.onColor },
   todayDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: fieldTheme.color.coral },
   matrixScroll: { minWidth: 1100 },
   matrixRow: { flexDirection: "row" },
-  matrixAgentCell: { width: 210, minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.sm, borderRightWidth: 1, borderBottomWidth: 1, borderColor: fieldTheme.color.border },
-  matrixDateCell: { width: 127, minHeight: 78, justifyContent: "center", gap: 4, padding: 6, borderRightWidth: 1, borderBottomWidth: 1, borderColor: fieldTheme.color.border },
-  matrixHeaderCell: { minHeight: 58, backgroundColor: fieldTheme.color.surfaceStrong, alignItems: "center", justifyContent: "center" },
+  matrixAgentCell: { width: 190, minHeight: 64, flexDirection: "row", alignItems: "center", gap: 6, padding: 7, borderRightWidth: 1, borderBottomWidth: 1, borderColor: fieldTheme.color.border },
+  matrixDateCell: { width: 118, minHeight: 64, justifyContent: "center", gap: 3, padding: 5, borderRightWidth: 1, borderBottomWidth: 1, borderColor: fieldTheme.color.border },
+  matrixHeaderCell: { minHeight: 48, backgroundColor: fieldTheme.color.surfaceStrong, alignItems: "center", justifyContent: "center" },
   matrixDateSelected: { backgroundColor: fieldTheme.color.primarySoft },
   matrixHeaderText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900", textTransform: "uppercase" },
   matrixHeaderDate: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
@@ -634,29 +638,31 @@ const styles = StyleSheet.create({
   miniAvatarText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
   matrixAgentName: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 17, fontWeight: "800" },
   matrixEmpty: { color: fieldTheme.color.border, textAlign: "center", fontSize: 18 },
-  emptyPeriod: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.amberSoft, borderWidth: 1, borderColor: "#E7CD88" },
-  emptyIcon: { width: 52, height: 52, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  emptyPeriod: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, borderWidth: 1, borderColor: "#E7CD88" },
+  emptyIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surface },
   emptyCopy: { flex: 1, gap: 3 },
-  emptyTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900", textAlign: "center" },
-  emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
-  agenda: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  emptyTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textAlign: "center" },
+  emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, textAlign: "center" },
+  agenda: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   agendaHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   agendaEyebrow: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
-  agendaTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "900", textTransform: "capitalize" },
-  agendaCount: { minWidth: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  agendaTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 19, fontWeight: "900", textTransform: "capitalize" },
+  agendaCount: { minWidth: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
   agendaCountText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
-  agendaCard: { minHeight: 84, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  agentAvatar: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderRadius: 16 },
+  agendaListScroller: { maxHeight: 292 },
+  agendaList: { gap: 6, paddingRight: 2 },
+  agendaCard: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: 8, padding: 8, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  agentAvatar: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 13 },
   agentAvatarText: { fontSize: 13, fontWeight: "900" },
   agendaCardCopy: { flex: 1, gap: 3 },
-  agentName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
+  agentName: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
   routeName: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "600" },
   progressLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   progressTrack: { height: 5, overflow: "hidden", borderRadius: 3, backgroundColor: fieldTheme.color.border },
   progressFill: { height: 5, borderRadius: 3 },
   statusPill: { minHeight: 28, justifyContent: "center", paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill },
   statusText: { fontSize: 10, fontWeight: "900" },
-  dayEmpty: { minHeight: 210, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.lg },
+  dayEmpty: { minHeight: 140, alignItems: "center", justifyContent: "center", gap: 6, padding: 10 },
   emptyCreate: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
   emptyCreateText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
