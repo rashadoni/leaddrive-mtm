@@ -181,7 +181,7 @@ export function planningLocalTimeToIso(date: string, time: string, timezone?: st
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !match) return null
   const hour = Number(match[1])
   const minute = Number(match[2])
-  if (hour > 23 || minute > 59) return null
+  if (hour > 23 || minute > 59 || minute % 30 !== 0) return null
   const [year, month, day] = date.split("-").map(Number)
   const naive = new Date(Date.UTC(year, month - 1, day, hour, minute))
   if (
@@ -216,11 +216,19 @@ export function planningTimeLabel(value?: string | null, timezone?: string | nul
   }
 }
 
+/** Converts a legacy arbitrary minute value to the nearest user-selectable slot. */
+export function normalizePlanningTimeSlot(value?: string | null): string | null {
+  if (!value || !/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null
+  const [hours, minutes] = value.split(":").map(Number)
+  const rounded = Math.min((23 * 60) + 30, Math.round(((hours * 60) + minutes) / 30) * 30)
+  return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${String(rounded % 60).padStart(2, "0")}`
+}
+
 export function nextPlanningTime(targets: PlanningAssignedTarget[], date: string, timezone?: string | null): string {
   const used = targets
     .filter((target) => target.date === date)
-    .map((target) => planningTimeLabel(target.plannedTime, timezone))
-    .filter((value) => /^\d{2}:\d{2}$/.test(value))
+    .map((target) => normalizePlanningTimeSlot(planningTimeLabel(target.plannedTime, timezone)))
+    .filter((value): value is string => value !== null)
     .map((value) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3)))
   const minutes = used.length > 0 ? Math.max(...used) + 30 : 9 * 60
   const bounded = Math.min(minutes, 23 * 60 + 30)

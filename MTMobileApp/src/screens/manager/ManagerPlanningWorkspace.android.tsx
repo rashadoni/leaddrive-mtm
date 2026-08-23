@@ -36,6 +36,7 @@ import {
   lockedPlanningTargetCells,
   movePlanningTarget,
   nextPlanningTime,
+  normalizePlanningTimeSlot,
   planningDateKeys,
   planningDraftConflictDates,
   planningPublishConflictDates,
@@ -1166,33 +1167,72 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
   )
 }
 
-function normalizeClockInput(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 4)
-  return digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
-}
-
 function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; disabled: boolean; label: string; onCommit: (time: string) => boolean }) {
-  const [draft, setDraft] = useState(value)
-  useEffect(() => setDraft(value), [value])
-  const commit = () => {
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(draft) || !onCommit(draft)) setDraft(value)
+  const safeValue = normalizePlanningTimeSlot(value) ?? "09:00"
+  const [hour, setHour] = useState(safeValue.slice(0, 2))
+  const [minute, setMinute] = useState(safeValue.slice(3))
+  useEffect(() => {
+    const next = normalizePlanningTimeSlot(value) ?? "09:00"
+    setHour(next.slice(0, 2))
+    setMinute(next.slice(3))
+  }, [value])
+
+  const restore = () => {
+    const next = normalizePlanningTimeSlot(value) ?? "09:00"
+    setHour(next.slice(0, 2))
+    setMinute(next.slice(3))
+  }
+  const commit = (nextHour = hour, nextMinute = minute) => {
+    if (!/^\d{1,2}$/.test(nextHour)) {
+      restore()
+      return
+    }
+    const numericHour = Number(nextHour)
+    if (numericHour > 23) {
+      restore()
+      return
+    }
+    const normalizedHour = String(numericHour).padStart(2, "0")
+    const nextTime = `${normalizedHour}:${nextMinute}`
+    if (!onCommit(nextTime)) {
+      restore()
+      return
+    }
+    setHour(normalizedHour)
+    setMinute(nextMinute)
   }
   return (
     <View style={[styles.routeTimeField, disabled && styles.routeTimeFieldDisabled]}>
       <Icon name="time-outline" size={18} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
       <TextInput
-        value={draft}
-        onChangeText={(next) => setDraft(normalizeClockInput(next))}
-        onBlur={commit}
-        onSubmitEditing={commit}
-        placeholder="09:00"
+        value={hour}
+        onChangeText={(next) => setHour(next.replace(/\D/g, "").slice(0, 2))}
+        onBlur={() => commit()}
+        onSubmitEditing={() => commit()}
+        placeholder="09"
         placeholderTextColor={fieldTheme.color.inkMuted}
         keyboardType="number-pad"
-        maxLength={5}
+        maxLength={2}
         editable={!disabled}
         accessibilityLabel={label}
-        style={styles.routeTimeInput}
+        style={styles.routeTimeHourInput}
       />
+      <Text style={styles.routeTimeColon}>:</Text>
+      <View style={styles.routeTimeMinuteOptions}>
+        {(["00", "30"] as const).map((slot) => (
+          <Pressable
+            key={slot}
+            accessibilityRole="radio"
+            accessibilityLabel={`${label}: ${slot}`}
+            accessibilityState={{ selected: minute === slot, disabled }}
+            disabled={disabled}
+            onPress={() => commit(hour, slot)}
+            style={({ pressed }) => [styles.routeTimeMinuteButton, minute === slot && styles.routeTimeMinuteButtonActive, disabled && styles.disabled, pressed && styles.pressed]}
+          >
+            <Text style={[styles.routeTimeMinuteText, minute === slot && styles.routeTimeMinuteTextActive]}>{slot}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   )
 }
@@ -1433,9 +1473,15 @@ const styles = StyleSheet.create({
   dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
   dayStopName: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
   dayStopMeta: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
-  routeTimeField: { width: 98, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  routeTimeField: { minWidth: 164, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
   routeTimeFieldDisabled: { borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surfaceStrong },
-  routeTimeInput: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingVertical: 0, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  routeTimeHourInput: { width: 28, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingVertical: 0, paddingHorizontal: 0, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900", textAlign: "center" },
+  routeTimeColon: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  routeTimeMinuteOptions: { flexDirection: "row", gap: 4 },
+  routeTimeMinuteButton: { minWidth: 32, minHeight: 32, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  routeTimeMinuteButtonActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  routeTimeMinuteText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
+  routeTimeMinuteTextActive: { color: fieldTheme.color.onColor },
   dayStopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   dayStopAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
   dayStopRemove: { backgroundColor: fieldTheme.color.dangerSoft },

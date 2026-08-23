@@ -6,6 +6,7 @@ import {
   lockedPlanningDates,
   planningDateKeys,
   planningLocalTimeToIso,
+  normalizePlanningTimeSlot,
   planningTimeLabel,
   nextPlanningTime,
   movePlanningTarget,
@@ -203,12 +204,18 @@ describe("friendly manager planning model", () => {
     expect(nineBaku).toBe("2026-08-24T05:00:00.000Z")
     expect(planningTimeLabel(nineBaku, "Asia/Baku")).toBe("09:00")
     expect(planningLocalTimeToIso("2026-08-24", "25:00", "Asia/Baku")).toBeNull()
+    expect(planningLocalTimeToIso("2026-08-24", "09:15", "Asia/Baku")).toBeNull()
+    expect(normalizePlanningTimeSlot("14:27")).toBe("14:30")
+    expect(normalizePlanningTimeSlot("14:44")).toBe("14:30")
 
     const rows: PlanningAssignedTarget[] = [
       { ...clinic, date: "2026-08-24", plannedTime: nineBaku },
       { ...doctor, date: "2026-08-24", plannedTime: planningLocalTimeToIso("2026-08-24", "09:30", "Asia/Baku") },
     ]
     expect(nextPlanningTime(rows, "2026-08-24", "Asia/Baku")).toBe("10:00")
+    expect(nextPlanningTime([
+      { ...clinic, date: "2026-08-24", plannedTime: "14:27" },
+    ], "2026-08-24", "Asia/Baku")).toBe("15:00")
     expect(movePlanningTarget(rows, doctor.key, "2026-08-24", -1).map((target) => target.key)).toEqual([doctor.key, clinic.key])
     expect(updatePlanningTargetTime(rows, clinic.key, "2026-08-24", null)[0].plannedTime).toBeNull()
   })
