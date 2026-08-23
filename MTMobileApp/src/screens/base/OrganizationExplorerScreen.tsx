@@ -34,6 +34,7 @@ import {
 } from "../../services/organization-explorer"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
+import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
 
 const DEFAULT_COLUMNS: OrganizationColumn[] = ["name", "type", "category", "geography", "assignedAgent", "contacts"]
 const EMPTY_FACETS: OrganizationFacets = {
@@ -321,6 +322,17 @@ export default function OrganizationExplorerScreen() {
 
   const list = (
     <View style={[styles.listPane, tablet && styles.tabletListPane]}>
+      <View style={styles.guideWrap}>
+        <MobileWorkflowGuide
+          title={t("organizations.guideTitle")}
+          body={t("organizations.guideBody")}
+          steps={[
+            { icon: "search-outline", label: t("organizations.guideSearch") },
+            { icon: "checkmark-circle-outline", label: t("organizations.guideSelect") },
+            { icon: "person-add-outline", label: t("organizations.guideAssign") },
+          ]}
+        />
+      </View>
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
           <Text style={styles.searchIcon}>⌕</Text>
@@ -559,6 +571,7 @@ function EmptyState({ text }: { text: string }) { return <View style={styles.emp
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f7f7" }, split: { flex: 1, flexDirection: "row", gap: 12, paddingHorizontal: 12, paddingBottom: 12 },
   listPane: { flex: 1 }, tabletListPane: { flex: 1, minWidth: 0, borderRadius: 22, overflow: "hidden", backgroundColor: "#f7f9f9", borderWidth: 1, borderColor: "#dce7e5" },
+  guideWrap: { paddingHorizontal: 14, paddingTop: 12 },
   toolbar: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }, searchBox: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#dce7e5", paddingHorizontal: 12 }, searchIcon: { color: "#0f766e", fontSize: 20, marginRight: 7 }, searchInput: { flex: 1, minHeight: 48, fontSize: 14, color: "#102a2a" },
   quickActions: { flexDirection: "row", gap: 8, paddingHorizontal: 14, paddingBottom: 10 },
   quickAction: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 10, borderRadius: 13, borderWidth: 1, borderColor: "#cbe1dd", backgroundColor: "#fff" },

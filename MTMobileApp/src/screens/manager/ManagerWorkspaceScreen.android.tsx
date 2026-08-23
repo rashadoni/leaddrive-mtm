@@ -38,6 +38,7 @@ import {
   type ManagerTeamAgent,
 } from "../../services/manager-location-truth"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
+import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
 import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
 
@@ -246,6 +247,15 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
           />
         )}
       >
+        <MobileWorkflowGuide
+          title={t("managerShell.workflowTitle")}
+          body={t("managerShell.workflowBody")}
+          steps={[
+            { icon: "people-outline", label: t("managerShell.teamTitle"), active: kind === "team" },
+            { icon: "calendar-outline", label: t("managerShell.planningTitle"), active: kind === "planning" },
+            { icon: "shield-checkmark-outline", label: t("managerShell.approvalsTitle"), active: kind === "approvals" },
+          ]}
+        />
         {kind === "team" ? (
           <>
             {canShareSelfLocation && (

@@ -231,6 +231,11 @@
   },
   "organizations": {
     "title": "Təşkilatlar",
+    "guideTitle": "Təşkilatlarla necə işləməli",
+    "guideBody": "Əvvəl lazımi təşkilatı tapın, sonra kartını yoxlayın. Rəhbər qeydləri seçib yalnız yoxlamadan sonra məsul əməkdaşı dəyişə bilər.",
+    "guideSearch": "Təşkilatı tapın",
+    "guideSelect": "Kartı yoxlayın",
+    "guideAssign": "Məsul şəxsi təyin edin",
     "searchPlaceholder": "Ad, kod, ünvan üzrə axtarış…",
     "totalTemplate": "{{n}} təşkilat",
     "empty": "Hələ təyin olunmuş təşkilat yoxdur",
@@ -331,6 +336,11 @@
   },
   "contacts": {
     "title": "Kontaktlar",
+    "guideTitle": "Burada təşkilatlar yox, insanlar saxlanılır",
+    "guideBody": "Həkimi, əczaçını və ya digər əlaqə şəxsi tapın, əsas iş yerini yoxlayın və növbəti addım üçün kartını açın.",
+    "guideSearch": "Şəxsi tapın",
+    "guideWorkplace": "İş yerini yoxlayın",
+    "guideOpen": "Kartı açın",
     "searchPlaceholder": "Ad, ixtisas, telefon üzrə axtarış…",
     "empty": "Hələ təyin olunmuş kontakt yoxdur",
     "emptySearch": "Axtarışa uyğun nəticə yoxdur",

@@ -65,5 +65,5 @@ describe("mobile planning guidance", () => {
     expect(calendarSource).toContain('initialDate: selectedDate, initialHorizon: 1')
     expect(source).toContain("initialDate?: string")
     expect(source).toContain("initialHorizon?: PlanningHorizon")
-  })
+})
 })
