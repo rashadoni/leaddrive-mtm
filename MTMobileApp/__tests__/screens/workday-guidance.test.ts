@@ -11,6 +11,10 @@ describe("field workday guidance", () => {
     path.resolve(__dirname, "../../src/screens/dashboard/DashboardScreen.android.tsx"),
     "utf8",
   )
+  const runtimeSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/runtime/AndroidApp.tsx"),
+    "utf8",
+  )
 
   it("requires explicit confirmation before ending the day from either entry point", () => {
     for (const source of [todaySource, dashboardSource]) {
@@ -23,7 +27,12 @@ describe("field workday guidance", () => {
 
   it("does not allow the dashboard action before the saved workday is restored", () => {
     expect(dashboardSource).toContain("const workdayHydrated = useWorkdayStore")
-    expect(dashboardSource).toContain("disabled={workdayBusy || !workdayHydrated}")
+    expect(dashboardSource).toContain("disabled={workdayBusy || workdayEnding || !workdayHydrated}")
+  })
+
+  it("stops GPS immediately while FINISH awaits server confirmation", () => {
+    expect(runtimeSource).toContain('activeWorkday.syncState !== "FINISH_PENDING"')
+    expect(runtimeSource).toContain("await useBootstrapStore.getState().fetchBootstrap()")
   })
 
   it.each(["ru", "en", "az"] as const)("ships clear %s end-day consequences", (locale) => {
@@ -32,5 +41,8 @@ describe("field workday guidance", () => {
     expect(copy.endDayConfirmBody).toBeTruthy()
     expect(copy.endDayConfirmCancel).toBeTruthy()
     expect(copy.endDayConfirmAction).toBeTruthy()
+    expect(copy.dayStartingBody).toBeTruthy()
+    expect(copy.dayEndingBody).toBeTruthy()
+    expect(copy.endDayPendingButton).toBeTruthy()
   })
 })

@@ -21,13 +21,14 @@ import { useBootstrapStore } from "../store/bootstrap"
 import { setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { markMobileOffline, runMobileSync } from "../services/sync-engine"
+import { allOutboxOperations } from "../services/outbox"
 import { i18n, initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
 import { version as APP_VERSION } from "../../package.json"
 
-const ANDROID_VERSION_CODE = 36
+const ANDROID_VERSION_CODE = 37
 initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 function AppContent() {
@@ -37,7 +38,7 @@ function AppContent() {
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const activeWorkdayId = activeWorkday?.key === currentWorkdayKey
+  const activeWorkdayId = activeWorkday?.key === currentWorkdayKey && activeWorkday.syncState !== "FINISH_PENDING"
     ? activeWorkday.workdayId
     : null
   const mayTrack =
@@ -50,7 +51,16 @@ function AppContent() {
     const auth = useAuthStore.getState()
     if (!auth.isLoggedIn || !auth.agent || !canExecuteFieldWork(auth.agent.role)) return
     try {
-      await runMobileSync()
+      const queued = await allOutboxOperations()
+      const hadWorkdayMutation = queued.some((item) => item.entity === "workdays" && item.status === "pending")
+      const result = await runMobileSync()
+      if (hadWorkdayMutation && result.success) {
+        // A workday button changes local state immediately so offline use is
+        // possible. Bootstrap closes the loop with the authoritative server
+        // state and replaces “sending” with “started/finished”.
+        await useBootstrapStore.getState().fetchBootstrap()
+      }
+      return result
     } catch {
       // The outbox remains queued and will retry on the next connection/app
       // foreground event. GPS tracking may still start locally for offline
@@ -89,9 +99,9 @@ function AppContent() {
     if (!mayTrack || !activeWorkdayId) {
       setTrackingWorkdayId(null)
       stopTracking().catch(() => {})
-      // `end()` clears local state straight after queuing FINISH. Flush here
-      // as well as on start so an online user disappears from the live map
-      // immediately instead of waiting for a foreground/network event.
+      // FINISH_PENDING stops device tracking immediately while keeping a
+      // visible “ending” state until the server confirms it. Flush here as
+      // well as on start instead of waiting for a foreground/network event.
       if (isLoggedIn) void flushPendingOperations()
       return () => {
         setTrackingWorkdayId(null)
@@ -113,7 +123,8 @@ function AppContent() {
           const auth = useAuthStore.getState()
           const workday = useWorkdayStore.getState()
           const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
-          const latestWorkdayId = workday.activeWorkday?.key === latestKey
+          const latestWorkdayId = workday.activeWorkday?.key === latestKey &&
+            workday.activeWorkday.syncState !== "FINISH_PENDING"
             ? workday.activeWorkday.workdayId
             : null
           if (
@@ -164,7 +175,8 @@ function AppContent() {
           const auth = useAuthStore.getState()
           const workday = useWorkdayStore.getState()
           const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
-          const latestWorkdayId = workday.activeWorkday?.key === latestKey
+          const latestWorkdayId = workday.activeWorkday?.key === latestKey &&
+            workday.activeWorkday.syncState !== "FINISH_PENDING"
             ? workday.activeWorkday.workdayId
             : null
           if (auth.isLoggedIn && canTrackFieldLocation(auth.agent?.role) && latestWorkdayId) {
