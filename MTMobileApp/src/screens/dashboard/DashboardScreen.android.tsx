@@ -21,6 +21,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { isManagerRole } from "../../auth/roles"
 import SyncStatusChip from "../../components/SyncStatusChip"
+import ConfirmSheet from "../../components/ConfirmSheet"
 import { fieldTheme } from "../../theme/fieldTheme"
 import {
   LAYOUT_TOUCH_TARGETS,
@@ -230,6 +231,7 @@ export default function DashboardScreen() {
   const [focusedWidget, setFocusedWidget] = useState<DashboardWidgetId | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [workdayBusy, setWorkdayBusy] = useState(false)
+  const [endDayConfirmVisible, setEndDayConfirmVisible] = useState(false)
   const [managerStats, setManagerStats] = useState<ManagerDashboardStats | null>(null)
   const [managerLoading, setManagerLoading] = useState(false)
   const [managerError, setManagerError] = useState<string | null>(null)
@@ -245,6 +247,7 @@ export default function DashboardScreen() {
   const resetLayout = useDashboardLayoutStore((state) => state.resetLayout)
 
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const startWorkday = useWorkdayStore((state) => state.start)
   const endWorkday = useWorkdayStore((state) => state.end)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
@@ -328,7 +331,7 @@ export default function DashboardScreen() {
   }
 
   const toggleWorkday = async () => {
-    if (workdayBusy) return
+    if (workdayBusy || !workdayHydrated) return
     setWorkdayBusy(true)
     setMessage(null)
     try {
@@ -339,6 +342,20 @@ export default function DashboardScreen() {
     } finally {
       setWorkdayBusy(false)
     }
+  }
+
+  const requestWorkdayToggle = () => {
+    if (workdayBusy || !workdayHydrated) return
+    if (workdayActive) {
+      setEndDayConfirmVisible(true)
+      return
+    }
+    toggleWorkday().catch(() => {})
+  }
+
+  const confirmEndDay = () => {
+    setEndDayConfirmVisible(false)
+    toggleWorkday().catch(() => {})
   }
 
   const horizontalPadding = isTabletWidth(screenWidth) ? fieldTheme.space.xl : fieldTheme.space.lg
@@ -438,13 +455,14 @@ export default function DashboardScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t(workdayActive ? "dashboardV2.endDay" : "dashboardV2.startDay")}
-                accessibilityState={{ disabled: workdayBusy, selected: workdayActive }}
-                disabled={workdayBusy}
-                onPress={() => { toggleWorkday().catch(() => {}) }}
+                accessibilityState={{ disabled: workdayBusy || !workdayHydrated, selected: workdayActive }}
+                disabled={workdayBusy || !workdayHydrated}
+                onPress={requestWorkdayToggle}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   expandedTablet && styles.expandedTouchHeight,
                   workdayActive && styles.workdayButtonActive,
+                  !workdayHydrated && styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
@@ -650,6 +668,18 @@ export default function DashboardScreen() {
           <Text style={[styles.message, { marginHorizontal: horizontalPadding }]}>{managerError}</Text>
         )}
       </ScrollView>
+      <ConfirmSheet
+        visible={endDayConfirmVisible}
+        icon="■"
+        iconColor={fieldTheme.color.amber}
+        title={t("todayV2.endDayConfirmTitle")}
+        message={t("todayV2.endDayConfirmBody")}
+        cancelText={t("todayV2.endDayConfirmCancel")}
+        confirmText={t("todayV2.endDayConfirmAction")}
+        confirmColor={fieldTheme.color.amber}
+        onCancel={() => setEndDayConfirmVisible(false)}
+        onConfirm={confirmEndDay}
+      />
     </View>
   )
 }

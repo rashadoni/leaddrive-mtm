@@ -13,6 +13,7 @@ import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import SyncStatusChip from "../../components/SyncStatusChip"
+import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { api } from "../../services/api"
@@ -106,6 +107,7 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [workdayBusy, setWorkdayBusy] = useState(false)
   const [workdayError, setWorkdayError] = useState(false)
+  const [endDayConfirmVisible, setEndDayConfirmVisible] = useState(false)
 
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
   const workdayActive = workdayHydrated && activeWorkday?.key === currentWorkdayKey
@@ -187,6 +189,20 @@ export default function TodayScreen() {
       setWorkdayBusy(false)
     }
   }, [currentWorkdayKey, endWorkday, startWorkday, workdayActive, workdayBusy, workdayHydrated])
+
+  const requestWorkdayToggle = useCallback(() => {
+    if (workdayBusy || !workdayHydrated) return
+    if (workdayActive) {
+      setEndDayConfirmVisible(true)
+      return
+    }
+    toggleWorkday().catch(() => {})
+  }, [toggleWorkday, workdayActive, workdayBusy, workdayHydrated])
+
+  const confirmEndDay = useCallback(() => {
+    setEndDayConfirmVisible(false)
+    toggleWorkday().catch(() => {})
+  }, [toggleWorkday])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -364,7 +380,7 @@ export default function TodayScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: workdayActive, disabled: workdayBusy || !workdayHydrated }}
                 disabled={workdayBusy || !workdayHydrated}
-                onPress={() => { toggleWorkday().catch(() => {}) }}
+                onPress={requestWorkdayToggle}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   workdayActive && styles.workdayButtonActive,
@@ -532,6 +548,18 @@ export default function TodayScreen() {
           </View>
         </View>
       </ScrollView>
+      <ConfirmSheet
+        visible={endDayConfirmVisible}
+        icon="■"
+        iconColor={fieldTheme.color.amber}
+        title={t("todayV2.endDayConfirmTitle")}
+        message={t("todayV2.endDayConfirmBody")}
+        cancelText={t("todayV2.endDayConfirmCancel")}
+        confirmText={t("todayV2.endDayConfirmAction")}
+        confirmColor={fieldTheme.color.amber}
+        onCancel={() => setEndDayConfirmVisible(false)}
+        onConfirm={confirmEndDay}
+      />
     </View>
   )
 }
