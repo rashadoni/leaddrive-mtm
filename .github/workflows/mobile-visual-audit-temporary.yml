@@ -1,0 +1,74 @@
+name: Temporary MTM mobile visual audit
+
+on:
+  push:
+    branches:
+      - codex/mobile-visual-audit
+    paths:
+      - .github/workflows/mobile-visual-audit-temporary.yml
+      - .github/scripts/mtm-mobile-visual-audit.sh
+
+permissions:
+  contents: read
+
+jobs:
+  visual-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      MTM_AUDIT_TENANT: ${{ secrets.MTM_VISUAL_AUDIT_TENANT }}
+      MTM_AUDIT_EMAIL: ${{ secrets.MTM_VISUAL_AUDIT_EMAIL }}
+      MTM_AUDIT_PASSWORD: ${{ secrets.MTM_VISUAL_AUDIT_PASSWORD }}
+    defaults:
+      run:
+        working-directory: MTMobileApp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: MTMobileApp/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JavaScript dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+
+      - name: Materialize release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.MTM_RELEASE_KEYSTORE_B64 }}
+        run: |
+          test -n "$KEYSTORE_B64"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/mtm-release.keystore
+          chmod 600 android/app/mtm-release.keystore
+
+      - name: Build emulator release APK
+        working-directory: MTMobileApp/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --no-parallel --max-workers=2 --console=plain
+
+      - name: Run phone and tablet visual walkthrough
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect
+          script: cd MTMobileApp && bash ../.github/scripts/mtm-mobile-visual-audit.sh
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtm-mobile-visual-audit
+          path: MTMobileApp/visual-audit-artifacts
+          retention-days: 7
+          if-no-files-found: warn
