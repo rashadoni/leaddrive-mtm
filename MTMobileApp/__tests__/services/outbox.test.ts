@@ -92,6 +92,19 @@ describe("durable sync outbox", () => {
     expect((await pendingOutboxOperations(6_000)).map((entry) => entry.operationId)).toEqual([item.operationId])
   })
 
+  it("preserves the legacy retry schedule when transport gives no Retry-After", async () => {
+    const item = await enqueueOutboxOperation({ entity: "visits", op: "update", data: { id: "v1" } })
+
+    const result = await flushOutbox(
+      async () => { throw new Error("temporarily unavailable") },
+      { now: () => 1_000, random: () => 1 },
+    )
+
+    expect(result).toMatchObject({ sent: 0, deferred: 1, conflicted: 0, error: "temporarily unavailable" })
+    expect(await pendingOutboxOperations(2_999)).toEqual([])
+    expect((await pendingOutboxOperations(3_000)).map((entry) => entry.operationId)).toEqual([item.operationId])
+  })
+
   it("can clear persisted operations", async () => {
     await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { id: "w1" } })
     await clearOutbox()

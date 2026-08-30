@@ -96,9 +96,12 @@ export async function flushMediaOutbox(
     try { await send(item); await acknowledgeMediaUpload(item.id); sent += 1 }
     catch (error) {
       const now = options?.now?.() ?? Date.now()
+      const retryAfterMs = retryAfterMsFromError(error)
       const retryAt = await deferMediaUpload(item.id, now, {
-        retryAfterMs: retryAfterMsFromError(error),
-        jitter: true,
+        retryAfterMs,
+        // Media is a legacy v1 queue too. Do not change its ordinary retry
+        // schedule; only a server-provided Retry-After gets fair jitter.
+        jitter: retryAfterMs !== undefined,
         random: options?.random,
       })
       earliestRetryAt = earliestRetryAt === null ? retryAt : Math.min(earliestRetryAt, retryAt)

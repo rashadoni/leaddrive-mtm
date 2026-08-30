@@ -202,7 +202,10 @@ export async function flushOutbox(
         conflicted += 1
       } else {
         await deferOutboxOperation(item.operationId, options?.now?.() ?? Date.now(), {
-          jitter: true,
+          // This is the v1 compatibility queue. Preserve its historical
+          // deterministic backoff unless the server explicitly supplies a
+          // Retry-After window that benefits from cohort spreading.
+          jitter: false,
           random: options?.random,
         })
         deferred += 1
@@ -214,7 +217,7 @@ export async function flushOutbox(
     for (const item of pending) {
       await deferOutboxOperation(item.operationId, options?.now?.() ?? Date.now(), {
         retryAfterMs,
-        jitter: true,
+        jitter: retryAfterMs !== undefined,
         random: options?.random,
       })
     }
