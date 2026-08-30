@@ -20,7 +20,7 @@ import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import TaskDetailScreen from "../screens/tasks/TaskDetailScreen"
 import RouteBaseScreen from "../screens/base/RouteBaseScreen.android"
-import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
+import RouteOrganizationDetailScreen from "../screens/base/RouteOrganizationDetailScreen.android"
 import RouteContactDetailScreen from "../screens/base/RouteContactDetailScreen.android"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
@@ -217,7 +217,7 @@ export default function AppNavigatorAndroidV2() {
             <Stack.Screen name="Main" component={MainTabs} />
             {routeFieldAdmitted ? (
               <>
-                <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
+                <Stack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
                 <Stack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
                 <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
                 <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />

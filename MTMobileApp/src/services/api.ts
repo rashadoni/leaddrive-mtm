@@ -698,6 +698,11 @@ class ApiClient {
     return this.request(`/organizations/${id}`, { signal })
   }
 
+  /** Mobile-only v2 detail projection; the legacy v1 response stays untouched. */
+  async getRouteOrganizationDetail(id: string, signal?: AbortSignal) {
+    return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
+  }
+
   async getContacts(
     params?: { search?: string; page?: number; limit?: number; ownerAgentId?: string },
     signal?: AbortSignal,

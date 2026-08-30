@@ -51,8 +51,8 @@ describe("Route Field product boundary", () => {
     path.resolve(__dirname, "../../src/screens/tasks/TaskDetailScreen.tsx"),
     "utf8",
   )
-  const organizationDetailSource = fs.readFileSync(
-    path.resolve(__dirname, "../../src/screens/base/OrganizationDetailScreen.tsx"),
+  const routeOrganizationDetailSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/base/RouteOrganizationDetailScreen.android.tsx"),
     "utf8",
   )
   const visitWorkspaceSource = fs.readFileSync(
@@ -93,7 +93,13 @@ describe("Route Field product boundary", () => {
     expect(routeContactSource).not.toContain("DoctorAssessment")
     expect(routeContactSource).not.toContain("queueBrand")
     expect(routeContactSource).not.toContain("../../services/contact-detail")
-    expect(organizationDetailSource).not.toContain("potentialSection")
+    expect(routeOrganizationDetailSource).toContain("api.getRouteOrganizationDetail")
+    expect(routeOrganizationDetailSource).not.toContain("api.getOrganization(")
+    expect(routeOrganizationDetailSource).not.toContain("field-potential")
+    expect(routeOrganizationDetailSource).not.toContain("managingManager")
+    expect(routeOrganizationDetailSource).not.toContain("agentAssignments")
+    expect(routeOrganizationDetailSource).not.toContain("fieldPotentials")
+    expect(routeOrganizationDetailSource).not.toContain("commercial")
     expect(visitWorkspaceSource).not.toContain("data.potential")
     expect(tasksSource).not.toContain("getManagerTeam")
     expect(tasksSource).not.toContain("bulkReassignTasks")
