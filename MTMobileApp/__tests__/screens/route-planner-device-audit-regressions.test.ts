@@ -8,10 +8,11 @@ const source = fs.readFileSync(
 )
 
 describe("route planner device-audit regressions", () => {
-  it("uses a touch picker instead of an editable hour field", () => {
+  it("uses practical touch slots instead of editable hour/minute fields", () => {
     expect(source).toContain("function PlanningTimePickerSheet")
     expect(source).toContain('animationType="slide"')
-    expect(source).toContain("PLANNING_TIME_MINUTES.map")
+    expect(source).toContain("planningQuickTimeSlots")
+    expect(source).toContain("planningTimeSlots")
     expect(source).not.toContain("function RouteTimeInput")
     expect(source).not.toContain("routeTimeHourInput")
   })
@@ -26,9 +27,10 @@ describe("route planner device-audit regressions", () => {
     const copy = mobileResources[locale].managerShell
     expect(copy.planTimePickerTitle).toBeTruthy()
     expect(copy.planTimePickerHint).toBeTruthy()
-    expect(copy.planTimePickerHour).toBeTruthy()
-    expect(copy.planTimePickerMinutes).toBeTruthy()
-    expect(copy.planTimePickerSave).toBeTruthy()
+    expect(copy.planTimePickerQuick).toBeTruthy()
+    expect(copy.planTimePickerPeriod).toBeTruthy()
+    expect(copy.planTimePickerMorning).toBeTruthy()
+    expect(copy.planTimePickerEvening).toBeTruthy()
     expect(copy.planSaveDraftActionDay).toBeTruthy()
     expect(copy.planClearStops_one).toBeTruthy()
     expect(copy.planClearStops_other).toBeTruthy()

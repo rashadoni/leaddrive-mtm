@@ -58,11 +58,11 @@ import {
   type PlanningTarget,
 } from "../../services/manager-planning"
 import {
-  PLANNING_TIME_HOURS,
-  PLANNING_TIME_MINUTES,
-  planningTimeParts,
-  planningTimeValue,
-  type PlanningTimeMinute,
+  PLANNING_TIME_PERIODS,
+  planningQuickTimeSlots,
+  planningTimePeriod,
+  planningTimeSlots,
+  type PlanningTimePeriod,
 } from "./planning-time-picker"
 
 type PlanningStep = 1 | 2 | 3
@@ -1416,22 +1416,20 @@ function PlanningTimePickerSheet({ visible, value, targetName, disabled, onClose
   t: any
 }) {
   const safeAreaInsets = useSafeAreaInsets()
-  const initial = planningTimeParts(value)
-  const [hour, setHour] = useState(initial.hour)
-  const [minute, setMinute] = useState<PlanningTimeMinute>(initial.minute)
+  const safeValue = normalizePlanningTimeSlot(value) ?? "09:00"
+  const [period, setPeriod] = useState<PlanningTimePeriod>(() => planningTimePeriod(safeValue))
 
   useEffect(() => {
     if (!visible) return
-    const next = planningTimeParts(value)
-    setHour(next.hour)
-    setMinute(next.minute)
-  }, [value, visible])
+    setPeriod(planningTimePeriod(safeValue))
+  }, [safeValue, visible])
 
-  const selectedTime = planningTimeValue(hour, minute)
-  const save = () => {
+  const choose = (time: string) => {
     if (disabled) return
-    if (onCommit(selectedTime)) onClose()
+    if (onCommit(time)) onClose()
   }
+  const quickSlots = planningQuickTimeSlots(safeValue)
+  const periodSlots = planningTimeSlots(period)
 
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
@@ -1448,57 +1446,67 @@ function PlanningTimePickerSheet({ visible, value, targetName, disabled, onClose
               <Icon name="close" size={22} color={fieldTheme.color.inkMuted} />
             </Pressable>
           </View>
-          <Text accessibilityRole="header" style={styles.timePickerValue}>{selectedTime}</Text>
+          <Text accessibilityRole="header" style={styles.timePickerValue}>{safeValue}</Text>
           <Text style={styles.timePickerHint}>{t("managerShell.planTimePickerHint")}</Text>
 
-          <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerHour")}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timePickerHourList}>
-            {PLANNING_TIME_HOURS.map((option) => {
-              const selected = option === hour
+          <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerQuick")}</Text>
+          <View style={styles.timePickerQuickList} accessibilityRole="radiogroup">
+            {quickSlots.map((option) => {
+              const selected = option === safeValue
               return (
                 <Pressable
                   key={option}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selected, disabled }}
-                  accessibilityLabel={`${t("managerShell.planTimePickerHour")}: ${option}`}
+                  accessibilityLabel={`${t("managerShell.planVisitTime")}: ${option}`}
                   disabled={disabled}
-                  onPress={() => setHour(option)}
-                  style={({ pressed }) => [styles.timePickerHour, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
+                  onPress={() => choose(option)}
+                  style={({ pressed }) => [styles.timePickerQuickChoice, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
                 >
-                  <Text style={[styles.timePickerHourText, selected && styles.timePickerChoiceTextSelected]}>{option}</Text>
+                  <Text style={[styles.timePickerQuickText, selected && styles.timePickerChoiceTextSelected]}>{option}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+
+          <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerPeriod")}</Text>
+          <View style={styles.timePickerPeriodList} accessibilityRole="radiogroup">
+            {PLANNING_TIME_PERIODS.map((option) => {
+              const selected = option === period
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
+                  accessibilityLabel={t(`managerShell.planTimePicker${option[0].toUpperCase()}${option.slice(1)}`)}
+                  disabled={disabled}
+                  onPress={() => setPeriod(option)}
+                  style={({ pressed }) => [styles.timePickerPeriod, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.timePickerPeriodText, selected && styles.timePickerChoiceTextSelected]}>{t(`managerShell.planTimePicker${option[0].toUpperCase()}${option.slice(1)}`)}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.timePickerSlotGrid}>
+            {periodSlots.map((option) => {
+              const selected = option === safeValue
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
+                  accessibilityLabel={`${t("managerShell.planVisitTime")}: ${option}`}
+                  disabled={disabled}
+                  onPress={() => choose(option)}
+                  style={({ pressed }) => [styles.timePickerSlot, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.timePickerSlotText, selected && styles.timePickerChoiceTextSelected]}>{option}</Text>
                 </Pressable>
               )
             })}
           </ScrollView>
-
-          <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerMinutes")}</Text>
-          <View style={styles.timePickerMinuteList} accessibilityRole="radiogroup">
-            {PLANNING_TIME_MINUTES.map((option) => {
-              const selected = option === minute
-              return (
-                <Pressable
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected, disabled }}
-                  accessibilityLabel={`${t("managerShell.planTimePickerMinutes")}: ${option}`}
-                  disabled={disabled}
-                  onPress={() => setMinute(option)}
-                  style={({ pressed }) => [styles.timePickerMinute, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
-                >
-                  <Text style={[styles.timePickerMinuteText, selected && styles.timePickerChoiceTextSelected]}>{option}</Text>
-                </Pressable>
-              )
-            })}
-          </View>
-
-          <View style={styles.timePickerActions}>
-            <Pressable accessibilityRole="button" disabled={disabled} onPress={onClose} style={({ pressed }) => [styles.timePickerCancel, disabled && styles.disabled, pressed && styles.pressed]}>
-              <Text style={styles.timePickerCancelText}>{t("common.cancel")}</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" disabled={disabled} onPress={save} style={({ pressed }) => [styles.timePickerSave, disabled && styles.disabled, pressed && styles.pressed]}>
-              <Text style={styles.timePickerSaveText}>{t("managerShell.planTimePickerSave")}</Text>
-            </Pressable>
-          </View>
         </View>
       </View>
     </Modal>
@@ -1806,19 +1814,17 @@ const styles = StyleSheet.create({
   timePickerValue: { alignSelf: "center", color: fieldTheme.color.primaryStrong, fontSize: 34, lineHeight: 40, fontWeight: "900", letterSpacing: 0.4 },
   timePickerHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
   timePickerSectionLabel: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
-  timePickerHourList: { gap: 8, paddingRight: 16 },
-  timePickerHour: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  timePickerMinuteList: { flexDirection: "row", gap: 8 },
-  timePickerMinute: { minHeight: 52, flex: 1, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timePickerQuickList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  timePickerQuickChoice: { minHeight: 52, flexGrow: 1, flexBasis: "45%", alignItems: "center", justifyContent: "center", paddingHorizontal: 12, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timePickerQuickText: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
+  timePickerPeriodList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  timePickerPeriod: { minHeight: 48, flexGrow: 1, flexBasis: "42%", alignItems: "center", justifyContent: "center", paddingHorizontal: 12, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timePickerPeriodText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
+  timePickerSlotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingBottom: 2 },
+  timePickerSlot: { minHeight: 50, flexGrow: 1, flexBasis: "29%", alignItems: "center", justifyContent: "center", paddingHorizontal: 9, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timePickerSlotText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900" },
   timePickerChoiceSelected: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
-  timePickerHourText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
-  timePickerMinuteText: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
   timePickerChoiceTextSelected: { color: fieldTheme.color.onColor },
-  timePickerActions: { flexDirection: "row", gap: 8, marginTop: 4 },
-  timePickerCancel: { minHeight: 50, minWidth: 108, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
-  timePickerCancelText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
-  timePickerSave: { minHeight: 50, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
-  timePickerSaveText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   targetBrowser: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   targetBrowserHeadingCopy: { flex: 1 },

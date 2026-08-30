@@ -36,6 +36,7 @@ type TodayNavigationParams = {
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
+  PlanningBuilder: undefined
 }
 
 type Destination = keyof TodayNavigationParams
@@ -184,10 +185,23 @@ export default function TodayScreen() {
 
   const nextCopy = useMemo(() => {
     if (nextKind === "route") {
+      const isDraft = route?.status === "DRAFT"
       const canStartRoute = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
       const nextName = route?.nextPoint?.customer?.name
       const nextAddress = route?.nextPoint?.customer?.address
       const remaining = route?.remainingPoints ?? 0
+      if (isDraft) {
+        return {
+          eyebrow: t("todayV2.draftEyebrow"),
+          title: t("todayV2.draftTitle"),
+          body: t("todayV2.draftBody", { count: route?.totalPoints ?? 0 }),
+          supporting: nextName ? t("todayV2.draftNextStop", { name: nextName }) : null,
+          button: routeSource === "live" ? t("todayV2.continueDraft") : t("todayV2.openRoute"),
+          icon: "create-outline",
+          destination: (routeSource === "live" ? "PlanningBuilder" : "Route") as Destination,
+          startRoute: false,
+        }
+      }
       const body = nextAddress
         ? nextAddress
         : route?.totalPoints === 0

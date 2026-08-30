@@ -38,6 +38,25 @@ describe("today-state", () => {
     ], "2026-08-20")).toBeNull()
   })
 
+  it("shows an own draft as a non-executable way back to planning", () => {
+    const route = selectTodayRoute([
+      { id: "draft", date: "2026-08-20", status: "DRAFT", version: 2, totalPoints: 1 },
+    ], "2026-08-20")
+    expect(route).toMatchObject({ id: "draft", status: "DRAFT", totalPoints: 1 })
+    expect(todayRoutePrimaryAction(route!, "live")).toBe("open")
+  })
+
+  it("never lets a draft hide an executable planned or in-progress route", () => {
+    expect(selectTodayRoute([
+      { id: "draft", date: "2026-08-20", status: "DRAFT", totalPoints: 1 },
+      { id: "planned", date: "2026-08-20", status: "PLANNED", totalPoints: 1 },
+    ], "2026-08-20")?.id).toBe("planned")
+    expect(selectTodayRoute([
+      { id: "draft", date: "2026-08-20", status: "DRAFT", totalPoints: 1 },
+      { id: "active", date: "2026-08-20", status: "IN_PROGRESS", totalPoints: 1 },
+    ], "2026-08-20")?.id).toBe("active")
+  })
+
   it("keeps unknown customer data unknown instead of inventing a stop", () => {
     const route = cachedRouteAsTodaySummary({
       id: "cached",

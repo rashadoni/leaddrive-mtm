@@ -1,26 +1,27 @@
 import {
-  PLANNING_TIME_HOURS,
-  PLANNING_TIME_MINUTES,
-  planningTimeParts,
-  planningTimeValue,
+  PLANNING_TIME_PERIODS,
+  planningQuickTimeSlots,
+  planningTimePeriod,
+  planningTimeSlots,
 } from "../../src/screens/planning/planning-time-picker"
 
 describe("route planning time picker", () => {
-  it("offers every hour and the supported half-hour touch choices", () => {
-    expect(PLANNING_TIME_HOURS).toHaveLength(24)
-    expect(PLANNING_TIME_HOURS[0]).toBe("00")
-    expect(PLANNING_TIME_HOURS[23]).toBe("23")
-    expect(PLANNING_TIME_MINUTES).toEqual(["00", "30"])
+  it("offers practical day periods made only of supported half-hour slots", () => {
+    expect(PLANNING_TIME_PERIODS).toEqual(["morning", "day", "evening", "night"])
+    expect(planningTimeSlots("morning")).toEqual(["06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30"])
+    const evening = planningTimeSlots("evening")
+    expect(evening[evening.length - 1]).toBe("23:30")
+    expect(planningTimeSlots("day").every((slot) => slot.endsWith(":00") || slot.endsWith(":30"))).toBe(true)
   })
 
-  it("keeps the established half-hour normalization contract", () => {
-    expect(planningTimeParts("09:22")).toEqual({ hour: "09", minute: "30" })
-    expect(planningTimeValue("09", "30")).toBe("09:30")
+  it("starts with immediate nearby alternatives instead of manual hour and minute fields", () => {
+    expect(planningQuickTimeSlots("18:30")).toEqual(["18:30", "19:00", "19:30", "20:00"])
+    expect(planningQuickTimeSlots("23:00")).toEqual(["23:00", "23:30"])
   })
 
-  it("uses the safe default only for absent or malformed values", () => {
-    expect(planningTimeParts(null)).toEqual({ hour: "09", minute: "00" })
-    expect(planningTimeParts("25:70")).toEqual({ hour: "09", minute: "00" })
-    expect(planningTimeValue("24", "00")).toBe("09:00")
+  it("keeps malformed legacy values safe and opens their relevant period", () => {
+    expect(planningTimePeriod("09:22")).toBe("morning")
+    expect(planningTimePeriod("18:30")).toBe("evening")
+    expect(planningTimePeriod(null)).toBe("morning")
   })
 })

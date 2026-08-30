@@ -1,6 +1,6 @@
 import type { CachedRoute } from "../../services/offline-reads"
 
-const ACTIVE_ROUTE_STATUSES = new Set(["PLANNED", "IN_PROGRESS"])
+const TODAY_ROUTE_STATUSES = new Set(["DRAFT", "PLANNED", "IN_PROGRESS"])
 
 export interface TodayRoutePoint {
   id: string
@@ -100,9 +100,10 @@ export function localDateKey(now: Date = new Date()): string {
 }
 
 /**
- * Select only an active route for the requested local day. The API may return
- * more than one row, so an in-progress route takes precedence over a merely
- * planned one. Past, future, completed, and malformed records are ignored.
+ * Select the current user's route for the requested local day. An in-progress
+ * route takes precedence over a planned route, and a draft is visible only as
+ * a non-executable "continue planning" item. Past, future, completed, and
+ * malformed records are ignored.
  */
 export function selectTodayRoute(
   routes: unknown,
@@ -114,10 +115,11 @@ export function selectTodayRoute(
     .map((value) => object(value))
     .filter((value): value is Record<string, unknown> => Boolean(value))
     .filter((route) => routeDateKey(route.date) === today)
-    .filter((route) => ACTIVE_ROUTE_STATUSES.has(string(route.status) ?? ""))
+    .filter((route) => TODAY_ROUTE_STATUSES.has(string(route.status) ?? ""))
     .sort((left, right) => {
-      const leftRank = string(left.status) === "IN_PROGRESS" ? 0 : 1
-      const rightRank = string(right.status) === "IN_PROGRESS" ? 0 : 1
+      const rank = (status: string | undefined) => status === "IN_PROGRESS" ? 0 : status === "PLANNED" ? 1 : 2
+      const leftRank = rank(string(left.status))
+      const rightRank = rank(string(right.status))
       return leftRank - rightRank
     })
 
