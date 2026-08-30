@@ -77,9 +77,15 @@ export default function ManagerPlanningWorkspace({
   // standalone self planner from gaining team/manager write semantics.
   const writeSource = useMemo<PlanningWorkspaceWriteSource>(() => ({
     saveDraft: async ({ agentId, date, routeId, expectedVersion, points }) => {
+      // The shared planner permits an absent contact as `null`; the legacy v1
+      // manager API represents the same fact by omitting the optional field.
+      const legacyPoints = points.map(({ contactId, ...point }) => ({
+        ...point,
+        ...(typeof contactId === "string" ? { contactId } : {}),
+      }))
       const response = routeId
-        ? await api.updateRouteDraft(routeId, { expectedVersion: expectedVersion!, points })
-        : await api.createRouteDraft({ agentId, date, points })
+        ? await api.updateRouteDraft(routeId, { expectedVersion: expectedVersion!, points: legacyPoints })
+        : await api.createRouteDraft({ agentId, date, points: legacyPoints })
       const savedRouteId = String(response?.data?.id ?? routeId ?? "")
       const savedVersion = Number(response?.data?.version)
       if (!savedRouteId || !Number.isInteger(savedVersion) || savedVersion < 1) {

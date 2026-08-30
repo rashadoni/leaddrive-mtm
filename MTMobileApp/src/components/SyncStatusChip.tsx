@@ -281,7 +281,11 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                 const operation = conflict.operation
                 const code = conflictCode(conflict)
                 const operationBusy = busyId === `${conflict.kind}:${operation.operationId}`
-                const legacyOperation = conflict.kind === "legacy" ? operation : null
+                // Keep the discriminant and operation together so TypeScript
+                // never treats a route-command conflict as a legacy outbox
+                // operation. Route commands may only be discarded, never
+                // retried through the v1 mutation path.
+                const legacyOperation = conflict.kind === "legacy" ? conflict.operation : null
                 const canForce = legacyOperation !== null
                   && code === "MTM_VISIT_OUT_OF_ZONE"
                   && legacyOperation.entity === "visits"

@@ -275,11 +275,12 @@ async function performSync(): Promise<MobileSyncResult> {
           }),
         })
       }
-      if (routeV2Pipeline?.result?.status === "disabled") {
+      const routeV2Result = routeV2Pipeline?.result
+      if (routeV2Result?.status === "disabled") {
         await bestEffortAuxiliaryWrite(() => useSyncStatusStore.getState().disablePipeline(
           scopeKey,
           "routeV2Pull",
-          routeV2Pipeline.result?.disabledReason ?? "MOBILE_SYNC_V2_COHORT_DISABLED",
+          routeV2Result.disabledReason ?? "MOBILE_SYNC_V2_COHORT_DISABLED",
           routeV2Epoch,
         ))
       }
