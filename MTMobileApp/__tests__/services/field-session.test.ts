@@ -27,6 +27,7 @@ const authState = {
   isLoggedIn: true,
   agent: { organizationId: "tenant-1", id: "agent-1", role: "AGENT" },
 }
+const mockedRunMobileSync = runMobileSync as jest.Mock
 
 describe("Route Field session refresh", () => {
   const hydrate = jest.fn()
@@ -70,8 +71,8 @@ describe("Route Field session refresh", () => {
     expect(runMobileSync).toHaveBeenCalledTimes(1)
     expect(reconcileFromServer).toHaveBeenCalledTimes(2)
     expect(fetchBootstrap).toHaveBeenCalledTimes(2)
-    expect(reconcileFromServer.mock.invocationCallOrder[0]).toBeLessThan(runMobileSync.mock.invocationCallOrder[0])
-    expect(runMobileSync.mock.invocationCallOrder[0]).toBeLessThan(reconcileFromServer.mock.invocationCallOrder[1])
+    expect(reconcileFromServer.mock.invocationCallOrder[0]).toBeLessThan(mockedRunMobileSync.mock.invocationCallOrder[0])
+    expect(mockedRunMobileSync.mock.invocationCallOrder[0]).toBeLessThan(reconcileFromServer.mock.invocationCallOrder[1])
   })
 
   it("keeps the durable queue untouched when server admission is unavailable", async () => {
