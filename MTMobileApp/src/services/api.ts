@@ -701,6 +701,21 @@ class ApiClient {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
   }
 
+  /** Mobile-only v2 catalog; its opaque page token is server-issued. */
+  async getRouteOrganizations(
+    params?: { search?: string; page?: string; limit?: number; objectType?: string; organizationKind?: string },
+    signal?: AbortSignal,
+  ) {
+    const query = new URLSearchParams()
+    if (params?.search) query.set("search", params.search)
+    if (params?.page) query.set("page", params.page)
+    if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.objectType) query.set("objectType", params.objectType)
+    if (params?.organizationKind) query.set("organizationKind", params.organizationKind)
+    const qs = query.toString()
+    return this.request(`/mobile/route-field/organizations${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
+  }
+
   /** Mobile-only v2 detail projection; the legacy v1 response stays untouched. */
   async getRouteContactDetail(id: string, signal?: AbortSignal) {
     return this.request(`/mobile/route-field/contacts/${encodeURIComponent(id)}`, { signal }, 20_000, 2)

@@ -9,7 +9,7 @@ describe("Route Field organization list projection", () => {
       category: "A",
       address: "Baku",
       phone: "+994 12 000 00 00",
-      _count: { contactWorkplaces: "3" },
+      contactsCount: "3",
       managingManager: { id: "manager-1", name: "Must not be shown" },
       agentAssignments: [{ agent: { id: "agent-2", name: "Must not be shown" } }],
       fieldPotentials: [{ potentialValue: "100" }],

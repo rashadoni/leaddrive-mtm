@@ -9,7 +9,6 @@ export type RouteOrganizationListItem = {
   code?: string
   objectType?: string
   category?: string
-  status?: string
   address?: string
   phone?: string
   contactsCount?: number
@@ -33,9 +32,8 @@ export function toRouteOrganizationListItem(raw: any): RouteOrganizationListItem
     code: text(raw?.code),
     objectType: text(raw?.objectType),
     category: text(raw?.category),
-    status: text(raw?.status),
     address: text(raw?.address),
     phone: text(raw?.phone),
-    contactsCount: count(raw?._count?.contactWorkplaces),
+    contactsCount: count(raw?.contactsCount),
   }
 }

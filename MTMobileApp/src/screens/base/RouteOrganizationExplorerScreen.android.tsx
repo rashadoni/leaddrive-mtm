@@ -16,12 +16,10 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
-import { readOfflineOrganizations } from "../../services/offline-reads"
 import {
   toRouteOrganizationListItem,
   type RouteOrganizationListItem,
 } from "../../services/route-organization-list"
-import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -72,7 +70,13 @@ function categoryTone(category?: string): { color: string; backgroundColor: stri
   return { color: fieldTheme.color.inkMuted, backgroundColor: fieldTheme.color.surfaceStrong }
 }
 
-/** Route Field catalog: read/search only, scoped by the server to this AGENT. */
+function mergeUnique(current: RouteOrganizationListItem[], next: RouteOrganizationListItem[]) {
+  const byId = new Map(current.map((item) => [item.id, item]))
+  for (const item of next) byId.set(item.id, item)
+  return [...byId.values()]
+}
+
+/** Route Field catalog: v2-only, read/search only, and server-scoped to this AGENT. */
 export default function RouteOrganizationExplorerScreen() {
   const { t, i18n } = useTranslation()
   const copy = COPY[languageFor(i18n.language)]
@@ -80,16 +84,13 @@ export default function RouteOrganizationExplorerScreen() {
   const { width } = useWindowDimensions()
   const tablet = isTabletWidth(width)
   const tabBarPadding = useTabBarPadding()
-  const agent = useAuthStore((state) => state.agent)
   const [rows, setRows] = useState<RouteOrganizationListItem[]>([])
-  const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [nextPage, setNextPage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [offline, setOffline] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const requestId = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
@@ -99,58 +100,39 @@ export default function RouteOrganizationExplorerScreen() {
     return () => clearTimeout(timer)
   }, [search])
 
-  const loadRows = useCallback(async (term: string, nextPage = 1, append = false) => {
+  const loadRows = useCallback(async (term: string, page: string | null = null, append = false) => {
     const currentRequest = ++requestId.current
     controllerRef.current?.abort()
     const controller = new AbortController()
     controllerRef.current = controller
     if (append) setLoadingMore(true)
-    else setLoading(true)
+    else {
+      setLoading(true)
+      setRows([])
+      setNextPage(null)
+    }
 
     try {
-      const response = await api.getOrganizations({
+      const response = await api.getRouteOrganizations({
         search: term || undefined,
-        page: nextPage,
-        limit: 50,
-        sort: "name",
-        direction: "asc",
+        page: page || undefined,
+        limit: 25,
       }, controller.signal)
       if (currentRequest !== requestId.current) return
       if (!response?.success) throw new Error("ROUTE_ORGANIZATIONS_REQUEST_FAILED")
       const rawRows: unknown[] = Array.isArray(response?.data?.organizations) ? response.data.organizations : []
       const nextRows = rawRows.map(toRouteOrganizationListItem).filter((item) => Boolean(item.id))
-      setRows((current) => append ? [...current, ...nextRows] : nextRows)
-      setTotal(Number(response?.data?.total ?? nextRows.length))
-      setPage(nextPage)
-      setOffline(false)
+      setRows((current) => append ? mergeUnique(current, nextRows) : nextRows)
+      setNextPage(typeof response?.data?.nextPage === "string" ? response.data.nextPage : null)
       setLoadError(false)
     } catch (error: any) {
       if (currentRequest !== requestId.current || error?.name === "AbortError") return
       if (error?.message === "SESSION_EXPIRED") return
-      try {
-        const cached = agent
-          ? await readOfflineOrganizations(agent.organizationId, agent.id, term)
-          : []
-        const hasOfflineSnapshot = cached.length > 0 || Boolean(
-          agent && term && (await readOfflineOrganizations(agent.organizationId, agent.id, "")).length > 0,
-        )
-        if (currentRequest !== requestId.current) return
-        const nextRows = cached.map(toRouteOrganizationListItem).filter((item) => Boolean(item.id))
-        if (hasOfflineSnapshot) {
-          setRows(nextRows)
-          setTotal(nextRows.length)
-          setPage(1)
-          setOffline(true)
-          setLoadError(false)
-        } else {
-          setRows([])
-          setTotal(0)
-          setOffline(false)
-          setLoadError(true)
-        }
-      } catch {
-        if (currentRequest === requestId.current) setLoadError(true)
+      if (!append) {
+        setRows([])
+        setNextPage(null)
       }
+      setLoadError(true)
     } finally {
       if (currentRequest === requestId.current) {
         controllerRef.current = null
@@ -159,7 +141,7 @@ export default function RouteOrganizationExplorerScreen() {
         setRefreshing(false)
       }
     }
-  }, [agent])
+  }, [])
 
   useEffect(() => {
     void loadRows(debouncedSearch)
@@ -176,8 +158,8 @@ export default function RouteOrganizationExplorerScreen() {
   }
 
   const loadMore = () => {
-    if (loading || loadingMore || offline || rows.length >= total) return
-    void loadRows(debouncedSearch, page + 1, true)
+    if (loading || loadingMore || !nextPage) return
+    void loadRows(debouncedSearch, nextPage, true)
   }
 
   return (
@@ -211,12 +193,6 @@ export default function RouteOrganizationExplorerScreen() {
             </Pressable>
           ) : null}
         </View>
-        {offline ? (
-          <View style={styles.offlineBanner} accessibilityLiveRegion="polite">
-            <Icon name="cloud-offline-outline" size={18} color={fieldTheme.color.amber} />
-            <Text style={styles.offlineText}>{t("common.offlineCached")}</Text>
-          </View>
-        ) : null}
       </View>
 
       <FlatList
@@ -230,11 +206,6 @@ export default function RouteOrganizationExplorerScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[fieldTheme.color.primary]} tintColor={fieldTheme.color.primary} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.35}
-        ListHeaderComponent={
-          <View style={styles.resultHeader}>
-            <Text style={styles.resultCount}>{t("organizations.totalTemplate", { n: total })}</Text>
-          </View>
-        }
         ListFooterComponent={loadingMore ? <ActivityIndicator color={fieldTheme.color.primary} style={styles.footerLoader} /> : null}
         ListEmptyComponent={
           <View style={styles.empty} accessibilityLiveRegion="polite">
@@ -286,12 +257,8 @@ const styles = StyleSheet.create({
   searchBox: { minHeight: 50, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   searchInput: { flex: 1, minHeight: 48, paddingVertical: 0, color: fieldTheme.color.ink, fontSize: 15 },
   clearButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center" },
-  offlineBanner: { minHeight: 38, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft },
-  offlineText: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "800" },
   listContent: { flexGrow: 1, gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md },
   tabletRow: { gap: fieldTheme.space.sm },
-  resultHeader: { paddingTop: fieldTheme.space.xs },
-  resultCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
   card: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   cardTablet: { flex: 1, minWidth: 0 },
   cardHeading: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
