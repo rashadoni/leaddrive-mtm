@@ -9,7 +9,13 @@
  * of conditionalising the Route Field bundle.
  */
 export const ROUTE_FIELD_PROFILE = {
-  applicationId: "com.leaddrive.routefield",
+  /**
+   * The shipping Route & Field APK already owns this Android id.  Keeping it
+   * is intentional: an in-place upgrade preserves the encrypted local state
+   * and, most importantly, never abandons an existing v1 mutation outbox.
+   * A future HRM APK must use a different id.
+   */
+  applicationId: "com.mtmobileapp",
   displayName: "LeadDrive Route Field",
   sentryProject: "LeadDriveRouteField",
   requiredModule: "routeField" as const,
@@ -24,10 +30,10 @@ export const ROUTE_FIELD_PROFILE = {
 export type RouteFieldStream = typeof ROUTE_FIELD_PROFILE.supportedStreams[number]
 
 /**
- * A new Android application id has its own Android sandbox.  This prefix is
- * still explicit so an accidental package-id reuse in a development build
- * cannot share credentials, cache cursors or an outbox with the retired MTM
- * client.
+ * This prefix is only for new Route Field v3 state (manifest and v2 stream
+ * cursors).  It deliberately does not replace the existing v1 auth, cache or
+ * outbox keys: an in-place update must retain those queues until the server
+ * has acknowledged them.
  */
 export const ROUTE_FIELD_STORAGE_PREFIX = "@leaddrive_route_field_v3"
 

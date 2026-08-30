@@ -5,8 +5,8 @@ import {
 } from "../../src/runtime/route-field-profile"
 
 describe("Route Field product profile", () => {
-  it("has a standalone Android identity and storage namespace", () => {
-    expect(ROUTE_FIELD_PROFILE.applicationId).toBe("com.leaddrive.routefield")
+  it("keeps the installed Route APK identity and namespaces only new v3 state", () => {
+    expect(ROUTE_FIELD_PROFILE.applicationId).toBe("com.mtmobileapp")
     expect(ROUTE_FIELD_STORAGE_PREFIX).toBe("@leaddrive_route_field_v3")
     expect(routeFieldStorageKey("manifest")).toBe("@leaddrive_route_field_v3:manifest")
   })

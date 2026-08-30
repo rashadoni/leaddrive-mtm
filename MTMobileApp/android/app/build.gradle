@@ -86,15 +86,15 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.leaddrive.routefield"
+    namespace "com.mtmobileapp"
     defaultConfig {
-        applicationId "com.leaddrive.routefield"
+        applicationId "com.mtmobileapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // This is a new Android application id, not an in-place update of
-        // the retired MTM client.  Its version code starts at one and moves
-        // in lockstep with package.json and AndroidApp.tsx.
-        versionCode 1
+        // Route Field is an in-place update of the shipping MTM APK.  Keep
+        // its application id and advance versionCode, so Android preserves
+        // the v1 outbox instead of treating the rebuild as a fresh install.
+        versionCode 38
         versionName "3.0.0"
     }
     signingConfigs {

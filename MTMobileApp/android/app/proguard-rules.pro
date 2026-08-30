@@ -11,7 +11,7 @@
 -keep class com.mrousavy.camera.** { *; }
 
 # Keep native modules
--keep class com.leaddrive.routefield.** { *; }
+-keep class com.mtmobileapp.** { *; }
 
 # Keep React Native classes
 -keep class com.facebook.react.** { *; }

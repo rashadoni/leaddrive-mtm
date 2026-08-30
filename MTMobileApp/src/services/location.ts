@@ -18,7 +18,7 @@ const backgroundOptions = {
     type: "mipmap",
   },
   color: "#6C63FF",
-  linkingURI: "routefield://",
+  linkingURI: "mtm://",
   foregroundServiceType: ["location"] as Array<"location">,
   parameters: {
     delay: SEND_INTERVAL,

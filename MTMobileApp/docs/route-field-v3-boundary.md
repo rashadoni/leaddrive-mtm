@@ -23,10 +23,14 @@
 
 ## Безопасный переход со старого MTM APK
 
-- Новый package ID: `com.leaddrive.routefield`; прежний
-  `com.mtmobileapp` не обновляется и не удаляется этой работой.
-- У Android-приложений разные sandbox-хранилища. Старый token, cache, media и
-  outbox не копируются и не очищаются автоматически.
+- Route Field сохраняет shipping package ID `com.mtmobileapp` и существующую
+  release-подпись. Это обычное обновление установленного APK, а не второй
+  параллельный клиент.
+- Существующие token, cache, media и v1 outbox остаются в Android sandbox и
+  не копируются, не очищаются и не переписываются этой работой. Новые v3
+  manifest/cursor keys получают отдельный префикс рядом с ними.
+- Отдельный package ID потребуется будущему HRM APK; его нельзя занять или
+  выбрать за Route Field без отдельного release/signing решения.
 - До physical-device acceptance старый APK остаётся рабочим v1-клиентом.
 - Route Field сохраняет v1 mutation path. Sync v2 подключается только к
   server-enrolled device cohort и только для read-only streams. Два

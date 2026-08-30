@@ -29,7 +29,7 @@ import { fieldTheme } from "../theme/fieldTheme"
 import { version as APP_VERSION } from "../../package.json"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
-const ANDROID_VERSION_CODE = 1
+const ANDROID_VERSION_CODE = 38
 initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 function AppContent() {
