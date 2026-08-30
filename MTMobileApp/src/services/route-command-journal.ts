@@ -202,12 +202,34 @@ function requestFor(item: RouteCommandJournalItem): MobileRouteCommandRequest {
       payload: clone(item.payload),
     }
   }
+  if (item.command === "UPDATE_DRAFT") {
+    return {
+      operationId: item.operationId,
+      command: item.command,
+      routeId: item.routeId,
+      payload: clone(item.payload),
+    }
+  }
   return {
     operationId: item.operationId,
     command: item.command,
     routeId: item.routeId,
     payload: clone(item.payload),
   }
+}
+
+function journalItemFor(input: MobileRouteCommandInput, scopeKey: string): RouteCommandJournalItem {
+  const metadata = {
+    operationId: createOperationId(),
+    clientTimestamp: Date.now(),
+    attempts: 0,
+    nextAttemptAt: 0,
+    scopeKey,
+    status: "pending" as const,
+  }
+  if (input.command === "CREATE_DRAFT") return { ...input, ...metadata }
+  if (input.command === "UPDATE_DRAFT") return { ...input, ...metadata }
+  return { ...input, ...metadata }
 }
 
 function requestFingerprint(request: MobileRouteCommandInput | RouteCommandJournalItem): string {
@@ -261,15 +283,7 @@ export async function enqueueRouteCommand(input: MobileRouteCommandInput): Promi
     const items = await read()
     const duplicate = items.find((item) => item.scopeKey === scope && requestFingerprint(item) === fingerprint)
     if (duplicate) return duplicate
-    const item: RouteCommandJournalItem = {
-      ...snapshot,
-      operationId: createOperationId(),
-      clientTimestamp: Date.now(),
-      attempts: 0,
-      nextAttemptAt: 0,
-      scopeKey: scope,
-      status: "pending",
-    }
+    const item = journalItemFor(snapshot, scope)
     await write([...items, item])
     return item
   })
@@ -353,12 +367,18 @@ async function markRouteCommandConflict(operationId: string, failure: ReturnType
 }
 
 async function nextFlushableRouteCommand(now: number): Promise<RouteCommandJournalItem | null> {
-  const pending = (await allRouteCommandJournalEntries()).filter((item) => item.status === "pending")
-  const first = pending[0]
-  // Preserve one causal queue: a command behind a backed-off write must never
-  // leapfrog it and publish/update a route whose preceding command is unknown.
-  if (!first || first.nextAttemptAt > now) return null
-  return first
+  const entries = await allRouteCommandJournalEntries()
+  for (const item of entries) {
+    // A terminal receipt conflict is causally prior to every following item.
+    // The planner must compose a fresh command after resolving it; background
+    // sync must never guess that a later update/publish is now safe to send.
+    if (item.status === "conflict") return null
+    // Preserve one causal queue: a command behind a backed-off write must
+    // never leapfrog it and publish/update an unknown preceding mutation.
+    if (item.nextAttemptAt > now) return null
+    return item
+  }
+  return null
 }
 
 /**

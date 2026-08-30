@@ -106,6 +106,12 @@ describe("durable Route Field route-command journal", () => {
     expect(await pendingRouteCommands()).toEqual([
       expect.objectContaining({ operationId: second.operationId }),
     ])
+
+    await expect(flushRouteCommandJournal(async (request) => {
+      attempted.push(request.operationId)
+      return appliedResponse()
+    })).resolves.toMatchObject({ sent: 0, deferred: 0, conflicted: 0 })
+    expect(attempted).toEqual([first.operationId])
   })
 
   it("defers unpinned authorization responses and preserves the legacy v1 outbox key", async () => {
