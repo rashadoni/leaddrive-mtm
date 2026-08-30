@@ -34,6 +34,7 @@ describe("per-pipeline sync status", () => {
       lastError: "MOBILE_SYNC_V2_UNAVAILABLE",
     })
     expect(useSyncStatusStore.getState().beginPipeline(scopeKey, "routePull", 5_999)).toBe(false)
+    expect(useSyncStatusStore.getState().beginPipeline(scopeKey, "routeCommands", 5_999)).toBe(true)
     expect(useSyncStatusStore.getState().beginPipeline(scopeKey, "routeOutbox", 5_999)).toBe(true)
 
     useSyncStatusStore.getState().clear()

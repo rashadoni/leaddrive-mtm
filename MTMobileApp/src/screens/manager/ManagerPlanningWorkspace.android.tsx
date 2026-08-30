@@ -2,9 +2,11 @@ import React, { useCallback, useMemo } from "react"
 import PlanningWorkspaceCore, {
   type PlanningWorkspaceAgentSource,
   type PlanningWorkspaceTargetSource,
+  type PlanningWorkspaceWriteSource,
 } from "../planning/PlanningWorkspaceCore.android"
 import { commercialApi } from "../../services/commercial-api"
 import { managerApi } from "../../services/manager-api"
+import { api } from "../../services/api"
 import {
   toPlanningAgent,
   toPlanningContactTarget,
@@ -70,11 +72,32 @@ export default function ManagerPlanningWorkspace({
 
   const targetSource = useMemo<PlanningWorkspaceTargetSource>(() => ({ loadTargets }), [loadTargets])
 
+  // This legacy adapter is deliberately outside the Route Field Android import
+  // graph. Keeping its direct v1 compatibility transport here prevents the
+  // standalone self planner from gaining team/manager write semantics.
+  const writeSource = useMemo<PlanningWorkspaceWriteSource>(() => ({
+    saveDraft: async ({ agentId, date, routeId, expectedVersion, points }) => {
+      const response = routeId
+        ? await api.updateRouteDraft(routeId, { expectedVersion: expectedVersion!, points })
+        : await api.createRouteDraft({ agentId, date, points })
+      const savedRouteId = String(response?.data?.id ?? routeId ?? "")
+      const savedVersion = Number(response?.data?.version)
+      if (!savedRouteId || !Number.isInteger(savedVersion) || savedVersion < 1) {
+        throw Object.assign(new Error("ROUTE_VERSION_MISSING"), { code: "ROUTE_VERSION_MISSING" })
+      }
+      return { routeId: savedRouteId, version: savedVersion }
+    },
+    publishDraft: async ({ routeId, expectedVersion }) => {
+      await api.publishRoute(routeId, expectedVersion)
+    },
+  }), [])
+
   return (
     <PlanningWorkspaceCore
       onClose={onClose}
       agentSource={agentSource}
       targetSource={targetSource}
+      writeSource={writeSource}
       initialDate={initialDate}
       initialHorizon={initialHorizon}
     />

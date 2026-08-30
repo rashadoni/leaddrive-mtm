@@ -96,6 +96,22 @@ export type PlanningWorkspaceTargetSource = {
   ) => Promise<PlanningWorkspaceTargetPage>
 }
 
+/**
+ * The core deliberately receives its write transport. Route Field injects
+ * the durable self-command journal; legacy manager code remains in its own
+ * unreachable adapter instead of leaking direct writes into the APK graph.
+ */
+export type PlanningWorkspaceWriteSource = {
+  saveDraft: (input: {
+    agentId: string
+    date: string
+    routeId?: string
+    expectedVersion?: number
+    points: Array<{ customerId: string; contactId?: string | null; plannedTime?: string | null }>
+  }) => Promise<{ routeId: string; version: number }>
+  publishDraft: (input: { routeId: string; expectedVersion: number }) => Promise<void>
+}
+
 type PlanningTargetContinuation = {
   cursor: string
   queryKey: string
@@ -105,6 +121,7 @@ export type PlanningWorkspaceCoreProps = {
   onClose?: () => void
   agentSource: PlanningWorkspaceAgentSource
   targetSource: PlanningWorkspaceTargetSource
+  writeSource: PlanningWorkspaceWriteSource
   initialDate?: string
   initialHorizon?: PlanningHorizon
 }
@@ -213,6 +230,7 @@ export default function PlanningWorkspaceCore({
   onClose,
   agentSource,
   targetSource,
+  writeSource,
   initialDate,
   initialHorizon,
 }: PlanningWorkspaceCoreProps) {
@@ -649,20 +667,14 @@ export default function PlanningWorkspaceCore({
           if (write.existingRouteId && (!Number.isInteger(write.expectedVersion) || Number(write.expectedVersion) < 1)) {
             throw planningError("ROUTE_VERSION_MISSING")
           }
-          const saved = write.existingRouteId
-            ? await api.updateRouteDraft(write.existingRouteId, {
-                expectedVersion: write.expectedVersion!,
-                points: write.points,
-              })
-            : await api.createRouteDraft({
-                agentId: operationAgentId,
-                date: write.date,
-                points: write.points,
-              })
-          const routeId = String(saved?.data?.id ?? write.existingRouteId ?? "")
-          const version = Number(saved?.data?.version)
-          if (!routeId || !Number.isInteger(version) || version < 1) throw planningError("ROUTE_VERSION_MISSING")
-          savedWrites.push({ routeId, version, write })
+          const saved = await writeSource.saveDraft({
+            agentId: operationAgentId,
+            date: write.date,
+            ...(write.existingRouteId ? { routeId: write.existingRouteId, expectedVersion: write.expectedVersion! } : {}),
+            points: write.points,
+          })
+          if (!saved.routeId || !Number.isInteger(saved.version) || saved.version < 1) throw planningError("ROUTE_VERSION_MISSING")
+          savedWrites.push({ routeId: saved.routeId, version: saved.version, write })
         } catch (error: any) {
           draftFailures.push({ error, write })
           retryDates.add(write.date)
@@ -683,7 +695,7 @@ export default function PlanningWorkspaceCore({
         for (const saved of publishQueue) {
           if (!isCurrent()) return
           try {
-            await api.publishRoute(saved.routeId, saved.expectedVersion)
+            await writeSource.publishDraft(saved)
             published += 1
           } catch (error: any) {
             publishFailures.push(error)

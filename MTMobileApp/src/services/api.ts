@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setAgentContext, clearAgentContext } from "./sentry"
 import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 import { getFieldDeviceId } from "./field-device-id"
+import type { MobileRouteCommandRequest } from "./route-command-journal"
 import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
 
 /**
@@ -495,6 +496,27 @@ class ApiClient {
     const query = new URLSearchParams({ limit: String(Math.max(1, Math.min(500, Math.floor(limit)))) })
     if (cursor) query.set("cursor", cursor)
     return this.request(`/mobile/sync/routes?${query.toString()}`, {}, 20_000, 2)
+  }
+
+  /**
+   * Server-first durable Route Field write contract. The caller persists the
+   * envelope before invoking this method; there is intentionally no fallback
+   * to a direct /routes mutation when the command endpoint is unavailable.
+   */
+  async executeRouteCommand(command: MobileRouteCommandRequest) {
+    let deviceId: string
+    try {
+      deviceId = await getFieldDeviceId()
+    } catch {
+      throw Object.assign(new Error("MOBILE_ROUTE_COMMAND_DEVICE_ID_UNAVAILABLE"), {
+        code: "MOBILE_ROUTE_COMMAND_DEVICE_ID_UNAVAILABLE",
+      })
+    }
+    return this.request("/mobile/route-commands", {
+      method: "POST",
+      headers: { "x-field-device-id": deviceId },
+      body: JSON.stringify(command),
+    })
   }
 
   // --- Routes ---

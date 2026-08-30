@@ -4,7 +4,7 @@ import { routeFieldStorageKey } from "../runtime/route-field-profile"
 import { retryDelayMs } from "../services/sync-retry"
 
 export type SyncPhase = "idle" | "syncing" | "offline" | "error"
-export type SyncPipelineId = "routeOutbox" | "routePull" | "routeV2Pull" | "media"
+export type SyncPipelineId = "routeCommands" | "routeOutbox" | "routePull" | "routeV2Pull" | "media"
 export type SyncPipelinePhase = "idle" | "syncing" | "backoff" | "error" | "disabled"
 
 export type SyncPipelineStatus = {
@@ -55,7 +55,7 @@ type SyncStatusState = SyncCounts & {
 
 const STORAGE_PREFIX = routeFieldStorageKey("sync-status")
 
-const PIPELINES: readonly SyncPipelineId[] = ["routeOutbox", "routePull", "routeV2Pull", "media"]
+const PIPELINES: readonly SyncPipelineId[] = ["routeCommands", "routeOutbox", "routePull", "routeV2Pull", "media"]
 
 function emptyPipeline(): SyncPipelineStatus {
   return {
@@ -70,6 +70,7 @@ function emptyPipeline(): SyncPipelineStatus {
 
 function emptyPipelines(): SyncPipelines {
   return {
+    routeCommands: emptyPipeline(),
     routeOutbox: emptyPipeline(),
     routePull: emptyPipeline(),
     routeV2Pull: emptyPipeline(),

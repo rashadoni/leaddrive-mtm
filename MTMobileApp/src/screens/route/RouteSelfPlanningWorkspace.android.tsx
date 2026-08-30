@@ -2,12 +2,14 @@ import React, { useCallback, useMemo } from "react"
 import PlanningWorkspaceCore, {
   type PlanningWorkspaceAgentSource,
   type PlanningWorkspaceTargetSource,
+  type PlanningWorkspaceWriteSource,
 } from "../planning/PlanningWorkspaceCore.android"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
 import type { PlanningHorizon, PlanningTarget } from "../../services/manager-planning"
 import { api } from "../../services/api"
 import { toRoutePlanningTarget } from "../../services/route-planning-target"
+import { submitRouteCommand } from "../../services/route-command-journal"
 
 /**
  * Route Field's only planning entry point. It never receives a team ID or a
@@ -83,11 +85,37 @@ export default function RouteSelfPlanningWorkspace({
 
   const targetSource = useMemo<PlanningWorkspaceTargetSource>(() => ({ loadTargets }), [loadTargets])
 
+  const writeSource = useMemo<PlanningWorkspaceWriteSource>(() => ({
+    saveDraft: async ({ date, routeId, expectedVersion, points }) => {
+      // The self planner never transports an agent ID. The backend derives
+      // actor/tenant/route scope from the mobile JWT and durable receipt.
+      const response = routeId
+        ? await submitRouteCommand({
+            command: "UPDATE_DRAFT",
+            routeId,
+            payload: { expectedVersion: expectedVersion!, points },
+          }, (request) => api.executeRouteCommand(request))
+        : await submitRouteCommand({
+            command: "CREATE_DRAFT",
+            payload: { date, points },
+          }, (request) => api.executeRouteCommand(request))
+      return { routeId: response.data.id, version: response.data.version }
+    },
+    publishDraft: async ({ routeId, expectedVersion }) => {
+      await submitRouteCommand({
+        command: "PUBLISH",
+        routeId,
+        payload: { expectedVersion },
+      }, (request) => api.executeRouteCommand(request))
+    },
+  }), [])
+
   return (
     <PlanningWorkspaceCore
       onClose={onClose}
       agentSource={agentSource}
       targetSource={targetSource}
+      writeSource={writeSource}
       initialDate={initialDate}
       initialHorizon={initialHorizon}
     />

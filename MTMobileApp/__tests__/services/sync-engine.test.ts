@@ -17,6 +17,11 @@ jest.mock("../../src/services/outbox", () => ({
   flushOutbox: jest.fn(),
 }))
 
+jest.mock("../../src/services/route-command-journal", () => ({
+  allRouteCommandJournalEntries: jest.fn(),
+  flushRouteCommandJournal: jest.fn(),
+}))
+
 jest.mock("../../src/services/media-outbox", () => ({
   allMediaUploads: jest.fn(),
   flushMediaOutbox: jest.fn(),
@@ -40,6 +45,7 @@ jest.mock("../../src/store/bootstrap", () => ({
 }))
 
 import { allOutboxOperations, flushOutbox } from "../../src/services/outbox"
+import { allRouteCommandJournalEntries, flushRouteCommandJournal } from "../../src/services/route-command-journal"
 import { allMediaUploads, flushMediaOutbox } from "../../src/services/media-outbox"
 import { pullAndApplySync } from "../../src/services/sync-cache"
 import { clearRouteV2RoutesState, syncRouteV2Routes } from "../../src/services/sync-v2-routes"
@@ -47,6 +53,7 @@ import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
 import {
   flushRouteFieldOutbox,
+  flushRouteFieldRouteCommands,
   runMobileSync,
   withdrawRouteFieldV2ShadowState,
 } from "../../src/services/sync-engine"
@@ -56,6 +63,8 @@ const mockedAuth = useAuthStore.getState as jest.Mock
 const mockedBootstrap = useBootstrapStore.getState as jest.Mock
 const mockedOperations = allOutboxOperations as jest.Mock
 const mockedFlush = flushOutbox as jest.Mock
+const mockedRouteCommands = allRouteCommandJournalEntries as jest.Mock
+const mockedRouteCommandFlush = flushRouteCommandJournal as jest.Mock
 const mockedMedia = allMediaUploads as jest.Mock
 const mockedMediaFlush = flushMediaOutbox as jest.Mock
 const mockedPull = pullAndApplySync as jest.Mock
@@ -85,8 +94,10 @@ describe("mobile sync engine", () => {
     })
     mockedBootstrap.mockReturnValue({ routeFieldAccess: "enabled" })
     mockedOperations.mockResolvedValue([])
+    mockedRouteCommands.mockResolvedValue([])
     mockedMedia.mockResolvedValue([])
     mockedFlush.mockResolvedValue({ sent: 2, deferred: 0, conflicted: 1 })
+    mockedRouteCommandFlush.mockResolvedValue({ sent: 0, deferred: 0, conflicted: 0, acknowledgements: [] })
     mockedMediaFlush.mockResolvedValue({ sent: 1, deferred: 0 })
     mockedPull.mockResolvedValue(undefined)
     mockedClearRouteV2.mockResolvedValue(undefined)
@@ -104,6 +115,7 @@ describe("mobile sync engine", () => {
       mediaSent: 1,
     })
     expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedRouteCommandFlush).toHaveBeenCalledTimes(1)
     expect(mockedPull).toHaveBeenCalledTimes(1)
     expect(mockedRouteV2).not.toHaveBeenCalled()
     expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
@@ -128,6 +140,7 @@ describe("mobile sync engine", () => {
     await first
 
     expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedRouteCommandFlush).toHaveBeenCalledTimes(1)
     expect(mockedPull).toHaveBeenCalledTimes(1)
   })
 
@@ -143,6 +156,7 @@ describe("mobile sync engine", () => {
     // A failed reference pull never prevents the unrelated media pipeline
     // from flushing. The critical v1 outbox was already drained first.
     expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedRouteCommandFlush).toHaveBeenCalledTimes(1)
     expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
     expect(useSyncStatusStore.getState()).toMatchObject({
       phase: "error",
@@ -163,6 +177,7 @@ describe("mobile sync engine", () => {
     await runMobileSync()
     expect(mockedPull).toHaveBeenCalledTimes(1)
     expect(mockedFlush).toHaveBeenCalledTimes(2)
+    expect(mockedRouteCommandFlush).toHaveBeenCalledTimes(2)
     expect(mockedMediaFlush).toHaveBeenCalledTimes(2)
   })
 
@@ -182,6 +197,39 @@ describe("mobile sync engine", () => {
     expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
       phase: "backoff",
       lastError: "v2 temporarily unavailable",
+    })
+  })
+
+  it("keeps the route-command journal isolated when its retry is deferred", async () => {
+    mockedRouteCommandFlush.mockResolvedValue({
+      sent: 0,
+      deferred: 1,
+      conflicted: 0,
+      acknowledgements: [],
+      error: "route command unavailable",
+      retryAfterMs: 5_000,
+    })
+    mockedRouteCommands.mockResolvedValue([{ status: "pending" }])
+
+    await expect(runMobileSync()).resolves.toMatchObject({
+      success: false,
+      sent: 2,
+      deferred: 1,
+      conflicted: 1,
+      mediaSent: 1,
+    })
+    expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedPull).toHaveBeenCalledTimes(1)
+    expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
+    expect(useSyncStatusStore.getState()).toMatchObject({
+      pending: 1,
+      conflicts: 0,
+      mediaPending: 0,
+      phase: "error",
+    })
+    expect(useSyncStatusStore.getState().pipelines.routeCommands).toMatchObject({
+      phase: "backoff",
+      lastError: "route command unavailable",
     })
   })
 
@@ -258,6 +306,7 @@ describe("mobile sync engine", () => {
     })
 
     expect(mockedFlush).not.toHaveBeenCalled()
+    expect(mockedRouteCommandFlush).not.toHaveBeenCalled()
     expect(mockedPull).not.toHaveBeenCalled()
     expect(mockedMediaFlush).not.toHaveBeenCalled()
     expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
@@ -280,6 +329,7 @@ describe("mobile sync engine", () => {
 
     expect(mockedClearRouteV2).not.toHaveBeenCalled()
     expect(mockedFlush).not.toHaveBeenCalled()
+    expect(mockedRouteCommandFlush).not.toHaveBeenCalled()
     expect(mockedPull).not.toHaveBeenCalled()
     expect(mockedMediaFlush).not.toHaveBeenCalled()
   })
@@ -291,6 +341,13 @@ describe("mobile sync engine", () => {
       scopeKey,
       pipeline: "routeOutbox",
       error: "v1 push pending",
+      now: 1_000,
+      random: () => 0,
+    })
+    await useSyncStatusStore.getState().deferPipeline({
+      scopeKey,
+      pipeline: "routeCommands",
+      error: "command receipt pending",
       now: 1_000,
       random: () => 0,
     })
@@ -310,6 +367,7 @@ describe("mobile sync engine", () => {
 
     expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
     expect(useSyncStatusStore.getState().pipelines).toMatchObject({
+      routeCommands: { phase: "backoff", lastError: "command receipt pending" },
       routeOutbox: { phase: "backoff", lastError: "v1 push pending" },
       media: { phase: "backoff", lastError: "media pending" },
       routeV2Pull: {
@@ -325,5 +383,17 @@ describe("mobile sync engine", () => {
 
     await expect(flushRouteFieldOutbox()).resolves.toEqual({ sent: 0, deferred: 0, conflicted: 0 })
     expect(mockedFlush).not.toHaveBeenCalled()
+  })
+
+  it("leaves the route-command journal unchanged when a direct UI flush is not admitted", async () => {
+    mockedBootstrap.mockReturnValue({ routeFieldAccess: "unavailable" })
+
+    await expect(flushRouteFieldRouteCommands()).resolves.toEqual({
+      sent: 0,
+      deferred: 0,
+      conflicted: 0,
+      acknowledgements: [],
+    })
+    expect(mockedRouteCommandFlush).not.toHaveBeenCalled()
   })
 })

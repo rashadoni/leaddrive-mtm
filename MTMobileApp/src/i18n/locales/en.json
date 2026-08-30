@@ -27,6 +27,7 @@
     "conflicts": "Conflicts",
     "media": "Media",
     "pipelines": "Sync pipelines",
+    "pipelineRouteCommands": "Route planning commands",
     "pipelineRouteOutbox": "Route & visit changes",
     "pipelineRoutePull": "Route updates",
     "pipelineRouteV2Pull": "Route sync v2 pilot (read-only)",
@@ -54,6 +55,7 @@
     "conflictRequirements": "Visit requirements are incomplete",
     "conflictVisitStatus": "The visit status changed on the server",
     "conflictGeneric": "Saved change conflicts with server data",
+    "routeCommandConflictHelp": "Review the route in the planner, discard this rejected command, then save the corrected plan.",
     "actionFailed": "The action could not be completed. Try again.",
     "retryLocationFailed": "Current GPS position is unavailable. Move into the visit zone and try again."
   },

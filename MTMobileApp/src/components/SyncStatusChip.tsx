@@ -19,6 +19,11 @@ import {
   retryOutboxConflict,
   type OutboxOperation,
 } from "../services/outbox"
+import {
+  acknowledgeRouteCommand,
+  conflictRouteCommands,
+  type RouteCommandJournalItem,
+} from "../services/route-command-journal"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
@@ -28,8 +33,14 @@ type Props = {
   inverse?: boolean
 }
 
-function conflictCode(operation: OutboxOperation) {
-  const code = operation.conflict?.serverData?.code
+type SyncConflict =
+  | { kind: "legacy"; operation: OutboxOperation }
+  | { kind: "routeCommand"; operation: RouteCommandJournalItem }
+
+function conflictCode(conflict: SyncConflict) {
+  const code = conflict.kind === "legacy"
+    ? conflict.operation.conflict?.serverData?.code
+    : conflict.operation.conflict?.code
   return typeof code === "string" ? code : "SYNC_CONFLICT"
 }
 
@@ -48,6 +59,7 @@ function conflictTranslationKey(code: string) {
 }
 
 const PIPELINES: ReadonlyArray<{ id: SyncPipelineId; labelKey: string }> = [
+  { id: "routeCommands", labelKey: "syncCenter.pipelineRouteCommands" },
   { id: "routeOutbox", labelKey: "syncCenter.pipelineRouteOutbox" },
   { id: "routePull", labelKey: "syncCenter.pipelineRoutePull" },
   { id: "routeV2Pull", labelKey: "syncCenter.pipelineRouteV2Pull" },
@@ -78,7 +90,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const [visible, setVisible] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [conflicts, setConflicts] = useState<OutboxOperation[]>([])
+  const [conflicts, setConflicts] = useState<SyncConflict[]>([])
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines } = useSyncStatusStore()
   const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
@@ -86,11 +98,15 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const reload = useCallback(async () => {
     const scope = getOfflineScope()
     if (scope) await useSyncStatusStore.getState().hydrate(scope)
-    const [, currentConflicts] = await Promise.all([
+    const [, legacyConflicts, routeCommandConflicts] = await Promise.all([
       refreshSyncStatusCounts(),
       conflictOutboxOperations(),
+      conflictRouteCommands(),
     ])
-    setConflicts(currentConflicts)
+    setConflicts([
+      ...legacyConflicts.map((operation) => ({ kind: "legacy" as const, operation })),
+      ...routeCommandConflicts.map((operation) => ({ kind: "routeCommand" as const, operation })),
+    ])
   }, [])
 
   useEffect(() => {
@@ -130,9 +146,9 @@ export default function SyncStatusChip({ inverse = false }: Props) {
       setActionError(t("routeFieldAccess.syncBlocked"))
       return
     }
-    setBusyId(operation.operationId)
+    setBusyId(`legacy:${operation.operationId}`)
     setActionError(null)
-    const refreshLocation = !force && conflictCode(operation) === "MTM_VISIT_OUT_OF_ZONE"
+    const refreshLocation = !force && operation.conflict?.serverData?.code === "MTM_VISIT_OUT_OF_ZONE"
     try {
       let dataPatch: Record<string, unknown> | undefined = force ? { force: true } : undefined
       if (refreshLocation) {
@@ -155,11 +171,17 @@ export default function SyncStatusChip({ inverse = false }: Props) {
     }
   }
 
-  const discard = async (operation: OutboxOperation) => {
-    setBusyId(operation.operationId)
+  const discard = async (conflict: SyncConflict) => {
+    const operation = conflict.operation
+    const busyKey = `${conflict.kind}:${operation.operationId}`
+    setBusyId(busyKey)
     setActionError(null)
     try {
-      await acknowledgeOutboxOperation(operation.operationId)
+      if (conflict.kind === "legacy") {
+        await acknowledgeOutboxOperation(operation.operationId)
+      } else {
+        await acknowledgeRouteCommand(operation.operationId)
+      }
       await reload()
     } catch {
       setActionError(t("syncCenter.actionFailed"))
@@ -255,39 +277,47 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                   <Text style={styles.emptyTitle}>{t("syncCenter.noConflicts")}</Text>
                   <Text style={styles.emptyBody}>{t("syncCenter.noConflictsBody")}</Text>
                 </View>
-              ) : conflicts.map((operation) => {
-                const code = conflictCode(operation)
-                const operationBusy = busyId === operation.operationId
-                const canForce = code === "MTM_VISIT_OUT_OF_ZONE"
-                  && operation.entity === "visits"
-                  && operation.op === "create"
+              ) : conflicts.map((conflict) => {
+                const operation = conflict.operation
+                const code = conflictCode(conflict)
+                const operationBusy = busyId === `${conflict.kind}:${operation.operationId}`
+                const legacyOperation = conflict.kind === "legacy" ? operation : null
+                const canForce = legacyOperation !== null
+                  && code === "MTM_VISIT_OUT_OF_ZONE"
+                  && legacyOperation.entity === "visits"
+                  && legacyOperation.op === "create"
                   && api.canForceCheckIn
                 return (
-                  <View key={operation.operationId} style={styles.conflictCard}>
+                  <View key={`${conflict.kind}:${operation.operationId}`} style={styles.conflictCard}>
                     <Text style={styles.conflictTitle}>{t(conflictTranslationKey(code))}</Text>
                     <Text style={styles.conflictCode}>{code}</Text>
+                    {conflict.kind === "routeCommand" ? (
+                      <Text style={styles.conflictBody}>{t("syncCenter.routeCommandConflictHelp")}</Text>
+                    ) : null}
                     <View style={styles.actionRow}>
                       <Pressable
                         accessibilityRole="button"
                         disabled={operationBusy || !syncAllowed}
-                        onPress={() => { discard(operation).catch(() => {}) }}
+                        onPress={() => { discard(conflict).catch(() => {}) }}
                         style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
                       >
                         <Text style={styles.secondaryText}>{t("syncCenter.discard")}</Text>
                       </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={operationBusy || !syncAllowed}
-                        onPress={() => { retry(operation).catch(() => {}) }}
-                        style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
-                      >
-                        <Text style={styles.secondaryText}>{t("common.retry")}</Text>
-                      </Pressable>
+                      {legacyOperation ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={operationBusy || !syncAllowed}
+                          onPress={() => { retry(legacyOperation).catch(() => {}) }}
+                          style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
+                        >
+                          <Text style={styles.secondaryText}>{t("common.retry")}</Text>
+                        </Pressable>
+                      ) : null}
                       {canForce ? (
                         <Pressable
                           accessibilityRole="button"
                           disabled={operationBusy || !syncAllowed}
-                          onPress={() => { retry(operation, true).catch(() => {}) }}
+                          onPress={() => { retry(legacyOperation!, true).catch(() => {}) }}
                           style={[styles.forceButton, (operationBusy || !syncAllowed) && styles.disabled]}
                         >
                           <Text style={styles.forceText}>{t("syncCenter.forceRetry")}</Text>

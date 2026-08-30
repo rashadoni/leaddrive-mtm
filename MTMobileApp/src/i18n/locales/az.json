@@ -27,6 +27,7 @@
     "conflicts": "Ziddiyyətlər",
     "media": "Media",
     "pipelines": "Sinxronizasiya konturları",
+    "pipelineRouteCommands": "Marşrut planlama əmrləri",
     "pipelineRouteOutbox": "Marşrut və ziyarət dəyişiklikləri",
     "pipelineRoutePull": "Marşrut yeniləmələri",
     "pipelineRouteV2Pull": "Marşrut sync v2 pilotu (yalnız oxu)",
@@ -54,6 +55,7 @@
     "conflictRequirements": "Ziyarətin məcburi şərtləri tamamlanmayıb",
     "conflictVisitStatus": "Ziyarət statusu serverdə dəyişib",
     "conflictGeneric": "Saxlanmış dəyişiklik server məlumatları ilə ziddiyyət təşkil edir",
+    "routeCommandConflictHelp": "Planlayıcıda marşrutu yoxlayın, rədd edilmiş əmri silin və düzəldilmiş planı yenidən saxlayın.",
     "actionFailed": "Əməliyyatı tamamlamaq mümkün olmadı. Yenidən cəhd edin.",
     "retryLocationFailed": "Cari GPS mövqeyi əlçatan deyil. Ziyarət zonasına daxil olub yenidən cəhd edin."
   },

@@ -1,5 +1,6 @@
 import { api } from "./api"
 import { allOutboxOperations, flushOutbox } from "./outbox"
+import { allRouteCommandJournalEntries, flushRouteCommandJournal } from "./route-command-journal"
 import { allMediaUploads, flushMediaOutbox, type MediaOutboxItem } from "./media-outbox"
 import { pullAndApplySync } from "./sync-cache"
 import { clearRouteV2RoutesState, syncRouteV2Routes, type RouteV2SyncOutcome } from "./sync-v2-routes"
@@ -39,7 +40,8 @@ export type RouteFieldV2WithdrawalReason =
  * Withdraw the non-authoritative routes-v2 shadow for one authenticated
  * Route Field scope. This is deliberately narrower than any legacy sync
  * cleanup: an admission rollback must never discard a v1 mutation outbox,
- * v1 cache or media evidence that still needs server acknowledgement.
+ * route-command journal, v1 cache or media evidence that still needs server
+ * acknowledgement.
  *
  * A durable `disabled` routeV2Pull status clears a stale retry/backoff and
  * prevents an old in-memory supervisor from polling again. A fresh manifest
@@ -73,10 +75,16 @@ export async function withdrawRouteFieldV2ShadowState(input: {
 }
 
 async function counts() {
-  const [operations, media] = await Promise.all([allOutboxOperations(), allMediaUploads()])
+  const [operations, commands, media] = await Promise.all([
+    allOutboxOperations(),
+    allRouteCommandJournalEntries(),
+    allMediaUploads(),
+  ])
   return {
-    pending: operations.filter((item) => item.status === "pending").length,
-    conflicts: operations.filter((item) => item.status === "conflict").length,
+    pending: operations.filter((item) => item.status === "pending").length
+      + commands.filter((item) => item.status === "pending").length,
+    conflicts: operations.filter((item) => item.status === "conflict").length
+      + commands.filter((item) => item.status === "conflict").length,
     mediaPending: media.length,
   }
 }
@@ -97,6 +105,18 @@ export async function flushRouteFieldOutbox() {
     return { sent: 0, deferred: 0, conflicted: 0 }
   }
   return flushOutbox((operations) => api.syncPush(operations))
+}
+
+/**
+ * Separate durable command lane. It must never batch into, acknowledge, or
+ * clear the legacy v1 entity outbox: the receipt endpoint has its own causal
+ * order and idempotency semantics.
+ */
+export async function flushRouteFieldRouteCommands() {
+  if (!hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)) {
+    return { sent: 0, deferred: 0, conflicted: 0, acknowledgements: [] }
+  }
+  return flushRouteCommandJournal((command) => api.executeRouteCommand(command))
 }
 
 function failureFromError(error: unknown, fallback: string): PipelineFailure {
@@ -186,9 +206,24 @@ async function performSync(): Promise<MobileSyncResult> {
     ? manifest.syncV2.routesEpoch
     : null
 
-  // Keep v1 writes authoritative. The later v2 routes adapter is a
-  // read-only replacement for this pull lane only; it must never introduce
-  // a second mutation submission path.
+  // Command receipts and the legacy v1 entity outbox are independent durable
+  // authorities. Neither can acknowledge or clear the other. The later v2
+  // routes adapter remains read-only and never becomes a mutation authority.
+  const routeCommandPipeline = await runPipeline({
+    scopeKey,
+    pipeline: "routeCommands",
+    execute: () => flushRouteFieldRouteCommands(),
+    resultFailure: (result) => {
+      if (result.deferred === 0) return null
+      const retry = result as typeof result & { error?: string; retryAfterMs?: number }
+      return {
+        error: retry.error ?? "MOBILE_ROUTE_COMMAND_RETRY_SCHEDULED",
+        retryAfterMs: retry.retryAfterMs,
+      }
+    },
+  })
+  const commands = routeCommandPipeline.result ?? { sent: 0, deferred: 0, conflicted: 0 }
+
   const outboxPipeline = await runPipeline({
     scopeKey,
     pipeline: "routeOutbox",
@@ -271,7 +306,7 @@ async function performSync(): Promise<MobileSyncResult> {
   const media = mediaPipeline.result ?? { sent: 0, deferred: 0 }
 
   const nextCounts = await counts()
-  const pipelineErrors = [outboxPipeline, pullPipeline, mediaPipeline, ...(routeV2Pipeline ? [routeV2Pipeline] : [])]
+  const pipelineErrors = [routeCommandPipeline, outboxPipeline, pullPipeline, mediaPipeline, ...(routeV2Pipeline ? [routeV2Pipeline] : [])]
     .filter((pipeline) => pipeline.failed)
     .map((pipeline) => pipeline.error ?? "SYNC_PIPELINE_FAILED")
 
@@ -283,9 +318,9 @@ async function performSync(): Promise<MobileSyncResult> {
 
   return {
     success: pipelineErrors.length === 0,
-    sent: outbox.sent,
-    deferred: outbox.deferred,
-    conflicted: outbox.conflicted,
+    sent: commands.sent + outbox.sent,
+    deferred: commands.deferred + outbox.deferred,
+    conflicted: commands.conflicted + outbox.conflicted,
     mediaSent: media.sent,
   }
 }
