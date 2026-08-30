@@ -4,7 +4,7 @@ import { mobileResources } from "../../src/i18n/mobile-resources"
 
 describe("mobile planning guidance", () => {
   const source = fs.readFileSync(
-    path.resolve(__dirname, "../../src/screens/manager/ManagerPlanningWorkspace.android.tsx"),
+    path.resolve(__dirname, "../../src/screens/planning/PlanningWorkspaceCore.android.tsx"),
     "utf8",
   )
   const calendarSource = fs.readFileSync(

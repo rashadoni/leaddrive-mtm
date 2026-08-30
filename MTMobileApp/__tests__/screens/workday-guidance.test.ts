@@ -11,6 +11,18 @@ describe("Route Field product boundary", () => {
     path.resolve(__dirname, "../../src/navigation/AppNavigatorAndroidV2.tsx"),
     "utf8",
   )
+  const selfPlannerSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/route/RouteSelfPlanningWorkspace.android.tsx"),
+    "utf8",
+  )
+  const plannerCoreSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/planning/PlanningWorkspaceCore.android.tsx"),
+    "utf8",
+  )
+  const legacyPlannerSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/manager/ManagerPlanningWorkspace.android.tsx"),
+    "utf8",
+  )
   const runtimeSource = fs.readFileSync(
     path.resolve(__dirname, "../../src/runtime/AndroidApp.tsx"),
     "utf8",
@@ -56,6 +68,17 @@ describe("Route Field product boundary", () => {
     expect(navigatorSource).not.toContain("ManagerWorkspaceScreen")
     expect(navigatorSource).not.toContain("ContactTransferScreen")
     expect(navigatorSource).not.toContain("DashboardScreen")
+  })
+
+  it("keeps the active route planner self-only and its manager facade unreachable", () => {
+    expect(navigatorSource).toContain("RouteSelfPlanningWorkspace")
+    expect(navigatorSource).not.toContain("ManagerPlanningWorkspace")
+    expect(navigatorSource).not.toContain('mode="self"')
+    expect(selfPlannerSource).not.toContain("manager-api")
+    expect(selfPlannerSource).not.toContain("../manager/")
+    expect(plannerCoreSource).not.toContain("manager-api")
+    expect(plannerCoreSource).not.toContain("useAuthStore")
+    expect(legacyPlannerSource).toContain("managerApi.getTeam")
   })
 
   it("does not pull team schedules, commercial mutations, or manager task writes into Route Field", () => {

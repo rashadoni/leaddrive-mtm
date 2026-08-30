@@ -27,7 +27,7 @@ import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
 import TodayScreen from "../screens/today/TodayScreen"
-import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
+import RouteSelfPlanningWorkspace from "../screens/route/RouteSelfPlanningWorkspace.android"
 import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.android"
 import type { RawTask } from "../services/task-detail"
 import { AGENT_TAB_NAMES } from "./role-tabs"
@@ -47,9 +47,8 @@ export type RootStackParamList = {
   /** Type-only legacy entry keeps an unmounted manager source file type-safe;
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
-  /** Route planning accepts an old `mode` parameter for source compatibility,
-   * but the registered Route Field screen always mounts its self-planning mode. */
-  PlanningBuilder: { mode?: "manager" | "self"; initialDate?: string; initialHorizon?: 1 | 7 } | undefined
+  /** Route Field planning is self-only; team planning remains in the legacy shell. */
+  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7 } | undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -70,9 +69,8 @@ const PlanningBuilderScreen = ({
   navigation: { goBack: () => void }
   route: { params?: { initialDate?: string; initialHorizon?: 1 | 7 } }
 }) => (
-  <ManagerPlanningWorkspace
+  <RouteSelfPlanningWorkspace
     onClose={() => navigation.goBack()}
-    mode="self"
     initialDate={route.params?.initialDate}
     initialHorizon={route.params?.initialHorizon}
   />
