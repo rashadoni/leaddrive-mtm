@@ -706,17 +706,17 @@ class ApiClient {
     return this.request(`/mobile/route-field/contacts/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
   }
 
-  async getContacts(
-    params?: { search?: string; page?: number; limit?: number; ownerAgentId?: string },
+  /** Mobile-only v2 catalog; its opaque page token is server-issued. */
+  async getRouteContacts(
+    params?: { search?: string; page?: string; limit?: number },
     signal?: AbortSignal,
   ) {
     const query = new URLSearchParams()
     if (params?.search) query.set("search", params.search)
-    if (params?.page) query.set("page", String(params.page))
+    if (params?.page) query.set("page", params.page)
     if (params?.limit) query.set("limit", String(params.limit))
-    if (params?.ownerAgentId) query.set("ownerAgentId", params.ownerAgentId)
     const qs = query.toString()
-    return this.request(`/contacts${qs ? `?${qs}` : ""}`, { signal })
+    return this.request(`/mobile/route-field/contacts${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
   }
 
   // --- Week / agenda ---

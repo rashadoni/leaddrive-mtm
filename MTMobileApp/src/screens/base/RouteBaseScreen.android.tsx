@@ -6,7 +6,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
-import ContactsList from "./ContactsList"
+import RouteContactsList from "./RouteContactsList.android"
 import RouteOrganizationExplorerScreen from "./RouteOrganizationExplorerScreen.android"
 
 type BaseTab = "organizations" | "contacts"
@@ -81,7 +81,7 @@ export default function RouteBaseScreen() {
       </View>
 
       <View style={styles.content}>
-        {tab === "organizations" ? <RouteOrganizationExplorerScreen /> : <ContactsList />}
+        {tab === "organizations" ? <RouteOrganizationExplorerScreen /> : <RouteContactsList />}
       </View>
     </View>
   )

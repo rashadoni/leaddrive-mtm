@@ -9,6 +9,19 @@ import { api } from "./api"
  * authoritative; this move changes neither URLs nor payloads.
  */
 export const commercialApi = {
+  getContacts(
+    params?: { search?: string; page?: number; limit?: number; ownerAgentId?: string },
+    signal?: AbortSignal,
+  ) {
+    const query = new URLSearchParams()
+    if (params?.search) query.set("search", params.search)
+    if (params?.page) query.set("page", String(params.page))
+    if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.ownerAgentId) query.set("ownerAgentId", params.ownerAgentId)
+    const qs = query.toString()
+    return api.requestLegacy(`/contacts${qs ? `?${qs}` : ""}`, { signal })
+  },
+
   getContact(id: string, signal?: AbortSignal) {
     return api.requestLegacy(`/contacts/${id}`, { signal })
   },

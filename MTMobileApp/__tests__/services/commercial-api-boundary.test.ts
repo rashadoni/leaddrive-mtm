@@ -13,6 +13,10 @@ const legacyContactSource = fs.readFileSync(
   path.resolve(__dirname, "../../src/screens/base/ContactDetailScreen.tsx"),
   "utf8",
 )
+const legacyContactsListSource = fs.readFileSync(
+  path.resolve(__dirname, "../../src/screens/base/ContactsList.tsx"),
+  "utf8",
+)
 const scoringModalSource = fs.readFileSync(
   path.resolve(__dirname, "../../src/components/DoctorAssessmentModal.tsx"),
   "utf8",
@@ -38,6 +42,7 @@ describe("legacy commercial API boundary", () => {
     }
 
     const movedMethods = [
+      "getContacts",
       "getContact",
       "updateContact",
       "submitContactChange",
@@ -63,6 +68,9 @@ describe("legacy commercial API boundary", () => {
     expect(legacyContactSource).toContain('import { commercialApi } from "../../services/commercial-api"')
     expect(legacyContactSource).toContain("commercialApi.getContact")
     expect(legacyContactSource).not.toContain("api.getContact")
+    expect(legacyContactsListSource).toContain('import { commercialApi } from "../../services/commercial-api"')
+    expect(legacyContactsListSource).toContain("commercialApi.getContacts")
+    expect(legacyContactsListSource).not.toContain("api.getContacts")
     expect(legacyContactSource).not.toContain("api.updateContact")
     expect(legacyContactSource).not.toContain("api.createBrandPotential")
     expect(scoringModalSource).toContain("commercialApi.getDoctorScoringFormulas")

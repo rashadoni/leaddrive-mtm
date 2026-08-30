@@ -15,7 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { api } from "../../services/api"
+import { commercialApi } from "../../services/commercial-api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
 import { readOfflineContacts } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
@@ -62,7 +62,7 @@ export default function ContactsList() {
 
   const fetchContacts = useCallback(async (term: string) => {
     try {
-      const response = await api.getContacts(term ? { search: term } : undefined)
+      const response = await commercialApi.getContacts(term ? { search: term } : undefined)
       if (response.success) {
         setContacts((response.data?.contacts || []).map(toContactListItem))
         lastLoadedTermRef.current = term
