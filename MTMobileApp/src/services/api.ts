@@ -335,6 +335,16 @@ class ApiClient {
     }
   }
 
+  /**
+   * Legacy-surface transport bridge. Manager-only screens import their own
+   * facade so Route Field's active API module contains no manager/team
+   * endpoint literals. New Route Field code must use a dedicated core method
+   * above instead of constructing a path through this bridge.
+   */
+  async requestLegacy(path: string, options: RequestInit = {}, timeoutMs = 20_000) {
+    return this.request(path, options, timeoutMs)
+  }
+
   // --- Auth ---
 
   async login(email: string, password: string) {
@@ -446,26 +456,6 @@ class ApiClient {
     })
   }
 
-  /**
-   * Share one foreground position by explicit user action. This deliberately
-   * uses a separate method and server mode so it can never be mistaken for
-   * field-agent background tracking.
-   */
-  async shareSelfLocation(data: {
-    latitude: number
-    longitude: number
-    accuracy?: number
-    speed?: number
-    heading?: number
-    altitude?: number
-    battery?: number
-  }) {
-    return this.request("/mobile/location", {
-      method: "POST",
-      body: JSON.stringify({ ...data, mode: "SELF_SHARE" }),
-    })
-  }
-
   async getLocationHistory(date?: string, signal?: AbortSignal) {
     const qs = date ? `?date=${encodeURIComponent(date)}` : ""
     return this.request(`/mobile/location${qs}`, { signal })
@@ -506,71 +496,6 @@ class ApiClient {
     const query = new URLSearchParams({ limit: String(Math.max(1, Math.min(500, Math.floor(limit)))) })
     if (cursor) query.set("cursor", cursor)
     return this.request(`/mobile/sync/routes?${query.toString()}`, {}, 20_000, 2)
-  }
-
-  async getManagerTeam(signal?: AbortSignal, includeInactive = false) {
-    return this.request(`/mobile/manager/team${includeInactive ? "?includeInactive=1" : ""}`, { signal })
-  }
-
-  async getManagerLocations(signal?: AbortSignal) {
-    return this.request("/mobile/manager/locations", { signal })
-  }
-
-  async getManagerPlanning(date?: string, signal?: AbortSignal) {
-    const qs = date ? `?date=${encodeURIComponent(date)}` : ""
-    return this.request(`/mobile/manager/planning${qs}`, { signal })
-  }
-
-  async getManagerPlanningRange(from: string, to: string, signal?: AbortSignal) {
-    const query = new URLSearchParams({ from, to })
-    return this.request(`/mobile/manager/planning?${query.toString()}`, { signal })
-  }
-
-  async getManagerApprovals(signal?: AbortSignal) {
-    return this.request("/mobile/manager/approvals", { signal })
-  }
-
-  /**
-   * Decide an HRM request (approve/reject). Hits the shared operations decision
-   * endpoint, which accepts the mobile Bearer via withMtmRlsAuth and enforces a
-   * non-AGENT actor server-side. A rejection requires a note.
-   */
-  async hrmDecision(id: string, decision: "APPROVED" | "REJECTED", note?: string) {
-    return this.request(`/operations/hrm/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ decision, ...(note ? { note } : {}) }),
-    })
-  }
-
-  /**
-   * Decide a route-change request (approve/reject). The decision endpoint
-   * accepts the mobile Bearer via withMtmRlsAuth and gates to a MANAGER/
-   * SUPERVISOR/ADMIN actor in scope; a rejection requires a comment.
-   */
-  async routeChangeDecision(id: string, decision: "APPROVED" | "REJECTED", comment?: string) {
-    return this.request(`/route-change-requests/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
-    })
-  }
-
-  /**
-   * Decide a customer-create request (approve/reject). Same dual-principal
-   * decision endpoint; approval materializes the customer server-side, a
-   * rejection requires a comment.
-   */
-  async customerCreateDecision(id: string, decision: "APPROVED" | "REJECTED", comment?: string) {
-    return this.request(`/customer-create-requests/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
-    })
-  }
-
-  async contactChangeDecision(id: string, decision: "APPROVED" | "REJECTED", comment: string) {
-    return this.request(`/contact-change-requests/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ decision, comment }),
-    })
   }
 
   // --- Routes ---
@@ -689,53 +614,11 @@ class ApiClient {
   }
 
   /**
-   * Manager bulk reassignment: move a batch of tasks to another agent
-   * (TEAM_DECIDE + scope gated). Returns { reassigned } — how many actually
-   * moved after the server's scope filter.
-   */
-  async bulkReassignTasks(taskIds: string[], agentId: string) {
-    return this.request(`/mobile/tasks/bulk-reassign`, {
-      method: "POST",
-      body: JSON.stringify({ taskIds, agentId }),
-    })
-  }
-
-  /**
    * List the files/evidence attached to a task (read side). Scoped server-side
    * to the assignee's own task or a TEAM_READ manager's team.
    */
   async getTaskDocuments(taskId: string, signal?: AbortSignal) {
     return this.request(`/mobile/tasks/${taskId}/documents`, { signal })
-  }
-
-  /**
-   * Manager task-metadata edit. Hits the mobile-only endpoint gated on
-   * TEAM_DECIDE + agent scope server-side (not the org-scoped web PUT).
-   * Only defined fields are sent; description can be cleared with null.
-   */
-  async updateTaskFields(
-    id: string,
-    fields: {
-      title?: string
-      description?: string | null
-      priority?: string
-      dueDate?: string | null
-      recurrenceRule?: string | null
-      recurrenceInterval?: number
-    },
-  ) {
-    return this.request(`/mobile/tasks/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(fields),
-    })
-  }
-
-  /**
-   * Manager task duplication. Creates a fresh PENDING copy server-side (same
-   * TEAM_DECIDE + scope gate). Returns the new task in `data`.
-   */
-  async duplicateTask(id: string) {
-    return this.request(`/mobile/tasks/${id}/duplicate`, { method: "POST" })
   }
 
   /**
@@ -746,18 +629,6 @@ class ApiClient {
     return this.request(`/mobile/tasks/${id}/progress`, {
       method: "PATCH",
       body: JSON.stringify({ progress }),
-    })
-  }
-
-  /**
-   * Manager review/return: send a completed task back to the assignee for
-   * rework with a reason (TEAM_DECIDE + scope gated). The task reopens to
-   * IN_PROGRESS server-side; a reason is required.
-   */
-  async returnTask(id: string, reason: string) {
-    return this.request(`/mobile/tasks/${id}/return`, {
-      method: "POST",
-      body: JSON.stringify({ reason }),
     })
   }
 
@@ -951,47 +822,11 @@ class ApiClient {
     })
   }
 
-  async previewContactTransfer(data: {
-    contactIds: string[]
-    sourceAgentId: string
-    targetAgentId: string
-    effectiveFrom: string
-  }) {
-    return this.request("/contact-transfers/preview", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
-  async executeContactTransfer(data: {
-    contactIds: string[]
-    sourceAgentId: string
-    targetAgentId: string
-    effectiveFrom: string
-    previewToken: string
-    idempotencyKey: string
-    reason: string
-  }) {
-    return this.request("/contact-transfers", {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
   // --- Week / agenda ---
 
   async getWeek(start?: string, signal?: AbortSignal) {
     const qs = start ? `?start=${encodeURIComponent(start)}` : ""
     return this.request(`/mobile/week${qs}`, { signal })
-  }
-
-  /**
-   * Optional, server-gated colleague calendar. Callers must not persist this
-   * response: the tenant can withdraw visibility at any time.
-   */
-  async getTeamSchedule(from: string, to: string, signal?: AbortSignal) {
-    const query = new URLSearchParams({ from, to })
-    return this.request(`/mobile/team-schedule?${query.toString()}`, { signal })
   }
 
   // --- Visit workspace ---

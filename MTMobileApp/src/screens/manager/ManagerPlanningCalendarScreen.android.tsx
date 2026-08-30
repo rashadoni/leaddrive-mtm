@@ -14,7 +14,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import {
   calendarDateKeys,
   managerCalendarRouteTone,
@@ -210,7 +210,7 @@ export default function ManagerPlanningCalendarScreen() {
     else setLoading(true)
     setLoadError(false)
     try {
-      const response = await api.getManagerPlanningRange(window.from, window.to, controller.signal)
+      const response = await managerApi.getPlanningRange(window.from, window.to, controller.signal)
       setData(toManagerCalendarData(response, window))
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") setLoadError(true)
@@ -226,7 +226,7 @@ export default function ManagerPlanningCalendarScreen() {
     const controller = new AbortController()
     setLoading(true)
     setLoadError(false)
-    api.getManagerPlanningRange(window.from, window.to, controller.signal)
+    managerApi.getPlanningRange(window.from, window.to, controller.signal)
       .then((response: any) => {
         if (active) setData(toManagerCalendarData(response, window))
       })

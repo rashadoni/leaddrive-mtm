@@ -23,7 +23,7 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
-import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import { hasCapability } from "../../services/bootstrap"
 import { captureOneShotLocation } from "../../services/self-location-share"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -109,10 +109,10 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
     if (mode === "initial") setLoading(true)
     if (mode === "manual") setRefreshing(true)
     const request = kind === "team"
-      ? Promise.all([api.getManagerTeam(), api.getManagerLocations()])
+      ? Promise.all([managerApi.getTeam(), managerApi.getLocations()])
       : kind === "planning"
-        ? api.getManagerPlanning()
-        : api.getManagerApprovals()
+        ? managerApi.getPlanning()
+        : managerApi.getApprovals()
     try {
       const response: any = await request
       if (currentRequestId !== requestId.current) return
@@ -187,7 +187,7 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
     try {
       const position = await captureOneShotLocation()
       setSelfShareState("sending")
-      const response = await api.shareSelfLocation(position)
+      const response = await managerApi.shareSelfLocation(position)
       if (!response?.success) throw new Error("SELF_LOCATION_SHARE_FAILED")
       setSelfShareState("success")
       setToast({ visible: true, type: "success", title: t("managerShell.shareLocationSuccess") })
@@ -204,12 +204,12 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
     setBusyId(id)
     try {
       const res = queue === "hrm"
-        ? await api.hrmDecision(id, decision, note)
+        ? await managerApi.hrmDecision(id, decision, note)
         : queue === "routeChange"
-          ? await api.routeChangeDecision(id, decision, note)
+          ? await managerApi.routeChangeDecision(id, decision, note)
           : queue === "customer"
-            ? await api.customerCreateDecision(id, decision, note)
-            : await api.contactChangeDecision(id, decision, note || (decision === "APPROVED" ? t("managerShell.contactChangeApprovedNote") : t("managerShell.contactChangeRejectedNote")))
+            ? await managerApi.customerCreateDecision(id, decision, note)
+            : await managerApi.contactChangeDecision(id, decision, note || (decision === "APPROVED" ? t("managerShell.contactChangeApprovedNote") : t("managerShell.contactChangeRejectedNote")))
       if (res?.success) {
         setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
         reload()

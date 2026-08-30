@@ -23,6 +23,7 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import {
   DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
   mobileRouteTargetLabel,
@@ -294,7 +295,7 @@ export default function ManagerPlanningWorkspace({
       return
     }
     try {
-      const response = await api.getManagerTeam()
+      const response = await managerApi.getTeam()
       const rawAgents: unknown[] = Array.isArray(response?.data?.agents) ? response.data.agents : []
       const next = rawAgents
         .map(toPlanningAgent)

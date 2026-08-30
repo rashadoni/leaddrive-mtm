@@ -18,6 +18,7 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
 import {
   makeContactTransferIdempotencyKey,
@@ -68,7 +69,7 @@ export default function ContactTransferScreen() {
   }
 
   useEffect(() => {
-    api.getManagerTeam(undefined, true)
+    managerApi.getTeam(undefined, true)
       .then((response) => setAgents(toTransferAgents(response?.data)))
       .catch(() => setError(t("contactTransfer.loadError")))
       .finally(() => setLoadingAgents(false))
@@ -124,7 +125,7 @@ export default function ContactTransferScreen() {
     setBusy("preview")
     setError("")
     try {
-      const response = await api.previewContactTransfer({
+      const response = await managerApi.previewContactTransfer({
         contactIds: selectedIds,
         sourceAgentId: sourceId,
         targetAgentId: targetId,
@@ -144,7 +145,7 @@ export default function ContactTransferScreen() {
     setBusy("execute")
     setError("")
     try {
-      const response = await api.executeContactTransfer({
+      const response = await managerApi.executeContactTransfer({
         contactIds: selectedIds,
         sourceAgentId: sourceId,
         targetAgentId: targetId,

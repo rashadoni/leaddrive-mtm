@@ -42,7 +42,7 @@ import {
   sanitizeWidgetIds,
   widgetsForWorkspace,
 } from "./dashboard-layout"
-import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import { localDateKey } from "../today/today-state"
 import {
   markManagerDashboardStatsStale,
@@ -278,10 +278,10 @@ export default function DashboardScreen() {
     if (mode !== "silent") setManagerLoading(true)
     try {
       const [team, locations, planning, approvals] = await Promise.all([
-        api.getManagerTeam(),
-        api.getManagerLocations(),
-        api.getManagerPlanning(localDateKey()),
-        api.getManagerApprovals(),
+        managerApi.getTeam(),
+        managerApi.getLocations(),
+        managerApi.getPlanning(localDateKey()),
+        managerApi.getApprovals(),
       ])
       if (requestId !== managerRequestId.current) return
       setManagerStats(toManagerDashboardStats(team?.data, locations?.data, planning?.data, approvals?.data))

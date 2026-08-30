@@ -42,6 +42,7 @@ import { setAgentContext, clearAgentContext } from "../../src/services/sentry"
 import { getFieldDeviceId } from "../../src/services/field-device-id"
 // Import the singleton after mocks are in place
 import { api } from "../../src/services/api"
+import { managerApi } from "../../src/services/manager-api"
 
 // Convenience: access private methods without TS complaints
 const client = api as any
@@ -568,7 +569,7 @@ describe("ApiClient — Route Field sync v2 transport", () => {
   })
 })
 
-describe("ApiClient — explicit self-location share", () => {
+describe("managerApi — explicit self-location share", () => {
   it("posts a one-shot position with the SELF_SHARE mode", async () => {
     client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
     client.token = "valid-token"
@@ -579,7 +580,7 @@ describe("ApiClient — explicit self-location share", () => {
     })
     ;(global.fetch as jest.Mock) = mockFetch
 
-    await api.shareSelfLocation({ latitude: 40.4093, longitude: 49.8671, accuracy: 12 })
+    await managerApi.shareSelfLocation({ latitude: 40.4093, longitude: 49.8671, accuracy: 12 })
 
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const [url, options] = mockFetch.mock.calls[0]
@@ -663,7 +664,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.hrmDecision("hrm-1", "REJECTED", "not enough cover")
+    await managerApi.hrmDecision("hrm-1", "REJECTED", "not enough cover")
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/operations/hrm/hrm-1/decision")
     expect(opts.method).toBe("POST")
@@ -675,7 +676,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.hrmDecision("hrm-2", "APPROVED")
+    await managerApi.hrmDecision("hrm-2", "APPROVED")
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
   })
 
@@ -684,7 +685,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.routeChangeDecision("rc-1", "REJECTED", "out of territory")
+    await managerApi.routeChangeDecision("rc-1", "REJECTED", "out of territory")
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/route-change-requests/rc-1/decision")
     expect(opts.method).toBe("POST")
@@ -696,7 +697,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.routeChangeDecision("rc-2", "APPROVED")
+    await managerApi.routeChangeDecision("rc-2", "APPROVED")
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
   })
 
@@ -705,7 +706,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.customerCreateDecision("cc-1", "REJECTED", "duplicate")
+    await managerApi.customerCreateDecision("cc-1", "REJECTED", "duplicate")
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/customer-create-requests/cc-1/decision")
     expect(opts.method).toBe("POST")
@@ -717,7 +718,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.customerCreateDecision("cc-2", "APPROVED")
+    await managerApi.customerCreateDecision("cc-2", "APPROVED")
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
   })
 
@@ -726,7 +727,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.updateTaskFields("task-1", { title: "New", description: "d", priority: "HIGH" })
+    await managerApi.updateTaskFields("task-1", { title: "New", description: "d", priority: "HIGH" })
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-1")
     expect(opts.method).toBe("PUT")
@@ -738,7 +739,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.updateTaskFields("task-2", { description: null })
+    await managerApi.updateTaskFields("task-2", { description: null })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ description: null })
   })
 
@@ -747,7 +748,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.updateTaskFields("task-3", { recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
+    await managerApi.updateTaskFields("task-3", { recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ recurrenceRule: "WEEKLY", recurrenceInterval: 2 })
   })
 
@@ -756,7 +757,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.duplicateTask("task-9")
+    await managerApi.duplicateTask("task-9")
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-9/duplicate")
     expect(opts.method).toBe("POST")
@@ -779,7 +780,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.returnTask("task-7", "photos missing")
+    await managerApi.returnTask("task-7", "photos missing")
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/task-7/return")
     expect(opts.method).toBe("POST")
@@ -791,7 +792,7 @@ describe("ApiClient — fullLogout", () => {
     client.token = "jwt"
     const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
     ;(global.fetch as jest.Mock) = fetchMock
-    await client.bulkReassignTasks(["t1", "t2"], "agent-9")
+    await managerApi.bulkReassignTasks(["t1", "t2"], "agent-9")
     const [url, opts] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/tasks/bulk-reassign")
     expect(opts.method).toBe("POST")
