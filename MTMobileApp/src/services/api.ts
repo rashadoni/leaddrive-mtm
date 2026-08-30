@@ -336,11 +336,9 @@ class ApiClient {
   }
 
   /**
-   * Legacy-surface transport bridge. Manager screens import their own facade,
-   * while the remaining commercial wrappers are extracted separately so this
-   * Route Field isolation checkpoint stays reversible. New Route Field code
-   * must use a dedicated core method above instead of constructing a path
-   * through this bridge.
+   * Legacy-surface transport bridge. Manager and commercial screens import
+   * their own facades. New Route Field code must use a dedicated core method
+   * above instead of constructing a path through this bridge.
    */
   async requestLegacy(path: string, options: RequestInit = {}, timeoutMs = 20_000) {
     return this.request(path, options, timeoutMs)
@@ -718,67 +716,6 @@ class ApiClient {
 
   async getContact(id: string, signal?: AbortSignal) {
     return this.request(`/contacts/${id}`, { signal })
-  }
-
-  async updateContact(id: string, fields: Record<string, unknown>) {
-    return this.request(`/contacts/${id}`, { method: "PUT", body: JSON.stringify(fields) })
-  }
-
-  async submitContactChange(id: string, data: {
-    idempotencyKey: string
-    reason: string
-    expectedContactUpdatedAt: string
-    kind: "CONTACT_UPDATE" | "WORKPLACE_UPSERT" | "WORKPLACE_END" | "DUPLICATE_REPORT"
-    payload: object
-  }) {
-    return this.request(`/contacts/${id}/change-requests`, { method: "POST", body: JSON.stringify(data) })
-  }
-
-  async upsertContactWorkplace(id: string, data: object) {
-    return this.request(`/contacts/${id}/workplaces`, { method: "PUT", body: JSON.stringify(data) })
-  }
-
-  async endContactWorkplace(id: string, workplaceId: string) {
-    return this.request(`/contacts/${id}/workplaces/${workplaceId}`, { method: "DELETE" })
-  }
-
-  async getDoctorScoringFormulas(signal?: AbortSignal) {
-    return this.request("/doctor-scoring/formulas", { signal })
-  }
-
-  async createDoctorAssessment(contactId: string, data: object) {
-    return this.request(`/contacts/${contactId}/assessments`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
-  async decideDoctorAssessment(id: string, decision: "VERIFIED" | "REJECTED", comment: string) {
-    return this.request(`/doctor-assessments/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ decision, comment }),
-    })
-  }
-
-  async createBrandPotential(contactId: string, data: object) {
-    return this.request(`/contacts/${contactId}/brand-potentials`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    })
-  }
-
-  async decideBrandPotential(id: string, decision: "VERIFIED" | "REJECTED", comment: string) {
-    return this.request(`/field-potentials/${id}/decision`, {
-      method: "POST",
-      body: JSON.stringify({ decision, comment }),
-    })
-  }
-
-  async endBrandPotential(id: string, periodEnd: string, reason: string) {
-    return this.request(`/field-potentials/${id}/end`, {
-      method: "POST",
-      body: JSON.stringify({ periodEnd, reason }),
-    })
   }
 
   // --- Week / agenda ---

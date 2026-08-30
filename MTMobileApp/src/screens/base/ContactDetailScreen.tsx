@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
+import { commercialApi } from "../../services/commercial-api"
 import { toContactDetail, type BrandPotential, type ContactDetail, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
 import { readOfflineContactDetail } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
@@ -121,8 +122,8 @@ export default function ContactDetailScreen() {
     setBusy(true)
     try {
       const response = detail.canManage
-        ? await api.updateContact(detail.id, fields)
-        : await api.submitContactChange(detail.id, {
+        ? await commercialApi.updateContact(detail.id, fields)
+        : await commercialApi.submitContactChange(detail.id, {
             idempotencyKey: operationKey("fields"),
             reason,
             expectedContactUpdatedAt: detail.updatedAt,
@@ -144,8 +145,8 @@ export default function ContactDetailScreen() {
     setBusy(true)
     try {
       const response = detail.canManage
-        ? await api.upsertContactWorkplace(detail.id, fields)
-        : await api.submitContactChange(detail.id, {
+        ? await commercialApi.upsertContactWorkplace(detail.id, fields)
+        : await commercialApi.submitContactChange(detail.id, {
             idempotencyKey: operationKey("workplace"),
             reason,
             expectedContactUpdatedAt: detail.updatedAt,
@@ -170,8 +171,8 @@ export default function ContactDetailScreen() {
     setBusy(true)
     try {
       const response = detail.canManage
-        ? await api.endContactWorkplace(detail.id, target.id)
-        : await api.submitContactChange(detail.id, {
+        ? await commercialApi.endContactWorkplace(detail.id, target.id)
+        : await commercialApi.submitContactChange(detail.id, {
             idempotencyKey: operationKey("workplace-end"),
             reason,
             expectedContactUpdatedAt: detail.updatedAt,
@@ -192,8 +193,8 @@ export default function ContactDetailScreen() {
     setBusy(true)
     try {
       const response = detail.canManage
-        ? await api.updateContact(detail.id, { status: "DUPLICATE", duplicateOfContactId: targetContactId })
-        : await api.submitContactChange(detail.id, {
+        ? await commercialApi.updateContact(detail.id, { status: "DUPLICATE", duplicateOfContactId: targetContactId })
+        : await commercialApi.submitContactChange(detail.id, {
             idempotencyKey: operationKey("duplicate"),
             reason,
             expectedContactUpdatedAt: detail.updatedAt,
@@ -214,7 +215,7 @@ export default function ContactDetailScreen() {
     if (!detail) return
     setBusy(true)
     try {
-      const response = await api.createDoctorAssessment(detail.id, fields)
+      const response = await commercialApi.createDoctorAssessment(detail.id, fields)
       if (response?.success) {
         setAssessmentVisible(false)
         setSection("scoring")
@@ -232,7 +233,7 @@ export default function ContactDetailScreen() {
     setAssessmentDecision(null)
     setBusy(true)
     try {
-      const response = await api.decideDoctorAssessment(target.assessment.id, target.decision, comment)
+      const response = await commercialApi.decideDoctorAssessment(target.assessment.id, target.decision, comment)
       if (response?.success) {
         setToast({ visible: true, type: "success", title: t(target.decision === "VERIFIED" ? "contacts.scoringVerified" : "contacts.scoringRejected") })
         await fetchDetail()
@@ -248,7 +249,7 @@ export default function ContactDetailScreen() {
     try {
       const isAgent = String(agent?.role ?? "").toUpperCase() === "AGENT"
       if (!isAgent) {
-        const response = await api.createBrandPotential(detail.id, fields)
+        const response = await commercialApi.createBrandPotential(detail.id, fields)
         if (!response?.success) return
         setPotentialVisible(false)
         setPotentialPrevious(null)
@@ -306,7 +307,7 @@ export default function ContactDetailScreen() {
     setPotentialDecision(null)
     setBusy(true)
     try {
-      const response = await api.decideBrandPotential(target.potential.id, target.decision, comment)
+      const response = await commercialApi.decideBrandPotential(target.potential.id, target.decision, comment)
       if (response?.success) {
         setToast({ visible: true, type: "success", title: t(target.decision === "VERIFIED" ? "potential.verified" : "potential.rejected") })
         await fetchDetail()
@@ -325,7 +326,7 @@ export default function ContactDetailScreen() {
       const periodEnd = new Date().toISOString().slice(0, 10)
       const isAgent = String(agent?.role ?? "").toUpperCase() === "AGENT"
       if (!isAgent) {
-        const response = await api.endBrandPotential(target.id, periodEnd, reason)
+        const response = await commercialApi.endBrandPotential(target.id, periodEnd, reason)
         if (!response?.success) return
         setToast({ visible: true, type: "success", title: t("potential.periodEnded") })
         await fetchDetail()

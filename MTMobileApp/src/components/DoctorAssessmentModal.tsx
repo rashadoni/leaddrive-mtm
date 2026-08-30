@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
-import { api } from "../services/api"
+import { commercialApi } from "../services/commercial-api"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isTabletWidth } from "../theme/layoutBreakpoints"
 
@@ -82,7 +82,7 @@ export default function DoctorAssessmentModal({
     setValues(initial())
     setError("")
     setLoadingFormula(true)
-    api.getDoctorScoringFormulas()
+    commercialApi.getDoctorScoringFormulas()
       .then((response: any) => setFormulas(Array.isArray(response?.data?.formulas) ? response.data.formulas : []))
       .catch(() => setFormulas([]))
       .finally(() => setLoadingFormula(false))

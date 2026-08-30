@@ -56,6 +56,7 @@ describe("Route Field Android import graph", () => {
 
     expect(reachable).not.toContain("src/navigation/AppNavigator.tsx")
     expect(reachable).not.toContain("src/services/manager-api.ts")
+    expect(reachable).not.toContain("src/services/commercial-api.ts")
     expect(reachable).not.toContain("src/screens/manager/ManagerPlanningWorkspace.android.tsx")
     expect(reachable).not.toContain("src/screens/base/ContactDetailScreen.tsx")
     expect(reachable).not.toContain("src/screens/base/BaseScreen.tsx")
@@ -64,5 +65,9 @@ describe("Route Field Android import graph", () => {
     expect(reachable).not.toContain("src/screens/base/OrganizationDetailScreen.tsx")
     expect(reachable).not.toContain("src/services/organization-detail.ts")
     expect(reachable).not.toContain("src/services/field-potential.ts")
+    expect(reachable).not.toContain("src/services/contact-detail.ts")
+    expect(reachable).not.toContain("src/services/brand-potential-outbox.ts")
+    expect(reachable).not.toContain("src/components/DoctorAssessmentModal.tsx")
+    expect(reachable).not.toContain("src/components/BrandPotentialModal.tsx")
   })
 })
