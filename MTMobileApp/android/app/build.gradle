@@ -86,13 +86,16 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.mtmobileapp"
+    namespace "com.leaddrive.routefield"
     defaultConfig {
-        applicationId "com.mtmobileapp"
+        applicationId "com.leaddrive.routefield"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 37
-        versionName "2.1.12"
+        // This is a new Android application id, not an in-place update of
+        // the retired MTM client.  Its version code starts at one and moves
+        // in lockstep with package.json and AndroidApp.tsx.
+        versionCode 1
+        versionName "3.0.0"
     }
     signingConfigs {
         debug {

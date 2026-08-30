@@ -12,13 +12,13 @@ const MAX_RETRIES = 3
 
 // --- Background Service Configuration ---
 const backgroundOptions = {
-  taskName: "MTM GPS Tracking",
+  taskName: "Route Field GPS Tracking",
   taskIcon: {
     name: "ic_launcher",
     type: "mipmap",
   },
   color: "#6C63FF",
-  linkingURI: "mtm://",
+  linkingURI: "routefield://",
   foregroundServiceType: ["location"] as Array<"location">,
   parameters: {
     delay: SEND_INTERVAL,

@@ -27,9 +27,10 @@ import { initSentry } from "../services/sentry"
 import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
 import { fieldTheme } from "../theme/fieldTheme"
 import { version as APP_VERSION } from "../../package.json"
+import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
-const ANDROID_VERSION_CODE = 37
-initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
+const ANDROID_VERSION_CODE = 1
+initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 function AppContent() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)

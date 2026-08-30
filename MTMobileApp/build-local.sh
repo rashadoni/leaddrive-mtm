@@ -16,7 +16,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 VERSION=$(node -p "require('./package.json').version")
-echo "▶ Сборка MTM App v${VERSION}…"
+echo "▶ Сборка LeadDrive Route Field v${VERSION}…"
 
 if [ ! -f android/app/mtm-release.keystore ]; then
   echo "⚠️  android/app/mtm-release.keystore не найден — APK будет с DEBUG-подписью"
@@ -32,7 +32,7 @@ fi
 echo "▶ gradle assembleRelease…"
 (cd android && ./gradlew assembleRelease)
 
-OUT="$HOME/Desktop/leaddrive-mtm-v${VERSION}.apk"
+OUT="$HOME/Desktop/leaddrive-route-field-v${VERSION}.apk"
 cp android/app/build/outputs/apk/release/app-release.apk "$OUT"
 echo ""
 echo "✅ Готово: $OUT"

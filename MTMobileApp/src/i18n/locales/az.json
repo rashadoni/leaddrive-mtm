@@ -82,7 +82,7 @@
     "allow": "İcazə ver",
     "deny": "Rədd et",
     "locationDeniedTitle": "Məkan icazəsi tələb olunur",
-    "locationDeniedBody": "Məkana giriş tamamilə qadağan edildi. Tənzimləmələr → Tətbiqlər → MTMobileApp → İcazələr → Məkan bölümündə icazə verin.",
+    "locationDeniedBody": "Məkana giriş tamamilə qadağan edildi. Tənzimləmələr → Tətbiqlər → LeadDrive Route Field → İcazələr → Məkan bölümündə icazə verin.",
     "openSettings": "Tənzimləmələri aç"
   },
   "visit": {

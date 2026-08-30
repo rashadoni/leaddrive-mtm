@@ -10,6 +10,7 @@ import { api } from './src/services/api'
 import { initI18n } from './src/i18n'
 import { initSentry } from './src/services/sentry'
 import { version as APP_VERSION } from './package.json'
+import { ROUTE_FIELD_PROFILE } from './src/runtime/route-field-profile'
 
 // M1-3: init Sentry at module-load (NOT inside useEffect) so the SDK is
 // live before the first React commit — render-phase errors during initial
@@ -21,8 +22,8 @@ import { version as APP_VERSION } from './package.json'
 // merging into one release row.
 // TODO: read versionCode from native via react-native-device-info's
 // getBuildNumber() if we ever forget to bump in lockstep.
-const ANDROID_VERSION_CODE = 36
-initSentry(`MTMobileApp@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
+const ANDROID_VERSION_CODE = 1
+initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 // Ping interval — keeps agent "online" on server even without GPS fix
 const PING_INTERVAL = 60_000 // 60 seconds

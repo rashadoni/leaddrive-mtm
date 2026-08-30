@@ -26,13 +26,13 @@ export function setTrackingWorkdayId(workdayId: string | null) {
 }
 
 const backgroundOptions = {
-  taskName: "MTM GPS Tracking",
+  taskName: "Route Field GPS Tracking",
   taskIcon: {
     name: "ic_launcher",
     type: "mipmap",
   },
   color: "#08705A",
-  linkingURI: "mtm://",
+  linkingURI: "routefield://",
   foregroundServiceType: ["location"] as Array<"location">,
   parameters: {
     delay: SEND_INTERVAL,

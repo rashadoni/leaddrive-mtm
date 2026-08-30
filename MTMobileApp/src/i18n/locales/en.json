@@ -82,7 +82,7 @@
     "allow": "Allow",
     "deny": "Deny",
     "locationDeniedTitle": "Location Permission Required",
-    "locationDeniedBody": "Location access was permanently denied. Please enable it in Settings → Apps → MTMobileApp → Permissions → Location.",
+    "locationDeniedBody": "Location access was permanently denied. Please enable it in Settings → Apps → LeadDrive Route Field → Permissions → Location.",
     "openSettings": "Open Settings"
   },
   "visit": {
