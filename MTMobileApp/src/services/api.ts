@@ -253,10 +253,17 @@ class ApiClient {
 
   // --- Request ---
 
-  private async request(path: string, options: RequestInit = {}, timeoutMs = 20_000) {
+  private baseForApiVersion(version: 1 | 2): string {
+    if (version === 1) return this.baseUrl
+    const base = this.baseUrl.replace(/\/api\/v1\/mtm\/?$/, "/api/v2/mtm")
+    if (base === this.baseUrl) throw new Error("MOBILE_SYNC_V2_BASE_UNAVAILABLE")
+    return base
+  }
+
+  private async request(path: string, options: RequestInit = {}, timeoutMs = 20_000, apiVersion: 1 | 2 = 1) {
     if (!this.baseUrl) throw new Error("Server not configured")
 
-    const url = `${this.baseUrl}${path}`
+    const url = `${this.baseForApiVersion(apiVersion)}${path}`
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
@@ -313,6 +320,9 @@ class ApiClient {
         err.code = data.code
         err.status = res.status
         err.retryAfterMs = retryAfterMsFromHeader(res.headers?.get?.("Retry-After"))
+        if (typeof data.recommendedPageSize === "number" && Number.isFinite(data.recommendedPageSize)) {
+          err.recommendedPageSize = Math.max(1, Math.min(500, Math.floor(data.recommendedPageSize)))
+        }
         throw err
       }
 
@@ -486,6 +496,16 @@ class ApiClient {
     const query = new URLSearchParams({ entities: "routes,customers,visits,tasks,contacts", limit: "200" })
     if (since) query.set("since", since)
     return this.request(`/mobile/sync/pull?${query.toString()}`)
+  }
+
+  /**
+   * Cohort-gated, read-only sync v2 routes pilot. Its opaque cursor is passed
+   * through untouched; v1 remains the authoritative mutation path.
+   */
+  async syncV2Routes(cursor?: string | null, limit = 200) {
+    const query = new URLSearchParams({ limit: String(Math.max(1, Math.min(500, Math.floor(limit)))) })
+    if (cursor) query.set("cursor", cursor)
+    return this.request(`/mobile/sync/routes?${query.toString()}`, {}, 20_000, 2)
   }
 
   async getManagerTeam(signal?: AbortSignal, includeInactive = false) {

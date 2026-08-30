@@ -203,7 +203,14 @@ export function parseRouteFieldManifest(
 
   const routes = syncV2.routes === true
   const routesEpoch = nullableManifestString(syncV2.routesEpoch)
-  if (routesEpoch === undefined || (routes && !routesEpoch) || (!routes && routesEpoch !== null)) return null
+  // A routes-v2 grant is not inferred from either field alone. The server
+  // advertises protocol 2 and the exact stream cohort together; accepting a
+  // contradictory manifest would turn a partial rollout into an APK guess.
+  if (
+    routesEpoch === undefined
+    || (routes && (!routesEpoch || protocol.preferred !== 2))
+    || (!routes && routesEpoch !== null)
+  ) return null
 
   return {
     version: 1,

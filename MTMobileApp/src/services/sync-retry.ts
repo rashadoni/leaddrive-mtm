@@ -5,6 +5,8 @@ export type RetryableSyncError = Error & {
   code?: string
   status?: number
   retryAfterMs?: number
+  /** Optional server hint for a safe replay of an oversized read page. */
+  recommendedPageSize?: number
 }
 
 /**

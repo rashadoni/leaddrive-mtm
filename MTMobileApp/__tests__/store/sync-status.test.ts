@@ -40,4 +40,28 @@ describe("per-pipeline sync status", () => {
     await useSyncStatusStore.getState().hydrate(scopeKey)
     expect(useSyncStatusStore.getState().pipelines.routePull).toMatchObject({ phase: "backoff", retryAt: 6_000 })
   })
+
+  it("does not re-arm a cohort-disabled v2 stream until the manifest epoch changes", async () => {
+    const scopeKey = "tenant-1:agent-1"
+    await useSyncStatusStore.getState().hydrate(scopeKey)
+
+    await useSyncStatusStore.getState().disablePipeline(
+      scopeKey,
+      "routeV2Pull",
+      "MOBILE_SYNC_V2_COHORT_DISABLED",
+      "routes-epoch-1",
+    )
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
+      phase: "disabled",
+      disabledEpoch: "routes-epoch-1",
+    })
+    await expect(useSyncStatusStore.getState().enablePipeline(scopeKey, "routeV2Pull", "routes-epoch-1")).resolves.toBe(false)
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull.phase).toBe("disabled")
+
+    await expect(useSyncStatusStore.getState().enablePipeline(scopeKey, "routeV2Pull", "routes-epoch-2")).resolves.toBe(true)
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
+      phase: "idle",
+      disabledEpoch: null,
+    })
+  })
 })

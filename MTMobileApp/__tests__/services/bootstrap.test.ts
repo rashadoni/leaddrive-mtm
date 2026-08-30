@@ -94,6 +94,18 @@ describe("Route Field capability manifest", () => {
     expect(hasRouteFieldAccess(data.routeFieldAccess)).toBe(true)
   })
 
+  it("admits a v2 route pilot only when the manifest also prefers protocol 2", () => {
+    const data = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({
+        protocol: { min: 1, preferred: 2 },
+        syncV2: { routes: true, routesEpoch: "routes-epoch-1" },
+      }),
+    })
+    expect(data.routeFieldAccess).toBe("enabled")
+    expect(data.manifest?.syncV2).toEqual({ routes: true, routesEpoch: "routes-epoch-1" })
+  })
+
   it("blocks an HRM-only tenant instead of falling back to an agent role", () => {
     const data = toBootstrap({
       ...bootstrapBase,
@@ -145,9 +157,17 @@ describe("Route Field capability manifest", () => {
         },
       }),
     })
+    const v2WithoutPreferredProtocol = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({
+        protocol: { min: 1, preferred: 1 },
+        syncV2: { routes: true, routesEpoch: "routes-epoch-1" },
+      }),
+    })
     expect(contradictoryEpoch.routeFieldAccess).toBe("unavailable")
     expect(wrongPrincipal.routeFieldAccess).toBe("unavailable")
     expect(commercialEnabled.routeFieldAccess).toBe("unavailable")
+    expect(v2WithoutPreferredProtocol.routeFieldAccess).toBe("unavailable")
   })
 
   it("uses legacy v1 only when both legacy routes and field capability are explicit", () => {

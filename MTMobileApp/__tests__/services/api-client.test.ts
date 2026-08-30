@@ -523,6 +523,51 @@ describe("ApiClient — Route Field device identity", () => {
   })
 })
 
+describe("ApiClient — Route Field sync v2 transport", () => {
+  it("uses the additive v2 base and forwards an opaque cursor without deriving it", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "bearer-abc"
+    const mockFetch = jest.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ success: true, protocolVersion: 2, stream: "routes" }),
+    })
+    ;(global.fetch as jest.Mock) = mockFetch
+
+    await api.syncV2Routes("opaque-cursor-v1:never-decoded", 77)
+
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v2/mtm/mobile/sync/routes?limit=77&cursor=opaque-cursor-v1%3Anever-decoded")
+    expect(options.headers).toMatchObject({
+      Authorization: "Bearer bearer-abc",
+      "x-field-device-id": "rf-test-0000001-0000002-0000003",
+      "x-field-apk-version": "3.0.0+38",
+    })
+  })
+
+  it("keeps the bounded 413 page-size hint for the stream-local retry adapter", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    const mockFetch = jest.fn().mockResolvedValue({
+      status: 413,
+      ok: false,
+      headers: { get: () => null },
+      json: async () => ({
+        error: "Route sync page is too large",
+        code: "MOBILE_SYNC_V2_PAYLOAD_TOO_LARGE",
+        recommendedPageSize: 50,
+      }),
+    })
+    ;(global.fetch as jest.Mock) = mockFetch
+
+    await expect(api.syncV2Routes(null, 200)).rejects.toMatchObject({
+      message: "Route sync page is too large",
+      status: 413,
+      code: "MOBILE_SYNC_V2_PAYLOAD_TOO_LARGE",
+      recommendedPageSize: 50,
+    })
+  })
+})
+
 describe("ApiClient — explicit self-location share", () => {
   it("posts a one-shot position with the SELF_SHARE mode", async () => {
     client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"

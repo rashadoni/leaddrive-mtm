@@ -29,6 +29,7 @@
     "pipelines": "Sync pipelines",
     "pipelineRouteOutbox": "Route & visit changes",
     "pipelineRoutePull": "Route updates",
+    "pipelineRouteV2Pull": "Route sync v2 pilot (read-only)",
     "pipelineMedia": "Photo uploads",
     "pipelineReady": "Ready",
     "pipelineSyncing": "Syncing",

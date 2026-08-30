@@ -29,6 +29,7 @@
     "pipelines": "Sinxronizasiya konturları",
     "pipelineRouteOutbox": "Marşrut və ziyarət dəyişiklikləri",
     "pipelineRoutePull": "Marşrut yeniləmələri",
+    "pipelineRouteV2Pull": "Marşrut sync v2 pilotu (yalnız oxu)",
     "pipelineMedia": "Foto yükləmələri",
     "pipelineReady": "Hazırdır",
     "pipelineSyncing": "Sinxronizasiya edilir",

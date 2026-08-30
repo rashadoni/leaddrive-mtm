@@ -4,7 +4,7 @@ import { routeFieldStorageKey } from "../runtime/route-field-profile"
 import { retryDelayMs } from "../services/sync-retry"
 
 export type SyncPhase = "idle" | "syncing" | "offline" | "error"
-export type SyncPipelineId = "routeOutbox" | "routePull" | "media"
+export type SyncPipelineId = "routeOutbox" | "routePull" | "routeV2Pull" | "media"
 export type SyncPipelinePhase = "idle" | "syncing" | "backoff" | "error" | "disabled"
 
 export type SyncPipelineStatus = {
@@ -13,6 +13,8 @@ export type SyncPipelineStatus = {
   retryAt: number | null
   lastError: string | null
   lastSucceededAt: string | null
+  /** v2 cohort epoch that explicitly disabled this pipeline, if any. */
+  disabledEpoch: string | null
 }
 
 export type SyncPipelines = Record<SyncPipelineId, SyncPipelineStatus>
@@ -43,7 +45,9 @@ type SyncStatusState = SyncCounts & {
     now?: number
     random?: () => number
   }) => Promise<number>
-  disablePipeline: (scopeKey: string, pipeline: SyncPipelineId, reason?: string) => Promise<void>
+  /** Returns false when the current server epoch has already disabled it. */
+  enablePipeline: (scopeKey: string, pipeline: SyncPipelineId, epoch?: string | null) => Promise<boolean>
+  disablePipeline: (scopeKey: string, pipeline: SyncPipelineId, reason?: string, epoch?: string | null) => Promise<void>
   setOffline: (counts?: Partial<SyncCounts>) => void
   updateCounts: (counts: SyncCounts) => void
   clear: () => void
@@ -51,7 +55,7 @@ type SyncStatusState = SyncCounts & {
 
 const STORAGE_PREFIX = routeFieldStorageKey("sync-status")
 
-const PIPELINES: readonly SyncPipelineId[] = ["routeOutbox", "routePull", "media"]
+const PIPELINES: readonly SyncPipelineId[] = ["routeOutbox", "routePull", "routeV2Pull", "media"]
 
 function emptyPipeline(): SyncPipelineStatus {
   return {
@@ -60,6 +64,7 @@ function emptyPipeline(): SyncPipelineStatus {
     retryAt: null,
     lastError: null,
     lastSucceededAt: null,
+    disabledEpoch: null,
   }
 }
 
@@ -67,6 +72,7 @@ function emptyPipelines(): SyncPipelines {
   return {
     routeOutbox: emptyPipeline(),
     routePull: emptyPipeline(),
+    routeV2Pull: emptyPipeline(),
     media: emptyPipeline(),
   }
 }
@@ -89,6 +95,9 @@ function parsePipelines(value: unknown): SyncPipelines {
       retryAt: typeof entry.retryAt === "number" && Number.isFinite(entry.retryAt) ? entry.retryAt : null,
       lastError: typeof entry.lastError === "string" ? entry.lastError : null,
       lastSucceededAt: typeof entry.lastSucceededAt === "string" ? entry.lastSucceededAt : null,
+      disabledEpoch: typeof entry.disabledEpoch === "string" && entry.disabledEpoch.length > 0
+        ? entry.disabledEpoch
+        : null,
     }
   }
   return result
@@ -189,6 +198,7 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
         retryAt: null,
         lastError: null,
         lastSucceededAt: new Date().toISOString(),
+        disabledEpoch: null,
       },
     }
     set({ pipelines: next })
@@ -222,7 +232,7 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
     return retryAt
   },
 
-  disablePipeline: async (scopeKey, pipeline, reason) => {
+  disablePipeline: async (scopeKey, pipeline, reason, epoch) => {
     const state = get()
     if (state.scopeKey !== scopeKey) return
     const next: SyncPipelines = {
@@ -232,6 +242,7 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
         phase: "disabled",
         retryAt: null,
         lastError: reason ?? null,
+        disabledEpoch: epoch && epoch.length > 0 ? epoch : null,
       },
     }
     set({ pipelines: next })
@@ -239,6 +250,27 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
       lastSyncedAt: get().lastSyncedAt,
       pipelines: next,
     })))
+  },
+
+  enablePipeline: async (scopeKey, pipeline, epoch) => {
+    const state = get()
+    if (state.scopeKey !== scopeKey) return false
+    const current = state.pipelines[pipeline]
+    // A cohort withdrawal must survive ordinary supervisor passes. Only a
+    // fresh bootstrap epoch may re-arm it; otherwise a stale manifest would
+    // poll the endpoint repeatedly after a server-first rollback.
+    if (current.phase !== "disabled") return true
+    if (current.disabledEpoch && current.disabledEpoch === epoch) return false
+    const next: SyncPipelines = {
+      ...state.pipelines,
+      [pipeline]: emptyPipeline(),
+    }
+    set({ pipelines: next })
+    await AsyncStorage.setItem(storageKey(scopeKey), JSON.stringify(persisted({
+      lastSyncedAt: get().lastSyncedAt,
+      pipelines: next,
+    })))
+    return true
   },
 
   setOffline: (counts) => set((state) => ({

@@ -50,6 +50,7 @@ function conflictTranslationKey(code: string) {
 const PIPELINES: ReadonlyArray<{ id: SyncPipelineId; labelKey: string }> = [
   { id: "routeOutbox", labelKey: "syncCenter.pipelineRouteOutbox" },
   { id: "routePull", labelKey: "syncCenter.pipelineRoutePull" },
+  { id: "routeV2Pull", labelKey: "syncCenter.pipelineRouteV2Pull" },
   { id: "media", labelKey: "syncCenter.pipelineMedia" },
 ]
 

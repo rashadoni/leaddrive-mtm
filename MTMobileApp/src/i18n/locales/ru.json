@@ -29,6 +29,7 @@
     "pipelines": "Контуры синхронизации",
     "pipelineRouteOutbox": "Изменения маршрутов и визитов",
     "pipelineRoutePull": "Обновления маршрутов",
+    "pipelineRouteV2Pull": "Пилот sync v2 маршрутов (только чтение)",
     "pipelineMedia": "Загрузка фото",
     "pipelineReady": "Готово",
     "pipelineSyncing": "Синхронизация",

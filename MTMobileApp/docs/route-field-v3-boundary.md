@@ -57,9 +57,24 @@
    без cohort header, а не создаёт новый id на каждый запрос.
 5. Отключённые streams не запрашиваются. Сервер проверяет entitlement и
    permission на каждом API-вызове независимо от UI.
-6. v2 cursors непрозрачны, device-bound и применяются только после
-   локального завершения страницы. `409 resnapshot` удаляет только cache и
-   cursor соответствующего stream, никогда не outbox/media.
+6. v2 routes включается только тогда, когда **текущий** manifest одновременно
+   advertises `protocol.preferred: 2`, `syncV2.routes: true` и непустой
+   `routesEpoch`. Это shadow-read pilot: v1 продолжает быть источником
+   текущего UI и единственным путём mutation/outbox. V2 хранит отдельный key
+   `@leaddrive_route_field_v3:sync-v2:routes:<tenant>:<agent>` и никогда не
+   меняет v1 cache, outbox или media.
+7. v2 cursors непрозрачны и device-bound. Snapshot pages сначала собираются в
+   отдельный staged state; committed cursor появляется только после
+   `complete: true`. Delta page atomically сохраняет merge с tombstones и
+   следующий cursor в одном AsyncStorage значении. За один supervisor pass
+   запрашивается не более трёх страниц, чтобы один tenant/device не занимал
+   очередь.
+8. `409`/invalid cursor удаляют только v2 routes cache/cursor и требуют
+   resnapshot; outbox/media/v1 cache не очищаются. `413` повторяет тот же
+   opaque cursor с меньшим page size. `429`/`503` получают отдельный
+   stream-local backoff и не блокируют v1 push, v1 pull или media. При точном
+   cohort `403` v2 cache удаляется, v1 остаётся рабочим, а v2 не опрашивается
+   повторно, пока свежий manifest не принесёт новый epoch.
 
 ## Доступная поверхность APK
 

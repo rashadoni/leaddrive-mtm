@@ -26,6 +26,11 @@ jest.mock("../../src/services/sync-cache", () => ({
   pullAndApplySync: jest.fn(),
 }))
 
+jest.mock("../../src/services/sync-v2-routes", () => ({
+  clearRouteV2RoutesState: jest.fn(),
+  syncRouteV2Routes: jest.fn(),
+}))
+
 jest.mock("../../src/store/auth", () => ({
   useAuthStore: { getState: jest.fn() },
 }))
@@ -37,6 +42,7 @@ jest.mock("../../src/store/bootstrap", () => ({
 import { allOutboxOperations, flushOutbox } from "../../src/services/outbox"
 import { allMediaUploads, flushMediaOutbox } from "../../src/services/media-outbox"
 import { pullAndApplySync } from "../../src/services/sync-cache"
+import { clearRouteV2RoutesState, syncRouteV2Routes } from "../../src/services/sync-v2-routes"
 import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
 import { flushRouteFieldOutbox, runMobileSync } from "../../src/services/sync-engine"
@@ -49,10 +55,25 @@ const mockedFlush = flushOutbox as jest.Mock
 const mockedMedia = allMediaUploads as jest.Mock
 const mockedMediaFlush = flushMediaOutbox as jest.Mock
 const mockedPull = pullAndApplySync as jest.Mock
+const mockedClearRouteV2 = clearRouteV2RoutesState as jest.Mock
+const mockedRouteV2 = syncRouteV2Routes as jest.Mock
+
+function enrolledBootstrap(epoch = "routes-epoch-1") {
+  return {
+    routeFieldAccess: "enabled",
+    data: {
+      manifest: {
+        protocol: { min: 1, preferred: 2 },
+        syncV2: { routes: true, routesEpoch: epoch },
+      },
+    },
+  }
+}
 
 describe("mobile sync engine", () => {
   beforeEach(async () => {
     jest.clearAllMocks()
+    ;(AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined)
     await AsyncStorage.clear()
     useSyncStatusStore.getState().clear()
     mockedAuth.mockReturnValue({
@@ -64,6 +85,8 @@ describe("mobile sync engine", () => {
     mockedFlush.mockResolvedValue({ sent: 2, deferred: 0, conflicted: 1 })
     mockedMediaFlush.mockResolvedValue({ sent: 1, deferred: 0 })
     mockedPull.mockResolvedValue(undefined)
+    mockedClearRouteV2.mockResolvedValue(undefined)
+    mockedRouteV2.mockResolvedValue({ status: "synced", pages: 1, complete: true })
   })
 
   it("runs independent Route Field pipelines and records a successful sync", async () => {
@@ -78,6 +101,8 @@ describe("mobile sync engine", () => {
     })
     expect(mockedFlush).toHaveBeenCalledTimes(1)
     expect(mockedPull).toHaveBeenCalledTimes(1)
+    expect(mockedRouteV2).not.toHaveBeenCalled()
+    expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
     expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
     expect(useSyncStatusStore.getState()).toMatchObject({
       scopeKey: "org-1:agent-1",
@@ -137,7 +162,84 @@ describe("mobile sync engine", () => {
     expect(mockedMediaFlush).toHaveBeenCalledTimes(2)
   })
 
-  it("does not touch any pipeline until Route Field admission succeeds", async () => {
+  it("keeps the v1 outbox, v1 pull and media independent when the enrolled v2 route shadow fails", async () => {
+    mockedBootstrap.mockReturnValue(enrolledBootstrap())
+    mockedRouteV2.mockRejectedValue(Object.assign(new Error("v2 temporarily unavailable"), { retryAfterMs: 5_000 }))
+
+    await expect(runMobileSync()).resolves.toMatchObject({ success: false, sent: 2, mediaSent: 1 })
+    expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedPull).toHaveBeenCalledTimes(1)
+    expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
+    expect(mockedRouteV2).toHaveBeenCalledWith({
+      tenantId: "org-1",
+      agentId: "agent-1",
+      epoch: "routes-epoch-1",
+    })
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
+      phase: "backoff",
+      lastError: "v2 temporarily unavailable",
+    })
+  })
+
+  it("continues the enrolled v2 shadow and media after a v1 pull failure", async () => {
+    mockedBootstrap.mockReturnValue(enrolledBootstrap())
+    mockedPull.mockRejectedValue(new Error("v1 temporarily unavailable"))
+
+    await expect(runMobileSync()).resolves.toMatchObject({ success: false })
+    expect(mockedRouteV2).toHaveBeenCalledTimes(1)
+    expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
+    expect(useSyncStatusStore.getState().pipelines).toMatchObject({
+      routePull: { phase: "backoff", lastError: "v1 temporarily unavailable" },
+      routeV2Pull: { phase: "idle" },
+      media: { phase: "idle" },
+    })
+  })
+
+  it("does not let v2 bookkeeping storage failure block the v1 outbox, pull or media", async () => {
+    ;(AsyncStorage.setItem as jest.Mock).mockRejectedValue(new Error("status storage unavailable"))
+    mockedClearRouteV2.mockRejectedValue(new Error("v2 cache storage unavailable"))
+
+    await expect(runMobileSync()).resolves.toMatchObject({
+      success: true,
+      sent: 2,
+      mediaSent: 1,
+    })
+    expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedPull).toHaveBeenCalledTimes(1)
+    expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
+    expect(mockedRouteV2).not.toHaveBeenCalled()
+  })
+
+  it("does not repoll a server-withdrawn cohort until bootstrap supplies a new epoch", async () => {
+    mockedBootstrap.mockReturnValue(enrolledBootstrap("routes-epoch-1"))
+    mockedRouteV2
+      .mockResolvedValueOnce({
+        status: "disabled",
+        pages: 0,
+        complete: false,
+        disabledReason: "MOBILE_SYNC_V2_COHORT_DISABLED",
+      })
+      .mockResolvedValueOnce({ status: "synced", pages: 1, complete: true })
+
+    await expect(runMobileSync()).resolves.toMatchObject({ success: true })
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
+      phase: "disabled",
+      disabledEpoch: "routes-epoch-1",
+    })
+
+    await expect(runMobileSync()).resolves.toMatchObject({ success: true })
+    expect(mockedRouteV2).toHaveBeenCalledTimes(1)
+
+    mockedBootstrap.mockReturnValue(enrolledBootstrap("routes-epoch-2"))
+    await expect(runMobileSync()).resolves.toMatchObject({ success: true })
+    expect(mockedRouteV2).toHaveBeenCalledTimes(2)
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
+      phase: "idle",
+      disabledEpoch: null,
+    })
+  })
+
+  it("does not touch any v1 pipeline until Route Field admission succeeds and purges only v2 shadow state", async () => {
     mockedBootstrap.mockReturnValue({ routeFieldAccess: "disabled" })
 
     await expect(runMobileSync()).resolves.toEqual({
@@ -151,6 +253,7 @@ describe("mobile sync engine", () => {
     expect(mockedFlush).not.toHaveBeenCalled()
     expect(mockedPull).not.toHaveBeenCalled()
     expect(mockedMediaFlush).not.toHaveBeenCalled()
+    expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
   })
 
   it("leaves the v1 queue unchanged when a direct UI flush is not admitted", async () => {
