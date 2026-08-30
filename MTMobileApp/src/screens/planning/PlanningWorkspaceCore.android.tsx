@@ -567,8 +567,13 @@ export default function PlanningWorkspaceCore({
     } else {
       const resolved = planningTargetForDate(target, activeDate)
       if (!resolved) return
+      if (!nextPlanningTime(assignments, activeDate, tenantTimezone, clock)) {
+        setSaveMessage({ tone: "warning", text: t("managerShell.planTodayNoTimeSlots") })
+        return
+      }
       setAssignments((current) => {
-        const time = nextPlanningTime(current, activeDate, tenantTimezone)
+        const time = nextPlanningTime(current, activeDate, tenantTimezone, clock)
+        if (!time) return current
         const plannedTime = planningLocalTimeToIso(activeDate, time, tenantTimezone)
         return assignPlanningTarget(current, { ...resolved, plannedTime }, activeDate)
       })

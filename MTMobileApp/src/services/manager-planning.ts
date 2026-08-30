@@ -224,15 +224,56 @@ export function normalizePlanningTimeSlot(value?: string | null): string | null 
   return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${String(rounded % 60).padStart(2, "0")}`
 }
 
-export function nextPlanningTime(targets: PlanningAssignedTarget[], date: string, timezone?: string | null): string {
+function localMinutes(now: Date, timezone?: string | null): number {
+  if (timezone) {
+    try {
+      const parts = new Intl.DateTimeFormat("en", {
+        timeZone: timezone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(now)
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+      const hour = Number(values.hour)
+      const minute = Number(values.minute)
+      if (Number.isInteger(hour) && Number.isInteger(minute)) return (hour * 60) + minute
+    } catch {
+      // Fall through to the device clock when the tenant timezone is invalid.
+    }
+  }
+  return (now.getHours() * 60) + now.getMinutes()
+}
+
+function halfHourSlotAtOrAfter(minutes: number): string | null {
+  const rounded = Math.ceil(minutes / 30) * 30
+  if (rounded < 0 || rounded > (23 * 60) + 30) return null
+  return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${String(rounded % 60).padStart(2, "0")}`
+}
+
+/**
+ * Next valid 30-minute route slot.
+ *
+ * New visits planned for the tenant's current day get a small operational
+ * lead time; this prevents a late-day planner session from silently creating
+ * a morning visit. Existing draft times are never mutated by this helper.
+ */
+export function nextPlanningTime(
+  targets: PlanningAssignedTarget[],
+  date: string,
+  timezone?: string | null,
+  now: Date = new Date(),
+): string | null {
   const used = targets
     .filter((target) => target.date === date)
     .map((target) => normalizePlanningTimeSlot(planningTimeLabel(target.plannedTime, timezone)))
     .filter((value): value is string => value !== null)
     .map((value) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3)))
-  const minutes = used.length > 0 ? Math.max(...used) + 30 : 9 * 60
-  const bounded = Math.min(minutes, 23 * 60 + 30)
-  return `${String(Math.floor(bounded / 60)).padStart(2, "0")}:${String(bounded % 60).padStart(2, "0")}`
+  const nextAfterLastVisit = used.length > 0 ? Math.max(...used) + 30 : 9 * 60
+  const isToday = date === planningTodayKey(now, timezone)
+  // A new visit must leave at least 30 minutes from the tenant's actual
+  // local clock. Rounding up preserves the server's half-hour contract.
+  const earliestToday = isToday ? localMinutes(now, timezone) + 30 : 0
+  return halfHourSlotAtOrAfter(Math.max(nextAfterLastVisit, earliestToday))
 }
 
 export function toPlanningAgent(raw: any): PlanningAgent | null {

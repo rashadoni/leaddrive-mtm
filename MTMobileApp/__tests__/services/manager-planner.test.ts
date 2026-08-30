@@ -220,6 +220,20 @@ describe("friendly manager planning model", () => {
     expect(updatePlanningTargetTime(rows, clinic.key, "2026-08-24", null)[0].plannedTime).toBeNull()
   })
 
+  it("never defaults a new visit to a past time on the tenant's current day", () => {
+    const eveningInBaku = new Date("2026-08-24T14:12:00.000Z")
+    expect(nextPlanningTime([], "2026-08-24", "Asia/Baku", eveningInBaku)).toBe("19:00")
+    expect(nextPlanningTime([
+      { ...clinic, date: "2026-08-24", plannedTime: "17:30" },
+    ], "2026-08-24", "Asia/Baku", eveningInBaku)).toBe("19:00")
+    expect(nextPlanningTime([], "2026-08-25", "Asia/Baku", eveningInBaku)).toBe("09:00")
+  })
+
+  it("refuses to invent an expired same-day time slot", () => {
+    const lateInBaku = new Date("2026-08-24T19:10:00.000Z")
+    expect(nextPlanningTime([], "2026-08-24", "Asia/Baku", lateInBaku)).toBeNull()
+  })
+
   it("writes only changed dirty days with expectedVersion and preserves plannedTime", () => {
     const existing = route({ id: "existing", points: [{ ...doctor, plannedTime: "09:00", validOnDate: "2026-08-24" }] })
     const targets: PlanningAssignedTarget[] = [
