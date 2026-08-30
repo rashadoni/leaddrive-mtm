@@ -5,7 +5,9 @@ import { pullAndApplySync } from "./sync-cache"
 import { offlineScopeKey } from "./offline-scope"
 import { retryAfterMsFromError } from "./sync-retry"
 import { useAuthStore } from "../store/auth"
+import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId } from "../store/sync-status"
+import { hasRouteFieldAccess } from "./bootstrap"
 
 let activeSync: Promise<MobileSyncResult> | null = null
 
@@ -33,6 +35,18 @@ export async function refreshSyncStatusCounts() {
   const next = await counts()
   useSyncStatusStore.getState().updateCounts(next)
   return next
+}
+
+/**
+ * The only adapter for a Route Field UI action that wants to drain the legacy
+ * v1 mutation queue immediately. It deliberately leaves the queue untouched
+ * when the current server bootstrap has not admitted this APK.
+ */
+export async function flushRouteFieldOutbox() {
+  if (!hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)) {
+    return { sent: 0, deferred: 0, conflicted: 0 }
+  }
+  return flushOutbox((operations) => api.syncPush(operations))
 }
 
 function failureFromError(error: unknown, fallback: string): PipelineFailure {
@@ -90,6 +104,12 @@ async function performSync(): Promise<MobileSyncResult> {
   const agent = useAuthStore.getState().agent
   const scopeKey = offlineScopeKey(agent?.organizationId, agent?.id)
   if (!agent || !scopeKey) return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
+  // Bootstrap admission is the outer safety fence. Do not inspect, retry or
+  // clear any durable queue before it grants Route Field access: a tenant can
+  // be disabled while an old APK still has v1 operations on disk.
+  if (!hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)) {
+    return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
+  }
 
   const status = useSyncStatusStore.getState()
   await status.hydrate(scopeKey)
@@ -101,7 +121,7 @@ async function performSync(): Promise<MobileSyncResult> {
   const outboxPipeline = await runPipeline({
     scopeKey,
     pipeline: "routeOutbox",
-    execute: () => flushOutbox((operations) => api.syncPush(operations)),
+    execute: () => flushRouteFieldOutbox(),
     resultFailure: (result) => {
       if (result.deferred === 0) return null
       const retry = result as typeof result & { error?: string; retryAfterMs?: number }

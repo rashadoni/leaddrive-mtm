@@ -1222,7 +1222,7 @@ export default function RouteScreen() {
             ) : actionPanel}
             <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
             {canPlanOwnRoutes ? (
-              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder", { mode: "self" })} />
+              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
             <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
           </ScrollView>
@@ -1286,7 +1286,7 @@ export default function RouteScreen() {
           <View style={styles.phoneFooter}>
             <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
             {canPlanOwnRoutes ? (
-              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder", { mode: "self" })} />
+              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
             <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
           </View>

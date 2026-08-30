@@ -1,3 +1,5 @@
+import { ROUTE_FIELD_PROFILE, type RouteFieldStream } from "../runtime/route-field-profile"
+
 /**
  * Pure mapping + capability helpers for the mobile bootstrap contract
  * (GET /mobile/bootstrap) — the first authenticated call after login. Kept
@@ -20,6 +22,30 @@ export type MobileCapability =
 
 /** Which tab set the shell should mount. */
 export type NavGroup = "field" | "team" | "none"
+
+/**
+ * Route Field never treats a role guess or a stale cached bootstrap as an
+ * entitlement. `legacy` is deliberately narrow: it is only for a server that
+ * predates the additive manifest but explicitly exposed the old routes module
+ * and field capability together.
+ */
+export type RouteFieldAccess = "pending" | "enabled" | "legacy" | "disabled" | "unavailable"
+
+export interface RouteFieldCapabilityManifest {
+  version: 1
+  protocol: { min: 1; preferred: 1 | 2 }
+  tenant: { id: string; timezone: string }
+  principal: { id: string; role: string }
+  modules: {
+    routeField: { enabled: boolean; scopeVersion: string | null }
+    workforceHrm: { enabled: boolean; scopeVersion: string | null }
+    commercial: { enabled: false; scopeVersion: string | null }
+  }
+  /** Streams this APK is allowed to read. Workforce and commercial are never
+   * retained, even if another module is enabled for the same tenant. */
+  streams: RouteFieldStream[]
+  syncV2: { routes: boolean; routesEpoch: string | null }
+}
 
 const KNOWN_CAPABILITIES: readonly MobileCapability[] = [
   "FIELD_EXECUTE",
@@ -72,6 +98,8 @@ export interface BootstrapData {
   policies: BootstrapPolicies
   routeTargetTypes: MobileRouteTargetType[]
   workday: BootstrapWorkday | null
+  manifest: RouteFieldCapabilityManifest | null
+  routeFieldAccess: RouteFieldAccess
 }
 
 export interface BootstrapWorkday {
@@ -91,6 +119,132 @@ function str(value: unknown): string | undefined {
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+}
+
+function nullableString(value: unknown): string | null | undefined {
+  if (value === null) return null
+  return str(value)
+}
+
+function manifestString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined
+}
+
+function nullableManifestString(value: unknown): string | null | undefined {
+  if (value === null) return null
+  return manifestString(value)
+}
+
+function moduleEntry(value: unknown): { enabled: boolean; scopeVersion: string | null } | null {
+  const entry = record(value)
+  if (!entry || typeof entry.enabled !== "boolean") return null
+  const scopeVersion = nullableManifestString(entry.scopeVersion)
+  if (scopeVersion === undefined) return null
+  return { enabled: entry.enabled, scopeVersion }
+}
+
+function isRouteFieldStream(value: string): value is RouteFieldStream {
+  return (ROUTE_FIELD_PROFILE.supportedStreams as readonly string[]).includes(value)
+}
+
+/**
+ * Strictly parse the additive server manifest. The surrounding bootstrap
+ * tenant/principal are supplied as a second binding so a response cannot mix
+ * one user's legacy data with another user's manifest.
+ */
+export function parseRouteFieldManifest(
+  raw: unknown,
+  expected: Pick<BootstrapData, "tenant" | "principal">,
+): RouteFieldCapabilityManifest | null {
+  const manifest = record(raw)
+  const protocol = record(manifest?.protocol)
+  const tenant = record(manifest?.tenant)
+  const principal = record(manifest?.principal)
+  const modules = record(manifest?.modules)
+  const syncV2 = record(manifest?.syncV2)
+  if (
+    !manifest ||
+    manifest.version !== 1 ||
+    protocol?.min !== 1 ||
+    (protocol.preferred !== 1 && protocol.preferred !== 2) ||
+    !tenant ||
+    !principal ||
+    !modules ||
+    !syncV2 ||
+    !expected.tenant?.id ||
+    !expected.principal?.id
+  ) return null
+
+  const tenantId = manifestString(tenant.id)
+  const timezone = manifestString(tenant.timezone)
+  const principalId = manifestString(principal.id)
+  const principalRole = manifestString(principal.role)
+  if (
+    !tenantId ||
+    !timezone ||
+    !principalId ||
+    !principalRole ||
+    tenantId !== expected.tenant.id ||
+    principalId !== expected.principal.id ||
+    principalRole !== expected.principal.role
+  ) return null
+
+  const routeField = moduleEntry(modules.routeField)
+  const workforceHrm = moduleEntry(modules.workforceHrm)
+  const commercial = moduleEntry(modules.commercial)
+  if (!routeField || !workforceHrm || !commercial || commercial.enabled !== false) return null
+
+  if (!Array.isArray(manifest.streams) || manifest.streams.some((stream) => typeof stream !== "string")) return null
+  const streams = Array.from(new Set(manifest.streams.filter(isRouteFieldStream)))
+  // Existing v1 Route Field screens may request every route-domain endpoint.
+  // Until each screen is individually stream-gated, an incomplete enabled
+  // manifest must fail closed rather than expose one partially-disabled shell.
+  if (routeField.enabled && !ROUTE_FIELD_PROFILE.supportedStreams.every((stream) => streams.includes(stream))) return null
+
+  const routes = syncV2.routes === true
+  const routesEpoch = nullableManifestString(syncV2.routesEpoch)
+  if (routesEpoch === undefined || (routes && !routesEpoch) || (!routes && routesEpoch !== null)) return null
+
+  return {
+    version: 1,
+    protocol: { min: 1, preferred: protocol.preferred },
+    tenant: { id: tenantId, timezone },
+    principal: { id: principalId, role: principalRole },
+    modules: {
+      routeField,
+      workforceHrm,
+      commercial: { enabled: false, scopeVersion: commercial.scopeVersion },
+    },
+    streams,
+    syncV2: { routes, routesEpoch },
+  }
+}
+
+function hasOwn(object: Record<string, unknown> | null, key: string): boolean {
+  return !!object && Object.prototype.hasOwnProperty.call(object, key)
+}
+
+function legacyRouteFieldAccess(raw: Record<string, unknown> | null, capabilities: readonly MobileCapability[]): boolean {
+  const modules = record(raw?.modules)
+  return record(modules?.routes)?.enabled === true && capabilities.includes("FIELD_EXECUTE")
+}
+
+/**
+ * This is the field-agent APK, not a generic route administration client.
+ * The manifest's route module is tenant-scoped and can also be true for a
+ * manager who has route permissions on the server.  That must not make the
+ * manager/team shell reappear here: an admitted v3 Route Field session needs
+ * both the exact AGENT principal and the server's FIELD_EXECUTE capability.
+ */
+function routeFieldPrincipalIsEligible(
+  manifest: RouteFieldCapabilityManifest,
+  capabilities: readonly MobileCapability[],
+): boolean {
+  return manifest.principal.role === "AGENT" && capabilities.includes("FIELD_EXECUTE")
+}
+
+export function hasRouteFieldAccess(access: RouteFieldAccess): access is "enabled" | "legacy" {
+  return access === "enabled" || access === "legacy"
 }
 
 function routeTargetTypes(value: unknown): MobileRouteTargetType[] {
@@ -136,18 +290,35 @@ export function toBootstrap(raw: any): BootstrapData {
     ? (raw.capabilities.filter((c: unknown): c is MobileCapability =>
         KNOWN_CAPABILITIES.includes(c as MobileCapability)))
     : []
+  const mappedTenant = tenant
+    ? { id: String(tenant.id ?? ""), name: str(tenant.name) ?? "", slug: str(tenant.slug) ?? "" }
+    : null
+  const mappedPrincipal = principal
+    ? {
+        id: String(principal.id ?? ""),
+        name: str(principal.name) ?? "",
+        email: str(principal.email) ?? "",
+        role: str(principal.role) ?? "",
+      }
+    : null
+  const manifest = parseRouteFieldManifest(raw?.manifest, {
+    tenant: mappedTenant,
+    principal: mappedPrincipal,
+  })
+  const rawRecord = record(raw)
+  const routeFieldAccess: RouteFieldAccess = manifest
+    ? !manifest.modules.routeField.enabled
+      ? "disabled"
+      : routeFieldPrincipalIsEligible(manifest, capabilities)
+        ? "enabled"
+        : "unavailable"
+    : hasOwn(rawRecord, "manifest")
+      ? "unavailable"
+      : legacyRouteFieldAccess(rawRecord, capabilities) ? "legacy" : "unavailable"
+
   return {
-    tenant: tenant
-      ? { id: String(tenant.id ?? ""), name: str(tenant.name) ?? "", slug: str(tenant.slug) ?? "" }
-      : null,
-    principal: principal
-      ? {
-          id: String(principal.id ?? ""),
-          name: str(principal.name) ?? "",
-          email: str(principal.email) ?? "",
-          role: str(principal.role) ?? "",
-        }
-      : null,
+    tenant: mappedTenant,
+    principal: mappedPrincipal,
     capabilities,
     timezone: str(raw?.timezone) ?? null,
     // Strict `=== true`: anything else (missing field, older server, junk)
@@ -169,6 +340,8 @@ export function toBootstrap(raw: any): BootstrapData {
           completedAt: str(workday.completedAt),
         }
       : null,
+    manifest,
+    routeFieldAccess,
   }
 }
 

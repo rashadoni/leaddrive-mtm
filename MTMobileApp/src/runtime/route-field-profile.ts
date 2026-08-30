@@ -17,6 +17,8 @@ export const ROUTE_FIELD_PROFILE = {
    */
   applicationId: "com.mtmobileapp",
   displayName: "LeadDrive Route Field",
+  /** Keep in sync with android/app/build.gradle versionName/versionCode. */
+  apkVersion: "3.0.0+38",
   sentryProject: "LeadDriveRouteField",
   requiredModule: "routeField" as const,
   supportedStreams: ["routes", "routePoints", "visits", "customers", "contacts", "tasks", "notifications"] as const,

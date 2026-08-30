@@ -99,7 +99,6 @@ const COPY = {
     hideDetails: "Скрыть сведения",
     showAll: (count: number) => `Показать все (${count})`,
     showLess: "Показать меньше",
-    potential: "Потенциал и покрытие",
     actionError: "Не удалось открыть действие. Проверьте настройки устройства и попробуйте снова.",
     unknownDate: "Дата не указана",
     status: { ACTIVE: "Активна", INACTIVE: "Неактивна", PENDING: "На проверке", ARCHIVED: "В архиве" },
@@ -153,7 +152,6 @@ const COPY = {
     hideDetails: "Məlumatları gizlət",
     showAll: (count: number) => `Hamısını göstər (${count})`,
     showLess: "Daha az göstər",
-    potential: "Potensial və əhatə",
     actionError: "Əməliyyatı açmaq alınmadı. Cihaz ayarlarını yoxlayın və yenidən cəhd edin.",
     unknownDate: "Tarix göstərilməyib",
     status: { ACTIVE: "Aktivdir", INACTIVE: "Aktiv deyil", PENDING: "Yoxlamadadır", ARCHIVED: "Arxivdədir" },
@@ -207,7 +205,6 @@ const COPY = {
     hideDetails: "Hide details",
     showAll: (count: number) => `Show all (${count})`,
     showLess: "Show less",
-    potential: "Potential and coverage",
     actionError: "We couldn't open that action. Check the device settings and try again.",
     unknownDate: "Date not provided",
     status: { ACTIVE: "Active", INACTIVE: "Inactive", PENDING: "Pending review", ARCHIVED: "Archived" },
@@ -592,25 +589,6 @@ export default function OrganizationDetailScreen() {
     </Section>
   ) : null
 
-  const potentialSection = detail?.potential ? (
-    <Section title={copy.potential}>
-      <View style={styles.potentialRow}>
-        <View style={styles.potentialStat}>
-          <Text style={styles.potentialValue}>{detail.potential.potentialValue.toLocaleString(i18n.language)}</Text>
-          <Text style={styles.potentialLabel}>{t("potential.potential")}</Text>
-        </View>
-        <View style={styles.potentialStat}>
-          <Text style={styles.potentialValue}>{detail.potential.coverageValue.toLocaleString(i18n.language)}</Text>
-          <Text style={styles.potentialLabel}>{t("potential.coverage")}</Text>
-        </View>
-        <View style={[styles.potentialStat, styles.potentialStatStrong]}>
-          <Text style={[styles.potentialValue, styles.potentialValueStrong]}>{detail.potential.coveragePct}%</Text>
-          <Text style={[styles.potentialLabel, styles.potentialLabelStrong]}>{t("potential.percent")}</Text>
-        </View>
-      </View>
-    </Section>
-  ) : null
-
   const detailsSection = detailRows.length > 0 ? (
     <Section title={copy.moreDetails} hint={copy.moreDetailsHint}>
       <DisclosureButton
@@ -784,7 +762,6 @@ export default function OrganizationDetailScreen() {
                 {nextStep}
                 <View style={[styles.surface, styles.tabletSurface]}>
                   {overviewSection}
-                  {potentialSection}
                   {detailsSection}
                 </View>
               </View>
@@ -800,7 +777,6 @@ export default function OrganizationDetailScreen() {
                 {overviewSection}
                 {contactsSection}
                 {visitsSection}
-                {potentialSection}
                 {detailsSection}
               </View>
             </>
@@ -901,12 +877,5 @@ const styles = StyleSheet.create({
   detailLabel: { width: "38%", color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 18, fontWeight: "700" },
   detailValue: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, fontWeight: "700" },
 
-  potentialRow: { flexDirection: "row", gap: fieldTheme.space.sm },
-  potentialStat: { flex: 1, minHeight: 82, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, padding: fieldTheme.space.sm },
-  potentialStatStrong: { backgroundColor: fieldTheme.color.primarySoft },
-  potentialValue: { color: fieldTheme.color.ink, fontSize: 19, fontWeight: "900" },
-  potentialValueStrong: { color: fieldTheme.color.primaryStrong },
-  potentialLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "700", textAlign: "center", marginTop: 3 },
-  potentialLabelStrong: { color: fieldTheme.color.primaryStrong },
   pressed: { opacity: 0.72 },
 })

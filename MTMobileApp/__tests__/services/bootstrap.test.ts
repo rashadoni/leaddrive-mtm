@@ -4,8 +4,31 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("../../src/services/api", () => ({ api: { getBootstrap: jest.fn() } }))
 
 import { api } from "../../src/services/api"
-import { toBootstrap, navGroupFromCapabilities, hasCapability, mobileRouteTargetLabel } from "../../src/services/bootstrap"
+import {
+  toBootstrap,
+  navGroupFromCapabilities,
+  hasCapability,
+  hasRouteFieldAccess,
+  mobileRouteTargetLabel,
+} from "../../src/services/bootstrap"
 import { useBootstrapStore } from "../../src/store/bootstrap"
+
+function routeManifest(overrides: Record<string, unknown> = {}) {
+  return {
+    version: 1,
+    protocol: { min: 1, preferred: 1 },
+    tenant: { id: "o1", timezone: "Asia/Baku" },
+    principal: { id: "a1", role: "AGENT" },
+    modules: {
+      routeField: { enabled: true, scopeVersion: null },
+      workforceHrm: { enabled: false, scopeVersion: null },
+      commercial: { enabled: false, scopeVersion: null },
+    },
+    streams: ["routes", "routePoints", "visits", "customers", "contacts", "tasks", "notifications"],
+    syncV2: { routes: false, routesEpoch: null },
+    ...overrides,
+  }
+}
 
 describe("bootstrap mapping", () => {
   it("maps the payload and drops unknown capabilities", () => {
@@ -22,6 +45,7 @@ describe("bootstrap mapping", () => {
     expect(b.timezone).toBe("Asia/Baku")
     expect(b.workday).toEqual({ id: "w1", status: "ACTIVE" })
     expect(b.routeTargetTypes.map((target) => target.id)).toEqual(["doctors", "pharmacies", "clinics", "organizations"])
+    expect(b.routeFieldAccess).toBe("unavailable")
   })
 
   it("defaults gracefully on an empty payload", () => {
@@ -32,6 +56,7 @@ describe("bootstrap mapping", () => {
     expect(b.timezone).toBeNull()
     expect(b.workday).toBeNull()
     expect(b.routeTargetTypes).toHaveLength(4)
+    expect(b.routeFieldAccess).toBe("unavailable")
   })
 
   it("uses tenant-configured planner target labels and safely falls back when malformed", () => {
@@ -48,6 +73,101 @@ describe("bootstrap mapping", () => {
     expect(configured.routeTargetTypes).toHaveLength(1)
     expect(mobileRouteTargetLabel(configured.routeTargetTypes[0], "az-AZ")).toBe("Xəstəxanalar")
     expect(toBootstrap({ routeTargetTypes: [{ id: "broken" }] }).routeTargetTypes).toHaveLength(4)
+  })
+})
+
+describe("Route Field capability manifest", () => {
+  const bootstrapBase = {
+    tenant: { id: "o1", name: "Acme", slug: "acme" },
+    principal: { id: "a1", name: "Rep", email: "r@x.az", role: "AGENT" },
+    capabilities: ["FIELD_EXECUTE", "FIELD_TRACK"],
+  }
+
+  it("admits only an explicit, bound Route Field manifest", () => {
+    const data = toBootstrap({ ...bootstrapBase, manifest: routeManifest() })
+    expect(data.routeFieldAccess).toBe("enabled")
+    expect(data.manifest).toMatchObject({
+      tenant: { id: "o1" },
+      principal: { id: "a1", role: "AGENT" },
+      modules: { routeField: { enabled: true }, commercial: { enabled: false } },
+    })
+    expect(hasRouteFieldAccess(data.routeFieldAccess)).toBe(true)
+  })
+
+  it("blocks an HRM-only tenant instead of falling back to an agent role", () => {
+    const data = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({
+        modules: {
+          routeField: { enabled: false, scopeVersion: null },
+          workforceHrm: { enabled: true, scopeVersion: null },
+          commercial: { enabled: false, scopeVersion: null },
+        },
+        streams: ["workforce"],
+      }),
+    })
+    expect(data.routeFieldAccess).toBe("disabled")
+    expect(hasRouteFieldAccess(data.routeFieldAccess)).toBe(false)
+  })
+
+  it("fails closed for a manager manifest or a manifest without field execution", () => {
+    const manager = toBootstrap({
+      ...bootstrapBase,
+      principal: { id: "m1", name: "Manager", email: "m@x.az", role: "MANAGER" },
+      capabilities: ["TEAM_READ", "TEAM_DECIDE"],
+      manifest: routeManifest({ principal: { id: "m1", role: "MANAGER" } }),
+    })
+    const missingFieldCapability = toBootstrap({
+      ...bootstrapBase,
+      capabilities: ["FIELD_TRACK"],
+      manifest: routeManifest(),
+    })
+    expect(manager.routeFieldAccess).toBe("unavailable")
+    expect(missingFieldCapability.routeFieldAccess).toBe("unavailable")
+  })
+
+  it("fails closed when a present manifest is malformed or bound to another principal", () => {
+    const contradictoryEpoch = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({ syncV2: { routes: false, routesEpoch: "old-epoch" } }),
+    })
+    const wrongPrincipal = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({ principal: { id: "a2", role: "AGENT" } }),
+    })
+    const commercialEnabled = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({
+        modules: {
+          routeField: { enabled: true, scopeVersion: null },
+          workforceHrm: { enabled: false, scopeVersion: null },
+          commercial: { enabled: true, scopeVersion: null },
+        },
+      }),
+    })
+    expect(contradictoryEpoch.routeFieldAccess).toBe("unavailable")
+    expect(wrongPrincipal.routeFieldAccess).toBe("unavailable")
+    expect(commercialEnabled.routeFieldAccess).toBe("unavailable")
+  })
+
+  it("uses legacy v1 only when both legacy routes and field capability are explicit", () => {
+    expect(toBootstrap({
+      ...bootstrapBase,
+      modules: { routes: { enabled: true } },
+    }).routeFieldAccess).toBe("legacy")
+    expect(toBootstrap({
+      ...bootstrapBase,
+      capabilities: ["TEAM_READ"],
+      modules: { routes: { enabled: true } },
+    }).routeFieldAccess).toBe("unavailable")
+  })
+
+  it("fails closed for an enabled manifest that omits a legacy screen stream", () => {
+    const data = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({ streams: ["routes", "routePoints"] }),
+    })
+    expect(data.routeFieldAccess).toBe("unavailable")
   })
 })
 
@@ -79,13 +199,15 @@ describe("bootstrap store", () => {
     })
     await useBootstrapStore.getState().fetchBootstrap()
     expect(useBootstrapStore.getState().capabilities).toEqual(["FIELD_EXECUTE"])
+    expect(useBootstrapStore.getState().routeFieldAccess).toBe("unavailable")
     expect(useBootstrapStore.getState().loading).toBe(false)
   })
 
-  it("leaves capabilities empty on a network failure (nav falls back to role)", async () => {
+  it("leaves capabilities empty and Route Field closed on a network failure", async () => {
     ;(api.getBootstrap as jest.Mock).mockRejectedValue(new Error("Network request failed"))
     await useBootstrapStore.getState().fetchBootstrap()
     expect(useBootstrapStore.getState().capabilities).toEqual([])
+    expect(useBootstrapStore.getState().routeFieldAccess).toBe("unavailable")
     expect(useBootstrapStore.getState().loading).toBe(false)
   })
 
@@ -95,6 +217,7 @@ describe("bootstrap store", () => {
     useBootstrapStore.getState().clear()
     expect(useBootstrapStore.getState().capabilities).toEqual([])
     expect(useBootstrapStore.getState().data).toBeNull()
+    expect(useBootstrapStore.getState().routeFieldAccess).toBe("pending")
   })
 })
 

@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setAgentContext, clearAgentContext } from "./sentry"
 import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
+import { getFieldDeviceId } from "./field-device-id"
+import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
 
 /**
  * Canonical reason string set when the backend returns a mid-session 401
@@ -262,6 +264,13 @@ class ApiClient {
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`
+      // Device identity is deliberately opaque and installation-scoped; it is
+      // never derived from the logged-in agent. If AsyncStorage is temporarily
+      // unavailable, keep v1 compatible by omitting only the cohort header.
+      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      try {
+        headers["x-field-device-id"] = await getFieldDeviceId()
+      } catch {}
     }
 
     const controller = new AbortController()
@@ -459,9 +468,17 @@ class ApiClient {
     data: Record<string, unknown>
     clientTimestamp: number
   }>) {
+    // `clientId` is observational only for legacy v1 push. Never use the
+    // agent id here: an installation can legitimately change accounts. A
+    // storage failure leaves the durable operation untouched and falls back to
+    // the server's v1-compatible omitted field rather than inventing a new id.
+    let clientId: string | null = null
+    try {
+      clientId = await getFieldDeviceId()
+    } catch {}
     return this.request("/mobile/sync/push", {
       method: "POST",
-      body: JSON.stringify({ clientId: this.agentId || "mobile", operations }),
+      body: JSON.stringify({ ...(clientId ? { clientId } : {}), operations }),
     })
   }
 
@@ -1005,12 +1022,20 @@ class ApiClient {
     if (data.latitude !== undefined) formData.append("latitude", String(data.latitude))
     if (data.longitude !== undefined) formData.append("longitude", String(data.longitude))
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.token}`,
+      // Do NOT set Content-Type — fetch sets multipart boundary automatically
+    }
+    if (this.token) {
+      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      try {
+        headers["x-field-device-id"] = await getFieldDeviceId()
+      } catch {}
+    }
+
     const res = await fetch(`${this.baseUrl}/photos`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        // Do NOT set Content-Type — fetch sets multipart boundary automatically
-      },
+      headers,
       body: formData,
     })
 

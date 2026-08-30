@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native"
 import { useTranslation } from "react-i18next"
+import type { TFunction } from "i18next"
 import Geolocation from "@react-native-community/geolocation"
 import { api } from "../services/api"
 import { getOfflineScope } from "../services/offline-scope"
@@ -18,7 +19,9 @@ import {
   retryOutboxConflict,
   type OutboxOperation,
 } from "../services/outbox"
+import { hasRouteFieldAccess } from "../services/bootstrap"
 import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
+import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
 
 type Props = {
@@ -53,7 +56,7 @@ const PIPELINES: ReadonlyArray<{ id: SyncPipelineId; labelKey: string }> = [
 function pipelineStatusLabel(
   pipeline: SyncPipelineStatus,
   locale: string,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
 ) {
   if (pipeline.phase === "syncing") return t("syncCenter.pipelineSyncing")
   if (pipeline.phase === "disabled") return t("syncCenter.pipelineDisabled")
@@ -75,7 +78,9 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<OutboxOperation[]>([])
+  const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines } = useSyncStatusStore()
+  const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
 
   const reload = useCallback(async () => {
     const scope = getOfflineScope()
@@ -103,6 +108,10 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   }, [conflicts.length, outstanding, phase, t])
 
   const syncNow = async () => {
+    if (!syncAllowed) {
+      setActionError(t("routeFieldAccess.syncBlocked"))
+      return
+    }
     setBusyId("sync")
     setActionError(null)
     try {
@@ -116,6 +125,10 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   }
 
   const retry = async (operation: OutboxOperation, force = false) => {
+    if (!syncAllowed) {
+      setActionError(t("routeFieldAccess.syncBlocked"))
+      return
+    }
     setBusyId(operation.operationId)
     setActionError(null)
     const refreshLocation = !force && conflictCode(operation) === "MTM_VISIT_OUT_OF_ZONE"
@@ -255,26 +268,26 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                     <View style={styles.actionRow}>
                       <Pressable
                         accessibilityRole="button"
-                        disabled={operationBusy}
+                        disabled={operationBusy || !syncAllowed}
                         onPress={() => { discard(operation).catch(() => {}) }}
-                        style={[styles.secondaryButton, operationBusy && styles.disabled]}
+                        style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
                       >
                         <Text style={styles.secondaryText}>{t("syncCenter.discard")}</Text>
                       </Pressable>
                       <Pressable
                         accessibilityRole="button"
-                        disabled={operationBusy}
+                        disabled={operationBusy || !syncAllowed}
                         onPress={() => { retry(operation).catch(() => {}) }}
-                        style={[styles.secondaryButton, operationBusy && styles.disabled]}
+                        style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
                       >
                         <Text style={styles.secondaryText}>{t("common.retry")}</Text>
                       </Pressable>
                       {canForce ? (
                         <Pressable
                           accessibilityRole="button"
-                          disabled={operationBusy}
+                          disabled={operationBusy || !syncAllowed}
                           onPress={() => { retry(operation, true).catch(() => {}) }}
-                          style={[styles.forceButton, operationBusy && styles.disabled]}
+                          style={[styles.forceButton, (operationBusy || !syncAllowed) && styles.disabled]}
                         >
                           <Text style={styles.forceText}>{t("syncCenter.forceRetry")}</Text>
                         </Pressable>
@@ -287,10 +300,10 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: busyId !== null }}
-              disabled={busyId !== null}
+              accessibilityState={{ disabled: busyId !== null || !syncAllowed }}
+              disabled={busyId !== null || !syncAllowed}
               onPress={() => { syncNow().catch(() => {}) }}
-              style={[styles.syncButton, busyId !== null && styles.disabled]}
+              style={[styles.syncButton, (busyId !== null || !syncAllowed) && styles.disabled]}
             >
               {busyId === "sync" ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t("syncCenter.syncNow")}</Text>}
             </Pressable>

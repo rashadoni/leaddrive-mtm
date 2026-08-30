@@ -67,7 +67,6 @@ const COPY = {
       NO_CONTACT: "Контакт не состоялся",
       RESCHEDULE: "Перенесён",
     },
-    potential: { HIGH: "Высокий", MEDIUM: "Средний", LOW: "Низкий", UNKNOWN: "Не определён" },
     taskStatus: { PENDING: "К выполнению", IN_PROGRESS: "В работе", COMPLETED: "Готово" },
   },
   az: {
@@ -107,7 +106,6 @@ const COPY = {
       NO_CONTACT: "Görüş baş tutmadı",
       RESCHEDULE: "Başqa vaxta keçirilib",
     },
-    potential: { HIGH: "Yüksək", MEDIUM: "Orta", LOW: "Aşağı", UNKNOWN: "Müəyyən edilməyib" },
     taskStatus: { PENDING: "Görüləcək", IN_PROGRESS: "İcrada", COMPLETED: "Tamam" },
   },
   en: {
@@ -147,7 +145,6 @@ const COPY = {
       NO_CONTACT: "No contact",
       RESCHEDULE: "Rescheduled",
     },
-    potential: { HIGH: "High", MEDIUM: "Medium", LOW: "Low", UNKNOWN: "Not set" },
     taskStatus: { PENDING: "To do", IN_PROGRESS: "In progress", COMPLETED: "Done" },
   },
 } as const
@@ -384,20 +381,13 @@ export default function VisitWorkspaceScreen() {
             <View style={[styles.columns, tablet && styles.columnsTablet]}>
               <View style={styles.column}>
                 <SectionCard icon="flag-outline" title={t("visitWorkspace.sectionResult")}>
-                  {data.outcome || data.potential || data.resultNotes || data.notes ? (
+                  {data.outcome || data.resultNotes || data.notes ? (
                     <>
                       {data.outcome ? (
                         <InfoLine
                           icon="checkmark-done-outline"
                           label={t("visitWorkspace.fieldOutcome")}
                           value={codeLabel(data.outcome, copy.outcome)}
-                        />
-                      ) : null}
-                      {data.potential ? (
-                        <InfoLine
-                          icon="trending-up-outline"
-                          label={t("visitWorkspace.fieldPotential")}
-                          value={codeLabel(data.potential, copy.potential)}
                         />
                       ) : null}
                       {data.resultNotes || data.notes ? (

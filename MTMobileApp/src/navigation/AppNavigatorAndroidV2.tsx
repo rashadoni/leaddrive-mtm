@@ -8,8 +8,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
-import { navGroupFromCapabilities, type NavGroup } from "../services/bootstrap"
-import { isManagerRole, normalizeRole } from "../auth/roles"
+import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints"
 
@@ -22,20 +21,16 @@ import TasksScreen from "../screens/tasks/TasksScreen"
 import TaskDetailScreen from "../screens/tasks/TaskDetailScreen"
 import BaseScreen from "../screens/base/BaseScreen"
 import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
-import ContactDetailScreen from "../screens/base/ContactDetailScreen"
+import RouteContactDetailScreen from "../screens/base/RouteContactDetailScreen.android"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
 import TodayScreen from "../screens/today/TodayScreen"
-import DashboardScreen from "../screens/dashboard/DashboardScreen.android"
-import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
-import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
-import ContactTransferScreen from "../screens/manager/ContactTransferScreen.android"
-import UnsupportedRoleScreen from "../screens/auth/UnsupportedRoleScreen.android"
+import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.android"
 import type { RawTask } from "../services/task-detail"
-import { tabNamesForNavGroup, type AppTabName } from "./role-tabs"
+import { AGENT_TAB_NAMES } from "./role-tabs"
 
 export type RootStackParamList = {
   Main: undefined
@@ -49,7 +44,11 @@ export type RootStackParamList = {
   Base: undefined
   GpsHistory: undefined
   Profile: undefined
+  /** Type-only legacy entry keeps an unmounted manager source file type-safe;
+   * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
+  /** Route planning accepts an old `mode` parameter for source compatibility,
+   * but the registered Route Field screen always mounts its self-planning mode. */
   PlanningBuilder: { mode?: "manager" | "self"; initialDate?: string; initialHorizon?: 1 | 7 } | undefined
 }
 
@@ -62,52 +61,39 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
   Route: { active: "navigate", inactive: "navigate-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
   More: { active: "ellipsis-horizontal-circle", inactive: "ellipsis-horizontal-circle-outline" },
-  Overview: { active: "grid", inactive: "grid-outline" },
-  Team: { active: "people", inactive: "people-outline" },
-  Planning: { active: "calendar", inactive: "calendar-outline" },
-  Approvals: { active: "shield-checkmark", inactive: "shield-checkmark-outline" },
 }
 
-const TeamScreen = () => <ManagerWorkspaceScreen kind="team" />
-const PlanningScreen = ManagerPlanningCalendarScreen
 const PlanningBuilderScreen = ({
   navigation,
   route,
 }: {
   navigation: { goBack: () => void }
-  route: { params?: { mode?: "manager" | "self"; initialDate?: string; initialHorizon?: 1 | 7 } }
+  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7 } }
 }) => (
   <ManagerPlanningWorkspace
     onClose={() => navigation.goBack()}
-    mode={route.params?.mode ?? "manager"}
+    mode="self"
     initialDate={route.params?.initialDate}
     initialHorizon={route.params?.initialHorizon}
   />
 )
-const ApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 
-const TAB_COMPONENTS: Record<AppTabName, React.ComponentType<any>> = {
+type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
+
+const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
   Today: TodayScreen,
   Calendar: WeekScreen,
   Route: RouteScreen,
   Tasks: TasksScreen,
   More: MoreScreen,
-  Overview: DashboardScreen,
-  Team: TeamScreen,
-  Planning: PlanningScreen,
-  Approvals: ApprovalsScreen,
 }
 
-const TAB_LABEL_KEYS: Record<AppTabName, string> = {
+const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {
   Today: "navV2.today",
   Calendar: "navV2.calendar",
   Route: "navV2.route",
   Tasks: "navV2.tasks",
   More: "navV2.more",
-  Overview: "navV2.overview",
-  Team: "navV2.team",
-  Planning: "navV2.planning",
-  Approvals: "navV2.approvals",
 }
 
 function tabOptions(name: string, label: string) {
@@ -124,30 +110,21 @@ function MainTabs() {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
-  const role = useAuthStore((state) => state.agent?.role)
-  const capabilities = useBootstrapStore((state) => state.capabilities)
-  const normalizedRole = normalizeRole(role)
-  // Server capabilities (from /mobile/bootstrap) are authoritative once loaded;
-  // until then — or if bootstrap failed/offline — fall back to the role-derived
-  // group so the shell never blocks on the network.
-  const navGroup: NavGroup = capabilities.length > 0
-    ? navGroupFromCapabilities(capabilities)
-    : normalizedRole === "UNKNOWN"
-      ? "none"
-      : isManagerRole(role)
-        ? "team"
-        : "field"
-  const manager = navGroup === "team"
+  const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const tablet = isTabletWidth(width)
   const expandedRail = isExpandedTabletWidth(width)
   const tabBarHeight = 60 + Math.max(insets.bottom, 8)
 
-  if (navGroup === "none") return <UnsupportedRoleScreen />
+  // This APK does not infer access from an agent role. A tenant may enable
+  // HRM while Route Field is disabled; only its own manifest module opens tabs.
+  if (!hasRouteFieldAccess(routeFieldAccess)) {
+    return <RouteFieldAccessScreen access={routeFieldAccess} />
+  }
 
   return (
     <Tab.Navigator
-      key={manager ? "manager-tabs" : "agent-tabs"}
-      initialRouteName={manager ? "Overview" : "Today"}
+      key="route-field-tabs"
+      initialRouteName="Today"
       screenOptions={{
         headerShown: false,
         tabBarPosition: tablet ? "left" : "bottom",
@@ -191,7 +168,7 @@ function MainTabs() {
         tabBarLabelStyle: styles.tabLabel,
       }}
     >
-      {tabNamesForNavGroup(manager ? "team" : "field").map((name) => (
+      {AGENT_TAB_NAMES.map((name) => (
         <Tab.Screen
           key={name}
           name={name}
@@ -214,6 +191,8 @@ export default function AppNavigatorAndroidV2() {
     setServer,
     switchServer,
   } = useAuthStore()
+  const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
+  const routeFieldAdmitted = hasRouteFieldAccess(routeFieldAccess)
 
   useEffect(() => {
     checkAuth()
@@ -229,20 +208,28 @@ export default function AppNavigatorAndroidV2() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        // Recreate the stack when admission changes so a revoked user cannot
+        // remain on a previously-mounted detail screen with stale read data.
+        key={routeFieldAdmitted ? "route-field-admitted" : "route-field-blocked"}
+        screenOptions={{ headerShown: false }}
+      >
         {isLoggedIn ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
-            <Stack.Screen name="ContactDetail" component={ContactDetailScreen} />
-            <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
-            <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
-            <Stack.Screen name="Visits" component={VisitScreen} />
-            <Stack.Screen name="Base" component={BaseScreen} />
-            <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="ContactTransfer" component={ContactTransferScreen} />
-            <Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />
+            {routeFieldAdmitted ? (
+              <>
+                <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
+                <Stack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
+                <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
+                <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+                <Stack.Screen name="Visits" component={VisitScreen} />
+                <Stack.Screen name="Base" component={BaseScreen} />
+                <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
+                <Stack.Screen name="Profile" component={ProfileScreen} />
+                <Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />
+              </>
+            ) : null}
           </>
         ) : hasServer ? (
           <Stack.Screen name="Login">

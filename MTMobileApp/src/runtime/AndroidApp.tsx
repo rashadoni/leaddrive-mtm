@@ -3,8 +3,6 @@ import {
   ActivityIndicator,
   AppState,
   AppStateStatus,
-  PermissionsAndroid,
-  Platform,
   StatusBar,
   StyleSheet,
   View,
@@ -15,78 +13,64 @@ import AppNavigatorAndroidV2 from "../navigation/AppNavigatorAndroidV2"
 import { ErrorBoundary } from "../components/ErrorBoundary"
 import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
-import { useDashboardLayoutStore } from "../store/dashboard-layout"
-import { useWorkdayStore, workdayKey } from "../store/workday"
 import { useBootstrapStore } from "../store/bootstrap"
-import { setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
+import { stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { markMobileOffline, runMobileSync } from "../services/sync-engine"
-import { allOutboxOperations } from "../services/outbox"
-import { i18n, initI18n } from "../i18n/index.android"
+import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
-import { canExecuteFieldWork, canTrackFieldLocation } from "../auth/roles"
+import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
-import { version as APP_VERSION } from "../../package.json"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
-const ANDROID_VERSION_CODE = 38
-initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
+initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${ROUTE_FIELD_PROFILE.apkVersion}`)
 
 function AppContent() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
-  const agent = useAuthStore((state) => state.agent)
-  const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
-  const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
-  const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const activeWorkdayId = activeWorkday?.key === currentWorkdayKey && activeWorkday.syncState !== "FINISH_PENDING"
-    ? activeWorkday.workdayId
-    : null
-  const mayTrack =
-    isLoggedIn &&
-    canTrackFieldLocation(agent?.role) &&
-    workdayHydrated &&
-    activeWorkdayId !== null
 
   const flushPendingOperations = useCallback(async () => {
     const auth = useAuthStore.getState()
-    if (!auth.isLoggedIn || !auth.agent || !canExecuteFieldWork(auth.agent.role)) return
+    if (!auth.isLoggedIn || !auth.agent) return
+    if (!hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)) return
     try {
-      const queued = await allOutboxOperations()
-      const hadWorkdayMutation = queued.some((item) => item.entity === "workdays" && item.status === "pending")
-      const result = await runMobileSync()
-      if (hadWorkdayMutation && result.success) {
-        // A workday button changes local state immediately so offline use is
-        // possible. Bootstrap closes the loop with the authoritative server
-        // state and replaces “sending” with “started/finished”.
-        await useBootstrapStore.getState().fetchBootstrap()
-      }
-      return result
+      return await runMobileSync()
     } catch {
-      // The outbox remains queued and will retry on the next connection/app
-      // foreground event. GPS tracking may still start locally for offline
-      // capture, but it cannot fabricate an online map status.
+      // The durable v1 queue remains untouched and can retry after a later
+      // server-confirmed Route Field bootstrap.
     }
   }, [])
 
+  const refreshAdmissionAndSync = useCallback(async () => {
+    const auth = useAuthStore.getState()
+    if (!auth.isLoggedIn || !auth.agent) return
+    const access = await useBootstrapStore.getState().fetchBootstrap()
+    if (!hasRouteFieldAccess(access)) return
+    await flushPendingOperations()
+  }, [flushPendingOperations])
+
   useEffect(() => {
+    // v3 deliberately retires the old HRM-workday-controlled background GPS
+    // service. We stop an inherited v2 service at startup, but retain
+    // foreground visit/location capture until a route-specific GPS contract is
+    // approved server-first.
+    stopTracking().catch(() => {})
     if (isLoggedIn) {
-      flushPendingOperations()
-      useBootstrapStore.getState().fetchBootstrap()
+      refreshAdmissionAndSync().catch(() => {})
     }
-  }, [isLoggedIn, flushPendingOperations])
+  }, [isLoggedIn, refreshAdmissionAndSync])
 
   useEffect(() => {
     if (!isLoggedIn) return
     const unsubscribe = NetInfo.addEventListener((state) => {
       if (state.isConnected && state.isInternetReachable !== false) {
-        flushPendingOperations()
+        refreshAdmissionAndSync().catch(() => {})
       } else if (state.isConnected === false || state.isInternetReachable === false) {
         markMobileOffline().catch(() => {})
       }
     })
     return unsubscribe
-  }, [isLoggedIn, flushPendingOperations])
+  }, [isLoggedIn, refreshAdmissionAndSync])
 
   useEffect(() => {
     api.setUnauthorizedHandler((reason) => {
@@ -95,103 +79,16 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-
-    if (!mayTrack || !activeWorkdayId) {
-      setTrackingWorkdayId(null)
-      stopTracking().catch(() => {})
-      // FINISH_PENDING stops device tracking immediately while keeping a
-      // visible “ending” state until the server confirms it. Flush here as
-      // well as on start instead of waiting for a foreground/network event.
-      if (isLoggedIn) void flushPendingOperations()
-      return () => {
-        setTrackingWorkdayId(null)
-        stopTracking().catch(() => {})
-      }
-    }
-
-    if (Platform.OS === "android") {
-      PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-      ])
-        .then(async (results) => {
-          if (results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] !== "granted") return
-          // Send START/FINISH straight away before emitting GPS. This closes a
-          // race where the first coordinate was rejected because the workday
-          // had only been queued locally a moment earlier.
-          await flushPendingOperations()
-          const auth = useAuthStore.getState()
-          const workday = useWorkdayStore.getState()
-          const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
-          const latestWorkdayId = workday.activeWorkday?.key === latestKey &&
-            workday.activeWorkday.syncState !== "FINISH_PENDING"
-            ? workday.activeWorkday.workdayId
-            : null
-          if (
-            cancelled ||
-            !auth.isLoggedIn ||
-            !canTrackFieldLocation(auth.agent?.role) ||
-            !latestWorkdayId
-          ) {
-            return
-          }
-          setTrackingWorkdayId(latestWorkdayId)
-          await startTracking()
-          if (cancelled) {
-            await stopTracking()
-            return
-          }
-          if (Number(Platform.Version) >= 29) {
-            PermissionsAndroid.request(
-              PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
-              {
-                title: i18n.t("mobilePermission.backgroundLocationTitle"),
-                message: i18n.t("mobilePermission.backgroundLocationBody"),
-                buttonPositive: i18n.t("permission.allow"),
-                buttonNegative: i18n.t("common.cancel"),
-              }
-            ).catch(() => {})
-          }
-          PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA).catch(() => {})
-        })
-        .catch(() => {})
-    } else {
-      setTrackingWorkdayId(activeWorkdayId)
-      startTracking().catch(() => {})
-    }
-
-    return () => {
-      cancelled = true
-      setTrackingWorkdayId(null)
-      stopTracking().catch(() => {})
-    }
-  }, [activeWorkdayId, flushPendingOperations, isLoggedIn, mayTrack])
-
-  useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
-        void (async () => {
-          await flushPendingOperations()
-          const auth = useAuthStore.getState()
-          const workday = useWorkdayStore.getState()
-          const latestKey = workdayKey(auth.agent?.organizationId, auth.agent?.id)
-          const latestWorkdayId = workday.activeWorkday?.key === latestKey &&
-            workday.activeWorkday.syncState !== "FINISH_PENDING"
-            ? workday.activeWorkday.workdayId
-            : null
-          if (auth.isLoggedIn && canTrackFieldLocation(auth.agent?.role) && latestWorkdayId) {
-            setTrackingWorkdayId(latestWorkdayId)
-            startTracking().catch(() => {})
-          }
-        })()
+        refreshAdmissionAndSync().catch(() => {})
       }
       appStateRef.current = nextState
     }
 
     const subscription = AppState.addEventListener("change", handleAppStateChange)
     return () => subscription.remove()
-  }, [flushPendingOperations])
+  }, [refreshAdmissionAndSync])
 
   return (
     <SafeAreaProvider>
@@ -208,8 +105,6 @@ export default function AndroidApp() {
 
   useEffect(() => {
     useHintsStore.getState().hydrate().catch(() => {})
-    useDashboardLayoutStore.getState().hydrate().catch(() => {})
-    useWorkdayStore.getState().hydrate().catch(() => {})
     initI18n()
       .then(() => setI18nReady(true))
       .catch(() => setI18nReady(true))

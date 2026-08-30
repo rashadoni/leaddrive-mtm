@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,13 +21,11 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { toTaskDetail, taskTimeline, type TaskTimelineKey } from "../../services/task-detail"
 import { api } from "../../services/api"
-import { allOutboxOperations, flushOutbox } from "../../services/outbox"
+import { allOutboxOperations } from "../../services/outbox"
 import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../services/task-outbox"
-import { refreshSyncStatusCounts } from "../../services/sync-engine"
-import { computeDueDate, DUE_OPTIONS, DUE_OPTION_KEY } from "../../services/task-due"
+import { flushRouteFieldOutbox, refreshSyncStatusCounts } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
 import { useSyncStatusStore } from "../../store/sync-status"
-import { isManagerRole } from "../../auth/roles"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import FeedbackToast from "../../components/FeedbackToast"
@@ -64,18 +62,6 @@ const RECUR_KEY: Record<string, string> = {
   MONTHLY: "task.recurMonthly",
 }
 
-const EDIT_RECUR_RULES = ["DAILY", "WEEKLY", "MONTHLY"] as const
-const EDIT_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const
-
-type TaskEditFields = {
-  title: string
-  description: string | null
-  priority: string
-  dueDate: string | null
-  recurrenceRule: string | null
-  recurrenceInterval: number
-}
-
 type FriendlyCopy = {
   back: string
   guide: string
@@ -105,23 +91,15 @@ type FriendlyCopy = {
   moreDetails: string
   showDetails: string
   hideDetails: string
-  managerTools: string
-  managerToolsHint: string
   nextStep: string
   start: string
   starting: string
   complete: string
   completing: string
-  returnForRework: string
-  returning: string
   completeTitle: string
   completeBody: string
   completePlaceholder: string
   completeSubmit: string
-  returnTitle: string
-  returnBody: string
-  returnPlaceholder: string
-  returnSubmit: string
   cancel: string
   offlineTitle: string
   offlineBody: string
@@ -140,7 +118,6 @@ type FriendlyCopy = {
   readOnlyBody: string
   returnedTitle: string
   returnedHint: string
-  onlineOnly: string
 }
 
 const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
@@ -173,23 +150,15 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     moreDetails: "Дополнительные детали",
     showDetails: "Показать хронологию и повтор",
     hideDetails: "Скрыть дополнительные детали",
-    managerTools: "Действия руководителя",
-    managerToolsHint: "Изменение и копирование требуют подключения к интернету.",
     nextStep: "Следующий шаг",
     start: "Начать задачу",
     starting: "Начинаю…",
     complete: "Завершить задачу",
     completing: "Завершаю…",
-    returnForRework: "Вернуть на доработку",
-    returning: "Возвращаю…",
     completeTitle: "Завершение задачи",
     completeBody: "Коротко напишите, что сделано. Заметка необязательна.",
     completePlaceholder: "Например: документы переданы, договорённость подтверждена",
     completeSubmit: "Сохранить и завершить",
-    returnTitle: "Вернуть задачу",
-    returnBody: "Объясните сотруднику, что нужно исправить. Причина обязательна.",
-    returnPlaceholder: "Что нужно доработать?",
-    returnSubmit: "Вернуть сотруднику",
     cancel: "Отмена",
     offlineTitle: "Сейчас нет связи",
     offlineBody: "Показаны сохранённые данные. Старт или завершение останутся на устройстве и отправятся позже.",
@@ -208,7 +177,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     readOnlyBody: "Эта задача доступна вам для просмотра.",
     returnedTitle: "Возвращена на доработку",
     returnedHint: "Сначала исправьте замечание руководителя, затем завершите задачу снова.",
-    onlineOnly: "Для этого действия нужен интернет.",
   },
   az: {
     back: "Geri",
@@ -239,23 +207,15 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     moreDetails: "Əlavə məlumat",
     showDetails: "Xronologiya və təkrarı göstər",
     hideDetails: "Əlavə məlumatı gizlət",
-    managerTools: "Rəhbər əməliyyatları",
-    managerToolsHint: "Dəyişmək və kopyalamaq üçün internet lazımdır.",
     nextStep: "Növbəti addım",
     start: "Tapşırığı başla",
     starting: "Başladılır…",
     complete: "Tapşırığı tamamla",
     completing: "Tamamlanır…",
-    returnForRework: "Yenidən işlənməyə qaytar",
-    returning: "Qaytarılır…",
     completeTitle: "Tapşırığın tamamlanması",
     completeBody: "Görülən işi qısa yazın. Qeyd məcburi deyil.",
     completePlaceholder: "Məsələn: sənədlər təqdim edildi, razılaşma təsdiqləndi",
     completeSubmit: "Yadda saxla və tamamla",
-    returnTitle: "Tapşırığı qaytar",
-    returnBody: "Nəyin düzəldilməli olduğunu əməkdaşa yazın. Səbəb məcburidir.",
-    returnPlaceholder: "Nə yenidən işlənməlidir?",
-    returnSubmit: "Əməkdaşa qaytar",
     cancel: "Ləğv et",
     offlineTitle: "Hazırda bağlantı yoxdur",
     offlineBody: "Saxlanmış məlumat göstərilir. Başlama və ya tamamlama cihazda qalaraq sonra göndəriləcək.",
@@ -274,7 +234,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     readOnlyBody: "Bu tapşırıq sizə baxış üçün açıqdır.",
     returnedTitle: "Yenidən işlənməyə qaytarılıb",
     returnedHint: "Əvvəlcə rəhbərin qeydini düzəldin, sonra tapşırığı yenidən tamamlayın.",
-    onlineOnly: "Bu əməliyyat üçün internet lazımdır.",
   },
   en: {
     back: "Back",
@@ -305,23 +264,15 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     moreDetails: "Additional details",
     showDetails: "Show timeline and recurrence",
     hideDetails: "Hide additional details",
-    managerTools: "Manager actions",
-    managerToolsHint: "Editing and duplicating require an internet connection.",
     nextStep: "Next step",
     start: "Start task",
     starting: "Starting…",
     complete: "Complete task",
     completing: "Completing…",
-    returnForRework: "Return for rework",
-    returning: "Returning…",
     completeTitle: "Complete task",
     completeBody: "Briefly describe what was done. The note is optional.",
     completePlaceholder: "For example: documents delivered, agreement confirmed",
     completeSubmit: "Save and complete",
-    returnTitle: "Return task",
-    returnBody: "Tell the assignee what must be fixed. A reason is required.",
-    returnPlaceholder: "What needs to be improved?",
-    returnSubmit: "Return to assignee",
     cancel: "Cancel",
     offlineTitle: "You are offline",
     offlineBody: "Saved data is shown. Starting or completing will stay on this device and be sent later.",
@@ -340,7 +291,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     readOnlyBody: "This task is available to you as read-only.",
     returnedTitle: "Returned for rework",
     returnedHint: "Address the manager's note first, then complete the task again.",
-    onlineOnly: "An internet connection is required for this action.",
   },
 }
 
@@ -410,25 +360,18 @@ export default function TaskDetailScreen() {
   const touchTarget = expandedTablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
 
   const [task, setTask] = useState(() => toTaskDetail(route.params.task))
-  const role = useAuthStore((state) => state.agent?.role)
   const myAgentId = useAuthStore((state) => state.agent?.id)
   const { phase, conflicts, pending: globalPending } = useSyncStatusStore()
-  const canEdit = isManagerRole(role)
   const isOwnTask = Boolean(myAgentId) && task.agentId === myAgentId
   const workflowStatus = taskWorkflowStatus(task)
   const canReportProgress = isOwnTask && workflowStatus === "IN_PROGRESS"
-  const canReturn = canEdit && workflowStatus === "COMPLETED"
-  const primaryAction = taskDetailPrimaryAction(workflowStatus, isOwnTask, canReturn)
+  const primaryAction = taskDetailPrimaryAction(workflowStatus, isOwnTask, false)
 
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [duplicating, setDuplicating] = useState(false)
-  const [returning, setReturning] = useState(false)
   const [statusBusy, setStatusBusy] = useState(false)
   const [reconcilingTruth, setReconcilingTruth] = useState(true)
   const [taskConflict, setTaskConflict] = useState(false)
   const [taskPending, setTaskPending] = useState(false)
-  const [noteAction, setNoteAction] = useState<"complete" | "return" | null>(null)
+  const [noteAction, setNoteAction] = useState<"complete" | null>(null)
   const [showMore, setShowMore] = useState(false)
   const [progressSaving, setProgressSaving] = useState(false)
   const [progressMessage, setProgressMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null)
@@ -448,18 +391,6 @@ export default function TaskDetailScreen() {
   const priorityLabel = t(PRIORITY_KEY[task.priority] ?? "task.priorityMedium")
   const priorityTone = priorityVisual(task.priority)
   const statusTone = statusVisual(task.status)
-
-  const editInitial = useMemo<TaskEditFields>(
-    () => ({
-      title: task.title,
-      description: task.description,
-      priority: task.priority,
-      dueDate: task.dueDate,
-      recurrenceRule: task.recurrence?.rule ?? null,
-      recurrenceInterval: task.recurrence?.interval ?? 1,
-    }),
-    [task.title, task.description, task.priority, task.dueDate, task.recurrence],
-  )
 
   const refreshPending = useCallback(async () => {
     try {
@@ -540,73 +471,6 @@ export default function TaskDetailScreen() {
     return () => { disposed = true }
   }, [conflicts, globalPending, phase, refreshTaskFromServer, task.id])
 
-  const handleSave = async (fields: TaskEditFields) => {
-    if (saving) return
-    setSaving(true)
-    try {
-      const response = await api.updateTaskFields(task.id, {
-        title: fields.title,
-        description: fields.description,
-        priority: fields.priority,
-        dueDate: fields.dueDate,
-        recurrenceRule: fields.recurrenceRule,
-        ...(fields.recurrenceRule ? { recurrenceInterval: fields.recurrenceInterval } : {}),
-      })
-      if (!response?.success) throw new Error("TASK_EDIT_FAILED")
-      setTask((previous) => ({
-        ...previous,
-        title: fields.title,
-        description: fields.description,
-        priority: fields.priority,
-        dueDate: fields.dueDate,
-        recurrence: fields.recurrenceRule
-          ? { rule: fields.recurrenceRule, interval: fields.recurrenceInterval, until: previous.recurrence?.until ?? null }
-          : null,
-      }))
-      setEditing(false)
-      setToast({ visible: true, type: "success", title: t("task.editSaved"), message: copy.serverSavedBody })
-    } catch (error: any) {
-      if (error?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.editFailed") })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleDuplicate = async () => {
-    if (duplicating || phase === "offline") return
-    setDuplicating(true)
-    try {
-      const response = await api.duplicateTask(task.id)
-      if (!response?.success) throw new Error("TASK_DUPLICATE_FAILED")
-      setToast({ visible: true, type: "success", title: t("task.duplicated"), message: copy.serverSavedBody })
-    } catch (error: any) {
-      if (error?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.duplicateFailed") })
-    } finally {
-      setDuplicating(false)
-    }
-  }
-
-  const handleReturn = async (reason: string) => {
-    if (returning || !reason.trim() || phase === "offline") return
-    setReturning(true)
-    try {
-      const response = await api.returnTask(task.id, reason.trim())
-      if (!response?.success) throw new Error("TASK_RETURN_FAILED")
-      setTask((previous) => ({
-        ...previous,
-        status: "IN_PROGRESS",
-        persistedStatus: "IN_PROGRESS",
-        completedAt: null,
-        returnReason: reason.trim(),
-      }))
-      setToast({ visible: true, type: "success", title: t("task.returned"), message: copy.serverSavedBody })
-    } catch (error: any) {
-      if (error?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("task.returnFailed") })
-    } finally {
-      setReturning(false)
-    }
-  }
-
   const applyTaskStatus = async (nextStatus: "IN_PROGRESS" | "COMPLETED", result?: string) => {
     if (statusBusy) return
     const previous = task
@@ -622,7 +486,7 @@ export default function TaskDetailScreen() {
     try {
       const queued = await queueTaskStatusUpdate(task.id, nextStatus, result)
       setTaskPending(true)
-      await flushOutbox((operations) => api.syncPush(operations))
+      await flushRouteFieldOutbox()
       const remaining = await refreshPending()
       await refreshSyncStatusCounts().catch(() => {})
       const queuedAfterFlush = (await allOutboxOperations()).find((operation) => operation.operationId === queued.operationId)
@@ -684,12 +548,6 @@ export default function TaskDetailScreen() {
       applyTaskStatus("IN_PROGRESS").catch(() => {})
     } else if (primaryAction === "complete") {
       setNoteAction("complete")
-    } else if (primaryAction === "return") {
-      if (phase === "offline") {
-        setToast({ visible: true, type: "error", title: copy.onlineOnly })
-      } else {
-        setNoteAction("return")
-      }
     }
   }
 
@@ -697,15 +555,13 @@ export default function TaskDetailScreen() {
     ? (statusBusy ? copy.starting : copy.start)
     : primaryAction === "complete"
       ? (statusBusy ? copy.completing : copy.complete)
-      : primaryAction === "return"
-        ? (returning ? copy.returning : copy.returnForRework)
-        : ""
+      : ""
 
   const actionIcon = primaryAction === "start"
     ? "play"
     : primaryAction === "complete"
       ? "checkmark"
-      : "return-down-back"
+      : "ellipse-outline"
 
   const noActionBody = task.status === "COMPLETED"
     ? copy.completedBody
@@ -715,9 +571,8 @@ export default function TaskDetailScreen() {
         ? copy.overdueBody
         : copy.readOnlyBody
 
-  const actionBusy = statusBusy || returning || reconcilingTruth
-  const returnNeedsConnection = primaryAction === "return" && phase === "offline"
-  const primaryBlocked = actionBusy || returnNeedsConnection || taskConflict || taskPending
+  const actionBusy = statusBusy || reconcilingTruth
+  const primaryBlocked = actionBusy || taskConflict || taskPending
   const progressBlocked = progressSaving || phase === "offline" || taskPending
 
   return (
@@ -972,37 +827,6 @@ export default function TaskDetailScreen() {
                 ) : null}
               </View>
 
-              {canEdit ? (
-                <View style={styles.card}>
-                  <Text style={styles.cardTitle}>{copy.managerTools}</Text>
-                  <Text style={styles.cardHint}>{copy.managerToolsHint}</Text>
-                  <View style={styles.managerActions}>
-                    <TouchableOpacity
-                      style={[styles.secondaryButton, styles.managerButton, { minHeight: touchTarget }, phase === "offline" && styles.disabled]}
-                      onPress={() => setEditing(true)}
-                      disabled={phase === "offline"}
-                      accessibilityRole="button"
-                    >
-                      <Icon name="create-outline" size={20} color={fieldTheme.color.primaryStrong} />
-                      <Text style={styles.secondaryButtonText}>{t("task.editButton")}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.secondaryButton, styles.managerButton, { minHeight: touchTarget }, (duplicating || phase === "offline") && styles.disabled]}
-                      onPress={handleDuplicate}
-                      disabled={duplicating || phase === "offline"}
-                      accessibilityRole="button"
-                    >
-                      {duplicating ? (
-                        <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
-                      ) : (
-                        <Icon name="copy-outline" size={20} color={fieldTheme.color.primaryStrong} />
-                      )}
-                      <Text style={styles.secondaryButtonText}>{duplicating ? t("task.duplicating") : t("task.duplicate")}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {phase === "offline" ? <InlineMessage tone="warning" text={copy.onlineOnly} /> : null}
-                </View>
-              ) : null}
             </View>
           </View>
         </View>
@@ -1016,7 +840,6 @@ export default function TaskDetailScreen() {
               <Text style={styles.nextStepLabel}>{copy.nextStep}</Text>
             </View>
             {!primaryAction ? <Text style={styles.actionDockHint}>{noActionBody}</Text> : null}
-            {returnNeedsConnection ? <Text style={styles.actionDockError}>{copy.onlineOnly}</Text> : null}
             {taskPending ? <Text style={styles.actionDockError}>{copy.pendingBody}</Text> : null}
             {taskConflict ? <Text style={styles.actionDockError}>{copy.syncErrorTitle}</Text> : null}
           </View>
@@ -1047,31 +870,18 @@ export default function TaskDetailScreen() {
         </View>
       </View>
 
-      {canEdit ? (
-        <FriendlyEditTaskModal
-          visible={editing}
-          saving={saving}
-          initial={editInitial}
-          onCancel={() => setEditing(false)}
-          onSave={handleSave}
-        />
-      ) : null}
-
       <ActionNoteModal
         visible={noteAction !== null}
-        title={noteAction === "return" ? copy.returnTitle : copy.completeTitle}
-        body={noteAction === "return" ? copy.returnBody : copy.completeBody}
-        placeholder={noteAction === "return" ? copy.returnPlaceholder : copy.completePlaceholder}
-        submitLabel={noteAction === "return" ? copy.returnSubmit : copy.completeSubmit}
+        title={copy.completeTitle}
+        body={copy.completeBody}
+        placeholder={copy.completePlaceholder}
+        submitLabel={copy.completeSubmit}
         cancelLabel={copy.cancel}
-        required={noteAction === "return"}
-        busy={noteAction === "return" ? returning : statusBusy}
+        busy={statusBusy}
         onCancel={() => setNoteAction(null)}
         onSubmit={(notes) => {
-          const action = noteAction
           setNoteAction(null)
-          if (action === "return") handleReturn(notes).catch(() => {})
-          else applyTaskStatus("COMPLETED", notes || undefined).catch(() => {})
+          applyTaskStatus("COMPLETED", notes || undefined).catch(() => {})
         }}
       />
 
@@ -1194,203 +1004,6 @@ function InlineMessage({ tone, text }: { tone: "success" | "error" | "warning"; 
   )
 }
 
-function FriendlyEditTaskModal({
-  visible,
-  initial,
-  saving,
-  onCancel,
-  onSave,
-}: {
-  visible: boolean
-  initial: TaskEditFields
-  saving: boolean
-  onCancel: () => void
-  onSave: (fields: TaskEditFields) => void
-}) {
-  const { t, i18n } = useTranslation()
-  const [title, setTitle] = useState(initial.title)
-  const [description, setDescription] = useState(initial.description ?? "")
-  const [priority, setPriority] = useState(initial.priority)
-  const [dueDate, setDueDate] = useState<string | null>(initial.dueDate)
-  const [recurrenceRule, setRecurrenceRule] = useState<string | null>(initial.recurrenceRule)
-  const [recurrenceInterval, setRecurrenceInterval] = useState(initial.recurrenceInterval)
-
-  useEffect(() => {
-    if (!visible) return
-    setTitle(initial.title)
-    setDescription(initial.description ?? "")
-    setPriority(initial.priority)
-    setDueDate(initial.dueDate)
-    setRecurrenceRule(initial.recurrenceRule)
-    setRecurrenceInterval(initial.recurrenceInterval)
-  }, [initial, visible])
-
-  const canSave = Boolean(title.trim()) && !saving
-  const cancel = () => { if (!saving) onCancel() }
-  const save = () => {
-    if (!canSave) return
-    onSave({
-      title: title.trim(),
-      description: description.trim() || null,
-      priority,
-      dueDate,
-      recurrenceRule,
-      recurrenceInterval,
-    })
-  }
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={cancel}>
-      <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={[styles.modalCard, styles.editModalCard]}>
-          <View style={styles.editHeadingRow}>
-            <View style={styles.modalIcon}><Icon name="create-outline" size={25} color={fieldTheme.color.primaryStrong} /></View>
-            <View style={styles.editHeadingCopy}>
-              <Text style={styles.editModalTitle}>{t("task.editTitle")}</Text>
-              <Text style={styles.editModalBody}>{t("task.sectionDetails")}</Text>
-            </View>
-          </View>
-
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.editBody}>
-            <Text style={styles.formLabel}>{t("task.labelTitle")}</Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder={t("task.labelTitle")}
-              placeholderTextColor={fieldTheme.color.inkMuted}
-              style={styles.formInput}
-              maxLength={200}
-              editable={!saving}
-            />
-
-            <Text style={styles.formLabel}>{t("task.labelDescription")}</Text>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder={t("task.labelDescription")}
-              placeholderTextColor={fieldTheme.color.inkMuted}
-              style={[styles.formInput, styles.formMultiline]}
-              multiline
-              textAlignVertical="top"
-              maxLength={5000}
-              editable={!saving}
-            />
-
-            <Text style={styles.formLabel}>{t("task.fieldPriority")}</Text>
-            <View style={styles.formChips}>
-              {EDIT_PRIORITIES.map((option) => {
-                const selected = option === priority
-                const visual = priorityVisual(option)
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    style={[
-                      styles.formChip,
-                      selected && { backgroundColor: visual.fill, borderColor: visual.ink },
-                      saving && styles.disabled,
-                    ]}
-                    onPress={() => setPriority(option)}
-                    disabled={saving}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <Icon name={visual.icon} size={17} color={selected ? visual.ink : fieldTheme.color.inkMuted} />
-                    <Text style={[styles.formChipText, selected && { color: visual.ink }]}>{t(PRIORITY_KEY[option])}</Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-
-            <Text style={styles.formLabel}>{t("task.fieldDue")}</Text>
-            <View style={styles.currentValueRow}>
-              <Icon name="calendar-outline" size={19} color={fieldTheme.color.primaryStrong} />
-              <Text style={styles.currentValue}>{dueDate ? toDateLabel(dueDate, i18n.language) : t("task.dueNone")}</Text>
-            </View>
-            <View style={styles.formChips}>
-              {DUE_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.formChip, saving && styles.disabled]}
-                  onPress={() => setDueDate(computeDueDate(option))}
-                  disabled={saving}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.formChipText}>{t(DUE_OPTION_KEY[option])}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.formLabel}>{t("task.fieldRepeats")}</Text>
-            <View style={styles.formChips}>
-              <TouchableOpacity
-                style={[styles.formChip, recurrenceRule === null && styles.formChipSelected, saving && styles.disabled]}
-                onPress={() => setRecurrenceRule(null)}
-                disabled={saving}
-                accessibilityRole="button"
-                accessibilityState={{ selected: recurrenceRule === null }}
-              >
-                <Text style={[styles.formChipText, recurrenceRule === null && styles.formChipTextSelected]}>{t("task.recurNone")}</Text>
-              </TouchableOpacity>
-              {EDIT_RECUR_RULES.map((rule) => {
-                const selected = recurrenceRule === rule
-                return (
-                  <TouchableOpacity
-                    key={rule}
-                    style={[styles.formChip, selected && styles.formChipSelected, saving && styles.disabled]}
-                    onPress={() => setRecurrenceRule(rule)}
-                    disabled={saving}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                  >
-                    <Text style={[styles.formChipText, selected && styles.formChipTextSelected]}>{t(RECUR_KEY[rule])}</Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-
-            {recurrenceRule ? (
-              <View style={styles.intervalRow}>
-                <Text style={styles.intervalLabel}>{t("task.recurEvery", { n: recurrenceInterval })}</Text>
-                <View style={styles.intervalButtons}>
-                  <TouchableOpacity
-                    style={[styles.intervalButton, (recurrenceInterval <= 1 || saving) && styles.disabled]}
-                    onPress={() => setRecurrenceInterval((current) => Math.max(1, current - 1))}
-                    disabled={recurrenceInterval <= 1 || saving}
-                    accessibilityRole="button"
-                    accessibilityLabel="-1"
-                  >
-                    <Icon name="remove" size={21} color={fieldTheme.color.primaryStrong} />
-                  </TouchableOpacity>
-                  <Text style={styles.intervalValue}>{recurrenceInterval}</Text>
-                  <TouchableOpacity
-                    style={[styles.intervalButton, (recurrenceInterval >= 365 || saving) && styles.disabled]}
-                    onPress={() => setRecurrenceInterval((current) => Math.min(365, current + 1))}
-                    disabled={recurrenceInterval >= 365 || saving}
-                    accessibilityRole="button"
-                    accessibilityLabel="+1"
-                  >
-                    <Icon name="add" size={21} color={fieldTheme.color.primaryStrong} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : null}
-          </ScrollView>
-
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={[styles.modalCancel, saving && styles.disabled]} onPress={cancel} disabled={saving} accessibilityRole="button">
-              <Text style={styles.modalCancelText}>{t("common.cancel")}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalSubmit, !canSave && styles.disabled]} onPress={save} disabled={!canSave} accessibilityRole="button">
-              {saving ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} /> : <Icon name="save-outline" size={20} color={fieldTheme.color.onColor} />}
-              <Text style={styles.modalSubmitText}>{saving ? t("task.saving") : t("common.save")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  )
-}
-
 function ActionNoteModal({
   visible,
   title,
@@ -1398,7 +1011,6 @@ function ActionNoteModal({
   placeholder,
   submitLabel,
   cancelLabel,
-  required,
   busy,
   onCancel,
   onSubmit,
@@ -1409,7 +1021,6 @@ function ActionNoteModal({
   placeholder: string
   submitLabel: string
   cancelLabel: string
-  required: boolean
   busy: boolean
   onCancel: () => void
   onSubmit: (notes: string) => void
@@ -1428,7 +1039,6 @@ function ActionNoteModal({
 
   const submit = () => {
     const value = notes.trim()
-    if (required && !value) return
     setNotes("")
     onSubmit(value)
   }
@@ -1437,7 +1047,7 @@ function ActionNoteModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={cancel}>
       <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.modalCard}>
-          <View style={styles.modalIcon}><Icon name={required ? "return-down-back-outline" : "checkmark-done-outline"} size={27} color={fieldTheme.color.primaryStrong} /></View>
+          <View style={styles.modalIcon}><Icon name="checkmark-done-outline" size={27} color={fieldTheme.color.primaryStrong} /></View>
           <Text style={styles.modalTitle}>{title}</Text>
           <Text style={styles.modalBody}>{body}</Text>
           <TextInput
@@ -1460,9 +1070,9 @@ function ActionNoteModal({
               <Text style={styles.modalCancelText}>{cancelLabel}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalSubmit, (busy || (required && !notes.trim())) && styles.disabled]}
+              style={[styles.modalSubmit, busy && styles.disabled]}
               onPress={submit}
-              disabled={busy || (required && !notes.trim())}
+              disabled={busy}
               accessibilityRole="button"
             >
               {busy ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} /> : <Icon name="checkmark" size={20} color={fieldTheme.color.onColor} />}
@@ -1569,8 +1179,6 @@ const styles = StyleSheet.create({
   timelineLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   timelineTime: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   emptyText: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
-  managerActions: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
-  managerButton: { flexGrow: 1, minWidth: 140 },
   notice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.lg },
   noticeIcon: { width: 28, alignItems: "center", paddingTop: 1 },
   noticeCopy: { flex: 1, minWidth: 0 },
@@ -1596,27 +1204,6 @@ const styles = StyleSheet.create({
   modalIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
   modalTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: fieldTheme.space.lg },
   modalBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 21, marginTop: fieldTheme.space.sm },
-  editModalCard: { maxWidth: 680, maxHeight: "92%" },
-  editHeadingRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  editHeadingCopy: { flex: 1 },
-  editModalTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900" },
-  editModalBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: 2 },
-  editBody: { flexGrow: 0, marginTop: fieldTheme.space.lg },
-  formLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5, marginTop: fieldTheme.space.lg, marginBottom: fieldTheme.space.sm },
-  formInput: { minHeight: 48, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, color: fieldTheme.color.ink, fontSize: 16, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
-  formMultiline: { minHeight: 96 },
-  formChips: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  formChip: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, paddingHorizontal: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
-  formChipSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
-  formChipText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "800" },
-  formChipTextSelected: { color: fieldTheme.color.primaryStrong },
-  currentValueRow: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.sm },
-  currentValue: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
-  intervalRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
-  intervalLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
-  intervalButtons: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  intervalButton: { width: 44, height: 44, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
-  intervalValue: { minWidth: 30, color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900", textAlign: "center" },
   noteInput: { minHeight: 120, maxHeight: 220, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
   modalActions: { flexDirection: "row", justifyContent: "flex-end", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
   modalCancel: { minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },

@@ -1,10 +1,11 @@
-import type { NavGroup } from "../services/bootstrap"
-
-export const MANAGER_TAB_NAMES = ["Overview", "Team", "Planning", "Approvals", "More"] as const
+/**
+ * This APK is Route Field only. Workforce/manager tabs belong to the separate
+ * HRM application and are intentionally not represented as a fallback here.
+ */
 export const AGENT_TAB_NAMES = ["Today", "Calendar", "Route", "Tasks", "More"] as const
 
-export type AppTabName = typeof MANAGER_TAB_NAMES[number] | typeof AGENT_TAB_NAMES[number]
+export type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
 
-export function tabNamesForNavGroup(navGroup: NavGroup): readonly AppTabName[] {
-  return navGroup === "team" ? MANAGER_TAB_NAMES : navGroup === "field" ? AGENT_TAB_NAMES : []
+export function routeFieldTabNames(): readonly RouteFieldTabName[] {
+  return AGENT_TAB_NAMES
 }

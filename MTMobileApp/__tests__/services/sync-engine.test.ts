@@ -30,14 +30,20 @@ jest.mock("../../src/store/auth", () => ({
   useAuthStore: { getState: jest.fn() },
 }))
 
+jest.mock("../../src/store/bootstrap", () => ({
+  useBootstrapStore: { getState: jest.fn() },
+}))
+
 import { allOutboxOperations, flushOutbox } from "../../src/services/outbox"
 import { allMediaUploads, flushMediaOutbox } from "../../src/services/media-outbox"
 import { pullAndApplySync } from "../../src/services/sync-cache"
 import { useAuthStore } from "../../src/store/auth"
-import { runMobileSync } from "../../src/services/sync-engine"
+import { useBootstrapStore } from "../../src/store/bootstrap"
+import { flushRouteFieldOutbox, runMobileSync } from "../../src/services/sync-engine"
 import { useSyncStatusStore } from "../../src/store/sync-status"
 
 const mockedAuth = useAuthStore.getState as jest.Mock
+const mockedBootstrap = useBootstrapStore.getState as jest.Mock
 const mockedOperations = allOutboxOperations as jest.Mock
 const mockedFlush = flushOutbox as jest.Mock
 const mockedMedia = allMediaUploads as jest.Mock
@@ -52,6 +58,7 @@ describe("mobile sync engine", () => {
     mockedAuth.mockReturnValue({
       agent: { id: "agent-1", organizationId: "org-1" },
     })
+    mockedBootstrap.mockReturnValue({ routeFieldAccess: "enabled" })
     mockedOperations.mockResolvedValue([])
     mockedMedia.mockResolvedValue([])
     mockedFlush.mockResolvedValue({ sent: 2, deferred: 0, conflicted: 1 })
@@ -128,5 +135,28 @@ describe("mobile sync engine", () => {
     expect(mockedPull).toHaveBeenCalledTimes(1)
     expect(mockedFlush).toHaveBeenCalledTimes(2)
     expect(mockedMediaFlush).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not touch any pipeline until Route Field admission succeeds", async () => {
+    mockedBootstrap.mockReturnValue({ routeFieldAccess: "disabled" })
+
+    await expect(runMobileSync()).resolves.toEqual({
+      success: false,
+      sent: 0,
+      deferred: 0,
+      conflicted: 0,
+      mediaSent: 0,
+    })
+
+    expect(mockedFlush).not.toHaveBeenCalled()
+    expect(mockedPull).not.toHaveBeenCalled()
+    expect(mockedMediaFlush).not.toHaveBeenCalled()
+  })
+
+  it("leaves the v1 queue unchanged when a direct UI flush is not admitted", async () => {
+    mockedBootstrap.mockReturnValue({ routeFieldAccess: "unavailable" })
+
+    await expect(flushRouteFieldOutbox()).resolves.toEqual({ sent: 0, deferred: 0, conflicted: 0 })
+    expect(mockedFlush).not.toHaveBeenCalled()
   })
 })

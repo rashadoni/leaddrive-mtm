@@ -12,16 +12,12 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
-import { isManagerRole } from "../../auth/roles"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { navGroupFromCapabilities } from "../../services/bootstrap"
-import { useAuthStore } from "../../store/auth"
-import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
-type MoreRoute = "Visits" | "Base" | "GpsHistory" | "Profile" | "ContactTransfer"
+type MoreRoute = "Visits" | "Base" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
@@ -67,20 +63,6 @@ const COMMON_ACTIONS: MoreAction[] = [
   },
 ]
 
-const CONTACT_TRANSFER_ACTION: MoreAction = {
-  route: "ContactTransfer",
-  icon: "people-outline",
-  titleKey: "moreV2.transferTitle",
-  bodyKey: "moreV2.transferBody",
-  iconColor: fieldTheme.color.coral,
-  iconBackground: fieldTheme.color.coralSoft,
-}
-
-const MANAGER_ACTIONS = [
-  ...COMMON_ACTIONS.filter((action) => action.route !== "GpsHistory"),
-  CONTACT_TRANSFER_ACTION,
-]
-
 export default function MoreScreen() {
   const { t } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -88,15 +70,8 @@ export default function MoreScreen() {
   const insets = useSafeAreaInsets()
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
-  const role = useAuthStore((state) => state.agent?.role)
-  const capabilities = useBootstrapStore((state) => state.capabilities)
-  const manager = capabilities.length > 0
-    ? navGroupFromCapabilities(capabilities) === "team"
-    : isManagerRole(role)
   const tablet = isTabletWidth(width)
-  // Personal GPS history requires FIELD_TRACK. Managers use the team map and
-  // must not be sent to an endpoint that correctly answers 403 for their role.
-  const actions = manager ? MANAGER_ACTIONS : COMMON_ACTIONS
+  const actions = COMMON_ACTIONS
 
   const open = (route: MoreRoute) => {
     switch (route) {
@@ -111,9 +86,6 @@ export default function MoreScreen() {
         break
       case "Profile":
         navigation.navigate("Profile")
-        break
-      case "ContactTransfer":
-        navigation.navigate("ContactTransfer")
         break
     }
   }

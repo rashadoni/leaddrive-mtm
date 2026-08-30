@@ -31,10 +31,15 @@ jest.mock("../../src/services/sentry", () => ({
   clearAgentContext: jest.fn(),
 }))
 
+jest.mock("../../src/services/field-device-id", () => ({
+  getFieldDeviceId: jest.fn(() => Promise.resolve("rf-test-0000001-0000002-0000003")),
+}))
+
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setAgentContext, clearAgentContext } from "../../src/services/sentry"
+import { getFieldDeviceId } from "../../src/services/field-device-id"
 // Import the singleton after mocks are in place
 import { api } from "../../src/services/api"
 
@@ -53,6 +58,7 @@ function resetClient() {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  ;(getFieldDeviceId as jest.Mock).mockResolvedValue("rf-test-0000001-0000002-0000003")
   resetClient()
 })
 
@@ -458,6 +464,62 @@ describe("ApiClient — request error handling", () => {
     await client.request("/ping")
     const [, opts] = mockFetch.mock.calls[0]
     expect(opts.headers["Authorization"]).toBe("Bearer bearer-abc")
+    expect(opts.headers["x-field-device-id"]).toBe("rf-test-0000001-0000002-0000003")
+    expect(opts.headers["x-field-apk-version"]).toBe("3.0.0+38")
+  })
+})
+
+describe("ApiClient — Route Field device identity", () => {
+  it("uses the opaque installation id for v1 clientId, never the agent id", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "bearer-abc"
+    client.agentId = "agent-private-id"
+    const mockFetch = jest.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ success: true, results: [] }),
+    })
+    ;(global.fetch as jest.Mock) = mockFetch
+
+    await api.syncPush([{
+      operationId: "op-1",
+      entity: "visits",
+      op: "create",
+      data: {},
+      clientTimestamp: 1,
+    }])
+
+    const [, options] = mockFetch.mock.calls[0]
+    expect(JSON.parse(options.body)).toEqual(expect.objectContaining({
+      clientId: "rf-test-0000001-0000002-0000003",
+    }))
+    expect(JSON.parse(options.body).clientId).not.toContain("agent-private-id")
+  })
+
+  it("keeps v1 push available if the non-auth device storage is temporarily unavailable", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "bearer-abc"
+    client.agentId = "agent-private-id"
+    ;(getFieldDeviceId as jest.Mock).mockRejectedValue(new Error("storage unavailable"))
+    const mockFetch = jest.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ success: true, results: [] }),
+    })
+    ;(global.fetch as jest.Mock) = mockFetch
+
+    await api.syncPush([{
+      operationId: "op-2",
+      entity: "visits",
+      op: "create",
+      data: {},
+      clientTimestamp: 1,
+    }])
+
+    const [, options] = mockFetch.mock.calls[0]
+    expect(JSON.parse(options.body).clientId).toBeUndefined()
+    expect(options.headers["x-field-device-id"]).toBeUndefined()
+    expect(options.headers["x-field-apk-version"]).toBe("3.0.0+38")
   })
 })
 

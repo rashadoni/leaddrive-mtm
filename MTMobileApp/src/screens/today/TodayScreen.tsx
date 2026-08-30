@@ -13,14 +13,12 @@ import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import SyncStatusChip from "../../components/SyncStatusChip"
-import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { api } from "../../services/api"
 import { readOfflineRoute, readOfflineTasks } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useKpiStore } from "../../store/kpi"
-import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
@@ -95,26 +93,12 @@ export default function TodayScreen() {
   const tabBarPadding = useTabBarPadding()
   const agent = useAuthStore((state) => state.agent)
   const { stats, loading: kpiLoading, error: kpiError, fetchKpi } = useKpiStore()
-  const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
-  const workdaySyncError = useWorkdayStore((state) => state.syncError)
-  const workdayHydrated = useWorkdayStore((state) => state.hydrated)
-  const startWorkday = useWorkdayStore((state) => state.start)
-  const endWorkday = useWorkdayStore((state) => state.end)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
   const [routeLoading, setRouteLoading] = useState(true)
   const [routeError, setRouteError] = useState(false)
   const [routeSource, setRouteSource] = useState<DataSource>("unknown")
   const [cachedOpenTasks, setCachedOpenTasks] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
-  const [workdayBusy, setWorkdayBusy] = useState(false)
-  const [workdayError, setWorkdayError] = useState(false)
-  const [endDayConfirmVisible, setEndDayConfirmVisible] = useState(false)
-
-  const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
-  const workdayMatches = workdayHydrated && activeWorkday?.key === currentWorkdayKey
-  const workdayStarting = workdayMatches && activeWorkday?.syncState === "START_PENDING"
-  const workdayEnding = workdayMatches && activeWorkday?.syncState === "FINISH_PENDING"
-  const workdayActive = workdayMatches && !workdayEnding
   const todayKey = localDateKey()
 
   const refresh = useCallback(async () => {
@@ -179,34 +163,6 @@ export default function TodayScreen() {
       setRefreshing(false)
     }
   }, [refresh, refreshing])
-
-  const toggleWorkday = useCallback(async () => {
-    if (workdayBusy || workdayEnding || !workdayHydrated) return
-    setWorkdayBusy(true)
-    setWorkdayError(false)
-    try {
-      if (workdayActive) await endWorkday(currentWorkdayKey)
-      else await startWorkday(currentWorkdayKey)
-    } catch {
-      setWorkdayError(true)
-    } finally {
-      setWorkdayBusy(false)
-    }
-  }, [currentWorkdayKey, endWorkday, startWorkday, workdayActive, workdayBusy, workdayEnding, workdayHydrated])
-
-  const requestWorkdayToggle = useCallback(() => {
-    if (workdayBusy || workdayEnding || !workdayHydrated) return
-    if (workdayActive) {
-      setEndDayConfirmVisible(true)
-      return
-    }
-    toggleWorkday().catch(() => {})
-  }, [toggleWorkday, workdayActive, workdayBusy, workdayEnding, workdayHydrated])
-
-  const confirmEndDay = useCallback(() => {
-    setEndDayConfirmVisible(false)
-    toggleWorkday().catch(() => {})
-  }, [toggleWorkday])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -301,12 +257,6 @@ export default function TodayScreen() {
     day: "numeric",
     month: "long",
   })
-  const startedAt = workdayActive && activeWorkday?.startedAt
-    ? new Date(activeWorkday.startedAt).toLocaleTimeString(i18n.language, {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null
   const dataIsPartial = routeSource === "cached" || Boolean(kpiError) || stats?.authoritative === false
   const nextDark = nextKind === "route" || nextKind === "tasks"
 
@@ -357,72 +307,6 @@ export default function TodayScreen() {
 
         <View style={[styles.content, twoPane && styles.contentTablet]}>
           <View style={[styles.primaryColumn, twoPane && styles.primaryColumnTablet]}>
-            <View style={[styles.workdayPanel, !twoPane && styles.workdayPanelSingle]}>
-              <View style={styles.workdayCopy}>
-                <View style={styles.workdayTitleRow}>
-                  <View style={[
-                    styles.statusDot,
-                    workdayActive && styles.statusDotActive,
-                    (workdayStarting || workdayEnding) && styles.statusDotPending,
-                  ]} />
-                  <Text style={styles.workdayTitle}>
-                    {t(!workdayHydrated
-                      ? "todayV2.dayChecking"
-                      : workdayEnding
-                        ? "todayV2.dayEnding"
-                      : workdayStarting
-                        ? "todayV2.dayStarting"
-                      : workdayActive
-                        ? "todayV2.dayActive"
-                        : "todayV2.dayNotStarted")}
-                  </Text>
-                </View>
-                <Text style={styles.workdayBody}>
-                  {!workdayHydrated
-                    ? t("todayV2.dayCheckingBody")
-                    : workdayEnding
-                    ? t("todayV2.dayEndingBody")
-                    : workdayStarting
-                    ? t("todayV2.dayStartingBody")
-                    : workdayActive && startedAt
-                    ? t("todayV2.dayStartedAt", { time: startedAt })
-                    : t("todayV2.dayStartHint")}
-                </Text>
-                {workdayError || workdaySyncError ? (
-                  <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text>
-                ) : null}
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: workdayActive, disabled: workdayBusy || workdayEnding || !workdayHydrated }}
-                disabled={workdayBusy || workdayEnding || !workdayHydrated}
-                onPress={requestWorkdayToggle}
-                style={({ pressed }) => [
-                  styles.workdayButton,
-                  workdayActive && styles.workdayButtonActive,
-                  pressed && styles.pressed,
-                  (workdayBusy || workdayEnding || !workdayHydrated) && styles.disabled,
-                ]}
-              >
-                {workdayBusy || workdayEnding || !workdayHydrated ? (
-                  <ActivityIndicator size="small" color={workdayActive ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
-                ) : (
-                  <Icon
-                    name={workdayActive ? "stop-circle-outline" : "play-circle"}
-                    size={21}
-                    color={workdayActive ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
-                  />
-                )}
-                <Text style={[styles.workdayButtonText, workdayActive && styles.workdayButtonTextActive]}>
-                  {t(workdayEnding
-                    ? "todayV2.endDayPendingButton"
-                    : workdayActive
-                      ? "todayV2.endDay"
-                      : "todayV2.startDay")}
-                </Text>
-              </Pressable>
-            </View>
-
             <View
               accessibilityLiveRegion="polite"
               style={[
@@ -568,18 +452,6 @@ export default function TodayScreen() {
           </View>
         </View>
       </ScrollView>
-      <ConfirmSheet
-        visible={endDayConfirmVisible}
-        icon="■"
-        iconColor={fieldTheme.color.amber}
-        title={t("todayV2.endDayConfirmTitle")}
-        message={t("todayV2.endDayConfirmBody")}
-        cancelText={t("todayV2.endDayConfirmCancel")}
-        confirmText={t("todayV2.endDayConfirmAction")}
-        confirmColor={fieldTheme.color.amber}
-        onCancel={() => setEndDayConfirmVisible(false)}
-        onConfirm={confirmEndDay}
-      />
     </View>
   )
 }
@@ -725,85 +597,6 @@ const styles = StyleSheet.create({
   secondaryColumnTablet: {
     flex: 0.82,
     minWidth: 0,
-  },
-  workdayPanel: {
-    minHeight: 92,
-    padding: fieldTheme.space.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
-  },
-  workdayPanelSingle: {
-    flexDirection: "column",
-    alignItems: "stretch",
-  },
-  workdayCopy: {
-    flex: 1,
-    gap: fieldTheme.space.xs,
-  },
-  workdayTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fieldTheme.space.sm,
-  },
-  statusDot: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-    backgroundColor: fieldTheme.color.inkMuted,
-  },
-  statusDotActive: {
-    backgroundColor: fieldTheme.color.success,
-  },
-  statusDotPending: {
-    backgroundColor: fieldTheme.color.amber,
-  },
-  workdayTitle: {
-    flex: 1,
-    color: fieldTheme.color.ink,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "800",
-  },
-  workdayBody: {
-    color: fieldTheme.color.inkMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
-  },
-  inlineError: {
-    color: fieldTheme.color.danger,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
-  },
-  workdayButton: {
-    minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet,
-    paddingHorizontal: fieldTheme.space.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: fieldTheme.space.sm,
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.primary,
-  },
-  workdayButtonActive: {
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.primarySoft,
-  },
-  workdayButtonText: {
-    color: fieldTheme.color.onColor,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  workdayButtonTextActive: {
-    color: fieldTheme.color.primaryStrong,
   },
   nextPanel: {
     minHeight: 310,
