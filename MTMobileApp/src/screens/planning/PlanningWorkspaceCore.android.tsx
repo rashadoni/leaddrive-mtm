@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -56,6 +57,13 @@ import {
   type PlanningHorizon,
   type PlanningTarget,
 } from "../../services/manager-planning"
+import {
+  PLANNING_TIME_HOURS,
+  planningTimeMinuteOptions,
+  planningTimeParts,
+  planningTimeValue,
+  type PlanningTimeMinute,
+} from "./planning-time-picker"
 
 type PlanningStep = 1 | 2 | 3
 type SaveMode = "draft" | "publish"
@@ -130,11 +138,11 @@ const SELF_PLANNER_COPY = {
   ru: {
     eyebrow: "Мой план",
     title: "Создайте свой маршрут",
-    daySubtitle: "Выберите одну дату, добавьте клиентов и сохраните маршрут.",
+    daySubtitle: "Выберите дату, добавьте клиентов и сохраните маршрут.",
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
     agentLabel: "Ваш маршрут",
     agentHelp: "Вы планируете встречи только для себя.",
-    searchPlaceholder: "Имя, организация, специальность или адрес…",
+    searchPlaceholder: "Клиент, организация или адрес…",
     scopeNote: "Показываются только точки, подтверждённые для вас на выбранную дату. При сохранении сервер проверит их ещё раз.",
   },
   az: {
@@ -144,7 +152,7 @@ const SELF_PLANNER_COPY = {
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
     agentLabel: "Sizin marşrutunuz",
     agentHelp: "Görüşləri yalnız özünüz üçün planlaşdırırsınız.",
-    searchPlaceholder: "Ad, təşkilat, ixtisas və ya ünvan…",
+    searchPlaceholder: "Müştəri, təşkilat və ya ünvan…",
     scopeNote: "Yalnız seçilmiş tarix üçün sizə təsdiqlənmiş nöqtələr göstərilir. Saxlayarkən server onları yenidən yoxlayacaq.",
   },
   en: {
@@ -154,7 +162,7 @@ const SELF_PLANNER_COPY = {
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
     agentLabel: "Your route",
     agentHelp: "You are planning meetings only for yourself.",
-    searchPlaceholder: "Name, organization, specialty, or address…",
+    searchPlaceholder: "Customer, organization, or address…",
     scopeNote: "Only stops confirmed for you on the selected date are shown. The server validates them again when you save.",
   },
 } as const
@@ -775,7 +783,7 @@ export default function PlanningWorkspaceCore({
         })
     Alert.alert(
       `${t("common.clear")}: ${dateLabel}`,
-      `${t("managerShell.planRemove")} ${clearedPoints} ${t("managerShell.planStopsShort")}?`,
+      t("managerShell.planClearStops", { count: clearedPoints }),
       [
         { text: t("common.cancel"), style: "cancel" },
         { text: t("common.clear"), style: "destructive", onPress: () => { void save() } },
@@ -801,7 +809,13 @@ export default function PlanningWorkspaceCore({
         }
       : {
           icon: saveMode === "publish" ? "send" : "save",
-          label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : "managerShell.planSaveDraftAction"),
+          label: saving
+            ? t("managerShell.planSaving")
+            : t(saveMode === "publish"
+              ? "managerShell.planSaveAndPublish"
+              : singleDay
+                ? "managerShell.planSaveDraftActionDay"
+                : "managerShell.planSaveDraftAction"),
           hint: !canSave && !saving ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
           disabled: !canSave,
           onPress: confirmAndSave,
@@ -820,7 +834,7 @@ export default function PlanningWorkspaceCore({
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{selfPlanning ? selfCopy.eyebrow : t("managerShell.planEyebrow")}</Text>
             <Text style={styles.title}>{selfPlanning ? selfCopy.title : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
-            <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{selfPlanning ? (singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
+            <Text numberOfLines={2} style={styles.subtitle}>{selfPlanning ? (singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
           </View>
           {updatedAt ? (
             <View style={styles.updatedPill}>
@@ -954,7 +968,7 @@ export default function PlanningWorkspaceCore({
           </View>
         ) : step === 2 ? (
           <View style={styles.stepBody}>
-            <SectionIntro number="2" title={t("managerShell.planStepTargets")} body={t(singleDay ? "managerShell.planStepTargetsDayBody" : "managerShell.planStepTargetsWeekBody")} />
+            <SectionIntro number="2" title={t(singleDay ? "managerShell.planStepTargetsDay" : "managerShell.planStepTargets")} body={t(singleDay ? "managerShell.planStepTargetsDayBody" : "managerShell.planStepTargetsWeekBody")} />
             <View style={styles.selectionSummary}>
               <Icon name="calendar-outline" size={20} color={fieldTheme.color.blue} />
               <Text style={styles.selectionSummaryText}>{t(singleDay ? "managerShell.planSelectionSummaryDay" : "managerShell.planSelectionSummaryWeek", { people: mutableTargetCount, visits: assignments.length })}</Text>
@@ -1118,10 +1132,12 @@ export default function PlanningWorkspaceCore({
               <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.textButton, saving && styles.disabled]} onPress={() => setStep(2)}><Text style={styles.textButtonText}>{t("managerShell.planEditTargets")}</Text></Pressable>
             </View>
 
-            <View style={styles.matrixHelp}>
-              <Icon name="create-outline" size={19} color={fieldTheme.color.blue} />
-              <Text style={styles.matrixHelpText}>{t(singleDay ? "managerShell.planDayReviewHelp" : "managerShell.planWeekReviewHelp")}</Text>
-            </View>
+            {!singleDay ? (
+              <View style={styles.matrixHelp}>
+                <Icon name="create-outline" size={19} color={fieldTheme.color.blue} />
+                <Text style={styles.matrixHelpText}>{t("managerShell.planWeekReviewHelp")}</Text>
+              </View>
+            ) : null}
             {!singleDay ? (
               <WeekDayChooser
                 dates={dates}
@@ -1155,19 +1171,25 @@ export default function PlanningWorkspaceCore({
             {matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
 
             <View style={styles.savePanel}>
-              <Text style={styles.fieldLabel}>{t("managerShell.planFinishMode")}</Text>
-              <Text style={styles.fieldHelp}>{t("managerShell.planFinishModeHelp")}</Text>
-              <View style={styles.segment}>
-                <Pressable accessibilityRole="radio" accessibilityState={{ checked: saveMode === "draft", disabled: saving }} disabled={saving} style={[styles.segmentButton, saveMode === "draft" && styles.segmentButtonActive, saving && styles.disabled]} onPress={() => setSaveMode("draft")}>
-                  <Icon name="save-outline" size={18} color={saveMode === "draft" ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
-                  <Text style={[styles.segmentText, saveMode === "draft" && styles.segmentTextActive]}>{t("managerShell.planSaveDraft")}</Text>
-                </Pressable>
-                <Pressable accessibilityRole="radio" accessibilityState={{ checked: saveMode === "publish", disabled: saving || !canPublish }} disabled={saving || !canPublish} style={[styles.segmentButton, saveMode === "publish" && styles.segmentButtonActive, (saving || !canPublish) && styles.disabled]} onPress={() => setSaveMode("publish")}>
-                  <Icon name="send-outline" size={18} color={saveMode === "publish" ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
-                  <Text style={[styles.segmentText, saveMode === "publish" && styles.segmentTextActive]}>{t("managerShell.planPublish")}</Text>
-                </Pressable>
-              </View>
-              {!canPublish ? <Text style={styles.permissionNote}>{t("managerShell.planPublishUnavailable")}</Text> : null}
+              <Text style={styles.fieldLabel}>{t(canPublish ? "managerShell.planFinishMode" : "managerShell.planDraftOnlyTitle")}</Text>
+              <Text style={styles.fieldHelp}>{t(canPublish ? "managerShell.planFinishModeHelp" : "managerShell.planDraftOnlyHelp")}</Text>
+              {canPublish ? (
+                <View style={styles.segment}>
+                  <Pressable accessibilityRole="radio" accessibilityState={{ checked: saveMode === "draft", disabled: saving }} disabled={saving} style={[styles.segmentButton, saveMode === "draft" && styles.segmentButtonActive, saving && styles.disabled]} onPress={() => setSaveMode("draft")}>
+                    <Icon name="save-outline" size={18} color={saveMode === "draft" ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
+                    <Text style={[styles.segmentText, saveMode === "draft" && styles.segmentTextActive]}>{t("managerShell.planSaveDraft")}</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="radio" accessibilityState={{ checked: saveMode === "publish", disabled: saving }} disabled={saving} style={[styles.segmentButton, saveMode === "publish" && styles.segmentButtonActive, saving && styles.disabled]} onPress={() => setSaveMode("publish")}>
+                    <Icon name="send-outline" size={18} color={saveMode === "publish" ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
+                    <Text style={[styles.segmentText, saveMode === "publish" && styles.segmentTextActive]}>{t("managerShell.planPublish")}</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View style={styles.draftOnlyNotice} accessibilityRole="summary">
+                  <Icon name="save-outline" size={18} color={fieldTheme.color.primaryStrong} />
+                  <Text style={styles.draftOnlyNoticeText}>{t("managerShell.planPublishUnavailable")}</Text>
+                </View>
+              )}
               {publishBlockedDates.length > 0 && saveMode === "publish" ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planPublishedDateLocked")} body={t("managerShell.planPublishedDateLockedBody")} /> : null}
               {multipleDraftDates.length > 0 ? <Notice tone="warning" icon="git-compare-outline" title={t("managerShell.planMultipleDraftsTitle")} body={t("managerShell.planMultipleDraftsBody")} /> : null}
               {invalidAssignmentDates.length > 0 ? <Notice tone="warning" icon="business-outline" title={t("managerShell.planNoActiveWorkplace")} body={t("managerShell.planResolveWarnings")} /> : null}
@@ -1352,73 +1374,129 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
   )
 }
 
-function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; disabled: boolean; label: string; onCommit: (time: string) => boolean }) {
+function RouteTimeButton({ value, disabled, label, accessibilityLabel, onPress }: {
+  value: string
+  disabled: boolean
+  label: string
+  accessibilityLabel: string
+  onPress: () => void
+}) {
   const safeValue = normalizePlanningTimeSlot(value) ?? "09:00"
-  const [hour, setHour] = useState(safeValue.slice(0, 2))
-  const [minute, setMinute] = useState(safeValue.slice(3))
-  useEffect(() => {
-    const next = normalizePlanningTimeSlot(value) ?? "09:00"
-    setHour(next.slice(0, 2))
-    setMinute(next.slice(3))
-  }, [value])
-
-  const restore = () => {
-    const next = normalizePlanningTimeSlot(value) ?? "09:00"
-    setHour(next.slice(0, 2))
-    setMinute(next.slice(3))
-  }
-  const commit = (nextHour = hour, nextMinute = minute) => {
-    if (!/^\d{1,2}$/.test(nextHour)) {
-      restore()
-      return
-    }
-    const numericHour = Number(nextHour)
-    if (numericHour > 23) {
-      restore()
-      return
-    }
-    const normalizedHour = String(numericHour).padStart(2, "0")
-    const nextTime = `${normalizedHour}:${nextMinute}`
-    if (!onCommit(nextTime)) {
-      restore()
-      return
-    }
-    setHour(normalizedHour)
-    setMinute(nextMinute)
-  }
   return (
-    <View style={[styles.routeTimeField, disabled && styles.routeTimeFieldDisabled]}>
-      <Icon name="time-outline" size={18} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
-      <TextInput
-        value={hour}
-        onChangeText={(next) => setHour(next.replace(/\D/g, "").slice(0, 2))}
-        onBlur={() => commit()}
-        onSubmitEditing={() => commit()}
-        placeholder="09"
-        placeholderTextColor={fieldTheme.color.inkMuted}
-        keyboardType="number-pad"
-        maxLength={2}
-        editable={!disabled}
-        accessibilityLabel={label}
-        style={styles.routeTimeHourInput}
-      />
-      <Text style={styles.routeTimeColon}>:</Text>
-      <View style={styles.routeTimeMinuteOptions}>
-        {(["00", "30"] as const).map((slot) => (
-          <Pressable
-            key={slot}
-            accessibilityRole="radio"
-            accessibilityLabel={`${label}: ${slot}`}
-            accessibilityState={{ selected: minute === slot, disabled }}
-            disabled={disabled}
-            onPress={() => commit(hour, slot)}
-            style={({ pressed }) => [styles.routeTimeMinuteButton, minute === slot && styles.routeTimeMinuteButtonActive, disabled && styles.disabled, pressed && styles.pressed]}
-          >
-            <Text style={[styles.routeTimeMinuteText, minute === slot && styles.routeTimeMinuteTextActive]}>{slot}</Text>
-          </Pressable>
-        ))}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${accessibilityLabel}: ${safeValue}`}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.routeTimeButton, disabled && styles.routeTimeButtonDisabled, pressed && styles.pressed]}
+    >
+      <Icon name="time-outline" size={20} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
+      <View style={styles.routeTimeButtonCopy}>
+        <Text style={styles.routeTimeButtonLabel}>{label}</Text>
+        <Text style={styles.routeTimeButtonValue}>{safeValue}</Text>
       </View>
-    </View>
+      {!disabled ? <Icon name="chevron-up-down" size={17} color={fieldTheme.color.primaryStrong} /> : null}
+    </Pressable>
+  )
+}
+
+function PlanningTimePickerSheet({ visible, value, targetName, disabled, onClose, onCommit, t }: {
+  visible: boolean
+  value: string
+  targetName: string
+  disabled: boolean
+  onClose: () => void
+  onCommit: (time: string) => boolean
+  t: any
+}) {
+  const safeAreaInsets = useSafeAreaInsets()
+  const initial = planningTimeParts(value)
+  const [hour, setHour] = useState(initial.hour)
+  const [minute, setMinute] = useState<PlanningTimeMinute>(initial.minute)
+
+  useEffect(() => {
+    if (!visible) return
+    const next = planningTimeParts(value)
+    setHour(next.hour)
+    setMinute(next.minute)
+  }, [value, visible])
+
+  const selectedTime = planningTimeValue(hour, minute)
+  const save = () => {
+    if (disabled) return
+    if (onCommit(selectedTime)) onClose()
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.timePickerOverlay}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("common.cancel")} style={styles.timePickerBackdrop} onPress={onClose} />
+        <View style={[styles.timePickerSheet, { paddingBottom: Math.max(safeAreaInsets.bottom, 20) }]} accessibilityViewIsModal>
+          <View style={styles.timePickerHandle} />
+          <View style={styles.timePickerHeading}>
+            <View style={styles.timePickerHeadingCopy}>
+              <Text style={styles.timePickerTitle}>{t("managerShell.planTimePickerTitle")}</Text>
+              <Text numberOfLines={1} style={styles.timePickerTarget}>{targetName}</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={t("common.cancel")} disabled={disabled} onPress={onClose} style={({ pressed }) => [styles.timePickerClose, disabled && styles.disabled, pressed && styles.pressed]}>
+              <Icon name="close" size={22} color={fieldTheme.color.inkMuted} />
+            </Pressable>
+          </View>
+          <Text accessibilityRole="header" style={styles.timePickerValue}>{selectedTime}</Text>
+          <Text style={styles.timePickerHint}>{t("managerShell.planTimePickerHint")}</Text>
+
+          <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerHour")}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timePickerHourList}>
+            {PLANNING_TIME_HOURS.map((option) => {
+              const selected = option === hour
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
+                  accessibilityLabel={`${t("managerShell.planTimePickerHour")}: ${option}`}
+                  disabled={disabled}
+                  onPress={() => setHour(option)}
+                  style={({ pressed }) => [styles.timePickerHour, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.timePickerHourText, selected && styles.timePickerChoiceTextSelected]}>{option}</Text>
+                </Pressable>
+              )
+            })}
+          </ScrollView>
+
+          <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerMinutes")}</Text>
+          <View style={styles.timePickerMinuteList} accessibilityRole="radiogroup">
+            {planningTimeMinuteOptions(value).map((option) => {
+              const selected = option === minute
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected, disabled }}
+                  accessibilityLabel={`${t("managerShell.planTimePickerMinutes")}: ${option}`}
+                  disabled={disabled}
+                  onPress={() => setMinute(option)}
+                  style={({ pressed }) => [styles.timePickerMinute, selected && styles.timePickerChoiceSelected, disabled && styles.disabled, pressed && styles.pressed]}
+                >
+                  <Text style={[styles.timePickerMinuteText, selected && styles.timePickerChoiceTextSelected]}>{option}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+
+          <View style={styles.timePickerActions}>
+            <Pressable accessibilityRole="button" disabled={disabled} onPress={onClose} style={({ pressed }) => [styles.timePickerCancel, disabled && styles.disabled, pressed && styles.pressed]}>
+              <Text style={styles.timePickerCancelText}>{t("common.cancel")}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={disabled} onPress={save} style={({ pressed }) => [styles.timePickerSave, disabled && styles.disabled, pressed && styles.pressed]}>
+              <Text style={styles.timePickerSaveText}>{t("managerShell.planTimePickerSave")}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -1435,6 +1513,14 @@ function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, la
   onRemove: (target: PlanningTarget, date: string) => void
   t: any
 }) {
+  const [timeTarget, setTimeTarget] = useState<PlanningAssignedTarget | null>(null)
+  const editingTarget = timeTarget ? rows.find((target) => target.key === timeTarget.key) ?? null : null
+  const editingTargetLocked = Boolean(editingTarget && lockedCells.has(`${date}|${editingTarget.key}`))
+
+  useEffect(() => {
+    if (timeTarget && !editingTarget) setTimeTarget(null)
+  }, [editingTarget, timeTarget])
+
   return (
     <View style={styles.dayPlanEditor} testID={`mtm-mobile-day-plan-${date}`}>
       <View style={styles.dayPlanHeader}>
@@ -1457,31 +1543,47 @@ function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, la
             const controlsDisabled = saving || !editable || locked
             return (
               <View key={`${date}|${target.key}`} style={[styles.dayStopRow, locked && styles.dayStopRowLocked]}>
-                <View style={styles.dayStopOrder}><Text style={styles.dayStopOrderText}>{index + 1}</Text></View>
-                <View style={styles.dayStopCopy}>
-                  <Text style={styles.dayStopName}>{target.name}</Text>
-                  <Text style={styles.dayStopMeta}>{target.organizationName || target.address || t("managerShell.planAddressMissing")}</Text>
-                </View>
-                <RouteTimeInput
-                  value={planningTimeLabel(target.plannedTime, timezone)}
-                  disabled={controlsDisabled}
-                  label={`${t("managerShell.planVisitTime")}: ${target.name}`}
-                  onCommit={(time) => onTime(target, date, time)}
-                />
-                {locked ? (
-                  <Icon name="lock-closed" size={19} color={fieldTheme.color.amber} />
-                ) : (
-                  <View style={styles.dayStopActions}>
-                    <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planMoveUp")} accessibilityState={{ disabled: controlsDisabled || index === 0 }} disabled={controlsDisabled || index === 0} onPress={() => onMove(target, date, -1)} style={({ pressed }) => [styles.dayStopAction, (controlsDisabled || index === 0) && styles.disabled, pressed && styles.pressed]}><Icon name="arrow-up" size={19} color={fieldTheme.color.primaryStrong} /></Pressable>
-                    <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planMoveDown")} accessibilityState={{ disabled: controlsDisabled || index === rows.length - 1 }} disabled={controlsDisabled || index === rows.length - 1} onPress={() => onMove(target, date, 1)} style={({ pressed }) => [styles.dayStopAction, (controlsDisabled || index === rows.length - 1) && styles.disabled, pressed && styles.pressed]}><Icon name="arrow-down" size={19} color={fieldTheme.color.primaryStrong} /></Pressable>
-                    <Pressable accessibilityRole="button" accessibilityLabel={`${t("managerShell.planRemove")}: ${target.name}`} accessibilityState={{ disabled: controlsDisabled }} disabled={controlsDisabled} onPress={() => onRemove(target, date)} style={({ pressed }) => [styles.dayStopAction, styles.dayStopRemove, controlsDisabled && styles.disabled, pressed && styles.pressed]}><Icon name="trash-outline" size={19} color={fieldTheme.color.danger} /></Pressable>
+                <View style={styles.dayStopIdentity}>
+                  <View style={styles.dayStopOrder}><Text style={styles.dayStopOrderText}>{index + 1}</Text></View>
+                  <View style={styles.dayStopCopy}>
+                    <Text style={styles.dayStopName}>{target.name}</Text>
+                    <Text style={styles.dayStopMeta}>{target.organizationName || target.address || t("managerShell.planAddressMissing")}</Text>
                   </View>
-                )}
+                </View>
+                <View style={styles.dayStopControls}>
+                  <RouteTimeButton
+                    value={planningTimeLabel(target.plannedTime, timezone)}
+                    disabled={controlsDisabled}
+                    label={t("managerShell.planVisitTime")}
+                    accessibilityLabel={`${t("managerShell.planVisitTime")}: ${target.name}`}
+                    onPress={() => setTimeTarget(target)}
+                  />
+                  {locked ? (
+                    <View style={styles.dayStopLockedIcon}><Icon name="lock-closed" size={19} color={fieldTheme.color.amber} /></View>
+                  ) : (
+                    <View style={styles.dayStopActions}>
+                      {rows.length > 1 && index > 0 ? <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planMoveUp")} accessibilityState={{ disabled: controlsDisabled }} disabled={controlsDisabled} onPress={() => onMove(target, date, -1)} style={({ pressed }) => [styles.dayStopAction, controlsDisabled && styles.disabled, pressed && styles.pressed]}><Icon name="arrow-up" size={19} color={fieldTheme.color.primaryStrong} /></Pressable> : null}
+                      {rows.length > 1 && index < rows.length - 1 ? <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planMoveDown")} accessibilityState={{ disabled: controlsDisabled }} disabled={controlsDisabled} onPress={() => onMove(target, date, 1)} style={({ pressed }) => [styles.dayStopAction, controlsDisabled && styles.disabled, pressed && styles.pressed]}><Icon name="arrow-down" size={19} color={fieldTheme.color.primaryStrong} /></Pressable> : null}
+                      <Pressable accessibilityRole="button" accessibilityLabel={`${t("managerShell.planRemove")}: ${target.name}`} accessibilityState={{ disabled: controlsDisabled }} disabled={controlsDisabled} onPress={() => onRemove(target, date)} style={({ pressed }) => [styles.dayStopAction, styles.dayStopRemove, controlsDisabled && styles.disabled, pressed && styles.pressed]}><Icon name="trash-outline" size={19} color={fieldTheme.color.danger} /></Pressable>
+                    </View>
+                  )}
+                </View>
               </View>
             )
           })}
         </View>
       )}
+      {editingTarget ? (
+        <PlanningTimePickerSheet
+          visible
+          value={planningTimeLabel(editingTarget.plannedTime, timezone)}
+          targetName={editingTarget.name}
+          disabled={saving || !editable || editingTargetLocked}
+          onClose={() => setTimeTarget(null)}
+          onCommit={(time) => onTime(editingTarget, date, time)}
+          t={t}
+        />
+      ) : null}
     </View>
   )
 }
@@ -1598,7 +1700,7 @@ const styles = StyleSheet.create({
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
   dateCopy: { flex: 1, alignItems: "center", gap: 5 },
   dateTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900", textAlign: "center" },
-  todayButton: { minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  todayButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 14, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
   todayButtonText: { color: fieldTheme.color.blue, fontSize: 11, fontWeight: "900" },
   segment: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, flexDirection: "row", gap: fieldTheme.space.xs, padding: fieldTheme.space.xs, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
   segmentButton: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm },
@@ -1669,25 +1771,49 @@ const styles = StyleSheet.create({
   dayPlanEmpty: { minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderStyle: "dashed", borderColor: fieldTheme.color.border },
   dayPlanEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
   dayStopList: { gap: 6 },
-  dayStopRow: { minHeight: 66, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, padding: 7, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  dayStopRow: { gap: 8, padding: 9, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   dayStopRowLocked: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
+  dayStopIdentity: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 8 },
   dayStopOrder: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
   dayStopOrderText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
+  dayStopCopy: { flex: 1, gap: 2 },
   dayStopName: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
   dayStopMeta: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
-  routeTimeField: { minWidth: 164, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
-  routeTimeFieldDisabled: { borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surfaceStrong },
-  routeTimeHourInput: { width: 28, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingVertical: 0, paddingHorizontal: 0, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900", textAlign: "center" },
-  routeTimeColon: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
-  routeTimeMinuteOptions: { flexDirection: "row", gap: 4 },
-  routeTimeMinuteButton: { minWidth: 32, minHeight: 32, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  routeTimeMinuteButtonActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
-  routeTimeMinuteText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
-  routeTimeMinuteTextActive: { color: fieldTheme.color.onColor },
+  dayStopControls: { flexDirection: "row", alignItems: "stretch", gap: 8 },
+  routeTimeButton: { minHeight: 56, flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 11, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  routeTimeButtonDisabled: { borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surfaceStrong },
+  routeTimeButtonCopy: { flex: 1, gap: 1 },
+  routeTimeButtonLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
+  routeTimeButtonValue: { color: fieldTheme.color.primaryStrong, fontSize: 18, lineHeight: 22, fontWeight: "900" },
   dayStopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
-  dayStopAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  dayStopAction: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  dayStopLockedIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft },
   dayStopRemove: { backgroundColor: fieldTheme.color.dangerSoft },
+  timePickerOverlay: { flex: 1, justifyContent: "flex-end" },
+  timePickerBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(18, 38, 44, 0.46)" },
+  timePickerSheet: { gap: 12, maxHeight: "88%", paddingTop: 9, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: fieldTheme.radius.lg, borderTopRightRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, shadowColor: fieldTheme.color.ink, shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: -4 }, elevation: 16 },
+  timePickerHandle: { alignSelf: "center", width: 42, height: 4, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.border },
+  timePickerHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
+  timePickerHeadingCopy: { flex: 1, gap: 2 },
+  timePickerTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "900" },
+  timePickerTarget: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  timePickerClose: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
+  timePickerValue: { alignSelf: "center", color: fieldTheme.color.primaryStrong, fontSize: 34, lineHeight: 40, fontWeight: "900", letterSpacing: 0.4 },
+  timePickerHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
+  timePickerSectionLabel: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  timePickerHourList: { gap: 8, paddingRight: 16 },
+  timePickerHour: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timePickerMinuteList: { flexDirection: "row", gap: 8 },
+  timePickerMinute: { minHeight: 52, flex: 1, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timePickerChoiceSelected: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  timePickerHourText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
+  timePickerMinuteText: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
+  timePickerChoiceTextSelected: { color: fieldTheme.color.onColor },
+  timePickerActions: { flexDirection: "row", gap: 8, marginTop: 4 },
+  timePickerCancel: { minHeight: 50, minWidth: 108, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  timePickerCancelText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
+  timePickerSave: { minHeight: 50, flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  timePickerSaveText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   targetBrowser: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   targetBrowserHeadingCopy: { flex: 1 },
@@ -1750,6 +1876,8 @@ const styles = StyleSheet.create({
   matrixCellDay: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800", textTransform: "capitalize" },
   matrixCellDaySelected: { color: fieldTheme.color.ink, fontWeight: "900" },
   savePanel: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  draftOnlyNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  draftOnlyNoticeText: { flex: 1, color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17, fontWeight: "800" },
   permissionNote: { color: fieldTheme.color.amber, fontSize: 11, lineHeight: 16, fontWeight: "800" },
   actionDock: { gap: 4, paddingTop: 7, paddingHorizontal: 10, backgroundColor: fieldTheme.color.surface, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, shadowColor: fieldTheme.color.ink, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -3 }, elevation: 9 },
   actionDockHint: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "700", textAlign: "center" },
