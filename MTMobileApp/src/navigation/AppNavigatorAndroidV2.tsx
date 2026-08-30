@@ -19,7 +19,7 @@ import WeekScreen from "../screens/week/WeekScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import TaskDetailScreen from "../screens/tasks/TaskDetailScreen"
-import BaseScreen from "../screens/base/BaseScreen"
+import RouteBaseScreen from "../screens/base/RouteBaseScreen.android"
 import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
 import RouteContactDetailScreen from "../screens/base/RouteContactDetailScreen.android"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
@@ -222,7 +222,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
                 <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
                 <Stack.Screen name="Visits" component={VisitScreen} />
-                <Stack.Screen name="Base" component={BaseScreen} />
+                <Stack.Screen name="Base" component={RouteBaseScreen} />
                 <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
                 <Stack.Screen name="Profile" component={ProfileScreen} />
                 <Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />

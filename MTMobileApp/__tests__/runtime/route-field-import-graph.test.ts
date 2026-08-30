@@ -58,5 +58,8 @@ describe("Route Field Android import graph", () => {
     expect(reachable).not.toContain("src/services/manager-api.ts")
     expect(reachable).not.toContain("src/screens/manager/ManagerPlanningWorkspace.android.tsx")
     expect(reachable).not.toContain("src/screens/base/ContactDetailScreen.tsx")
+    expect(reachable).not.toContain("src/screens/base/BaseScreen.tsx")
+    expect(reachable).not.toContain("src/screens/base/OrganizationsList.tsx")
+    expect(reachable).not.toContain("src/screens/base/OrganizationExplorerScreen.tsx")
   })
 })

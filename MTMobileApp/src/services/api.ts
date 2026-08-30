@@ -336,10 +336,11 @@ class ApiClient {
   }
 
   /**
-   * Legacy-surface transport bridge. Manager-only screens import their own
-   * facade so Route Field's active API module contains no manager/team
-   * endpoint literals. New Route Field code must use a dedicated core method
-   * above instead of constructing a path through this bridge.
+   * Legacy-surface transport bridge. Manager screens import their own facade,
+   * while the remaining commercial wrappers are extracted separately so this
+   * Route Field isolation checkpoint stays reversible. New Route Field code
+   * must use a dedicated core method above instead of constructing a path
+   * through this bridge.
    */
   async requestLegacy(path: string, options: RequestInit = {}, timeoutMs = 20_000) {
     return this.request(path, options, timeoutMs)
@@ -673,9 +674,6 @@ class ApiClient {
       specialization?: string
       organizationKind?: string
       territoryCode?: string
-      managingManagerId?: string
-      assignedAgentId?: string
-      assignmentState?: "ASSIGNED" | "UNASSIGNED"
       sort?: "name" | "updatedAt" | "city" | "category" | "status"
       direction?: "asc" | "desc"
     },
@@ -688,8 +686,7 @@ class ApiClient {
     for (const key of [
       "category", "status", "objectType", "region", "administrativeDistrict",
       "locality", "cityDistrict", "specialization", "organizationKind",
-      "territoryCode", "managingManagerId", "assignedAgentId", "assignmentState",
-      "sort", "direction",
+      "territoryCode", "sort", "direction",
     ] as const) {
       if (params?.[key]) query.set(key, params[key] as string)
     }
@@ -699,49 +696,6 @@ class ApiClient {
 
   async getOrganization(id: string, signal?: AbortSignal) {
     return this.request(`/organizations/${id}`, { signal })
-  }
-
-  async getOrganizationFacets(signal?: AbortSignal) {
-    return this.request("/organizations/facets", { signal })
-  }
-
-  async getOrganizationViews(signal?: AbortSignal) {
-    return this.request("/organizations/views", { signal })
-  }
-
-  async createOrganizationView(data: {
-    name: string
-    filters: Record<string, unknown>
-    columns: string[]
-    isDefault?: boolean
-  }) {
-    return this.request("/organizations/views", { method: "POST", body: JSON.stringify(data) })
-  }
-
-  async deleteOrganizationView(id: string) {
-    return this.request(`/organizations/views/${id}`, { method: "DELETE" })
-  }
-
-  async previewOrganizationAssignment(data: {
-    organizationIds: string[]
-    mode: "ASSIGN" | "UNASSIGN"
-    targetAgentId?: string | null
-    effectiveFrom: string
-    reason: string
-  }) {
-    return this.request("/organization-assignments/preview", { method: "POST", body: JSON.stringify(data) })
-  }
-
-  async executeOrganizationAssignment(data: {
-    organizationIds: string[]
-    mode: "ASSIGN" | "UNASSIGN"
-    targetAgentId?: string | null
-    effectiveFrom: string
-    reason: string
-    previewToken: string
-    idempotencyKey: string
-  }) {
-    return this.request("/organization-assignments", { method: "POST", body: JSON.stringify(data) })
   }
 
   async getContacts(

@@ -39,6 +39,10 @@ describe("Route Field product boundary", () => {
     path.resolve(__dirname, "../../src/screens/base/RouteContactDetailScreen.android.tsx"),
     "utf8",
   )
+  const routeOrganizationSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/base/RouteOrganizationExplorerScreen.android.tsx"),
+    "utf8",
+  )
   const tasksSource = fs.readFileSync(
     path.resolve(__dirname, "../../src/screens/tasks/TasksScreen.tsx"),
     "utf8",
@@ -98,6 +102,16 @@ describe("Route Field product boundary", () => {
     expect(taskDetailSource).not.toContain("duplicateTask")
     expect(taskDetailSource).not.toContain("returnTask")
     expect(taskDetailSource).not.toContain("isManagerRole")
+  })
+
+  it("uses a route-only organization catalog without team assignment controls", () => {
+    expect(routeOrganizationSource).not.toContain("manager-api")
+    expect(routeOrganizationSource).not.toContain("getOrganizationFacets")
+    expect(routeOrganizationSource).not.toContain("getOrganizationViews")
+    expect(routeOrganizationSource).not.toContain("previewOrganizationAssignment")
+    expect(routeOrganizationSource).not.toContain("managingManager")
+    expect(routeOrganizationSource).not.toContain("assignedAgentId")
+    expect(routeOrganizationSource).not.toContain("assignmentState")
   })
 
   it("stops inherited tracking and does not start HRM-workday background GPS", () => {

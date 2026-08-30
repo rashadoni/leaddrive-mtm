@@ -21,6 +21,13 @@ describe("legacy manager API boundary", () => {
       "/mobile/tasks/bulk-reassign",
       "/mobile/team-schedule",
       "mode: \"SELF_SHARE\"",
+      "/organizations/facets",
+      "/organizations/views",
+      "/organization-assignments/preview",
+      "/organization-assignments",
+      "managingManagerId",
+      "assignedAgentId",
+      "assignmentState",
     ]
 
     for (const endpoint of managerOnlyEndpoints) {

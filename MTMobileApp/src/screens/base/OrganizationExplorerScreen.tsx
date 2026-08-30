@@ -19,7 +19,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import { readOfflineOrganizations } from "../../services/offline-reads"
 import {
   ORGANIZATION_COLUMNS,
@@ -120,7 +120,7 @@ export default function OrganizationExplorerScreen() {
     if (append) setLoadingMore(true)
     else setLoading(true)
     try {
-      const response = await api.getOrganizations({ ...filters, page: nextPage, limit: 50 }, controller.signal)
+      const response = await managerApi.getOrganizations({ ...filters, page: nextPage, limit: 50 }, controller.signal)
       if (currentRequestId !== requestId.current) return
       if (response.success) {
         const rawOrganizations: unknown[] = Array.isArray(response.data?.organizations) ? response.data.organizations : []
@@ -178,8 +178,8 @@ export default function OrganizationExplorerScreen() {
   const fetchConfiguration = useCallback(async () => {
     if (!canManage) return
     const [facetResponse, viewResponse] = await Promise.all([
-      api.getOrganizationFacets().catch(() => null),
-      api.getOrganizationViews().catch(() => null),
+      managerApi.getOrganizationFacets().catch(() => null),
+      managerApi.getOrganizationViews().catch(() => null),
     ])
     if (facetResponse?.success) setFacets(normalizeFacets(facetResponse.data))
     if (viewResponse?.success) {
@@ -233,7 +233,7 @@ export default function OrganizationExplorerScreen() {
     if (!viewName.trim()) return
     setSavingView(true)
     try {
-      await api.createOrganizationView({ name: viewName.trim(), filters: { ...filters }, columns })
+      await managerApi.createOrganizationView({ name: viewName.trim(), filters: { ...filters }, columns })
       setViewName("")
       setSaveOpen(false)
       await fetchConfiguration()
@@ -259,7 +259,7 @@ export default function OrganizationExplorerScreen() {
     if (!reason.trim() || (assignmentMode === "ASSIGN" && !targetAgentId)) return
     setAssigning(true)
     try {
-      const response = await api.previewOrganizationAssignment({
+      const response = await managerApi.previewOrganizationAssignment({
         organizationIds: [...selectedIds], mode: assignmentMode, targetAgentId,
         effectiveFrom, reason: reason.trim(),
       })
@@ -276,7 +276,7 @@ export default function OrganizationExplorerScreen() {
     if (!assignmentPreview || !idempotencyKey) return
     setAssigning(true)
     try {
-      await api.executeOrganizationAssignment({
+      await managerApi.executeOrganizationAssignment({
         organizationIds: [...selectedIds], mode: assignmentMode, targetAgentId,
         effectiveFrom, reason: reason.trim(), previewToken: assignmentPreview.previewToken, idempotencyKey,
       })

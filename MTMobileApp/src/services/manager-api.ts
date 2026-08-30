@@ -3,9 +3,8 @@ import { api } from "./api"
 /**
  * Legacy manager/team transport facade.
  *
- * This isolates legacy endpoint literals from the Route Field core client.
- * The self-planner/navigation split removes this facade from the active Route
- * Field import graph in the following checkpoint. The server remains
+ * This isolates legacy endpoint literals from the Route Field core client and
+ * is excluded from the active Route Field import graph. The server remains
  * authoritative for TEAM_READ/TEAM_DECIDE and HRM permissions; moving these
  * wrappers changes no URL, body, auth header or RLS contract.
  */
@@ -30,6 +29,92 @@ export const managerApi = {
 
   getApprovals(signal?: AbortSignal) {
     return api.requestLegacy("/mobile/manager/approvals", { signal })
+  },
+
+  /**
+   * Legacy manager catalog. Route Field never sends team-assignment filters;
+   * server-side RLS remains authoritative for every returned organization.
+   */
+  getOrganizations(
+    params?: {
+      search?: string
+      page?: number
+      limit?: number
+      category?: string
+      status?: string
+      objectType?: string
+      region?: string
+      administrativeDistrict?: string
+      locality?: string
+      cityDistrict?: string
+      specialization?: string
+      organizationKind?: string
+      territoryCode?: string
+      managingManagerId?: string
+      assignedAgentId?: string
+      assignmentState?: "ASSIGNED" | "UNASSIGNED"
+      sort?: "name" | "updatedAt" | "city" | "category" | "status"
+      direction?: "asc" | "desc"
+    },
+    signal?: AbortSignal,
+  ) {
+    const query = new URLSearchParams()
+    if (params?.search) query.set("search", params.search)
+    if (params?.page) query.set("page", String(params.page))
+    if (params?.limit) query.set("limit", String(params.limit))
+    for (const key of [
+      "category", "status", "objectType", "region", "administrativeDistrict",
+      "locality", "cityDistrict", "specialization", "organizationKind",
+      "territoryCode", "managingManagerId", "assignedAgentId", "assignmentState",
+      "sort", "direction",
+    ] as const) {
+      if (params?.[key]) query.set(key, params[key] as string)
+    }
+    const qs = query.toString()
+    return api.requestLegacy(`/organizations${qs ? `?${qs}` : ""}`, { signal })
+  },
+
+  getOrganizationFacets(signal?: AbortSignal) {
+    return api.requestLegacy("/organizations/facets", { signal })
+  },
+
+  getOrganizationViews(signal?: AbortSignal) {
+    return api.requestLegacy("/organizations/views", { signal })
+  },
+
+  createOrganizationView(data: {
+    name: string
+    filters: Record<string, unknown>
+    columns: string[]
+    isDefault?: boolean
+  }) {
+    return api.requestLegacy("/organizations/views", { method: "POST", body: JSON.stringify(data) })
+  },
+
+  deleteOrganizationView(id: string) {
+    return api.requestLegacy(`/organizations/views/${id}`, { method: "DELETE" })
+  },
+
+  previewOrganizationAssignment(data: {
+    organizationIds: string[]
+    mode: "ASSIGN" | "UNASSIGN"
+    targetAgentId?: string | null
+    effectiveFrom: string
+    reason: string
+  }) {
+    return api.requestLegacy("/organization-assignments/preview", { method: "POST", body: JSON.stringify(data) })
+  },
+
+  executeOrganizationAssignment(data: {
+    organizationIds: string[]
+    mode: "ASSIGN" | "UNASSIGN"
+    targetAgentId?: string | null
+    effectiveFrom: string
+    reason: string
+    previewToken: string
+    idempotencyKey: string
+  }) {
+    return api.requestLegacy("/organization-assignments", { method: "POST", body: JSON.stringify(data) })
   },
 
   hrmDecision(id: string, decision: "APPROVED" | "REJECTED", note?: string) {
