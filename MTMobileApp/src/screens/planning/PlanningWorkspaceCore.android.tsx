@@ -127,6 +127,12 @@ type PlanningTargetContinuation = {
 
 export type PlanningWorkspaceCoreProps = {
   onClose?: () => void
+  /**
+   * The standalone agent flow returns to Today only after a server-confirmed
+   * publish. A draft, partial save, or conflict must leave the editor open so
+   * the agent can see and resolve the real outcome.
+   */
+  onPublished?: () => void
   agentSource: PlanningWorkspaceAgentSource
   targetSource: PlanningWorkspaceTargetSource
   writeSource: PlanningWorkspaceWriteSource
@@ -236,6 +242,7 @@ function planningError(code: string): Error & { code: string } {
 
 export default function PlanningWorkspaceCore({
   onClose,
+  onPublished,
   agentSource,
   targetSource,
   writeSource,
@@ -438,6 +445,15 @@ export default function PlanningWorkspaceCore({
   useEffect(() => {
     if (!dates.includes(activeDate)) setActiveDate(dates[0])
   }, [activeDate, dates])
+
+  // In Route Field, an agent who was explicitly granted self-publishing does
+  // not need to choose an internal workflow state. Their normal action is
+  // "create my route"; it writes a draft and immediately publishes it through
+  // the same durable command journal. Team planners retain the explicit
+  // draft/publish choice below.
+  useEffect(() => {
+    if (selfPlanning) setSaveMode(canPublish ? "publish" : "draft")
+  }, [canPublish, selfPlanning])
 
   useEffect(() => {
     if (!activeTargetType && routeTargetTypes[0]) setTargetTypeId(routeTargetTypes[0].id)
@@ -645,6 +661,7 @@ export default function PlanningWorkspaceCore({
     const operationMode = saveMode
     const operationPublishDrafts = operationMode === "publish" ? publishDrafts.map((draft) => ({ ...draft })) : []
     const retryDates = new Set(operationWrites.map((write) => write.date))
+    let returnToToday = false
     const isCurrent = () => operationId === saveRequest.current && operationContext === contextVersion.current
     setSaving(true)
     setSaveMessage(null)
@@ -745,6 +762,7 @@ export default function PlanningWorkspaceCore({
             count: operationMode === "publish" ? published : savedCount,
           }),
         })
+        returnToToday = selfPlanning && operationMode === "publish" && published > 0
       }
     } catch (error: any) {
       if (!isCurrent()) return
@@ -766,7 +784,10 @@ export default function PlanningWorkspaceCore({
           ])
           setDirtyDates(new Set(retryDates))
         }
-        if (isCurrent()) setSaving(false)
+        if (isCurrent()) {
+          setSaving(false)
+          if (returnToToday) onPublished?.()
+        }
       }
       savingRef.current = false
     }
@@ -817,7 +838,7 @@ export default function PlanningWorkspaceCore({
           label: saving
             ? t("managerShell.planSaving")
             : t(saveMode === "publish"
-              ? "managerShell.planSaveAndPublish"
+              ? (selfPlanning ? "managerShell.planCreateRoute" : "managerShell.planSaveAndPublish")
               : singleDay
                 ? "managerShell.planSaveDraftActionDay"
                 : "managerShell.planSaveDraftAction"),
@@ -1176,9 +1197,14 @@ export default function PlanningWorkspaceCore({
             {matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
 
             <View style={styles.savePanel}>
-              <Text style={styles.fieldLabel}>{t(canPublish ? "managerShell.planFinishMode" : "managerShell.planDraftOnlyTitle")}</Text>
-              <Text style={styles.fieldHelp}>{t(canPublish ? "managerShell.planFinishModeHelp" : "managerShell.planDraftOnlyHelp")}</Text>
-              {canPublish ? (
+              <Text style={styles.fieldLabel}>{t(selfPlanning && canPublish ? "managerShell.planSelfPublishTitle" : canPublish ? "managerShell.planFinishMode" : "managerShell.planDraftOnlyTitle")}</Text>
+              <Text style={styles.fieldHelp}>{t(selfPlanning && canPublish ? "managerShell.planSelfPublishHelp" : canPublish ? "managerShell.planFinishModeHelp" : "managerShell.planDraftOnlyHelp")}</Text>
+              {selfPlanning && canPublish ? (
+                <View style={styles.draftOnlyNotice} accessibilityRole="summary">
+                  <Icon name="checkmark-circle-outline" size={18} color={fieldTheme.color.primaryStrong} />
+                  <Text style={styles.draftOnlyNoticeText}>{t("managerShell.planSelfPublishReady")}</Text>
+                </View>
+              ) : canPublish ? (
                 <View style={styles.segment}>
                   <Pressable accessibilityRole="radio" accessibilityState={{ checked: saveMode === "draft", disabled: saving }} disabled={saving} style={[styles.segmentButton, saveMode === "draft" && styles.segmentButtonActive, saving && styles.disabled]} onPress={() => setSaveMode("draft")}>
                     <Icon name="save-outline" size={18} color={saveMode === "draft" ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />

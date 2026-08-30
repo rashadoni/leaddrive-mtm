@@ -17,10 +17,12 @@ import { submitRouteCommand } from "../../services/route-command-journal"
  */
 export default function RouteSelfPlanningWorkspace({
   onClose,
+  onPublished,
   initialDate,
   initialHorizon,
 }: {
   onClose?: () => void
+  onPublished?: () => void
   initialDate?: string
   initialHorizon?: PlanningHorizon
 }) {
@@ -113,6 +115,7 @@ export default function RouteSelfPlanningWorkspace({
   return (
     <PlanningWorkspaceCore
       onClose={onClose}
+      onPublished={onPublished}
       agentSource={agentSource}
       targetSource={targetSource}
       writeSource={writeSource}

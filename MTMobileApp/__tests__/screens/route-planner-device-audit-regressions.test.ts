@@ -17,9 +17,13 @@ describe("route planner device-audit regressions", () => {
     expect(source).not.toContain("routeTimeHourInput")
   })
 
-  it("keeps the single-day review focused and hides unavailable publishing", () => {
+  it("keeps the single-day review focused and publishes an allowed self route without a workflow choice", () => {
     expect(source).toContain("!singleDay ? (")
-    expect(source).toContain('t(canPublish ? "managerShell.planFinishMode" : "managerShell.planDraftOnlyTitle")')
+    expect(source).toContain('t(selfPlanning && canPublish ? "managerShell.planSelfPublishTitle" : canPublish ? "managerShell.planFinishMode" : "managerShell.planDraftOnlyTitle")')
+    expect(source).toContain('if (selfPlanning) setSaveMode(canPublish ? "publish" : "draft")')
+    expect(source).toContain('selfPlanning && canPublish ? (')
+    expect(source).toContain('selfPlanning ? "managerShell.planCreateRoute" : "managerShell.planSaveAndPublish"')
+    expect(source).toContain('if (returnToToday) onPublished?.()')
     expect(source).toContain('"managerShell.planSaveDraftActionDay"')
   })
 
@@ -32,6 +36,10 @@ describe("route planner device-audit regressions", () => {
     expect(copy.planTimePickerMorning).toBeTruthy()
     expect(copy.planTimePickerEvening).toBeTruthy()
     expect(copy.planSaveDraftActionDay).toBeTruthy()
+    expect(copy.planCreateRoute).toBeTruthy()
+    expect(copy.planSelfPublishTitle).toBeTruthy()
+    expect(copy.planSelfPublishHelp).toBeTruthy()
+    expect(copy.planSelfPublishReady).toBeTruthy()
     expect(copy.planClearStops_one).toBeTruthy()
     expect(copy.planClearStops_other).toBeTruthy()
   })

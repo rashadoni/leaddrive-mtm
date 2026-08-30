@@ -1,7 +1,7 @@
 import React, { useEffect } from "react"
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native"
-import { NavigationContainer } from "@react-navigation/native"
-import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { NavigationContainer, type NavigatorScreenParams } from "@react-navigation/native"
+import { createNativeStackNavigator, type NativeStackScreenProps } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
@@ -32,8 +32,12 @@ import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.andro
 import type { RawTask } from "../services/task-detail"
 import { AGENT_TAB_NAMES } from "./role-tabs"
 
+export type RouteFieldTabParamList = {
+  [K in RouteFieldTabName]: undefined
+}
+
 export type RootStackParamList = {
-  Main: undefined
+  Main: NavigatorScreenParams<RouteFieldTabParamList> | undefined
   Login: undefined
   Server: undefined
   OrganizationDetail: { id: string; name?: string }
@@ -52,7 +56,7 @@ export type RootStackParamList = {
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
-const Tab = createBottomTabNavigator()
+const Tab = createBottomTabNavigator<RouteFieldTabParamList>()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
   Today: { active: "today", inactive: "today-outline" },
@@ -65,12 +69,10 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
 const PlanningBuilderScreen = ({
   navigation,
   route,
-}: {
-  navigation: { goBack: () => void }
-  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7 } }
-}) => (
+}: NativeStackScreenProps<RootStackParamList, "PlanningBuilder">) => (
   <RouteSelfPlanningWorkspace
     onClose={() => navigation.goBack()}
+    onPublished={() => navigation.navigate("Main", { screen: "Today" })}
     initialDate={route.params?.initialDate}
     initialHorizon={route.params?.initialHorizon}
   />
