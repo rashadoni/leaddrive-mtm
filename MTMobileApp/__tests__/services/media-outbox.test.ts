@@ -67,7 +67,8 @@ describe("durable media outbox", () => {
       if (item.id === failed.id) throw new Error("network unavailable")
     })
 
-    expect(result).toEqual({ sent: 1, deferred: 1 })
+    expect(result).toMatchObject({ sent: 1, deferred: 1, error: "network unavailable" })
+    expect(result.retryAfterMs).toEqual(expect.any(Number))
     const retryableAt = Date.now() + 2_000
     expect((await pendingMediaUploads(retryableAt)).map((item) => item.id)).toEqual([failed.id])
     expect((await pendingMediaUploads(retryableAt))[0].attempts).toBe(1)

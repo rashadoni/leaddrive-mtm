@@ -13,9 +13,9 @@ describe("sync retry policy", () => {
     expect(retryDelayMs({ attempts: 1, retryAfterMs: 5_000, jitter: true, random: () => 1 })).toBe(6_000)
   })
 
-  it("uses bounded exponential backoff when the server gave no hint", () => {
-    expect(retryDelayMs({ attempts: 1 })).toBe(1_000)
-    expect(retryDelayMs({ attempts: 2 })).toBe(2_000)
+  it("uses the bounded legacy outbox exponential backoff when the server gave no hint", () => {
+    expect(retryDelayMs({ attempts: 1 })).toBe(2_000)
+    expect(retryDelayMs({ attempts: 2 })).toBe(4_000)
     expect(retryDelayMs({ attempts: 20 })).toBe(15 * 60_000)
   })
 

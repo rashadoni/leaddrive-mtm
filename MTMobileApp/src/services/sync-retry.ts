@@ -54,7 +54,10 @@ export function retryDelayMs(input: {
     return Math.min(MAX_RETRY_DELAY_MS, base + extra)
   }
 
-  const base = Math.min(MAX_RETRY_DELAY_MS, 1_000 * 2 ** (attempts - 1))
+  // Preserve the durable v1 outbox schedule: its first retry was two seconds
+  // after the initial failed attempt, then 4s, 8s, and so on. Route commands
+  // share this conservative policy but remain in their own journal.
+  const base = Math.min(MAX_RETRY_DELAY_MS, 1_000 * 2 ** attempts)
   if (!input.jitter) return base
   // Symmetric jitter is fine for a locally generated delay.  The lower bound
   // stays positive and all writes remain in their existing durable outbox.
