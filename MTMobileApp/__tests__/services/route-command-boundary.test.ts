@@ -41,11 +41,13 @@ describe("Route Field durable command boundary", () => {
     expect(legacyManagerSource).toContain("api.publishRoute")
   })
 
-  it("starts a route through the durable command transport, never a workday or direct route write", () => {
+  it("starts a route through the durable command transport only after the field-session UI is confirmed", () => {
     expect(todaySource).toContain('command: "START"')
     expect(todaySource).toContain("submitRouteCommand")
     expect(todaySource).toContain("api.executeRouteCommand")
-    expect(todaySource).not.toContain("useWorkdayStore")
+    expect(todaySource).toContain("useWorkdayStore")
+    expect(todaySource).toContain("workdayActive")
+    expect(todaySource).toContain('code === "MTM_ROUTE_WORKDAY_REQUIRED"')
     expect(todaySource).not.toContain("api.updateRoute")
     expect(todaySource).not.toContain("api.createRoute")
   })

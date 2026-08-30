@@ -27,6 +27,10 @@ describe("Route Field product boundary", () => {
     path.resolve(__dirname, "../../src/runtime/AndroidApp.tsx"),
     "utf8",
   )
+  const routeScreenSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/route/RouteScreen.tsx"),
+    "utf8",
+  )
   const manifestSource = fs.readFileSync(
     path.resolve(__dirname, "../../android/app/src/main/AndroidManifest.xml"),
     "utf8",
@@ -60,10 +64,12 @@ describe("Route Field product boundary", () => {
     "utf8",
   )
 
-  it("does not create or reconcile HRM workdays from the route home screen", () => {
-    expect(todaySource).not.toContain("useWorkdayStore")
-    expect(todaySource).not.toContain("startWorkday")
-    expect(todaySource).not.toContain("endWorkday")
+  it("shows a minimal field-session control without adding HRM navigation", () => {
+    expect(todaySource).toContain("useWorkdayStore")
+    expect(todaySource).toContain("startWorkday")
+    expect(todaySource).toContain("endWorkday")
+    expect(todaySource).toContain("refreshRouteFieldSession")
+    expect(todaySource).toContain('syncState === "CONFIRMED"')
   })
 
   it("does not expose the manager shell from Route Field navigation", () => {
@@ -125,12 +131,22 @@ describe("Route Field product boundary", () => {
     expect(routeOrganizationSource).not.toContain("assignmentState")
   })
 
-  it("stops inherited tracking and does not start HRM-workday background GPS", () => {
+  it("tracks GPS only after the server-confirmed field session becomes active", () => {
+    expect(runtimeSource).toContain("refreshRouteFieldSession")
+    expect(runtimeSource).toContain("startTracking")
+    expect(runtimeSource).toContain("useWorkdayStore")
+    expect(runtimeSource).toContain('syncState === "CONFIRMED"')
     expect(runtimeSource).toContain("stopTracking().catch")
-    expect(runtimeSource).not.toContain("startTracking")
-    expect(runtimeSource).not.toContain("useWorkdayStore")
-    expect(manifestSource).not.toContain("ACCESS_BACKGROUND_LOCATION")
+    expect(manifestSource).toContain("ACCESS_BACKGROUND_LOCATION")
     expect(manifestSource).not.toContain("RNBackgroundActionsTask")
+  })
+
+  it("keeps planned routes view-only until the day and then the route are explicitly started", () => {
+    expect(routeScreenSource).toContain("RouteExecutionGate")
+    expect(routeScreenSource).toContain("workdayActive")
+    expect(routeScreenSource).toContain('route?.status === "IN_PROGRESS"')
+    expect(routeScreenSource).toContain("submitRouteCommand")
+    expect(routeScreenSource).toContain('command: "START"')
   })
 
   it.each(["ru", "en", "az"] as const)("ships a clear %s Route Field access state", (locale) => {

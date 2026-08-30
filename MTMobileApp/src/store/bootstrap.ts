@@ -39,9 +39,10 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
           routeFieldAccess: data.routeFieldAccess,
           loading: false,
         })
-        // This APK intentionally does not reconcile or create HRM workdays.
-        // A pre-existing v1 outbox is retained for recovery, but only the
-        // server-confirmed Route Field sync path may drain it.
+        // This APK never opens HRM data or creates HRM requests. It may
+        // reconcile the server-owned workday only as its own minimal Route
+        // Field execution/GPS boundary; the existing v1 outbox is retained
+        // and can drain only through the server-confirmed Route Field path.
         return data.routeFieldAccess
       } else {
         set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable" })
