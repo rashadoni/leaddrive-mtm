@@ -1,4 +1,9 @@
-import { cachedRouteAsTodaySummary, localDateKey, selectTodayRoute } from "../../src/screens/today/today-state"
+import {
+  cachedRouteAsTodaySummary,
+  localDateKey,
+  selectTodayRoute,
+  todayRoutePrimaryAction,
+} from "../../src/screens/today/today-state"
 
 describe("today-state", () => {
   it("uses the in-progress route for the requested local day", () => {
@@ -18,6 +23,7 @@ describe("today-state", () => {
 
     expect(route).toMatchObject({
       id: "active",
+      version: null,
       totalPoints: 3,
       visitedPoints: 1,
       remainingPoints: 2,
@@ -48,5 +54,16 @@ describe("today-state", () => {
 
   it("formats the device-local date without a UTC day shift", () => {
     expect(localDateKey(new Date(2026, 7, 20, 1, 30))).toBe("2026-08-20")
+  })
+
+  it("offers route start only for a live planned route with a usable version", () => {
+    const route = selectTodayRoute([
+      { id: "planned", date: "2026-08-20", status: "PLANNED", version: 4, totalPoints: 1 },
+    ], "2026-08-20")
+    expect(route).not.toBeNull()
+    expect(todayRoutePrimaryAction(route!, "live")).toBe("start")
+    expect(todayRoutePrimaryAction(route!, "cached")).toBe("open")
+    expect(todayRoutePrimaryAction({ ...route!, version: null }, "live")).toBe("open")
+    expect(todayRoutePrimaryAction({ ...route!, totalPoints: 0 }, "live")).toBe("open")
   })
 })

@@ -35,6 +35,12 @@ export type MobileRouteCommandRequest =
       routeId: string
       payload: { expectedVersion: number }
     }
+  | {
+      operationId: string
+      command: "START"
+      routeId: string
+      payload: { expectedVersion: number }
+    }
 
 export type MobileRouteCommandInput =
   | {
@@ -51,6 +57,11 @@ export type MobileRouteCommandInput =
       routeId: string
       payload: { expectedVersion: number }
     }
+  | {
+      command: "START"
+      routeId: string
+      payload: { expectedVersion: number }
+    }
 
 export type MobileRouteCommandAppliedResponse = {
   success: true
@@ -60,6 +71,7 @@ export type MobileRouteCommandAppliedResponse = {
     status?: string
     publishedVersion?: number | null
     publishedAt?: string | null
+    startedAt?: string | null
   }
   idempotent?: boolean
 }
@@ -121,7 +133,7 @@ function isPayloadForCommand(command: unknown, payload: unknown): boolean {
       && Array.isArray(payload.points)
       && payload.points.every(isPoint)
   }
-  if (command === "PUBLISH") {
+  if (command === "PUBLISH" || command === "START") {
     return typeof payload.expectedVersion === "number" && Number.isFinite(payload.expectedVersion)
   }
   return false

@@ -19,10 +19,32 @@ export interface TodayRouteSummary {
   name?: string
   date: string
   status: string
+  version: number | null
   totalPoints: number
   visitedPoints: number
   remainingPoints: number
   nextPoint: TodayRoutePoint | null
+}
+
+export type TodayRoutePrimaryAction = "start" | "open"
+
+/**
+ * An explicit route start is safe only from a fresh authoritative snapshot.
+ * A cached route may be stale, so opening it is allowed but its optimistic
+ * version must never become a new execution command.
+ */
+export function todayRoutePrimaryAction(
+  route: Pick<TodayRouteSummary, "status" | "version" | "totalPoints">,
+  source: "live" | "cached" | "unknown",
+): TodayRoutePrimaryAction {
+  return source === "live"
+    && route.status === "PLANNED"
+    && route.totalPoints > 0
+    && typeof route.version === "number"
+    && Number.isInteger(route.version)
+    && route.version > 0
+    ? "start"
+    : "open"
 }
 
 function object(value: unknown): Record<string, unknown> | null {
@@ -122,6 +144,7 @@ export function selectTodayRoute(
     name: string(source.name),
     date,
     status: string(source.status) ?? "PLANNED",
+    version: finiteNumber(source.version) ?? null,
     totalPoints,
     visitedPoints,
     remainingPoints: Math.max(totalPoints - visitedPoints, 0),
