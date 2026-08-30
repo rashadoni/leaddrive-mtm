@@ -6,6 +6,10 @@ const selfPlannerSource = fs.readFileSync(
   path.resolve(__dirname, "../../src/screens/route/RouteSelfPlanningWorkspace.android.tsx"),
   "utf8",
 )
+const todaySource = fs.readFileSync(
+  path.resolve(__dirname, "../../src/screens/today/TodayScreen.tsx"),
+  "utf8",
+)
 const coreSource = fs.readFileSync(
   path.resolve(__dirname, "../../src/screens/planning/PlanningWorkspaceCore.android.tsx"),
   "utf8",
@@ -35,5 +39,14 @@ describe("Route Field durable command boundary", () => {
     expect(legacyManagerSource).toContain("api.createRouteDraft")
     expect(legacyManagerSource).toContain("api.updateRouteDraft")
     expect(legacyManagerSource).toContain("api.publishRoute")
+  })
+
+  it("starts a route through the durable command transport, never a workday or direct route write", () => {
+    expect(todaySource).toContain('command: "START"')
+    expect(todaySource).toContain("submitRouteCommand")
+    expect(todaySource).toContain("api.executeRouteCommand")
+    expect(todaySource).not.toContain("useWorkdayStore")
+    expect(todaySource).not.toContain("api.updateRoute")
+    expect(todaySource).not.toContain("api.createRoute")
   })
 })

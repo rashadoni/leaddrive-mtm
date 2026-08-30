@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react"
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,8 +26,10 @@ import {
   cachedRouteAsTodaySummary,
   localDateKey,
   selectTodayRoute,
+  todayRoutePrimaryAction,
   type TodayRouteSummary,
 } from "./today-state"
+import { submitRouteCommand } from "../../services/route-command-journal"
 
 type TodayNavigationParams = {
   Route: undefined
@@ -99,6 +102,7 @@ export default function TodayScreen() {
   const [routeSource, setRouteSource] = useState<DataSource>("unknown")
   const [cachedOpenTasks, setCachedOpenTasks] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [startingRoute, setStartingRoute] = useState(false)
   const todayKey = localDateKey()
 
   const refresh = useCallback(async () => {
@@ -180,6 +184,7 @@ export default function TodayScreen() {
 
   const nextCopy = useMemo(() => {
     if (nextKind === "route") {
+      const canStartRoute = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
       const nextName = route?.nextPoint?.customer?.name
       const nextAddress = route?.nextPoint?.customer?.address
       const remaining = route?.remainingPoints ?? 0
@@ -197,9 +202,12 @@ export default function TodayScreen() {
         supporting: nextName && remaining > 0
           ? t("todayV2.routeRemaining", { count: remaining })
           : null,
-        button: t("todayV2.openRoute"),
-        icon: "navigate",
-        destination: "Route" as Destination,
+        button: canStartRoute
+          ? (startingRoute ? t("todayV2.startingRoute") : t("todayV2.startRoute"))
+          : t("todayV2.openRoute"),
+        icon: canStartRoute ? "play" : "navigate",
+        destination: canStartRoute ? null : "Route" as Destination,
+        startRoute: canStartRoute,
       }
     }
     if (nextKind === "tasks") {
@@ -211,6 +219,7 @@ export default function TodayScreen() {
         button: t("todayV2.openTasks"),
         icon: "checkbox",
         destination: "Tasks" as Destination,
+        startRoute: false,
       }
     }
     if (nextKind === "empty") {
@@ -222,6 +231,7 @@ export default function TodayScreen() {
         button: t("todayV2.openCalendar"),
         icon: "checkmark-circle",
         destination: "Calendar" as Destination,
+        startRoute: false,
       }
     }
     if (nextKind === "unknown") {
@@ -233,6 +243,7 @@ export default function TodayScreen() {
         button: t("todayV2.refresh"),
         icon: "cloud-offline-outline",
         destination: null,
+        startRoute: false,
       }
     }
     return {
@@ -243,11 +254,45 @@ export default function TodayScreen() {
       button: null,
       icon: "time-outline",
       destination: null,
+      startRoute: false,
     }
-  }, [nextKind, route, t, taskRemaining])
+  }, [nextKind, route, routeSource, startingRoute, t, taskRemaining])
 
   const open = (destination: Destination) => navigation.navigate(destination)
+  const startRoute = async () => {
+    if (startingRoute || !route || todayRoutePrimaryAction(route, routeSource) !== "start") return
+    setStartingRoute(true)
+    try {
+      const response = await submitRouteCommand({
+        command: "START",
+        routeId: route.id,
+        payload: { expectedVersion: route.version! },
+      }, (request) => api.executeRouteCommand(request))
+      setRoute((current) => current?.id === response.data.id
+        ? {
+            ...current,
+            status: response.data.status ?? "IN_PROGRESS",
+            version: response.data.version,
+          }
+        : current)
+      navigation.navigate("Route")
+    } catch (error: unknown) {
+      const code = (error as { code?: unknown } | null)?.code
+      if (code === "MOBILE_ROUTE_COMMAND_QUEUED") {
+        Alert.alert(t("todayV2.startRouteQueuedTitle"), t("todayV2.startRouteQueuedBody"))
+      } else {
+        Alert.alert(t("common.error"), t("todayV2.startRouteFailed"))
+      }
+      await refresh()
+    } finally {
+      setStartingRoute(false)
+    }
+  }
   const nextAction = () => {
+    if (nextCopy.startRoute) {
+      startRoute().catch(() => {})
+      return
+    }
     if (nextCopy.destination) open(nextCopy.destination)
     else if (nextKind === "unknown") manualRefresh().catch(() => {})
   }
@@ -365,7 +410,7 @@ export default function TodayScreen() {
                     {nextCopy.button}
                   </Text>
                   <Icon
-                    name={nextKind === "unknown" ? "refresh" : "arrow-forward"}
+                    name={nextKind === "unknown" ? "refresh" : nextCopy.startRoute ? "play" : "arrow-forward"}
                     size={20}
                     color={nextDark ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />

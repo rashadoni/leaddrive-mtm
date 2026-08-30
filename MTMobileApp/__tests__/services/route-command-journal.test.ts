@@ -21,6 +21,12 @@ const createDraft = {
   },
 }
 
+const startRoute = {
+  command: "START" as const,
+  routeId: "route-1",
+  payload: { expectedVersion: 4 },
+}
+
 function appliedResponse(id = "route-1", version = 1) {
   return { success: true as const, data: { id, version, status: "DRAFT" } }
 }
@@ -81,6 +87,15 @@ describe("durable Route Field route-command journal", () => {
       return appliedResponse()
     }, { now: () => 6_000 })).resolves.toMatchObject({ sent: 1 })
     expect(requests).toEqual([original.operationId])
+    expect(await allRouteCommandJournalEntries()).toEqual([])
+  })
+
+  it("persists an explicit route start through the same receipt journal", async () => {
+    const item = await enqueueRouteCommand(startRoute)
+    await expect(flushRouteCommandJournal(async (request) => {
+      expect(request).toEqual({ ...startRoute, operationId: item.operationId })
+      return { success: true, data: { id: "route-1", status: "IN_PROGRESS", version: 5, startedAt: "2026-08-31T08:00:00.000Z" } }
+    })).resolves.toMatchObject({ sent: 1, deferred: 0, conflicted: 0 })
     expect(await allRouteCommandJournalEntries()).toEqual([])
   })
 
