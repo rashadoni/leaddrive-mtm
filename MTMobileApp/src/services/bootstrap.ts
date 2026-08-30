@@ -254,6 +254,22 @@ export function hasRouteFieldAccess(access: RouteFieldAccess): access is "enable
   return access === "enabled" || access === "legacy"
 }
 
+/**
+ * An `unavailable` access value alone is not proof of a tenant revocation:
+ * the bootstrap store deliberately uses it when an offline/network request
+ * fails closed.  Only a successfully parsed bootstrap payload may withdraw
+ * the locally retained, non-authoritative v2 shadow projection.
+ */
+export function isConfirmedRouteFieldWithdrawal(
+  bootstrap: BootstrapData | null | undefined,
+  access: RouteFieldAccess,
+): boolean {
+  return bootstrap !== null
+    && bootstrap !== undefined
+    && bootstrap.routeFieldAccess === access
+    && !hasRouteFieldAccess(access)
+}
+
 function routeTargetTypes(value: unknown): MobileRouteTargetType[] {
   if (!Array.isArray(value)) return DEFAULT_MOBILE_ROUTE_TARGET_TYPES.map((entry) => ({ ...entry, labels: { ...entry.labels } }))
   const seen = new Set<string>()

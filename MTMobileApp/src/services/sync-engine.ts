@@ -8,7 +8,7 @@ import { retryAfterMsFromError } from "./sync-retry"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId } from "../store/sync-status"
-import { hasRouteFieldAccess } from "./bootstrap"
+import { hasRouteFieldAccess, isConfirmedRouteFieldWithdrawal } from "./bootstrap"
 
 let activeSync: Promise<MobileSyncResult> | null = null
 
@@ -28,6 +28,48 @@ async function bestEffortAuxiliaryWrite(write: () => Promise<unknown>) {
   try {
     await write()
   } catch {}
+}
+
+export type RouteFieldV2WithdrawalReason =
+  | "TENANT_CAPABILITY_DISABLED"
+  | "ROUTE_FIELD_ADMISSION_UNAVAILABLE"
+  | "MOBILE_SYNC_V2_COHORT_DISABLED"
+
+/**
+ * Withdraw the non-authoritative routes-v2 shadow for one authenticated
+ * Route Field scope. This is deliberately narrower than any legacy sync
+ * cleanup: an admission rollback must never discard a v1 mutation outbox,
+ * v1 cache or media evidence that still needs server acknowledgement.
+ *
+ * A durable `disabled` routeV2Pull status clears a stale retry/backoff and
+ * prevents an old in-memory supervisor from polling again. A fresh manifest
+ * epoch is the only path that can re-arm that isolated lane.
+ */
+export async function withdrawRouteFieldV2ShadowState(input: {
+  tenantId: string
+  agentId: string
+  reason: RouteFieldV2WithdrawalReason
+}) {
+  const scopeKey = offlineScopeKey(input.tenantId, input.agentId)
+  if (!scopeKey) return
+
+  // The cache is the privacy-sensitive data. Try this before status metadata
+  // and never let a storage error turn it into a write to any v1 authority.
+  await bestEffortAuxiliaryWrite(() => clearRouteV2RoutesState(input.tenantId, input.agentId))
+
+  try {
+    await useSyncStatusStore.getState().hydrate(scopeKey)
+  } catch {
+    // Do not clear the global store here: it may hold another scope's v1
+    // presentation state. The next successful hydrate can still mark this
+    // isolated v2 lane disabled.
+    return
+  }
+  await bestEffortAuxiliaryWrite(() => useSyncStatusStore.getState().disablePipeline(
+    scopeKey,
+    "routeV2Pull",
+    input.reason,
+  ))
 }
 
 async function counts() {
@@ -115,11 +157,17 @@ async function performSync(): Promise<MobileSyncResult> {
   // Bootstrap admission is the outer safety fence. Do not inspect, retry or
   // clear any v1 durable queue before it grants Route Field access: a tenant
   // can be disabled while an old APK still has v1 operations on disk.
-  if (!hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)) {
-    // v2 is a non-authoritative shadow projection. Unlike the v1 queues it is
-    // safe and privacy-conservative to purge when the whole Field admission
-    // is withdrawn; the clear is best effort and cannot block recovery.
-    await bestEffortAuxiliaryWrite(() => clearRouteV2RoutesState(agent.organizationId, agent.id))
+  const admission = useBootstrapStore.getState()
+  if (!hasRouteFieldAccess(admission.routeFieldAccess)) {
+    if (isConfirmedRouteFieldWithdrawal(admission.data, admission.routeFieldAccess)) {
+      await withdrawRouteFieldV2ShadowState({
+        tenantId: agent.organizationId,
+        agentId: agent.id,
+        reason: admission.routeFieldAccess === "disabled"
+          ? "TENANT_CAPABILITY_DISABLED"
+          : "ROUTE_FIELD_ADMISSION_UNAVAILABLE",
+      })
+    }
     return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
   }
 
@@ -132,7 +180,7 @@ async function performSync(): Promise<MobileSyncResult> {
     useSyncStatusStore.getState().clear()
   }
   useSyncStatusStore.getState().begin(scopeKey)
-  const bootstrap = useBootstrapStore.getState().data
+  const bootstrap = admission.data
   const manifest = bootstrap?.manifest
   const routeV2Epoch = manifest?.protocol.preferred === 2 && manifest.syncV2.routes === true
     ? manifest.syncV2.routesEpoch
@@ -173,12 +221,11 @@ async function performSync(): Promise<MobileSyncResult> {
     // Bootstrap withdrawal is server-first rollback. The shadow projection is
     // non-authoritative, so it is safe and privacy-conservative to discard;
     // importantly this never touches the v1 cache, mutation outbox or media.
-    await bestEffortAuxiliaryWrite(() => clearRouteV2RoutesState(agent.organizationId, agent.id))
-    await bestEffortAuxiliaryWrite(() => useSyncStatusStore.getState().disablePipeline(
-      scopeKey,
-      "routeV2Pull",
-      "MOBILE_SYNC_V2_COHORT_DISABLED",
-    ))
+    await withdrawRouteFieldV2ShadowState({
+      tenantId: agent.organizationId,
+      agentId: agent.id,
+      reason: "MOBILE_SYNC_V2_COHORT_DISABLED",
+    })
   } else {
     try {
       const v2Armed = await useSyncStatusStore.getState().enablePipeline(scopeKey, "routeV2Pull", routeV2Epoch)

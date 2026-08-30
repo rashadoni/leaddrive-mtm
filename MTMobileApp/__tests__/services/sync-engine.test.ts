@@ -45,7 +45,11 @@ import { pullAndApplySync } from "../../src/services/sync-cache"
 import { clearRouteV2RoutesState, syncRouteV2Routes } from "../../src/services/sync-v2-routes"
 import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
-import { flushRouteFieldOutbox, runMobileSync } from "../../src/services/sync-engine"
+import {
+  flushRouteFieldOutbox,
+  runMobileSync,
+  withdrawRouteFieldV2ShadowState,
+} from "../../src/services/sync-engine"
 import { useSyncStatusStore } from "../../src/store/sync-status"
 
 const mockedAuth = useAuthStore.getState as jest.Mock
@@ -240,7 +244,10 @@ describe("mobile sync engine", () => {
   })
 
   it("does not touch any v1 pipeline until Route Field admission succeeds and purges only v2 shadow state", async () => {
-    mockedBootstrap.mockReturnValue({ routeFieldAccess: "disabled" })
+    mockedBootstrap.mockReturnValue({
+      routeFieldAccess: "disabled",
+      data: { routeFieldAccess: "disabled" },
+    })
 
     await expect(runMobileSync()).resolves.toEqual({
       success: false,
@@ -254,6 +261,63 @@ describe("mobile sync engine", () => {
     expect(mockedPull).not.toHaveBeenCalled()
     expect(mockedMediaFlush).not.toHaveBeenCalled()
     expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
+    expect(useSyncStatusStore.getState().pipelines.routeV2Pull).toMatchObject({
+      phase: "disabled",
+      lastError: "TENANT_CAPABILITY_DISABLED",
+    })
+  })
+
+  it("retains the v2 shadow after a failed bootstrap request that only fails closed locally", async () => {
+    mockedBootstrap.mockReturnValue({ routeFieldAccess: "unavailable", data: null })
+
+    await expect(runMobileSync()).resolves.toEqual({
+      success: false,
+      sent: 0,
+      deferred: 0,
+      conflicted: 0,
+      mediaSent: 0,
+    })
+
+    expect(mockedClearRouteV2).not.toHaveBeenCalled()
+    expect(mockedFlush).not.toHaveBeenCalled()
+    expect(mockedPull).not.toHaveBeenCalled()
+    expect(mockedMediaFlush).not.toHaveBeenCalled()
+  })
+
+  it("withdraws only the routes-v2 shadow status without resetting v1 pipeline state", async () => {
+    const scopeKey = "org-1:agent-1"
+    await useSyncStatusStore.getState().hydrate(scopeKey)
+    await useSyncStatusStore.getState().deferPipeline({
+      scopeKey,
+      pipeline: "routeOutbox",
+      error: "v1 push pending",
+      now: 1_000,
+      random: () => 0,
+    })
+    await useSyncStatusStore.getState().deferPipeline({
+      scopeKey,
+      pipeline: "media",
+      error: "media pending",
+      now: 1_000,
+      random: () => 0,
+    })
+
+    await withdrawRouteFieldV2ShadowState({
+      tenantId: "org-1",
+      agentId: "agent-1",
+      reason: "ROUTE_FIELD_ADMISSION_UNAVAILABLE",
+    })
+
+    expect(mockedClearRouteV2).toHaveBeenCalledWith("org-1", "agent-1")
+    expect(useSyncStatusStore.getState().pipelines).toMatchObject({
+      routeOutbox: { phase: "backoff", lastError: "v1 push pending" },
+      media: { phase: "backoff", lastError: "media pending" },
+      routeV2Pull: {
+        phase: "disabled",
+        retryAt: null,
+        lastError: "ROUTE_FIELD_ADMISSION_UNAVAILABLE",
+      },
+    })
   })
 
   it("leaves the v1 queue unchanged when a direct UI flush is not admitted", async () => {

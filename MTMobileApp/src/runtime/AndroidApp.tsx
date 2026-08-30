@@ -16,10 +16,10 @@ import { useHintsStore } from "../store/hints"
 import { useBootstrapStore } from "../store/bootstrap"
 import { stopTracking } from "../services/location.android"
 import { api } from "../services/api"
-import { markMobileOffline, runMobileSync } from "../services/sync-engine"
+import { markMobileOffline, runMobileSync, withdrawRouteFieldV2ShadowState } from "../services/sync-engine"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
-import { hasRouteFieldAccess } from "../services/bootstrap"
+import { hasRouteFieldAccess, isConfirmedRouteFieldWithdrawal } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
@@ -45,7 +45,22 @@ function AppContent() {
     const auth = useAuthStore.getState()
     if (!auth.isLoggedIn || !auth.agent) return
     const access = await useBootstrapStore.getState().fetchBootstrap()
-    if (!hasRouteFieldAccess(access)) return
+    if (!hasRouteFieldAccess(access)) {
+      // A network failure also resolves fail-closed as `unavailable`. Purge
+      // only after a parsed server bootstrap confirms the withdrawal; a
+      // transient offline state must not erase a recoverable shadow cache.
+      const bootstrap = useBootstrapStore.getState().data
+      if (isConfirmedRouteFieldWithdrawal(bootstrap, access)) {
+        await withdrawRouteFieldV2ShadowState({
+          tenantId: auth.agent.organizationId,
+          agentId: auth.agent.id,
+          reason: access === "disabled"
+            ? "TENANT_CAPABILITY_DISABLED"
+            : "ROUTE_FIELD_ADMISSION_UNAVAILABLE",
+        })
+      }
+      return
+    }
     await flushPendingOperations()
   }, [flushPendingOperations])
 

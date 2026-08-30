@@ -9,6 +9,7 @@ import {
   navGroupFromCapabilities,
   hasCapability,
   hasRouteFieldAccess,
+  isConfirmedRouteFieldWithdrawal,
   mobileRouteTargetLabel,
 } from "../../src/services/bootstrap"
 import { useBootstrapStore } from "../../src/store/bootstrap"
@@ -92,6 +93,23 @@ describe("Route Field capability manifest", () => {
       modules: { routeField: { enabled: true }, commercial: { enabled: false } },
     })
     expect(hasRouteFieldAccess(data.routeFieldAccess)).toBe(true)
+  })
+
+  it("distinguishes a confirmed admission withdrawal from an offline fail-closed state", () => {
+    const disabled = toBootstrap({
+      ...bootstrapBase,
+      manifest: routeManifest({
+        modules: {
+          routeField: { enabled: false, scopeVersion: null },
+          workforceHrm: { enabled: false, scopeVersion: null },
+          commercial: { enabled: false, scopeVersion: null },
+        },
+      }),
+    })
+
+    expect(isConfirmedRouteFieldWithdrawal(disabled, "disabled")).toBe(true)
+    expect(isConfirmedRouteFieldWithdrawal(null, "unavailable")).toBe(false)
+    expect(isConfirmedRouteFieldWithdrawal(disabled, "unavailable")).toBe(false)
   })
 
   it("admits a v2 route pilot only when the manifest also prefers protocol 2", () => {
