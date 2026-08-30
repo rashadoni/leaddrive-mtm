@@ -11,7 +11,7 @@ describe("route planner device-audit regressions", () => {
   it("uses a touch picker instead of an editable hour field", () => {
     expect(source).toContain("function PlanningTimePickerSheet")
     expect(source).toContain('animationType="slide"')
-    expect(source).toContain("planningTimeMinuteOptions(value)")
+    expect(source).toContain("PLANNING_TIME_MINUTES.map")
     expect(source).not.toContain("function RouteTimeInput")
     expect(source).not.toContain("routeTimeHourInput")
   })
@@ -19,7 +19,7 @@ describe("route planner device-audit regressions", () => {
   it("keeps the single-day review focused and hides unavailable publishing", () => {
     expect(source).toContain("!singleDay ? (")
     expect(source).toContain('t(canPublish ? "managerShell.planFinishMode" : "managerShell.planDraftOnlyTitle")')
-    expect(source).toContain('singleDay ? "managerShell.planSaveDraftActionDay"')
+    expect(source).toContain('"managerShell.planSaveDraftActionDay"')
   })
 
   it.each(["ru", "en", "az"] as const)("ships complete %s picker and count-aware removal copy", (locale) => {

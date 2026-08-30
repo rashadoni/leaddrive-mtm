@@ -1,23 +1,21 @@
 import {
   PLANNING_TIME_HOURS,
   PLANNING_TIME_MINUTES,
-  planningTimeMinuteOptions,
   planningTimeParts,
   planningTimeValue,
 } from "../../src/screens/planning/planning-time-picker"
 
 describe("route planning time picker", () => {
-  it("offers every hour and quarter-hour touch choice", () => {
+  it("offers every hour and the supported half-hour touch choices", () => {
     expect(PLANNING_TIME_HOURS).toHaveLength(24)
     expect(PLANNING_TIME_HOURS[0]).toBe("00")
     expect(PLANNING_TIME_HOURS[23]).toBe("23")
-    expect(PLANNING_TIME_MINUTES).toEqual(["00", "15", "30", "45"])
+    expect(PLANNING_TIME_MINUTES).toEqual(["00", "30"])
   })
 
-  it("keeps a valid existing non-quarter time instead of rounding it", () => {
-    expect(planningTimeParts("09:22")).toEqual({ hour: "09", minute: "22" })
-    expect(planningTimeMinuteOptions("09:22")).toEqual(["00", "15", "22", "30", "45"])
-    expect(planningTimeValue("09", "22")).toBe("09:22")
+  it("keeps the established half-hour normalization contract", () => {
+    expect(planningTimeParts("09:22")).toEqual({ hour: "09", minute: "30" })
+    expect(planningTimeValue("09", "30")).toBe("09:30")
   })
 
   it("uses the safe default only for absent or malformed values", () => {

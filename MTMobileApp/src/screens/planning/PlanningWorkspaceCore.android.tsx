@@ -59,7 +59,7 @@ import {
 } from "../../services/manager-planning"
 import {
   PLANNING_TIME_HOURS,
-  planningTimeMinuteOptions,
+  PLANNING_TIME_MINUTES,
   planningTimeParts,
   planningTimeValue,
   type PlanningTimeMinute,
@@ -1468,7 +1468,7 @@ function PlanningTimePickerSheet({ visible, value, targetName, disabled, onClose
 
           <Text style={styles.timePickerSectionLabel}>{t("managerShell.planTimePickerMinutes")}</Text>
           <View style={styles.timePickerMinuteList} accessibilityRole="radiogroup">
-            {planningTimeMinuteOptions(value).map((option) => {
+            {PLANNING_TIME_MINUTES.map((option) => {
               const selected = option === minute
               return (
                 <Pressable
