@@ -63,15 +63,18 @@ describe("durable media outbox", () => {
     const successful = await enqueueMediaUpload({ filePath: "/cache/ok.jpg" })
     const failed = await enqueueMediaUpload({ filePath: "/cache/retry.jpg" })
 
-    const result = await flushMediaOutbox(async (item) => {
-      if (item.id === failed.id) throw new Error("network unavailable")
-    })
+    const result = await flushMediaOutbox(
+      async (item) => {
+        if (item.id === failed.id) throw new Error("network unavailable")
+      },
+      { now: () => 1_000, random: () => 0 },
+    )
 
     expect(result).toMatchObject({ sent: 1, deferred: 1, error: "network unavailable" })
-    expect(result.retryAfterMs).toEqual(expect.any(Number))
-    const retryableAt = Date.now() + 2_000
-    expect((await pendingMediaUploads(retryableAt)).map((item) => item.id)).toEqual([failed.id])
-    expect((await pendingMediaUploads(retryableAt))[0].attempts).toBe(1)
+    expect(result.retryAfterMs).toBe(2_000)
+    expect(await pendingMediaUploads(2_999)).toEqual([])
+    expect((await pendingMediaUploads(3_000)).map((item) => item.id)).toEqual([failed.id])
+    expect((await pendingMediaUploads(3_000))[0].attempts).toBe(1)
     expect(successful.id).not.toBe(failed.id)
   })
 
