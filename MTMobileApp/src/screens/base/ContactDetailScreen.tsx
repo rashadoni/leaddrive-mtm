@@ -14,7 +14,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { api } from "../../services/api"
 import { commercialApi } from "../../services/commercial-api"
 import { toContactDetail, type BrandPotential, type ContactDetail, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
 import { readOfflineContactDetail } from "../../services/offline-reads"
@@ -76,7 +75,7 @@ export default function ContactDetailScreen() {
   const fetchDetail = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true)
     try {
-      const res = await api.getContact(id)
+      const res = await commercialApi.getContact(id)
       if (res.success && res.data?.contact) {
         setDetail(toContactDetail(res.data.contact, res.data))
         setOffline(false)

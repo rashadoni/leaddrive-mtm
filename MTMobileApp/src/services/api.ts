@@ -701,6 +701,11 @@ class ApiClient {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
   }
 
+  /** Mobile-only v2 detail projection; the legacy v1 response stays untouched. */
+  async getRouteContactDetail(id: string, signal?: AbortSignal) {
+    return this.request(`/mobile/route-field/contacts/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
+  }
+
   async getContacts(
     params?: { search?: string; page?: number; limit?: number; ownerAgentId?: string },
     signal?: AbortSignal,
@@ -712,10 +717,6 @@ class ApiClient {
     if (params?.ownerAgentId) query.set("ownerAgentId", params.ownerAgentId)
     const qs = query.toString()
     return this.request(`/contacts${qs ? `?${qs}` : ""}`, { signal })
-  }
-
-  async getContact(id: string, signal?: AbortSignal) {
-    return this.request(`/contacts/${id}`, { signal })
   }
 
   // --- Week / agenda ---

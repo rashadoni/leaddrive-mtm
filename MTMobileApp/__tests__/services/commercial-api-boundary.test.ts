@@ -21,6 +21,7 @@ const scoringModalSource = fs.readFileSync(
 describe("legacy commercial API boundary", () => {
   it("keeps commercial mutation literals out of the active Route Field core client", () => {
     const commercialOnlyEndpoints = [
+      "/contacts/${id}",
       "/contacts/${id}/change-requests",
       "/contacts/${id}/workplaces",
       "/doctor-scoring/formulas",
@@ -37,6 +38,7 @@ describe("legacy commercial API boundary", () => {
     }
 
     const movedMethods = [
+      "getContact",
       "updateContact",
       "submitContactChange",
       "upsertContactWorkplace",
@@ -59,6 +61,8 @@ describe("legacy commercial API boundary", () => {
     expect(commercialApiSource).toContain('import { api } from "./api"')
     expect(commercialApiSource).toContain("api.requestLegacy")
     expect(legacyContactSource).toContain('import { commercialApi } from "../../services/commercial-api"')
+    expect(legacyContactSource).toContain("commercialApi.getContact")
+    expect(legacyContactSource).not.toContain("api.getContact")
     expect(legacyContactSource).not.toContain("api.updateContact")
     expect(legacyContactSource).not.toContain("api.createBrandPotential")
     expect(scoringModalSource).toContain("commercialApi.getDoctorScoringFormulas")

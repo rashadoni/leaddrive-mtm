@@ -1,7 +1,7 @@
 import { api } from "./api"
 
 /**
- * Legacy commercial/contact mutation facade.
+ * Legacy commercial and full-contact facade.
  *
  * These preserved v1 contracts remain available to the inactive commercial
  * shell, but are excluded from the active Route Field Android import graph.
@@ -9,6 +9,10 @@ import { api } from "./api"
  * authoritative; this move changes neither URLs nor payloads.
  */
 export const commercialApi = {
+  getContact(id: string, signal?: AbortSignal) {
+    return api.requestLegacy(`/contacts/${id}`, { signal })
+  },
+
   updateContact(id: string, fields: Record<string, unknown>) {
     return api.requestLegacy(`/contacts/${id}`, { method: "PUT", body: JSON.stringify(fields) })
   },

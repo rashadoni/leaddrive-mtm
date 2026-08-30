@@ -17,8 +17,6 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { toRouteContactDetail, type RouteContactDetail } from "../../services/route-contact-detail"
-import { readOfflineContactDetail } from "../../services/offline-reads"
-import { useAuthStore } from "../../store/auth"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -35,19 +33,16 @@ const COPY = {
     error: "Не удалось открыть контакт",
     errorBody: "Проверьте соединение и повторите попытку.",
     retry: "Повторить",
-    offline: "Нет связи — показаны сохранённые данные.",
     profile: "Основные данные",
     workplace: "Места работы",
     contacts: "Связаться",
     noWorkplace: "Места работы не указаны.",
     noContacts: "Контактные данные не указаны.",
     phone: "Позвонить",
-    email: "Написать",
     specialty: "Специальность",
     type: "Тип",
     category: "Категория",
     status: "Статус",
-    address: "Адрес",
     jobTitle: "Должность",
     primary: "Основное",
     unknown: "Не указано",
@@ -61,19 +56,16 @@ const COPY = {
     error: "Kontaktı açmaq alınmadı",
     errorBody: "Bağlantını yoxlayın və yenidən cəhd edin.",
     retry: "Yenidən cəhd et",
-    offline: "Bağlantı yoxdur — saxlanmış məlumatlar göstərilir.",
     profile: "Əsas məlumatlar",
     workplace: "İş yerləri",
     contacts: "Əlaqə saxla",
     noWorkplace: "İş yeri göstərilməyib.",
     noContacts: "Əlaqə məlumatı göstərilməyib.",
     phone: "Zəng et",
-    email: "Yaz",
     specialty: "İxtisas",
     type: "Növ",
     category: "Kateqoriya",
     status: "Status",
-    address: "Ünvan",
     jobTitle: "Vəzifə",
     primary: "Əsas",
     unknown: "Göstərilməyib",
@@ -87,19 +79,16 @@ const COPY = {
     error: "We couldn't open this contact",
     errorBody: "Check your connection and try again.",
     retry: "Try again",
-    offline: "You're offline — saved information is shown.",
     profile: "Essentials",
     workplace: "Workplaces",
     contacts: "Contact",
     noWorkplace: "No workplace is provided.",
     noContacts: "No contact details are provided.",
     phone: "Call",
-    email: "Email",
     specialty: "Specialty",
     type: "Type",
     category: "Category",
     status: "Status",
-    address: "Address",
     jobTitle: "Job title",
     primary: "Primary",
     unknown: "Not provided",
@@ -114,14 +103,8 @@ function languageFor(value: string): Language {
 }
 
 function firstPhone(detail: RouteContactDetail): string | undefined {
-  return detail.mobilePhone || detail.workPhone || detail.phone || detail.messengerPhone || detail.homePhone
-}
-
-function contactAddress(detail: RouteContactDetail): string | undefined {
-  return [detail.addressStreet, detail.addressLocality, detail.addressDistrict, detail.addressRegion]
-    .filter((value): value is string => Boolean(value?.trim()))
-    .filter((value, index, values) => values.indexOf(value) === index)
-    .join(", ") || undefined
+  return detail.workplaces.find((workplace) => workplace.isPrimary && workplace.phone)?.phone
+    || detail.workplaces.find((workplace) => workplace.phone)?.phone
 }
 
 function workplaceAddress(detail: RouteContactDetail["workplaces"][number]): string | undefined {
@@ -152,43 +135,35 @@ export default function RouteContactDetailScreen() {
   const { width } = useWindowDimensions()
   const tablet = isExpandedTabletWidth(width)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
-  const agent = useAuthStore((state) => state.agent)
   const { id, name } = route.params
   const [detail, setDetail] = useState<RouteContactDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [offline, setOffline] = useState(false)
   const [failed, setFailed] = useState(false)
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true)
     try {
-      const response = await api.getContact(id)
+      const response = await api.getRouteContactDetail(id)
       if (!response?.success || !response.data?.contact) throw new Error("CONTACT_NOT_FOUND")
       setDetail(toRouteContactDetail(response.data.contact))
-      setOffline(false)
       setFailed(false)
     } catch (error: any) {
       if (error?.message === "SESSION_EXPIRED") return
-      const cached = await readOfflineContactDetail(agent?.organizationId, agent?.id, id).catch(() => null)
-      if (cached) {
-        setDetail(toRouteContactDetail(cached.record))
-        setOffline(true)
-        setFailed(false)
-      } else {
-        setOffline(false)
-        setFailed(true)
-      }
+      // Deliberately do not read the legacy v1 offline detail here. It stores
+      // a broad payload (PII, assignment and commercial state) that the Route
+      // Field v2 contract is not allowed to re-expose. A narrow offline cache
+      // will arrive as its own stream/cursor slice.
+      setFailed(true)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [agent?.id, agent?.organizationId, id])
+  }, [id])
 
   useEffect(() => { void load() }, [load])
 
   const phone = detail ? firstPhone(detail) : undefined
-  const address = detail ? contactAddress(detail) : undefined
   const details = useMemo<Array<[string, string, string]>>(() => {
     if (!detail) return []
     const rows: DetailRow[] = [
@@ -196,10 +171,9 @@ export default function RouteContactDetailScreen() {
       { icon: "person-outline", label: copy.type, value: detail.type },
       { icon: "pricetag-outline", label: copy.category, value: detail.category },
       { icon: "shield-checkmark-outline", label: copy.status, value: detail.status },
-      { icon: "location-outline", label: copy.address, value: address },
     ]
     return rows.flatMap(({ icon, label, value }) => value?.trim() ? [[icon, label, value] as [string, string, string]] : [])
-  }, [address, copy, detail])
+  }, [copy, detail])
 
   return (
     <View style={styles.container}>
@@ -239,7 +213,6 @@ export default function RouteContactDetailScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={fieldTheme.color.primary} />}
           showsVerticalScrollIndicator={false}
         >
-          {offline ? <View style={styles.offlineNotice}><Icon name="cloud-offline-outline" size={18} color={fieldTheme.color.amber} /><Text style={styles.offlineText}>{copy.offline}</Text></View> : null}
           <View style={styles.boundaryNotice}><Icon name="navigate-circle-outline" size={20} color={fieldTheme.color.primaryStrong} /><Text style={styles.boundaryText}>{copy.routeOnly}</Text></View>
 
           <Section title={copy.profile}>
@@ -248,8 +221,7 @@ export default function RouteContactDetailScreen() {
 
           <Section title={copy.contacts}>
             {phone ? <ActionRow icon="call-outline" label={copy.phone} value={phone} touchTarget={touchTarget} onPress={() => void Linking.openURL(`tel:${phone}`).catch(() => {})} /> : null}
-            {detail.email ? <ActionRow icon="mail-outline" label={copy.email} value={detail.email} touchTarget={touchTarget} onPress={() => void Linking.openURL(`mailto:${detail.email}`).catch(() => {})} /> : null}
-            {!phone && !detail.email ? <Empty label={copy.noContacts} /> : null}
+            {!phone ? <Empty label={copy.noContacts} /> : null}
           </Section>
 
           <Section title={copy.workplace}>
@@ -307,8 +279,6 @@ const styles = StyleSheet.create({
   retryText: { color: fieldTheme.color.onColor, fontWeight: "900" },
   scroll: { padding: fieldTheme.space.lg, gap: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl },
   scrollTablet: { alignSelf: "center", width: "100%", maxWidth: 820 },
-  offlineNotice: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft },
-  offlineText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "700" },
   boundaryNotice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   boundaryText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   section: { gap: fieldTheme.space.sm },
