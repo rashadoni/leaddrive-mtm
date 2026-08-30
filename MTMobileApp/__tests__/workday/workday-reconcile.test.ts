@@ -55,6 +55,16 @@ describe("workday reconcileFromServer", () => {
     expect(await AsyncStorage.getItem("@mtm_active_workday_v1")).toContain("srv-1")
   })
 
+  it("keeps a Workforce-paused shift visible but never marks it executable", async () => {
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-paused", status: "PAUSED", startedAt: "2026-07-19T08:00:00.000Z",
+    })
+    expect(useWorkdayStore.getState().activeWorkday).toEqual({
+      key: "t:a", workdayId: "srv-paused", startedAt: "2026-07-19T08:00:00.000Z",
+      syncState: "CONFIRMED", paused: true,
+    })
+  })
+
   it("clears local when the server shows the SAME shift completed", async () => {
     useWorkdayStore.setState({ activeWorkday: {
       key: "t:a", workdayId: "srv-1", startedAt: "2026-07-19T08:00:00.000Z", syncState: "CONFIRMED",

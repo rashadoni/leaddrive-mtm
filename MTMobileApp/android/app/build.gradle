@@ -94,8 +94,8 @@ android {
         // Route Field is an in-place update of the shipping MTM APK.  Keep
         // its application id and advance versionCode, so Android preserves
         // the v1 outbox instead of treating the rebuild as a fresh install.
-        versionCode 39
-        versionName "3.0.1"
+        versionCode 40
+        versionName "3.0.2"
     }
     signingConfigs {
         debug {

@@ -20,6 +20,8 @@ import { api } from "../../services/api"
 import { readOfflineRoute, readOfflineTasks } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useKpiStore } from "../../store/kpi"
+import { useWorkdayStore, workdayKey } from "../../store/workday"
+import { refreshRouteFieldSession } from "../../services/field-session"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
@@ -96,6 +98,10 @@ export default function TodayScreen() {
   const tabBarPadding = useTabBarPadding()
   const agent = useAuthStore((state) => state.agent)
   const { stats, loading: kpiLoading, error: kpiError, fetchKpi } = useKpiStore()
+  const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const workdayHydrated = useWorkdayStore((state) => state.hydrated)
+  const startWorkday = useWorkdayStore((state) => state.start)
+  const endWorkday = useWorkdayStore((state) => state.end)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
   const [routeLoading, setRouteLoading] = useState(true)
   const [routeError, setRouteError] = useState(false)
@@ -103,6 +109,15 @@ export default function TodayScreen() {
   const [cachedOpenTasks, setCachedOpenTasks] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [startingRoute, setStartingRoute] = useState(false)
+  const [workdayBusy, setWorkdayBusy] = useState(false)
+  const [workdayError, setWorkdayError] = useState(false)
+  const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
+  const currentWorkday = activeWorkday?.key === currentWorkdayKey ? activeWorkday : null
+  const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
+  const workdayActive = workdayHydrated && currentWorkday?.syncState === "CONFIRMED" && !workdayPaused
+  const workdayOpen = workdayActive || workdayPaused
+  const workdayStarting = currentWorkday?.syncState === "START_PENDING"
+  const workdayEnding = currentWorkday?.syncState === "FINISH_PENDING"
   const todayKey = localDateKey()
 
   const refresh = useCallback(async () => {
@@ -168,6 +183,41 @@ export default function TodayScreen() {
     }
   }, [refresh, refreshing])
 
+  const syncWorkday = useCallback(async () => {
+    if (workdayBusy || !workdayHydrated) return
+    setWorkdayBusy(true)
+    setWorkdayError(false)
+    try {
+      if (workdayOpen) {
+        await endWorkday(currentWorkdayKey)
+      } else {
+        await startWorkday(currentWorkdayKey)
+      }
+      await refreshRouteFieldSession()
+      await refresh()
+    } catch {
+      setWorkdayError(true)
+    } finally {
+      setWorkdayBusy(false)
+    }
+  }, [currentWorkdayKey, endWorkday, refresh, startWorkday, workdayBusy, workdayHydrated, workdayOpen])
+
+  const requestWorkdayAction = useCallback(() => {
+    if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding) return
+    if (!workdayOpen) {
+      syncWorkday().catch(() => {})
+      return
+    }
+    Alert.alert(
+      t("todayV2.endDayConfirmTitle"),
+      t("todayV2.endDayConfirmBody"),
+      [
+        { text: t("todayV2.endDayConfirmCancel"), style: "cancel" },
+        { text: t("todayV2.endDayConfirmAction"), style: "destructive", onPress: () => { syncWorkday().catch(() => {}) } },
+      ],
+    )
+  }, [syncWorkday, t, workdayBusy, workdayEnding, workdayHydrated, workdayOpen, workdayStarting])
+
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
     : cachedOpenTasks
@@ -184,11 +234,15 @@ export default function TodayScreen() {
 
   const nextCopy = useMemo(() => {
     if (nextKind === "route") {
-      const canStartRoute = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
+      const routeCanStart = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
+      const canStartRoute = workdayActive && routeCanStart
+      const routeNeedsWorkday = routeCanStart && !workdayActive
       const nextName = route?.nextPoint?.customer?.name
       const nextAddress = route?.nextPoint?.customer?.address
       const remaining = route?.remainingPoints ?? 0
-      const body = nextAddress
+      const body = routeNeedsWorkday
+        ? t("todayV2.dayStartHint")
+        : nextAddress
         ? nextAddress
         : route?.totalPoints === 0
           ? t("todayV2.routeNoStopsBody")
@@ -202,12 +256,15 @@ export default function TodayScreen() {
         supporting: nextName && remaining > 0
           ? t("todayV2.routeRemaining", { count: remaining })
           : null,
-        button: canStartRoute
+        button: routeNeedsWorkday
+          ? (workdayStarting ? t("todayV2.dayStarting") : t("todayV2.startDay"))
+          : canStartRoute
           ? (startingRoute ? t("todayV2.startingRoute") : t("todayV2.startRoute"))
           : t("todayV2.openRoute"),
-        icon: canStartRoute ? "play" : "navigate",
-        destination: canStartRoute ? null : "Route" as Destination,
+        icon: canStartRoute ? "play" : routeNeedsWorkday ? "play-circle" : "navigate",
+        destination: canStartRoute || routeNeedsWorkday ? null : "Route" as Destination,
         startRoute: canStartRoute,
+        startWorkday: routeNeedsWorkday,
       }
     }
     if (nextKind === "tasks") {
@@ -220,6 +277,7 @@ export default function TodayScreen() {
         icon: "checkbox",
         destination: "Tasks" as Destination,
         startRoute: false,
+        startWorkday: false,
       }
     }
     if (nextKind === "empty") {
@@ -232,6 +290,7 @@ export default function TodayScreen() {
         icon: "checkmark-circle",
         destination: "Calendar" as Destination,
         startRoute: false,
+        startWorkday: false,
       }
     }
     if (nextKind === "unknown") {
@@ -244,6 +303,7 @@ export default function TodayScreen() {
         icon: "cloud-offline-outline",
         destination: null,
         startRoute: false,
+        startWorkday: false,
       }
     }
     return {
@@ -255,12 +315,13 @@ export default function TodayScreen() {
       icon: "time-outline",
       destination: null,
       startRoute: false,
+      startWorkday: false,
     }
-  }, [nextKind, route, routeSource, startingRoute, t, taskRemaining])
+  }, [nextKind, route, routeSource, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
 
   const open = (destination: Destination) => navigation.navigate(destination)
   const startRoute = async () => {
-    if (startingRoute || !route || todayRoutePrimaryAction(route, routeSource) !== "start") return
+    if (startingRoute || !workdayActive || !route || todayRoutePrimaryAction(route, routeSource) !== "start") return
     setStartingRoute(true)
     try {
       const response = await submitRouteCommand({
@@ -280,6 +341,8 @@ export default function TodayScreen() {
       const code = (error as { code?: unknown } | null)?.code
       if (code === "MOBILE_ROUTE_COMMAND_QUEUED") {
         Alert.alert(t("todayV2.startRouteQueuedTitle"), t("todayV2.startRouteQueuedBody"))
+      } else if (code === "MTM_ROUTE_WORKDAY_REQUIRED") {
+        Alert.alert(t("todayV2.dayNotStarted"), t("todayV2.dayStartHint"))
       } else {
         Alert.alert(t("common.error"), t("todayV2.startRouteFailed"))
       }
@@ -293,6 +356,10 @@ export default function TodayScreen() {
       startRoute().catch(() => {})
       return
     }
+    if (nextCopy.startWorkday) {
+      requestWorkdayAction()
+      return
+    }
     if (nextCopy.destination) open(nextCopy.destination)
     else if (nextKind === "unknown") manualRefresh().catch(() => {})
   }
@@ -304,6 +371,12 @@ export default function TodayScreen() {
   })
   const dataIsPartial = routeSource === "cached" || Boolean(kpiError) || stats?.authoritative === false
   const nextDark = nextKind === "route" || nextKind === "tasks"
+  const startedAt = workdayActive && currentWorkday?.startedAt
+    ? new Date(currentWorkday.startedAt).toLocaleTimeString(i18n.language, {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
 
   return (
     <View style={styles.screen}>
@@ -352,6 +425,65 @@ export default function TodayScreen() {
 
         <View style={[styles.content, twoPane && styles.contentTablet]}>
           <View style={[styles.primaryColumn, twoPane && styles.primaryColumnTablet]}>
+            <View style={[styles.workdayPanel, !twoPane && styles.workdayPanelSingle]}>
+              <View style={styles.workdayCopy}>
+                <View style={styles.workdayTitleRow}>
+                  <View style={[styles.statusDot, workdayActive && styles.statusDotActive]} />
+                  <Text style={styles.workdayTitle}>
+                    {t(!workdayHydrated
+                      ? "todayV2.dayChecking"
+                      : workdayStarting
+                        ? "todayV2.dayStarting"
+                        : workdayEnding
+                          ? "todayV2.dayEnding"
+                          : workdayPaused
+                            ? "todayV2.dayPaused"
+                          : workdayActive
+                            ? "todayV2.dayActive"
+                            : "todayV2.dayNotStarted")}
+                  </Text>
+                </View>
+                <Text style={styles.workdayBody}>
+                  {!workdayHydrated
+                    ? t("todayV2.dayCheckingBody")
+                    : workdayStarting
+                      ? t("todayV2.dayStartingBody")
+                        : workdayEnding
+                          ? t("todayV2.dayEndingBody")
+                          : workdayPaused
+                            ? t("todayV2.dayPausedBody")
+                          : workdayActive && startedAt
+                          ? t("todayV2.dayStartedAt", { time: startedAt })
+                          : t("todayV2.dayStartHint")}
+                </Text>
+                {workdayError ? <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text> : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding }}
+                disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding}
+                onPress={requestWorkdayAction}
+                style={({ pressed }) => [
+                  styles.workdayButton,
+                  workdayOpen && styles.workdayButtonActive,
+                  pressed && styles.pressed,
+                  (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding) && styles.disabled,
+                ]}
+              >
+                {workdayBusy || !workdayHydrated ? (
+                  <ActivityIndicator size="small" color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
+                ) : (
+                  <Icon
+                    name={workdayOpen ? "stop-circle-outline" : "play-circle"}
+                    size={22}
+                    color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
+                  />
+                )}
+                <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]}>
+                  {t(workdayOpen ? "todayV2.endDay" : workdayEnding ? "todayV2.endDayPendingButton" : "todayV2.startDay")}
+                </Text>
+              </Pressable>
+            </View>
             <View
               accessibilityLiveRegion="polite"
               style={[
@@ -410,7 +542,7 @@ export default function TodayScreen() {
                     {nextCopy.button}
                   </Text>
                   <Icon
-                    name={nextKind === "unknown" ? "refresh" : nextCopy.startRoute ? "play" : "arrow-forward"}
+                    name={nextKind === "unknown" ? "refresh" : nextCopy.startRoute || nextCopy.startWorkday ? "play" : "arrow-forward"}
                     size={20}
                     color={nextDark ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />
@@ -635,6 +767,81 @@ const styles = StyleSheet.create({
   primaryColumnTablet: {
     flex: 1.18,
     minWidth: 0,
+  },
+  workdayPanel: {
+    minHeight: 126,
+    padding: fieldTheme.space.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.lg,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  workdayPanelSingle: {
+    flexDirection: "column",
+    alignItems: "stretch",
+  },
+  workdayCopy: {
+    flex: 1,
+    gap: fieldTheme.space.xs,
+  },
+  workdayTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: fieldTheme.color.amber,
+  },
+  statusDotActive: {
+    backgroundColor: fieldTheme.color.success,
+  },
+  workdayTitle: {
+    color: fieldTheme.color.ink,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "900",
+  },
+  workdayBody: {
+    color: fieldTheme.color.inkMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+  },
+  inlineError: {
+    color: fieldTheme.color.danger,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
+  workdayButton: {
+    minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet,
+    paddingHorizontal: fieldTheme.space.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    borderRadius: fieldTheme.radius.pill,
+    backgroundColor: fieldTheme.color.primaryStrong,
+  },
+  workdayButtonActive: {
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
+    backgroundColor: fieldTheme.color.primarySoft,
+  },
+  workdayButtonText: {
+    color: fieldTheme.color.onColor,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  workdayButtonTextActive: {
+    color: fieldTheme.color.primaryStrong,
   },
   secondaryColumn: {
     gap: fieldTheme.space.lg,

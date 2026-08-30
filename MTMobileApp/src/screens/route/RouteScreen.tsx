@@ -34,6 +34,9 @@ import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useHintsStore } from "../../store/hints"
+import { useWorkdayStore, workdayKey } from "../../store/workday"
+import { refreshRouteFieldSession } from "../../services/field-session"
+import { submitRouteCommand } from "../../services/route-command-journal"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
@@ -62,6 +65,7 @@ interface Route {
   name?: string
   date: string
   status: string
+  version?: number | null
   totalPoints: number
   visitedPoints: number
   points: RoutePoint[]
@@ -127,6 +131,21 @@ const ROUTE_COPY = {
     step4: "Визит",
     step5: "Готово",
     currentStep: "Шаг {{step}} из 5: {{label}}",
+    workdayRequiredTitle: "Сначала начните рабочий день",
+    workdayRequiredBody: "Маршрут остаётся в плане, пока начало рабочего дня не подтверждено сервером. После этого можно будет запустить маршрут.",
+    startWorkday: "Начать рабочий день",
+    workdayStarting: "Начинаем рабочий день…",
+    workdaySyncing: "Синхронизируем рабочий день…",
+    workdayStartFailed: "Не удалось начать рабочий день. Проверьте подключение и повторите.",
+    workdayPausedTitle: "Рабочий день приостановлен",
+    workdayPausedBody: "Маршрут и рабочий GPS заблокированы. Возобновите рабочий день в HRM, прежде чем начинать маршрут.",
+    routeStartRequiredTitle: "Маршрут ждёт запуска",
+    routeStartRequiredBody: "Рабочий день уже начат. Нажмите «Начать маршрут», прежде чем строить путь или начинать визит.",
+    startRoute: "Начать маршрут",
+    routeStarting: "Запускаем маршрут…",
+    routeStartQueuedTitle: "Начало маршрута сохранено",
+    routeStartQueuedBody: "Нет связи. Запрос на запуск будет отправлен автоматически, когда интернет вернётся.",
+    routeStartFailed: "Не удалось начать маршрут. Обновите план и повторите.",
   },
   az: {
     title: "Bugünkü marşrut",
@@ -185,6 +204,21 @@ const ROUTE_COPY = {
     step4: "Ziyarət",
     step5: "Hazır",
     currentStep: "5 addımdan {{step}}: {{label}}",
+    workdayRequiredTitle: "Əvvəl iş gününü başladın",
+    workdayRequiredBody: "İş gününün başlanması server tərəfindən təsdiqlənənədək marşrut plan olaraq qalır. Bundan sonra marşrutu başlada bilərsiniz.",
+    startWorkday: "İş gününə başla",
+    workdayStarting: "İş günü başladılır…",
+    workdaySyncing: "İş günü sinxronlaşdırılır…",
+    workdayStartFailed: "İş gününü başlatmaq alınmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
+    workdayPausedTitle: "İş günü dayandırılıb",
+    workdayPausedBody: "Marşrut və iş GPS-i bloklanıb. Marşruta başlamazdan əvvəl HRM-də iş gününü davam etdirin.",
+    routeStartRequiredTitle: "Marşrutun başlanması gözlənilir",
+    routeStartRequiredBody: "İş günü artıq başlayıb. Yolu açmazdan və ya ziyarətə başlamazdan əvvəl «Marşruta başla» düyməsinə toxunun.",
+    startRoute: "Marşruta başla",
+    routeStarting: "Marşrut başladılır…",
+    routeStartQueuedTitle: "Marşrutun başlanması yadda saxlanıldı",
+    routeStartQueuedBody: "Bağlantı yoxdur. Başlama sorğusu internet qayıdanda avtomatik göndəriləcək.",
+    routeStartFailed: "Marşrutu başlatmaq alınmadı. Planı yeniləyib yenidən cəhd edin.",
   },
   en: {
     title: "Today's route",
@@ -243,6 +277,21 @@ const ROUTE_COPY = {
     step4: "Visit",
     step5: "Done",
     currentStep: "Step {{step}} of 5: {{label}}",
+    workdayRequiredTitle: "Start the workday first",
+    workdayRequiredBody: "The route remains a plan until the server confirms your workday start. Then you can start the route.",
+    startWorkday: "Start workday",
+    workdayStarting: "Starting workday…",
+    workdaySyncing: "Syncing workday…",
+    workdayStartFailed: "We could not start the workday. Check your connection and try again.",
+    workdayPausedTitle: "Workday is paused",
+    workdayPausedBody: "Route work and GPS are blocked. Resume the workday in HRM before starting the route.",
+    routeStartRequiredTitle: "Route is waiting to start",
+    routeStartRequiredBody: "The workday has started. Tap Start route before getting directions or beginning a visit.",
+    startRoute: "Start route",
+    routeStarting: "Starting route…",
+    routeStartQueuedTitle: "Route start saved",
+    routeStartQueuedBody: "There is no connection. The start request will be sent automatically when it returns.",
+    routeStartFailed: "We could not start the route. Refresh the plan and try again.",
   },
 } as const
 
@@ -341,6 +390,53 @@ function ActionButton({
         {label}
       </Text>
     </Pressable>
+  )
+}
+
+function RouteExecutionGate({
+  mode,
+  busy,
+  copy,
+  onPress,
+  disabled = false,
+}: {
+  mode: "workday" | "route" | "paused"
+  busy: boolean
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+  onPress: () => void
+  disabled?: boolean
+}) {
+  const workday = mode === "workday"
+  const paused = mode === "paused"
+  const title = paused
+    ? copy.workdayPausedTitle
+    : workday
+      ? copy.workdayRequiredTitle
+      : copy.routeStartRequiredTitle
+  const body = paused
+    ? copy.workdayPausedBody
+    : workday
+      ? copy.workdayRequiredBody
+      : copy.routeStartRequiredBody
+  return (
+    <View style={styles.actionPanel} accessibilityLiveRegion="polite">
+      <View style={styles.actionEyebrowRow}>
+        <Icon name={workday || paused ? "briefcase-outline" : "play-circle-outline"} size={19} color={fieldTheme.color.amber} />
+        <Text style={styles.actionEyebrow}>{title}</Text>
+      </View>
+      <Text style={styles.actionTitle}>{title}</Text>
+      <Text style={styles.actionAddress}>{body}</Text>
+      {!paused ? (
+        <ActionButton
+          label={busy
+            ? (workday ? copy.workdaySyncing : copy.routeStarting)
+            : (workday ? copy.startWorkday : copy.startRoute)}
+          icon={busy ? "hourglass-outline" : "play-circle"}
+          onPress={onPress}
+          disabled={busy || disabled}
+        />
+      ) : null}
+    </View>
   )
 }
 
@@ -739,6 +835,14 @@ export default function RouteScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const agent = useAuthStore((state) => state.agent)
+  const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const workdayHydrated = useWorkdayStore((state) => state.hydrated)
+  const startWorkday = useWorkdayStore((state) => state.start)
+  const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
+  const currentWorkday = activeWorkday?.key === currentWorkdayKey ? activeWorkday : null
+  const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
+  const workdayTransitionPending = currentWorkday?.syncState === "START_PENDING" || currentWorkday?.syncState === "FINISH_PENDING"
+  const workdayActive = workdayHydrated && currentWorkday?.syncState === "CONFIRMED" && !workdayPaused
   const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   // This shortcut is for field agents only. Managers keep their existing
   // team-planning workspace, so they are never sent into a locked "my route"
@@ -755,6 +859,8 @@ export default function RouteScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [mutating, setMutating] = useState(false)
+  const [startingWorkday, setStartingWorkday] = useState(false)
+  const [startingRoute, setStartingRoute] = useState(false)
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
   const [phonePanelVisible, setPhonePanelVisible] = useState(false)
   const [navigationStartedFor, setNavigationStartedFor] = useState<string | null>(null)
@@ -976,6 +1082,55 @@ export default function RouteScreen() {
     })
   }
 
+  const handleStartWorkday = async () => {
+    if (startingWorkday || !workdayHydrated || workdayActive || workdayPaused || workdayTransitionPending) return
+    setStartingWorkday(true)
+    try {
+      await startWorkday(currentWorkdayKey)
+      await refreshRouteFieldSession()
+      await fetchRoute()
+    } catch {
+      Alert.alert(t("common.error"), copy.workdayStartFailed)
+    } finally {
+      setStartingWorkday(false)
+    }
+  }
+
+  const handleStartRoute = async () => {
+    if (
+      startingRoute ||
+      !workdayActive ||
+      !route ||
+      route.status !== "PLANNED" ||
+      routeOrigin !== "live" ||
+      typeof route.version !== "number" ||
+      !Number.isInteger(route.version) ||
+      route.version < 1
+    ) return
+
+    setStartingRoute(true)
+    try {
+      await submitRouteCommand({
+        command: "START",
+        routeId: route.id,
+        payload: { expectedVersion: route.version },
+      }, (request) => api.executeRouteCommand(request))
+      await fetchRoute()
+    } catch (error: unknown) {
+      const code = (error as { code?: unknown } | null)?.code
+      if (code === "MOBILE_ROUTE_COMMAND_QUEUED") {
+        Alert.alert(copy.routeStartQueuedTitle, copy.routeStartQueuedBody)
+      } else if (code === "MTM_ROUTE_WORKDAY_REQUIRED") {
+        Alert.alert(copy.workdayRequiredTitle, copy.workdayRequiredBody)
+      } else {
+        Alert.alert(t("common.error"), copy.routeStartFailed)
+      }
+      await fetchRoute()
+    } finally {
+      setStartingRoute(false)
+    }
+  }
+
   const handleCheckIn = async (point: RoutePoint) => {
     if (mutating) return
     setMutating(true)
@@ -1104,7 +1259,10 @@ export default function RouteScreen() {
     }
   }
 
-  const actionPanel = (
+  const routeStartReady = route?.status === "PLANNED" && routeOrigin === "live" &&
+    typeof route.version === "number" && Number.isInteger(route.version) && route.version > 0
+  const routeExecutionReady = workdayActive && route?.status === "IN_PROGRESS"
+  const actionPanel = activeVisit || routeExecutionReady ? (
     <PointActionPanel
       point={focusPoint}
       nextPoint={nextPoint}
@@ -1119,6 +1277,17 @@ export default function RouteScreen() {
       onCheckIn={handleCheckIn}
       onPhoto={() => setCameraVisible(true)}
       onCheckOut={handleCheckOut}
+    />
+  ) : (
+    <RouteExecutionGate
+      mode={workdayPaused ? "paused" : workdayActive ? "route" : "workday"}
+      busy={workdayActive ? startingRoute : startingWorkday || workdayTransitionPending}
+      copy={copy}
+      onPress={() => {
+        if (workdayActive) handleStartRoute().catch(() => {})
+        else handleStartWorkday().catch(() => {})
+      }}
+      disabled={workdayActive ? !routeStartReady : workdayTransitionPending}
     />
   )
 

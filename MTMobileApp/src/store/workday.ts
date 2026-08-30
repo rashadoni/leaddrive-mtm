@@ -20,6 +20,13 @@ export interface ActiveWorkday {
   workdayId: string
   startedAt: string
   syncState: "START_PENDING" | "CONFIRMED" | "FINISH_PENDING"
+  /**
+   * A Workforce-managed workday can be paused elsewhere. Route Field has no
+   * resume control, so a paused server session must never unlock route
+   * execution or location tracking. Undefined deliberately means active to
+   * keep existing persisted confirmed sessions backward-compatible.
+   */
+  paused?: boolean
 }
 
 export type WorkdaySyncError = "START_CONFLICT" | "FINISH_CONFLICT" | null
@@ -65,7 +72,13 @@ function persistedWorkday(value: unknown): ActiveWorkday | null {
       // Existing 2.1.11 installs did not persist confirmation state. Treat
       // them as pending until bootstrap proves the server workday is open.
       : "START_PENDING"
-  return { key: parsed.key, workdayId: parsed.workdayId, startedAt: parsed.startedAt, syncState }
+  return {
+    key: parsed.key,
+    workdayId: parsed.workdayId,
+    startedAt: parsed.startedAt,
+    syncState,
+    ...(parsed.paused === true ? { paused: true } : {}),
+  }
 }
 
 function belongsToWorkday(item: OutboxOperation, workdayId: string) {
@@ -129,6 +142,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
         workdayId: workday!.id,
         startedAt: workday!.startedAt!,
         syncState: "CONFIRMED",
+        ...(workday!.status === "PAUSED" ? { paused: true } : {}),
       }
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
       set({ activeWorkday, syncError: finishConflict ? "FINISH_CONFLICT" : null })
