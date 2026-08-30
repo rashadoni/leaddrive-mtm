@@ -74,6 +74,10 @@ export const managerApi = {
     return api.requestLegacy(`/organizations${qs ? `?${qs}` : ""}`, { signal })
   },
 
+  getOrganization(id: string, signal?: AbortSignal) {
+    return api.requestLegacy(`/organizations/${id}`, { signal })
+  },
+
   getOrganizationFacets(signal?: AbortSignal) {
     return api.requestLegacy("/organizations/facets", { signal })
   },

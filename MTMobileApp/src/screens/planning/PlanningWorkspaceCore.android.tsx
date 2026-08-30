@@ -48,9 +48,7 @@ import {
   publishablePlanningDrafts,
   removePlanningTarget,
   shiftPlanningDateKey,
-  toPlanningContactTarget,
   toPlanningDetailedRoute,
-  toPlanningOrganizationTarget,
   updatePlanningTargetTime,
   type PlanningAgent,
   type PlanningAssignedTarget,
@@ -71,9 +69,42 @@ export type PlanningWorkspaceAgentSource =
   | { kind: "self"; agent: PlanningAgent | null }
   | { kind: "team"; loadAgents: () => Promise<PlanningAgent[]> }
 
+/**
+ * The core accepts a page source instead of deciding which catalog contract is
+ * safe. Route Field supplies its date-bound v2, opaque-cursor lookup; the
+ * inactive manager shell keeps its legacy adapter outside the Android graph.
+ */
+export type PlanningWorkspaceTargetQuery = {
+  kind: "organization" | "contact"
+  date: string
+  search?: string
+  objectType?: string
+  organizationKind?: string
+  continuation?: string | null
+}
+
+export type PlanningWorkspaceTargetPage = {
+  targets: PlanningTarget[]
+  total?: number | null
+  nextPage?: string | null
+}
+
+export type PlanningWorkspaceTargetSource = {
+  loadTargets: (
+    query: PlanningWorkspaceTargetQuery,
+    signal?: AbortSignal,
+  ) => Promise<PlanningWorkspaceTargetPage>
+}
+
+type PlanningTargetContinuation = {
+  cursor: string
+  queryKey: string
+}
+
 export type PlanningWorkspaceCoreProps = {
   onClose?: () => void
   agentSource: PlanningWorkspaceAgentSource
+  targetSource: PlanningWorkspaceTargetSource
   initialDate?: string
   initialHorizon?: PlanningHorizon
 }
@@ -86,6 +117,8 @@ const SELF_PLANNER_COPY = {
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
     agentLabel: "Ваш маршрут",
     agentHelp: "Вы планируете встречи только для себя.",
+    searchPlaceholder: "Имя, организация, специальность или адрес…",
+    scopeNote: "Показываются только точки, подтверждённые для вас на выбранную дату. При сохранении сервер проверит их ещё раз.",
   },
   az: {
     eyebrow: "Mənim planım",
@@ -94,6 +127,8 @@ const SELF_PLANNER_COPY = {
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
     agentLabel: "Sizin marşrutunuz",
     agentHelp: "Görüşləri yalnız özünüz üçün planlaşdırırsınız.",
+    searchPlaceholder: "Ad, təşkilat, ixtisas və ya ünvan…",
+    scopeNote: "Yalnız seçilmiş tarix üçün sizə təsdiqlənmiş nöqtələr göstərilir. Saxlayarkən server onları yenidən yoxlayacaq.",
   },
   en: {
     eyebrow: "My plan",
@@ -102,6 +137,8 @@ const SELF_PLANNER_COPY = {
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
     agentLabel: "Your route",
     agentHelp: "You are planning meetings only for yourself.",
+    searchPlaceholder: "Name, organization, specialty, or address…",
+    scopeNote: "Only stops confirmed for you on the selected date are shown. The server validates them again when you save.",
   },
 } as const
 
@@ -175,6 +212,7 @@ function planningError(code: string): Error & { code: string } {
 export default function PlanningWorkspaceCore({
   onClose,
   agentSource,
+  targetSource,
   initialDate,
   initialHorizon,
 }: PlanningWorkspaceCoreProps) {
@@ -210,15 +248,18 @@ export default function PlanningWorkspaceCore({
   const [targetSearch, setTargetSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [targetResults, setTargetResults] = useState<PlanningTarget[]>([])
-  const [targetTotal, setTargetTotal] = useState(0)
+  const [targetTotal, setTargetTotal] = useState<number | null>(null)
+  const [targetNextPage, setTargetNextPage] = useState<PlanningTargetContinuation | null>(null)
   const [targetReload, setTargetReload] = useState(0)
   const [loadingAgents, setLoadingAgents] = useState(true)
   const [loadingPlan, setLoadingPlan] = useState(false)
   const [loadingTargets, setLoadingTargets] = useState(false)
+  const [loadingMoreTargets, setLoadingMoreTargets] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [agentError, setAgentError] = useState(false)
   const [planError, setPlanError] = useState(false)
   const [targetError, setTargetError] = useState(false)
+  const [targetMoreError, setTargetMoreError] = useState(false)
   const [canPublish, setCanPublish] = useState(false)
   const [saveMode, setSaveMode] = useState<SaveMode>("draft")
   const [saving, setSaving] = useState(false)
@@ -230,6 +271,9 @@ export default function PlanningWorkspaceCore({
   const dismissHint = useHintsStore((state) => state.dismiss)
   const planRequest = useRef(0)
   const saveRequest = useRef(0)
+  const targetRequest = useRef(0)
+  const targetMoreInFlight = useRef(false)
+  const targetMoreController = useRef<AbortController | null>(null)
   const savingRef = useRef(false)
   const contextVersion = useRef(0)
   const previousToday = useRef(today)
@@ -240,6 +284,28 @@ export default function PlanningWorkspaceCore({
     [routeTargetTypes, targetTypeId],
   )
   const targetKind = activeTargetType?.direction === "DOCTOR" ? "contact" : "organization"
+  const targetQuery = useMemo<PlanningWorkspaceTargetQuery>(() => ({
+    kind: targetKind,
+    date: activeDate,
+    search: debouncedSearch || undefined,
+    ...(targetKind === "organization" ? {
+      objectType: activeTargetType?.objectType ?? undefined,
+      organizationKind: activeTargetType?.organizationKind ?? undefined,
+    } : {}),
+  }), [activeDate, activeTargetType?.objectType, activeTargetType?.organizationKind, debouncedSearch, targetKind])
+  // A server cursor is opaque and scoped to every one of these fields. Keep a
+  // local provenance key as well, so a render immediately after a date/filter
+  // change cannot offer a stale continuation before the fetching effect resets
+  // its state.
+  const targetQueryKey = useMemo(() => JSON.stringify([
+    targetQuery.kind,
+    targetQuery.date,
+    targetQuery.search ?? "",
+    targetQuery.objectType ?? "",
+    targetQuery.organizationKind ?? "",
+  ]), [targetQuery])
+  const hasMoreTargets = targetNextPage?.queryKey === targetQueryKey
+  const showTargetMoreError = targetMoreError && hasMoreTargets
   const lockedDates = useMemo(() => new Set(lockedPlanningDates(routes)), [routes])
   const lockedCells = useMemo(() => new Set(lockedPlanningTargetCells(routes)), [routes])
   const multipleDraftDates = useMemo(() => planningDraftConflictDates(routes, agentId), [agentId, routes])
@@ -280,6 +346,8 @@ export default function PlanningWorkspaceCore({
   useEffect(() => () => {
     planRequest.current += 1
     saveRequest.current += 1
+    targetRequest.current += 1
+    targetMoreController.current?.abort()
     contextVersion.current += 1
   }, [])
 
@@ -356,35 +424,78 @@ export default function PlanningWorkspaceCore({
   }, [targetSearch])
 
   useEffect(() => {
-    if (step !== 2) return
+    if (step !== 2) {
+      targetRequest.current += 1
+      targetMoreController.current?.abort()
+      targetMoreController.current = null
+      return
+    }
+    targetMoreController.current?.abort()
+    targetMoreController.current = null
     const controller = new AbortController()
+    const requestId = ++targetRequest.current
     setLoadingTargets(true)
+    setLoadingMoreTargets(false)
     setTargetError(false)
+    setTargetMoreError(false)
     setTargetResults([])
-    const request = targetKind === "organization"
-      ? api.getOrganizations({
-          search: debouncedSearch || undefined,
-          page: 1,
-          limit: 50,
-          objectType: activeTargetType?.objectType ?? undefined,
-          organizationKind: activeTargetType?.organizationKind ?? undefined,
-        }, controller.signal)
-      : api.getContacts({ search: debouncedSearch || undefined, page: 1, limit: 50 }, controller.signal)
-    request.then((response: any) => {
-      if (controller.signal.aborted) return
-      const rawRows: unknown[] = targetKind === "organization"
-        ? (Array.isArray(response?.data?.organizations) ? response.data.organizations : [])
-        : (Array.isArray(response?.data?.contacts) ? response.data.contacts : [])
-      const mapper = targetKind === "organization" ? toPlanningOrganizationTarget : toPlanningContactTarget
-      setTargetResults(rawRows.map(mapper).filter((target): target is PlanningTarget => target !== null))
-      setTargetTotal(Number(response?.data?.total ?? rawRows.length))
+    setTargetTotal(null)
+    setTargetNextPage(null)
+    targetSource.loadTargets(targetQuery, controller.signal).then((page) => {
+      if (controller.signal.aborted || requestId !== targetRequest.current) return
+      setTargetResults(page.targets)
+      setTargetTotal(typeof page.total === "number" && Number.isFinite(page.total) ? page.total : null)
+      const nextPage = typeof page.nextPage === "string" && page.nextPage ? page.nextPage : null
+      setTargetNextPage(nextPage ? { cursor: nextPage, queryKey: targetQueryKey } : null)
     }).catch((error: any) => {
-      if (!controller.signal.aborted && error?.message !== "SESSION_EXPIRED") setTargetError(true)
+      if (!controller.signal.aborted && requestId === targetRequest.current && error?.message !== "SESSION_EXPIRED") setTargetError(true)
     }).finally(() => {
-      if (!controller.signal.aborted) setLoadingTargets(false)
+      if (!controller.signal.aborted && requestId === targetRequest.current) setLoadingTargets(false)
     })
-    return () => controller.abort()
-  }, [activeTargetType?.objectType, activeTargetType?.organizationKind, debouncedSearch, step, targetKind, targetReload])
+    return () => {
+      controller.abort()
+      if (targetRequest.current === requestId) targetRequest.current += 1
+    }
+  }, [step, targetQuery, targetQueryKey, targetReload, targetSource])
+
+  const loadMoreTargets = useCallback(async () => {
+    const continuation = targetNextPage
+    if (
+      !continuation ||
+      continuation.queryKey !== targetQueryKey ||
+      loadingTargets ||
+      targetMoreInFlight.current
+    ) return
+    const requestId = targetRequest.current
+    const controller = new AbortController()
+    targetMoreController.current?.abort()
+    targetMoreController.current = controller
+    targetMoreInFlight.current = true
+    setLoadingMoreTargets(true)
+    setTargetMoreError(false)
+    try {
+      const page = await targetSource.loadTargets({ ...targetQuery, continuation: continuation.cursor }, controller.signal)
+      if (controller.signal.aborted || requestId !== targetRequest.current) return
+      setTargetResults((current) => {
+        const existing = new Set(current.map((target) => target.key))
+        const additions = page.targets.filter((target) => !existing.has(target.key))
+        return additions.length > 0
+          ? [...current, ...additions].sort((left, right) => left.name.localeCompare(right.name) || left.key.localeCompare(right.key))
+          : current
+      })
+      if (typeof page.total === "number" && Number.isFinite(page.total)) setTargetTotal(page.total)
+      const nextPage = typeof page.nextPage === "string" && page.nextPage ? page.nextPage : null
+      setTargetNextPage(nextPage ? { cursor: nextPage, queryKey: targetQueryKey } : null)
+    } catch (error: any) {
+      if (!controller.signal.aborted && requestId === targetRequest.current && error?.message !== "SESSION_EXPIRED") {
+        setTargetMoreError(true)
+      }
+    } finally {
+      targetMoreInFlight.current = false
+      if (targetMoreController.current === controller) targetMoreController.current = null
+      if (!controller.signal.aborted && requestId === targetRequest.current) setLoadingMoreTargets(false)
+    }
+  }, [loadingTargets, targetNextPage, targetQuery, targetQueryKey, targetSource])
 
   const changeWindow = (nextAnchor: string, nextHorizon = horizon) => {
     if (saving) return
@@ -904,7 +1015,7 @@ export default function PlanningWorkspaceCore({
               <TextInput
                 value={targetSearch}
                 onChangeText={setTargetSearch}
-                placeholder={t("managerShell.planSearchTarget")}
+                placeholder={selfPlanning ? selfCopy.searchPlaceholder : t("managerShell.planSearchTarget")}
                 placeholderTextColor={fieldTheme.color.inkMuted}
                 accessibilityLabel={t("managerShell.planSearch")}
                 style={styles.searchInput}
@@ -913,7 +1024,7 @@ export default function PlanningWorkspaceCore({
               />
               {targetSearch ? <Pressable accessibilityRole="button" accessibilityLabel={t("common.clear")} accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.clearButton, saving && styles.disabled]} onPress={() => setTargetSearch("")}><Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} /></Pressable> : null}
             </View>
-            <Text style={styles.scopeNote}>{t("managerShell.planScopeNote")}</Text>
+            <Text style={styles.scopeNote}>{selfPlanning ? selfCopy.scopeNote : t("managerShell.planScopeNote")}</Text>
 
             {targetError ? (
               <InlineEmpty icon="cloud-offline-outline" text={t("managerShell.planTargetsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => setTargetReload((value) => value + 1) : undefined} />
@@ -921,7 +1032,10 @@ export default function PlanningWorkspaceCore({
               <View style={styles.loadingBlock}><ActivityIndicator color={fieldTheme.color.primary} /><Text style={styles.loadingText}>{t("managerShell.planLoadingTargets")}</Text></View>
             ) : targetResults.length > 0 ? (
               <>
-                <Text style={styles.resultCount}>{t("managerShell.planResults", { loaded: targetResults.length, total: targetTotal })}</Text>
+                <Text style={styles.resultCount}>{targetTotal === null
+                  ? t("managerShell.planResultsLoaded", { loaded: targetResults.length })
+                  : t("managerShell.planResults", { loaded: targetResults.length, total: targetTotal })}
+                </Text>
                 <ScrollView
                   nestedScrollEnabled
                   style={[styles.targetListScroller, tablet && styles.targetListScrollerTablet]}
@@ -941,7 +1055,33 @@ export default function PlanningWorkspaceCore({
                     )
                   })}
                 </ScrollView>
+                {showTargetMoreError ? (
+                  <InlineEmpty
+                    icon="cloud-offline-outline"
+                    text={t("managerShell.planMoreTargetsError")}
+                    action={!saving ? t("common.retry") : undefined}
+                    onAction={!saving ? () => { void loadMoreTargets() } : undefined}
+                  />
+                ) : hasMoreTargets ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: saving || loadingMoreTargets }}
+                    disabled={saving || loadingMoreTargets}
+                    style={({ pressed }) => [styles.loadMoreTargets, (saving || loadingMoreTargets) && styles.disabled, pressed && styles.pressed]}
+                    onPress={() => { void loadMoreTargets() }}
+                  >
+                    {loadingMoreTargets ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} /> : <Icon name="add-circle-outline" size={19} color={fieldTheme.color.primaryStrong} />}
+                    <Text style={styles.loadMoreTargetsText}>{t(loadingMoreTargets ? "managerShell.planLoadingMoreTargets" : "managerShell.planLoadMoreTargets")}</Text>
+                  </Pressable>
+                ) : null}
               </>
+            ) : hasMoreTargets ? (
+              <InlineEmpty
+                icon="search-outline"
+                text={t("managerShell.planMoreTargetsHint")}
+                action={!saving ? t("managerShell.planLoadMoreTargets") : undefined}
+                onAction={!saving ? () => { void loadMoreTargets() } : undefined}
+              />
             ) : debouncedSearch ? (
               <InlineEmpty icon="search-outline" text={t("managerShell.planNoSearchResults")} />
             ) : (
@@ -1553,6 +1693,8 @@ const styles = StyleSheet.create({
   loadingBlock: { minHeight: 96, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 13 },
   resultCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
+  loadMoreTargets: { alignSelf: "center", minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  loadMoreTargetsText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   targetListScroller: { maxHeight: 278 },
   targetListScrollerTablet: { maxHeight: 326 },
   targetList: { gap: 6, paddingRight: 2 },

@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { api } from "../../services/api"
+import { managerApi } from "../../services/manager-api"
 import {
   toOrganizationDetail,
   type OrgDetailContact,
@@ -425,7 +425,7 @@ export default function OrganizationDetailScreen() {
   const fetchDetail = useCallback(async (signal?: AbortSignal) => {
     setLoadFailed(false)
     try {
-      const response = await api.getOrganization(id, signal)
+      const response = await managerApi.getOrganization(id, signal)
       if (!response.success || !response.data?.organization) {
         throw new Error(response.error || "ORGANIZATION_NOT_AVAILABLE")
       }

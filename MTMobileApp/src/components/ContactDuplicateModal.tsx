@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
-import { api } from "../services/api"
+import { commercialApi } from "../services/commercial-api"
 
 type Candidate = {
   id: string
@@ -49,7 +49,7 @@ export default function ContactDuplicateModal({
     }
     const timer = setTimeout(() => {
       setLoading(true)
-      api.getContacts({ search: query.trim(), page: 1, limit: 20 })
+      commercialApi.getContacts({ search: query.trim(), page: 1, limit: 20 })
         .then((response: any) => {
           const rows = Array.isArray(response?.data?.contacts) ? response.data.contacts : []
           setCandidates(rows

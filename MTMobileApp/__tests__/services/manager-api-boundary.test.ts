@@ -21,6 +21,7 @@ describe("legacy manager API boundary", () => {
       "/mobile/tasks/bulk-reassign",
       "/mobile/team-schedule",
       "mode: \"SELF_SHARE\"",
+      "/organizations/${id}",
       "/organizations/facets",
       "/organizations/views",
       "/organization-assignments/preview",
@@ -39,5 +40,6 @@ describe("legacy manager API boundary", () => {
   it("uses the shared authenticated transport without changing server contracts", () => {
     expect(managerApiSource).toContain('import { api } from "./api"')
     expect(managerApiSource).toContain("api.requestLegacy")
+    expect(managerApiSource).toContain("getOrganization(id: string")
   })
 })

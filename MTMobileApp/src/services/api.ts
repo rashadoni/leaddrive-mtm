@@ -655,47 +655,6 @@ class ApiClient {
     return this.request("/customers")
   }
 
-  // --- Organizations (field master data) ---
-
-  async getOrganizations(
-    params?: {
-      search?: string
-      page?: number
-      limit?: number
-      category?: string
-      status?: string
-      objectType?: string
-      region?: string
-      administrativeDistrict?: string
-      locality?: string
-      cityDistrict?: string
-      specialization?: string
-      organizationKind?: string
-      territoryCode?: string
-      sort?: "name" | "updatedAt" | "city" | "category" | "status"
-      direction?: "asc" | "desc"
-    },
-    signal?: AbortSignal,
-  ) {
-    const query = new URLSearchParams()
-    if (params?.search) query.set("search", params.search)
-    if (params?.page) query.set("page", String(params.page))
-    if (params?.limit) query.set("limit", String(params.limit))
-    for (const key of [
-      "category", "status", "objectType", "region", "administrativeDistrict",
-      "locality", "cityDistrict", "specialization", "organizationKind",
-      "territoryCode", "sort", "direction",
-    ] as const) {
-      if (params?.[key]) query.set(key, params[key] as string)
-    }
-    const qs = query.toString()
-    return this.request(`/organizations${qs ? `?${qs}` : ""}`, { signal })
-  }
-
-  async getOrganization(id: string, signal?: AbortSignal) {
-    return this.request(`/organizations/${id}`, { signal })
-  }
-
   /** Mobile-only v2 detail projection; the legacy v1 response stays untouched. */
   async getRouteOrganizationDetail(id: string, signal?: AbortSignal) {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
@@ -732,6 +691,31 @@ class ApiClient {
     if (params?.limit) query.set("limit", String(params.limit))
     const qs = query.toString()
     return this.request(`/mobile/route-field/contacts${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
+  }
+
+  /**
+   * Date-bound Route Field planner lookup. `page` is an opaque server cursor;
+   * callers must never derive or increment it locally.
+   */
+  async getRoutePlanningTargets(
+    params: {
+      kind: "organization" | "contact"
+      date: string
+      search?: string
+      page?: string
+      limit?: number
+      objectType?: string
+      organizationKind?: string
+    },
+    signal?: AbortSignal,
+  ) {
+    const query = new URLSearchParams({ kind: params.kind, date: params.date })
+    if (params.search) query.set("search", params.search)
+    if (params.page) query.set("page", params.page)
+    if (params.limit) query.set("limit", String(params.limit))
+    if (params.objectType) query.set("objectType", params.objectType)
+    if (params.organizationKind) query.set("organizationKind", params.organizationKind)
+    return this.request(`/mobile/route-field/planning-targets?${query.toString()}`, { signal }, 20_000, 2)
   }
 
   // --- Week / agenda ---

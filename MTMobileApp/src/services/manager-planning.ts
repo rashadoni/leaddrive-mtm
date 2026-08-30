@@ -320,6 +320,11 @@ function workplaceValidOnDate(workplace: PlanningWorkplace, date: string): boole
 /** Resolve exactly one server-valid workplace for a contact on a route date. */
 export function planningTargetForDate(target: PlanningTarget, date: string): PlanningTarget | null {
   if (!target.eligible) return null
+  // Narrow v2 planner cards carry a server-evaluated date instead of the
+  // historical workplace payload used by the legacy manager picker. Respect
+  // it for every target kind so a card cannot be reused after the active day
+  // changes while the next server lookup is still in flight.
+  if (target.validOnDate && target.validOnDate !== date) return null
   if (target.kind === "organization") return target
 
   if (target.workplaces) {

@@ -17,7 +17,7 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
-import { api } from "../../services/api"
+import { commercialApi } from "../../services/commercial-api"
 import { managerApi } from "../../services/manager-api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
 import {
@@ -83,7 +83,7 @@ export default function ContactTransferScreen() {
     }
     const timer = setTimeout(() => {
       setLoadingContacts(true)
-      api.getContacts({ ownerAgentId: sourceId, search: search.trim() || undefined, limit: 200 })
+      commercialApi.getContacts({ ownerAgentId: sourceId, search: search.trim() || undefined, limit: 200 })
         .then((response) => {
           setContacts((response?.data?.contacts ?? []).map(toContactListItem))
           setTotal(Number(response?.data?.total ?? 0))

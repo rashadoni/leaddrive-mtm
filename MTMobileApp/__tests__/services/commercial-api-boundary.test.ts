@@ -21,6 +21,14 @@ const scoringModalSource = fs.readFileSync(
   path.resolve(__dirname, "../../src/components/DoctorAssessmentModal.tsx"),
   "utf8",
 )
+const duplicateModalSource = fs.readFileSync(
+  path.resolve(__dirname, "../../src/components/ContactDuplicateModal.tsx"),
+  "utf8",
+)
+const transferScreenSource = fs.readFileSync(
+  path.resolve(__dirname, "../../src/screens/manager/ContactTransferScreen.android.tsx"),
+  "utf8",
+)
 
 describe("legacy commercial API boundary", () => {
   it("keeps commercial mutation literals out of the active Route Field core client", () => {
@@ -75,5 +83,9 @@ describe("legacy commercial API boundary", () => {
     expect(legacyContactSource).not.toContain("api.createBrandPotential")
     expect(scoringModalSource).toContain("commercialApi.getDoctorScoringFormulas")
     expect(scoringModalSource).not.toContain("api.getDoctorScoringFormulas")
+    expect(duplicateModalSource).toContain("commercialApi.getContacts")
+    expect(duplicateModalSource).not.toContain("api.getContacts")
+    expect(transferScreenSource).toContain("commercialApi.getContacts")
+    expect(transferScreenSource).not.toContain("api.getContacts")
   })
 })

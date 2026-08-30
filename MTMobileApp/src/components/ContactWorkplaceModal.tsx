@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
-import { api } from "../services/api"
+import { managerApi } from "../services/manager-api"
 import type { ContactWorkplace } from "../services/contact-detail"
 
 export interface WorkplaceFields {
@@ -64,7 +64,7 @@ export default function ContactWorkplaceModal({
     if (!visible) return
     const timer = setTimeout(() => {
       setLoading(true)
-      api.getOrganizations({ search: query.trim() || undefined, page: 1, limit: 20 })
+      managerApi.getOrganizations({ search: query.trim() || undefined, page: 1, limit: 20 })
         .then((response: any) => {
           const rows = Array.isArray(response?.data?.organizations) ? response.data.organizations : []
           setOrganizations(rows.map((row: any) => ({ id: String(row.id), name: String(row.name ?? ""), city: row.city ? String(row.city) : undefined, objectType: row.objectType ? String(row.objectType) : undefined })))
