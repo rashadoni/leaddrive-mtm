@@ -109,7 +109,11 @@ evidence было бы небезопасно.
 ## Нерешённые release-gates
 
 - production signing identity и distribution channel обновления существующего
-  Route Field package ID;
+  Route Field package ID. `npm run verify:release-profile` проверяет, что
+  package ID и версия согласованы между profile, Gradle и package.json;
+  `build-local.sh` затем откажется собирать release без
+  `android/app/mtm-release.keystore`. Debug-signing fallback не является
+  допустимым update APK и не используется;
 - physical Android: offline → online, process death, scope loss и два
   устройства;
 - cohort-only v2 read comparison и S6 staging/chaos evidence.
