@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { getOfflineScope, requireOfflineScope } from "./offline-scope"
+import { retryAfterMsFromError, retryDelayMs } from "./sync-retry"
 
 const STORAGE_KEY = "@mtm_sync_outbox_v1"
 
@@ -100,14 +101,22 @@ export async function acknowledgeOutboxOperation(operationIdToRemove: string) {
   })
 }
 
-export async function deferOutboxOperation(operationIdToDefer: string, now = Date.now()) {
+export async function deferOutboxOperation(
+  operationIdToDefer: string,
+  now = Date.now(),
+  retry?: { retryAfterMs?: number; jitter?: boolean; random?: () => number },
+) {
   const scope = requireOfflineScope()
   await serializeMutation(async () => {
     const items = await read()
     const next = items.map((item) => {
       if (item.operationId !== operationIdToDefer || item.scopeKey !== scope) return item
       const attempts = item.attempts + 1
-      return { ...item, attempts, nextAttemptAt: now + Math.min(15 * 60_000, 2 ** attempts * 1_000) }
+      return {
+        ...item,
+        attempts,
+        nextAttemptAt: now + retryDelayMs({ attempts, ...retry }),
+      }
     })
     await write(next)
   })
@@ -172,6 +181,7 @@ export async function clearOutbox() {
 
 export async function flushOutbox(
   send: (operations: OutboxOperation[]) => Promise<{ results?: OutboxPushResult[] }>,
+  options?: { now?: () => number; random?: () => number },
 ) {
   const pending = await pendingOutboxOperations()
   if (pending.length === 0) return { sent: 0, deferred: 0, conflicted: 0 }
@@ -191,13 +201,29 @@ export async function flushOutbox(
         await markOutboxConflict(item.operationId, result ?? { operationId: item.operationId, status })
         conflicted += 1
       } else {
-        await deferOutboxOperation(item.operationId)
+        await deferOutboxOperation(item.operationId, options?.now?.() ?? Date.now(), {
+          jitter: true,
+          random: options?.random,
+        })
         deferred += 1
       }
     }
     return { sent, deferred, conflicted }
-  } catch {
-    for (const item of pending) await deferOutboxOperation(item.operationId)
-    return { sent: 0, deferred: pending.length, conflicted: 0 }
+  } catch (error) {
+    const retryAfterMs = retryAfterMsFromError(error)
+    for (const item of pending) {
+      await deferOutboxOperation(item.operationId, options?.now?.() ?? Date.now(), {
+        retryAfterMs,
+        jitter: true,
+        random: options?.random,
+      })
+    }
+    return {
+      sent: 0,
+      deferred: pending.length,
+      conflicted: 0,
+      error: error instanceof Error ? error.message : "SYNC_PUSH_FAILED",
+      retryAfterMs,
+    }
   }
 }

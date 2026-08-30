@@ -19,7 +19,7 @@ import {
   type OutboxOperation,
 } from "../services/outbox"
 import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
-import { useSyncStatusStore } from "../store/sync-status"
+import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
 
 type Props = {
   inverse?: boolean
@@ -44,13 +44,38 @@ function conflictTranslationKey(code: string) {
   return known[code] ?? "syncCenter.conflictGeneric"
 }
 
+const PIPELINES: ReadonlyArray<{ id: SyncPipelineId; labelKey: string }> = [
+  { id: "routeOutbox", labelKey: "syncCenter.pipelineRouteOutbox" },
+  { id: "routePull", labelKey: "syncCenter.pipelineRoutePull" },
+  { id: "media", labelKey: "syncCenter.pipelineMedia" },
+]
+
+function pipelineStatusLabel(
+  pipeline: SyncPipelineStatus,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (pipeline.phase === "syncing") return t("syncCenter.pipelineSyncing")
+  if (pipeline.phase === "disabled") return t("syncCenter.pipelineDisabled")
+  if (pipeline.phase === "error") return t("syncCenter.pipelineError")
+  if (pipeline.phase === "backoff") {
+    const retryAt = pipeline.retryAt
+      ? new Date(pipeline.retryAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+      : null
+    return retryAt
+      ? t("syncCenter.pipelineBackoffAt", { value: retryAt })
+      : t("syncCenter.pipelineBackoff")
+  }
+  return t("syncCenter.pipelineReady")
+}
+
 export default function SyncStatusChip({ inverse = false }: Props) {
   const { t, i18n } = useTranslation()
   const [visible, setVisible] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<OutboxOperation[]>([])
-  const { phase, pending, mediaPending, lastSyncedAt, lastError } = useSyncStatusStore()
+  const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines } = useSyncStatusStore()
 
   const reload = useCallback(async () => {
     const scope = getOfflineScope()
@@ -190,6 +215,25 @@ export default function SyncStatusChip({ inverse = false }: Props) {
             {lastError ? <Text style={styles.errorText}>{t("syncCenter.lastError", { value: lastError })}</Text> : null}
             {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
 
+            <View style={styles.pipelineSection} accessibilityLabel={t("syncCenter.pipelines")}>
+              <Text style={styles.pipelineHeading}>{t("syncCenter.pipelines")}</Text>
+              {PIPELINES.map(({ id, labelKey }) => {
+                const pipeline = pipelines[id]
+                return (
+                  <View key={id} style={styles.pipelineRow}>
+                    <Text style={styles.pipelineName}>{t(labelKey)}</Text>
+                    <Text style={[
+                      styles.pipelineState,
+                      pipeline.phase === "backoff" && styles.pipelineBackoff,
+                      pipeline.phase === "error" && styles.pipelineError,
+                    ]}>
+                      {pipelineStatusLabel(pipeline, i18n.language, t)}
+                    </Text>
+                  </View>
+                )
+              })}
+            </View>
+
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
               {conflicts.length === 0 ? (
                 <View style={styles.empty}>
@@ -281,6 +325,13 @@ const styles = StyleSheet.create({
   danger: { color: "#dc2626" },
   lastSync: { marginTop: 14, color: "#475569", fontSize: 12 },
   errorText: { marginTop: 6, color: "#b91c1c", fontSize: 12 },
+  pipelineSection: { marginTop: 14, gap: 7 },
+  pipelineHeading: { color: "#475569", fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
+  pipelineRow: { minHeight: 36, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#f8fafc", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  pipelineName: { flex: 1, color: "#334155", fontSize: 12, fontWeight: "700" },
+  pipelineState: { color: "#0f766e", fontSize: 11, fontWeight: "800", textAlign: "right" },
+  pipelineBackoff: { color: "#b45309" },
+  pipelineError: { color: "#b91c1c" },
   list: { flexGrow: 0, marginTop: 12 },
   listContent: { paddingBottom: 4, gap: 10 },
   empty: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 12 },

@@ -78,6 +78,20 @@ describe("durable sync outbox", () => {
     expect((await pendingOutboxOperations(4_000))[0].attempts).toBe(1)
   })
 
+  it("honours server Retry-After without clearing the durable operation", async () => {
+    const item = await enqueueOutboxOperation({ entity: "visits", op: "update", data: { id: "v1" } })
+    const error = Object.assign(new Error("temporarily unavailable"), { retryAfterMs: 5_000 })
+
+    const result = await flushOutbox(
+      async () => { throw error },
+      { now: () => 1_000, random: () => 0 },
+    )
+
+    expect(result).toMatchObject({ sent: 0, deferred: 1, conflicted: 0, retryAfterMs: 5_000 })
+    expect(await pendingOutboxOperations(5_999)).toEqual([])
+    expect((await pendingOutboxOperations(6_000)).map((entry) => entry.operationId)).toEqual([item.operationId])
+  })
+
   it("can clear persisted operations", async () => {
     await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { id: "w1" } })
     await clearOutbox()

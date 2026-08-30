@@ -73,4 +73,18 @@ describe("durable media outbox", () => {
     expect((await pendingMediaUploads(retryableAt))[0].attempts).toBe(1)
     expect(successful.id).not.toBe(failed.id)
   })
+
+  it("honours Retry-After for a failed upload while allowing later uploads to continue", async () => {
+    const delayed = await enqueueMediaUpload({ filePath: "/cache/retry-after.jpg" })
+    const error = Object.assign(new Error("media unavailable"), { retryAfterMs: 5_000 })
+
+    const result = await flushMediaOutbox(
+      async () => { throw error },
+      { now: () => 1_000, random: () => 0 },
+    )
+
+    expect(result).toMatchObject({ sent: 0, deferred: 1, retryAfterMs: 5_000 })
+    expect(await pendingMediaUploads(5_999)).toEqual([])
+    expect((await pendingMediaUploads(6_000)).map((item) => item.id)).toEqual([delayed.id])
+  })
 })

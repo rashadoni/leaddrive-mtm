@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { getOfflineScope, requireOfflineScope } from "./offline-scope"
+import { retryAfterMsFromError, retryDelayMs } from "./sync-retry"
 
 const STORAGE_KEY = "@mtm_media_outbox_v1"
 
@@ -64,20 +65,50 @@ export async function acknowledgeMediaUpload(id: string) {
   })
 }
 
-export async function deferMediaUpload(id: string, now = Date.now()) {
+export async function deferMediaUpload(
+  id: string,
+  now = Date.now(),
+  retry?: { retryAfterMs?: number; jitter?: boolean; random?: () => number },
+) {
   const scope = requireOfflineScope()
+  let retryAt = now
   await serializeMutation(async () => {
     const items = await read()
-    await write(items.map((item) => item.id !== id || item.scopeKey !== scope ? item : { ...item, attempts: item.attempts + 1, nextAttemptAt: now + Math.min(15 * 60_000, 2 ** (item.attempts + 1) * 1_000) }))
+    await write(items.map((item) => {
+      if (item.id !== id || item.scopeKey !== scope) return item
+      const attempts = item.attempts + 1
+      retryAt = now + retryDelayMs({ attempts, ...retry })
+      return { ...item, attempts, nextAttemptAt: retryAt }
+    }))
   })
+  return retryAt
 }
 
-export async function flushMediaOutbox(send: (item: MediaOutboxItem) => Promise<unknown>) {
+export async function flushMediaOutbox(
+  send: (item: MediaOutboxItem) => Promise<unknown>,
+  options?: { now?: () => number; random?: () => number },
+) {
   const pending = await pendingMediaUploads()
   let sent = 0
+  let earliestRetryAt: number | null = null
+  let lastError: string | undefined
   for (const item of pending) {
     try { await send(item); await acknowledgeMediaUpload(item.id); sent += 1 }
-    catch { await deferMediaUpload(item.id) }
+    catch (error) {
+      const now = options?.now?.() ?? Date.now()
+      const retryAt = await deferMediaUpload(item.id, now, {
+        retryAfterMs: retryAfterMsFromError(error),
+        jitter: true,
+        random: options?.random,
+      })
+      earliestRetryAt = earliestRetryAt === null ? retryAt : Math.min(earliestRetryAt, retryAt)
+      lastError = error instanceof Error ? error.message : "SYNC_MEDIA_FAILED"
+    }
   }
-  return { sent, deferred: pending.length - sent }
+  return {
+    sent,
+    deferred: pending.length - sent,
+    ...(lastError ? { error: lastError } : {}),
+    ...(earliestRetryAt !== null ? { retryAfterMs: Math.max(0, earliestRetryAt - (options?.now?.() ?? Date.now())) } : {}),
+  }
 }

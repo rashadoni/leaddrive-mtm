@@ -412,6 +412,28 @@ describe("ApiClient — request error handling", () => {
     await expect(client.request("/routes")).rejects.toThrow("DB is down")
   })
 
+  it("attaches a bounded Retry-After hint to retryable API errors", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 503,
+      ok: false,
+      headers: { get: (name: string) => name === "Retry-After" ? "5" : null },
+      json: async () => ({ error: "temporarily unavailable", code: "MOBILE_SYNC_UNAVAILABLE" }),
+    })
+
+    try {
+      await client.request("/mobile/sync/pull")
+      throw new Error("expected request to fail")
+    } catch (error) {
+      expect(error).toMatchObject({
+        message: "temporarily unavailable",
+        status: 503,
+        code: "MOBILE_SYNC_UNAVAILABLE",
+        retryAfterMs: 5_000,
+      })
+    }
+  })
+
   it("returns parsed JSON on success", async () => {
     client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
     client.token = "valid-token"

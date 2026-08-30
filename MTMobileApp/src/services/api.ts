@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setAgentContext, clearAgentContext } from "./sentry"
+import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 
 /**
  * Canonical reason string set when the backend returns a mid-session 401
@@ -299,12 +300,10 @@ class ApiClient {
         // Surface the server's machine-readable error code (e.g. the 422
         // codes PHOTO_REQUIRED / MAX_PHOTOS_REACHED) so screens can react
         // specifically instead of showing a generic failure toast.
-        const err = new Error(data.error || `Request failed: ${res.status}`) as Error & {
-          code?: string
-          status?: number
-        }
+        const err = new Error(data.error || `Request failed: ${res.status}`) as RetryableSyncError
         err.code = data.code
         err.status = res.status
+        err.retryAfterMs = retryAfterMsFromHeader(res.headers?.get?.("Retry-After"))
         throw err
       }
 
@@ -1029,12 +1028,10 @@ class ApiClient {
 
     const responseData = await res.json()
     if (!res.ok) {
-      const err = new Error(responseData.error || "Upload failed") as Error & {
-        code?: string
-        status?: number
-      }
+      const err = new Error(responseData.error || "Upload failed") as RetryableSyncError
       err.code = responseData.code
       err.status = res.status
+      err.retryAfterMs = retryAfterMsFromHeader(res.headers?.get?.("Retry-After"))
       throw err
     }
     return responseData

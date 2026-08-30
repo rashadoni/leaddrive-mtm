@@ -59,7 +59,7 @@ describe("mobile sync engine", () => {
     mockedPull.mockResolvedValue(undefined)
   })
 
-  it("runs outbox, pull and media in order and records a successful sync", async () => {
+  it("runs independent Route Field pipelines and records a successful sync", async () => {
     const result = await runMobileSync()
 
     expect(result).toEqual({
@@ -104,6 +104,10 @@ describe("mobile sync engine", () => {
     mockedMedia.mockResolvedValue([{ id: "media-1" }])
 
     await expect(runMobileSync()).resolves.toMatchObject({ success: false })
+    // A failed reference pull never prevents the unrelated media pipeline
+    // from flushing. The critical v1 outbox was already drained first.
+    expect(mockedFlush).toHaveBeenCalledTimes(1)
+    expect(mockedMediaFlush).toHaveBeenCalledTimes(1)
     expect(useSyncStatusStore.getState()).toMatchObject({
       phase: "error",
       pending: 1,
@@ -111,5 +115,18 @@ describe("mobile sync engine", () => {
       mediaPending: 1,
       lastError: "network unavailable",
     })
+    expect(useSyncStatusStore.getState().pipelines).toMatchObject({
+      routeOutbox: { phase: "idle" },
+      routePull: { phase: "backoff", lastError: "network unavailable" },
+      media: { phase: "idle" },
+    })
+
+    // The route-pull circuit is local to that stream. A second supervisor
+    // pass may still drain other queues, but it must not hammer the same 503
+    // endpoint before its persisted backoff has elapsed.
+    await runMobileSync()
+    expect(mockedPull).toHaveBeenCalledTimes(1)
+    expect(mockedFlush).toHaveBeenCalledTimes(2)
+    expect(mockedMediaFlush).toHaveBeenCalledTimes(2)
   })
 })
