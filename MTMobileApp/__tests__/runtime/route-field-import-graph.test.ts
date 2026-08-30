@@ -31,6 +31,10 @@ function reachableFiles(entry: string): Set<string> {
     visited.add(file)
     const source = fs.readFileSync(file, "utf8")
     const imports = [...source.matchAll(/(?:import|export)\s+(?:[\s\S]*?\s+from\s+)?["']([^"']+)["']/g)]
+      .filter((match) => {
+        const statement = match[0].trimStart()
+        return !statement.startsWith("import type ") && !statement.startsWith("export type ")
+      })
       .map((match) => match[1])
       .filter((specifier) => specifier.startsWith("."))
 
@@ -46,11 +50,13 @@ function reachableFiles(entry: string): Set<string> {
 }
 
 describe("Route Field Android import graph", () => {
-  it("does not package legacy manager transport or a team-planning adapter", () => {
+  it("does not package legacy navigator, manager transport, or a team-planning adapter", () => {
     const reachable = [...reachableFiles(path.join(sourceRoot, "App.android.ts"))]
       .map((file) => path.relative(sourceRoot, file))
 
+    expect(reachable).not.toContain("src/navigation/AppNavigator.tsx")
     expect(reachable).not.toContain("src/services/manager-api.ts")
     expect(reachable).not.toContain("src/screens/manager/ManagerPlanningWorkspace.android.tsx")
+    expect(reachable).not.toContain("src/screens/base/ContactDetailScreen.tsx")
   })
 })

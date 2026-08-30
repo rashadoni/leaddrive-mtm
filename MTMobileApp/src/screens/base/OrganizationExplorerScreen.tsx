@@ -15,10 +15,10 @@ import {
   View,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
-import { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
-import { RootStackParamList } from "../../navigation/AppNavigator"
+import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { readOfflineOrganizations } from "../../services/offline-reads"
 import {
