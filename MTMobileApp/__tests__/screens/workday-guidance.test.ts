@@ -146,6 +146,7 @@ describe("Route Field product boundary", () => {
     expect(runtimeSource).not.toContain("ACCESS_BACKGROUND_LOCATION")
     expect(manifestSource).toContain("FOREGROUND_SERVICE")
     expect(manifestSource).toContain("FOREGROUND_SERVICE_LOCATION")
+    expect(manifestSource).toContain("android.permission.WAKE_LOCK")
     expect(manifestSource).toContain("RNBackgroundActionsTask")
     expect(manifestSource).toContain('android:foregroundServiceType="location"')
   })
