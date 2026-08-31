@@ -1,6 +1,7 @@
 # LeadDrive Route Field v3 — граница отдельного APK
 
-**Статус:** implementation baseline; APK пока не собран и не распространялся.
+**Статус:** v3.0.3 выпускается через signed GitHub prerelease; этот документ
+фиксирует его границы и release-инварианты.
 
 ## Что это
 
@@ -15,13 +16,15 @@
 ## Граница с HRM
 
 - `workforce-hrm` — отдельный модуль и отдельный будущий APK.
-- Route Field не читает и не сверяет HRM-смену, не создаёт переходы рабочего
-  дня, HRM-заявки или HRM outbox.
+- Route Field не читает и не сверяет HRM-смену, не создаёт HRM-заявки или HRM
+  outbox. Его собственная минимальная field-сессия (`MtmAgentWorkday`) нужна
+  только для порядка «начать день → начать маршрут → выполнить визит».
 - Менеджерское планирование и approvals остаются web-first; Route Field
   рассчитан на полевого исполнителя.
-- Наследованный background GPS, включавшийся по HRM-смене, удалён из runtime и
-  Android manifest. До отдельного server-first контракта маршрута/визита этот
-  APK оставляет только явные foreground-геоданные для полевых действий.
+- GPS запускается только после подтверждённой сервером field-сессии, а не по
+  HRM-смене или login. Для непрерывного трекинга Android использует location
+  foreground service с видимым системным уведомлением; `ACCESS_BACKGROUND_LOCATION`
+  не запрашивается автоматически.
 
 ## Безопасный переход со старого MTM APK
 
@@ -100,11 +103,12 @@
 
 ## Проверка нативной границы
 
-`react-native-background-actions` пока остаётся зависимостью до проверки
-merged Android manifest на Mac/CI. Runtime уже останавливает унаследованное
-tracking, а manifest не запрашивает background location и не регистрирует
-background service. Удалять автолинкованную зависимость без native build
-evidence было бы небезопасно.
+`react-native-background-actions` обслуживает только активную подтверждённую
+field-сессию. Для target SDK 36 app manifest явно объявляет его location
+foreground service и разрешения `FOREGROUND_SERVICE` /
+`FOREGROUND_SERVICE_LOCATION`; runtime не делает автоматический запрос
+`ACCESS_BACKGROUND_LOCATION`. Удалять автолинкованную зависимость без native
+build evidence было бы небезопасно.
 
 ## Нерешённые release-gates
 

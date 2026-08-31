@@ -40,6 +40,11 @@ function AppContent() {
     ? activeWorkday.workdayId
     : null
   const mayTrack = isLoggedIn && agent?.role === "AGENT" && workdayHydrated && activeWorkdayId !== null
+  // Bump only when Android has returned to the foreground. This retries a
+  // deferred workday GPS start after a system permission screen without
+  // tearing down an already-running foreground service on every AppState
+  // transition.
+  const [foregroundEpoch, setForegroundEpoch] = useState(0)
 
   const refreshAdmissionAndSync = useCallback(() => refreshRouteFieldSession(), [])
 
@@ -100,7 +105,13 @@ function AppContent() {
     }
 
     void (async () => {
+      // Android 12+ rejects starting a foreground service from a background
+      // state. A runtime-permission sheet can briefly make the app inactive,
+      // so wait for the AppState listener below to retry after the return.
+      if (AppState.currentState !== "active") return
       if (!await requestForegroundLocation() || cancelled) return
+      if (AppState.currentState !== "active" || cancelled) return
+
       const auth = useAuthStore.getState()
       const workday = useWorkdayStore.getState().activeWorkday
       const key = workdayKey(auth.agent?.organizationId, auth.agent?.id)
@@ -114,23 +125,18 @@ function AppContent() {
       await startTracking()
       if (cancelled) {
         await stopTracking()
-        return
-      }
-      if (Platform.OS === "android" && Number(Platform.Version) >= 29) {
-        PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION).catch(() => {})
       }
     })().catch(() => {})
 
     return () => {
       cancelled = true
-      setTrackingWorkdayId(null)
-      stopTracking().catch(() => {})
     }
-  }, [activeWorkdayId, mayTrack, requestForegroundLocation])
+  }, [activeWorkdayId, foregroundEpoch, mayTrack, requestForegroundLocation])
 
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
+        setForegroundEpoch((epoch) => epoch + 1)
         refreshAdmissionAndSync().catch(() => {})
       }
       appStateRef.current = nextState
