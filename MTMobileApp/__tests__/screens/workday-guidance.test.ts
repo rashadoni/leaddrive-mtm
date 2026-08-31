@@ -27,6 +27,10 @@ describe("Route Field product boundary", () => {
     path.resolve(__dirname, "../../src/runtime/AndroidApp.tsx"),
     "utf8",
   )
+  const androidEntrySource = fs.readFileSync(
+    path.resolve(__dirname, "../../App.android.ts"),
+    "utf8",
+  )
   const routeScreenSource = fs.readFileSync(
     path.resolve(__dirname, "../../src/screens/route/RouteScreen.tsx"),
     "utf8",
@@ -131,14 +135,19 @@ describe("Route Field product boundary", () => {
     expect(routeOrganizationSource).not.toContain("assignmentState")
   })
 
-  it("tracks GPS only after the server-confirmed field session becomes active", () => {
+  it("starts the Android runtime only after the server-confirmed field session becomes active", () => {
+    expect(androidEntrySource).toContain('"./src/runtime/AndroidApp"')
     expect(runtimeSource).toContain("refreshRouteFieldSession")
     expect(runtimeSource).toContain("startTracking")
     expect(runtimeSource).toContain("useWorkdayStore")
     expect(runtimeSource).toContain('syncState === "CONFIRMED"')
     expect(runtimeSource).toContain("stopTracking().catch")
-    expect(manifestSource).toContain("ACCESS_BACKGROUND_LOCATION")
-    expect(manifestSource).not.toContain("RNBackgroundActionsTask")
+    expect(runtimeSource).toContain('AppState.currentState !== "active"')
+    expect(runtimeSource).not.toContain("ACCESS_BACKGROUND_LOCATION")
+    expect(manifestSource).toContain("FOREGROUND_SERVICE")
+    expect(manifestSource).toContain("FOREGROUND_SERVICE_LOCATION")
+    expect(manifestSource).toContain("RNBackgroundActionsTask")
+    expect(manifestSource).toContain('android:foregroundServiceType="location"')
   })
 
   it("keeps planned routes view-only until the day and then the route are explicitly started", () => {
