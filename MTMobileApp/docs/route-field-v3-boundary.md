@@ -1,6 +1,6 @@
 # LeadDrive Route Field v3 — граница отдельного APK
 
-**Статус:** v3.0.4 выпускается через signed GitHub prerelease; этот документ
+**Статус:** v3.0.5 выпускается через signed GitHub prerelease; этот документ
 фиксирует его границы и release-инварианты.
 
 ## Что это
