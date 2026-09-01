@@ -47,8 +47,11 @@ interface WorkdayState {
    *     so end() keeps working after adoption.
    *   - server shift closed + local matches its id -> clear (the shift was ended
    *     elsewhere, e.g. another device).
-   *   - a durable pending mutation stays visible while offline; a completed
-   *     unrelated shift never clears it.
+   *   - a durable pending/conflicting mutation stays visible while offline;
+   *     a completed unrelated shift never clears a confirmed/restored session.
+   *     A FINISH whose durable outbox entry was already acknowledged is the
+   *     exception: it must not remain stuck solely because a stale bootstrap
+   *     response names another closed workday.
    */
   reconcileFromServer: (key: string, workday: BootstrapWorkday | null | undefined) => Promise<void>
 }
@@ -150,9 +153,16 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       // Offline or deferred mutation: no server workday exists yet. Preserve
       // the visible pending state and retry from the durable outbox.
       return
-    } else if (local && workday && workday.id !== local.workdayId && !startConflict && !finishConflict) {
+    } else if (
+      local && workday && workday.id !== local.workdayId && (
+        local.syncState !== "FINISH_PENDING" || pendingFinish || finishConflict
+      )
+    ) {
       // A completed row for a different shift is not evidence that this
-      // device's queued or restored shift was rejected.
+      // device's queued, conflicted, or restored shift was rejected. The
+      // only exception falls through below: an acknowledged FINISH has no
+      // durable pending/conflict operation, so it cannot stay "finishing"
+      // merely because an older bootstrap names another closed calendar row.
       return
     } else if (local) {
       await AsyncStorage.removeItem(STORAGE_KEY)

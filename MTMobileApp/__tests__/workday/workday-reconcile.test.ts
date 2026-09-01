@@ -124,4 +124,37 @@ describe("workday reconcileFromServer", () => {
 
     expect(useWorkdayStore.getState().activeWorkday).toBeNull()
   })
+
+  it("clears an acknowledged FINISH when an older bootstrap names another completed workday", async () => {
+    useWorkdayStore.setState({ activeWorkday: {
+      key: "t:a", workdayId: "srv-finished", startedAt: "2026-09-01T00:05:00.000Z", syncState: "FINISH_PENDING",
+    } })
+
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-yesterday",
+      status: "COMPLETED",
+      startedAt: "2026-08-31T06:00:00.000Z",
+      completedAt: "2026-08-31T17:00:00.000Z",
+    })
+
+    expect(useWorkdayStore.getState().activeWorkday).toBeNull()
+    expect(await AsyncStorage.getItem("@mtm_active_workday_v1")).toBeNull()
+  })
+
+  it("retains FINISH_PENDING for a durable finish conflict even with another completed workday", async () => {
+    const local = {
+      key: "t:a", workdayId: "srv-finish-conflict", startedAt: "2026-09-01T00:05:00.000Z", syncState: "FINISH_PENDING" as const,
+    }
+    useWorkdayStore.setState({ activeWorkday: local })
+    mockedAllOutboxOperations.mockResolvedValue([queuedWorkday("FINISH", "srv-finish-conflict", "conflict")])
+
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-yesterday",
+      status: "COMPLETED",
+      startedAt: "2026-08-31T06:00:00.000Z",
+      completedAt: "2026-08-31T17:00:00.000Z",
+    })
+
+    expect(useWorkdayStore.getState().activeWorkday).toEqual(local)
+  })
 })
