@@ -19,7 +19,6 @@ import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import i18next from "i18next"
-import { hasCoordinates } from "../../lib/geo"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
@@ -52,6 +51,7 @@ import {
   type RouteDataOrigin,
   type RouteLoadIssue,
 } from "./route-screen-state"
+import { hasUsableCoordinates, IMPLAUSIBLE_DISTANCE_METERS } from "../visit/visit-checkin-model"
 
 interface RoutePoint {
   id: string
@@ -314,6 +314,23 @@ function distanceColor(meters: number): string {
   if (meters < GEOFENCE_DEFAULT) return fieldTheme.color.success
   if (meters < 500) return fieldTheme.color.amber
   return fieldTheme.color.danger
+}
+
+/**
+ * A distance that cannot be a real trip means the stored coordinates are wrong
+ * (or the 0°,0° placeholder). It is hidden instead of shown as "6745.7 km".
+ */
+function plausibleDistance(meters: number | null | undefined): number | null {
+  if (meters == null || !Number.isFinite(meters) || meters > IMPLAUSIBLE_DISTANCE_METERS) return null
+  return meters
+}
+
+function sanitizeRouteDistances<T extends { points?: Array<{ distanceMeters?: number | null }> }>(route: T): T {
+  if (!Array.isArray(route.points)) return route
+  return {
+    ...route,
+    points: route.points.map((point) => ({ ...point, distanceMeters: plausibleDistance(point.distanceMeters) })),
+  }
 }
 
 function formatDistance(meters: number): string {
@@ -629,7 +646,7 @@ function StopRow({
                 {formatDistance(point.distanceMeters)}
               </Text>
             </View>
-          ) : !hasCoordinates(point.customer) && point.status !== "VISITED" ? (
+          ) : !hasUsableCoordinates(point.customer) && point.status !== "VISITED" ? (
             <View style={styles.metaItem}>
               <Icon name="help-circle-outline" size={15} color={fieldTheme.color.inkMuted} />
               <Text style={styles.metaText}>{i18next.t("route.noCoordinates")}</Text>
@@ -804,7 +821,7 @@ function PointActionPanel({
               {renderTemplate(copy.distanceAway, { distance: formatDistance(point.distanceMeters) })}
             </Text>
           </View>
-        ) : !hasCoordinates(point.customer) ? (
+        ) : !hasUsableCoordinates(point.customer) ? (
           <View style={styles.detailFact}>
             <Icon name="help-circle-outline" size={18} color={fieldTheme.color.inkMuted} />
             <Text style={styles.detailFactText}>{i18next.t("route.noCoordinates")}</Text>
@@ -949,7 +966,7 @@ export default function RouteScreen() {
           })
           const detail = await api.getRoute(routeData.id, coords ?? undefined, signal)
           if (detail.success && detail.data) {
-            setRoute(detail.data)
+            setRoute(sanitizeRouteDistances(detail.data))
             setRouteOrigin("live")
             return
           }
@@ -1146,7 +1163,7 @@ export default function RouteScreen() {
 
   const handleCheckIn = async (point: RoutePoint) => {
     if (mutating) return
-    if (!hasCoordinates(point.customer)) {
+    if (!hasUsableCoordinates(point.customer)) {
       // Owner decision 2 (audit 2026-09-05): no coordinates, no check-in. The
       // server would answer NO_COORDINATES; say it here, before GPS.
       Alert.alert(
@@ -1198,12 +1215,14 @@ export default function RouteScreen() {
         }
       }
 
-      const measuredDistance = coords && hasCoordinates(point.customer)
+      // 0°,0° or non-finite stored coordinates count as "no coordinates" (field audit 2026-09-05).
+      const customerCoordinates = { latitude: point.customer.latitude, longitude: point.customer.longitude }
+      const measuredDistance = coords && hasUsableCoordinates(customerCoordinates)
         ? Math.round(haversineDistance(
             coords.latitude,
             coords.longitude,
-            point.customer.latitude,
-            point.customer.longitude,
+            customerCoordinates.latitude,
+            customerCoordinates.longitude,
           ))
         : point.distanceMeters
       let forceCheckIn = false
