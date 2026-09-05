@@ -788,5 +788,61 @@
     "reassigned": "Yenidən təyin edildi: {{n}}",
     "reassignFailed": "Yenidən təyin etmək mümkün olmadı",
     "noAgents": "Komanda üzvü yoxdur"
+  },
+  "status": {
+    "unknown": "Göstərilməyib",
+    "visit": {
+      "CHECKED_IN": "Ziyarət davam edir",
+      "CHECKED_OUT": "Bitirilib",
+      "CANCELLED": "Ləğv edilib"
+    },
+    "visitOutcome": {
+      "SUCCESSFUL": "Uğurlu",
+      "PARTIAL": "Qismən",
+      "NO_CONTACT": "Əlaqə olmadı",
+      "RESCHEDULE": "Yenidən planlaşdır"
+    },
+    "customer": {
+      "ACTIVE": "Aktiv",
+      "INACTIVE": "Qeyri-aktiv",
+      "PROSPECT": "Potensial"
+    },
+    "customerType": {
+      "PHARMACY": "Aptek",
+      "CLINIC": "Klinika",
+      "DOCTOR": "Həkim",
+      "STORE": "Mağaza",
+      "OTHER": "Digər təşkilat"
+    },
+    "role": {
+      "ADMIN": "İnzibatçı",
+      "MANAGER": "Menecer",
+      "SUPERVISOR": "Supervayzer",
+      "AGENT": "Sahə əməkdaşı"
+    },
+    "route": {
+      "DRAFT": "Qaralama",
+      "PLANNED": "Planlaşdırılıb",
+      "IN_PROGRESS": "Davam edir",
+      "COMPLETED": "Tamamlanıb",
+      "CANCELLED": "Ləğv edilib",
+      "INCOMPLETE": "Yarımçıq"
+    },
+    "task": {
+      "PENDING": "Gözləyir",
+      "IN_PROGRESS": "Davam edir",
+      "COMPLETED": "Tamamlanıb",
+      "CANCELLED": "Ləğv edilib",
+      "OVERDUE": "Vaxtı keçib"
+    },
+    "dayKind": {
+      "WORKING_DAY": "İş günü",
+      "WEEKEND": "İstirahət günü",
+      "PUBLIC_HOLIDAY": "Bayram günü",
+      "COMPANY_HOLIDAY": "Şirkət istirahət günü",
+      "EXCEPTION_WORKDAY": "İstisna iş günü",
+      "MOVED_WORKDAY": "Köçürülmüş iş günü",
+      "MOVED_DAY_OFF": "Köçürülmüş istirahət günü"
+    }
   }
 }

@@ -25,6 +25,7 @@ import {
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { statusLabel } from "../../lib/status-labels"
 
 type Language = "ru" | "az" | "en"
 
@@ -126,11 +127,6 @@ function languageFor(value: string): Language {
   if (value.toLowerCase().startsWith("az")) return "az"
   if (value.toLowerCase().startsWith("en")) return "en"
   return "ru"
-}
-
-function readable(value: string | undefined): string | undefined {
-  if (!value) return undefined
-  return value.toLowerCase().replace(/_/g, " ").replace(/^./, (letter) => letter.toUpperCase())
 }
 
 function locationAddress(detail: RouteOrganizationDetail): string | undefined {
@@ -310,7 +306,7 @@ export default function RouteOrganizationDetailScreen() {
         <DataRow icon="call-outline" label={copy.phone} value={detail.phone ?? copy.unknown} />
         {detail.code ? <DataRow icon="barcode-outline" label={copy.code} value={detail.code} /> : null}
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
-        {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={readable(detail.status) ?? copy.unknown} /> : null}
+        {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={statusLabel(t, "customer", detail.status)} /> : null}
         <View style={styles.actions}>
           {address ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
           {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.call}</Text></Pressable> : null}
@@ -343,7 +339,7 @@ export default function RouteOrganizationDetailScreen() {
             <View style={styles.visitIcon}><Icon name="calendar-clear-outline" size={20} color={fieldTheme.color.blue} /></View>
             <View style={styles.relationshipCopy}>
               <Text style={styles.relationshipName}>{formatVisitDate(visit.checkInAt, i18n.language, copy.unknown)}</Text>
-              <Text style={styles.relationshipSubtitle}>{[readable(visit.status), readable(visit.outcome)].filter(Boolean).join(" · ") || copy.unknown}</Text>
+              <Text style={styles.relationshipSubtitle}>{[statusLabel(t, "visit", visit.status), visit.outcome ? statusLabel(t, "visitOutcome", visit.outcome) : undefined].filter(Boolean).join(" · ")}</Text>
             </View>
             <Icon name="chevron-forward" size={19} color={fieldTheme.color.inkMuted} />
           </Pressable>
@@ -362,7 +358,7 @@ export default function RouteOrganizationDetailScreen() {
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
           <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
-          <Text style={styles.headerSubtitle}>{typeLabel}{detail?.status ? ` · ${readable(detail.status)}` : ""}</Text>
+          <Text style={styles.headerSubtitle}>{typeLabel}{detail?.status ? ` · ${statusLabel(t, "customer", detail.status)}` : ""}</Text>
         </View>
       </View>
       <ScrollView

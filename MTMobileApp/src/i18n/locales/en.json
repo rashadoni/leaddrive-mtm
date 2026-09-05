@@ -844,5 +844,61 @@
     "reassigned": "{{n}} reassigned",
     "reassignFailed": "Couldn't reassign tasks",
     "noAgents": "No team members"
+  },
+  "status": {
+    "unknown": "Not specified",
+    "visit": {
+      "CHECKED_IN": "Visit in progress",
+      "CHECKED_OUT": "Checked out",
+      "CANCELLED": "Cancelled"
+    },
+    "visitOutcome": {
+      "SUCCESSFUL": "Successful",
+      "PARTIAL": "Partial",
+      "NO_CONTACT": "No contact",
+      "RESCHEDULE": "Reschedule"
+    },
+    "customer": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive",
+      "PROSPECT": "Prospect"
+    },
+    "customerType": {
+      "PHARMACY": "Pharmacy",
+      "CLINIC": "Clinic",
+      "DOCTOR": "Doctor",
+      "STORE": "Store",
+      "OTHER": "Other organization"
+    },
+    "role": {
+      "ADMIN": "Administrator",
+      "MANAGER": "Manager",
+      "SUPERVISOR": "Supervisor",
+      "AGENT": "Field agent"
+    },
+    "route": {
+      "DRAFT": "Draft",
+      "PLANNED": "Planned",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "INCOMPLETE": "Incomplete"
+    },
+    "task": {
+      "PENDING": "To do",
+      "IN_PROGRESS": "In progress",
+      "COMPLETED": "Done",
+      "CANCELLED": "Cancelled",
+      "OVERDUE": "Overdue"
+    },
+    "dayKind": {
+      "WORKING_DAY": "Working day",
+      "WEEKEND": "Weekend",
+      "PUBLIC_HOLIDAY": "Public holiday",
+      "COMPANY_HOLIDAY": "Company holiday",
+      "EXCEPTION_WORKDAY": "Exceptional working day",
+      "MOVED_WORKDAY": "Moved working day",
+      "MOVED_DAY_OFF": "Moved day off"
+    }
   }
 }

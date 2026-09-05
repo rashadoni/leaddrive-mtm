@@ -15,6 +15,7 @@ import type { RouteProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
+import i18next from "i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { managerApi } from "../../services/manager-api"
@@ -225,7 +226,8 @@ function languageFor(value: string): Language {
 
 function readableCode(value: string | undefined, labels: Readonly<Record<string, string>>): string {
   if (!value) return "—"
-  return labels[value] ?? value.toLowerCase().replace(/_/g, " ").replace(/^./, (first) => first.toUpperCase())
+  // An unmapped enum value is not copy (audit M-11); say "not specified".
+  return labels[value] ?? i18next.t("status.unknown")
 }
 
 function organizationAddress(detail: OrganizationDetail): string {

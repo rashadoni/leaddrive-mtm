@@ -29,6 +29,8 @@ export interface WeekDay {
   isWeekend: boolean
   isWorkingDay: boolean
   nonWorkingReason?: string
+  /** Server calendar day kind (WEEKEND, PUBLIC_HOLIDAY, …); labelled via status.dayKind. */
+  calendarKind?: string
   routeCount: number
   plannedStops: number
   tasksTotal: number
@@ -82,6 +84,7 @@ function mapDay(raw: any): WeekDay {
     isWeekend: Boolean(raw?.isWeekend),
     isWorkingDay: raw?.isWorkingDay !== false,
     nonWorkingReason: raw?.nonWorkingReason ? String(raw.nonWorkingReason) : undefined,
+    calendarKind: raw?.calendarKind ? String(raw.calendarKind) : undefined,
     routeCount: routes.length,
     plannedStops,
     tasksTotal: num(raw?.tasks?.total),

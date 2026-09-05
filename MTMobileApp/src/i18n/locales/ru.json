@@ -810,5 +810,61 @@
     "reassigned": "Переназначено: {{n}}",
     "reassignFailed": "Не удалось переназначить",
     "noAgents": "Нет сотрудников"
+  },
+  "status": {
+    "unknown": "Не указано",
+    "visit": {
+      "CHECKED_IN": "Визит идёт",
+      "CHECKED_OUT": "Завершён",
+      "CANCELLED": "Отменён"
+    },
+    "visitOutcome": {
+      "SUCCESSFUL": "Успешно",
+      "PARTIAL": "Частично",
+      "NO_CONTACT": "Не удалось связаться",
+      "RESCHEDULE": "Перенести"
+    },
+    "customer": {
+      "ACTIVE": "Активен",
+      "INACTIVE": "Неактивен",
+      "PROSPECT": "Потенциальный"
+    },
+    "customerType": {
+      "PHARMACY": "Аптека",
+      "CLINIC": "Клиника",
+      "DOCTOR": "Врач",
+      "STORE": "Магазин",
+      "OTHER": "Другая организация"
+    },
+    "role": {
+      "ADMIN": "Администратор",
+      "MANAGER": "Менеджер",
+      "SUPERVISOR": "Супервайзер",
+      "AGENT": "Полевой сотрудник"
+    },
+    "route": {
+      "DRAFT": "Черновик",
+      "PLANNED": "Запланирован",
+      "IN_PROGRESS": "Выполняется",
+      "COMPLETED": "Завершён",
+      "CANCELLED": "Отменён",
+      "INCOMPLETE": "Не завершён"
+    },
+    "task": {
+      "PENDING": "К выполнению",
+      "IN_PROGRESS": "В работе",
+      "COMPLETED": "Готово",
+      "CANCELLED": "Отменена",
+      "OVERDUE": "Просрочена"
+    },
+    "dayKind": {
+      "WORKING_DAY": "Рабочий день",
+      "WEEKEND": "Выходной",
+      "PUBLIC_HOLIDAY": "Праздничный день",
+      "COMPANY_HOLIDAY": "Корпоративный выходной",
+      "EXCEPTION_WORKDAY": "Рабочий день по исключению",
+      "MOVED_WORKDAY": "Перенесённый рабочий день",
+      "MOVED_DAY_OFF": "Перенесённый выходной"
+    }
   }
 }

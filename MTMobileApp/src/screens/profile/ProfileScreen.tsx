@@ -29,6 +29,7 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
+import { statusLabel } from "../../lib/status-labels"
 
 interface MtmAlert {
   id: string
@@ -272,7 +273,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.identity}>
               <Text style={styles.name}>{agent?.name || agent?.email}</Text>
-              <Text style={styles.role}>{agent?.role}</Text>
+              <Text style={styles.role}>{statusLabel(t, "role", agent?.role)}</Text>
               {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
             </View>
           </View>
