@@ -18,8 +18,9 @@ describe("status dictionary", () => {
     for (const [group, values] of Object.entries(STATUS_GROUPS)) {
       for (const value of values) {
         const label = (catalog.status[group] as Record<string, string> | undefined)?.[value]
-        expect(label, `${locale}: status.${group}.${value}`).toEqual(expect.any(String))
-        expect(label, `${locale}: status.${group}.${value} is the raw value`).not.toBe(value)
+        // One assertion per value with the key in the payload, so a failure names it.
+        expect({ key: `${locale}: status.${group}.${value}`, type: typeof label, raw: label === value })
+          .toEqual({ key: `${locale}: status.${group}.${value}`, type: "string", raw: false })
       }
     }
   })

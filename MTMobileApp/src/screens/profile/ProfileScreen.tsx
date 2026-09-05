@@ -41,6 +41,14 @@ interface MtmAlert {
   createdAt: string
 }
 
+// Translation keys of the language picker, built without upper-casing so the
+// key stays ASCII whatever the UI locale's casing rules are (audit B13).
+const LANGUAGE_LABEL_KEY: Record<string, string> = {
+  az: "profile.languageAz",
+  en: "profile.languageEn",
+  ru: "profile.languageRu",
+}
+
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -173,7 +181,7 @@ export default function ProfileScreen() {
         <View style={styles.localeRow}>
           {SUPPORTED_LOCALES.map((locale) => {
             const selected = currentLocale === locale
-            const label = t(`profile.language${locale.charAt(0).toUpperCase() + locale.slice(1)}` as any)
+            const label = t(LANGUAGE_LABEL_KEY[locale] ?? `profile.language${locale}` as any)
             return (
               <Pressable
                 key={locale}

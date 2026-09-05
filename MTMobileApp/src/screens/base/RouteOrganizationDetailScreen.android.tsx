@@ -26,6 +26,7 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { statusLabel } from "../../lib/status-labels"
+import { upperInitial } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
 
@@ -319,7 +320,7 @@ export default function RouteOrganizationDetailScreen() {
           return (
             <View key={usableId(contact.id) ? contact.id : `${contact.name}-${index}`} style={styles.relationshipRow}>
               <Pressable accessibilityRole="button" onPress={() => openContact(contact)} style={({ pressed }) => [styles.relationshipMain, { minHeight: touchTarget }, pressed && styles.pressed]}>
-                <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}><Text style={styles.avatarText}>{contact.name.slice(0, 1).toUpperCase() || "?"}</Text></View>
+                <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}><Text style={styles.avatarText}>{upperInitial(contact.name)}</Text></View>
                 <View style={styles.relationshipCopy}>
                   <View style={styles.nameLine}><Text style={styles.relationshipName} numberOfLines={1}>{contact.name || copy.unknown}</Text>{contact.isPrimary ? <Text style={styles.primaryText}>{copy.primary}</Text> : null}</View>
                   {subtitle ? <Text style={styles.relationshipSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
