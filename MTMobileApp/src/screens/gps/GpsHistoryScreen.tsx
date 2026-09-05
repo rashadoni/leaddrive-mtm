@@ -78,7 +78,6 @@ export default function GpsHistoryScreen() {
   const expandedTablet = isExpandedTabletWidth(width)
   const headerTop = useHeaderTop()
   const bootstrapTimezone = useBootstrapStore((state) => state.data?.timezone)
-  const tileApiKey = useBootstrapStore((state) => state.data?.maps?.cartoBasemapsApiKey ?? null)
   const safeBootstrapTimezone = useMemo(
     () => normalizeGpsTimeZone(bootstrapTimezone),
     [bootstrapTimezone],
@@ -548,6 +547,7 @@ function RoutePlaybackCard({
 }) {
   const webViewRef = useRef<any>(null)
   const [visualError, setVisualError] = useState(false)
+  const tileApiKey = useBootstrapStore((state) => state.data?.maps?.cartoBasemapsApiKey ?? null)
   const routeDocument = useMemo(
     () => buildGpsRouteDocument(model.routeSegments, {
       language: language.split("-")[0] || "en",
