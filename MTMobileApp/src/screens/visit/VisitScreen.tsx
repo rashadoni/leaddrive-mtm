@@ -44,6 +44,14 @@ import {
   visitScreenLanguage,
   visitScreenLayout,
 } from "./visit-screen-model"
+import {
+  describeCustomerDistance,
+  formatDistanceMeters,
+  hasUsableCoordinates,
+  resolveCheckInPrecondition,
+  type CustomerCoordinateState,
+  type PositionFailure,
+} from "./visit-checkin-model"
 
 interface Visit {
   id: string
@@ -64,9 +72,18 @@ interface Customer {
   latitude?: number
   longitude?: number
   distanceMeters?: number
+  coordinateState?: CustomerCoordinateState
 }
 
 type LoadState = "loading" | "ready" | "offline" | "error"
+
+/** Why the last "Start unplanned visit" attempt did not open a visit. Stays on screen until the next attempt. */
+type CheckInIssue =
+  | { kind: "no-coordinates" }
+  | { kind: "implausible-distance"; distanceMeters: number }
+  | { kind: "no-position"; reason: PositionFailure }
+  | { kind: "too-far"; distanceMeters: number; name: string }
+  | { kind: "server" }
 
 const VISIT_COPY = {
   ru: {
@@ -121,6 +138,19 @@ const VISIT_COPY = {
     completeStatus: "Завершён",
     pendingStatus: "Ждёт синхронизации",
     noAddress: "Адрес не указан",
+    coordinatesMissing: "Координаты не заданы",
+    coordinatesSuspicious: "Координаты требуют проверки",
+    issueNoCoordinatesTitle: "У точки нет координат",
+    issueNoCoordinatesBody: "Чек-ин здесь невозможен. Попросите руководителя добавить координаты в карточку клиента.",
+    issueSuspiciousTitle: "Координаты точки выглядят ошибочными",
+    issueSuspiciousBody: "По данным карточки до клиента {{distance}}. Сообщите руководителю, чтобы он проверил координаты.",
+    issuePositionTitle: "Не удалось определить ваше местоположение",
+    issuePermissionBody: "Разрешите приложению доступ к геолокации и попробуйте снова.",
+    issueGpsBody: "Выйдите на открытое место, дождитесь сигнала GPS и попробуйте снова.",
+    issueTooFarTitle: "Вы слишком далеко от клиента",
+    issueTooFarBody: "До {{name}} {{distance}}, а чек-ин возможен в пределах {{max}} м.",
+    issueServerTitle: "Визит не сохранился",
+    issueServerBody: "Проверьте связь и нажмите «Начать внеплановый визит» ещё раз.",
     noTime: "Время не указано",
     duration: "{{count}} мин",
     cancel: "Отмена",
@@ -177,6 +207,19 @@ const VISIT_COPY = {
     completeStatus: "Tamamlanıb",
     pendingStatus: "Sinxronizasiya gözlənilir",
     noAddress: "Ünvan göstərilməyib",
+    coordinatesMissing: "Koordinatlar göstərilməyib",
+    coordinatesSuspicious: "Koordinatlar yoxlanmalıdır",
+    issueNoCoordinatesTitle: "Nöqtənin koordinatları yoxdur",
+    issueNoCoordinatesBody: "Burada giriş qeyd etmək mümkün deyil. Rəhbərdən müştəri kartına koordinat əlavə etməsini xahiş edin.",
+    issueSuspiciousTitle: "Nöqtənin koordinatları səhv görünür",
+    issueSuspiciousBody: "Karta görə müştəriyə qədər {{distance}}. Rəhbərə bildirin ki, koordinatları yoxlasın.",
+    issuePositionTitle: "Mövqeyinizi müəyyən etmək mümkün olmadı",
+    issuePermissionBody: "Tətbiqə məkan icazəsi verin və yenidən cəhd edin.",
+    issueGpsBody: "Açıq yerə çıxın, GPS siqnalını gözləyin və yenidən cəhd edin.",
+    issueTooFarTitle: "Müştəridən çox uzaqdasınız",
+    issueTooFarBody: "{{name}}-ə qədər {{distance}}, giriş isə {{max}} m daxilində mümkündür.",
+    issueServerTitle: "Ziyarət saxlanmadı",
+    issueServerBody: "Əlaqəni yoxlayın və «Plansız ziyarətə başla» düyməsini yenidən basın.",
     noTime: "Vaxt göstərilməyib",
     duration: "{{count}} dəq",
     cancel: "Ləğv et",
@@ -233,6 +276,19 @@ const VISIT_COPY = {
     completeStatus: "Completed",
     pendingStatus: "Waiting to sync",
     noAddress: "No address provided",
+    coordinatesMissing: "No coordinates",
+    coordinatesSuspicious: "Coordinates need checking",
+    issueNoCoordinatesTitle: "This client has no coordinates",
+    issueNoCoordinatesBody: "Check-in is not possible here. Ask your manager to add coordinates to the client card.",
+    issueSuspiciousTitle: "The client's coordinates look wrong",
+    issueSuspiciousBody: "The card puts the client {{distance}} away. Tell your manager so they can check the coordinates.",
+    issuePositionTitle: "We could not find your position",
+    issuePermissionBody: "Allow location access for the app and try again.",
+    issueGpsBody: "Move to an open area, wait for a GPS fix and try again.",
+    issueTooFarTitle: "You are too far from the client",
+    issueTooFarBody: "{{name}} is {{distance}} away; check-in works within {{max}} m.",
+    issueServerTitle: "The visit was not saved",
+    issueServerBody: "Check your connection and press “Start unplanned visit” again.",
     noTime: "Time not provided",
     duration: "{{count}} min",
     cancel: "Cancel",
@@ -241,17 +297,6 @@ const VISIT_COPY = {
 
 const GEOFENCE_DEFAULT = 100
 const MAX_CACHED_LOCATION_AGE_MS = 120_000
-
-function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371000
-  const toRad = (degrees: number) => (degrees * Math.PI) / 180
-  const p1 = toRad(lat1)
-  const p2 = toRad(lat2)
-  const dp = toRad(lat2 - lat1)
-  const dl = toRad(lon2 - lon1)
-  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
 
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`
@@ -325,6 +370,7 @@ export default function VisitScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [pendingGeofenceResolve, setPendingGeofenceResolve] = useState<((value: boolean) => void) | null>(null)
+  const [checkInIssue, setCheckInIssue] = useState<CheckInIssue | null>(null)
   const [toast, setToast] = useState<{
     visible: boolean
     type: "success" | "error" | "warning" | "info"
@@ -424,18 +470,14 @@ export default function VisitScreen() {
   }, [activeVisit])
 
   const customersWithDistance = useMemo<Customer[]>(() => {
-    if (!agentCoords) return customers
     return [...customers]
       .map((customer) => {
-        if (customer.latitude == null || customer.longitude == null) return customer
+        // Missing or 0,0 coordinates never produce a distance (field audit: "6745.7 km").
+        const described = describeCustomerDistance(customer, agentCoords)
         return {
           ...customer,
-          distanceMeters: Math.round(haversineDistance(
-            agentCoords.latitude,
-            agentCoords.longitude,
-            customer.latitude,
-            customer.longitude,
-          )),
+          coordinateState: described.state,
+          distanceMeters: described.distanceMeters ?? undefined,
         }
       })
       .sort((first, second) => {
@@ -460,6 +502,10 @@ export default function VisitScreen() {
       setSelectedCustomerId(null)
     }
   }, [customersWithDistance, selectedCustomerId])
+
+  useEffect(() => {
+    setCheckInIssue(null)
+  }, [selectedCustomerId])
 
   const requestLocationPermission = async (): Promise<boolean> => {
     if (Platform.OS !== "android") return true
@@ -512,6 +558,30 @@ export default function VisitScreen() {
     }
   }
 
+  /** Like getCoords, but says why no position came back so the screen can explain it. */
+  const locateForCheckIn = async (): Promise<{
+    coords: { latitude: number; longitude: number } | null
+    failure: PositionFailure | null
+  }> => {
+    const hasPermission = await requestLocationPermission()
+    if (!hasPermission) return { coords: null, failure: "permission" }
+    try {
+      const coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+        Geolocation.getCurrentPosition(
+          (position) => resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }),
+          reject,
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
+        )
+      })
+      return { coords, failure: null }
+    } catch {
+      return { coords: null, failure: "gps" }
+    }
+  }
+
   const handleCheckIn = (customer: Customer) => {
     if (mutating || activeVisit) return
     setConfirm({
@@ -530,8 +600,16 @@ export default function VisitScreen() {
   const performCheckIn = async (customer: Customer) => {
     if (mutating) return
     setMutating(true)
+    setCheckInIssue(null)
     try {
-      let coords = await getCoords()
+      // Owner decision: no coordinates on the client card means no check-in, with an explanation.
+      if (!hasUsableCoordinates(customer)) {
+        setCheckInIssue({ kind: "no-coordinates" })
+        showToast("error", copy.issueNoCoordinatesTitle, copy.issueNoCoordinatesBody)
+        return
+      }
+      const located = await locateForCheckIn()
+      let coords = located.coords
       const cachedPositionIsFresh = lastKnownPosition
         ? Date.now() - lastKnownPosition.timestamp <= MAX_CACHED_LOCATION_AGE_MS
         : false
@@ -549,20 +627,28 @@ export default function VisitScreen() {
         )
       }
       if (!coords) {
+        setCheckInIssue({ kind: "no-position", reason: located.failure ?? "gps" })
         showToast("error", t("visit.gpsUnavailable"), t("visit.gpsCantDetermine"))
         return
       }
 
+      const precondition = resolveCheckInPrecondition({
+        customer,
+        position: coords,
+        positionFailure: located.failure,
+      })
+      if (precondition.kind === "implausible-distance") {
+        setCheckInIssue(precondition)
+        showToast("error", copy.issueSuspiciousTitle, checkInIssueText(precondition, copy).body)
+        return
+      }
+
       let forceCheckIn = false
-      if (customer.latitude != null && customer.longitude != null) {
-        const distance = Math.round(haversineDistance(
-          coords.latitude,
-          coords.longitude,
-          customer.latitude,
-          customer.longitude,
-        ))
+      if (precondition.kind === "ready") {
+        const distance = precondition.distanceMeters
         if (distance > GEOFENCE_DEFAULT) {
           if (!api.canForceCheckIn) {
+            setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })
             showToast(
               "error",
               t("visit.tooFarTitle"),
@@ -593,7 +679,10 @@ export default function VisitScreen() {
               },
             })
           })
-          if (!proceed) return
+          if (!proceed) {
+            setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })
+            return
+          }
           forceCheckIn = true
         }
       }
@@ -621,6 +710,7 @@ export default function VisitScreen() {
     } catch (error: any) {
       if (error.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-in error:", error?.message ?? error)
+        setCheckInIssue({ kind: "server" })
         showToast("error", t("common.error"), t("visit.checkInFailed"))
       }
     } finally {
@@ -751,6 +841,7 @@ export default function VisitScreen() {
     onPhoto: () => setCameraVisible(true),
     onCheckOut: handleCheckOut,
     onRetry: retry,
+    checkInIssue,
   }
 
   const history = (
@@ -907,6 +998,33 @@ export default function VisitScreen() {
 
 type Copy = { [Key in keyof typeof VISIT_COPY.ru]: string }
 
+function checkInIssueText(issue: CheckInIssue, copy: Copy): { title: string; body: string } {
+  switch (issue.kind) {
+    case "no-coordinates":
+      return { title: copy.issueNoCoordinatesTitle, body: copy.issueNoCoordinatesBody }
+    case "implausible-distance":
+      return {
+        title: copy.issueSuspiciousTitle,
+        body: copy.issueSuspiciousBody.replace("{{distance}}", formatDistanceMeters(issue.distanceMeters)),
+      }
+    case "no-position":
+      return {
+        title: copy.issuePositionTitle,
+        body: issue.reason === "permission" ? copy.issuePermissionBody : copy.issueGpsBody,
+      }
+    case "too-far":
+      return {
+        title: copy.issueTooFarTitle,
+        body: copy.issueTooFarBody
+          .replace("{{name}}", issue.name)
+          .replace("{{distance}}", formatDistanceMeters(issue.distanceMeters))
+          .replace("{{max}}", String(GEOFENCE_DEFAULT)),
+      }
+    case "server":
+      return { title: copy.issueServerTitle, body: copy.issueServerBody }
+  }
+}
+
 function VisitActionPanel({
   copy,
   activeVisit,
@@ -928,8 +1046,10 @@ function VisitActionPanel({
   onPhoto,
   onCheckOut,
   onRetry,
+  checkInIssue,
 }: {
   copy: Copy
+  checkInIssue: CheckInIssue | null
   activeVisit: Visit | null
   elapsedMin: number
   photoCount: number
@@ -1136,6 +1256,16 @@ function VisitActionPanel({
           </View>
         )}
 
+        {checkInIssue && (
+          <View style={styles.issueBox} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <Icon name="alert-circle" size={20} color={fieldTheme.color.danger} />
+            <View style={styles.issueCopy}>
+              <Text style={styles.issueTitle}>{checkInIssueText(checkInIssue, copy).title}</Text>
+              <Text style={styles.issueBody}>{checkInIssueText(checkInIssue, copy).body}</Text>
+            </View>
+          </View>
+        )}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={copy.start}
@@ -1194,6 +1324,16 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
         {customer.category && (
           <View style={[styles.smallPill, { backgroundColor: category.background }]}>
             <Text style={[styles.smallPillText, { color: category.color }]}>{customer.category}</Text>
+          </View>
+        )}
+        {customer.coordinateState === "missing" && (
+          <View style={[styles.smallPill, { backgroundColor: fieldTheme.color.surfaceStrong }]}>
+            <Text style={[styles.smallPillText, { color: fieldTheme.color.inkMuted }]}>{copy.coordinatesMissing}</Text>
+          </View>
+        )}
+        {customer.coordinateState === "suspicious" && (
+          <View style={[styles.smallPill, { backgroundColor: fieldTheme.color.amberSoft }]}>
+            <Text style={[styles.smallPillText, { color: fieldTheme.color.amber }]}>{copy.coordinatesSuspicious}</Text>
           </View>
         )}
         {distance && customer.distanceMeters != null && (
@@ -1553,6 +1693,19 @@ const styles = StyleSheet.create({
   selectionName: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900", marginTop: 1 },
   prerequisite: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   prerequisiteText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  issueBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.sm,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.danger,
+    backgroundColor: fieldTheme.color.dangerSoft,
+  },
+  issueCopy: { flex: 1, gap: 2 },
+  issueTitle: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "700", lineHeight: 19 },
+  issueBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18 },
   primaryButton: {
     flexDirection: "row",
     alignItems: "center",
