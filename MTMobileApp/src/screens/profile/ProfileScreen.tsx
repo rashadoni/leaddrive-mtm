@@ -28,6 +28,7 @@ import { version as APP_VERSION } from "../../../package.json"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { upperInitial } from "../../lib/upper"
 
 interface MtmAlert {
   id: string
@@ -267,7 +268,7 @@ export default function ProfileScreen() {
               <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
             </Pressable>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{agent?.name?.charAt(0)?.toUpperCase() || "?"}</Text>
+              <Text style={styles.avatarText}>{upperInitial(agent?.name)}</Text>
             </View>
             <View style={styles.identity}>
               <Text style={styles.name}>{agent?.name || agent?.email}</Text>
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   avatarText: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "900" },
   identity: { flex: 1, minWidth: 0 },
   name: { color: fieldTheme.color.onColor, fontSize: 24, lineHeight: 30, fontWeight: "900" },
-  role: { color: fieldTheme.color.primarySoft, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
+  role: { color: fieldTheme.color.primarySoft, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
   organization: { color: "#CFE3DA", marginTop: 3, fontSize: 13, fontWeight: "600" },
   errorBanner: { width: "100%", maxWidth: 1120, alignSelf: "center", marginTop: fieldTheme.space.lg, padding: fieldTheme.space.md, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#E7CB8A", backgroundColor: fieldTheme.color.amberSoft },
   errorText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },

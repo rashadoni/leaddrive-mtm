@@ -6,6 +6,7 @@ import type {
 import {
   cartoTileMarkup,
   cartoTileScript,
+  type CartoTileOptions,
   cartoTileStyles,
 } from "../maps/carto-tiles"
 
@@ -155,6 +156,7 @@ function htmlText(value: string): string {
 export function buildManagerLiveMapDocument(
   markers: ManagerLiveMapDocumentMarker[],
   labels: ManagerLiveMapDocumentLabels,
+  tiles: CartoTileOptions = {},
 ): string {
   const safeMarkers = markers.map((marker) => ({
     id: marker.id,
@@ -296,7 +298,7 @@ export function buildManagerLiveMapDocument(
     <div class="map-note">${htmlText(labels.tapHint)}</div>
   </main>
   <script>
-    ${cartoTileScript()}
+    ${cartoTileScript(tiles)}
     (function () {
       var markers = ${scriptJson(safeMarkers)};
       var worldUnit = 256;

@@ -131,9 +131,15 @@ class ApiClient {
   resolveMediaUrl(path: string | null | undefined): string | null {
     if (!path) return null
     if (/^https?:\/\//i.test(path)) return path
-    if (!this.baseUrl) return null
-    const origin = this.baseUrl.replace(/\/api\/v1\/mtm\/?$/, "")
+    const origin = this.serverOrigin()
+    if (!origin) return null
     return `${origin}${path.startsWith("/") ? "" : "/"}${path}`
+  }
+
+  /** The tenant server origin (no `/api/v1/mtm`), or null before a server is chosen. */
+  serverOrigin(): string | null {
+    if (!this.baseUrl) return null
+    return this.baseUrl.replace(/\/api\/v1\/mtm\/?$/, "")
   }
 
   /**

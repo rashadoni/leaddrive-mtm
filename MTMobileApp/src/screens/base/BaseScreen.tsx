@@ -129,7 +129,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
-    textTransform: "uppercase",
     letterSpacing: 0.7,
   },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 29, lineHeight: 35, fontWeight: "900", marginTop: 2 },

@@ -240,7 +240,7 @@ export default function RouteOrganizationExplorerScreen() {
               </View>
               {item.address ? <View style={styles.detailRow}><Icon name="location-outline" size={16} color={fieldTheme.color.inkMuted} /><Text style={styles.detailText} numberOfLines={1}>{item.address}</Text></View> : null}
               {item.phone ? <View style={styles.detailRow}><Icon name="call-outline" size={16} color={fieldTheme.color.inkMuted} /><Text style={styles.detailText} numberOfLines={1}>{item.phone}</Text></View> : null}
-              {typeof item.contactsCount === "number" ? <Text style={styles.countText}>{t("organizations.contactsTemplate", { n: item.contactsCount })}</Text> : null}
+              {typeof item.contactsCount === "number" ? <Text style={styles.countText}>{t("organizations.contactsTemplate", { count: item.contactsCount })}</Text> : null}
             </Pressable>
           )
         }}

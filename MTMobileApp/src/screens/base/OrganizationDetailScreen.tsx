@@ -35,6 +35,7 @@ import {
   usableOrganizationRecordId,
   type OrganizationPrimaryAction,
 } from "./organization-detail-state"
+import { upperInitial } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
 
@@ -327,7 +328,7 @@ function ContactRow({
         style={({ pressed }) => [styles.relationshipMain, { minHeight: touchTarget }, pressed && onOpen && styles.pressed]}
       >
         <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}>
-          <Text style={styles.avatarText}>{contact.name.trim().slice(0, 1).toUpperCase() || "?"}</Text>
+          <Text style={styles.avatarText}>{upperInitial(contact.name)}</Text>
         </View>
         <View style={styles.relationshipCopy}>
           <View style={styles.relationshipTitleRow}>
@@ -794,7 +795,7 @@ const styles = StyleSheet.create({
   backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: "rgba(248,252,250,0.12)" },
   headerPressed: { backgroundColor: "rgba(248,252,250,0.22)" },
   headerMain: { flex: 1, minWidth: 0 },
-  headerEyebrow: { color: "#AFCFC4", fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.7 },
+  headerEyebrow: { color: "#AFCFC4", fontSize: 11, fontWeight: "800", letterSpacing: 0.7 },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 24, lineHeight: 29, fontWeight: "900", letterSpacing: -0.4, marginTop: 2 },
   headerMeta: { flexDirection: "row", flexWrap: "wrap", marginTop: fieldTheme.space.xs },
   headerSubtitle: { color: "#CFE5DD", fontSize: 13, fontWeight: "600" },
@@ -824,7 +825,7 @@ const styles = StyleSheet.create({
   tabletSurface: { marginTop: 0 },
   surface: { backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, overflow: "hidden", marginTop: fieldTheme.space.lg },
   nextCard: { backgroundColor: fieldTheme.color.primaryStrong, borderRadius: fieldTheme.radius.lg, padding: fieldTheme.space.xl, gap: fieldTheme.space.lg },
-  nextEyebrow: { color: "#AFCFC4", fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.8 },
+  nextEyebrow: { color: "#AFCFC4", fontSize: 11, fontWeight: "900", letterSpacing: 0.8 },
   nextContent: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
   nextIcon: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.13)" },
   nextCopy: { flex: 1 },
@@ -834,7 +835,7 @@ const styles = StyleSheet.create({
   primaryButtonPressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
   primaryButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900" },
   quickArea: { borderTopWidth: 1, borderTopColor: "rgba(248,252,250,0.18)", paddingTop: fieldTheme.space.md, gap: fieldTheme.space.sm },
-  quickLabel: { color: "#AFCFC4", fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
+  quickLabel: { color: "#AFCFC4", fontSize: 11, fontWeight: "800", letterSpacing: 0.6 },
   quickButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: "rgba(248,252,250,0.13)" },
   quickButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "800" },
 
@@ -848,7 +849,7 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   infoIcon: { width: 36, height: 36, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
   infoCopy: { flex: 1, minWidth: 0 },
-  infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.4 },
+  infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", letterSpacing: 0.4 },
   infoValue: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 21, fontWeight: "700", marginTop: 2 },
   infoValueMuted: { color: fieldTheme.color.inkMuted, fontWeight: "600" },
 

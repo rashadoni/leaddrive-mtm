@@ -23,6 +23,7 @@ import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { upperInitial } from "../../lib/upper"
 
 const TYPE_KEY: Record<string, string> = {
   DOCTOR: "contacts.typeDoctor",
@@ -226,7 +227,7 @@ export default function ContactsList() {
               style={({ pressed }) => [styles.card, tablet && styles.cardTablet, pressed && styles.cardPressed]}
             >
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.name?.trim().charAt(0).toUpperCase() || "?"}</Text>
+                <Text style={styles.avatarText}>{upperInitial(item.name)}</Text>
               </View>
 
               <View style={styles.cardContent}>

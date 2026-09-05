@@ -831,7 +831,7 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
         <View style={styles.detailHeadingCopy}>
           <Text style={styles.detailTitle}>{formatFullDate(day.date, lang)}</Text>
           <Text style={styles.detailSubtitle}>
-            {day.isWorkingDay ? t("week.stopsTemplate", { n: day.plannedStops }) : day.nonWorkingReason || t("week.dayOff")}
+            {day.isWorkingDay ? t("week.stopsTemplate", { count: day.plannedStops }) : day.nonWorkingReason || t("week.dayOff")}
           </Text>
         </View>
       </View>
@@ -885,7 +885,7 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
             {day.isToday && <Text style={styles.todayTag}>{copy.todayMarker}</Text>}
           </View>
           <Text style={styles.phoneDaySubtitle}>
-            {day.isWorkingDay ? t("week.stopsTemplate", { n: day.plannedStops }) : day.nonWorkingReason || t("week.dayOff")}
+            {day.isWorkingDay ? t("week.stopsTemplate", { count: day.plannedStops }) : day.nonWorkingReason || t("week.dayOff")}
           </Text>
         </View>
       </View>
@@ -1273,7 +1273,7 @@ const styles = StyleSheet.create({
   ownRoutePlannerTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   ownRoutePlannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   summarySection: { marginBottom: fieldTheme.space.xl },
-  sectionEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: fieldTheme.space.sm },
+  sectionEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7, marginBottom: fieldTheme.space.sm },
   summaryStrip: {
     flexDirection: "column",
     gap: fieldTheme.space.sm,
@@ -1314,7 +1314,7 @@ const styles = StyleSheet.create({
   daySelectorSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
   dateTile: { width: 52, minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surfaceStrong },
   dateTileToday: { backgroundColor: fieldTheme.color.primary },
-  dateWeekday: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "800", textTransform: "uppercase" },
+  dateWeekday: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "800" },
   dateNumber: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 25, fontWeight: "900" },
   dateTextToday: { color: fieldTheme.color.onColor },
   daySelectorCopy: { flex: 1, minWidth: 0 },

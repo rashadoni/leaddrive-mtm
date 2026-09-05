@@ -16,6 +16,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary"
 import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
 import { useWorkdayStore, workdayKey } from "../store/workday"
+import { useSyncStatusStore } from "../store/sync-status"
 import { setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
@@ -24,6 +25,12 @@ import { initSentry } from "../services/sentry"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { fieldTheme } from "../theme/fieldTheme"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
+
+function netInfoOnline(state: { isConnected: boolean | null; isInternetReachable: boolean | null }): boolean | null {
+  if (state.isConnected === false || state.isInternetReachable === false) return false
+  if (state.isConnected === true) return true
+  return null
+}
 
 initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${ROUTE_FIELD_PROFILE.apkVersion}`)
 
@@ -56,7 +63,13 @@ function AppContent() {
 
   useEffect(() => {
     if (!isLoggedIn) return
+    // The sync chip must never say "synced" with the radio off (audit M-06):
+    // connectivity is published to the store before any sync decision.
+    NetInfo.fetch()
+      .then((state) => useSyncStatusStore.getState().setOnline(netInfoOnline(state)))
+      .catch(() => {})
     const unsubscribe = NetInfo.addEventListener((state) => {
+      useSyncStatusStore.getState().setOnline(netInfoOnline(state))
       if (state.isConnected && state.isInternetReachable !== false) {
         refreshAdmissionAndSync().catch(() => {})
       } else if (state.isConnected === false || state.isInternetReachable === false) {

@@ -28,6 +28,7 @@ import { hasRouteFieldAccess } from "../services/bootstrap"
 import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
+import { syncChipLabel } from "./sync-chip-label"
 
 type Props = {
   inverse?: boolean
@@ -92,7 +93,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const [actionError, setActionError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<SyncConflict[]>([])
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
-  const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines } = useSyncStatusStore()
+  const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines, online } = useSyncStatusStore()
   const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
 
   const reload = useCallback(async () => {
@@ -115,18 +116,18 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
   const outstanding = pending + mediaPending
   const label = useMemo(() => {
-    if (phase === "syncing") return t("syncCenter.syncing")
-    if (conflicts.length > 0) return t("syncCenter.conflictsShort", { n: conflicts.length })
-    if (phase === "offline") return outstanding > 0
-      ? t("syncCenter.offlinePending", { n: outstanding })
-      : t("syncCenter.offline")
-    if (outstanding > 0) return t("syncCenter.pendingShort", { n: outstanding })
-    return t("syncCenter.synced")
-  }, [conflicts.length, outstanding, phase, t])
+    const chip = syncChipLabel({ phase, online, conflicts: conflicts.length, outstanding })
+    return "count" in chip ? t(chip.key, { count: chip.count }) : t(chip.key)
+  }, [conflicts.length, online, outstanding, phase, t])
 
   const syncNow = async () => {
     if (!syncAllowed) {
       setActionError(t("routeFieldAccess.syncBlocked"))
+      return
+    }
+    if (online === false) {
+      // Explain instead of spinning: nothing can be sent without a network.
+      setActionError(t("syncCenter.offlineCannotSync"))
       return
     }
     setBusyId("sync")
@@ -374,7 +375,7 @@ const styles = StyleSheet.create({
   lastSync: { marginTop: 14, color: "#475569", fontSize: 12 },
   errorText: { marginTop: 6, color: "#b91c1c", fontSize: 12 },
   pipelineSection: { marginTop: 14, gap: 7 },
-  pipelineHeading: { color: "#475569", fontSize: 12, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
+  pipelineHeading: { color: "#475569", fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
   pipelineRow: { minHeight: 36, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#f8fafc", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   pipelineName: { flex: 1, color: "#334155", fontSize: 12, fontWeight: "700" },
   pipelineState: { color: "#0f766e", fontSize: 11, fontWeight: "800", textAlign: "right" },

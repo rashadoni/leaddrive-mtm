@@ -8,6 +8,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -17,6 +18,8 @@ import Geolocation from "@react-native-community/geolocation"
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import i18next from "i18next"
+import { hasCoordinates } from "../../lib/geo"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
@@ -626,6 +629,11 @@ function StopRow({
                 {formatDistance(point.distanceMeters)}
               </Text>
             </View>
+          ) : !hasCoordinates(point.customer) && point.status !== "VISITED" ? (
+            <View style={styles.metaItem}>
+              <Icon name="help-circle-outline" size={15} color={fieldTheme.color.inkMuted} />
+              <Text style={styles.metaText}>{i18next.t("route.noCoordinates")}</Text>
+            </View>
           ) : null}
         </View>
       </View>
@@ -795,6 +803,11 @@ function PointActionPanel({
             <Text style={[styles.detailFactText, { color: distanceColor(point.distanceMeters) }]}>
               {renderTemplate(copy.distanceAway, { distance: formatDistance(point.distanceMeters) })}
             </Text>
+          </View>
+        ) : !hasCoordinates(point.customer) ? (
+          <View style={styles.detailFact}>
+            <Icon name="help-circle-outline" size={18} color={fieldTheme.color.inkMuted} />
+            <Text style={styles.detailFactText}>{i18next.t("route.noCoordinates")}</Text>
           </View>
         ) : null}
       </View>
@@ -1133,6 +1146,29 @@ export default function RouteScreen() {
 
   const handleCheckIn = async (point: RoutePoint) => {
     if (mutating) return
+    if (!hasCoordinates(point.customer)) {
+      // Owner decision 2 (audit 2026-09-05): no coordinates, no check-in. The
+      // server would answer NO_COORDINATES; say it here, before GPS.
+      Alert.alert(
+        t("route.noCoordinatesTitle"),
+        t("route.noCoordinatesBody", { name: point.customer.name }),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("visit.reportToManager"),
+            onPress: () => {
+              Share.share({
+                message: t("visit.reportToManagerMessage", {
+                  name: point.customer.name,
+                  address: point.customer.address || t("visit.noAddress"),
+                }),
+              }).catch(() => {})
+            },
+          },
+        ],
+      )
+      return
+    }
     setMutating(true)
     try {
       let coords: { latitude: number; longitude: number } | null = null
@@ -1162,7 +1198,7 @@ export default function RouteScreen() {
         }
       }
 
-      const measuredDistance = coords && point.customer.latitude != null && point.customer.longitude != null
+      const measuredDistance = coords && hasCoordinates(point.customer)
         ? Math.round(haversineDistance(
             coords.latitude,
             coords.longitude,
@@ -1360,7 +1396,7 @@ export default function RouteScreen() {
           <View style={styles.tabletListPane}>
             <View style={styles.sectionHeading}>
               <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-              <Text style={styles.sectionCount}>{t("route.stopsCount", { n: totalPoints })}</Text>
+              <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
             </View>
             <FlatList
               data={sortedPoints}
@@ -1432,7 +1468,7 @@ export default function RouteScreen() {
               {sortedPoints.length > 0 ? (
                 <View style={styles.sectionHeading}>
                   <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                  <Text style={styles.sectionCount}>{t("route.stopsCount", { n: totalPoints })}</Text>
+                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
                 </View>
               ) : null}
             </View>
@@ -1588,7 +1624,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   summaryCopy: { flex: 1 },
-  summaryEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
+  summaryEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "800", letterSpacing: 0.6 },
   summaryTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "800", marginTop: 2 },
   summaryDate: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700", marginTop: 3 },
   summaryBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
@@ -1623,7 +1659,7 @@ const styles = StyleSheet.create({
   actionEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 21, textAlign: "center", maxWidth: 320 },
   actionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },
-  actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", letterSpacing: 0.7 },
   actionTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 29, fontWeight: "900", letterSpacing: -0.4 },
   actionAddress: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   visitFacts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },

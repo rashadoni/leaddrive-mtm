@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   saveText: { color: "#fff", fontSize: 13, fontWeight: "900" },
   disabled: { opacity: 0.55 },
   content: { width: "100%", maxWidth: 980, alignSelf: "center", padding: 18 },
-  sectionTitle: { color: "#4f46e5", fontSize: 13, fontWeight: "900", letterSpacing: 0.7, textTransform: "uppercase", marginTop: 16, marginBottom: 10 },
+  sectionTitle: { color: "#4f46e5", fontSize: 13, fontWeight: "900", letterSpacing: 0.7, marginTop: 16, marginBottom: 10 },
   grid: { gap: 10 },
   gridTablet: { flexDirection: "row", flexWrap: "wrap" },
   inputWrap: { width: "100%", gap: 5, marginBottom: 10 },

@@ -8,7 +8,7 @@ jest.mock("../../src/services/outbox", () => ({
 }))
 import { useWorkdayStore } from "../../src/store/workday"
 import { isWorkdayOpen } from "../../src/services/bootstrap"
-import { allOutboxOperations } from "../../src/services/outbox"
+import { allOutboxOperations, enqueueOutboxOperation } from "../../src/services/outbox"
 
 const mockedAllOutboxOperations = allOutboxOperations as jest.Mock
 
@@ -41,7 +41,7 @@ describe("workday reconcileFromServer", () => {
   beforeEach(async () => {
     await AsyncStorage.clear()
     mockedAllOutboxOperations.mockResolvedValue([])
-    useWorkdayStore.setState({ activeWorkday: null, syncError: null, hydrated: true })
+    useWorkdayStore.setState({ activeWorkday: null, finishedWorkday: null, syncError: null, hydrated: true })
   })
 
   it("adopts an open server shift when local is empty (restore on new device)", async () => {
@@ -123,5 +123,71 @@ describe("workday reconcileFromServer", () => {
     })
 
     expect(useWorkdayStore.getState().activeWorkday).toBeNull()
+  })
+})
+
+describe("finished workday memory (field UX audit M-05 / B3)", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear()
+    mockedAllOutboxOperations.mockResolvedValue([])
+    ;(enqueueOutboxOperation as jest.Mock).mockClear()
+    useWorkdayStore.setState({ activeWorkday: null, finishedWorkday: null, syncError: null, hydrated: true })
+  })
+
+  it("remembers when the server confirms this device's FINISH", async () => {
+    useWorkdayStore.setState({ activeWorkday: {
+      key: "t:a", workdayId: "srv-1", startedAt: "2026-09-05T09:00:00.000Z", syncState: "FINISH_PENDING",
+    } })
+
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-1",
+      status: "COMPLETED",
+      workDate: "2026-09-05",
+      startedAt: "2026-09-05T09:00:00.000Z",
+      completedAt: "2026-09-05T14:24:00.000Z",
+    })
+
+    expect(useWorkdayStore.getState().activeWorkday).toBeNull()
+    expect(useWorkdayStore.getState().finishedWorkday).toEqual({
+      key: "t:a", workdayId: "srv-1", finishedAt: "2026-09-05T14:24:00.000Z", dateKey: "2026-09-05",
+    })
+    expect(await AsyncStorage.getItem("@mtm_finished_workday_v1")).toContain("srv-1")
+  })
+
+  it("adopts a finished server shift on a fresh device so the day is not offered again", async () => {
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-2", status: "COMPLETED", workDate: "2026-09-05", startedAt: "2026-09-05T08:00:00.000Z", completedAt: "2026-09-05T17:00:00.000Z",
+    })
+
+    expect(useWorkdayStore.getState().activeWorkday).toBeNull()
+    expect(useWorkdayStore.getState().finishedWorkday?.workdayId).toBe("srv-2")
+  })
+
+  it("refuses to start a new shift on the day the previous one was finished (owner decision 4)", async () => {
+    const today = new Date()
+    const dateKey = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-")
+    useWorkdayStore.setState({ finishedWorkday: { key: "t:a", workdayId: "srv-3", finishedAt: today.toISOString(), dateKey } })
+
+    await useWorkdayStore.getState().start("t:a")
+
+    expect(useWorkdayStore.getState().activeWorkday).toBeNull()
+    expect(enqueueOutboxOperation).not.toHaveBeenCalled()
+  })
+
+  it("still starts a shift on a later day", async () => {
+    useWorkdayStore.setState({ finishedWorkday: { key: "t:a", workdayId: "srv-4", finishedAt: "2026-09-04T17:00:00.000Z", dateKey: "2026-09-04" } })
+
+    await useWorkdayStore.getState().start("t:a")
+
+    expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe("START_PENDING")
+  })
+
+  it("hydrates the remembered finish", async () => {
+    await AsyncStorage.setItem("@mtm_finished_workday_v1", JSON.stringify({ key: "t:a", workdayId: "srv-5", finishedAt: "2026-09-05T18:24:00.000Z", dateKey: "2026-09-05" }))
+    useWorkdayStore.setState({ hydrated: false })
+
+    await useWorkdayStore.getState().hydrate()
+
+    expect(useWorkdayStore.getState().finishedWorkday?.finishedAt).toBe("2026-09-05T18:24:00.000Z")
   })
 })

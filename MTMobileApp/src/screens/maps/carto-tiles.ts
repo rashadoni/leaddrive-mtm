@@ -71,8 +71,18 @@ export function cartoTileMarkup(labels: CartoTileLabels): string {
  * WebView, navigation stays blocked, and the coordinate overlay remains useful
  * over the local grid if every tile request fails.
  */
-export function cartoTileScript(): string {
+export interface CartoTileOptions {
+  /**
+   * CARTO raster basemap key from the tenant server bootstrap (audit M-07,
+   * task B16). Without it CARTO stamps "API KEY REQUIRED" over the tiles.
+   */
+  apiKey?: string | null
+}
+
+export function cartoTileScript(options: CartoTileOptions = {}): string {
+  const apiKey = typeof options.apiKey === "string" && options.apiKey.trim() ? options.apiKey.trim() : ""
   return `
+      var __cartoTileQuery = ${JSON.stringify(apiKey ? `?key=${encodeURIComponent(apiKey)}` : "")};
       window.__renderCartoTiles = function (originX, originY, zoom, width, height) {
         var layer = document.getElementById("map-tiles");
         var status = document.getElementById("map-tile-status");
@@ -122,7 +132,7 @@ export function cartoTileScript(): string {
             image.onload = function () { settle(true); };
             image.onerror = function () { settle(false); };
             image.src = "https://" + subdomains[subdomainIndex] +
-              ".basemaps.cartocdn.com/light_all/" + zoom + "/" + wrappedX + "/" + tileY + "@2x.png";
+              ".basemaps.cartocdn.com/light_all/" + zoom + "/" + wrappedX + "/" + tileY + "@2x.png" + __cartoTileQuery;
             layer.appendChild(image);
           }
         }

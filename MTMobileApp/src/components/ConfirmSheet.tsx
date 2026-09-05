@@ -19,6 +19,8 @@ interface ConfirmSheetProps {
   confirmText?: string
   confirmColor?: string
   destructive?: boolean
+  /** Informational sheets have a single button; the backdrop still dismisses. */
+  hideCancel?: boolean
   onCancel: () => void
   onConfirm: () => void
 }
@@ -33,6 +35,7 @@ export default function ConfirmSheet({
   confirmText = "Confirm",
   confirmColor,
   destructive = false,
+  hideCancel = false,
   onCancel,
   onConfirm,
 }: ConfirmSheetProps) {
@@ -73,9 +76,11 @@ export default function ConfirmSheet({
         <Text style={styles.message}>{message}</Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
-            <Text style={styles.cancelText}>{cancelText}</Text>
-          </TouchableOpacity>
+          {hideCancel ? null : (
+            <TouchableOpacity style={styles.cancelBtn} onPress={onCancel}>
+              <Text style={styles.cancelText}>{cancelText}</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.confirmBtn, { backgroundColor: btnColor }]}
             onPress={onConfirm}

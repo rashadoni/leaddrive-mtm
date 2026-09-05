@@ -100,6 +100,8 @@ export interface BootstrapData {
   workday: BootstrapWorkday | null
   manifest: RouteFieldCapabilityManifest | null
   routeFieldAccess: RouteFieldAccess
+  /** Map settings the tenant server hands out; absent on older servers. */
+  maps?: { cartoBasemapsApiKey: string | null }
 }
 
 export interface BootstrapWorkday {
@@ -344,6 +346,7 @@ export function toBootstrap(raw: any): BootstrapData {
     principal: mappedPrincipal,
     capabilities,
     timezone: str(raw?.timezone) ?? null,
+    maps: { cartoBasemapsApiKey: str(record(raw?.maps)?.cartoBasemapsApiKey) ?? null },
     // Strict `=== true`: anything else (missing field, older server, junk)
     // resolves to "no plaque", which is the non-leaking direction.
     policies: {

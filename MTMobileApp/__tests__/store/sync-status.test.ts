@@ -66,3 +66,15 @@ describe("per-pipeline sync status", () => {
     })
   })
 })
+
+describe("device connectivity (field UX audit M-06 / B4)", () => {
+  it("starts unknown and follows NetInfo without touching sync counters", () => {
+    useSyncStatusStore.getState().clear()
+    expect(useSyncStatusStore.getState().online).toBeNull()
+    useSyncStatusStore.getState().setOnline(false)
+    expect(useSyncStatusStore.getState().online).toBe(false)
+    expect(useSyncStatusStore.getState().phase).toBe("idle")
+    useSyncStatusStore.getState().setOnline(true)
+    expect(useSyncStatusStore.getState().online).toBe(true)
+  })
+})

@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   formulaIcon: { width: 48, height: 48, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
   formulaIconText: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "900" },
   formulaCopy: { flex: 1 },
-  eyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900", letterSpacing: 0.7, textTransform: "uppercase" },
+  eyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900", letterSpacing: 0.7 },
   formulaName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900", marginTop: 4 },
   formulaMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 3 },
   formulaMissing: { color: fieldTheme.color.coral, fontSize: 13, fontWeight: "800", marginTop: 4 },

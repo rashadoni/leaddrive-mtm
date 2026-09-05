@@ -1549,7 +1549,7 @@ const styles = StyleSheet.create({
   headerBack: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: "rgba(255,255,255,0.12)" },
   headerIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
   headerCopy: { flex: 1, gap: 2 },
-  eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
   title: { color: fieldTheme.color.onColor, fontSize: 21, lineHeight: 25, fontWeight: "900" },
   subtitle: { color: "#D7E9E1", fontSize: 11, lineHeight: 15, maxWidth: 720 },
   updatedPill: { minWidth: 34, minHeight: 34, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },

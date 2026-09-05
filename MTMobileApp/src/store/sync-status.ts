@@ -31,6 +31,8 @@ type SyncStatusState = SyncCounts & {
   lastSyncedAt: string | null
   lastError: string | null
   pipelines: SyncPipelines
+  /** Device connectivity from NetInfo (audit M-06, B4); null until the first event. */
+  online: boolean | null
   hydrate: (scopeKey: string) => Promise<void>
   begin: (scopeKey: string) => void
   complete: (scopeKey: string, counts: SyncCounts) => Promise<void>
@@ -49,6 +51,7 @@ type SyncStatusState = SyncCounts & {
   enablePipeline: (scopeKey: string, pipeline: SyncPipelineId, epoch?: string | null) => Promise<boolean>
   disablePipeline: (scopeKey: string, pipeline: SyncPipelineId, reason?: string, epoch?: string | null) => Promise<void>
   setOffline: (counts?: Partial<SyncCounts>) => void
+  setOnline: (online: boolean | null) => void
   updateCounts: (counts: SyncCounts) => void
   clear: () => void
 }
@@ -121,6 +124,7 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
   lastSyncedAt: null,
   lastError: null,
   pipelines: emptyPipelines(),
+  online: null,
 
   hydrate: async (scopeKey) => {
     if (get().scopeKey === scopeKey) return
@@ -282,6 +286,7 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
   })),
 
   updateCounts: (counts) => set(counts),
+  setOnline: (online) => set({ online }),
 
   clear: () => set({
     scopeKey: null,

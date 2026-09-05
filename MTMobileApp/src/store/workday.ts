@@ -4,6 +4,7 @@ import { allOutboxOperations, enqueueOutboxOperation, type OutboxOperation } fro
 import { isWorkdayOpen, type BootstrapWorkday } from "../services/bootstrap"
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
+const FINISHED_STORAGE_KEY = "@mtm_finished_workday_v1"
 let mutationQueue: Promise<void> = Promise.resolve()
 
 function serializeMutation(operation: () => Promise<void>) {
@@ -29,10 +30,61 @@ export interface ActiveWorkday {
   paused?: boolean
 }
 
+/**
+ * The last workday the server confirmed as finished (audit M-05, task B3).
+ * Kept after `activeWorkday` is cleared so "Today" can show "Finished at
+ * 18:24" instead of falling back to "not started", and so the same day
+ * cannot be restarted from this device (owner decision 4).
+ */
+export interface FinishedWorkday {
+  key: string
+  workdayId: string
+  finishedAt: string
+  /** Local calendar day (YYYY-MM-DD) the shift belongs to. */
+  dateKey: string
+}
+
+export function localDateKey(value: Date = new Date()): string {
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-")
+}
+
+export function isWorkdayFinished(workday: BootstrapWorkday | null | undefined): boolean {
+  return !!(workday && (workday.completedAt || workday.status === "COMPLETED"))
+}
+
+function persistedFinished(value: unknown): FinishedWorkday | null {
+  if (!value || typeof value !== "object") return null
+  const parsed = value as Partial<FinishedWorkday>
+  if (
+    typeof parsed.key !== "string" ||
+    typeof parsed.workdayId !== "string" ||
+    typeof parsed.finishedAt !== "string" ||
+    typeof parsed.dateKey !== "string"
+  ) return null
+  return { key: parsed.key, workdayId: parsed.workdayId, finishedAt: parsed.finishedAt, dateKey: parsed.dateKey }
+}
+
+async function rememberFinishedWorkday(key: string, workday: BootstrapWorkday): Promise<FinishedWorkday> {
+  const finishedAt = workday.completedAt ?? new Date().toISOString()
+  const finished: FinishedWorkday = {
+    key,
+    workdayId: workday.id,
+    finishedAt,
+    dateKey: workday.workDate ?? localDateKey(new Date(finishedAt)),
+  }
+  await AsyncStorage.setItem(FINISHED_STORAGE_KEY, JSON.stringify(finished))
+  return finished
+}
+
 export type WorkdaySyncError = "START_CONFLICT" | "FINISH_CONFLICT" | null
 
 interface WorkdayState {
   activeWorkday: ActiveWorkday | null
+  finishedWorkday: FinishedWorkday | null
   syncError: WorkdaySyncError
   hydrated: boolean
   hydrate: () => Promise<void>
@@ -88,19 +140,28 @@ function belongsToWorkday(item: OutboxOperation, workdayId: string) {
 
 export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   activeWorkday: null,
+  finishedWorkday: null,
   syncError: null,
   hydrated: false,
   hydrate: async () => {
     if (get().hydrated) return
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY)
+      const [raw, rawFinished] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(FINISHED_STORAGE_KEY),
+      ])
       const parsed = raw ? JSON.parse(raw) : null
-      set({ activeWorkday: persistedWorkday(parsed), syncError: null, hydrated: true })
+      const parsedFinished = rawFinished ? JSON.parse(rawFinished) : null
+      set({ activeWorkday: persistedWorkday(parsed), finishedWorkday: persistedFinished(parsedFinished), syncError: null, hydrated: true })
     } catch {
-      set({ activeWorkday: null, syncError: null, hydrated: true })
+      set({ activeWorkday: null, finishedWorkday: null, syncError: null, hydrated: true })
     }
   },
   start: (key) => serializeMutation(async () => {
+    // Owner decision 4 (audit 2026-09-05): a finished day stays finished. A
+    // break/resume control replaces the restart (task A7/B3, sprint 3).
+    const finished = get().finishedWorkday
+    if (finished?.key === key && finished.dateKey === localDateKey()) return
     const startedAt = new Date().toISOString()
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
@@ -156,12 +217,23 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       return
     } else if (local) {
       await AsyncStorage.removeItem(STORAGE_KEY)
+      // The server closed this very shift: remember when, so "Today" shows
+      // "finished at" instead of "not started" (audit M-05).
+      const finishedWorkday = workday && workday.id === local.workdayId && isWorkdayFinished(workday) && !startConflict && !finishConflict
+        ? await rememberFinishedWorkday(key, workday)
+        : get().finishedWorkday
       if (get().activeWorkday?.workdayId === local.workdayId) {
         set({
           activeWorkday: null,
+          finishedWorkday,
           syncError: startConflict ? "START_CONFLICT" : finishConflict ? "FINISH_CONFLICT" : null,
         })
       }
+    } else if (workday && isWorkdayFinished(workday)) {
+      // Fresh install or cleared storage: the server already knows the shift
+      // is over, so the device must not offer to start it again today.
+      const finishedWorkday = await rememberFinishedWorkday(key, workday)
+      set({ finishedWorkday })
     }
   }),
 }))
