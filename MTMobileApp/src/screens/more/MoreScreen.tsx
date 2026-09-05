@@ -181,7 +181,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     letterSpacing: 0.4,
-    textTransform: "uppercase",
   },
   title: {
     color: fieldTheme.color.ink,

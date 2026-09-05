@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   companyIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface },
   companyCopy: { flex: 1 },
-  companyCaption: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  companyCaption: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
   companyName: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900", marginTop: 1 },
   companyDomain: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 1 },
   changeButton: {

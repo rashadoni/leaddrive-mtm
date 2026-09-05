@@ -815,7 +815,7 @@ export default function TaskDetailScreen() {
                           icon="repeat-outline"
                           label={t("task.fieldRepeats")}
                           value={task.recurrence.interval > 1
-                            ? `${t("task.recurEvery", { n: task.recurrence.interval })} · ${t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}`
+                            ? `${t("task.recurEvery", { count: task.recurrence.interval })} · ${t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}`
                             : t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}
                           secondary={task.recurrence.until ? `${t("task.fieldUntil")}: ${toDateLabel(task.recurrence.until, i18n.language)}` : undefined}
                           last
@@ -1169,7 +1169,7 @@ const styles = StyleSheet.create({
   disclosureCopy: { flex: 1 },
   additionalDetails: { marginTop: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, gap: fieldTheme.space.lg },
   detailGroup: { gap: fieldTheme.space.sm },
-  detailGroupTitle: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  detailGroupTitle: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 },
   timelineRow: { flexDirection: "row", gap: fieldTheme.space.md },
   timelineRail: { width: 14, alignItems: "center" },
   timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: fieldTheme.color.primary, marginTop: 4 },
@@ -1191,7 +1191,7 @@ const styles = StyleSheet.create({
   nextStepRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   nextStepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
   nextStepNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  nextStepLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  nextStepLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 },
   actionDockHint: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, marginTop: 4 },
   actionDockError: { color: fieldTheme.color.danger, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 4 },
   primaryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl },

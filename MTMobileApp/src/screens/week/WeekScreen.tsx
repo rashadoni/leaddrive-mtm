@@ -13,6 +13,8 @@ import {
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import i18next from "i18next"
+import { statusLabel } from "../../lib/status-labels"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
@@ -270,6 +272,16 @@ function taskPriorityPresentation(priority: string | null | undefined, copy: Cop
     default:
       return { label: copy.priorityMedium, ink: fieldTheme.color.amber, fill: fieldTheme.color.amberSoft }
   }
+}
+
+/**
+ * Why a day is not a working day (audit M-10): the tenant's holiday name when
+ * one exists, otherwise the localized day kind — never "WEEKEND" as sent.
+ */
+function dayOffReason(day: { nonWorkingReason?: string; calendarKind?: string }): string {
+  if (day.nonWorkingReason) return day.nonWorkingReason
+  if (day.calendarKind) return statusLabel((key) => i18next.t(key), "dayKind", day.calendarKind)
+  return i18next.t("week.dayOff")
 }
 
 function dateFromKey(dateKey: string): Date | null {
@@ -802,7 +814,7 @@ function DaySelector({ day, lang, selected, touchTarget, todayLabel, visitsLabel
         <Text style={styles.daySelectorMeta}>
           {day.isWorkingDay || day.visitsTotal > 0 || day.tasksTotal > 0
             ? `${visitsLabel} ${day.visitsCompleted}/${day.visitsTotal} · ${tasksLabel} ${day.tasksCompleted}/${day.tasksTotal}`
-            : day.nonWorkingReason || "—"}
+            : dayOffReason(day)}
         </Text>
       </View>
       <Icon name="chevron-forward" size={18} color={selected ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />
@@ -831,7 +843,7 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
         <View style={styles.detailHeadingCopy}>
           <Text style={styles.detailTitle}>{formatFullDate(day.date, lang)}</Text>
           <Text style={styles.detailSubtitle}>
-            {day.isWorkingDay ? t("week.stopsTemplate", { n: day.plannedStops }) : day.nonWorkingReason || t("week.dayOff")}
+            {day.isWorkingDay ? t("week.stopsTemplate", { count: day.plannedStops }) : dayOffReason(day)}
           </Text>
         </View>
       </View>
@@ -843,9 +855,9 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
           <DayMetric icon="checkbox-outline" value={`${day.tasksCompleted}/${day.tasksTotal}`} label={copy.tasksDone} />
         </View>
       ) : hasAgenda ? (
-        <DayOffNotice reason={day.nonWorkingReason || t("week.dayOff")} />
+        <DayOffNotice reason={dayOffReason(day)} />
       ) : (
-        <DayOffState reason={day.nonWorkingReason || t("week.dayOff")} />
+        <DayOffState reason={dayOffReason(day)} />
       )}
 
       {(day.isWorkingDay || hasAgenda) && (
@@ -885,7 +897,7 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
             {day.isToday && <Text style={styles.todayTag}>{copy.todayMarker}</Text>}
           </View>
           <Text style={styles.phoneDaySubtitle}>
-            {day.isWorkingDay ? t("week.stopsTemplate", { n: day.plannedStops }) : day.nonWorkingReason || t("week.dayOff")}
+            {day.isWorkingDay ? t("week.stopsTemplate", { count: day.plannedStops }) : dayOffReason(day)}
           </Text>
         </View>
       </View>
@@ -897,9 +909,9 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
           <CompactMetric icon="checkbox-outline" value={`${day.tasksCompleted}/${day.tasksTotal}`} label={copy.tasksDone} />
         </View>
       ) : hasAgenda ? (
-        <DayOffNotice reason={day.nonWorkingReason || t("week.dayOff")} compact />
+        <DayOffNotice reason={dayOffReason(day)} compact />
       ) : (
-        <Text style={styles.dayOffText}>{day.nonWorkingReason || t("week.dayOff")}</Text>
+        <Text style={styles.dayOffText}>{dayOffReason(day)}</Text>
       )}
 
       {(day.isWorkingDay || hasAgenda) && (
@@ -1273,7 +1285,7 @@ const styles = StyleSheet.create({
   ownRoutePlannerTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   ownRoutePlannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   summarySection: { marginBottom: fieldTheme.space.xl },
-  sectionEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: fieldTheme.space.sm },
+  sectionEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7, marginBottom: fieldTheme.space.sm },
   summaryStrip: {
     flexDirection: "column",
     gap: fieldTheme.space.sm,
@@ -1314,7 +1326,7 @@ const styles = StyleSheet.create({
   daySelectorSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
   dateTile: { width: 52, minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surfaceStrong },
   dateTileToday: { backgroundColor: fieldTheme.color.primary },
-  dateWeekday: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "800", textTransform: "uppercase" },
+  dateWeekday: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "800" },
   dateNumber: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 25, fontWeight: "900" },
   dateTextToday: { color: fieldTheme.color.onColor },
   daySelectorCopy: { flex: 1, minWidth: 0 },

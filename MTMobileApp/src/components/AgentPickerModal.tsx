@@ -1,6 +1,7 @@
 import React from "react"
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, ActivityIndicator } from "react-native"
 import { useTranslation } from "react-i18next"
+import { upperInitial } from "../lib/upper"
 
 export interface PickableAgent {
   id: string
@@ -38,7 +39,7 @@ export default function AgentPickerModal({ visible, title, agents, loading, busy
                   disabled={busy}
                   onPress={() => onPick(a.id)}
                 >
-                  <View style={styles.avatar}><Text style={styles.avatarText}>{a.name.slice(0, 1).toUpperCase()}</Text></View>
+                  <View style={styles.avatar}><Text style={styles.avatarText}>{upperInitial(a.name)}</Text></View>
                   <View style={styles.rowMain}>
                     <Text style={styles.rowName}>{a.name}</Text>
                     {a.role ? <Text style={styles.rowRole}>{a.role}</Text> : null}

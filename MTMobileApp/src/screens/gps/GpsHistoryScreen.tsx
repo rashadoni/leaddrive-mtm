@@ -547,6 +547,7 @@ function RoutePlaybackCard({
 }) {
   const webViewRef = useRef<any>(null)
   const [visualError, setVisualError] = useState(false)
+  const tileApiKey = useBootstrapStore((state) => state.data?.maps?.cartoBasemapsApiKey ?? null)
   const routeDocument = useMemo(
     () => buildGpsRouteDocument(model.routeSegments, {
       language: language.split("-")[0] || "en",
@@ -557,12 +558,19 @@ function RoutePlaybackCard({
       mapLoading: t("gpsHistory.mapLoading"),
       mapUnavailable: t("gpsHistory.mapUnavailable"),
       mapAttribution: t("gpsHistory.mapAttribution"),
-    }),
-    [language, model.routeSegments, t],
+    }, { apiKey: tileApiKey }),
+    [language, model.routeSegments, t, tileApiKey],
   )
+  // A CARTO key is bound to the tenant's web origin, so the tile requests
+  // must carry that origin as their referrer; without a key stay sandboxed.
+  const tileOrigin = tileApiKey ? api.serverOrigin() : null
   const webViewSource = useMemo(
-    () => ({ html: routeDocument, baseUrl: "about:blank" }),
-    [routeDocument],
+    () => ({ html: routeDocument, baseUrl: tileOrigin ? `${tileOrigin}/` : "about:blank" }),
+    [routeDocument, tileOrigin],
+  )
+  const webViewOrigins = useMemo(
+    () => (tileOrigin ? [...CARTO_TILE_WEBVIEW_ORIGINS, tileOrigin] : CARTO_TILE_WEBVIEW_ORIGINS),
+    [tileOrigin],
   )
 
   useEffect(() => {
@@ -629,7 +637,7 @@ function RoutePlaybackCard({
           <WebView
             ref={webViewRef}
             source={webViewSource}
-            originWhitelist={CARTO_TILE_WEBVIEW_ORIGINS}
+            originWhitelist={webViewOrigins}
             javaScriptEnabled
             domStorageEnabled={false}
             cacheEnabled
@@ -982,7 +990,7 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
   backButton: { borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.12)" },
   titleCopy: { flex: 1 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.7 },
+  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: 2 },
   headerSubtitle: { color: "#D7E9E1", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
   dayNavigation: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
@@ -1026,7 +1034,7 @@ const styles = StyleSheet.create({
   noCoordinatesBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 440, marginTop: fieldTheme.space.sm },
   playbackPanel: { marginTop: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas },
   playbackHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: fieldTheme.space.md },
-  playbackEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
+  playbackEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", letterSpacing: 0.6 },
   currentTime: { color: fieldTheme.color.ink, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: 2 },
   pointCounter: { minHeight: 32, justifyContent: "center", paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
   pointCounterText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "800" },
@@ -1051,7 +1059,7 @@ const styles = StyleSheet.create({
   pointContent: { flex: 1 },
   pointTitleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   pointTime: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900" },
-  selectedLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.4 },
+  selectedLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900", letterSpacing: 0.4 },
   pointMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
   metaChip: { minHeight: 30, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: fieldTheme.color.surfaceStrong, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
   metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },

@@ -2,6 +2,7 @@ import type { GpsPoint } from "../../services/gps-history"
 import {
   cartoTileMarkup,
   cartoTileScript,
+  type CartoTileOptions,
   cartoTileStyles,
 } from "../maps/carto-tiles"
 
@@ -202,6 +203,7 @@ function htmlText(value: string): string {
 export function buildGpsRouteDocument(
   routeSegments: GpsPlaybackPoint[][],
   labels: GpsRouteDocumentLabels,
+  tiles: CartoTileOptions = {},
 ): string {
   const coordinateSegments = routeSegments.map((segment) => segment.map((point) => ({
     latitude: point.latitude,
@@ -240,7 +242,7 @@ export function buildGpsRouteDocument(
     <svg id="overlay" role="img" aria-label="${htmlText(labels.routeLabel)}"></svg>
   </div>
   <script>
-    ${cartoTileScript()}
+    ${cartoTileScript(tiles)}
     (function () {
       var segments = ${scriptJson(coordinateSegments)};
       var labels = ${scriptJson(labels)};

@@ -20,6 +20,7 @@ import { toRouteContactListItem, type RouteContactListItem } from "../../service
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { upperInitial } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
 
@@ -221,7 +222,7 @@ export default function RouteContactsList() {
               onPress={() => navigation.navigate("ContactDetail", { id: item.id, name: item.name })}
               style={({ pressed }) => [styles.card, tablet && styles.cardTablet, pressed && styles.pressed]}
             >
-              <View style={styles.avatar}><Text style={styles.avatarText}>{item.name.trim().charAt(0).toUpperCase() || "?"}</Text></View>
+              <View style={styles.avatar}><Text style={styles.avatarText}>{upperInitial(item.name)}</Text></View>
               <View style={styles.cardContent}>
                 <View style={styles.nameRow}>
                   <View style={styles.nameCopy}>

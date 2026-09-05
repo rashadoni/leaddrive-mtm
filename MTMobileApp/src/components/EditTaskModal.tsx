@@ -179,7 +179,7 @@ export default function EditTaskModal({ visible, initial, saving, onCancel, onSa
             </View>
             {recurrenceRule !== null && (
               <View style={styles.stepperRow}>
-                <Text style={styles.stepperLabel}>{t("task.recurEvery", { n: recurrenceInterval })}</Text>
+                <Text style={styles.stepperLabel}>{t("task.recurEvery", { count: recurrenceInterval })}</Text>
                 <View style={styles.stepper}>
                   <TouchableOpacity style={styles.stepBtn} onPress={() => stepInterval(-1)} disabled={recurrenceInterval <= 1}>
                     <Text style={styles.stepBtnText}>−</Text>
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: "#fff", borderRadius: 18, padding: 20, maxHeight: "85%" },
   heading: { fontSize: 18, fontWeight: "800", color: "#0B0B1E", marginBottom: 12 },
   body: { flexGrow: 0 },
-  label: { fontSize: 12, fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: 0.4, marginTop: 12, marginBottom: 6 },
+  label: { fontSize: 12, fontWeight: "700", color: "#64748b", letterSpacing: 0.4, marginTop: 12, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: "#0B0B1E" },
   multiline: { minHeight: 80, textAlignVertical: "top" },
   dueCurrent: { fontSize: 14, fontWeight: "700", color: "#0B0B1E", marginBottom: 8 },

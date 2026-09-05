@@ -8,6 +8,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +31,8 @@ import {
   type OptimisticVisit,
 } from "../../services/visit-outbox"
 import { runMobileSync } from "../../services/sync-engine"
+import { allOutboxOperations } from "../../services/outbox"
+import { checkInOutcomeFromOperation, formatCheckInDistance, type CheckInOutcome } from "./check-in-outcome"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
@@ -384,6 +387,7 @@ export default function VisitScreen() {
     confirmText?: string
     confirmColor?: string
     destructive?: boolean
+    hideCancel?: boolean
     onConfirm: () => void
   }>({ visible: false, title: "", message: "", onConfirm: () => {} })
 
@@ -481,6 +485,9 @@ export default function VisitScreen() {
         }
       })
       .sort((first, second) => {
+        const firstKnown = hasUsableCoordinates(first)
+        const secondKnown = hasUsableCoordinates(second)
+        if (firstKnown !== secondKnown) return firstKnown ? -1 : 1
         if (first.distanceMeters == null && second.distanceMeters == null) return 0
         if (first.distanceMeters == null) return 1
         if (second.distanceMeters == null) return -1
@@ -597,6 +604,106 @@ export default function VisitScreen() {
     })
   }
 
+  const showOutcomeSheet = (
+    title: string,
+    message: string,
+    options: { confirmText?: string; confirmColor?: string; onConfirm?: () => void } = {},
+  ) => {
+    setConfirm({
+      visible: true,
+      title,
+      message,
+      confirmText: options.confirmText ?? t("common.ok"),
+      confirmColor: options.confirmColor,
+      hideCancel: !options.onConfirm,
+      onConfirm: () => {
+        setConfirm((current) => ({ ...current, visible: false }))
+        options.onConfirm?.()
+      },
+    })
+  }
+
+  // Owner decision 2 (audit 2026-09-05): a stop without coordinates cannot be
+  // visited. The agent reports it; the manager fixes the organization card.
+  const reportMissingCoordinates = (customer: Customer) => {
+    Share.share({
+      message: t("visit.reportToManagerMessage", {
+        name: customer.name,
+        address: customer.address || t("visit.noAddress"),
+      }),
+    }).catch(() => {})
+  }
+
+  const showNoCoordinates = (customer: Customer) => {
+    showOutcomeSheet(t("visit.noCoordinatesTitle"), t("visit.noCoordinatesBody", { name: customer.name }), {
+      confirmText: t("visit.reportToManager"),
+      onConfirm: () => reportMissingCoordinates(customer),
+    })
+  }
+
+  // Every outcome is said out loud (audit M-01): the old flow showed a
+  // spinner, queued the visit and fell silent on the server's answer.
+  const explainCheckInOutcome = (customer: Customer, outcome: CheckInOutcome, retry: () => void) => {
+    switch (outcome.kind) {
+      case "accepted":
+        showToast("success", t("visit.checkInAcceptedTitle"), t("visit.checkInAcceptedBody", { name: customer.name }))
+        return
+      case "queued":
+        showToast("success", t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: customer.name }))
+        return
+      case "offline":
+        showOutcomeSheet(t("visit.checkInOfflineTitle"), t("visit.checkInOfflineBody", { name: customer.name }), {
+          confirmText: t("common.retry"),
+          onConfirm: retry,
+        })
+        return
+      case "too_far":
+        showOutcomeSheet(t("visit.tooFarTitle"), t("visit.checkInRejectedTooFar", {
+          name: customer.name,
+          distance: formatCheckInDistance(outcome.distanceMeters),
+          max: outcome.maxMeters ?? GEOFENCE_DEFAULT,
+        }))
+        return
+      case "no_coordinates":
+        showNoCoordinates(customer)
+        return
+      case "active_visit":
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedActiveVisit"))
+        return
+      case "route_mismatch":
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedRouteMismatch"))
+        return
+      case "customer_missing":
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedCustomerMissing", { name: customer.name }))
+        return
+      case "server_error":
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedServer", { message: outcome.message ?? "" }), {
+          confirmText: t("common.retry"),
+          onConfirm: retry,
+        })
+        return
+    }
+  }
+
+  const settleCheckIn = async (customer: Customer, operationId: string) => {
+    let syncSucceeded = false
+    let conflicted = 0
+    try {
+      const result = await runMobileSync()
+      syncSucceeded = result.success
+      conflicted = result.conflicted
+    } catch {
+      syncSucceeded = false
+    }
+    const operation = (await allOutboxOperations()).find((item) => item.operationId === operationId)
+    const outcome = checkInOutcomeFromOperation(operation, syncSucceeded)
+    await fetchData()
+    explainCheckInOutcome(customer, outcome, () => { settleCheckIn(customer, operationId).catch(() => {}) })
+    if (outcome.kind === "accepted" && conflicted > 0) {
+      showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+    }
+  }
+
   const performCheckIn = async (customer: Customer) => {
     if (mutating) return
     setMutating(true)
@@ -687,7 +794,7 @@ export default function VisitScreen() {
         }
       }
 
-      const { visit } = await queueVisitCheckIn({
+      const { visit, operation } = await queueVisitCheckIn({
         customer: { id: customer.id, name: customer.name, address: customer.address },
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -696,17 +803,7 @@ export default function VisitScreen() {
       setActiveVisit(visit)
       setVisits((current) => [visit, ...current.filter((entry) => entry.id !== visit.id)])
       setSelectedCustomerId(null)
-      showToast(
-        "success",
-        t("visit.checkInQueuedTitle"),
-        t("visit.checkInQueuedBody", { name: customer.name }),
-      )
-      runMobileSync().then(async (result) => {
-        await fetchData()
-        if (result.conflicted > 0) {
-          showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
-        }
-      }).catch(() => {})
+      await settleCheckIn(customer, operation.operationId)
     } catch (error: any) {
       if (error.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-in error:", error?.message ?? error)
@@ -976,6 +1073,7 @@ export default function VisitScreen() {
         confirmText={confirm.confirmText}
         confirmColor={confirm.confirmColor}
         destructive={confirm.destructive}
+        hideCancel={confirm.hideCancel}
         onCancel={() => {
           setConfirm((current) => ({ ...current, visible: false }))
           if (pendingGeofenceResolve) {
@@ -1296,6 +1394,7 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
   touchTarget: number
   onPress: () => void
 }) {
+  const { t } = useTranslation()
   const category = categoryTone(customer.category)
   const distance = customer.distanceMeters == null ? null : distanceTone(customer.distanceMeters)
   return (
@@ -1526,7 +1625,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
-    textTransform: "uppercase",
     letterSpacing: 0.7,
   },
   headerTitle: {
@@ -1626,7 +1724,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     fontWeight: "900",
-    textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 2 },
@@ -1689,7 +1786,7 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.successSoft,
   },
   selectionCopy: { flex: 1 },
-  selectionLabel: { color: fieldTheme.color.success, fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5 },
+  selectionLabel: { color: fieldTheme.color.success, fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
   selectionName: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900", marginTop: 1 },
   prerequisite: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   prerequisiteText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },

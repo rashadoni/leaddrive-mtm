@@ -7,6 +7,8 @@ import { formatManagerEvidenceAge } from "../../services/manager-location-truth"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
+import { api } from "../../services/api"
+import { useBootstrapStore } from "../../store/bootstrap"
 import {
   buildManagerLiveMapDocument,
   buildManagerLiveMapModel,
@@ -85,6 +87,7 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
   const [visualError, setVisualError] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  const tileApiKey = useBootstrapStore((state) => state.data?.maps?.cartoBasemapsApiKey ?? null)
   const documentMarkers = useMemo<ManagerLiveMapDocumentMarker[]>(() => model.markers.map((marker) => ({
     ...marker,
     statusLabel: markerStatusLabel(marker, t),
@@ -101,8 +104,16 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     mapLoading: t("managerShell.liveMapLoading", { defaultValue: "Loading map…" }),
     mapUnavailable: t("managerShell.liveMapTilesUnavailable", { defaultValue: "Map tiles are unavailable. Server GPS markers remain visible." }),
     mapAttribution: t("managerShell.liveMapAttribution", { defaultValue: "© OpenStreetMap · © CARTO" }),
-  }), [documentMarkers, i18n.language, t])
-  const webViewSource = useMemo(() => ({ html: mapDocument, baseUrl: "about:blank" }), [mapDocument])
+  }, { apiKey: tileApiKey }), [documentMarkers, i18n.language, t, tileApiKey])
+  const tileOrigin = tileApiKey ? api.serverOrigin() : null
+  const webViewSource = useMemo(
+    () => ({ html: mapDocument, baseUrl: tileOrigin ? `${tileOrigin}/` : "about:blank" }),
+    [mapDocument, tileOrigin],
+  )
+  const webViewOrigins = useMemo(
+    () => (tileOrigin ? [...CARTO_TILE_WEBVIEW_ORIGINS, tileOrigin] : CARTO_TILE_WEBVIEW_ORIGINS),
+    [tileOrigin],
+  )
 
   useEffect(() => {
     setVisualError(false)
@@ -219,7 +230,7 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
           <WebView
             ref={webViewRef}
             source={webViewSource}
-            originWhitelist={CARTO_TILE_WEBVIEW_ORIGINS}
+            originWhitelist={webViewOrigins}
             javaScriptEnabled
             domStorageEnabled={false}
             cacheEnabled
@@ -395,7 +406,7 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.primary,
   },
   headingCopy: { flex: 1, gap: 3 },
-  eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "900", letterSpacing: 0.7 },
   title: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 26, fontWeight: "900" },
   body: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, maxWidth: 680 },
   counts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
@@ -509,7 +520,7 @@ const styles = StyleSheet.create({
   },
   selectedIcon: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md },
   selectedCopy: { flex: 1, gap: 2 },
-  selectedEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  selectedEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "900", letterSpacing: 0.6 },
   selectedName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   selectedStatus: { fontSize: 12, lineHeight: 17, fontWeight: "900" },
   selectedMeta: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },

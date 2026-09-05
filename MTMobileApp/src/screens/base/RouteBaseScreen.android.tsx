@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   backButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
   backButtonTablet: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet },
   titleCopy: { flex: 1 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.7 },
+  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 29, lineHeight: 35, fontWeight: "900", marginTop: 2 },
   headerSubtitle: { color: "#D7E9E1", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
   segment: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.xs, marginTop: fieldTheme.space.lg, gap: fieldTheme.space.xs },

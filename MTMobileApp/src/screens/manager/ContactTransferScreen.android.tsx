@@ -27,6 +27,7 @@ import {
   type ContactTransferPreview,
   type TransferAgent,
 } from "../../services/contact-transfer"
+import { upperInitial } from "../../lib/upper"
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>
 
@@ -348,7 +349,7 @@ function AgentPill({ agent, selected, onPress, wide = false }: { agent: Transfer
   return (
     <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} style={[styles.agentPill, wide && styles.agentPillWide, selected && styles.agentPillSelected]}>
       <View style={[styles.agentInitial, inactive && styles.agentInitialInactive, selected && styles.agentInitialSelected]}>
-        <Text style={[styles.agentInitialText, selected && styles.agentInitialTextSelected]}>{agent.name.trim().charAt(0).toUpperCase() || "A"}</Text>
+        <Text style={[styles.agentInitialText, selected && styles.agentInitialTextSelected]}>{upperInitial(agent.name, "A")}</Text>
       </View>
       <View style={styles.agentPillCopy}>
         <Text style={[styles.agentPillName, selected && styles.agentPillNameSelected]} numberOfLines={1}>{agent.name}</Text>
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, maxWidth: 1180 },
   backButton: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.12)" },
   headerCopy: { flex: 1, gap: fieldTheme.space.xs },
-  eyebrow: { color: "#A8DDCB", fontSize: 11, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase" },
+  eyebrow: { color: "#A8DDCB", fontSize: 11, fontWeight: "800", letterSpacing: 1.1 },
   title: { color: fieldTheme.color.onColor, fontSize: 28, fontWeight: "900", letterSpacing: -0.6 },
   subtitle: { color: "#D6EAE2", fontSize: 14, lineHeight: 20, maxWidth: 700 },
   content: { padding: fieldTheme.space.lg, gap: fieldTheme.space.md, paddingBottom: 80 },
@@ -453,7 +454,7 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.42 },
   previewArea: { gap: fieldTheme.space.md, paddingTop: fieldTheme.space.sm },
   previewHeadingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
-  previewEyebrow: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase" },
+  previewEyebrow: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   previewTitle: { color: fieldTheme.color.ink, fontSize: 20, fontWeight: "900" },
   readyBadge: { backgroundColor: fieldTheme.color.successSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.md, paddingVertical: 6 },
   readyBadgeText: { color: fieldTheme.color.success, fontSize: 10, fontWeight: "900", letterSpacing: 0.7 },

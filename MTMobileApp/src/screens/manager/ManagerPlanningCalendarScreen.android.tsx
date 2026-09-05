@@ -32,6 +32,7 @@ import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { upper } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
 
@@ -488,7 +489,7 @@ function WeekMatrix({ dates, agents, routes, selectedDate, language, copy, onSel
         </View>
         {agents.map((agent) => (
           <View key={agent.id} style={styles.matrixRow}>
-            <View style={styles.matrixAgentCell}><View style={styles.miniAvatar}><Text style={styles.miniAvatarText}>{agent.name.slice(0, 2).toUpperCase()}</Text></View><Text style={styles.matrixAgentName} numberOfLines={2}>{agent.name}</Text></View>
+            <View style={styles.matrixAgentCell}><View style={styles.miniAvatar}><Text style={styles.miniAvatarText}>{upper(agent.name.slice(0, 2))}</Text></View><Text style={styles.matrixAgentName} numberOfLines={2}>{agent.name}</Text></View>
             {dates.map((date) => {
               const cellRoutes = routes.filter((route) => route.agentId === agent.id && route.date === date)
               return (
@@ -533,7 +534,7 @@ function DayAgenda({ date, routes, language, copy, onCreate }: {
             const ratio = route.total > 0 ? Math.min(1, route.visited / route.total) : 0
             return (
               <View key={route.id} style={styles.agendaCard}>
-                <View style={[styles.agentAvatar, { backgroundColor: colors.fill }]}><Text style={[styles.agentAvatarText, { color: colors.ink }]}>{route.agentName.slice(0, 2).toUpperCase()}</Text></View>
+                <View style={[styles.agentAvatar, { backgroundColor: colors.fill }]}><Text style={[styles.agentAvatarText, { color: colors.ink }]}>{upper(route.agentName.slice(0, 2))}</Text></View>
                 <View style={styles.agendaCardCopy}>
                   <Text style={styles.agentName}>{route.agentName}</Text>
                   {route.name ? <Text style={styles.routeName} numberOfLines={1}>{route.name}</Text> : null}
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
   headerInnerTablet: { paddingVertical: fieldTheme.space.xs },
   headerIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
   headerCopy: { flex: 1, minWidth: 220, gap: 2 },
-  eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
   title: { color: fieldTheme.color.onColor, fontSize: 21, lineHeight: 25, fontWeight: "900" },
   subtitle: { color: "#D7E9E1", fontSize: 11, lineHeight: 15, maxWidth: 680 },
   createButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 11, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
@@ -600,7 +601,7 @@ const styles = StyleSheet.create({
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "700" },
   calendarCard: { overflow: "hidden", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   weekdayRow: { flexDirection: "row", backgroundColor: fieldTheme.color.surfaceStrong, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
-  weekdayLabel: { width: "14.2857%", paddingVertical: 6, color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "900", textAlign: "center", textTransform: "uppercase" },
+  weekdayLabel: { width: "14.2857%", paddingVertical: 6, color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "900", textAlign: "center" },
   monthGrid: { flexDirection: "row", flexWrap: "wrap" },
   monthCell: { width: "14.2857%", minHeight: 60, padding: 4, gap: 2, borderRightWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   monthCellTablet: { minHeight: 88, padding: 6 },
@@ -621,7 +622,7 @@ const styles = StyleSheet.create({
   weekStrip: { padding: 6, gap: 6 },
   weekDay: { width: 66, minHeight: 76, alignItems: "center", justifyContent: "center", gap: 2, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   weekDaySelected: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
-  weekDayName: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
+  weekDayName: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
   weekDayNumber: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
   weekDayCount: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "900" },
   weekDayTextSelected: { color: fieldTheme.color.onColor },
@@ -632,7 +633,7 @@ const styles = StyleSheet.create({
   matrixDateCell: { width: 118, minHeight: 64, justifyContent: "center", gap: 3, padding: 5, borderRightWidth: 1, borderBottomWidth: 1, borderColor: fieldTheme.color.border },
   matrixHeaderCell: { minHeight: 48, backgroundColor: fieldTheme.color.surfaceStrong, alignItems: "center", justifyContent: "center" },
   matrixDateSelected: { backgroundColor: fieldTheme.color.primarySoft },
-  matrixHeaderText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900", textTransform: "uppercase" },
+  matrixHeaderText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900" },
   matrixHeaderDate: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   miniAvatar: { width: 34, height: 34, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: fieldTheme.color.primarySoft },
   miniAvatarText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
@@ -645,7 +646,7 @@ const styles = StyleSheet.create({
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, textAlign: "center" },
   agenda: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   agendaHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
-  agendaEyebrow: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  agendaEyebrow: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "900", letterSpacing: 0.7 },
   agendaTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 19, fontWeight: "900", textTransform: "capitalize" },
   agendaCount: { minWidth: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
   agendaCountText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },

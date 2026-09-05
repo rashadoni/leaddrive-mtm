@@ -21,6 +21,7 @@ import { readOfflineRoute, readOfflineTasks } from "../../services/offline-reads
 import { useAuthStore } from "../../store/auth"
 import { useKpiStore } from "../../store/kpi"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
+import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -102,6 +103,8 @@ export default function TodayScreen() {
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const startWorkday = useWorkdayStore((state) => state.start)
   const endWorkday = useWorkdayStore((state) => state.end)
+  const finishedWorkday = useWorkdayStore((state) => state.finishedWorkday)
+  const online = useSyncStatusStore((state) => state.online)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
   const [routeLoading, setRouteLoading] = useState(true)
   const [routeError, setRouteError] = useState(false)
@@ -119,6 +122,10 @@ export default function TodayScreen() {
   const workdayStarting = currentWorkday?.syncState === "START_PENDING"
   const workdayEnding = currentWorkday?.syncState === "FINISH_PENDING"
   const todayKey = localDateKey()
+  // Audit M-05 / owner decision 4: a finished day is shown as finished and
+  // cannot be restarted from this screen the same day.
+  const workdayFinishedToday = workdayHydrated && !currentWorkday
+    && finishedWorkday?.key === currentWorkdayKey && finishedWorkday.dateKey === todayKey
 
   const refresh = useCallback(async () => {
     let liveRouteFailed = false
@@ -203,7 +210,7 @@ export default function TodayScreen() {
   }, [currentWorkdayKey, endWorkday, refresh, startWorkday, workdayBusy, workdayHydrated, workdayOpen])
 
   const requestWorkdayAction = useCallback(() => {
-    if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding) return
+    if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday) return
     if (!workdayOpen) {
       syncWorkday().catch(() => {})
       return
@@ -216,7 +223,7 @@ export default function TodayScreen() {
         { text: t("todayV2.endDayConfirmAction"), style: "destructive", onPress: () => { syncWorkday().catch(() => {}) } },
       ],
     )
-  }, [syncWorkday, t, workdayBusy, workdayEnding, workdayHydrated, workdayOpen, workdayStarting])
+  }, [syncWorkday, t, workdayBusy, workdayEnding, workdayFinishedToday, workdayHydrated, workdayOpen, workdayStarting])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -377,6 +384,12 @@ export default function TodayScreen() {
         minute: "2-digit",
       })
     : null
+  const finishedAt = workdayFinishedToday && finishedWorkday?.finishedAt
+    ? new Date(finishedWorkday.finishedAt).toLocaleTimeString(i18n.language, {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
 
   return (
     <View style={styles.screen}>
@@ -440,7 +453,9 @@ export default function TodayScreen() {
                             ? "todayV2.dayPaused"
                           : workdayActive
                             ? "todayV2.dayActive"
-                            : "todayV2.dayNotStarted")}
+                            : workdayFinishedToday
+                              ? "todayV2.dayFinished"
+                              : "todayV2.dayNotStarted")}
                   </Text>
                 </View>
                 <Text style={styles.workdayBody}>
@@ -454,36 +469,44 @@ export default function TodayScreen() {
                             ? t("todayV2.dayPausedBody")
                           : workdayActive && startedAt
                           ? t("todayV2.dayStartedAt", { time: startedAt })
-                          : t("todayV2.dayStartHint")}
+                          : workdayFinishedToday
+                            ? t("todayV2.dayFinishedAt", { time: finishedAt ?? "" })
+                            : t("todayV2.dayStartHint")}
                 </Text>
                 {workdayError ? <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text> : null}
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding }}
-                disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding}
+                accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday }}
+                disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday}
                 onPress={requestWorkdayAction}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   workdayOpen && styles.workdayButtonActive,
                   pressed && styles.pressed,
-                  (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding) && styles.disabled,
+                  (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday) && styles.disabled,
                 ]}
               >
                 {workdayBusy || !workdayHydrated ? (
                   <ActivityIndicator size="small" color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
                 ) : (
                   <Icon
-                    name={workdayOpen ? "stop-circle-outline" : "play-circle"}
+                    name={workdayOpen ? "stop-circle-outline" : workdayFinishedToday ? "checkmark-circle" : "play-circle"}
                     size={22}
                     color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />
                 )}
                 <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]}>
-                  {t(workdayOpen ? "todayV2.endDay" : workdayEnding ? "todayV2.endDayPendingButton" : "todayV2.startDay")}
+                  {t(workdayOpen ? "todayV2.endDay" : workdayEnding ? "todayV2.endDayPendingButton" : workdayFinishedToday ? "todayV2.dayFinishedButton" : "todayV2.startDay")}
                 </Text>
               </Pressable>
             </View>
+            {online === false ? (
+              <View style={styles.cachedBadge}>
+                <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
+                <Text style={styles.cachedBadgeText}>{t("todayV2.offlineRefresh")}</Text>
+              </View>
+            ) : null}
             <View
               accessibilityLiveRegion="polite"
               style={[
@@ -704,7 +727,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "800",
     letterSpacing: 0.5,
-    textTransform: "uppercase",
   },
   title: {
     color: fieldTheme.color.onColor,
@@ -889,7 +911,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "800",
     letterSpacing: 0.45,
-    textTransform: "uppercase",
   },
   nextTitle: {
     marginTop: fieldTheme.space.sm,

@@ -372,7 +372,7 @@ export default function VisitWorkspaceScreen() {
                 <Stat
                   icon="time-outline"
                   label={t("visitWorkspace.fieldDuration")}
-                  value={data.duration != null ? t("visitWorkspace.minutesTemplate", { n: data.duration }) : "—"}
+                  value={data.duration != null ? t("visitWorkspace.minutesTemplate", { count: data.duration }) : "—"}
                 />
                 <Stat icon="images-outline" label={t("visitWorkspace.actionPhoto")} value={String(data.photosCount)} />
               </View>
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
   backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
   headerCopy: { flex: 1, minWidth: 0 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.7 },
+  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "900", letterSpacing: 0.7 },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 26, lineHeight: 32, fontWeight: "900", marginTop: 2 },
   headerSubtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 19, marginTop: fieldTheme.space.xs, maxWidth: 720 },
   headerStatus: { minHeight: 38, maxWidth: 150, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.md },
@@ -621,7 +621,7 @@ const styles = StyleSheet.create({
   sectionHeadingRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   sectionIcon: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderRadius: 15 },
   sectionHeadingCopy: { flex: 1 },
-  sectionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, lineHeight: 15, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.6 },
+  sectionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, lineHeight: 15, fontWeight: "900", letterSpacing: 0.6 },
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 2 },
   infoLine: { minHeight: 58, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingTop: fieldTheme.space.md, marginTop: fieldTheme.space.md },
   infoIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 19, backgroundColor: fieldTheme.color.surfaceStrong },
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   requirementCopy: { flex: 1, minWidth: 0 },
   requirementTitle: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
   requirementStatus: { fontSize: 11, lineHeight: 15, fontWeight: "800", marginTop: 2 },
-  requirementMode: { maxWidth: 88, color: fieldTheme.color.inkMuted, fontSize: 9, lineHeight: 13, fontWeight: "900", textTransform: "uppercase", textAlign: "right" },
+  requirementMode: { maxWidth: 88, color: fieldTheme.color.inkMuted, fontSize: 9, lineHeight: 13, fontWeight: "900", textAlign: "right" },
   taskRow: { minHeight: 66, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
   taskTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   smallPill: { minHeight: 28, maxWidth: 100, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },

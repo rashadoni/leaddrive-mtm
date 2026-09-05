@@ -25,6 +25,8 @@ import {
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { statusLabel } from "../../lib/status-labels"
+import { upperInitial } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
 
@@ -126,11 +128,6 @@ function languageFor(value: string): Language {
   if (value.toLowerCase().startsWith("az")) return "az"
   if (value.toLowerCase().startsWith("en")) return "en"
   return "ru"
-}
-
-function readable(value: string | undefined): string | undefined {
-  if (!value) return undefined
-  return value.toLowerCase().replace(/_/g, " ").replace(/^./, (letter) => letter.toUpperCase())
 }
 
 function locationAddress(detail: RouteOrganizationDetail): string | undefined {
@@ -310,7 +307,7 @@ export default function RouteOrganizationDetailScreen() {
         <DataRow icon="call-outline" label={copy.phone} value={detail.phone ?? copy.unknown} />
         {detail.code ? <DataRow icon="barcode-outline" label={copy.code} value={detail.code} /> : null}
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
-        {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={readable(detail.status) ?? copy.unknown} /> : null}
+        {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={statusLabel(t, "customer", detail.status)} /> : null}
         <View style={styles.actions}>
           {address ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
           {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.call}</Text></Pressable> : null}
@@ -323,7 +320,7 @@ export default function RouteOrganizationDetailScreen() {
           return (
             <View key={usableId(contact.id) ? contact.id : `${contact.name}-${index}`} style={styles.relationshipRow}>
               <Pressable accessibilityRole="button" onPress={() => openContact(contact)} style={({ pressed }) => [styles.relationshipMain, { minHeight: touchTarget }, pressed && styles.pressed]}>
-                <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}><Text style={styles.avatarText}>{contact.name.slice(0, 1).toUpperCase() || "?"}</Text></View>
+                <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}><Text style={styles.avatarText}>{upperInitial(contact.name)}</Text></View>
                 <View style={styles.relationshipCopy}>
                   <View style={styles.nameLine}><Text style={styles.relationshipName} numberOfLines={1}>{contact.name || copy.unknown}</Text>{contact.isPrimary ? <Text style={styles.primaryText}>{copy.primary}</Text> : null}</View>
                   {subtitle ? <Text style={styles.relationshipSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
@@ -343,7 +340,7 @@ export default function RouteOrganizationDetailScreen() {
             <View style={styles.visitIcon}><Icon name="calendar-clear-outline" size={20} color={fieldTheme.color.blue} /></View>
             <View style={styles.relationshipCopy}>
               <Text style={styles.relationshipName}>{formatVisitDate(visit.checkInAt, i18n.language, copy.unknown)}</Text>
-              <Text style={styles.relationshipSubtitle}>{[readable(visit.status), readable(visit.outcome)].filter(Boolean).join(" · ") || copy.unknown}</Text>
+              <Text style={styles.relationshipSubtitle}>{[statusLabel(t, "visit", visit.status), visit.outcome ? statusLabel(t, "visitOutcome", visit.outcome) : undefined].filter(Boolean).join(" · ")}</Text>
             </View>
             <Icon name="chevron-forward" size={19} color={fieldTheme.color.inkMuted} />
           </Pressable>
@@ -362,7 +359,7 @@ export default function RouteOrganizationDetailScreen() {
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
           <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
-          <Text style={styles.headerSubtitle}>{typeLabel}{detail?.status ? ` · ${readable(detail.status)}` : ""}</Text>
+          <Text style={styles.headerSubtitle}>{typeLabel}{detail?.status ? ` · ${statusLabel(t, "customer", detail.status)}` : ""}</Text>
         </View>
       </View>
       <ScrollView
@@ -380,7 +377,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.md, backgroundColor: fieldTheme.color.primaryStrong },
   backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
   headerCopy: { flex: 1, paddingTop: 2 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase" },
+  eyebrow: { color: "#BBD6CB", fontSize: 12, fontWeight: "800", letterSpacing: 0.7 },
   headerTitle: { marginTop: 2, color: fieldTheme.color.onColor, fontSize: 22, lineHeight: 28, fontWeight: "900" },
   headerSubtitle: { marginTop: 2, color: "#D7E9E1", fontSize: 13, lineHeight: 18, fontWeight: "700" },
   scrollContent: { flexGrow: 1, padding: fieldTheme.space.md },
@@ -400,7 +397,7 @@ const styles = StyleSheet.create({
   dataRow: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "flex-start", paddingVertical: fieldTheme.space.xs },
   dataIcon: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
   dataCopy: { flex: 1, gap: 1 },
-  dataLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.35 },
+  dataLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", letterSpacing: 0.35 },
   dataValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
   actionButton: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
@@ -415,7 +412,7 @@ const styles = StyleSheet.create({
   nameLine: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs },
   relationshipName: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   relationshipSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
-  primaryText: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900", textTransform: "uppercase" },
+  primaryText: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900" },
   callButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm },
   visitRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
   visitIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.blueSoft },
