@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { upperInitial } from "../../lib/upper"
 import {
   ActivityIndicator,
   FlatList,
@@ -1412,7 +1413,7 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
     >
       <View style={[styles.customerAvatar, { backgroundColor: category.background }]}>
         <Text style={[styles.customerInitial, { color: category.color }]}>
-          {customer.name.charAt(0).toLocaleUpperCase()}
+          {upperInitial(customer.name)}
         </Text>
       </View>
       <View style={styles.customerCopy}>
