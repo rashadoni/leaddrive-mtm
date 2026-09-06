@@ -79,7 +79,7 @@ export interface CachedRoutePoint {
   status: string
   plannedTime?: string
   visitedAt?: string
-  customer: { id: string; name: string; address?: string }
+  customer: { id: string; name: string; address?: string; latitude?: number; longitude?: number }
 }
 
 export interface CachedRoute {
@@ -94,8 +94,29 @@ export interface CachedRoute {
 
 const ACTIVE_ROUTE_STATUS = new Set(["PLANNED", "IN_PROGRESS"])
 
-function mapCachedRoutePoint(record: SyncRecord): CachedRoutePoint {
-  const customer = (record.customer ?? {}) as Record<string, unknown>
+function num(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
+/**
+ * Map one cached route point. The route projection the server sends embeds only
+ * id/name/address/code for the customer — deliberately, it is a frozen v1
+ * contract — so coordinates come from the separately cached `customers`
+ * collection, the same join `mapCachedTask` uses for names.
+ *
+ * Without that join every offline point looked like a customer with no
+ * coordinates: the screen printed "координаты не заданы" on all of them and
+ * refused the check-in with a reason that was not true.
+ */
+function mapCachedRoutePoint(
+  record: SyncRecord,
+  customersById?: Map<string, SyncRecord>,
+): CachedRoutePoint {
+  const embedded = (record.customer ?? {}) as Record<string, unknown>
+  const id = str(embedded.id) ?? str(record.customerId) ?? ""
+  const cached = id ? customersById?.get(id) : undefined
   return {
     id: String(record.id),
     orderIndex: Number(record.orderIndex ?? 0),
@@ -103,16 +124,21 @@ function mapCachedRoutePoint(record: SyncRecord): CachedRoutePoint {
     plannedTime: str(record.plannedTime),
     visitedAt: str(record.visitedAt),
     customer: {
-      id: str(customer.id) ?? "",
-      name: str(customer.name) ?? "",
-      address: str(customer.address),
+      id,
+      name: str(embedded.name) ?? (cached ? str(cached.name) ?? "" : ""),
+      address: str(embedded.address) ?? (cached ? str(cached.address) : undefined),
+      latitude: num(cached?.latitude),
+      longitude: num(cached?.longitude),
     },
   }
 }
 
-export function mapCachedRoute(record: SyncRecord): CachedRoute {
+export function mapCachedRoute(
+  record: SyncRecord,
+  customersById?: Map<string, SyncRecord>,
+): CachedRoute {
   const points = Array.isArray(record.points)
-    ? (record.points as SyncRecord[]).map(mapCachedRoutePoint)
+    ? (record.points as SyncRecord[]).map((point) => mapCachedRoutePoint(point, customersById))
     : []
   return {
     id: String(record.id),
@@ -154,7 +180,11 @@ export async function readOfflineRoute(
 ): Promise<CachedRoute | null> {
   const state = await readSyncCache(tenantId, agentId)
   const active = selectActiveRoute(state.entities.routes ?? [], now)
-  return active ? mapCachedRoute(active) : null
+  if (!active) return null
+  const customersById = new Map(
+    (state.entities.customers ?? []).map((customer) => [String(customer.id), customer] as const),
+  )
+  return mapCachedRoute(active, customersById)
 }
 
 export interface CachedOrganization {
