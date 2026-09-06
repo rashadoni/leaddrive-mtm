@@ -713,7 +713,12 @@ export default function VisitScreen() {
       // Owner decision: no coordinates on the client card means no check-in, with an explanation.
       if (!hasUsableCoordinates(customer)) {
         setCheckInIssue({ kind: "no-coordinates" })
-        showToast("error", copy.issueNoCoordinatesTitle, copy.issueNoCoordinatesBody)
+        // The same sheet the server's NO_COORDINATES answer opens. It carries
+        // the "tell the manager" action, which a toast cannot: the owner's
+        // decision was that a point without coordinates is refused AND the
+        // agent is offered a way to report it. This is the branch that fires
+        // first, so without it the action was unreachable in practice.
+        showNoCoordinates(customer)
         return
       }
       const located = await locateForCheckIn()

@@ -793,7 +793,7 @@ function PointActionPanel({
   const visited = point.status === "VISITED"
   const skipped = point.status === "SKIPPED"
   const isRecommended = nextPoint?.id === point.id
-  const hasDirections = Boolean(point.customer.address || (point.customer.latitude != null && point.customer.longitude != null))
+  const hasDirections = Boolean(point.customer.address || hasUsableCoordinates(point.customer))
   const showDirections = !navigationStarted && hasDirections
 
   return (
@@ -1099,9 +1099,12 @@ export default function RouteScreen() {
   }
 
   const handleNavigate = (point: RoutePoint) => {
+    // Null Island is not a destination: a 0,0 pair opens the map in the Gulf of
+    // Guinea, which reads as a real answer. Only an address or a usable pair
+    // counts, the same test the check-in uses.
     const query = point.customer.address
       ? point.customer.address
-      : point.customer.latitude != null && point.customer.longitude != null
+      : hasUsableCoordinates(point.customer)
         ? `${point.customer.latitude},${point.customer.longitude}`
         : ""
     if (!query) return
