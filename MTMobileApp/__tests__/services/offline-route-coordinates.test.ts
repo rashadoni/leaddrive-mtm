@@ -1,6 +1,12 @@
 import { mapCachedRoute } from "../../src/services/offline-reads"
 import { hasUsableCoordinates } from "../../src/screens/visit/visit-checkin-model"
 
+// offline-reads pulls in the durable cache, which reaches for the native
+// AsyncStorage module; the same mock every other test of this layer uses.
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock")
+)
+
 /**
  * B2 tail. The route projection the server sends embeds only id/name/address
  * for a point's customer — a frozen v1 contract — so the offline route arrived
