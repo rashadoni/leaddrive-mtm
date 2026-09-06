@@ -1,5 +1,4 @@
 import type {
-import { upper } from "../../lib/upper"
   ManagerAgentTruth,
   ManagerGpsFreshness,
   ManagerTeamAgent,
@@ -10,6 +9,7 @@ import {
   type CartoTileOptions,
   cartoTileStyles,
 } from "../maps/carto-tiles"
+import { upper } from "../../lib/upper"
 
 export type ManagerLiveMapMarkerStatus = "CURRENT" | "LAST_KNOWN" | "STALE"
 
