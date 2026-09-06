@@ -1,4 +1,5 @@
 import type {
+import { upper } from "../../lib/upper"
   ManagerAgentTruth,
   ManagerGpsFreshness,
   ManagerTeamAgent,
@@ -85,7 +86,7 @@ function markerInitials(name: string): string {
   if (words.length === 0) return "?"
   const first = Array.from(words[0])[0] ?? "?"
   const second = words.length > 1 ? Array.from(words[words.length - 1])[0] ?? "" : ""
-  return `${first}${second}`.toLocaleUpperCase()
+  return upper(`${first}${second}`)
 }
 
 function markerStatus(truth: ManagerAgentTruth): ManagerLiveMapMarkerStatus {

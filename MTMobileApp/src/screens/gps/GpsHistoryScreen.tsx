@@ -754,7 +754,7 @@ function SummaryGrid({ data, tablet, t }: { data: GpsHistory; tablet: boolean; t
   return (
     <View style={[styles.summaryGrid, tablet && styles.summaryGridTablet]}>
       <SummaryCard icon="walk-outline" value={`${data.distanceKm}`} label={t("gpsHistory.statKm")} tone="primary" />
-      <SummaryCard icon="radio-outline" value={`${data.pointCount}`} label={t("gpsHistory.statPoints")} tone="success" />
+      <SummaryCard icon="radio-outline" value={`${data.pointCount}`} label={t("gpsHistory.statPoints", { count: data.pointCount })} tone="success" />
       <SummaryCard
         icon="timer-outline"
         value={data.gpsIntervalSeconds ? `${data.gpsIntervalSeconds}s` : "—"}

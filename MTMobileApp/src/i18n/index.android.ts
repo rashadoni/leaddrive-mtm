@@ -1,4 +1,5 @@
 import i18n from "i18next"
+import { installPluralRules } from "./plural-rules"
 import { initReactI18next } from "react-i18next"
 import * as RNLocalize from "react-native-localize"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -16,6 +17,10 @@ import {
 const STORAGE_KEY = "@mtm_locale"
 
 export async function initI18n(): Promise<void> {
+  // Before init: i18next reads Intl.PluralRules at configure time, and Hermes
+  // may not have it. Without this the Russian forms in the dictionaries never
+  // get chosen and every count reads as "точек".
+  installPluralRules()
   if (i18n.isInitialized) return
   const stored = await AsyncStorage.getItem(STORAGE_KEY)
   const deviceLocales = RNLocalize.getLocales().map((locale) => locale.languageTag)
