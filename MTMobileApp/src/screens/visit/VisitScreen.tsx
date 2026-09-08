@@ -31,6 +31,7 @@ import {
   reconcileOptimisticVisit,
   type OptimisticVisit,
 } from "../../services/visit-outbox"
+import { useAuthStore } from "../../store/auth"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { runMobileSync } from "../../services/sync-engine"
 import { allOutboxOperations, retryOutboxConflict } from "../../services/outbox"
@@ -387,8 +388,9 @@ export default function VisitScreen() {
   // check-in on this screen did not, so the one path that bypassed the route
   // also bypassed the pause. The server would take the visit but refuse the
   // GPS around it, leaving a visit nobody can prove.
+  const workdayAgent = useAuthStore((state) => state.agent)
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
-  const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
+  const currentWorkdayKey = workdayKey(workdayAgent?.organizationId, workdayAgent?.id)
   const workdayPaused = activeWorkday?.key === currentWorkdayKey
     && activeWorkday.syncState === "CONFIRMED"
     && activeWorkday.paused === true
