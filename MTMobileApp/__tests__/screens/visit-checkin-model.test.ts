@@ -71,4 +71,30 @@ describe("unplanned check-in preconditions", () => {
     expect(formatDistanceMeters(85.4)).toBe("85 m")
     expect(formatDistanceMeters(6745700)).toBe("6745.7 km")
   })
+
+  describe("a shift on a break (audit A7/B3, task T4)", () => {
+    const customer = { latitude: 40.4, longitude: 49.8 }
+    const position = { latitude: 40.4, longitude: 49.8 }
+
+    it("refuses the check-in and says why", () => {
+      expect(resolveCheckInPrecondition({ customer, position, workdayPaused: true }))
+        .toEqual({ kind: "workday-paused" })
+    })
+
+    it("names the break before anything about coordinates", () => {
+      // Telling the agent "no coordinates" or "no GPS" while the real answer
+      // is "you are on a break" sends them hunting the wrong problem.
+      expect(resolveCheckInPrecondition({
+        customer: { latitude: null, longitude: null },
+        position: null,
+        positionFailure: "permission",
+        workdayPaused: true,
+      })).toEqual({ kind: "workday-paused" })
+    })
+
+    it("changes nothing while the shift is running", () => {
+      expect(resolveCheckInPrecondition({ customer, position, workdayPaused: false }).kind).toBe("ready")
+      expect(resolveCheckInPrecondition({ customer, position }).kind).toBe("ready")
+    })
+  })
 })
