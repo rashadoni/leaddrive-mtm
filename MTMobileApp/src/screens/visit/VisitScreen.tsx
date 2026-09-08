@@ -704,10 +704,29 @@ export default function VisitScreen() {
     // so re-running the sync sent nothing and the same dialog came back — the
     // agent pressed the button and the visit stayed unsent (audit B1, T1).
     // retryOutboxConflict mints a NEW operationId (the server pins the old one
-    // for ever), so the wait must follow that id, not the dead one.
+    // for ever), so the wait must follow that id, not the dead one. The push
+    // itself is settleCheckIn's first act: it calls runMobileSync before
+    // reading the outcome, so the requeued row goes out on this tap and not
+    // on some later background sync.
     const retry = () => {
       void (async () => {
         const nextOperationId = await retryOutboxConflict(operationId).catch(() => null)
+        if (!nextOperationId) {
+          // Nothing was requeued. Either the row is gone — the server accepted
+          // it in the meantime, and settling reports exactly that — or it is
+          // still sitting in conflict and the retry genuinely did not take.
+          // The second case must not settle silently: that would tell the
+          // agent the visit is dealt with while it is still unsent.
+          const stillRejected = (await allOutboxOperations().catch(() => []))
+            .some((item) => item.operationId === operationId && item.status === "conflict")
+          if (stillRejected) {
+            showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRetryFailed"), {
+              confirmText: t("common.retry"),
+              onConfirm: retry,
+            })
+            return
+          }
+        }
         await settleCheckIn(customer, nextOperationId ?? operationId)
       })().catch(() => {})
     }

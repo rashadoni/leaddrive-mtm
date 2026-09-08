@@ -174,6 +174,7 @@
     "checkInRejectedRouteMismatch": "This stop is not available on the route right now: it is already visited, removed, or the route has not started. Refresh the route.",
     "checkInRejectedCustomerMissing": "{{name}} is no longer assigned to you. Refresh the customer list or ask your manager.",
     "checkInRejectedServer": "The server rejected the visit: {{message}}",
+    "checkInRetryFailed": "The visit could not be requeued. It is still unsent — try again, or open the sync centre.",
     "gpsSignalLost": "GPS signal not found. Make sure location is enabled and try again.",
     "photoSavedTitle": "Photo Saved",
     "photoSavedBody": "Photo uploaded successfully",
