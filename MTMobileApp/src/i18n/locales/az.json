@@ -39,7 +39,7 @@
     "pending": "Gözləyir",
     "conflicts": "Ziddiyyətlər",
     "media": "Media",
-    "pipelines": "Sinxronizasiya konturları",
+    "pipelines": "Nə sinxronlaşır",
     "pipelineRouteCommands": "Marşrut planlama əmrləri",
     "pipelineRouteOutbox": "Marşrut və ziyarət dəyişiklikləri",
     "pipelineRoutePull": "Marşrut yeniləmələri",

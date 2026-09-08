@@ -39,7 +39,7 @@
     "pending": "Pending",
     "conflicts": "Conflicts",
     "media": "Media",
-    "pipelines": "Sync pipelines",
+    "pipelines": "What gets synced",
     "pipelineRouteCommands": "Route planning commands",
     "pipelineRouteOutbox": "Route & visit changes",
     "pipelineRoutePull": "Route updates",

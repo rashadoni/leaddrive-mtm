@@ -39,7 +39,7 @@
     "pending": "Ожидают",
     "conflicts": "Конфликты",
     "media": "Медиа",
-    "pipelines": "Контуры синхронизации",
+    "pipelines": "Что синхронизируется",
     "pipelineRouteCommands": "Команды планирования маршрута",
     "pipelineRouteOutbox": "Изменения маршрутов и визитов",
     "pipelineRoutePull": "Обновления маршрутов",
