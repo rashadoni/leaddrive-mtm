@@ -32,7 +32,7 @@ import {
   type OptimisticVisit,
 } from "../../services/visit-outbox"
 import { runMobileSync } from "../../services/sync-engine"
-import { allOutboxOperations } from "../../services/outbox"
+import { allOutboxOperations, retryOutboxConflict } from "../../services/outbox"
 import { checkInOutcomeFromOperation, formatCheckInDistance, type CheckInOutcome } from "./check-in-outcome"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -699,7 +699,19 @@ export default function VisitScreen() {
     const operation = (await allOutboxOperations()).find((item) => item.operationId === operationId)
     const outcome = checkInOutcomeFromOperation(operation, syncSucceeded)
     await fetchData()
-    explainCheckInOutcome(customer, outcome, () => { settleCheckIn(customer, operationId).catch(() => {}) })
+    // "Повторить" after a server rejection has to requeue the operation first.
+    // A rejected row sits in `conflict`, and flushOutbox only sends `pending`,
+    // so re-running the sync sent nothing and the same dialog came back — the
+    // agent pressed the button and the visit stayed unsent (audit B1, T1).
+    // retryOutboxConflict mints a NEW operationId (the server pins the old one
+    // for ever), so the wait must follow that id, not the dead one.
+    const retry = () => {
+      void (async () => {
+        const nextOperationId = await retryOutboxConflict(operationId).catch(() => null)
+        await settleCheckIn(customer, nextOperationId ?? operationId)
+      })().catch(() => {})
+    }
+    explainCheckInOutcome(customer, outcome, retry)
     if (outcome.kind === "accepted" && conflicted > 0) {
       showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
     }

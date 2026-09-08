@@ -146,29 +146,45 @@ export async function conflictOutboxOperations() {
   return (await allOutboxOperations()).filter((item) => item.status === "conflict")
 }
 
-export async function retryOutboxConflict(operationId: string, dataPatch?: Record<string, unknown>) {
+/**
+ * Requeue a rejected operation as a fresh one.
+ *
+ * Returns the NEW operationId, or null when there was nothing to retry (the
+ * row is gone, belongs to another scope, or is not in conflict). Callers that
+ * then wait for this operation's outcome need that id: the old one is dead by
+ * design, and waiting on it reports the pinned conflict for ever — which is
+ * exactly how "Повторить" used to do nothing (field UX audit B1, task T1).
+ */
+export async function retryOutboxConflict(
+  operationId: string,
+  dataPatch?: Record<string, unknown>,
+): Promise<string | null> {
   const scope = requireOfflineScope()
+  let nextOperationId: string | null = null
   await serializeMutation(async () => {
     const items = await read()
-    await write(items.map((item) => (
-      item.operationId === operationId && item.scopeKey === scope && item.status === "conflict"
-        ? {
-            ...item,
-            // The server idempotently pins both successful and conflicting
-            // operationIds. A user-directed retry must therefore be a new
-            // operation while retaining the same entity payload/client id;
-            // reusing the old id would only replay the pinned conflict.
-            operationId: createOperationId(),
-            clientTimestamp: Date.now(),
-            data: dataPatch ? { ...item.data, ...dataPatch } : item.data,
-            status: "pending" as const,
-            conflict: undefined,
-            attempts: 0,
-            nextAttemptAt: 0,
-          }
-        : item
-    )))
+    await write(items.map((item) => {
+      if (item.operationId !== operationId || item.scopeKey !== scope || item.status !== "conflict") {
+        return item
+      }
+      // The server idempotently pins both successful and conflicting
+      // operationIds. A user-directed retry must therefore be a new
+      // operation while retaining the same entity payload/client id;
+      // reusing the old id would only replay the pinned conflict.
+      nextOperationId = createOperationId()
+      return {
+        ...item,
+        operationId: nextOperationId,
+        clientTimestamp: Date.now(),
+        data: dataPatch ? { ...item.data, ...dataPatch } : item.data,
+        status: "pending" as const,
+        conflict: undefined,
+        attempts: 0,
+        nextAttemptAt: 0,
+      }
+    }))
   })
+  return nextOperationId
 }
 
 export async function clearOutbox() {
