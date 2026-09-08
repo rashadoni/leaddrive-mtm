@@ -79,6 +79,25 @@ export interface CartoTileOptions {
   apiKey?: string | null
 }
 
+/**
+ * Why the tiles send a referrer (audit B16, task T12).
+ *
+ * The screens set the WebView `baseUrl` to the tenant server origin, and only
+ * when a key exists — that is the whole point of the origin: CARTO can then
+ * refuse the key to anyone requesting from anywhere else. Setting the tile
+ * images to `no-referrer` threw it away. Every request arrived anonymous, so
+ * the key had to be left unrestricted to work at all, and an unrestricted key
+ * is one that anybody who reads it out of the bootstrap response can spend
+ * against this account.
+ *
+ * `origin` restores the binding without widening what leaks: the header
+ * carries `https://<tenant>/` and never the map URL, which holds the
+ * coordinates the rep is looking at right now. With no key there is no origin
+ * either — `baseUrl` stays `about:blank` and the header is empty, which is the
+ * same anonymous request as before and equally fine, because there is then
+ * nothing to protect.
+ */
+
 export function cartoTileScript(options: CartoTileOptions = {}): string {
   const apiKey = typeof options.apiKey === "string" && options.apiKey.trim() ? options.apiKey.trim() : ""
   return `
@@ -126,7 +145,7 @@ export function cartoTileScript(options: CartoTileOptions = {}): string {
             image.className = "map-tile";
             image.alt = "";
             image.draggable = false;
-            image.referrerPolicy = "no-referrer";
+            image.referrerPolicy = "origin";
             image.style.left = (tileX * tileSize - originX) + "px";
             image.style.top = (tileY * tileSize - originY) + "px";
             image.onload = function () { settle(true); };
