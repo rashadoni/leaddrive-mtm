@@ -8,6 +8,8 @@
     "cancel": "Ləğv et",
     "retry": "Yenidən cəhd et",
     "offlineCached": "Oflayn — yadda saxlanmış məlumatlar göstərilir",
+    "cachedServerError": "Yadda saxlanmış məlumatlar göstərilir: server cavab vermədi. Bağlantı isə var.",
+    "cachedStale": "Yadda saxlanmış məlumatlar göstərilir — yeniləmək alınmadı.",
     "save": "Saxla",
     "clear": "Təmizlə",
     "done": "Hazırdır",

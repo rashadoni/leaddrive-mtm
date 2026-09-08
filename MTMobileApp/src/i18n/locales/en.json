@@ -8,6 +8,8 @@
     "cancel": "Cancel",
     "retry": "Retry",
     "offlineCached": "Offline — showing saved data",
+    "cachedServerError": "Showing saved data: the server did not answer. Your connection is fine.",
+    "cachedStale": "Showing saved data — the refresh did not go through.",
     "save": "Save",
     "clear": "Clear",
     "done": "Done",

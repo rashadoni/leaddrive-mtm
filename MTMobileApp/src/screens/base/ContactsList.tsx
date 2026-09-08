@@ -18,6 +18,8 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { commercialApi } from "../../services/commercial-api"
 import { toContactListItem, type ContactListItem } from "../../services/contact-list"
 import { readOfflineContacts } from "../../services/offline-reads"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
@@ -49,7 +51,9 @@ export default function ContactsList() {
   const [contacts, setContacts] = useState<ContactListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [offline, setOffline] = useState(false)
+  const [requestFailed, setRequestFailed] = useState(false)
+  const online = useSyncStatusStore((state) => state.online)
+  const notice = cachedViewNotice({ online, requestFailed })
   const [loadError, setLoadError] = useState(false)
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -68,7 +72,7 @@ export default function ContactsList() {
         setContacts((response.data?.contacts || []).map(toContactListItem))
         lastLoadedTermRef.current = term
         hasLoadedTermRef.current = true
-        setOffline(false)
+        setRequestFailed(false)
         setLoadError(false)
       } else {
         throw new Error("CONTACTS_LOAD_FAILED")
@@ -95,7 +99,7 @@ export default function ContactsList() {
         } else if (!sameInMemoryQuery) {
           setContacts([])
         }
-        setOffline(true)
+        setRequestFailed(true)
         setLoadError(!cacheAvailable && !sameInMemoryQuery)
       }
     } finally {
@@ -141,10 +145,13 @@ export default function ContactsList() {
           )}
         </View>
 
-        {offline && !loadError && (
+        {notice !== "none" && !loadError && (
           <View style={styles.offlineBanner} accessibilityLiveRegion="polite">
-            <Icon name="cloud-offline-outline" size={19} color={fieldTheme.color.amber} />
-            <Text style={styles.offlineBannerText}>{t("common.offlineCached")}</Text>
+            {/* T7: причина берётся из связи, а не из факта неудачи. Ошибка
+                сервера при живой сети — не «вы офлайн»: так агента посылали
+                чинить работающий интернет. */}
+            <Icon name={notice === "offline" ? "cloud-offline-outline" : "alert-circle-outline"} size={19} color={fieldTheme.color.amber} />
+            <Text style={styles.offlineBannerText}>{t(CACHED_VIEW_NOTICE_KEYS[notice])}</Text>
           </View>
         )}
       </View>
