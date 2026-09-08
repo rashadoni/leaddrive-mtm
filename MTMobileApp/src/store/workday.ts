@@ -22,12 +22,19 @@ export interface ActiveWorkday {
   startedAt: string
   syncState: "START_PENDING" | "CONFIRMED" | "FINISH_PENDING"
   /**
-   * A Workforce-managed workday can be paused elsewhere. Route Field has no
-   * resume control, so a paused server session must never unlock route
-   * execution or location tracking. Undefined deliberately means active to
-   * keep existing persisted confirmed sessions backward-compatible.
+   * A workday can be paused by the agent here (task A7/T2) or by Workforce
+   * elsewhere. Either way a paused session must never unlock route execution
+   * or location tracking. Undefined deliberately means active, to keep
+   * existing persisted confirmed sessions backward-compatible.
    */
   paused?: boolean
+  /**
+   * When the current break began, so the card can say "Перерыв с 13:05"
+   * instead of just "Перерыв" (task T3). Comes from the server's `pausedAt`
+   * on reconcile, or from the moment the agent tapped pause. Absent whenever
+   * `paused` is absent.
+   */
+  pausedAt?: string
 }
 
 /**
@@ -91,6 +98,14 @@ interface WorkdayState {
   start: (key: string) => Promise<void>
   end: (key: string) => Promise<void>
   /**
+   * Take a break. The server refuses GPS points recorded inside a pause
+   * (leaddrive-v2 `MTM_LOCATION_WORKDAY_PAUSED`), so the local flag is not
+   * cosmetic: it is what stops this device sending them in the first place.
+   */
+  pause: (key: string) => Promise<void>
+  /** Come back from a break. */
+  resume: (key: string) => Promise<void>
+  /**
    * Reconcile the client-local workday with the authoritative server shift
    * returned by /mobile/bootstrap. Conservative on purpose:
    *   - server shift open + no local  -> adopt it (restores an active shift on a
@@ -130,6 +145,7 @@ function persistedWorkday(value: unknown): ActiveWorkday | null {
     startedAt: parsed.startedAt,
     syncState,
     ...(parsed.paused === true ? { paused: true } : {}),
+    ...(parsed.paused === true && typeof parsed.pausedAt === "string" ? { pausedAt: parsed.pausedAt } : {}),
   }
 }
 
@@ -181,6 +197,27 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))
     if (get().activeWorkday?.key === key) set({ activeWorkday: pendingFinish, syncError: null })
   }),
+  pause: (key) => serializeMutation(async () => {
+    const activeWorkday = get().activeWorkday
+    // Only a confirmed, running shift can pause: pausing one the server has
+    // not yet accepted would queue PAUSE behind a START that may still be
+    // rejected, and the server answers MTM_WORKDAY_NOT_RUNNING anyway.
+    if (activeWorkday?.key !== key || activeWorkday.syncState !== "CONFIRMED" || activeWorkday.paused) return
+    const occurredAt = new Date().toISOString()
+    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "PAUSE", workdayId: activeWorkday.workdayId, occurredAt } })
+    const paused: ActiveWorkday = { ...activeWorkday, paused: true, pausedAt: occurredAt }
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(paused))
+    if (get().activeWorkday?.key === key) set({ activeWorkday: paused, syncError: null })
+  }),
+  resume: (key) => serializeMutation(async () => {
+    const activeWorkday = get().activeWorkday
+    if (activeWorkday?.key !== key || activeWorkday.syncState !== "CONFIRMED" || !activeWorkday.paused) return
+    const occurredAt = new Date().toISOString()
+    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "RESUME", workdayId: activeWorkday.workdayId, occurredAt } })
+    const { paused: _paused, pausedAt: _pausedAt, ...running } = activeWorkday
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(running))
+    if (get().activeWorkday?.key === key) set({ activeWorkday: running, syncError: null })
+  }),
   reconcileFromServer: (key, workday) => serializeMutation(async () => {
     const local = get().activeWorkday
     const open = isWorkdayOpen(workday)
@@ -204,6 +241,9 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
         startedAt: workday!.startedAt!,
         syncState: "CONFIRMED",
         ...(workday!.status === "PAUSED" ? { paused: true } : {}),
+        // T3: without the moment the break began the card could only say
+        // "Перерыв" — true but useless to someone deciding whether to go back.
+        ...(workday!.status === "PAUSED" && workday!.pausedAt ? { pausedAt: workday!.pausedAt } : {}),
       }
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
       set({ activeWorkday, syncError: finishConflict ? "FINISH_CONFLICT" : null })
