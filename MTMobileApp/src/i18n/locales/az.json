@@ -940,5 +940,14 @@
       "MOVED_WORKDAY": "Köçürülmüş iş günü",
       "MOVED_DAY_OFF": "Köçürülmüş istirahət günü"
     }
+  },
+  "alertMessages": {
+    "visitStillOpen": "«{{customerName}}» ziyarəti {{minutes}} dəq açıqdır (hədd {{thresholdMinutes}} dəq)",
+    "outOfZoneCheckIn": "Qeydiyyat rədd edildi: müştəridən {{distanceMeters}} m (icazə verilən {{geofenceRadius}} m)",
+    "outOfZoneCheckInForced": "Qeydiyyat icazə ilə qəbul edildi: müştəridən {{distanceMeters}} m (icazə verilən {{geofenceRadius}} m)",
+    "geofenceViolation": "«{{customerName}}» üzrə qeydiyyat {{distanceMeters}} m məsafədə yazıldı (icazə verilən {{geofenceRadius}} m)",
+    "routeDeviation": "Agent planlaşdırılmış marşrutdan {{deviationMeters}} m kənardadır (icazə verilən {{thresholdMeters}} m)",
+    "agentRouteDeviation": "Siz planlaşdırılmış marşrutdan {{deviationMeters}} m kənardasınız",
+    "agentOutOfZoneCheckIn": "«{{customerName}}» üzrə qeydiyyatınız {{distanceMeters}} m məsafədə yazıldı (icazə verilən {{geofenceRadius}} m)"
   }
 }
