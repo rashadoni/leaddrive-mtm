@@ -64,6 +64,61 @@ describe("durable sync outbox", () => {
     expect(retried[0].operationId).not.toBe(item.operationId)
   })
 
+  it("returns the new id so a waiting screen can follow the retry (audit T1)", async () => {
+    // The screen that offered "Повторить" waits for THIS operation's outcome.
+    // Without the new id it waits on the dead one, reads the pinned conflict
+    // again and shows the same dialog — which is what the agent saw.
+    await enqueueOutboxOperation({ entity: "visits", op: "create", data: { id: "visit-1" } })
+    const [item] = await pendingOutboxOperations()
+    await flushOutbox(async () => ({
+      results: [{ operationId: item.operationId, status: "conflict", error: "server exploded" }],
+    }))
+
+    const nextId = await retryOutboxConflict(item.operationId)
+
+    expect(nextId).not.toBeNull()
+    expect(nextId).not.toBe(item.operationId)
+    const pending = await pendingOutboxOperations()
+    expect(pending).toHaveLength(1)
+    expect(pending[0].operationId).toBe(nextId)
+    expect(await conflictOutboxOperations()).toEqual([])
+  })
+
+  it("returns null when there is nothing to retry", async () => {
+    // A row already sent, belonging to another tenant, or never rejected: the
+    // caller must not then wait on an id that was never queued.
+    expect(await retryOutboxConflict("never-existed")).toBeNull()
+    await enqueueOutboxOperation({ entity: "visits", op: "create", data: { id: "visit-2" } })
+    const [pendingItem] = await pendingOutboxOperations()
+    expect(await retryOutboxConflict(pendingItem.operationId)).toBeNull()
+    expect((await pendingOutboxOperations())[0].operationId).toBe(pendingItem.operationId)
+  })
+
+  it("puts the retried operation back in the queue that flushOutbox actually sends", async () => {
+    // The heart of the bug: flushOutbox reads pending rows only, so a rejected
+    // row was invisible to every later sync no matter how often it ran.
+    await enqueueOutboxOperation({ entity: "visits", op: "create", data: { id: "visit-3" } })
+    const [item] = await pendingOutboxOperations()
+    await flushOutbox(async () => ({
+      results: [{ operationId: item.operationId, status: "conflict", error: "server exploded" }],
+    }))
+
+    const sentWhileConflicted: string[] = []
+    await flushOutbox(async (operations) => {
+      sentWhileConflicted.push(...operations.map((operation) => operation.operationId))
+      return { results: [] }
+    })
+    expect(sentWhileConflicted).toEqual([])
+
+    const nextId = await retryOutboxConflict(item.operationId)
+    const sentAfterRetry: string[] = []
+    await flushOutbox(async (operations) => {
+      sentAfterRetry.push(...operations.map((operation) => operation.operationId))
+      return { results: operations.map((operation) => ({ operationId: operation.operationId, status: "ok" as const })) }
+    })
+    expect(sentAfterRetry).toEqual([nextId])
+  })
+
   it("persists operations and acknowledges them by id", async () => {
     const item = await enqueueOutboxOperation({ entity: "visits", op: "create", data: { id: "v1" } })
     expect((await pendingOutboxOperations()).map((entry) => entry.operationId)).toEqual([item.operationId])
