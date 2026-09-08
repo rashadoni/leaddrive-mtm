@@ -286,7 +286,19 @@ export const useSyncStatusStore = create<SyncStatusState>((set, get) => ({
   })),
 
   updateCounts: (counts) => set(counts),
-  setOnline: (online) => set({ online }),
+  setOnline: (online) => set((state) => ({
+    online,
+    // The "offline" phase is a memory of the last failed attempt, and the chip
+    // treats it as offline on its own. When the radio comes back that memory
+    // becomes a lie the user cannot clear: refreshRouteFieldSession returns
+    // early when bootstrap says unavailable or the tenant has no Route Field,
+    // so no sync ever runs to overwrite it, and the chip says "Офлайн" with
+    // full signal (field UX audit B4, task T6).
+    //
+    // Only the stale phase is dropped, never a real one: syncing, backoff and
+    // error all describe something that actually happened and stay.
+    ...(online === true && state.phase === "offline" ? { phase: "idle" as const } : {}),
+  })),
 
   clear: () => set({
     scopeKey: null,
