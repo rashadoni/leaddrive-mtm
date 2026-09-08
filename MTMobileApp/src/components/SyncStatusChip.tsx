@@ -28,6 +28,7 @@ import { hasRouteFieldAccess } from "../services/bootstrap"
 import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
+import { syncCentreState } from "../lib/sync-centre-availability"
 import { syncChipLabel } from "./sync-chip-label"
 
 type Props = {
@@ -95,6 +96,10 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines, online } = useSyncStatusStore()
   const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
+  // T8: лист знал про офлайн и молчал, а кнопка оставалась живой. Нажать
+  // живую кнопку и не получить ничего — так учатся считать приложение
+  // сломанным. Причина берётся из связи и доступа, а не из одного флага.
+  const centre = syncCentreState({ online, hasRouteFieldAccess: syncAllowed, busy: busyId !== null })
 
   const reload = useCallback(async () => {
     const scope = getOfflineScope()
@@ -334,12 +339,15 @@ export default function SyncStatusChip({ inverse = false }: Props) {
               })}
             </ScrollView>
 
+            {centre.noticeKey ? (
+              <Text style={styles.syncCentreNotice} accessibilityLiveRegion="polite">{t(centre.noticeKey)}</Text>
+            ) : null}
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: busyId !== null || !syncAllowed }}
-              disabled={busyId !== null || !syncAllowed}
+              accessibilityState={{ disabled: !centre.canSyncNow }}
+              disabled={!centre.canSyncNow}
               onPress={() => { syncNow().catch(() => {}) }}
-              style={[styles.syncButton, (busyId !== null || !syncAllowed) && styles.disabled]}
+              style={[styles.syncButton, !centre.canSyncNow && styles.disabled]}
             >
               {busyId === "sync" ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t("syncCenter.syncNow")}</Text>}
             </Pressable>
@@ -396,6 +404,14 @@ const styles = StyleSheet.create({
   secondaryText: { color: "#9a3412", fontSize: 12, fontWeight: "800" },
   forceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: "#c2410c" },
   forceText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  syncCentreNotice: {
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    color: fieldTheme.color.inkMuted,
+    textAlign: "center",
+  },
   syncButton: { minHeight: 50, marginTop: 16, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#0f766e" },
   syncText: { color: "#fff", fontSize: 14, fontWeight: "900" },
   disabled: { opacity: 0.5 },
