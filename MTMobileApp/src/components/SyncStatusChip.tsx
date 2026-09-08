@@ -12,6 +12,8 @@ import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import Geolocation from "@react-native-community/geolocation"
 import { api } from "../services/api"
+import { visibleSyncPipelines, syncCentreLastSyncText } from "../lib/sync-centre-pipelines"
+import { formatLocalizedDate } from "../lib/format-localized-date"
 import { getOfflineScope } from "../services/offline-scope"
 import {
   acknowledgeOutboxOperation,
@@ -251,7 +253,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
             <Text style={styles.lastSync}>
               {lastSyncedAt
-                ? t("syncCenter.lastSync", { value: new Date(lastSyncedAt).toLocaleString(i18n.language) })
+                ? t("syncCenter.lastSync", { value: syncCentreLastSyncText(lastSyncedAt, i18n.language, formatLocalizedDate) })
                 : t("syncCenter.neverSynced")}
             </Text>
             {lastError ? <Text style={styles.errorText}>{t("syncCenter.lastError", { value: lastError })}</Text> : null}
@@ -259,7 +261,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
             <View style={styles.pipelineSection} accessibilityLabel={t("syncCenter.pipelines")}>
               <Text style={styles.pipelineHeading}>{t("syncCenter.pipelines")}</Text>
-              {PIPELINES.map(({ id, labelKey }) => {
+              {visibleSyncPipelines(PIPELINES, pipelines).map(({ id, labelKey }) => {
                 const pipeline = pipelines[id]
                 return (
                   <View key={id} style={styles.pipelineRow}>
