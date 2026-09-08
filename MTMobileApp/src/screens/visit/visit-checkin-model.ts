@@ -26,6 +26,12 @@ export type CustomerCoordinateState = "known" | "missing" | "suspicious"
 
 export type CheckInPrecondition =
   | { kind: "ready"; distanceMeters: number }
+  /**
+   * The shift is on a break. The server refuses GPS recorded inside a pause
+   * and would refuse this visit's coordinates too, so the app stops here and
+   * offers to come back from the break instead (audit A7/B3, task T4).
+   */
+  | { kind: "workday-paused" }
   | { kind: "no-coordinates" }
   | { kind: "no-position"; reason: PositionFailure }
   | { kind: "implausible-distance"; distanceMeters: number }
@@ -78,7 +84,13 @@ export function resolveCheckInPrecondition(input: {
   customer: CoordinatePair
   position: UsableCoordinates | null
   positionFailure?: PositionFailure | null
+  /** True while the agent's own shift is paused. */
+  workdayPaused?: boolean
 }): CheckInPrecondition {
+  // First, and before anything about coordinates: on a break nothing else
+  // matters. Telling the agent "no GPS" or "too far" while the real answer is
+  // "you are on a break" sends them looking for the wrong problem.
+  if (input.workdayPaused) return { kind: "workday-paused" }
   if (!hasUsableCoordinates(input.customer)) return { kind: "no-coordinates" }
   if (!input.position) return { kind: "no-position", reason: input.positionFailure ?? "gps" }
   const distanceMeters = distanceBetweenMeters(input.position, input.customer)

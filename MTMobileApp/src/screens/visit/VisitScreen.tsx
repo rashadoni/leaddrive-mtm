@@ -31,6 +31,8 @@ import {
   reconcileOptimisticVisit,
   type OptimisticVisit,
 } from "../../services/visit-outbox"
+import { useAuthStore } from "../../store/auth"
+import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { runMobileSync } from "../../services/sync-engine"
 import { allOutboxOperations, retryOutboxConflict } from "../../services/outbox"
 import { checkInOutcomeFromOperation, formatCheckInDistance, type CheckInOutcome } from "./check-in-outcome"
@@ -83,6 +85,7 @@ type LoadState = "loading" | "ready" | "offline" | "error"
 
 /** Why the last "Start unplanned visit" attempt did not open a visit. Stays on screen until the next attempt. */
 type CheckInIssue =
+  | { kind: "workday-paused" }
   | { kind: "no-coordinates" }
   | { kind: "implausible-distance"; distanceMeters: number }
   | { kind: "no-position"; reason: PositionFailure }
@@ -144,6 +147,8 @@ const VISIT_COPY = {
     noAddress: "Адрес не указан",
     coordinatesMissing: "Координаты не заданы",
     coordinatesSuspicious: "Координаты требуют проверки",
+    issuePausedTitle: "Идёт перерыв",
+    issuePausedBody: "Во время перерыва отметки не принимаются. Продолжите рабочий день на вкладке «Сегодня», а потом отметьтесь.",
     issueNoCoordinatesTitle: "У точки нет координат",
     issueNoCoordinatesBody: "Чек-ин здесь невозможен. Попросите руководителя добавить координаты в карточку клиента.",
     issueSuspiciousTitle: "Координаты точки выглядят ошибочными",
@@ -213,6 +218,8 @@ const VISIT_COPY = {
     noAddress: "Ünvan göstərilməyib",
     coordinatesMissing: "Koordinatlar göstərilməyib",
     coordinatesSuspicious: "Koordinatlar yoxlanmalıdır",
+    issuePausedTitle: "Fasilə davam edir",
+    issuePausedBody: "Fasilə zamanı qeydiyyat qəbul edilmir. «Bu gün» bölməsində iş gününü davam etdirin, sonra qeydiyyatdan keçin.",
     issueNoCoordinatesTitle: "Nöqtənin koordinatları yoxdur",
     issueNoCoordinatesBody: "Burada giriş qeyd etmək mümkün deyil. Rəhbərdən müştəri kartına koordinat əlavə etməsini xahiş edin.",
     issueSuspiciousTitle: "Nöqtənin koordinatları səhv görünür",
@@ -282,6 +289,8 @@ const VISIT_COPY = {
     noAddress: "No address provided",
     coordinatesMissing: "No coordinates",
     coordinatesSuspicious: "Coordinates need checking",
+    issuePausedTitle: "You are on a break",
+    issuePausedBody: "Check-ins are not accepted during a break. Resume the workday on the Today tab, then check in.",
     issueNoCoordinatesTitle: "This client has no coordinates",
     issueNoCoordinatesBody: "Check-in is not possible here. Ask your manager to add coordinates to the client card.",
     issueSuspiciousTitle: "The client's coordinates look wrong",
@@ -375,6 +384,16 @@ export default function VisitScreen() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [pendingGeofenceResolve, setPendingGeofenceResolve] = useState<((value: boolean) => void) | null>(null)
   const [checkInIssue, setCheckInIssue] = useState<CheckInIssue | null>(null)
+  // T4: route execution already refused to run during a break; the ad-hoc
+  // check-in on this screen did not, so the one path that bypassed the route
+  // also bypassed the pause. The server would take the visit but refuse the
+  // GPS around it, leaving a visit nobody can prove.
+  const workdayAgent = useAuthStore((state) => state.agent)
+  const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
+  const currentWorkdayKey = workdayKey(workdayAgent?.organizationId, workdayAgent?.id)
+  const workdayPaused = activeWorkday?.key === currentWorkdayKey
+    && activeWorkday.syncState === "CONFIRMED"
+    && activeWorkday.paused === true
   const [toast, setToast] = useState<{
     visible: boolean
     type: "success" | "error" | "warning" | "info"
@@ -741,6 +760,14 @@ export default function VisitScreen() {
     setMutating(true)
     setCheckInIssue(null)
     try {
+      // Before anything about coordinates: on a break nothing else matters,
+      // and naming the real reason keeps the agent from hunting a GPS problem
+      // that is not there.
+      if (workdayPaused) {
+        setCheckInIssue({ kind: "workday-paused" })
+        showToast("warning", copy.issuePausedTitle, copy.issuePausedBody)
+        return
+      }
       // Owner decision: no coordinates on the client card means no check-in, with an explanation.
       if (!hasUsableCoordinates(customer)) {
         setCheckInIssue({ kind: "no-coordinates" })
@@ -780,6 +807,7 @@ export default function VisitScreen() {
         customer,
         position: coords,
         positionFailure: located.failure,
+        workdayPaused,
       })
       if (precondition.kind === "implausible-distance") {
         setCheckInIssue(precondition)
@@ -1135,6 +1163,8 @@ type Copy = { [Key in keyof typeof VISIT_COPY.ru]: string }
 
 function checkInIssueText(issue: CheckInIssue, copy: Copy): { title: string; body: string } {
   switch (issue.kind) {
+    case "workday-paused":
+      return { title: copy.issuePausedTitle, body: copy.issuePausedBody }
     case "no-coordinates":
       return { title: copy.issueNoCoordinatesTitle, body: copy.issueNoCoordinatesBody }
     case "implausible-distance":
