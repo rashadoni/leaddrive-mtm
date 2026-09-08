@@ -103,6 +103,8 @@ export default function TodayScreen() {
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const startWorkday = useWorkdayStore((state) => state.start)
   const endWorkday = useWorkdayStore((state) => state.end)
+  const pauseWorkday = useWorkdayStore((state) => state.pause)
+  const resumeWorkday = useWorkdayStore((state) => state.resume)
   const finishedWorkday = useWorkdayStore((state) => state.finishedWorkday)
   const online = useSyncStatusStore((state) => state.online)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
@@ -208,6 +210,28 @@ export default function TodayScreen() {
       setWorkdayBusy(false)
     }
   }, [currentWorkdayKey, endWorkday, refresh, startWorkday, workdayBusy, workdayHydrated, workdayOpen])
+
+  // A7/T2: the break is the agent's own control now. The server refuses GPS
+  // recorded inside a pause, so this button is what keeps the device from
+  // sending points it would only be told to throw away.
+  const toggleWorkdayBreak = useCallback(async () => {
+    if (workdayBusy || !workdayHydrated || !workdayOpen) return
+    setWorkdayBusy(true)
+    setWorkdayError(false)
+    try {
+      if (workdayPaused) {
+        await resumeWorkday(currentWorkdayKey)
+      } else {
+        await pauseWorkday(currentWorkdayKey)
+      }
+      await refreshRouteFieldSession()
+      await refresh()
+    } catch {
+      setWorkdayError(true)
+    } finally {
+      setWorkdayBusy(false)
+    }
+  }, [currentWorkdayKey, pauseWorkday, refresh, resumeWorkday, workdayBusy, workdayHydrated, workdayOpen, workdayPaused])
 
   const requestWorkdayAction = useCallback(() => {
     if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday) return
@@ -384,6 +408,12 @@ export default function TodayScreen() {
         minute: "2-digit",
       })
     : null
+  const pausedSince = workdayPaused && currentWorkday?.pausedAt
+    ? new Date(currentWorkday.pausedAt).toLocaleTimeString(i18n.language, {
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null
   const finishedAt = workdayFinishedToday && finishedWorkday?.finishedAt
     ? new Date(finishedWorkday.finishedAt).toLocaleTimeString(i18n.language, {
         hour: "2-digit",
@@ -466,7 +496,9 @@ export default function TodayScreen() {
                         : workdayEnding
                           ? t("todayV2.dayEndingBody")
                           : workdayPaused
-                            ? t("todayV2.dayPausedBody")
+                            ? (pausedSince
+                              ? t("todayV2.dayPausedSince", { time: pausedSince })
+                              : t("todayV2.dayPausedBody"))
                           : workdayActive && startedAt
                           ? t("todayV2.dayStartedAt", { time: startedAt })
                           : workdayFinishedToday
@@ -475,6 +507,29 @@ export default function TodayScreen() {
                 </Text>
                 {workdayError ? <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text> : null}
               </View>
+              {workdayOpen && !workdayEnding ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: workdayBusy || !workdayHydrated }}
+                  disabled={workdayBusy || !workdayHydrated}
+                  onPress={() => { void toggleWorkdayBreak() }}
+                  style={({ pressed }) => [
+                    styles.workdayButton,
+                    styles.workdayBreakButton,
+                    pressed && styles.pressed,
+                    (workdayBusy || !workdayHydrated) && styles.disabled,
+                  ]}
+                >
+                  <Icon
+                    name={workdayPaused ? "play-circle-outline" : "pause-circle-outline"}
+                    size={22}
+                    color={fieldTheme.color.primaryStrong}
+                  />
+                  <Text style={[styles.workdayButtonText, styles.workdayButtonTextActive]}>
+                    {t(workdayPaused ? "todayV2.resumeDay" : "todayV2.breakDay")}
+                  </Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday }}
@@ -851,6 +906,11 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.pill,
     backgroundColor: fieldTheme.color.primaryStrong,
+  },
+  workdayBreakButton: {
+    backgroundColor: fieldTheme.color.surface,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.primary,
   },
   workdayButtonActive: {
     borderWidth: 1,
