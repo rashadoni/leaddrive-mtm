@@ -12,36 +12,49 @@ import {
 const LOCALES: Array<[string, Record<string, any>]> = [["en", en], ["ru", ru], ["az", az]]
 
 describe("alert messages (field UX audit A4)", () => {
+  // jest's expect takes no message argument, so each check collects its
+  // failures and asserts on the list: the diff then names the exact locale,
+  // key and parameter instead of "expected true to be false".
   it("has a string for every key in every language", () => {
+    const missing: string[] = []
     for (const [name, bundle] of LOCALES) {
       for (const key of ALERT_MESSAGE_KEYS) {
-        expect(typeof bundle.alertMessages?.[key], `${name}.json is missing alertMessages.${key}`).toBe("string")
+        if (typeof bundle.alertMessages?.[key] !== "string") missing.push(`${name}.json → alertMessages.${key}`)
       }
     }
+    expect(missing).toEqual([])
   })
 
   it("spends every parameter the server sends, in every language", () => {
     // The silent failure: a translation drops {{geofenceRadius}} and the rep
     // reads "your check-in was 340 m away" with no idea what the limit was.
     // i18next renders that happily.
+    const unspent: string[] = []
     for (const [name, bundle] of LOCALES) {
       for (const key of ALERT_MESSAGE_KEYS) {
         for (const param of ALERT_MESSAGE_PARAMS[key]) {
-          expect(bundle.alertMessages[key], `${name}.json → ${key} never uses {{${param}}}`).toContain(`{{${param}}}`)
+          if (!String(bundle.alertMessages[key]).includes(`{{${param}}}`)) {
+            unspent.push(`${name}.json → ${key} never uses {{${param}}}`)
+          }
         }
       }
     }
+    expect(unspent).toEqual([])
   })
 
   it("asks for no parameter the server does not send", () => {
+    const invented: string[] = []
     for (const [name, bundle] of LOCALES) {
       for (const key of ALERT_MESSAGE_KEYS) {
         const used = [...String(bundle.alertMessages[key]).matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1])
         for (const param of used) {
-          expect(ALERT_MESSAGE_PARAMS[key], `${name}.json → ${key} asks for {{${param}}}`).toContain(param)
+          if (!ALERT_MESSAGE_PARAMS[key].includes(param)) {
+            invented.push(`${name}.json → ${key} asks for {{${param}}}, which no generator sends`)
+          }
         }
       }
     }
+    expect(invented).toEqual([])
   })
 
   it("reads back what the server wrote", () => {
