@@ -940,5 +940,14 @@
       "MOVED_WORKDAY": "Перенесённый рабочий день",
       "MOVED_DAY_OFF": "Перенесённый выходной"
     }
+  },
+  "alertMessages": {
+    "visitStillOpen": "Визит в «{{customerName}}» открыт уже {{minutes}} мин (порог {{thresholdMinutes}} мин)",
+    "outOfZoneCheckIn": "Отметка отклонена: {{distanceMeters}} м от клиента (допустимо {{geofenceRadius}} м)",
+    "outOfZoneCheckInForced": "Отметка принята по разрешению: {{distanceMeters}} м от клиента (допустимо {{geofenceRadius}} м)",
+    "geofenceViolation": "Отметка в «{{customerName}}» записана в {{distanceMeters}} м (допустимо {{geofenceRadius}} м)",
+    "routeDeviation": "Агент в {{deviationMeters}} м от запланированного маршрута (допустимо {{thresholdMeters}} м)",
+    "agentRouteDeviation": "Вы в {{deviationMeters}} м от запланированного маршрута",
+    "agentOutOfZoneCheckIn": "Ваша отметка в «{{customerName}}» записана в {{distanceMeters}} м (допустимо {{geofenceRadius}} м)"
   }
 }

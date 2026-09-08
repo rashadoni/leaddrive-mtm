@@ -30,6 +30,7 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
 import { statusLabel } from "../../lib/status-labels"
+import { isActiveAlert, readAlertMessage } from "../../lib/alert-messages"
 
 interface MtmAlert {
   id: string
@@ -39,6 +40,9 @@ interface MtmAlert {
   description?: string
   isResolved: boolean
   createdAt: string
+  // What happened and with which numbers, so the phone can say it in the
+  // rep's language instead of showing the server's English (audit A4).
+  metadata?: unknown
 }
 
 // Translation keys of the language picker, built without upper-casing so the
@@ -80,7 +84,13 @@ export default function ProfileScreen() {
       const profileLoaded = profileResult?.success === true
       const alertsLoaded = alertsResult?.success === true
       if (profileLoaded) setProfile(profileResult.data)
-      if (alertsLoaded) setAlerts(alertsResult.data?.alerts || [])
+      if (alertsLoaded) {
+        // "Active" means unresolved AND recent. A June warning nobody closed
+        // is still on the server, it just stops pushing today's off the card
+        // (audit A4).
+        const now = new Date()
+        setAlerts((alertsResult.data?.alerts || []).filter((alert: MtmAlert) => isActiveAlert(alert, now)))
+      }
       setLoadError(!profileLoaded && !alertsLoaded)
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") setLoadError(true)
@@ -147,7 +157,13 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.alertCopy}>
                 <Text style={styles.alertTitle}>{alert.title || alert.type?.replace(/_/g, " ")}</Text>
-                {alert.description ? <Text style={styles.alertDescription} numberOfLines={2}>{alert.description}</Text> : null}
+                {(() => {
+                  const message = readAlertMessage(alert.metadata)
+                  const text = message.kind === "localized"
+                    ? t(`alertMessages.${message.key}`, message.params)
+                    : alert.description
+                  return text ? <Text style={styles.alertDescription} numberOfLines={2}>{text}</Text> : null
+                })()}
               </View>
               <Text style={styles.alertDate}>
                 {new Date(alert.createdAt).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
