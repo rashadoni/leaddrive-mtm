@@ -18,6 +18,8 @@ import { statusLabel } from "../../lib/status-labels"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice, type CachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import {
   toWeekData,
   shiftDateKey,
@@ -41,7 +43,6 @@ const CALENDAR_COPY = {
     loadingBody: "Это займёт несколько секунд.",
     errorTitle: "Не удалось открыть календарь",
     errorBody: "Проверьте интернет и попробуйте ещё раз.",
-    staleTitle: "Сейчас нет связи",
     staleBody: "Показываем последнюю загруженную неделю. Потяните экран вниз, когда связь появится.",
     retry: "Попробовать снова",
     summary: "Итоги недели",
@@ -90,7 +91,6 @@ const CALENDAR_COPY = {
     loadingBody: "Bu, bir neçə saniyə çəkəcək.",
     errorTitle: "Təqvimi açmaq alınmadı",
     errorBody: "İnterneti yoxlayın və yenidən cəhd edin.",
-    staleTitle: "Hazırda bağlantı yoxdur",
     staleBody: "Son yüklənmiş həftəni göstəririk. Bağlantı bərpa olunanda ekranı aşağı çəkin.",
     retry: "Yenidən cəhd et",
     summary: "Həftənin yekunu",
@@ -139,7 +139,6 @@ const CALENDAR_COPY = {
     loadingBody: "This should only take a few seconds.",
     errorTitle: "We couldn't open the calendar",
     errorBody: "Check your connection and try again.",
-    staleTitle: "You're offline",
     staleBody: "Showing the last loaded week. Pull down when your connection returns.",
     retry: "Try again",
     summary: "Week summary",
@@ -320,6 +319,9 @@ function formatRange(start: string, endExclusive: string, lang: string): string 
 
 export default function WeekScreen() {
   const { t, i18n } = useTranslation()
+  // `offline` here has only ever meant "the last request failed"; the radio
+  // is a separate fact the sync store already publishes (audit B4/T7).
+  const online = useSyncStatusStore((state) => state.online)
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
@@ -334,6 +336,7 @@ export default function WeekScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
+  const notice = cachedViewNotice({ online, requestFailed: offline })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
   const phoneListY = useRef(0)
@@ -495,7 +498,13 @@ export default function WeekScreen() {
           refreshControl={refreshControl}
           showsVerticalScrollIndicator={false}
         >
-          {offline && <OfflineNotice title={copy.staleTitle} body={copy.staleBody} />}
+          {notice !== "none" && (
+            <OfflineNotice
+              notice={notice}
+              title={t(CACHED_VIEW_NOTICE_KEYS[notice])}
+              body={notice === "offline" ? copy.staleBody : undefined}
+            />
+          )}
 
           <WeekSummary data={data} title={copy.summary} t={t} tablet={tablet} />
           {canPlanOwnRoutes ? (
@@ -704,15 +713,15 @@ function StatePanel({ icon, title, body, action, onAction, touchTarget }: {
   )
 }
 
-function OfflineNotice({ title, body }: { title: string; body: string }) {
+function OfflineNotice({ notice, title, body }: { notice: Exclude<CachedViewNotice, "none">; title: string; body?: string }) {
   return (
     <View style={styles.offlineNotice} accessibilityLiveRegion="polite">
       <View style={styles.offlineIcon}>
-        <Icon name="cloud-offline-outline" size={20} color={fieldTheme.color.amber} />
+        <Icon name={notice === "offline" ? "cloud-offline-outline" : "alert-circle-outline"} size={20} color={fieldTheme.color.amber} />
       </View>
       <View style={styles.noticeCopy}>
         <Text style={styles.offlineTitle}>{title}</Text>
-        <Text style={styles.offlineBody}>{body}</Text>
+        {body ? <Text style={styles.offlineBody}>{body}</Text> : null}
       </View>
     </View>
   )
