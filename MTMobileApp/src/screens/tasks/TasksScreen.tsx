@@ -23,6 +23,8 @@ import { api } from "../../services/api"
 import { readOfflineTasks } from "../../services/offline-reads"
 import { flushRouteFieldOutbox } from "../../services/sync-engine"
 import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../services/task-outbox"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -65,7 +67,6 @@ interface FriendlyCopy {
   emptyTitle: Record<TaskStatus, string>
   emptyBody: Record<TaskStatus, string>
   retry: string
-  offlineTitle: string
   offlineBody: string
   pendingBody: string
   syncNow: string
@@ -127,7 +128,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     emptyTitle: { PENDING: "Новых задач нет", IN_PROGRESS: "Нет задач в работе", COMPLETED: "Завершённых задач пока нет" },
     emptyBody: { PENDING: "Когда появится новая задача, она будет здесь.", IN_PROGRESS: "Откройте вкладку «К выполнению» и начните задачу.", COMPLETED: "Завершённые задачи появятся здесь вместе с результатом." },
     retry: "Повторить",
-    offlineTitle: "Сейчас нет связи",
     offlineBody: "Показана последняя сохранённая копия. Изменения останутся на устройстве.",
     pendingBody: "Изменения сохранены на устройстве и уйдут на сервер после подключения.",
     syncNow: "Синхронизировать",
@@ -192,7 +192,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     emptyTitle: { PENDING: "Yeni tapşırıq yoxdur", IN_PROGRESS: "İcrada tapşırıq yoxdur", COMPLETED: "Tamamlanmış tapşırıq yoxdur" },
     emptyBody: { PENDING: "Yeni tapşırıq gələndə burada görünəcək.", IN_PROGRESS: "«Görüləcək» bölməsindən tapşırıq başladın.", COMPLETED: "Tamamlanan tapşırıqlar nəticə ilə burada görünəcək." },
     retry: "Yenidən yoxla",
-    offlineTitle: "Hazırda bağlantı yoxdur",
     offlineBody: "Son saxlanmış nüsxə göstərilir. Dəyişikliklər cihazda qalacaq.",
     pendingBody: "Dəyişikliklər cihazda saxlanıb və internet gələndə serverə göndəriləcək.",
     syncNow: "Sinxronlaşdır",
@@ -257,7 +256,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     emptyTitle: { PENDING: "No new tasks", IN_PROGRESS: "No tasks in progress", COMPLETED: "No completed tasks yet" },
     emptyBody: { PENDING: "A new task will appear here when it is assigned.", IN_PROGRESS: "Open “To do” and start a task.", COMPLETED: "Completed tasks will appear here with their result." },
     retry: "Try again",
-    offlineTitle: "You are offline",
     offlineBody: "This is the last saved copy. Your changes will stay on this device.",
     pendingBody: "Changes are saved on this device and will reach the server when you reconnect.",
     syncNow: "Sync now",
@@ -392,6 +390,9 @@ export default function TasksScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
+  const online = useSyncStatusStore((state) => state.online)
+  // Two facts, not one: the request failed, and the radio is or is not on.
+  const notice = cachedViewNotice({ online, requestFailed: offline })
   const [loadError, setLoadError] = useState(false)
   const [activeTab, setActiveTab] = useState<TaskStatus>("PENDING")
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
@@ -621,7 +622,7 @@ export default function TasksScreen() {
         {offline ? (
           <Notice
             icon="cloud-offline-outline"
-            title={copy.offlineTitle}
+            title={t(CACHED_VIEW_NOTICE_KEYS[notice === "none" ? "stale" : notice])}
             body={tasks.length === 0 && loadError ? copy.loadFailed : copy.offlineBody}
             tone="amber"
             action={copy.retry}

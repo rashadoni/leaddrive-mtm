@@ -21,6 +21,8 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { managerApi } from "../../services/manager-api"
 import { readOfflineOrganizations } from "../../services/offline-reads"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import {
   ORGANIZATION_COLUMNS,
   makeOrganizationAssignmentIdempotencyKey,
@@ -81,6 +83,11 @@ export default function OrganizationExplorerScreen() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
+  const online = useSyncStatusStore((state) => state.online)
+  // `offline` means the request failed; whether the radio is off is a
+  // separate fact, and saying the wrong one sends people to fix a
+  // working network (audit B4/T7).
+  const notice = cachedViewNotice({ online, requestFailed: offline })
   const [offlineIgnoredFilters, setOfflineIgnoredFilters] = useState(0)
   const [loadError, setLoadError] = useState(false)
   const [filters, setFilters] = useState<OrganizationFilters>({ sort: "name", direction: "asc" })
@@ -383,7 +390,7 @@ export default function OrganizationExplorerScreen() {
         <Pressable accessibilityRole="button" style={styles.saveHint} onPress={() => setSaveOpen(true)}><Text style={styles.saveHintText}>{t("organizations.saveView")}</Text></Pressable>
       ) : null}
 
-      {offline ? <View style={styles.offline}><Text style={styles.offlineText}>● {t("common.offlineCached")}</Text></View> : null}
+      {notice !== "none" ? <View style={styles.offline}><Text style={styles.offlineText}>● {t(CACHED_VIEW_NOTICE_KEYS[notice])}</Text></View> : null}
       {offline && offlineIgnoredFilters > 0 ? <View style={styles.offlineFilterNotice}><Text style={styles.offlineFilterNoticeText}>{t("organizations.offlineFilterNotice", { count: offlineIgnoredFilters })}</Text></View> : null}
       {loadError ? (
         <View style={styles.loadError}>

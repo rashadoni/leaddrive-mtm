@@ -13,7 +13,8 @@ import { join } from "path"
  */
 const SRC = join(__dirname, "..", "..", "src")
 const week = readFileSync(join(SRC, "screens", "week", "WeekScreen.tsx"), "utf8")
-const contacts = readFileSync(join(SRC, "screens", "base", "ContactsList.tsx"), "utf8")
+const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), "utf8")
+const contacts = read("screens", "base", "ContactsList.tsx")
 
 describe("cached-data notice on the calendar", () => {
   it("decides the reason from connectivity, not from the failure alone", () => {
@@ -39,10 +40,20 @@ describe("cached-data notice on the calendar", () => {
     expect(week).toContain('body={notice === "offline" ? copy.staleBody : undefined}')
   })
 
-  it("stays in step with the contacts list, which was fixed first", () => {
-    for (const source of [week, contacts]) {
-      expect(source).toContain("CACHED_VIEW_NOTICE_KEYS")
-      expect(source).toContain("cachedViewNotice(")
+  it("stays in step with every screen that shows saved data", () => {
+    // They drifted once already: T7 fixed the contacts list and left the
+    // calendar saying "no connection" for a 500. Listing them here is what
+    // stops the next screen from being fixed alone.
+    const screens = {
+      "screens/base/ContactsList.tsx": contacts,
+      "screens/week/WeekScreen.tsx": week,
+      "screens/base/OrganizationExplorerScreen.tsx": read("screens", "base", "OrganizationExplorerScreen.tsx"),
+      "screens/base/ContactDetailScreen.tsx": read("screens", "base", "ContactDetailScreen.tsx"),
+      "screens/tasks/TasksScreen.tsx": read("screens", "tasks", "TasksScreen.tsx"),
+    }
+    for (const [name, source] of Object.entries(screens)) {
+      expect(source, `${name} decides the notice itself`).toContain("cachedViewNotice(")
+      expect(source, `${name} does not use the shared wording`).toContain("CACHED_VIEW_NOTICE_KEYS")
     }
   })
 })
