@@ -29,9 +29,9 @@ describe("cached-data notice on the calendar", () => {
   it("no longer claims a lost connection in any language", () => {
     // These were literals inside the component, one per language, shown for
     // every kind of failure.
-    for (const claim of ["Сейчас нет связи", "You're offline", "Hazırda bağlantı yoxdur"]) {
-      expect(week, `calendar still hard-codes "${claim}"`).not.toContain(claim)
-    }
+    const stillThere = ["Сейчас нет связи", "You're offline", "Hazırda bağlantı yoxdur"]
+      .filter((claim) => week.includes(claim))
+    expect(stillThere).toEqual([])
   })
 
   it("keeps the pull-to-refresh advice only where it is true", () => {
@@ -51,9 +51,9 @@ describe("cached-data notice on the calendar", () => {
       "screens/base/ContactDetailScreen.tsx": read("screens", "base", "ContactDetailScreen.tsx"),
       "screens/tasks/TasksScreen.tsx": read("screens", "tasks", "TasksScreen.tsx"),
     }
-    for (const [name, source] of Object.entries(screens)) {
-      expect(source, `${name} decides the notice itself`).toContain("cachedViewNotice(")
-      expect(source, `${name} does not use the shared wording`).toContain("CACHED_VIEW_NOTICE_KEYS")
-    }
+    const missing = Object.entries(screens)
+      .filter(([, source]) => !source.includes("cachedViewNotice(") || !source.includes("CACHED_VIEW_NOTICE_KEYS"))
+      .map(([name]) => name)
+    expect(missing).toEqual([])
   })
 })
