@@ -50,6 +50,9 @@ describe("cached-data notice on the calendar", () => {
       "screens/base/OrganizationExplorerScreen.tsx": read("screens", "base", "OrganizationExplorerScreen.tsx"),
       "screens/base/ContactDetailScreen.tsx": read("screens", "base", "ContactDetailScreen.tsx"),
       "screens/tasks/TasksScreen.tsx": read("screens", "tasks", "TasksScreen.tsx"),
+      "screens/tasks/TaskDetailScreen.tsx": read("screens", "tasks", "TaskDetailScreen.tsx"),
+      "screens/visit/VisitScreen.tsx": read("screens", "visit", "VisitScreen.tsx"),
+      "screens/visit/VisitWorkspaceScreen.tsx": read("screens", "visit", "VisitWorkspaceScreen.tsx"),
     }
     const missing = Object.entries(screens)
       .filter(([, source]) => !source.includes("cachedViewNotice(") || !source.includes("CACHED_VIEW_NOTICE_KEYS"))

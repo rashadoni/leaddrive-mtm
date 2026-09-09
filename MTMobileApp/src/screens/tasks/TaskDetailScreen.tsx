@@ -25,6 +25,7 @@ import { allOutboxOperations } from "../../services/outbox"
 import { countPendingTaskUpdates, queueTaskStatusUpdate } from "../../services/task-outbox"
 import { flushRouteFieldOutbox, refreshSyncStatusCounts } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -346,6 +347,8 @@ function toDateLabel(iso: string, language: string, withTime = false): string {
 
 export default function TaskDetailScreen() {
   const { t, i18n } = useTranslation()
+  const cachedOnline = useSyncStatusStore((state) => state.online)
+  const cachedNotice = cachedViewNotice({ online: cachedOnline, requestFailed: true })
   const copy = friendlyCopy(i18n.language || "ru")
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<RootStackParamList, "TaskDetail">>()
@@ -615,7 +618,7 @@ export default function TaskDetailScreen() {
             <Notice
               icon="cloud-offline-outline"
               tone="amber"
-              title={copy.offlineTitle}
+              title={t(CACHED_VIEW_NOTICE_KEYS[cachedNotice === "none" ? "stale" : cachedNotice])}
               body={pendingTaskUpdates > 0 ? `${copy.offlineBody}\n${t("task.pendingSyncTemplate", { count: pendingTaskUpdates })}` : copy.offlineBody}
             />
           ) : pendingTaskUpdates > 0 ? (

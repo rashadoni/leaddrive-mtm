@@ -17,6 +17,8 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import {
   toVisitWorkspace,
   type VisitRequirement,
@@ -216,6 +218,9 @@ function visitStatusVisual(status: string) {
 
 export default function VisitWorkspaceScreen() {
   const { t, i18n } = useTranslation()
+  // The load state says data is stale; the radio says why (audit B4/T7).
+  const online = useSyncStatusStore((state) => state.online)
+  const cachedNotice = cachedViewNotice({ online, requestFailed: true })
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<RootStackParamList, "VisitWorkspace">>()
   const { width } = useWindowDimensions()
@@ -341,7 +346,7 @@ export default function VisitWorkspaceScreen() {
           <View style={styles.content}>
             {loadState === "offline" ? (
               <Notice
-                title={copy.offlineTitle}
+                title={t(CACHED_VIEW_NOTICE_KEYS[cachedNotice === "none" ? "stale" : cachedNotice])}
                 body={copy.offlineBody}
                 action={copy.retry}
                 busy={refreshing}

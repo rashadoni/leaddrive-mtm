@@ -31,6 +31,8 @@ import {
   reconcileOptimisticVisit,
   type OptimisticVisit,
 } from "../../services/visit-outbox"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import { useAuthStore } from "../../store/auth"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { runMobileSync } from "../../services/sync-engine"
@@ -1235,11 +1237,18 @@ function VisitActionPanel({
   onCheckOut: () => void
   onRetry: () => void
 }) {
+  // The panel knows only that loading ended in the "offline" state, which is
+  // set on any failed request. What to call it depends on the radio, and the
+  // sync store is the one place that knows (audit B4/T7).
+  const { t: translate } = useTranslation()
+  const cachedOnline = useSyncStatusStore((state) => state.online)
+  const cachedNotice = cachedViewNotice({ online: cachedOnline, requestFailed: true })
+  const cachedTitle = translate(CACHED_VIEW_NOTICE_KEYS[cachedNotice === "none" ? "stale" : cachedNotice])
   if (activeVisit) {
     return (
       <View style={styles.actionStack}>
         <HintCard id="visits.flow.v2" text={copy.helpFlow} style={styles.visitHint} />
-        {loadState === "offline" && <StateNotice kind="offline" copy={copy} onRetry={onRetry} />}
+        {loadState === "offline" && <StateNotice kind="offline" copy={copy} cachedTitle={cachedTitle} onRetry={onRetry} />}
         <View style={[styles.activeCard, tablet && styles.cardTablet]}>
           <View style={styles.sectionIconRow}>
             <View style={[styles.sectionIcon, { backgroundColor: fieldTheme.color.successSoft }]}>
@@ -1335,7 +1344,7 @@ function VisitActionPanel({
         </Pressable>
       </View>
 
-      {loadState === "offline" && <StateNotice kind="offline" copy={copy} onRetry={onRetry} />}
+      {loadState === "offline" && <StateNotice kind="offline" copy={copy} cachedTitle={cachedTitle} onRetry={onRetry} />}
 
       <View style={[styles.manualCard, tablet && styles.cardTablet]}>
         <View style={styles.sectionIconRow}>
@@ -1615,9 +1624,11 @@ function VisitRow({ visit, copy, language }: { visit: Visit; copy: Copy; languag
   )
 }
 
-function StateNotice({ kind, copy, onRetry }: {
+function StateNotice({ kind, copy, cachedTitle, onRetry }: {
   kind: "offline" | "error"
   copy: Copy
+  /** Why the saved data is on screen; absent for the plain error state. */
+  cachedTitle?: string
   onRetry: () => void
 }) {
   const offline = kind === "offline"
@@ -1627,7 +1638,7 @@ function StateNotice({ kind, copy, onRetry }: {
     <View style={[styles.stateNotice, { backgroundColor: background }]} accessibilityLiveRegion="polite">
       <Icon name={offline ? "cloud-offline-outline" : "alert-circle-outline"} size={23} color={color} />
       <View style={styles.stateNoticeCopy}>
-        <Text style={[styles.stateNoticeTitle, { color }]}>{offline ? copy.offlineTitle : copy.errorTitle}</Text>
+        <Text style={[styles.stateNoticeTitle, { color }]}>{offline ? cachedTitle ?? copy.offlineTitle : copy.errorTitle}</Text>
         <Text style={styles.stateNoticeBody}>{offline ? copy.offlineBody : copy.errorBody}</Text>
       </View>
       <Pressable accessibilityRole="button" onPress={onRetry} style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}>
