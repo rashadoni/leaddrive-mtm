@@ -103,7 +103,6 @@ type FriendlyCopy = {
   cancel: string
   offlineTitle: string
   offlineBody: string
-  pendingTitle: (count: number) => string
   pendingBody: string
   syncingTitle: string
   syncingBody: string
@@ -162,7 +161,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     cancel: "Отмена",
     offlineTitle: "Сейчас нет связи",
     offlineBody: "Показаны сохранённые данные. Старт или завершение останутся на устройстве и отправятся позже.",
-    pendingTitle: (count) => `Ждут отправки: ${count}`,
     pendingBody: "Изменения сохранены на устройстве и уйдут на сервер после подключения.",
     syncingTitle: "Идёт синхронизация",
     syncingBody: "Проверяем сервер и отправляем сохранённые изменения.",
@@ -219,7 +217,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     cancel: "Ləğv et",
     offlineTitle: "Hazırda bağlantı yoxdur",
     offlineBody: "Saxlanmış məlumat göstərilir. Başlama və ya tamamlama cihazda qalaraq sonra göndəriləcək.",
-    pendingTitle: (count) => `Göndərilmə gözləyir: ${count}`,
     pendingBody: "Dəyişikliklər cihazda saxlanıb və internet gələndə serverə göndəriləcək.",
     syncingTitle: "Sinxronizasiya gedir",
     syncingBody: "Server yoxlanılır və saxlanmış dəyişikliklər göndərilir.",
@@ -276,7 +273,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     cancel: "Cancel",
     offlineTitle: "You are offline",
     offlineBody: "Saved data is shown. Starting or completing will stay on this device and be sent later.",
-    pendingTitle: (count) => `Waiting to send: ${count}`,
     pendingBody: "Changes are saved on this device and will be sent when a connection is available.",
     syncingTitle: "Sync in progress",
     syncingBody: "Checking the server and sending saved changes.",
@@ -620,10 +616,10 @@ export default function TaskDetailScreen() {
               icon="cloud-offline-outline"
               tone="amber"
               title={copy.offlineTitle}
-              body={pendingTaskUpdates > 0 ? `${copy.offlineBody}\n${copy.pendingTitle(pendingTaskUpdates)}` : copy.offlineBody}
+              body={pendingTaskUpdates > 0 ? `${copy.offlineBody}\n${t("task.pendingSyncTemplate", { count: pendingTaskUpdates })}` : copy.offlineBody}
             />
           ) : pendingTaskUpdates > 0 ? (
-            <Notice icon="cloud-upload-outline" tone="blue" title={copy.pendingTitle(pendingTaskUpdates)} body={copy.pendingBody} />
+            <Notice icon="cloud-upload-outline" tone="blue" title={t("task.pendingSyncTemplate", { count: pendingTaskUpdates })} body={copy.pendingBody} />
           ) : null}
 
           {task.returnReason ? (

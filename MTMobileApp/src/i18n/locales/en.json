@@ -136,7 +136,6 @@
     "searchPlaceholder": "Search customers…",
     "noCustomersFound": "No customers found",
     "todayVisits": "Today's Visits",
-    "visitsCount": "{{n}} visits",
     "noVisitsToday": "No Visits Today",
     "emptyHint": "Use Quick Check-in to start your first visit",
     "fetching": "Fetching your visits",
@@ -220,7 +219,6 @@
     "completeFailed": "Failed to complete task",
     "resultModalTitle": "Task Result",
     "resultModalMessage": "Add result notes (optional)",
-    "pendingSyncTemplate": "{{n}} change awaiting sync",
     "detailTitle": "Task",
     "statusCancelled": "Cancelled",
     "statusOverdue": "Overdue",
@@ -279,7 +277,12 @@
     "dueWeek": "Next week",
     "dueMonth": "Next month",
     "dueClear": "Clear",
-    "sectionFiles": "Files · {{n}}"
+    "sectionFiles": "Files · {{n}}",
+    "pendingSyncTemplate": "Waiting to send: {{count}}",
+    "pendingSyncTemplate_one": "Waiting to send: {{count}}",
+    "pendingSyncTemplate_few": "Waiting to send: {{count}}",
+    "pendingSyncTemplate_many": "Waiting to send: {{count}}",
+    "pendingSyncTemplate_other": "Waiting to send: {{count}}"
   },
   "organizations": {
     "title": "Organizations",
@@ -655,7 +658,6 @@
     "stopsTemplate_few": "{{count}} stops",
     "stopsTemplate_many": "{{count}} stops",
     "stopsTemplate_other": "{{count}} stops",
-    "tasksTemplate": "{{n}} tasks",
     "dayOff": "Day off",
     "dayEmpty": "Nothing planned",
     "offlineUnavailable": "The week isn't available offline"

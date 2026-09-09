@@ -67,7 +67,6 @@ interface FriendlyCopy {
   retry: string
   offlineTitle: string
   offlineBody: string
-  pendingTitle: (count: number) => string
   pendingBody: string
   syncNow: string
   syncing: string
@@ -130,7 +129,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     retry: "Повторить",
     offlineTitle: "Сейчас нет связи",
     offlineBody: "Показана последняя сохранённая копия. Изменения останутся на устройстве.",
-    pendingTitle: (count) => `Ждут отправки: ${count}`,
     pendingBody: "Изменения сохранены на устройстве и уйдут на сервер после подключения.",
     syncNow: "Синхронизировать",
     syncing: "Отправляю…",
@@ -196,7 +194,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     retry: "Yenidən yoxla",
     offlineTitle: "Hazırda bağlantı yoxdur",
     offlineBody: "Son saxlanmış nüsxə göstərilir. Dəyişikliklər cihazda qalacaq.",
-    pendingTitle: (count) => `Göndərilmə gözləyir: ${count}`,
     pendingBody: "Dəyişikliklər cihazda saxlanıb və internet gələndə serverə göndəriləcək.",
     syncNow: "Sinxronlaşdır",
     syncing: "Göndərilir…",
@@ -262,7 +259,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     retry: "Try again",
     offlineTitle: "You are offline",
     offlineBody: "This is the last saved copy. Your changes will stay on this device.",
-    pendingTitle: (count) => `Waiting to send: ${count}`,
     pendingBody: "Changes are saved on this device and will reach the server when you reconnect.",
     syncNow: "Sync now",
     syncing: "Sending…",
@@ -385,7 +381,7 @@ function priorityVisual(priority?: string) {
 }
 
 export default function TasksScreen() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const copy = useMemo(() => copyFor(i18n.language), [i18n.language])
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
@@ -638,7 +634,7 @@ export default function TasksScreen() {
         {pendingSync > 0 ? (
           <Notice
             icon="cloud-upload-outline"
-            title={copy.pendingTitle(pendingSync)}
+            title={t("task.pendingSyncTemplate", { count: pendingSync })}
             body={copy.pendingBody}
             tone="blue"
             action={syncing ? copy.syncing : copy.syncNow}

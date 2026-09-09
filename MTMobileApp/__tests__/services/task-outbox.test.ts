@@ -67,11 +67,22 @@ describe("durable task mutations", () => {
   })
 
   it.each([["en", en], ["ru", ru], ["az", az]])(
-    "task.pendingSyncTemplate carries the {{n}} placeholder in %s",
+    "task.pendingSyncTemplate declines the count in %s",
     (_lang, locale) => {
-      const value = (locale as { task: { pendingSyncTemplate?: unknown } }).task.pendingSyncTemplate
-      expect(typeof value).toBe("string")
-      expect(value as string).toContain("{{n}}")
+      // It used to be one {{n}} sentence that nothing rendered, while the
+      // screen printed its own literal — so "Ждут отправки: 1" reached the
+      // agent in the wrong number (audit B14). The key is live now, and
+      // i18next picks the form from `count`, not from `n`.
+      const task = (locale as { task: Record<string, unknown> }).task
+      // Every language carries all four suffixes plus the bare key, the way
+      // syncCenter.offlinePending does: i18next falls back to the bare key on
+      // an engine whose plural rules are missing, and Hermes has shipped
+      // without them (see src/i18n/plural-rules.ts).
+      for (const suffix of ["", "_one", "_few", "_many", "_other"]) {
+        const value = task[`pendingSyncTemplate${suffix}`]
+        expect(typeof value).toBe("string")
+        expect(value as string).toContain("{{count}}")
+      }
     },
   )
 })
