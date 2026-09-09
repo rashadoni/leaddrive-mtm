@@ -31,6 +31,7 @@ import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
 import { syncCentreState } from "../lib/sync-centre-availability"
+import { fieldTheme } from "../theme/fieldTheme"
 import { syncChipLabel } from "./sync-chip-label"
 
 type Props = {
