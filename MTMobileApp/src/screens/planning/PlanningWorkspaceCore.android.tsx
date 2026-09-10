@@ -48,7 +48,6 @@ import {
   planningWriteConflictDates,
   publishablePlanningDrafts,
   removePlanningTarget,
-  shiftPlanningDateKey,
   toPlanningDetailedRoute,
   updatePlanningTargetTime,
   type PlanningAgent,
@@ -57,6 +56,7 @@ import {
   type PlanningHorizon,
   type PlanningTarget,
 } from "../../services/manager-planning"
+import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday } from "../../services/planning-month"
 
 type PlanningStep = 1 | 2 | 3
 type SaveMode = "draft" | "publish"
@@ -519,6 +519,22 @@ export default function PlanningWorkspaceCore({
     }
   }, [loadingTargets, targetNextPage, targetQuery, targetQueryKey, targetSource])
 
+  /** Which month the grid is showing; the chosen date stays in `anchor`. */
+  const [monthAnchor, setMonthAnchor] = useState(anchor)
+  useEffect(() => { setMonthAnchor(anchor) }, [anchor])
+  const monthCells = useMemo(() => planningMonthGrid(monthAnchor, today), [monthAnchor, today])
+  /**
+   * Monday-first weekday initials in the reader's language.
+   *
+   * 2026-06-01 is a Monday, so seven days from it give the week in order
+   * without hardcoding a list per locale — and `toLocaleDateString` is safe
+   * here because these are labels, not values compared against the server.
+   */
+  const monthWeekdayLabels = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(Date.UTC(2026, 5, 1 + index))
+    return day.toLocaleDateString(i18n.language, { weekday: "narrow", timeZone: "UTC" })
+  }), [i18n.language])
+
   const changeWindow = (nextAnchor: string, nextHorizon = horizon) => {
     if (saving) return
     planRequest.current += 1
@@ -903,19 +919,61 @@ export default function PlanningWorkspaceCore({
                   <Text style={styles.fieldLabel}>{t(singleDay ? "managerShell.planRouteDate" : "managerShell.planWeekStart")}</Text>
                   <Text style={styles.fieldHelp}>{t(singleDay ? "managerShell.planRouteDateHelp" : "managerShell.planWeekStartHelp")}</Text>
                 </View>
+                {/*
+                  Audit B8: the date moved one day per press, so two weeks
+                  ahead was fourteen presses and weekends looked like any other
+                  day. The month steps by month, the grid marks the weekend,
+                  and the past is not offered at all — a route cannot be
+                  planned into it.
+                */}
                 <View style={styles.dateNavigator}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousPeriod")} accessibilityState={{ disabled: saving }} disabled={saving} style={({ pressed }) => [styles.squareButton, saving && styles.disabled, pressed && styles.pressed]} onPress={() => changeWindow(shiftPlanningDateKey(anchor, -horizon))}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} accessibilityState={{ disabled: saving }} disabled={saving} style={({ pressed }) => [styles.squareButton, saving && styles.disabled, pressed && styles.pressed]} onPress={() => setMonthAnchor(shiftPlanningMonth(monthAnchor, -1))}>
                     <Icon name="chevron-back" size={23} color={fieldTheme.color.primaryStrong} />
                   </Pressable>
                   <View style={styles.dateCopy}>
                     <Text style={styles.dateTitle}>{formatPlanDate(anchor, i18n.language)}</Text>
-                    <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.todayButton, saving && styles.disabled]} onPress={() => changeWindow(today)}>
+                    <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.todayButton, saving && styles.disabled]} onPress={() => { const next = nextPlanningWorkday(today); setMonthAnchor(next); changeWindow(next) }}>
                       <Text style={styles.todayButtonText}>{t("managerShell.planToday")}</Text>
                     </Pressable>
                   </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextPeriod")} accessibilityState={{ disabled: saving }} disabled={saving} style={({ pressed }) => [styles.squareButton, saving && styles.disabled, pressed && styles.pressed]} onPress={() => changeWindow(shiftPlanningDateKey(anchor, horizon))}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} accessibilityState={{ disabled: saving }} disabled={saving} style={({ pressed }) => [styles.squareButton, saving && styles.disabled, pressed && styles.pressed]} onPress={() => setMonthAnchor(shiftPlanningMonth(monthAnchor, 1))}>
                     <Icon name="chevron-forward" size={23} color={fieldTheme.color.primaryStrong} />
                   </Pressable>
+                </View>
+                <View style={styles.monthWeekdays} accessibilityRole="none">
+                  {monthWeekdayLabels.map((label, index) => (
+                    <Text key={`${label}-${index}`} style={styles.monthWeekday}>{label}</Text>
+                  ))}
+                </View>
+                <View style={styles.monthGrid} testID="planning-month-grid">
+                  {monthCells.map((cell, index) => {
+                    if (!cell.date) return <View key={`blank-${index}`} style={styles.monthCell} />
+                    const selected = cell.date === anchor
+                    const disabled = saving || cell.past
+                    return (
+                      <Pressable
+                        key={cell.date}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected, disabled }}
+                        accessibilityLabel={formatPlanDate(cell.date, i18n.language)}
+                        disabled={disabled}
+                        onPress={() => changeWindow(cell.date as string)}
+                        style={({ pressed }) => [
+                          styles.monthCell,
+                          styles.monthDay,
+                          cell.weekend && styles.monthDayWeekend,
+                          cell.today && styles.monthDayToday,
+                          selected && styles.monthDaySelected,
+                          disabled && styles.monthDayDisabled,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text style={[styles.monthDayText, selected && styles.monthDayTextSelected, disabled && styles.monthDayTextDisabled]}>
+                          {cell.day}
+                        </Text>
+                      </Pressable>
+                    )
+                  })}
                 </View>
               </View>
 
@@ -1610,6 +1668,18 @@ const styles = StyleSheet.create({
   fieldHelp: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, marginTop: 1 },
   fieldHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   fieldHeadingCopy: { flex: 1 },
+  monthWeekdays: { flexDirection: "row", marginTop: fieldTheme.space.sm },
+  monthWeekday: { flex: 1, textAlign: "center", color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
+  monthGrid: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
+  monthCell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center", padding: 2 },
+  monthDay: { borderRadius: fieldTheme.radius.sm },
+  monthDayWeekend: { backgroundColor: fieldTheme.color.surfaceStrong },
+  monthDayToday: { borderWidth: 1, borderColor: fieldTheme.color.primary },
+  monthDaySelected: { backgroundColor: fieldTheme.color.primary },
+  monthDayDisabled: { opacity: 0.35 },
+  monthDayText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "700" },
+  monthDayTextSelected: { color: fieldTheme.color.onColor },
+  monthDayTextDisabled: { color: fieldTheme.color.inkMuted },
   dateNavigator: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.xs, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
   dateCopy: { flex: 1, alignItems: "center", gap: 5 },
