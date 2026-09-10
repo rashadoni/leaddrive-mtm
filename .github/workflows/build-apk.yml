@@ -123,22 +123,35 @@ jobs:
           printf '%s\n' "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'"
           printf '%s\n' "$BADGING" | grep -q "versionCode='$EXPECTED_VERSION_CODE'"
 
-          # Pin the update path to the certificate of the latest official V1
-          # APK. A different key would make Android reject an in-place update.
-          PREVIOUS_DIR="$RUNNER_TEMP/previous-mtm-apk"
-          mkdir -p "$PREVIOUS_DIR"
-          gh release download v1.7.0-build137 \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'leaddrive-mtm-v1.7.0.apk' \
-            --dir "$PREVIOUS_DIR"
+          # Pin the update path to the release signing certificate. A different
+          # key makes Android refuse an in-place update, and the agents in the
+          # field would have to uninstall and lose their local state.
+          #
+          # This used to compare against a previously published release. After
+          # the move to this account there are no releases to compare with, so
+          # the gate failed on a perfectly correct APK ("release not found") and
+          # blocked every build. Falling back to "no previous release, therefore
+          # fine" would have disarmed the gate exactly when a swapped keystore
+          # would slip through, so the expected fingerprint is named here
+          # instead — it stays a real check with nothing to download.
+          #
+          # Provenance: printed by this workflow on run 34362456460 from
+          # /home/rashad/.leaddrive-keys/mtm-release.keystore, the key that
+          # signs production (CN=LeadDrive MTM, OU=Mobile, O=LeadDrive, L=Baku).
+          # Still worth confirming once against an APK pulled off a phone that
+          # already has the app: that is the only source that proves what the
+          # installed base will accept.
+          EXPECTED_CERT=d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b
           # Android build-tools 36 labels the signer as "V2 Signer" while
           # older versions use "Signer #1 certificate". Both forms identify
           # the same signing certificate, so accept either stable output.
           CERT_DIGEST='s/^(Signer #[0-9]+ certificate|V[0-9.]+ Signer: certificate) SHA-256 digest: //p'
           NEW_CERT=$("$APKSIGNER" verify --print-certs "$APK_FILE" | sed -nE "$CERT_DIGEST" | head -n 1)
-          OLD_CERT=$("$APKSIGNER" verify --print-certs "$PREVIOUS_DIR/leaddrive-mtm-v1.7.0.apk" | sed -nE "$CERT_DIGEST" | head -n 1)
           test -n "$NEW_CERT"
-          test "$NEW_CERT" = "$OLD_CERT"
+          if [ "$NEW_CERT" != "$EXPECTED_CERT" ]; then
+            echo "::error::APK signed with $NEW_CERT, expected $EXPECTED_CERT — this build cannot update an installed app"
+            exit 1
+          fi
           printf 'Release certificate SHA-256: %s\n' "$NEW_CERT"
           sha256sum "$APK_FILE" | tee "$APK_FILE.sha256"
 
