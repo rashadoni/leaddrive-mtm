@@ -365,6 +365,12 @@ function formatVisitClock(value: string | undefined, language: string): string {
 export default function VisitScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<any>()
+  // The same row in the organization card opens "Итог визита"; the screen that
+  // exists for this history did nothing with it (audit B21).
+  const openVisitSummary = useCallback((visit: Visit) => {
+    if (typeof visit.id !== "string" || !visit.id) return
+    navigation.navigate("VisitWorkspace", { visitId: visit.id, name: visit.customer?.name ?? undefined })
+  }, [navigation])
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
@@ -1019,6 +1025,7 @@ export default function VisitScreen() {
       bottomPadding={Math.max(insets.bottom, fieldTheme.space.lg)}
       onRefresh={refresh}
       onRetry={retry}
+      onOpenVisit={openVisitSummary}
     />
   )
 
@@ -1089,7 +1096,7 @@ export default function VisitScreen() {
                 ? null
                 : <EmptyHistory copy={copy} />
           }
-          renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={i18n.language} />}
+          renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={i18n.language} onPress={openVisitSummary} />}
         />
       )}
 
@@ -1538,6 +1545,7 @@ function HistoryPanel({
   bottomPadding,
   onRefresh,
   onRetry,
+  onOpenVisit,
 }: {
   copy: Copy
   visits: Visit[]
@@ -1548,6 +1556,7 @@ function HistoryPanel({
   bottomPadding: number
   onRefresh: () => void
   onRetry: () => void
+  onOpenVisit: (visit: Visit) => void
 }) {
   return (
     <FlatList
@@ -1572,7 +1581,7 @@ function HistoryPanel({
             ? <StateNotice kind="error" copy={copy} onRetry={onRetry} />
             : <EmptyHistory copy={copy} tablet={tablet} />
       }
-      renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={language} />}
+      renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={language} onPress={onOpenVisit} />}
     />
   )
 }
@@ -1591,7 +1600,12 @@ function HistoryHeading({ copy, count }: { copy: Copy; count: number }) {
   )
 }
 
-function VisitRow({ visit, copy, language }: { visit: Visit; copy: Copy; language: string }) {
+function VisitRow({ visit, copy, language, onPress }: {
+  visit: Visit
+  copy: Copy
+  language: string
+  onPress?: (visit: Visit) => void
+}) {
   const active = visit.status === "CHECKED_IN"
   const pending = visit.pendingCheckOut === true
   const startTime = formatVisitStart(visit.checkInAt, language)
@@ -1602,8 +1616,17 @@ function VisitRow({ visit, copy, language }: { visit: Visit; copy: Copy; languag
       ? { color: fieldTheme.color.success, background: fieldTheme.color.successSoft, icon: "radio-outline" }
       : { color: fieldTheme.color.primary, background: fieldTheme.color.primarySoft, icon: "checkmark-outline" }
   const status = pending ? copy.pendingStatus : active ? copy.activeStatus : copy.completeStatus
+  const openable = Boolean(onPress) && typeof visit.id === "string" && visit.id.length > 0
+  const Row: any = openable ? Pressable : View
   return (
-    <View style={[styles.visitRow, active && styles.visitRowActive]}>
+    <Row
+      accessibilityRole={openable ? "button" : undefined}
+      accessibilityLabel={openable ? `${visit.customer?.name || "—"}, ${status}` : undefined}
+      onPress={openable ? () => onPress?.(visit) : undefined}
+      style={openable
+        ? ({ pressed }: { pressed: boolean }) => [styles.visitRow, active && styles.visitRowActive, pressed && styles.pressed]
+        : [styles.visitRow, active && styles.visitRowActive]}
+    >
       <View style={[styles.visitStatusIcon, { backgroundColor: tone.background }]}>
         <Icon name={tone.icon} size={21} color={tone.color} />
       </View>
@@ -1620,7 +1643,8 @@ function VisitRow({ visit, copy, language }: { visit: Visit; copy: Copy; languag
       <View style={[styles.statusPill, { backgroundColor: tone.background }]}>
         <Text style={[styles.statusText, { color: tone.color }]}>{status}</Text>
       </View>
-    </View>
+      {openable ? <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} /> : null}
+    </Row>
   )
 }
 
