@@ -30,7 +30,6 @@ import { useSyncStatusStore } from "../../store/sync-status"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import FeedbackToast from "../../components/FeedbackToast"
-import SyncStatusChip from "../../components/SyncStatusChip"
 import { pendingTaskStatusOverlay, taskDetailPrimaryAction } from "./task-detail-state"
 import { taskWorkflowStatus } from "./tasks-workflow-state"
 
@@ -572,7 +571,6 @@ export default function TaskDetailScreen() {
               <Icon name="arrow-back" size={22} color={fieldTheme.color.onColor} />
               <Text style={styles.backText}>{copy.back}</Text>
             </TouchableOpacity>
-            <SyncStatusChip inverse />
           </View>
           <Text style={[styles.headerTitle, expandedTablet && styles.headerTitleTablet]}>{task.title}</Text>
           <View style={styles.headerSignals}>

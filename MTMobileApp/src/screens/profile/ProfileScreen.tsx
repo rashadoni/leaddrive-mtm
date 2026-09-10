@@ -18,11 +18,8 @@ import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
-import SyncStatusChip from "../../components/SyncStatusChip"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { useHintsStore } from "../../store/hints"
-import { useBootstrapStore } from "../../store/bootstrap"
-import { hasCapability } from "../../services/bootstrap"
 import { canExecuteFieldWork } from "../../auth/roles"
 import { version as APP_VERSION } from "../../../package.json"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
@@ -59,8 +56,6 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions()
   const twoColumn = isExpandedTabletWidth(width)
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
-  const canTrack = useBootstrapStore((state) => hasCapability(state.capabilities, "FIELD_TRACK"))
-  const canSyncField = useBootstrapStore((state) => hasCapability(state.capabilities, "FIELD_EXECUTE"))
     || canExecuteFieldWork(agent?.role)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -113,11 +108,6 @@ export default function ProfileScreen() {
     setConfirmAction(null)
   }
 
-  const summary = profile?.todaySummary
-  const completionPct = summary?.routePoints > 0
-    ? Math.round((summary.routeVisited / summary.routePoints) * 100)
-    : 0
-
   if (loading) {
     return (
       <View style={styles.loadingState}>
@@ -129,25 +119,6 @@ export default function ProfileScreen() {
 
   const mainColumn = (
     <View style={styles.column}>
-      {summary ? (
-        <SectionCard icon="analytics-outline" title={t("profile.performanceTitle")}>
-          <View style={styles.statsRow}>
-            <StatBox value={summary.visits ?? 0} label={t("profile.statVisits")} color={fieldTheme.color.blue} />
-            <StatBox value={summary.tasksCompleted ?? 0} label={t("profile.statTasks")} color={fieldTheme.color.success} />
-            <StatBox value={`${completionPct}%`} label={t("profile.statRoute")} color={fieldTheme.color.primary} />
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressBar, { width: `${Math.max(0, Math.min(completionPct, 100))}%` }]} />
-          </View>
-          <Text style={styles.progressLabel}>
-            {t("profile.routeProgressTemplate", {
-              visited: summary.routeVisited ?? 0,
-              total: summary.routePoints ?? 0,
-            })}
-          </Text>
-        </SectionCard>
-      ) : null}
-
       {alerts.length > 0 ? (
         <SectionCard icon="notifications-outline" title={t("profile.alertsTitle")} count={alerts.length}>
           {alerts.slice(0, 5).map((alert) => (
@@ -190,7 +161,6 @@ export default function ProfileScreen() {
           value={t(loadError ? "profile.statusNotConfirmed" : "profile.statusConnected")}
           valueColor={loadError ? fieldTheme.color.amber : fieldTheme.color.success}
         />
-        {canSyncField ? <View style={styles.syncRow}><SyncStatusChip /></View> : null}
       </SectionCard>
 
       <SectionCard icon="language-outline" title={t("profile.language")}>
@@ -234,19 +204,6 @@ export default function ProfileScreen() {
         </View>
       </SectionCard>
 
-      {canTrack ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => navigation.navigate("GpsHistory")}
-          style={({ pressed }) => [styles.navigationCard, pressed && styles.pressed]}
-        >
-          <View style={styles.navigationIcon}>
-            <Icon name="map-outline" size={22} color={fieldTheme.color.blue} />
-          </View>
-          <Text style={styles.navigationText}>{t("profile.gpsHistory")}</Text>
-          <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
-        </Pressable>
-      ) : null}
 
       <View style={styles.accountActions}>
         <Pressable
@@ -366,15 +323,6 @@ function SectionCard({ icon, title, count, children }: {
   )
 }
 
-function StatBox({ value, label, color }: { value: number | string; label: string; color: string }) {
-  return (
-    <View style={styles.statBox}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  )
-}
-
 function InfoRow({ icon, label, value, valueColor }: { icon: string; label: string; value: string; valueColor?: string }) {
   return (
     <View style={styles.infoRow}>
@@ -425,13 +373,6 @@ const styles = StyleSheet.create({
   cardTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900" },
   countBadge: { minWidth: 30, height: 30, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.coralSoft },
   countText: { color: fieldTheme.color.coral, fontSize: 13, fontWeight: "900" },
-  statsRow: { flexDirection: "row", gap: fieldTheme.space.sm },
-  statBox: { flex: 1, minHeight: 82, padding: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas },
-  statValue: { fontSize: 22, fontWeight: "900" },
-  statLabel: { marginTop: 3, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700", textAlign: "center" },
-  progressTrack: { height: 8, marginTop: fieldTheme.space.lg, overflow: "hidden", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong },
-  progressBar: { height: "100%", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
-  progressLabel: { marginTop: fieldTheme.space.sm, color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700", textAlign: "center" },
   alertRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   alertIcon: { width: 38, height: 38, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
   alertCopy: { flex: 1, minWidth: 0 },
@@ -443,7 +384,6 @@ const styles = StyleSheet.create({
   infoCopy: { flex: 1, minWidth: 0 },
   infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   infoValue: { marginTop: 2, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
-  syncRow: { marginTop: fieldTheme.space.md, alignItems: "flex-start" },
   localeRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   localeButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, minWidth: 104, flexGrow: 1, paddingHorizontal: fieldTheme.space.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas },
   localeButtonSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primary },
@@ -453,9 +393,6 @@ const styles = StyleSheet.create({
   toggleCopy: { flex: 1, minWidth: 0 },
   toggleLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   toggleNote: { marginTop: 4, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
-  navigationCard: { minHeight: 64, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
-  navigationIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.blueSoft },
-  navigationText: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
   accountActions: { gap: fieldTheme.space.sm },
   secondaryAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.primarySoft },
   secondaryActionText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
