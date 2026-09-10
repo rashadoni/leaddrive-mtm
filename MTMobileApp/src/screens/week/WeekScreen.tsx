@@ -28,7 +28,7 @@ import {
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { LAYOUT_TOUCH_TARGETS, isExpandedTabletWidth } from "../../theme/layoutBreakpoints"
+import { LAYOUT_TOUCH_TARGETS, isTwoPaneWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 
@@ -196,7 +196,7 @@ export function calendarLayout(width: number): "phone" | "tablet" {
   // The app's persistent navigation rail also consumes horizontal space. A
   // split master/detail calendar is only comfortable at the expanded tablet
   // breakpoint; narrower tablets get the clear single-column layout.
-  return isExpandedTabletWidth(width) ? "tablet" : "phone"
+  return isTwoPaneWidth(width) ? "tablet" : "phone"
 }
 
 type AgendaTaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
@@ -1379,9 +1379,10 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 17, lineHeight: 21, fontWeight: "900" },
   metricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 14, fontWeight: "600", marginTop: 1 },
   tabletWorkspace: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.lg },
-  dayMaster: { width: "38%", gap: fieldTheme.space.sm },
+  dayMaster: { width: "42%", minWidth: 216, gap: fieldTheme.space.sm },
   dayDetail: {
     flex: 1,
+    minWidth: 0,
     minHeight: 460,
     padding: fieldTheme.space.xl,
     borderRadius: fieldTheme.radius.lg,
