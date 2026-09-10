@@ -11,6 +11,7 @@ import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints"
+import { TAB_BAR_BASE_HEIGHT } from "../hooks/useTabBarHeight"
 
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"
@@ -111,7 +112,7 @@ function MainTabs() {
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const tablet = isTabletWidth(width)
   const expandedRail = isExpandedTabletWidth(width)
-  const tabBarHeight = 60 + Math.max(insets.bottom, 8)
+  const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
 
   // This APK does not infer access from an agent role. A tenant may enable
   // HRM while Route Field is disabled; only its own manifest module opens tabs.
@@ -162,7 +163,7 @@ function MainTabs() {
               marginVertical: 3,
               borderRadius: fieldTheme.radius.md,
             }
-          : undefined,
+          : { paddingHorizontal: 2 },
         tabBarLabelStyle: styles.tabLabel,
       }}
     >
@@ -261,8 +262,8 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.canvas,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: "700",
-    letterSpacing: 0.1,
   },
 })
