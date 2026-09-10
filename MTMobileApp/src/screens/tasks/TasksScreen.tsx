@@ -30,7 +30,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { isExpandedTabletWidth } from "../../theme/layoutBreakpoints"
+import { isTwoPaneWidth } from "../../theme/layoutBreakpoints"
 import { taskWorkflowStatus, type TaskWorkflowStatus } from "./tasks-workflow-state"
 
 type TaskStatus = TaskWorkflowStatus
@@ -383,7 +383,7 @@ export default function TasksScreen() {
   const copy = useMemo(() => copyFor(i18n.language), [i18n.language])
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
-  const tablet = isExpandedTabletWidth(width)
+  const tablet = isTwoPaneWidth(width)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [tasks, setTasks] = useState<Task[]>([])
@@ -1071,9 +1071,9 @@ const styles = StyleSheet.create({
   phoneList: { flex: 1 },
   phoneListContent: { gap: fieldTheme.space.md },
   tabletWorkspace: { flex: 1, flexDirection: "row", gap: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
-  tabletList: { flex: 0.44 },
+  tabletList: { flex: 0.44, minWidth: 0 },
   tabletListContent: { gap: fieldTheme.space.md, paddingBottom: fieldTheme.space.xl },
-  detailPane: { flex: 0.56, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, overflow: "hidden" },
+  detailPane: { flex: 0.56, minWidth: 0, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, overflow: "hidden" },
   taskCard: { borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.lg },
   taskTapArea: { minHeight: 48 },
   taskCardFocus: { borderColor: "#8BBFAE", backgroundColor: "#F4FAF7" },
