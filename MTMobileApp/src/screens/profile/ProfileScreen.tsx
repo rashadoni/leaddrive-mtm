@@ -20,7 +20,6 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { useHintsStore } from "../../store/hints"
-import { canExecuteFieldWork } from "../../auth/roles"
 import { version as APP_VERSION } from "../../../package.json"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme } from "../../theme/fieldTheme"
@@ -56,7 +55,6 @@ export default function ProfileScreen() {
   const { width } = useWindowDimensions()
   const twoColumn = isExpandedTabletWidth(width)
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
-    || canExecuteFieldWork(agent?.role)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [profile, setProfile] = useState<any>(null)
