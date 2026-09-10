@@ -45,50 +45,6 @@ type Destination = keyof TodayNavigationParams
 type NextKind = "route" | "tasks" | "empty" | "unknown" | "loading"
 type DataSource = "live" | "cached" | "unknown"
 
-type QuickAction = {
-  destination: Destination
-  icon: string
-  labelKey: string
-  color: string
-  background: string
-}
-
-const QUICK_ACTIONS: QuickAction[] = [
-  {
-    destination: "Route",
-    icon: "navigate-outline",
-    labelKey: "todayV2.quickRoute",
-    color: fieldTheme.color.primaryStrong,
-    background: fieldTheme.color.primarySoft,
-  },
-  {
-    destination: "Calendar",
-    icon: "calendar-number-outline",
-    labelKey: "todayV2.quickCalendar",
-    color: fieldTheme.color.blue,
-    background: fieldTheme.color.blueSoft,
-  },
-  {
-    destination: "Tasks",
-    icon: "checkbox-outline",
-    labelKey: "todayV2.quickTasks",
-    color: fieldTheme.color.amber,
-    background: fieldTheme.color.amberSoft,
-  },
-  {
-    destination: "Visits",
-    icon: "checkmark-circle-outline",
-    labelKey: "todayV2.quickVisits",
-    color: fieldTheme.color.coral,
-    background: fieldTheme.color.coralSoft,
-  },
-]
-
-function progress(value: number, total: number): number {
-  if (total <= 0) return 0
-  return Math.max(0, Math.min(1, value / total))
-}
-
 export default function TodayScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NavigationProp<TodayNavigationParams>>()
@@ -400,7 +356,6 @@ export default function TodayScreen() {
     day: "numeric",
     month: "long",
   })
-  const dataIsPartial = routeSource === "cached" || Boolean(kpiError) || stats?.authoritative === false
   const nextDark = nextKind === "route" || nextKind === "tasks"
   const startedAt = workdayActive && currentWorkday?.startedAt
     ? new Date(currentWorkday.startedAt).toLocaleTimeString(i18n.language, {
@@ -562,6 +517,9 @@ export default function TodayScreen() {
                 <Text style={styles.cachedBadgeText}>{t("todayV2.offlineRefresh")}</Text>
               </View>
             ) : null}
+          </View>
+
+          <View style={[styles.primaryColumn, twoPane && styles.secondaryColumnTablet]}>
             <View
               accessibilityLiveRegion="polite"
               style={[
@@ -576,7 +534,7 @@ export default function TodayScreen() {
                   ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
                   : <Icon
                       name={nextCopy.icon}
-                      size={29}
+                      size={22}
                       color={nextDark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
                     />}
               </View>
@@ -627,125 +585,22 @@ export default function TodayScreen() {
                 </Pressable>
               ) : null}
             </View>
-          </View>
-
-          <View style={[styles.secondaryColumn, twoPane && styles.secondaryColumnTablet]}>
-            <View style={styles.progressSection}>
-              <View style={styles.sectionHeadingRow}>
-                <View>
-                  <Text style={styles.sectionTitle}>{t("todayV2.progressTitle")}</Text>
-                  <Text style={styles.sectionSubtitle}>{t("todayV2.progressBody")}</Text>
-                </View>
-                {dataIsPartial ? (
-                  <View style={styles.partialBadge}>
-                    <Text style={styles.partialBadgeText}>{t("todayV2.partial")}</Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {stats ? (
-                <View style={styles.metrics}>
-                  <ProgressRow
-                    icon="navigate-outline"
-                    label={t("todayV2.visitsProgress")}
-                    value={stats.visits.completed}
-                    total={stats.visits.total}
-                    color={fieldTheme.color.primary}
-                  />
-                  <ProgressRow
-                    icon="checkbox-outline"
-                    label={t("todayV2.tasksProgress")}
-                    value={stats.tasks.done}
-                    total={stats.tasks.total}
-                    color={fieldTheme.color.amber}
-                  />
-                  {stats.tasks.overdue > 0 ? (
-                    <View style={styles.attentionRow}>
-                      <Icon name="alert-circle-outline" size={18} color={fieldTheme.color.coral} />
-                      <Text style={styles.attentionText}>
-                        {t("todayV2.overdueTasks", { count: stats.tasks.overdue })}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              ) : (
-                <View style={styles.metricsUnavailable}>
-                  {kpiLoading
-                    ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
-                    : <Icon name="cloud-offline-outline" size={22} color={fieldTheme.color.inkMuted} />}
-                  <Text style={styles.metricsUnavailableText}>
-                    {kpiLoading ? t("todayV2.loadingProgress") : t("todayV2.progressUnavailable")}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.quickSection}>
-              <Text style={styles.sectionTitle}>{t("todayV2.quickTitle")}</Text>
-              <Text style={styles.sectionSubtitle}>{t("todayV2.quickBody")}</Text>
-              <View style={styles.quickGrid}>
-                {QUICK_ACTIONS.map((action) => (
-                  <Pressable
-                    key={action.destination}
-                    accessibilityRole="button"
-                    accessibilityLabel={t(action.labelKey)}
-                    onPress={() => open(action.destination)}
-                    style={({ pressed }) => [
-                      styles.quickAction,
-                      pressed && styles.quickActionPressed,
-                    ]}
-                  >
-                    <View style={[styles.quickIcon, { backgroundColor: action.background }]}>
-                      <Icon name={action.icon} size={23} color={action.color} />
-                    </View>
-                    <Text style={styles.quickLabel}>{t(action.labelKey)}</Text>
-                    <Icon name="chevron-forward" size={19} color={fieldTheme.color.inkMuted} />
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+            {stats && stats.tasks.overdue > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => open("Tasks")}
+                style={({ pressed }) => [styles.attentionRow, pressed && styles.pressed]}
+              >
+                <Icon name="alert-circle-outline" size={18} color={fieldTheme.color.coral} />
+                <Text style={styles.attentionText}>
+                  {t("todayV2.overdueTasks", { count: stats.tasks.overdue })}
+                </Text>
+                <Icon name="chevron-forward" size={18} color={fieldTheme.color.coral} />
+              </Pressable>
+            ) : null}
           </View>
         </View>
       </ScrollView>
-    </View>
-  )
-}
-
-function ProgressRow({
-  icon,
-  label,
-  value,
-  total,
-  color,
-}: {
-  icon: string
-  label: string
-  value: number
-  total: number
-  color: string
-}) {
-  const percentage = progress(value, total)
-  return (
-    <View
-      accessibilityRole="progressbar"
-      accessibilityValue={{
-        min: 0,
-        max: Math.max(total, 1),
-        now: Math.min(value, Math.max(total, 1)),
-        text: `${value} / ${total}`,
-      }}
-      style={styles.metricRow}
-    >
-      <View style={styles.metricLabelRow}>
-        <View style={styles.metricName}>
-          <Icon name={icon} size={19} color={color} />
-          <Text style={styles.metricLabel}>{label}</Text>
-        </View>
-        <Text style={styles.metricValue}>{value} / {total}</Text>
-      </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { backgroundColor: color, width: `${percentage * 100}%` }]} />
-      </View>
     </View>
   )
 }
@@ -842,7 +697,11 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.lg,
   },
   primaryColumnTablet: {
-    flex: 1.18,
+    flex: 1,
+    minWidth: 0,
+  },
+  secondaryColumnTablet: {
+    flex: 1.15,
     minWidth: 0,
   },
   workdayPanel: {
@@ -925,16 +784,8 @@ const styles = StyleSheet.create({
   workdayButtonTextActive: {
     color: fieldTheme.color.primaryStrong,
   },
-  secondaryColumn: {
-    gap: fieldTheme.space.lg,
-  },
-  secondaryColumnTablet: {
-    flex: 0.82,
-    minWidth: 0,
-  },
   nextPanel: {
-    minHeight: 310,
-    padding: fieldTheme.space.xl,
+    padding: fieldTheme.space.lg,
     alignItems: "flex-start",
     borderRadius: fieldTheme.radius.lg,
     borderWidth: 1,
@@ -954,9 +805,9 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.amberSoft,
   },
   nextIcon: {
-    width: 52,
-    height: 52,
-    marginBottom: fieldTheme.space.xl,
+    width: 40,
+    height: 40,
+    marginBottom: fieldTheme.space.md,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: fieldTheme.radius.md,
@@ -1038,89 +889,6 @@ const styles = StyleSheet.create({
   nextButtonTextLight: {
     color: fieldTheme.color.onColor,
   },
-  progressSection: {
-    padding: fieldTheme.space.lg,
-    gap: fieldTheme.space.lg,
-    borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
-  },
-  sectionHeadingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: fieldTheme.space.sm,
-  },
-  sectionTitle: {
-    color: fieldTheme.color.ink,
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: "900",
-  },
-  sectionSubtitle: {
-    marginTop: fieldTheme.space.xs,
-    color: fieldTheme.color.inkMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "500",
-  },
-  partialBadge: {
-    minHeight: 28,
-    paddingHorizontal: fieldTheme.space.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.amberSoft,
-  },
-  partialBadgeText: {
-    color: fieldTheme.color.amber,
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "800",
-  },
-  metrics: {
-    gap: fieldTheme.space.lg,
-  },
-  metricRow: {
-    gap: fieldTheme.space.sm,
-  },
-  metricLabelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: fieldTheme.space.md,
-  },
-  metricName: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fieldTheme.space.sm,
-  },
-  metricLabel: {
-    flex: 1,
-    color: fieldTheme.color.ink,
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: "700",
-  },
-  metricValue: {
-    color: fieldTheme.color.ink,
-    fontSize: 14,
-    lineHeight: 19,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
-  progressTrack: {
-    height: 8,
-    overflow: "hidden",
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.surfaceStrong,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: fieldTheme.radius.pill,
-  },
   attentionRow: {
     minHeight: LAYOUT_TOUCH_TARGETS.compact,
     paddingHorizontal: fieldTheme.space.md,
@@ -1136,62 +904,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "700",
-  },
-  metricsUnavailable: {
-    minHeight: 76,
-    paddingHorizontal: fieldTheme.space.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.surfaceStrong,
-  },
-  metricsUnavailableText: {
-    flex: 1,
-    color: fieldTheme.color.inkMuted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "600",
-  },
-  quickSection: {
-    gap: fieldTheme.space.xs,
-  },
-  quickGrid: {
-    marginTop: fieldTheme.space.md,
-    flexDirection: "column",
-    gap: fieldTheme.space.md,
-  },
-  quickAction: {
-    minHeight: 68,
-    width: "100%",
-    padding: fieldTheme.space.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fieldTheme.space.sm,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
-  },
-  quickActionPressed: {
-    borderColor: fieldTheme.color.primary,
-    backgroundColor: fieldTheme.color.primarySoft,
-    transform: [{ scale: 0.985 }],
-  },
-  quickIcon: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: fieldTheme.radius.sm,
-  },
-  quickLabel: {
-    flex: 1,
-    color: fieldTheme.color.ink,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "800",
   },
   pressed: {
     opacity: 0.82,
