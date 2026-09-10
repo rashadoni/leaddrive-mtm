@@ -83,13 +83,16 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
       >
         <View style={[styles.shell, tablet && styles.shellTablet]}>
           <View style={[styles.intro, tablet && styles.introTablet]}>
-            <View style={styles.brandMark}>
-              <Icon name="navigate" size={30} color={fieldTheme.color.onColor} />
+            <View style={[styles.brandRow, tablet && styles.brandRowTablet]}>
+              <View style={[styles.brandMark, tablet && styles.brandMarkTablet]}>
+                <Icon name="navigate" size={tablet ? 30 : 22} color={fieldTheme.color.onColor} />
+              </View>
+              <Text style={styles.brand}>LeadDrive Field</Text>
             </View>
-            <Text style={styles.brand}>LeadDrive Field</Text>
-            <Text style={styles.introTitle}>{t("auth.welcomeTitle")}</Text>
-            <Text style={styles.introBody}>{t("auth.welcomeBody")}</Text>
+            {tablet ? <Text style={styles.introTitle}>{t("auth.welcomeTitle")}</Text> : null}
+            {tablet ? <Text style={styles.introBody}>{t("auth.welcomeBody")}</Text> : null}
 
+            {tablet ? (
             <View style={styles.steps}>
               <View style={styles.step}>
                 <View style={[styles.stepNumber, styles.stepNumberDone]}>
@@ -110,6 +113,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                 </View>
               </View>
             </View>
+            ) : null}
           </View>
 
           <View style={[styles.formPanel, tablet && styles.formPanelTablet]}>
@@ -171,6 +175,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                 keyboardType="email-address"
                 autoCorrect={false}
                 autoComplete="email"
+                autoFocus
                 returnKeyType="next"
                 editable={!loading}
                 accessibilityLabel={t("auth.email")}
@@ -292,16 +297,18 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   shellTablet: { flexDirection: "row", minHeight: 670 },
-  intro: { padding: fieldTheme.space.xl, backgroundColor: fieldTheme.color.primaryStrong },
+  intro: { padding: fieldTheme.space.lg, backgroundColor: fieldTheme.color.primaryStrong },
   introTablet: { width: "39%", padding: fieldTheme.space.xxl, justifyContent: "center" },
+  brandMarkTablet: { width: 58, height: 58, borderRadius: 18, marginBottom: fieldTheme.space.md },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  brandRowTablet: { flexDirection: "column", alignItems: "flex-start", gap: 0 },
   brandMark: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: fieldTheme.color.primary,
-    marginBottom: fieldTheme.space.md,
   },
   brand: { color: fieldTheme.color.onColor, fontSize: 17, fontWeight: "800", letterSpacing: 0.2 },
   introTitle: { color: fieldTheme.color.onColor, fontSize: 30, lineHeight: 36, fontWeight: "900", marginTop: fieldTheme.space.xl },
