@@ -12,6 +12,8 @@ import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import Geolocation from "@react-native-community/geolocation"
 import { api } from "../services/api"
+import { visibleSyncPipelines, syncCentreLastSyncText } from "../lib/sync-centre-pipelines"
+import { formatLocalizedDate } from "../lib/format-localized-date"
 import { getOfflineScope } from "../services/offline-scope"
 import {
   acknowledgeOutboxOperation,
@@ -28,6 +30,8 @@ import { hasRouteFieldAccess } from "../services/bootstrap"
 import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
+import { syncCentreState } from "../lib/sync-centre-availability"
+import { fieldTheme } from "../theme/fieldTheme"
 import { syncChipLabel } from "./sync-chip-label"
 
 type Props = {
@@ -95,6 +99,10 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines, online } = useSyncStatusStore()
   const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
+  // T8: лист знал про офлайн и молчал, а кнопка оставалась живой. Нажать
+  // живую кнопку и не получить ничего — так учатся считать приложение
+  // сломанным. Причина берётся из связи и доступа, а не из одного флага.
+  const centre = syncCentreState({ online, hasRouteFieldAccess: syncAllowed, busy: busyId !== null })
 
   const reload = useCallback(async () => {
     const scope = getOfflineScope()
@@ -246,7 +254,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
             <Text style={styles.lastSync}>
               {lastSyncedAt
-                ? t("syncCenter.lastSync", { value: new Date(lastSyncedAt).toLocaleString(i18n.language) })
+                ? t("syncCenter.lastSync", { value: syncCentreLastSyncText(lastSyncedAt, i18n.language, formatLocalizedDate) })
                 : t("syncCenter.neverSynced")}
             </Text>
             {lastError ? <Text style={styles.errorText}>{t("syncCenter.lastError", { value: lastError })}</Text> : null}
@@ -254,7 +262,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
             <View style={styles.pipelineSection} accessibilityLabel={t("syncCenter.pipelines")}>
               <Text style={styles.pipelineHeading}>{t("syncCenter.pipelines")}</Text>
-              {PIPELINES.map(({ id, labelKey }) => {
+              {visibleSyncPipelines(PIPELINES, pipelines).map(({ id, labelKey }) => {
                 const pipeline = pipelines[id]
                 return (
                   <View key={id} style={styles.pipelineRow}>
@@ -334,12 +342,15 @@ export default function SyncStatusChip({ inverse = false }: Props) {
               })}
             </ScrollView>
 
+            {centre.noticeKey ? (
+              <Text style={styles.syncCentreNotice} accessibilityLiveRegion="polite">{t(centre.noticeKey)}</Text>
+            ) : null}
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: busyId !== null || !syncAllowed }}
-              disabled={busyId !== null || !syncAllowed}
+              accessibilityState={{ disabled: !centre.canSyncNow }}
+              disabled={!centre.canSyncNow}
               onPress={() => { syncNow().catch(() => {}) }}
-              style={[styles.syncButton, (busyId !== null || !syncAllowed) && styles.disabled]}
+              style={[styles.syncButton, !centre.canSyncNow && styles.disabled]}
             >
               {busyId === "sync" ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>{t("syncCenter.syncNow")}</Text>}
             </Pressable>
@@ -396,6 +407,14 @@ const styles = StyleSheet.create({
   secondaryText: { color: "#9a3412", fontSize: 12, fontWeight: "800" },
   forceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: "#c2410c" },
   forceText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  syncCentreNotice: {
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    color: fieldTheme.color.inkMuted,
+    textAlign: "center",
+  },
   syncButton: { minHeight: 50, marginTop: 16, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#0f766e" },
   syncText: { color: "#fff", fontSize: 14, fontWeight: "900" },
   disabled: { opacity: 0.5 },

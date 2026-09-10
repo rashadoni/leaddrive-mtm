@@ -138,9 +138,12 @@ jobs:
           # Provenance: printed by this workflow on run 34362456460 from
           # /home/rashad/.leaddrive-keys/mtm-release.keystore, the key that
           # signs production (CN=LeadDrive MTM, OU=Mobile, O=LeadDrive, L=Baku).
-          # Still worth confirming once against an APK pulled off a phone that
-          # already has the app: that is the only source that proves what the
-          # installed base will accept.
+          # Confirmed 2026-09-10 against the installed base, which is the only
+          # source that proves what a phone will accept: com.mtmobileapp
+          # versionCode 42 / 3.0.4 was pulled off the owner's device with
+          # `adb pull` and its APK Signing Block v2 parsed directly. Same
+          # certificate, so a build from here installs over it and the agent
+          # keeps the queue and drafts that have not synced yet.
           EXPECTED_CERT=d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b
           # Android build-tools 36 labels the signer as "V2 Signer" while
           # older versions use "Signer #1 certificate". Both forms identify

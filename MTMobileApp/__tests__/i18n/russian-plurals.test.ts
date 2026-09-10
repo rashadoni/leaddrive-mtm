@@ -40,6 +40,16 @@ describe("Russian plural forms", () => {
     expect(i18n.t("organizations.hiddenSelectedTemplate", { count: 1 }))
       .toBe("1 выбранная запись скрыта текущим фильтром. Уберите её перед назначением.")
   })
+
+  it("declines the tasks screen's pending-sync notice", async () => {
+    // The screen carried this sentence as a literal inside the component, so
+    // one queued change was announced as "Ждут отправки: 1" (audit B14).
+    const i18n = await instance("ru")
+    expect(i18n.t("task.pendingSyncTemplate", { count: 1 })).toBe("Ждёт отправки: 1")
+    expect(i18n.t("task.pendingSyncTemplate", { count: 3 })).toBe("Ждут отправки: 3")
+    expect(i18n.t("task.pendingSyncTemplate", { count: 11 })).toBe("Ждут отправки: 11")
+    expect(i18n.t("task.pendingSyncTemplate", { count: 21 })).toBe("Ждёт отправки: 21")
+  })
 })
 
 describe("English and Azerbaijani count templates", () => {

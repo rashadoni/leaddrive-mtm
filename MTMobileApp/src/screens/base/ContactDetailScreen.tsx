@@ -29,6 +29,8 @@ import BrandPotentialModal, { type BrandPotentialFields } from "../../components
 import { queueBrandPotentialCreate, queueBrandPotentialEnd } from "../../services/brand-potential-outbox"
 import { runMobileSync } from "../../services/sync-engine"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { useSyncStatusStore } from "../../store/sync-status"
 import { buildContactSnapshot, selectContactPrimaryAction, type ContactPrimaryAction, type ContactPrimaryActionKind } from "./contact-detail-state"
 import { upper } from "../../lib/upper"
 
@@ -55,6 +57,9 @@ export default function ContactDetailScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [offline, setOffline] = useState(false)
+  const online = useSyncStatusStore((state) => state.online)
+  // Two facts, not one: the request failed, and the radio is or is not on.
+  const notice = cachedViewNotice({ online, requestFailed: offline })
   const [offlineVersion, setOfflineVersion] = useState<string | null>(null)
   const [section, setSection] = useState<Section>("summary")
   const [detailsExpanded, setDetailsExpanded] = useState(false)
@@ -381,7 +386,7 @@ export default function ContactDetailScreen() {
 
       {loading ? <LoadingState t={t} /> : loadError && !detail ? <ErrorState t={t} retrying={refreshing} onRetry={() => fetchDetail(true)} /> : (
         <ScrollView contentContainerStyle={[styles.scroll, tablet && styles.scrollTablet]} keyboardShouldPersistTaps="handled">
-          {offline && <OfflineBanner version={offlineVersion} locale={i18n.language} retrying={refreshing} t={t} onRetry={() => fetchDetail(true)} />}
+          {offline && <OfflineBanner version={offlineVersion} locale={i18n.language} retrying={refreshing} t={t} noticeKey={CACHED_VIEW_NOTICE_KEYS[notice === "none" ? "stale" : notice]} onRetry={() => fetchDetail(true)} />}
 
           {detail && section === "summary" && snapshot && (
             <FriendlySummary
@@ -475,14 +480,14 @@ function ErrorState({ t, retrying, onRetry }: { t: (key: string) => string; retr
   )
 }
 
-function OfflineBanner({ version, locale, retrying, t, onRetry }: { version: string | null; locale: string; retrying: boolean; t: (key: string) => string; onRetry: () => void }) {
+function OfflineBanner({ version, locale, retrying, t, noticeKey, onRetry }: { version: string | null; locale: string; retrying: boolean; t: (key: string) => string; noticeKey: string; onRetry: () => void }) {
   return (
     <View style={styles.offlineBanner}>
       <View style={styles.offlineCopy}>
         <Icon name="cloud-offline-outline" size={20} color={fieldTheme.color.amber} />
         <View style={styles.offlineTextGroup}>
           <Text style={styles.offlineTitle}>{t("contacts.friendlyOfflineTitle")}</Text>
-          <Text style={styles.offlineBannerText}>{t("contacts.detailOfflineCached")}{version ? ` · ${new Date(version).toLocaleString(locale)}` : ""}</Text>
+          <Text style={styles.offlineBannerText}>{t(noticeKey)}{version ? ` · ${new Date(version).toLocaleString(locale)}` : ""}</Text>
         </View>
       </View>
       <Pressable disabled={retrying} onPress={onRetry} style={styles.offlineRetry}>
