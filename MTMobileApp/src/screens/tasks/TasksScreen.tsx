@@ -77,7 +77,7 @@ interface FriendlyCopy {
   savedDeviceBody: string
   serverSavedBody: string
   refreshedAt: (time: string) => string
-  priority: Record<TaskPriority, { name: string; hint: string }>
+  priority: Record<TaskPriority, string>
   due: string
   noDue: string
   overdueDays: (days: number) => string
@@ -122,7 +122,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     focusDone: "Все задачи завершены. Новая задача появится здесь автоматически.",
     showRecommended: "Показать",
     cancel: "Отмена",
-    status: { PENDING: "1 · К выполнению", IN_PROGRESS: "2 · В работе", COMPLETED: "3 · Готово" },
+    status: { PENDING: "К выполнению", IN_PROGRESS: "В работе", COMPLETED: "Готово" },
     loading: "Загружаю задачи…",
     loadingBody: "Проверяю актуальный список на сервере.",
     emptyTitle: { PENDING: "Новых задач нет", IN_PROGRESS: "Нет задач в работе", COMPLETED: "Завершённых задач пока нет" },
@@ -139,10 +139,10 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     serverSavedBody: "Изменение подтверждено сервером.",
     refreshedAt: (time) => `Обновлено в ${time}`,
     priority: {
-      LOW: { name: "Обычная", hint: "можно выполнить после более срочных" },
-      MEDIUM: { name: "Важная", hint: "выполните в указанный срок" },
-      HIGH: { name: "Высокая", hint: "не откладывайте" },
-      URGENT: { name: "Срочная", hint: "выполните первой" },
+      LOW: "Обычная",
+      MEDIUM: "Важная",
+      HIGH: "Высокая",
+      URGENT: "Срочная",
     },
     due: "Срок",
     noDue: "Срок не указан",
@@ -186,7 +186,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     focusDone: "Bütün tapşırıqlar tamamlanıb. Yeni tapşırıq burada avtomatik görünəcək.",
     showRecommended: "Göstər",
     cancel: "Ləğv et",
-    status: { PENDING: "1 · Görüləcək", IN_PROGRESS: "2 · İcrada", COMPLETED: "3 · Tamam" },
+    status: { PENDING: "Görüləcək", IN_PROGRESS: "İcrada", COMPLETED: "Tamam" },
     loading: "Tapşırıqlar yüklənir…",
     loadingBody: "Serverdəki son siyahı yoxlanılır.",
     emptyTitle: { PENDING: "Yeni tapşırıq yoxdur", IN_PROGRESS: "İcrada tapşırıq yoxdur", COMPLETED: "Tamamlanmış tapşırıq yoxdur" },
@@ -203,10 +203,10 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     serverSavedBody: "Dəyişiklik server tərəfindən təsdiqləndi.",
     refreshedAt: (time) => `Yeniləndi: ${time}`,
     priority: {
-      LOW: { name: "Adi", hint: "daha vacib işlərdən sonra edilə bilər" },
-      MEDIUM: { name: "Vacib", hint: "göstərilən tarixədək edin" },
-      HIGH: { name: "Yüksək", hint: "təxirə salmayın" },
-      URGENT: { name: "Təcili", hint: "birinci bunu edin" },
+      LOW: "Adi",
+      MEDIUM: "Vacib",
+      HIGH: "Yüksək",
+      URGENT: "Təcili",
     },
     due: "Son tarix",
     noDue: "Son tarix göstərilməyib",
@@ -250,7 +250,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     focusDone: "All tasks are complete. A new task will appear here automatically.",
     showRecommended: "Show me",
     cancel: "Cancel",
-    status: { PENDING: "1 · To do", IN_PROGRESS: "2 · In progress", COMPLETED: "3 · Done" },
+    status: { PENDING: "To do", IN_PROGRESS: "In progress", COMPLETED: "Done" },
     loading: "Loading tasks…",
     loadingBody: "Checking the latest list on the server.",
     emptyTitle: { PENDING: "No new tasks", IN_PROGRESS: "No tasks in progress", COMPLETED: "No completed tasks yet" },
@@ -267,10 +267,10 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     serverSavedBody: "The server confirmed this change.",
     refreshedAt: (time) => `Updated at ${time}`,
     priority: {
-      LOW: { name: "Routine", hint: "do this after more urgent work" },
-      MEDIUM: { name: "Important", hint: "finish by the due date" },
-      HIGH: { name: "High", hint: "do not put this off" },
-      URGENT: { name: "Urgent", hint: "do this first" },
+      LOW: "Routine",
+      MEDIUM: "Important",
+      HIGH: "High",
+      URGENT: "Urgent",
     },
     due: "Due",
     noDue: "No due date",
@@ -813,7 +813,7 @@ function TaskCard({
 
         <View style={styles.taskSignals}>
           <View style={[styles.signalPill, { backgroundColor: visual.fill }]}>
-            <Text style={[styles.signalText, { color: visual.ink }]}>{priorityCopy.name} · {priorityCopy.hint}</Text>
+            <Text style={[styles.signalText, { color: visual.ink }]}>{priorityCopy}</Text>
           </View>
           <View style={[styles.signalPill, overdue ? styles.overduePill : styles.duePill]}>
             <Icon name="calendar-outline" size={15} color={overdue ? fieldTheme.color.danger : fieldTheme.color.inkMuted} />
@@ -885,7 +885,7 @@ function TaskDetailPanel({
       <View style={styles.detailStatusRow}>
         <View style={[styles.detailStatus, { backgroundColor: visual.fill }]}>
           <Icon name={visual.icon} size={18} color={visual.ink} />
-          <Text style={[styles.detailStatusText, { color: visual.ink }]}>{priorityCopy.name} · {priorityCopy.hint}</Text>
+          <Text style={[styles.detailStatusText, { color: visual.ink }]}>{priorityCopy}</Text>
         </View>
         <View style={styles.detailStatus}>
           <Icon name="ellipse" size={12} color={status === "COMPLETED" ? fieldTheme.color.success : status === "IN_PROGRESS" ? fieldTheme.color.blue : fieldTheme.color.amber} />
