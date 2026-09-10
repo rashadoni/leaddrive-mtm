@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,6 +13,7 @@ import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import SyncStatusChip from "../../components/SyncStatusChip"
+import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { api } from "../../services/api"
@@ -72,6 +72,8 @@ export default function TodayScreen() {
   const [startingRoute, setStartingRoute] = useState(false)
   const [workdayBusy, setWorkdayBusy] = useState(false)
   const [workdayError, setWorkdayError] = useState(false)
+  const [endDayConfirm, setEndDayConfirm] = useState(false)
+  const [notice, setNotice] = useState<{ title: string; body: string; icon: string } | null>(null)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
   const currentWorkday = activeWorkday?.key === currentWorkdayKey ? activeWorkday : null
   const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
@@ -195,15 +197,8 @@ export default function TodayScreen() {
       syncWorkday().catch(() => {})
       return
     }
-    Alert.alert(
-      t("todayV2.endDayConfirmTitle"),
-      t("todayV2.endDayConfirmBody"),
-      [
-        { text: t("todayV2.endDayConfirmCancel"), style: "cancel" },
-        { text: t("todayV2.endDayConfirmAction"), style: "destructive", onPress: () => { syncWorkday().catch(() => {}) } },
-      ],
-    )
-  }, [syncWorkday, t, workdayBusy, workdayEnding, workdayFinishedToday, workdayHydrated, workdayOpen, workdayStarting])
+    setEndDayConfirm(true)
+  }, [syncWorkday, workdayBusy, workdayEnding, workdayFinishedToday, workdayHydrated, workdayOpen, workdayStarting])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -327,11 +322,11 @@ export default function TodayScreen() {
     } catch (error: unknown) {
       const code = (error as { code?: unknown } | null)?.code
       if (code === "MOBILE_ROUTE_COMMAND_QUEUED") {
-        Alert.alert(t("todayV2.startRouteQueuedTitle"), t("todayV2.startRouteQueuedBody"))
+        setNotice({ title: t("todayV2.startRouteQueuedTitle"), body: t("todayV2.startRouteQueuedBody"), icon: "📮" })
       } else if (code === "MTM_ROUTE_WORKDAY_REQUIRED") {
-        Alert.alert(t("todayV2.dayNotStarted"), t("todayV2.dayStartHint"))
+        setNotice({ title: t("todayV2.dayNotStarted"), body: t("todayV2.dayStartHint"), icon: "🕗" })
       } else {
-        Alert.alert(t("common.error"), t("todayV2.startRouteFailed"))
+        setNotice({ title: t("common.error"), body: t("todayV2.startRouteFailed"), icon: "⚠️" })
       }
       await refresh()
     } finally {
@@ -601,6 +596,32 @@ export default function TodayScreen() {
           </View>
         </View>
       </ScrollView>
+      <ConfirmSheet
+        visible={endDayConfirm}
+        icon="🌙"
+        iconColor={fieldTheme.color.primaryStrong}
+        title={t("todayV2.endDayConfirmTitle")}
+        message={t("todayV2.endDayConfirmBody")}
+        cancelText={t("todayV2.endDayConfirmCancel")}
+        confirmText={t("todayV2.endDayConfirmAction")}
+        destructive
+        onCancel={() => setEndDayConfirm(false)}
+        onConfirm={() => {
+          setEndDayConfirm(false)
+          syncWorkday().catch(() => {})
+        }}
+      />
+      <ConfirmSheet
+        visible={notice !== null}
+        icon={notice?.icon}
+        iconColor={fieldTheme.color.primaryStrong}
+        title={notice?.title ?? ""}
+        message={notice?.body ?? ""}
+        confirmText={t("common.ok")}
+        hideCancel
+        onCancel={() => setNotice(null)}
+        onConfirm={() => setNotice(null)}
+      />
     </View>
   )
 }
