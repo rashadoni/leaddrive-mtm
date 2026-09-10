@@ -65,18 +65,14 @@ const RECUR_KEY: Record<string, string> = {
 
 type FriendlyCopy = {
   back: string
-  guide: string
   requirement: string
-  requirementHint: string
   noDescription: string
   context: string
-  contextHint: string
   customer: string
   due: string
   assignee: string
   notProvided: string
   progress: string
-  progressHint: string
   progressLocked: string
   progressPendingStatus: string
   progressSaved: string
@@ -123,18 +119,14 @@ type FriendlyCopy = {
 const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
   ru: {
     back: "Назад",
-    guide: "Понятный порядок выполнения",
     requirement: "Что требуется",
-    requirementHint: "Сначала прочитайте задачу и убедитесь, что всё понятно.",
     noDescription: "Описание не добавлено. Уточните ожидаемый результат у руководителя.",
     context: "Срок и клиент",
-    contextHint: "Проверьте, где и до какого времени нужно выполнить задачу.",
     customer: "Клиент",
     due: "Срок",
     assignee: "Исполнитель",
     notProvided: "Не указано",
     progress: "Прогресс",
-    progressHint: "Отмечайте продвижение по мере выполнения задачи.",
     progressLocked: "Сначала нажмите «Начать задачу». После этого здесь можно будет менять прогресс.",
     progressPendingStatus: "Статус этой задачи ещё на устройстве. Прогресс можно менять после подтверждения сервера.",
     progressSaved: "Прогресс сохранён на сервере.",
@@ -179,18 +171,14 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
   },
   az: {
     back: "Geri",
-    guide: "Aydın icra ardıcıllığı",
     requirement: "Nə etmək lazımdır",
-    requirementHint: "Əvvəlcə tapşırığı oxuyun və hər şeyin aydın olduğuna əmin olun.",
     noDescription: "Təsvir əlavə edilməyib. Gözlənilən nəticəni rəhbərdən dəqiqləşdirin.",
     context: "Son tarix və müştəri",
-    contextHint: "Tapşırığın harada və hansı tarixədək görülməli olduğunu yoxlayın.",
     customer: "Müştəri",
     due: "Son tarix",
     assignee: "İcraçı",
     notProvided: "Göstərilməyib",
     progress: "İrəliləyiş",
-    progressHint: "Tapşırığı yerinə yetirdikcə irəliləyişi qeyd edin.",
     progressLocked: "Əvvəlcə «Tapşırığı başla» düyməsini basın. Sonra burada irəliləyişi dəyişə bilərsiniz.",
     progressPendingStatus: "Bu tapşırığın statusu hələ cihazdadır. Server təsdiqindən sonra irəliləyişi dəyişin.",
     progressSaved: "İrəliləyiş serverdə saxlanıldı.",
@@ -235,18 +223,14 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
   },
   en: {
     back: "Back",
-    guide: "A clear completion path",
     requirement: "What is required",
-    requirementHint: "Read the task first and make sure the expected outcome is clear.",
     noDescription: "No description was added. Ask your manager to clarify the expected outcome.",
     context: "Due date and customer",
-    contextHint: "Check where the task belongs and when it must be finished.",
     customer: "Customer",
     due: "Due date",
     assignee: "Assignee",
     notProvided: "Not provided",
     progress: "Progress",
-    progressHint: "Update progress as you work through the task.",
     progressLocked: "Select “Start task” first. You can update progress here after that.",
     progressPendingStatus: "This task status is still on the device. Update progress after the server confirms it.",
     progressSaved: "Progress was saved on the server.",
@@ -590,7 +574,6 @@ export default function TaskDetailScreen() {
             </TouchableOpacity>
             <SyncStatusChip inverse />
           </View>
-          <Text style={styles.headerEyebrow}>{copy.guide}</Text>
           <Text style={[styles.headerTitle, expandedTablet && styles.headerTitleTablet]}>{task.title}</Text>
           <View style={styles.headerSignals}>
             <View style={[styles.headerPill, { backgroundColor: statusTone.fill }]}>
@@ -643,13 +626,13 @@ export default function TaskDetailScreen() {
 
           <View style={[styles.columns, expandedTablet && styles.columnsTablet]}>
             <View style={styles.primaryColumn}>
-              <SectionCard step={expandedTablet ? null : "1"} icon="reader-outline" title={copy.requirement} hint={copy.requirementHint}>
+              <SectionCard step={expandedTablet ? null : "1"} icon="reader-outline" title={copy.requirement}>
                 <Text style={[styles.description, !task.description && styles.descriptionMuted]}>
                   {task.description || copy.noDescription}
                 </Text>
               </SectionCard>
 
-              <SectionCard step={expandedTablet ? null : "2"} icon="location-outline" title={copy.context} hint={copy.contextHint}>
+              <SectionCard step={expandedTablet ? null : "2"} icon="location-outline" title={copy.context}>
                 <InfoRow
                   icon="business-outline"
                   label={copy.customer}
@@ -669,7 +652,7 @@ export default function TaskDetailScreen() {
                 />
               </SectionCard>
 
-              <SectionCard step={expandedTablet ? null : "3"} icon="trending-up-outline" title={copy.progress} hint={copy.progressHint}>
+              <SectionCard step={expandedTablet ? null : "3"} icon="trending-up-outline" title={copy.progress}>
                 {task.progress !== null || canReportProgress ? (
                   <>
                     <View style={styles.progressTop}>
@@ -905,7 +888,7 @@ function SectionCard({
   step: string | null
   icon: string
   title: string
-  hint: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
@@ -915,7 +898,7 @@ function SectionCard({
         <View style={styles.sectionIcon}><Icon name={icon} size={21} color={fieldTheme.color.primaryStrong} /></View>
         <View style={styles.sectionCopy}>
           <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardHint}>{hint}</Text>
+          {hint ? <Text style={styles.cardHint}>{hint}</Text> : null}
         </View>
       </View>
       <View style={styles.sectionBody}>{children}</View>
@@ -1097,7 +1080,6 @@ const styles = StyleSheet.create({
   headerTools: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   backButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingRight: fieldTheme.space.md },
   backText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "800" },
-  headerEyebrow: { color: fieldTheme.color.primarySoft, fontSize: 13, fontWeight: "800", marginTop: fieldTheme.space.lg },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: fieldTheme.space.xs },
   headerTitleTablet: { fontSize: 32, lineHeight: 39, maxWidth: 780 },
   headerSignals: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
