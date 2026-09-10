@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import i18next from "i18next"
@@ -58,6 +58,7 @@ const CALENDAR_COPY = {
     completed: "Выполнен",
     planned: "Запланирован",
     todayMarker: "Сегодня",
+    openRoute: "Открыть маршрут",
     previousWeek: "Предыдущая неделя",
     nextWeek: "Следующая неделя",
     visitsShort: "Визиты",
@@ -106,6 +107,7 @@ const CALENDAR_COPY = {
     completed: "Tamamlanıb",
     planned: "Planlaşdırılıb",
     todayMarker: "Bu gün",
+    openRoute: "Marşrutu aç",
     previousWeek: "Əvvəlki həftə",
     nextWeek: "Növbəti həftə",
     visitsShort: "Ziyarət",
@@ -154,6 +156,7 @@ const CALENDAR_COPY = {
     completed: "Completed",
     planned: "Planned",
     todayMarker: "Today",
+    openRoute: "Open route",
     previousWeek: "Previous week",
     nextWeek: "Next week",
     visitsShort: "Visits",
@@ -316,12 +319,16 @@ function formatRange(start: string, endExclusive: string, lang: string): string 
   return `${firstDate.toLocaleDateString(lang, options)} – ${lastDate.toLocaleDateString(lang, options)}`
 }
 
+/** The sibling tab this screen can hand today over to. */
+type WeekTabParams = { Route: undefined }
+
 export default function WeekScreen() {
   const { t, i18n } = useTranslation()
   // `offline` here has only ever meant "the last request failed"; the radio
   // is a separate fact the sync store already publishes (audit B4/T7).
   const online = useSyncStatusStore((state) => state.online)
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const tabNavigation = useNavigation<NavigationProp<WeekTabParams>>()
   const { width } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -418,6 +425,10 @@ export default function WeekScreen() {
     navigation.navigate("TaskDetail", {
       task: { ...task, agentId: task.agentId ?? myAgentId ?? null },
     })
+  }
+
+  const openTodayRoute = () => {
+    tabNavigation.navigate("Route")
   }
 
   const openOwnRoutePlanner = () => {
@@ -569,6 +580,7 @@ export default function WeekScreen() {
                   touchTarget={touchTarget}
                   onVisitPress={openVisit}
                   onTaskPress={openTask}
+                  onOpenRoute={openTodayRoute}
                 />
               ) : (
                 <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
@@ -851,6 +863,9 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
             {day.isWorkingDay ? t("week.stopsTemplate", { count: day.plannedStops }) : dayOffReason(day)}
           </Text>
         </View>
+        {day.isWorkingDay && day.routeStatus ? (
+          <Text style={styles.routeStatusChip}>{statusLabel((key) => t(key), "route", day.routeStatus)}</Text>
+        ) : null}
       </View>
 
       {day.isWorkingDay ? (
@@ -920,7 +935,7 @@ function WeekStripDay({ day, lang, selected, todayLabel, onPress }: {
   )
 }
 
-function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }: {
+function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onOpenRoute }: {
   day: WeekDay
   lang: string
   copy: Copy
@@ -928,6 +943,7 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
+  onOpenRoute: () => void
 }) {
   const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
@@ -946,7 +962,22 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }
             {day.isWorkingDay ? t("week.stopsTemplate", { count: day.plannedStops }) : dayOffReason(day)}
           </Text>
         </View>
+        {day.isWorkingDay && day.routeStatus ? (
+          <Text style={styles.routeStatusChip}>{statusLabel((key) => t(key), "route", day.routeStatus)}</Text>
+        ) : null}
       </View>
+
+      {day.isToday && day.routeCount > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenRoute}
+          style={({ pressed }) => [styles.openRouteButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+        >
+          <Icon name="navigate-outline" size={19} color={fieldTheme.color.primaryStrong} />
+          <Text style={styles.openRouteText}>{copy.openRoute}</Text>
+          <Icon name="chevron-forward" size={19} color={fieldTheme.color.primaryStrong} />
+        </Pressable>
+      ) : null}
 
       {day.isWorkingDay ? (
         <View style={styles.phoneMetrics}>
@@ -1392,6 +1423,9 @@ const styles = StyleSheet.create({
   dayMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, fontWeight: "600", marginTop: 2 },
   phoneDays: { gap: fieldTheme.space.md },
   weekStrip: { flexDirection: "row", gap: fieldTheme.space.xs },
+  routeStatusChip: { color: fieldTheme.color.primaryStrong, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 9, paddingVertical: 4, fontSize: 11, lineHeight: 14, fontWeight: "800", overflow: "hidden" },
+  openRouteButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  openRouteText: { flex: 1, color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "800" },
   stripDay: {
     flex: 1,
     minWidth: 0,
