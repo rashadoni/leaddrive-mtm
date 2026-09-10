@@ -47,10 +47,14 @@ describe("B9: the route screen without a route", () => {
 
   it("still explains itself when the route is genuinely missing", () => {
     // Removing the pull-to-refresh sentence must not leave a bare title.
+    const blank: string[] = []
     for (const { locale, json } of locales) {
-      expect(typeof json.route?.noRouteTitle === "string" && json.route.noRouteTitle.trim()).toBeTruthy()
-      expect(typeof json.route?.noRouteHint === "string" && json.route.noRouteHint.trim(), locale).toBeTruthy()
+      for (const key of ["noRouteTitle", "noRouteHint"]) {
+        const value = json.route?.[key]
+        if (typeof value !== "string" || !value.trim()) blank.push(`${locale}.${key}`)
+      }
     }
+    expect(blank).toEqual([])
   })
 
   it("leaves the own-route planning card, which nothing else offers here", () => {
