@@ -32,6 +32,13 @@ export interface WeekDay {
   /** Server calendar day kind (WEEKEND, PUBLIC_HOLIDAY, …); labelled via status.dayKind. */
   calendarKind?: string
   routeCount: number
+  /**
+   * The day's route status, when the day has one answer to give (audit B5).
+   * Several routes with different statuses have no single honest label, so
+   * the field stays absent rather than picking a winner and calling a day
+   * "Запланирован" while half of it is already done.
+   */
+  routeStatus?: string
   plannedStops: number
   tasksTotal: number
   tasksCompleted: number
@@ -76,6 +83,12 @@ function mapDay(raw: any): WeekDay {
     (sum: number, route: any) => sum + (Array.isArray(route?.points) ? route.points.length : 0),
     0,
   )
+  const routeStatuses = routes
+    .map((route: any) => optStr(route?.status))
+    .filter((status: string | undefined): status is string => Boolean(status))
+  const routeStatus = routeStatuses.length > 0 && routeStatuses.every((status: string) => status === routeStatuses[0])
+    ? routeStatuses[0]
+    : undefined
   const visitItems = Array.isArray(raw?.visits?.items) ? raw.visits.items : []
   const taskItems = Array.isArray(raw?.tasks?.items) ? raw.tasks.items : []
   return {
@@ -86,6 +99,7 @@ function mapDay(raw: any): WeekDay {
     nonWorkingReason: raw?.nonWorkingReason ? String(raw.nonWorkingReason) : undefined,
     calendarKind: raw?.calendarKind ? String(raw.calendarKind) : undefined,
     routeCount: routes.length,
+    routeStatus,
     plannedStops,
     tasksTotal: num(raw?.tasks?.total),
     tasksCompleted: num(raw?.tasks?.completed),
