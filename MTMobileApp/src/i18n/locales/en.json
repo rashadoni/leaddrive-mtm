@@ -773,7 +773,7 @@
     "statDone": "Done",
     "loadingRoute": "Loading route…",
     "noRouteTitle": "No Route Today",
-    "noRouteHint": "Check back later or pull to refresh",
+    "noRouteHint": "Check back later — today's plan will appear here on its own.",
     "connectionSlow": "Connection slow",
     "connectionSlowHint": "Tap to retry",
     "fetching": "Fetching your schedule",

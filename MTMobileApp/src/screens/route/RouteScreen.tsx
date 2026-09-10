@@ -107,8 +107,6 @@ const ROUTE_COPY = {
     distanceAway: "До точки {{distance}}",
     noAddress: "Адрес не указан. Можно начать визит, когда вы на месте.",
     chooseStop: "Выберите точку слева, чтобы увидеть следующий шаг.",
-    unplannedTitle: "Нужен визит вне маршрута?",
-    unplannedBody: "Откройте «Визиты» для клиента, которого нет в сегодняшнем плане.",
     openVisits: "Открыть внеплановый визит",
     planOwnRouteTitle: "Хотите составить свой маршрут?",
     planOwnRouteBody: "Выберите день, добавьте своих клиентов и сохраните план. Редактировать его можете только вы.",
@@ -180,8 +178,6 @@ const ROUTE_COPY = {
     distanceAway: "Nöqtəyə {{distance}}",
     noAddress: "Ünvan göstərilməyib. Məkanda olduqda ziyarətə başlaya bilərsiniz.",
     chooseStop: "Növbəti addımı görmək üçün soldan nöqtə seçin.",
-    unplannedTitle: "Marşrutdan kənar ziyarət lazımdır?",
-    unplannedBody: "Bugünkü planda olmayan müştəri üçün «Ziyarətlər» bölməsini açın.",
     openVisits: "Plandan kənar ziyarəti aç",
     planOwnRouteTitle: "Öz marşrutunuzu qurmaq istəyirsiniz?",
     planOwnRouteBody: "Günü seçin, öz müştərilərinizi əlavə edin və planı yadda saxlayın. Onu yalnız siz redaktə edə bilərsiniz.",
@@ -253,8 +249,6 @@ const ROUTE_COPY = {
     distanceAway: "{{distance}} away",
     noAddress: "No address is saved. You can start the visit when you are there.",
     chooseStop: "Choose a stop on the left to see the next action.",
-    unplannedTitle: "Need an unplanned visit?",
-    unplannedBody: "Open Visits for a customer who is not in today's planned route.",
     openVisits: "Open unplanned visit",
     planOwnRouteTitle: "Want to create your own route?",
     planOwnRouteBody: "Choose a day, add your customers and save the plan. Only you can edit it.",
@@ -683,27 +677,14 @@ function InlineHint({ text, dismissLabel }: { text: string; dismissLabel: string
   )
 }
 
-function UnplannedVisitCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; onPress: () => void }) {
-  return (
-    <View style={styles.unplannedCard}>
-      <View style={styles.unplannedHeading}>
-        <Icon name="add-circle-outline" size={23} color={fieldTheme.color.blue} />
-        <Text style={styles.unplannedTitle}>{copy.unplannedTitle}</Text>
-      </View>
-      <Text style={styles.unplannedBody}>{copy.unplannedBody}</Text>
-      <ActionButton label={copy.openVisits} icon="arrow-forward" onPress={onPress} tone="secondary" />
-    </View>
-  )
-}
-
 function OwnRoutePlanningCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; onPress: () => void }) {
   return (
     <View style={styles.ownRouteCard}>
-      <View style={styles.unplannedHeading}>
+      <View style={styles.cardHeading}>
         <Icon name="calendar-outline" size={23} color={fieldTheme.color.primaryStrong} />
-        <Text style={styles.unplannedTitle}>{copy.planOwnRouteTitle}</Text>
+        <Text style={styles.cardTitle}>{copy.planOwnRouteTitle}</Text>
       </View>
-      <Text style={styles.unplannedBody}>{copy.planOwnRouteBody}</Text>
+      <Text style={styles.cardBody}>{copy.planOwnRouteBody}</Text>
       <ActionButton label={copy.planOwnRoute} icon="add-circle-outline" onPress={onPress} tone="secondary" />
     </View>
   )
@@ -1359,6 +1340,14 @@ export default function RouteScreen() {
         <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
         {agent?.name ? <Text style={styles.agentName}>{agent.name}</Text> : null}
       </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={copy.openVisits}
+        onPress={() => navigation.navigate("Visits")}
+        style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
+      >
+        <Icon name="add" size={22} color={fieldTheme.color.onColor} />
+      </Pressable>
     </View>
   )
 
@@ -1411,7 +1400,7 @@ export default function RouteScreen() {
         {header}
         <View style={styles.tabletTop}>
           <ConnectionBanner mode={presentation.banner} copy={copy} />
-          <JourneySteps activeStep={currentStep} copy={copy} compact={false} />
+          {route ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
           {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
         </View>
         <View style={styles.tabletBody}>
@@ -1447,7 +1436,6 @@ export default function RouteScreen() {
                 <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
               </View>
             ) : actionPanel}
-            <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
             {canPlanOwnRoutes ? (
               <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
@@ -1478,7 +1466,7 @@ export default function RouteScreen() {
             {header}
             <View style={styles.phoneMain}>
               <ConnectionBanner mode={presentation.banner} copy={copy} />
-              <JourneySteps activeStep={currentStep} copy={copy} compact />
+              {route ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
               {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : emptyState}
               {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
                 <View style={styles.completeCard}>
@@ -1511,7 +1499,6 @@ export default function RouteScreen() {
         )}
         ListFooterComponent={
           <View style={styles.phoneFooter}>
-            <UnplannedVisitCard copy={copy} onPress={() => navigation.navigate("Visits")} />
             {canPlanOwnRoutes ? (
               <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
@@ -1576,6 +1563,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  pressed: { opacity: 0.82 },
+  headerAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: "rgba(248,252,250,0.18)" },
   headerCopy: { flex: 1 },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "800", letterSpacing: -0.4 },
   headerSubtitle: { color: "#CFE5DD", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
@@ -1756,11 +1745,10 @@ const styles = StyleSheet.create({
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
 
-  unplannedCard: { gap: fieldTheme.space.md, paddingTop: fieldTheme.space.xl, marginTop: fieldTheme.space.xl, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   ownRouteCard: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, marginTop: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: "#A9D9CA" },
-  unplannedHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  unplannedTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  unplannedBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
+  cardHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  cardTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
+  cardBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
   hint: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.blueSoft, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
   hintText: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 18 },
   hintClose: { width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: "center", justifyContent: "center" },
