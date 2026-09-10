@@ -10,6 +10,7 @@ import type { PlanningHorizon, PlanningTarget } from "../../services/manager-pla
 import { api } from "../../services/api"
 import { toRoutePlanningTarget } from "../../services/route-planning-target"
 import { submitRouteCommand } from "../../services/route-command-journal"
+import { fieldEligibilityReason } from "../../lib/field-eligibility-reason"
 
 /**
  * Route Field's only planning entry point. It never receives a team ID or a
@@ -77,10 +78,11 @@ export default function RouteSelfPlanningWorkspace({
       const nextPage = typeof response?.data?.nextPage === "string" && response.data.nextPage
         ? response.data.nextPage
         : null
-      if (targets.length > 0 || !nextPage || attempt === 1) return { targets, nextPage }
+      const eligibility = fieldEligibilityReason(response?.data?.eligibility?.reason)
+      if (targets.length > 0 || !nextPage || attempt === 1) return { targets, nextPage, eligibility }
       page = nextPage
     }
-    return { targets: [], nextPage: null }
+    return { targets: [], nextPage: null, eligibility: null }
   }, [])
 
   const targetSource = useMemo<PlanningWorkspaceTargetSource>(() => ({ loadTargets }), [loadTargets])

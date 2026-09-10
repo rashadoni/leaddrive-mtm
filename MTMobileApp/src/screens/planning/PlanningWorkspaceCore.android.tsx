@@ -19,6 +19,7 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { api } from "../../services/api"
@@ -87,6 +88,12 @@ export type PlanningWorkspaceTargetPage = {
   targets: PlanningTarget[]
   total?: number | null
   nextPage?: string | null
+  /**
+   * Why the page is empty, when the server could say. Absent means it could
+   * not — a search that matched nothing is not "no assignments", and the
+   * shared vocabulary has no word for it (audit A2, B8).
+   */
+  eligibility?: FieldEligibilityReason | null
 }
 
 export type PlanningWorkspaceTargetSource = {
@@ -132,8 +139,6 @@ const SELF_PLANNER_COPY = {
     title: "Создайте свой маршрут",
     daySubtitle: "Выберите одну дату, добавьте клиентов и сохраните маршрут.",
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
-    agentLabel: "Ваш маршрут",
-    agentHelp: "Вы планируете встречи только для себя.",
     searchPlaceholder: "Имя, организация, специальность или адрес…",
     scopeNote: "Показываются только точки, подтверждённые для вас на выбранную дату. При сохранении сервер проверит их ещё раз.",
   },
@@ -142,8 +147,6 @@ const SELF_PLANNER_COPY = {
     title: "Öz marşrutunuzu yaradın",
     daySubtitle: "Bir tarix seçin, müştəriləri əlavə edin və marşrutu yadda saxlayın.",
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
-    agentLabel: "Sizin marşrutunuz",
-    agentHelp: "Görüşləri yalnız özünüz üçün planlaşdırırsınız.",
     searchPlaceholder: "Ad, təşkilat, ixtisas və ya ünvan…",
     scopeNote: "Yalnız seçilmiş tarix üçün sizə təsdiqlənmiş nöqtələr göstərilir. Saxlayarkən server onları yenidən yoxlayacaq.",
   },
@@ -152,8 +155,6 @@ const SELF_PLANNER_COPY = {
     title: "Create your route",
     daySubtitle: "Choose one date, add customers, and save the route.",
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
-    agentLabel: "Your route",
-    agentHelp: "You are planning meetings only for yourself.",
     searchPlaceholder: "Name, organization, specialty, or address…",
     scopeNote: "Only stops confirmed for you on the selected date are shown. The server validates them again when you save.",
   },
@@ -268,6 +269,7 @@ export default function PlanningWorkspaceCore({
   const [targetResults, setTargetResults] = useState<PlanningTarget[]>([])
   const [targetTotal, setTargetTotal] = useState<number | null>(null)
   const [targetNextPage, setTargetNextPage] = useState<PlanningTargetContinuation | null>(null)
+  const [targetEligibility, setTargetEligibility] = useState<FieldEligibilityReason | null>(null)
   const [targetReload, setTargetReload] = useState(0)
   const [loadingAgents, setLoadingAgents] = useState(true)
   const [loadingPlan, setLoadingPlan] = useState(false)
@@ -459,12 +461,14 @@ export default function PlanningWorkspaceCore({
     setTargetResults([])
     setTargetTotal(null)
     setTargetNextPage(null)
+    setTargetEligibility(null)
     targetSource.loadTargets(targetQuery, controller.signal).then((page) => {
       if (controller.signal.aborted || requestId !== targetRequest.current) return
       setTargetResults(page.targets)
       setTargetTotal(typeof page.total === "number" && Number.isFinite(page.total) ? page.total : null)
       const nextPage = typeof page.nextPage === "string" && page.nextPage ? page.nextPage : null
       setTargetNextPage(nextPage ? { cursor: nextPage, queryKey: targetQueryKey } : null)
+      setTargetEligibility(page.eligibility ?? null)
     }).catch((error: any) => {
       if (!controller.signal.aborted && requestId === targetRequest.current && error?.message !== "SESSION_EXPIRED") setTargetError(true)
     }).finally(() => {
@@ -822,6 +826,14 @@ export default function PlanningWorkspaceCore({
             <Text style={styles.title}>{selfPlanning ? selfCopy.title : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
             <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{selfPlanning ? (singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("managerShell.planHelpAction")}
+            style={({ pressed }) => [styles.helpButton, pressed && styles.pressed]}
+            onPress={() => setForcedHelpStep(step)}
+          >
+            <Icon name="help-circle-outline" size={22} color={fieldTheme.color.primaryStrong} />
+          </Pressable>
           {updatedAt ? (
             <View style={styles.updatedPill}>
               <Icon name={planError ? "cloud-offline-outline" : "checkmark-circle"} size={16} color={planError ? fieldTheme.color.amber : fieldTheme.color.primaryStrong} />
@@ -839,17 +851,6 @@ export default function PlanningWorkspaceCore({
       >
         <StepRail step={step} hasAgent={Boolean(agentId)} hasReview={matrixTargets.length > 0 || dirtyDates.size > 0} singleDay={singleDay} disabled={saving} onStep={setStep} t={t} />
 
-        <View style={styles.helpRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("managerShell.planHelpAction")}
-            style={({ pressed }) => [styles.helpButton, pressed && styles.pressed]}
-            onPress={() => setForcedHelpStep(step)}
-          >
-            <Icon name="help-circle-outline" size={20} color={fieldTheme.color.primaryStrong} />
-            <Text style={styles.helpButtonText}>{t("managerShell.planHelpAction")}</Text>
-          </Pressable>
-        </View>
         {plannerHelpVisible ? (
           <PlannerCoach
             title={t("managerShell.planHelpTitle")}
@@ -877,7 +878,15 @@ export default function PlanningWorkspaceCore({
 
         {step === 1 ? (
           <View style={styles.stepBody}>
-            <SectionIntro number="1" title={t(singleDay ? "managerShell.planStepSetupDay" : "managerShell.planStepSetupWeek")} body={t(singleDay ? "managerShell.planStepSetupDayBody" : "managerShell.planStepSetupWeekBody")} />
+            <SectionIntro
+              number="1"
+              title={selfPlanning
+                ? t("managerShell.planSelfStepSetup")
+                : t(singleDay ? "managerShell.planStepSetupDay" : "managerShell.planStepSetupWeek")}
+              body={selfPlanning
+                ? null
+                : t(singleDay ? "managerShell.planStepSetupDayBody" : "managerShell.planStepSetupWeekBody")}
+            />
             <View style={[styles.setupGrid, expandedTablet && styles.setupGridTablet]}>
               <View style={styles.setupPanel}>
                 <Text style={styles.fieldLabel}>{t("managerShell.planType")}</Text>
@@ -910,16 +919,17 @@ export default function PlanningWorkspaceCore({
                 </View>
               </View>
 
+              {selfPlanning ? null : (
               <View style={[styles.setupPanel, styles.agentPanel]}>
                 <View style={styles.fieldHeading}>
                   <View style={styles.fieldHeadingCopy}>
-                    <Text style={styles.fieldLabel}>{selfPlanning ? selfCopy.agentLabel : t("managerShell.planMainAgent")}</Text>
-                    <Text style={styles.fieldHelp}>{selfPlanning ? selfCopy.agentHelp : t("managerShell.planMainAgentHelp")}</Text>
+                    <Text style={styles.fieldLabel}>{t("managerShell.planMainAgent")}</Text>
+                    <Text style={styles.fieldHelp}>{t("managerShell.planMainAgentHelp")}</Text>
                   </View>
                   {loadingAgents ? <ActivityIndicator color={fieldTheme.color.primary} /> : null}
                 </View>
                 {agentError ? (
-                  <InlineEmpty icon="cloud-offline-outline" text={selfPlanning ? selfCopy.agentHelp : t("managerShell.planAgentsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => { void loadAgents() } : undefined} />
+                  <InlineEmpty icon="cloud-offline-outline" text={t("managerShell.planAgentsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => { void loadAgents() } : undefined} />
                 ) : selfPlanning && selectedAgent ? (
                   <View style={styles.agentList}>
                     <View accessibilityRole="summary" style={[styles.agentOption, styles.agentOptionSelected]}>
@@ -942,7 +952,8 @@ export default function PlanningWorkspaceCore({
                     })}
                   </ScrollView>
                 ) : !loadingAgents ? <InlineEmpty icon="people-outline" text={t("managerShell.planNoAgents")} /> : null}
-              </View>
+                </View>
+              )}
             </View>
 
             {agentId ? (
@@ -999,10 +1010,12 @@ export default function PlanningWorkspaceCore({
                   <Text style={styles.fieldLabel}>{t("managerShell.planChooseTargetType")}</Text>
                   <Text style={styles.fieldHelp}>{t("managerShell.planChooseTargetTypeHelp")}</Text>
                 </View>
-                <View style={styles.activeDayPill}>
-                  <Icon name="calendar-outline" size={16} color={fieldTheme.color.primaryStrong} />
-                  <Text style={styles.activeDayPillText}>{formatPlanDate(activeDate, i18n.language, true)}</Text>
-                </View>
+                {singleDay ? null : (
+                  <View style={styles.activeDayPill}>
+                    <Icon name="calendar-outline" size={16} color={fieldTheme.color.primaryStrong} />
+                    <Text style={styles.activeDayPillText}>{formatPlanDate(activeDate, i18n.language, true)}</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.targetTypeTabs} accessibilityRole="tablist">
                 {routeTargetTypes.map((type) => {
@@ -1101,7 +1114,9 @@ export default function PlanningWorkspaceCore({
                 tone="neutral"
                 icon="people-circle-outline"
                 title={t("managerShell.planNoTargets")}
-                body={t("managerShell.planNoTargetsBody")}
+                body={targetEligibility
+                  ? t(fieldEligibilityReasonKey(targetEligibility))
+                  : t("managerShell.planNoTargetsBody")}
                 action={t("managerShell.planRefreshTargets")}
                 onAction={() => setTargetReload((value) => value + 1)}
               />
@@ -1214,11 +1229,14 @@ function StepRail({ step, hasAgent, hasReview, singleDay, disabled, onStep, t }:
   )
 }
 
-function SectionIntro({ number, title, body }: { number: string; title: string; body: string }) {
+function SectionIntro({ number, title, body }: { number: string; title: string; body?: string | null }) {
   return (
     <View style={styles.sectionIntro}>
       <View style={styles.sectionNumber}><Text style={styles.sectionNumberText}>{number}</Text></View>
-      <View style={styles.sectionIntroCopy}><Text style={styles.sectionTitle}>{title}</Text><Text style={styles.sectionBody}>{body}</Text></View>
+      <View style={styles.sectionIntroCopy}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {body ? <Text style={styles.sectionBody}>{body}</Text> : null}
+      </View>
     </View>
   )
 }
@@ -1566,9 +1584,7 @@ const styles = StyleSheet.create({
   stepNumberTextActive: { color: fieldTheme.color.onColor },
   stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "700", textAlign: "center" },
   stepLabelActive: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
-  helpRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: -6 },
-  helpButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  helpButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  helpButton: { width: LAYOUT_TOUCH_TARGETS.compact, minHeight: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   plannerCoach: { gap: fieldTheme.space.sm, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: fieldTheme.color.blue },
   plannerCoachTablet: { flexDirection: "row", alignItems: "center" },
   plannerCoachLead: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
