@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  type LayoutChangeEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -339,8 +338,6 @@ export default function WeekScreen() {
   const notice = cachedViewNotice({ online, requestFailed: offline })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
-  const phoneListY = useRef(0)
-  const phoneDayY = useRef<Record<string, number>>({})
 
   const fetchWeek = useCallback(async (start: string | null) => {
     try {
@@ -400,17 +397,7 @@ export default function WeekScreen() {
   const returnToToday = () => {
     if (data && currentWeek) {
       setSelectedDate(data.today)
-      if (!tablet) {
-        requestAnimationFrame(() => {
-          const dayY = phoneDayY.current[data.today]
-          if (typeof dayY === "number") {
-            scrollRef.current?.scrollTo({
-              y: Math.max(0, phoneListY.current + dayY - fieldTheme.space.md),
-              animated: true,
-            })
-          }
-        })
-      }
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
       return
     }
     setLoading(true)
@@ -560,23 +547,32 @@ export default function WeekScreen() {
               </View>
             </View>
           ) : (
-            <View
-              style={styles.phoneDays}
-              onLayout={(event) => { phoneListY.current = event.nativeEvent.layout.y }}
-            >
-              {data.days.map((day) => (
+            <View style={styles.phoneDays}>
+              <View style={styles.weekStrip}>
+                {data.days.map((day) => (
+                  <WeekStripDay
+                    key={day.date}
+                    day={day}
+                    lang={i18n.language}
+                    selected={day.date === selectedDate}
+                    todayLabel={copy.todayMarker}
+                    onPress={() => setSelectedDate(day.date)}
+                  />
+                ))}
+              </View>
+              {selectedDay ? (
                 <PhoneDay
-                  key={day.date}
-                  day={day}
+                  day={selectedDay}
                   lang={i18n.language}
                   copy={copy}
                   t={t}
                   touchTarget={touchTarget}
                   onVisitPress={openVisit}
                   onTaskPress={openTask}
-                  onLayout={(event) => { phoneDayY.current[day.date] = event.nativeEvent.layout.y }}
                 />
-              ))}
+              ) : (
+                <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
+              )}
             </View>
           )}
         </ScrollView>
@@ -882,7 +878,49 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
   )
 }
 
-function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onLayout }: {
+function WeekStripDay({ day, lang, selected, todayLabel, onPress }: {
+  day: WeekDay
+  lang: string
+  selected: boolean
+  todayLabel: string
+  onPress: () => void
+}) {
+  // A dot, not a number: seven counts in a row is a table nobody reads, and the
+  // question the strip answers is "which days have anything on them".
+  const planned = day.plannedStops > 0 || day.visitsTotal > 0 || day.tasksTotal > 0
+  const label = `${formatFullDate(day.date, lang)}${day.isToday ? `, ${todayLabel}` : ""}`
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.stripDay,
+        selected && styles.stripDaySelected,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text style={[styles.stripWeekday, selected && styles.stripTextSelected]} numberOfLines={1}>
+        {weekdayShort(day.date, lang)}
+      </Text>
+      <View style={[styles.stripNumberTile, day.isToday && styles.stripNumberTileToday]}>
+        <Text
+          style={[
+            styles.stripNumber,
+            day.isToday && styles.dateTextToday,
+            selected && !day.isToday && styles.stripTextSelected,
+          ]}
+        >
+          {formatDayNumber(day.date)}
+        </Text>
+      </View>
+      <View style={[styles.stripDot, planned && styles.stripDotPlanned]} />
+    </Pressable>
+  )
+}
+
+function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }: {
   day: WeekDay
   lang: string
   copy: Copy
@@ -890,11 +928,10 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
-  onLayout: (event: LayoutChangeEvent) => void
 }) {
   const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
-    <View style={[styles.phoneDay, day.isToday && styles.phoneDayToday]} onLayout={onLayout}>
+    <View style={[styles.phoneDay, day.isToday && styles.phoneDayToday]}>
       <View style={styles.phoneDayHeading}>
         <View style={[styles.dateTile, day.isToday && styles.dateTileToday]}>
           <Text style={[styles.dateWeekday, day.isToday && styles.dateTextToday]}>{weekdayShort(day.date, lang)}</Text>
@@ -1296,7 +1333,7 @@ const styles = StyleSheet.create({
   summarySection: { marginBottom: fieldTheme.space.xl },
   sectionEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7, marginBottom: fieldTheme.space.sm },
   summaryStrip: {
-    flexDirection: "column",
+    flexDirection: "row",
     gap: fieldTheme.space.sm,
     padding: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.lg,
@@ -1305,11 +1342,11 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.border,
   },
   summaryStripTablet: { flexDirection: "row" },
-  summaryMetric: { flex: 1, minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.sm },
-  metricIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  summaryMetric: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.xs },
+  metricIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   metricCopy: { flex: 1 },
-  metricValue: { fontSize: 20, lineHeight: 24, fontWeight: "900" },
-  metricLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "600", marginTop: 1 },
+  metricValue: { fontSize: 17, lineHeight: 21, fontWeight: "900" },
+  metricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 14, fontWeight: "600", marginTop: 1 },
   tabletWorkspace: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.lg },
   dayMaster: { width: "38%", gap: fieldTheme.space.sm },
   dayDetail: {
@@ -1354,6 +1391,27 @@ const styles = StyleSheet.create({
   dayMetricValue: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 24, fontWeight: "900", marginTop: fieldTheme.space.sm },
   dayMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, fontWeight: "600", marginTop: 2 },
   phoneDays: { gap: fieldTheme.space.md },
+  weekStrip: { flexDirection: "row", gap: fieldTheme.space.xs },
+  stripDay: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: LAYOUT_TOUCH_TARGETS.compact,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    paddingVertical: fieldTheme.space.xs,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  stripDaySelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  stripWeekday: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 13, fontWeight: "800" },
+  stripTextSelected: { color: fieldTheme.color.primary },
+  stripNumberTile: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 15 },
+  stripNumberTileToday: { backgroundColor: fieldTheme.color.primary },
+  stripNumber: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 21, fontWeight: "900" },
+  stripDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: "transparent" },
+  stripDotPlanned: { backgroundColor: fieldTheme.color.primary },
   phoneDay: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   phoneDayToday: { borderColor: fieldTheme.color.primary },
   phoneDayHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
