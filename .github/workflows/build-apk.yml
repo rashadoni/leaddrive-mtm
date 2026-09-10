@@ -15,6 +15,13 @@ on:
     paths:
       - "MTMobileApp/**"
   workflow_dispatch:
+    inputs:
+      emulator_build:
+        description: >-
+          Build for an x86_64 emulator instead of handsets. Such a build is
+          never published as a release: it exists only as a run artifact.
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -105,8 +112,10 @@ jobs:
           ls -lh "$OUT"
 
       - name: Verify package, version and release signature
+        id: verify
         if: steps.scope.outputs.build == 'true'
         env:
+          EMULATOR_BUILD: ${{ inputs.emulator_build }}
           APK_FILE: ${{ steps.apk.outputs.file }}
           EXPECTED_VERSION: ${{ steps.apk.outputs.version }}
           EXPECTED_VERSION_CODE: ${{ steps.apk.outputs.version_code }}
@@ -122,6 +131,31 @@ jobs:
           printf '%s\n' "$BADGING" | grep -q "name='com.mtmobileapp'"
           printf '%s\n' "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'"
           printf '%s\n' "$BADGING" | grep -q "versionCode='$EXPECTED_VERSION_CODE'"
+
+          # Which processors this APK can actually run on. Emulator builds add
+          # x86_64 and are useless on a handset; a release carrying them would
+          # be indistinguishable in the list from one an agent can install
+          # (audit B22). Asking the APK beats trusting the branch name.
+          ABIS=$(unzip -Z1 "$APK_FILE" 'lib/*' 2>/dev/null | cut -d/ -f2 | sort -u | tr '\n' ' ')
+          printf 'Native ABIs: %s\n' "$ABIS"
+          case "$ABIS" in
+            *x86*)
+              if [ "${EMULATOR_BUILD:-false}" != "true" ]; then
+                echo "::error::APK carries an emulator ABI ($ABIS). Run the workflow with emulator_build=true if that is what you meant."
+                exit 1
+              fi
+              echo "emulator=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              case "$ABIS" in
+                *arm64-v8a*) ;;
+                *)
+                  echo "::error::APK has no arm64-v8a code ($ABIS); no field handset can run it"
+                  exit 1
+                  ;;
+              esac
+              ;;
+          esac
 
           # Pin the update path to the release signing certificate. A different
           # key makes Android refuse an in-place update, and the agents in the
@@ -171,7 +205,7 @@ jobs:
       # Artifact downloads require an authenticated Actions UI session; a
       # prerelease gives a plain downloadable asset URL instead.
       - name: Publish APK to GitHub prerelease
-        if: github.event_name != 'pull_request' && steps.scope.outputs.build == 'true'
+        if: github.event_name != 'pull_request' && steps.scope.outputs.build == 'true' && steps.verify.outputs.emulator != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
