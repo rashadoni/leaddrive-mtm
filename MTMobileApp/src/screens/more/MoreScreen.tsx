@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
@@ -102,6 +103,7 @@ export default function MoreScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
+      <LightScreenStatusBar />
       <View style={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>{t("moreV2.title")}</Text>

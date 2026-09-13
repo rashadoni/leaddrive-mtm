@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native"
 import { useNavigation, type NavigationProp } from "@react-navigation/native"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import i18next from "i18next"
@@ -449,6 +450,7 @@ export default function WeekScreen() {
 
   return (
     <View style={styles.container}>
+      <LightScreenStatusBar />
       <CalendarHeader
         title={copy.title}
         subtitle={copy.subtitle}
