@@ -11,7 +11,7 @@ import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints"
-import { TAB_BAR_BASE_HEIGHT } from "../hooks/useTabBarHeight"
+import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
 
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"

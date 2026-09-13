@@ -21,6 +21,14 @@ const hook = fs.readFileSync(
   path.resolve(__dirname, "../../src/hooks/useTabBarHeight.ts"),
   "utf8",
 )
+const androidHook = fs.readFileSync(
+  path.resolve(__dirname, "../../src/hooks/useTabBarHeight.android.ts"),
+  "utf8",
+)
+const metrics = fs.readFileSync(
+  path.resolve(__dirname, "../../src/theme/tabBarMetrics.ts"),
+  "utf8",
+)
 
 describe("B18: tab captions can be read", () => {
   it("sets them at 12 px", () => {
@@ -41,9 +49,24 @@ describe("B18: tab captions can be read", () => {
     // The hook said 56 while the navigator drew 60: every screen's last row
     // sat four points under the bar, and 12 px captions would have made it
     // seven.
-    expect(hook).toContain("export const TAB_BAR_BASE_HEIGHT")
-    expect(hook).toContain("return TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8) + 12")
-    expect(hook).not.toContain("return 56 +")
+    expect(metrics).toContain("export const TAB_BAR_BASE_HEIGHT = 63")
+    // Both hook files — Android loads the `.android` one — read the same number.
+    const drift: string[] = []
+    for (const [name, source] of [["useTabBarHeight.ts", hook], ["useTabBarHeight.android.ts", androidHook]] as const) {
+      if (!source.includes("return TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8) + 12")) drift.push(`${name}: padding not from the constant`)
+      if (source.includes("return 56 +")) drift.push(`${name}: still 56`)
+      if (!source.includes('from "../theme/tabBarMetrics"')) drift.push(`${name}: constant not from theme/tabBarMetrics`)
+    }
+    expect(drift).toEqual([])
+  })
+
+  it("imports the bar height from a module Android cannot swap out", () => {
+    // Device acceptance 2026-09-13: imported from `hooks/useTabBarHeight`, the
+    // constant was undefined on Android (Metro picked the `.android` twin), the
+    // height became NaN and the bar collapsed to its padding.
+    expect(navigator).toContain('import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"')
+    expect(navigator).not.toContain('import { TAB_BAR_BASE_HEIGHT } from "../hooks/useTabBarHeight"')
+    expect(fs.existsSync(path.resolve(__dirname, "../../src/theme/tabBarMetrics.android.ts"))).toBe(false)
   })
 
   it("gives the caption the item's full width on a phone", () => {
