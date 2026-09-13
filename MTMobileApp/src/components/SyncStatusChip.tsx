@@ -49,6 +49,14 @@ function conflictCode(conflict: SyncConflict) {
   return typeof code === "string" ? code : "SYNC_CONFLICT"
 }
 
+function conflictCustomerId(conflict: SyncConflict): string | null {
+  if (conflict.kind !== "legacy") return null
+  const fromServer = conflict.operation.conflict?.serverData?.customerId
+  if (typeof fromServer === "string" && fromServer) return fromServer
+  const fromOperation = conflict.operation.data?.customerId
+  return typeof fromOperation === "string" && fromOperation ? fromOperation : null
+}
+
 function conflictTranslationKey(code: string) {
   const known: Record<string, string> = {
     MTM_VISIT_OUT_OF_ZONE: "syncCenter.conflictOutOfZone",
@@ -57,6 +65,7 @@ function conflictTranslationKey(code: string) {
     MTM_ROUTE_POINT_NOT_AVAILABLE: "syncCenter.conflictRouteUnavailable",
     MTM_ROUTE_TARGET_MISMATCH: "syncCenter.conflictRouteMismatch",
     MTM_VISIT_CUSTOMER_NOT_FOUND: "syncCenter.conflictCustomerMissing",
+    MTM_VISIT_CUSTOMER_NO_COORDINATES: "syncCenter.conflictNoCoordinates",
     MTM_VISIT_REQUIREMENTS_INCOMPLETE: "syncCenter.conflictRequirements",
     MTM_VISIT_STATUS_INVALID: "syncCenter.conflictVisitStatus",
   }
@@ -96,6 +105,9 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<SyncConflict[]>([])
+  // Who a rejected visit was for. The operation keeps only an id; without a
+  // name the owner could not tell which client needed coordinates (2026-09-13).
+  const [customerNames, setCustomerNames] = useState<Record<string, string>>({})
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines, online } = useSyncStatusStore()
   const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
@@ -112,10 +124,19 @@ export default function SyncStatusChip({ inverse = false }: Props) {
       conflictOutboxOperations(),
       conflictRouteCommands(),
     ])
-    setConflicts([
+    const nextConflicts: SyncConflict[] = [
       ...legacyConflicts.map((operation) => ({ kind: "legacy" as const, operation })),
       ...routeCommandConflicts.map((operation) => ({ kind: "routeCommand" as const, operation })),
-    ])
+    ]
+    setConflicts(nextConflicts)
+    const ids = [...new Set(nextConflicts.map(conflictCustomerId).filter((id): id is string => Boolean(id)))]
+    for (const id of ids) {
+      // Best effort: offline or out of scope, the card simply shows no name.
+      api.getCustomer(id).then((response: any) => {
+        const name = response?.success === true && typeof response.data?.name === "string" ? response.data.name : null
+        if (name) setCustomerNames((current) => (current[id] === name ? current : { ...current, [id]: name }))
+      }).catch(() => {})
+    }
   }, [])
 
   useEffect(() => {
@@ -303,7 +324,22 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                 return (
                   <View key={`${conflict.kind}:${operation.operationId}`} style={styles.conflictCard}>
                     <Text style={styles.conflictTitle}>{t(conflictTranslationKey(code))}</Text>
-                    <Text style={styles.conflictCode}>{code}</Text>
+                    {(() => {
+                      const customerId = conflictCustomerId(conflict)
+                      const name = customerId ? customerNames[customerId] : undefined
+                      return name ? <Text style={styles.conflictBody}>{t("syncCenter.conflictCustomer", { name })}</Text> : null
+                    })()}
+                    {/*
+                      The raw code is for support, and only where the app has no
+                      words of its own. The owner saw "MTM_VISIT_CUSTOMER_NO_COORDINATES"
+                      under a generic title on the phone, 2026-09-13.
+                    */}
+                    {conflictTranslationKey(code) === "syncCenter.conflictGeneric" ? (
+                      <Text style={styles.conflictCode}>{code}</Text>
+                    ) : null}
+                    {code === "MTM_VISIT_CUSTOMER_NO_COORDINATES" ? (
+                      <Text style={styles.conflictBody}>{t("syncCenter.conflictNoCoordinatesHelp")}</Text>
+                    ) : null}
                     {conflict.kind === "routeCommand" ? (
                       <Text style={styles.conflictBody}>{t("syncCenter.routeCommandConflictHelp")}</Text>
                     ) : null}

@@ -683,6 +683,11 @@ class ApiClient {
     return this.request("/customers")
   }
 
+  /** One client by id — the sync centre names who a rejected visit was for. */
+  async getCustomer(id: string) {
+    return this.request(`/customers/${encodeURIComponent(id)}`)
+  }
+
   /** Mobile-only v2 detail projection; the legacy v1 response stays untouched. */
   async getRouteOrganizationDetail(id: string, signal?: AbortSignal) {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}`, { signal }, 20_000, 2)

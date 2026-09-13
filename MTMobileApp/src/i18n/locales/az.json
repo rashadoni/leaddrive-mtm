@@ -70,6 +70,9 @@
     "conflictRequirements": "Ziyarətin məcburi şərtləri tamamlanmayıb",
     "conflictVisitStatus": "Ziyarət statusu serverdə dəyişib",
     "conflictGeneric": "Saxlanmış dəyişiklik server məlumatları ilə ziddiyyət təşkil edir",
+    "conflictNoCoordinates": "Müştərinin CRM-də koordinatları yoxdur",
+    "conflictCustomer": "Müştəri: {{name}}",
+    "conflictNoCoordinatesHelp": "Rəhbər müştərinin koordinatlarını əlavə edənə qədər bu ziyarət göndərilməyəcək. Sonra «Yenidən cəhd et» düyməsini basın və ya «Lokal dəyişikliyi sil».",
     "routeCommandConflictHelp": "Planlayıcıda marşrutu yoxlayın, rədd edilmiş əmri silin və düzəldilmiş planı yenidən saxlayın.",
     "actionFailed": "Əməliyyatı tamamlamaq mümkün olmadı. Yenidən cəhd edin.",
     "retryLocationFailed": "Cari GPS mövqeyi əlçatan deyil. Ziyarət zonasına daxil olub yenidən cəhd edin."
