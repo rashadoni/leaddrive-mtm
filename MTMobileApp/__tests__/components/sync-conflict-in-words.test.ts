@@ -19,6 +19,12 @@ describe("sync centre names a coordinates conflict in words", () => {
     expect(chip).toContain('t("syncCenter.conflictNoCoordinatesHelp")')
   })
 
+  it("names the client the rejected visit was for", () => {
+    expect(chip).toContain("const fromServer = conflict.operation.conflict?.serverData?.customerId")
+    expect(chip).toContain("api.getCustomer(id)")
+    expect(chip).toContain('t("syncCenter.conflictCustomer", { name })')
+  })
+
   it("shows a raw code only when the app has no words for it", () => {
     const card = chip.slice(chip.indexOf("<Text style={styles.conflictTitle}>"), chip.indexOf("<View style={styles.actionRow}>"))
     expect(card).toContain('conflictTranslationKey(code) === "syncCenter.conflictGeneric" ? (\n                      <Text style={styles.conflictCode}>{code}</Text>')
@@ -31,6 +37,7 @@ describe("sync centre names a coordinates conflict in words", () => {
       const sync = (locale as { syncCenter: Record<string, string> }).syncCenter
       const common = (locale as { common: Record<string, string> }).common
       if (!sync.conflictNoCoordinates?.trim()) problems.push(`${name}: title`)
+      if (!sync.conflictCustomer?.includes("{{name}}")) problems.push(`${name}: customer line`)
       const help = sync.conflictNoCoordinatesHelp ?? ""
       if (!help.includes(common.retry)) problems.push(`${name}: help does not name "${common.retry}"`)
       if (!help.includes(sync.discard)) problems.push(`${name}: help does not name "${sync.discard}"`)
