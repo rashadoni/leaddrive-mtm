@@ -476,11 +476,15 @@ export default function TodayScreen() {
                     (workdayBusy || !workdayHydrated) && styles.disabled,
                   ]}
                 >
-                  <Icon
-                    name={workdayPaused ? "play-circle-outline" : "pause-circle-outline"}
-                    size={22}
-                    color={fieldTheme.color.primaryStrong}
-                  />
+                  {/* In the phone row the caption says it all; the icon cost the
+                      room "Завершить день" needed (measured 2026-09-13). */}
+                  {twoPane ? (
+                    <Icon
+                      name={workdayPaused ? "play-circle-outline" : "pause-circle-outline"}
+                      size={22}
+                      color={fieldTheme.color.primaryStrong}
+                    />
+                  ) : null}
                   <Text style={[styles.workdayButtonText, styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                     {t(workdayPaused ? "todayV2.resumeDay" : "todayV2.breakDay")}
                   </Text>
@@ -501,13 +505,13 @@ export default function TodayScreen() {
               >
                 {workdayBusy || !workdayHydrated ? (
                   <ActivityIndicator size="small" color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
-                ) : (
+                ) : twoPane || !workdayOpen || workdayEnding ? (
                   <Icon
                     name={workdayOpen ? "stop-circle-outline" : workdayFinishedToday ? "checkmark-circle" : "play-circle"}
                     size={22}
                     color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />
-                )}
+                ) : null}
                 <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                   {t(workdayOpen ? "todayV2.endDay" : workdayEnding ? "todayV2.endDayPendingButton" : workdayFinishedToday ? "todayV2.dayFinishedButton" : "todayV2.startDay")}
                 </Text>

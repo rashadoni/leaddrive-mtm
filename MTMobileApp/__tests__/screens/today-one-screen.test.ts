@@ -29,6 +29,12 @@ describe("B7: Today keeps its workday actions in one row on a phone", () => {
     expect(today.match(/numberOfLines=\{1\} adjustsFontSizeToFit minimumFontScale=\{0\.8\}/g)?.length).toBe(2)
   })
 
+  it("drops the icons in the phone row so the longest caption has room", () => {
+    // On the phone, "Завершить день" ran to x=980 in a button ending at 987.
+    expect(today).toContain('{twoPane ? (\n                    <Icon\n                      name={workdayPaused ? "play-circle-outline" : "pause-circle-outline"}')
+    expect(today).toContain(") : twoPane || !workdayOpen || workdayEnding ? (")
+  })
+
   it("does not spend the header's first line on a label that says nothing", () => {
     // "Bu gün üçün köməkçi" / "Помощник на сегодня" above the greeting. With the
     // row above in place the screen still scrolled 22 px (content 2003 px in a
