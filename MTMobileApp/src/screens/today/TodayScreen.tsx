@@ -388,7 +388,6 @@ export default function TodayScreen() {
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={[styles.headerInner, compactHeader && styles.headerInnerCompact]}>
             <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>{t("todayV2.eyebrow")}</Text>
               <Text style={styles.title} numberOfLines={2}>
                 {t("todayV2.greeting", { name: agent?.name ?? "" })}
               </Text>
@@ -660,13 +659,6 @@ const styles = StyleSheet.create({
   },
   headerInnerCompact: {
     flexDirection: "column",
-  },
-  eyebrow: {
-    color: fieldTheme.color.primarySoft,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "800",
-    letterSpacing: 0.5,
   },
   title: {
     color: fieldTheme.color.onColor,

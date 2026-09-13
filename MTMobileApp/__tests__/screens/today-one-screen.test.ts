@@ -28,4 +28,12 @@ describe("B7: Today keeps its workday actions in one row on a phone", () => {
     // Russian "Завершить день" is the longest caption; it shrinks rather than wraps.
     expect(today.match(/numberOfLines=\{1\} adjustsFontSizeToFit minimumFontScale=\{0\.8\}/g)?.length).toBe(2)
   })
+
+  it("does not spend the header's first line on a label that says nothing", () => {
+    // "Bu gün üçün köməkçi" / "Помощник на сегодня" above the greeting. With the
+    // row above in place the screen still scrolled 22 px (content 2003 px in a
+    // 1981 px area); the label and its gap were about 60 px.
+    expect(today).not.toContain('t("todayV2.eyebrow")')
+    expect(today).not.toContain("styles.eyebrow")
+  })
 })

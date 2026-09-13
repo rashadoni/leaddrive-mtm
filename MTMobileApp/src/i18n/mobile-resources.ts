@@ -31,7 +31,6 @@ export const mobileResources = {
       transferBody: "Безопасно назначить контакты другому сотруднику",
     },
     todayV2: {
-      eyebrow: "Помощник на сегодня",
       greeting: "Добрый день, {{name}}",
       refresh: "Обновить",
       dayActive: "Рабочий день идёт",
@@ -555,7 +554,6 @@ export const mobileResources = {
       transferBody: "Safely assign contacts to another employee",
     },
     todayV2: {
-      eyebrow: "Today assistant",
       greeting: "Good day, {{name}}",
       refresh: "Refresh",
       dayActive: "Workday is active",
@@ -1069,7 +1067,6 @@ export const mobileResources = {
       transferBody: "Kontaktları təhlükəsiz şəkildə başqa əməkdaşa təyin edin",
     },
     todayV2: {
-      eyebrow: "Bu gün üçün köməkçi",
       greeting: "Salam, {{name}}",
       refresh: "Yenilə",
       dayActive: "İş günü davam edir",
