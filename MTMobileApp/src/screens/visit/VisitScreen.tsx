@@ -1501,21 +1501,27 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
       <View style={styles.customerCopy}>
         <Text style={styles.customerName} numberOfLines={1}>{customer.name}</Text>
         <Text style={styles.customerAddress} numberOfLines={1}>{customer.address || copy.noAddress}</Text>
+        {/*
+          The coordinate state lives under the address, not beside the name. In
+          the right-hand column "Koordinatlar göstərilməyib" took the row's
+          width and the name was cut to "ADV-DE…" — the one thing the agent
+          picks by (measured on the phone 2026-09-13).
+        */}
+        {customer.coordinateState === "missing" && (
+          <View style={[styles.smallPill, styles.customerStatePill, { backgroundColor: fieldTheme.color.surfaceStrong }]}>
+            <Text style={[styles.customerStateText, { color: fieldTheme.color.inkMuted }]}>{copy.coordinatesMissing}</Text>
+          </View>
+        )}
+        {customer.coordinateState === "suspicious" && (
+          <View style={[styles.smallPill, styles.customerStatePill, { backgroundColor: fieldTheme.color.amberSoft }]}>
+            <Text style={[styles.customerStateText, { color: fieldTheme.color.amber }]}>{copy.coordinatesSuspicious}</Text>
+          </View>
+        )}
       </View>
       <View style={styles.customerMeta}>
         {customer.category && (
           <View style={[styles.smallPill, { backgroundColor: category.background }]}>
             <Text style={[styles.smallPillText, { color: category.color }]}>{customer.category}</Text>
-          </View>
-        )}
-        {customer.coordinateState === "missing" && (
-          <View style={[styles.smallPill, { backgroundColor: fieldTheme.color.surfaceStrong }]}>
-            <Text style={[styles.smallPillText, { color: fieldTheme.color.inkMuted }]}>{copy.coordinatesMissing}</Text>
-          </View>
-        )}
-        {customer.coordinateState === "suspicious" && (
-          <View style={[styles.smallPill, { backgroundColor: fieldTheme.color.amberSoft }]}>
-            <Text style={[styles.smallPillText, { color: fieldTheme.color.amber }]}>{copy.coordinatesSuspicious}</Text>
           </View>
         )}
         {distance && customer.distanceMeters != null && (
@@ -1874,6 +1880,8 @@ const styles = StyleSheet.create({
   customerMeta: { alignItems: "flex-end", gap: 3 },
   smallPill: { minHeight: 22, justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
   smallPillText: { fontSize: 10, fontWeight: "900" },
+  customerStatePill: { alignSelf: "flex-start", marginTop: 4 },
+  customerStateText: { fontSize: 12, lineHeight: 16, fontWeight: "800" },
   customerEmpty: { alignItems: "center", paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.xl },
   customerEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.sm },
   customerEmptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: fieldTheme.space.xs },
