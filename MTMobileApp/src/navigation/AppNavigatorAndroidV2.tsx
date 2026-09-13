@@ -10,7 +10,9 @@ import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
-import { isExpandedTabletWidth, isTabletWidth } from "../theme/layoutBreakpoints"
+import { isTabletWidth } from "../theme/layoutBreakpoints"
+
+const RAIL_WIDTH = 112
 import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
 
 import ServerScreen from "../screens/server/ServerScreen"
@@ -111,7 +113,6 @@ function MainTabs() {
   const insets = useSafeAreaInsets()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const tablet = isTabletWidth(width)
-  const expandedRail = isExpandedTabletWidth(width)
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
 
   // This APK does not infer access from an agent role. A tenant may enable
@@ -134,7 +135,12 @@ function MainTabs() {
         tabBarLabelPosition: "below-icon",
         tabBarStyle: tablet
           ? {
-              width: expandedRail ? 112 : 82,
+              // One width for the rail. At 82 dp a phone held in landscape (823 dp,
+              // below the 840 "expanded" line) cut every caption to "B…", "T…":
+              // an item keeps 66 dp after its margins and loses 20 more to the
+              // material padding, while "Tapşırıqlar" needs 59 (measured on the
+              // phone 2026-09-14).
+              width: RAIL_WIDTH,
               backgroundColor: fieldTheme.color.surface,
               borderRightColor: fieldTheme.color.border,
               borderRightWidth: 1,
