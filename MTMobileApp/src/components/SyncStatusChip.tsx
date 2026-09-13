@@ -57,6 +57,7 @@ function conflictTranslationKey(code: string) {
     MTM_ROUTE_POINT_NOT_AVAILABLE: "syncCenter.conflictRouteUnavailable",
     MTM_ROUTE_TARGET_MISMATCH: "syncCenter.conflictRouteMismatch",
     MTM_VISIT_CUSTOMER_NOT_FOUND: "syncCenter.conflictCustomerMissing",
+    MTM_VISIT_CUSTOMER_NO_COORDINATES: "syncCenter.conflictNoCoordinates",
     MTM_VISIT_REQUIREMENTS_INCOMPLETE: "syncCenter.conflictRequirements",
     MTM_VISIT_STATUS_INVALID: "syncCenter.conflictVisitStatus",
   }
@@ -303,7 +304,17 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                 return (
                   <View key={`${conflict.kind}:${operation.operationId}`} style={styles.conflictCard}>
                     <Text style={styles.conflictTitle}>{t(conflictTranslationKey(code))}</Text>
-                    <Text style={styles.conflictCode}>{code}</Text>
+                    {/*
+                      The raw code is for support, and only where the app has no
+                      words of its own. The owner saw "MTM_VISIT_CUSTOMER_NO_COORDINATES"
+                      under a generic title on the phone, 2026-09-13.
+                    */}
+                    {conflictTranslationKey(code) === "syncCenter.conflictGeneric" ? (
+                      <Text style={styles.conflictCode}>{code}</Text>
+                    ) : null}
+                    {code === "MTM_VISIT_CUSTOMER_NO_COORDINATES" ? (
+                      <Text style={styles.conflictBody}>{t("syncCenter.conflictNoCoordinatesHelp")}</Text>
+                    ) : null}
                     {conflict.kind === "routeCommand" ? (
                       <Text style={styles.conflictBody}>{t("syncCenter.routeCommandConflictHelp")}</Text>
                     ) : null}
