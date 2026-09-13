@@ -112,7 +112,7 @@ const CALENDAR_COPY = {
     nextWeek: "Növbəti həftə",
     visitsShort: "Ziyarət",
     tasksShort: "Tapşırıq",
-    noAgenda: "Bu gün üçün plan yoxdur",
+    noAgenda: "Bu tarix üçün plan yoxdur",
     noAgendaBody: "Yeni ziyarət və ya tapşırıq burada avtomatik görünəcək.",
     noTasks: "Bu gün üçün tapşırıq yoxdur",
     noTasksBody: "Rəhbər tapşırıq verəndə burada görünəcək.",
@@ -1039,6 +1039,11 @@ function DayAgenda({ day, copy, touchTarget, onVisitPress, onTaskPress, compact 
     && day.tasksTotal === 0
     && day.visits.length === 0
     && day.tasks.length === 0
+  // A day with a planned route is not an empty day. Its metrics row already
+  // says how many stops the route has; saying "nothing is planned" underneath
+  // contradicted it. Measured on the phone 2026-09-13: 14 September showed
+  // "Planlaşdırılıb · 2 nöqtə" and "Bu gün üçün plan yoxdur" in one card.
+  if (agendaEmpty && day.plannedStops > 0) return null
   if (agendaEmpty) {
     return (
       <View style={[styles.agendaEmpty, compact && styles.agendaEmptyCompact]}>
