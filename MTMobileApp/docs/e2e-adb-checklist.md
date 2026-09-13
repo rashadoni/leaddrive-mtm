@@ -43,4 +43,4 @@ holding it.
 | RU plurals | GPS history counts | RU, «Мой GPS», step through days | «241 точка», «2 точки», «12 точек» | 2026-09-14 ✓ |
 | GPS map (B16) | Tiles with the CARTO key | open «GPS tarixçəm», look at the map | Streets and buildings, no «API KEY REQUIRED» | 2026-09-13 ✓ |
 | Status bar | Light screens | `shot`, sample the clock pixels on «Təqvim», «Daha çox» | Dark icons on light screens, light on green | 2026-09-13 ✓ |
-| Sign-in (B20) | Fields and button without scrolling | person signs out and in; `texts` on the login form | Both fields and the button above the fold | not run — needs the agent's password |
+| Sign-in (B20) | Fields and button without scrolling | person signs out and in; `texts` and `frames` on the login form with the keyboard closed | Both fields and the button above the fold | 2026-09-14 ✓ (the owner typed the password) |
