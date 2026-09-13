@@ -48,7 +48,10 @@ describe("B19: one answer to what a tablet is", () => {
   it("keeps 840 for the question it actually answers", () => {
     // Comfort, not capability: paddings and touch targets still step up there.
     expect(isExpandedTabletWidth(LAYOUT_BREAKPOINTS.expandedTablet)).toBe(true)
-    expect(read("navigation/AppNavigatorAndroidV2.tsx")).toContain("const expandedRail = isExpandedTabletWidth(width)")
+    // The navigation rail no longer steps at 840: at 82 dp a phone in landscape
+    // (823 dp) cut every caption to "B…" (device acceptance 2026-09-14). The
+    // rail is 124 dp wherever it shows; see rail-captions.test.ts.
+    expect(read("navigation/AppNavigatorAndroidV2.tsx")).toContain("const RAIL_WIDTH = 124")
   })
 
   it("gives the master pane a floor so a 600 dp split stays readable", () => {
