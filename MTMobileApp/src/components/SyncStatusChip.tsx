@@ -213,10 +213,10 @@ export default function SyncStatusChip({ inverse = false }: Props) {
           pressed && styles.pressed,
         ]}
       >
-        <Text style={[styles.chipIcon, inverse && styles.inverseText]}>
+        <Text style={[styles.chipIcon, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictIcon]}>
           {phase === "syncing" ? "↻" : conflicts.length > 0 ? "!" : phase === "offline" ? "○" : "✓"}
         </Text>
-        <Text style={[styles.chipLabel, inverse && styles.inverseText]} numberOfLines={1}>{label}</Text>
+        <Text style={[styles.chipLabel, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictLabel]} numberOfLines={1}>{label}</Text>
       </Pressable>
 
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
@@ -365,7 +365,12 @@ const styles = StyleSheet.create({
   chip: { minHeight: 44, maxWidth: 190, paddingHorizontal: 12, borderRadius: 22, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1 },
   chipDefault: { backgroundColor: "#f8fafc", borderColor: "#e2e8f0" },
   chipInverse: { backgroundColor: "rgba(255,255,255,0.13)", borderColor: "rgba(255,255,255,0.24)" },
+  // The conflict chip is always light, so its text must be dark even on the
+  // green header. With `inverse` the label stayed white on #fff7ed and could
+  // not be read — the owner pointed at it on the phone, 2026-09-13.
   chipConflict: { backgroundColor: "#fff7ed", borderColor: "#fb923c" },
+  conflictIcon: { color: "#c2410c" },
+  conflictLabel: { color: "#9a3412" },
   chipIcon: { color: "#0f766e", fontSize: 15, fontWeight: "900" },
   chipLabel: { flexShrink: 1, color: "#334155", fontSize: 12, fontWeight: "800" },
   inverseText: { color: "#fff" },
