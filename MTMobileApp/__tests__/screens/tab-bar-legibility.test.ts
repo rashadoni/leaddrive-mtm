@@ -50,14 +50,19 @@ describe("B18: tab captions can be read", () => {
     // sat four points under the bar, and 12 px captions would have made it
     // seven.
     expect(metrics).toContain("export const TAB_BAR_BASE_HEIGHT = 63")
-    // Both hook files — Android loads the `.android` one — read the same number.
+    // Both hook files — Android loads the `.android` one — agree. Neither adds
+    // the bar's height to list padding any more: the bar does not overlay the
+    // screens (B7, measured 2026-09-13), so reserving it again was dead space.
     const drift: string[] = []
     for (const [name, source] of [["useTabBarHeight.ts", hook], ["useTabBarHeight.android.ts", androidHook]] as const) {
-      if (!source.includes("return TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8) + 12")) drift.push(`${name}: padding not from the constant`)
-      if (source.includes("return 56 +")) drift.push(`${name}: still 56`)
+      if (!source.includes("return Math.max(insets.bottom, 8) + 12")) drift.push(`${name}: phone padding changed`)
+      if (/return\s+(TAB_BAR_BASE_HEIGHT|56|60|63)\s*\+/.test(source)) drift.push(`${name}: reserves the bar height again`)
       if (!source.includes('from "../theme/tabBarMetrics"')) drift.push(`${name}: constant not from theme/tabBarMetrics`)
     }
     expect(drift).toEqual([])
+    // The premise of that padding: the phone tab bar is laid out, not floated.
+    const phoneBar = navigator.slice(navigator.indexOf("height: tabBarHeight,"), navigator.indexOf("tabBarItemStyle"))
+    expect(phoneBar).not.toContain('position: "absolute"')
   })
 
   it("imports the bar height from a module Android cannot swap out", () => {

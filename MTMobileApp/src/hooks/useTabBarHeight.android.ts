@@ -14,9 +14,11 @@ export function useTabBarPadding() {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   if (isTabletWidth(width)) return 24 + insets.bottom
-  // The same bar height the navigator draws. This said 56 while the bar was
-  // 63, so the last row of every tab sat seven points under it.
-  return TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8) + 12
+  // The tab bar does not overlay screens: the navigator lays them out above
+  // it (measured on the phone 2026-09-13 — screens end at y=1981, the bar
+  // starts there). Reserving its height again left 63 dp of empty list
+  // under every tab and pushed "Today" past one screen (audit B7).
+  return Math.max(insets.bottom, 8) + 12
 }
 
 export function useHeaderTop() {

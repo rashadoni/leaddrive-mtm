@@ -457,6 +457,12 @@ export default function TodayScreen() {
                 </Text>
                 {workdayError ? <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text> : null}
               </View>
+              {/*
+                One row on a phone. Stacked, the two buttons took 48 dp each plus
+                the gap, and "Today" without a route did not fit one screen
+                (audit B7, measured on the phone 2026-09-13).
+              */}
+              <View style={[styles.workdayActions, !twoPane && styles.workdayActionsPhone]}>
               {workdayOpen && !workdayEnding ? (
                 <Pressable
                   accessibilityRole="button"
@@ -465,6 +471,7 @@ export default function TodayScreen() {
                   onPress={() => { void toggleWorkdayBreak() }}
                   style={({ pressed }) => [
                     styles.workdayButton,
+                    !twoPane && styles.workdayButtonPhone,
                     styles.workdayBreakButton,
                     pressed && styles.pressed,
                     (workdayBusy || !workdayHydrated) && styles.disabled,
@@ -475,7 +482,7 @@ export default function TodayScreen() {
                     size={22}
                     color={fieldTheme.color.primaryStrong}
                   />
-                  <Text style={[styles.workdayButtonText, styles.workdayButtonTextActive]}>
+                  <Text style={[styles.workdayButtonText, styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                     {t(workdayPaused ? "todayV2.resumeDay" : "todayV2.breakDay")}
                   </Text>
                 </Pressable>
@@ -487,6 +494,7 @@ export default function TodayScreen() {
                 onPress={requestWorkdayAction}
                 style={({ pressed }) => [
                   styles.workdayButton,
+                  !twoPane && styles.workdayButtonPhone,
                   workdayOpen && styles.workdayButtonActive,
                   pressed && styles.pressed,
                   (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday) && styles.disabled,
@@ -501,10 +509,11 @@ export default function TodayScreen() {
                     color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />
                 )}
-                <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]}>
+                <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                   {t(workdayOpen ? "todayV2.endDay" : workdayEnding ? "todayV2.endDayPendingButton" : workdayFinishedToday ? "todayV2.dayFinishedButton" : "todayV2.startDay")}
                 </Text>
               </Pressable>
+              </View>
             </View>
             {online === false ? (
               <View style={styles.cachedBadge}>
@@ -786,6 +795,18 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.pill,
     backgroundColor: fieldTheme.color.primaryStrong,
+  },
+  workdayActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+  },
+  workdayActionsPhone: {
+    alignSelf: "stretch",
+  },
+  workdayButtonPhone: {
+    flex: 1,
+    paddingHorizontal: fieldTheme.space.md,
   },
   workdayBreakButton: {
     backgroundColor: fieldTheme.color.surface,
