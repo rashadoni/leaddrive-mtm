@@ -12,7 +12,7 @@ import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isTabletWidth } from "../theme/layoutBreakpoints"
 
-const RAIL_WIDTH = 112
+const RAIL_WIDTH = 124
 import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
 
 import ServerScreen from "../screens/server/ServerScreen"
@@ -136,10 +136,9 @@ function MainTabs() {
         tabBarStyle: tablet
           ? {
               // One width for the rail. At 82 dp a phone held in landscape (823 dp,
-              // below the 840 "expanded" line) cut every caption to "B…", "T…":
-              // an item keeps 66 dp after its margins and loses 20 more to the
-              // material padding, while "Tapşırıqlar" needs 59 (measured on the
-              // phone 2026-09-14).
+              // below the 840 "expanded" line) cut every caption to "B…", "T…".
+              // 112 still left "Tapşırı…": the label got 51 dp on the phone. 124
+              // gives it 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
               width: RAIL_WIDTH,
               backgroundColor: fieldTheme.color.surface,
               borderRightColor: fieldTheme.color.border,
