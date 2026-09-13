@@ -3,14 +3,14 @@ import path from "path"
 
 /**
  * B18 device acceptance, 2026-09-13, Samsung S23 Ultra, Android 16, build52.
- * The acceptance was "captions are not cut off". They were not cut off — they
- * were not there: the window ran under the three-button navigation bar
- * (y 2181–2316), the tab bar sat at 2159–2316, the tab buttons were squeezed
- * to 28 px and every caption had zero height. A tap on a tab icon reached
- * Back, Home or Recents instead of the tab.
+ * The acceptance was "captions are not cut off". They were not there at all,
+ * for two reasons. The tab bar collapsed (its height was NaN on Android — see
+ * `android-twin-exports`), and the window ran under the three-button
+ * navigation bar (y 2181–2316), so a tap on a tab reached Back, Home or
+ * Recents.
  *
  * Android 16 enforces edge-to-edge for targetSdk 36 even though this app sets
- * `edgeToEdgeEnabled=false`, so the boundary has to be restored natively. This
+ * `edgeToEdgeEnabled=false`, so the bottom boundary is restored natively. This
  * test holds the shape of that fix; whether the bar is above the system bar is
  * checked on the phone.
  */
