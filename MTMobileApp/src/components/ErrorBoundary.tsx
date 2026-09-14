@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-nati
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Sentry } from "../services/sentry"
 import { i18n } from "../i18n"
+// A plain object with no imports of its own: it cannot make the boundary throw.
+import { fieldTheme } from "../theme/fieldTheme"
 
 /**
  * App-wide error boundary.
@@ -148,14 +150,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: "700", color: "#0B0B1E", textAlign: "center", marginBottom: 8 },
   body: { fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 20 },
   button: {
-    backgroundColor: "#6C63FF",
+    backgroundColor: fieldTheme.color.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
   buttonText: { fontSize: 15, fontWeight: "700", color: "#fff" },
   detailsToggle: { marginTop: 18, paddingVertical: 6 },
-  detailsToggleText: { fontSize: 13, color: "#6C63FF", fontWeight: "600" },
+  detailsToggleText: { fontSize: 13, color: fieldTheme.color.primary, fontWeight: "600" },
   detail: {
     fontSize: 11,
     color: "#475569",

@@ -1,6 +1,7 @@
 import React from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from "react-native"
 import { useHintsStore } from "../store/hints"
+import { fieldTheme } from "../theme/fieldTheme"
 
 /**
  * Dismissible inline hint. Renders nothing when the hint was dismissed or
@@ -33,21 +34,25 @@ export default function HintCard({ id, text, style }: { id: string; text: string
   )
 }
 
+// The indigo tint and purple edge were the old UI kit's generic accent, shown
+// on the visit screen among green buttons. Found in the sweep after the
+// check-out note dialog on the Galaxy S23 (2026-09-14). A hint is guidance, so
+// it takes the brand's soft green, not the semantic violet.
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EEF2FF",
+    backgroundColor: fieldTheme.color.primarySoft,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginHorizontal: 16,
     marginTop: 10,
     borderLeftWidth: 3,
-    borderLeftColor: "#6C63FF",
+    borderLeftColor: fieldTheme.color.primary,
     gap: 8,
   },
   bulb: { fontSize: 14 },
-  text: { flex: 1, color: "#3730a3", fontSize: 13, lineHeight: 18 },
-  close: { color: "#6C63FF", fontSize: 14, fontWeight: "700", paddingHorizontal: 4 },
+  text: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18 },
+  close: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "700", paddingHorizontal: 4 },
 })
