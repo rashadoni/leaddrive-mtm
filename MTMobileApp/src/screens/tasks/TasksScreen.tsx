@@ -28,6 +28,7 @@ import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
+import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTwoPaneWidth } from "../../theme/layoutBreakpoints"
 import { taskWorkflowStatus, type TaskWorkflowStatus } from "./tasks-workflow-state"
@@ -684,6 +685,7 @@ export default function TasksScreen() {
         contentContainerStyle={{ paddingBottom: tabBarPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
       />
+      <StatusBarBand />
 
       <CompletionModal
         visible={notesVisible}

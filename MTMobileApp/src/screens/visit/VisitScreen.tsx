@@ -42,6 +42,7 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
+import StatusBarBand from "../../components/StatusBarBand"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import HintCard from "../../components/HintCard"
@@ -1103,6 +1104,7 @@ export default function VisitScreen() {
           />
         </>
       )}
+      <StatusBarBand />
 
       <NotesModal
         visible={notesVisible}

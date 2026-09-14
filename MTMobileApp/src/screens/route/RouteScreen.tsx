@@ -43,6 +43,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
+import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTabletWidth } from "../../theme/layoutBreakpoints"
 import {
@@ -1455,6 +1456,7 @@ export default function RouteScreen() {
           onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
         />
         <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
+        <StatusBarBand />
       </View>
     )
   }
@@ -1542,6 +1544,7 @@ export default function RouteScreen() {
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />
       <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
+      <StatusBarBand />
     </View>
   )
 }
