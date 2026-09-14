@@ -977,14 +977,14 @@ export default function VisitScreen() {
         if (error?.code === "MAX_PHOTOS_REACHED") {
           showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
-          await enqueueMediaUpload({
+          const queuedPhoto = await enqueueMediaUpload({
             filePath: path,
             visitId: activeVisit.id,
             category: "VISIT",
             latitude: uploadCoords?.latitude,
             longitude: uploadCoords?.longitude,
           })
-          photos.refresh()
+          photos.recordQueued(activeVisit.id, queuedPhoto.id)
           showToast("success", t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }

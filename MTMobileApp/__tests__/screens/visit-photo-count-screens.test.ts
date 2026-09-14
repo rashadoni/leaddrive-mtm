@@ -30,7 +30,11 @@ describe("«Foto: N» on an active visit survives a restart", () => {
     const body = handler(source)
     expect(body).toContain("await api.uploadPhoto(")
     expect(body.indexOf("photos.recordUpload(activeVisit.id)")).toBeGreaterThan(body.indexOf("await api.uploadPhoto("))
-    expect(body.indexOf("photos.refresh()")).toBeGreaterThan(body.indexOf("await enqueueMediaUpload("))
+    // The queued photo is remembered by its outbox id, so the other tab counts
+    // it even if the sync sends it before that tab looks at the outbox.
+    const queued = body.indexOf("const queuedPhoto = await enqueueMediaUpload(")
+    expect(queued).toBeGreaterThanOrEqual(0)
+    expect(body.indexOf("photos.recordQueued(activeVisit.id, queuedPhoto.id)")).toBeGreaterThan(queued)
   })
 
   it("the route panel still picks the main button from that count", () => {
@@ -44,6 +48,13 @@ describe("«Foto: N» on an active visit survives a restart", () => {
     expect(hook).toContain("mediaUploadIdsForVisit(visitId)")
     expect(hook).toContain("visitPhotoCount(")
     expect(hook).toContain("needsServerPhotoRead(")
+    // The local queue is shown before the workspace call can hang in weak
+    // coverage; only a server answer makes older reads stale.
+    const load = hook.slice(hook.indexOf("const load = useCallback"), hook.indexOf("const loadRef = useRef(load)"))
+    const localApply = load.indexOf("applyPhotos(read, visitId, { ...local, serverCount: null })")
+    expect(localApply).toBeGreaterThanOrEqual(0)
+    expect(load.indexOf("api.getVisitWorkspace(")).toBeGreaterThan(localApply)
+    expect(hook).toContain("foldPhotoRead(")
     // The retry-on-fresh-visit signal the signature relied on stays.
     expect(hook).toContain("}, [load, visit])")
   })

@@ -1107,14 +1107,14 @@ export default function RouteScreen() {
         if (error?.code === "MAX_PHOTOS_REACHED") {
           Alert.alert(t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
         } else {
-          await enqueueMediaUpload({
+          const queuedPhoto = await enqueueMediaUpload({
             filePath: path,
             visitId: activeVisit.id,
             category: "VISIT",
             latitude: uploadCoords?.latitude,
             longitude: uploadCoords?.longitude,
           })
-          photos.refresh()
+          photos.recordQueued(activeVisit.id, queuedPhoto.id)
           Alert.alert(t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }

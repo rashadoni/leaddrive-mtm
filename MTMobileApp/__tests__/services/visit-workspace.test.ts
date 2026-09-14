@@ -48,6 +48,13 @@ describe("visit workspace mapping", () => {
     expect(w.photosCount).toBe(0)
   })
 
+  it("counts the photos the endpoint lists, which is at most its newest 20", () => {
+    // Known limit of «Foto: N» (2026-09-14): the workspace sends `take: 20`
+    // photos and no total, so a visit with more shows 20 until it does.
+    const photos = Array.from({ length: 20 }, (_, i) => ({ id: `p${i}` }))
+    expect(toVisitWorkspace({ id: "v5", customer: {}, photos }).photosCount).toBe(20)
+  })
+
   describe("i18n contract", () => {
     const KEYS = ["sectionTime", "sectionRequirements", "reqRequired", "actionPhoto", "offlineNote"] as const
     it.each([["en", en], ["ru", ru], ["az", az]])("visitWorkspace namespace present in %s", (_lang, locale) => {

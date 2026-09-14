@@ -5,32 +5,34 @@ import { runMobileSync } from "../services/sync-engine"
 import { hasQueuedVisitSignature, queueVisitSignature } from "../services/visit-signature"
 import { signatureRequirementState, type SignatureCapture } from "../services/visit-signature-path"
 import {
-  applyPhotoRead,
-  EMPTY_VISIT_PHOTOS,
+  EMPTY_VISIT_PHOTO_STATE,
+  foldPhotoRead,
   needsServerPhotoRead,
+  photosForVisit,
   visitPhotoCount,
   type VisitPhotoRead,
-  type VisitPhotoSnapshot,
+  type VisitPhotoState,
 } from "../services/visit-photo-count"
 import { toVisitWorkspace, type VisitRequirement, type VisitWorkspace } from "../services/visit-workspace"
 
 /**
- * Direct uploads of this app session, per visit. Module-level on purpose:
- * «Marşrut» and «Ziyarətlər» each hold this hook, and a photo taken on one tab
- * has to count on the other before that tab reads the workspace again. A
- * restart forgets it, which is right — by then the server lists those photos.
+ * This app session's photos, per visit: direct uploads counted, and outbox ids
+ * of the photos that went to the queue. Module-level on purpose: «Marşrut» and
+ * «Ziyarətlər» each hold this hook, and a photo taken on one tab has to count
+ * on the other before that tab reads the workspace again — even when the sync
+ * already sent a queued one and the other tab never saw it in the outbox. A
+ * restart forgets both, which is right — by then the server lists those photos
+ * or the outbox still holds them.
  */
 const sessionUploads = new Map<string, number>()
+const sessionQueued = new Map<string, string[]>()
 
 function sessionUploadsFor(visitId: string | null) {
   return visitId ? sessionUploads.get(visitId) ?? 0 : 0
 }
 
-type HeldPhotos = { visitId: string | null; snapshot: VisitPhotoSnapshot }
-
-/** The held count belongs to one visit; a different visit starts from nothing. */
-function photosOf(held: HeldPhotos, visitId: string | null): VisitPhotoSnapshot {
-  return held.visitId === visitId ? held.snapshot : EMPTY_VISIT_PHOTOS
+function sessionQueuedFor(visitId: string) {
+  return [...(sessionQueued.get(visitId) ?? [])]
 }
 
 /**
@@ -43,12 +45,14 @@ function photosOf(held: HeldPhotos, visitId: string | null): VisitPhotoSnapshot 
  * check-in reached the server, so a failed read is retried whenever the screen
  * hands over a fresh copy of the visit (it does after every sync).
  *
- * Photos: server list + media outbox + this session's direct uploads, counted
- * in `services/visit-photo-count.ts`. Until 2026-09-14 «Foto: N» was local
- * state and the Galaxy S23 showed «Foto: 0» after a reinstall for a visit with
- * 3 photos on the server. On each fresh copy of the visit the local queue is
- * re-read; the server again only when the count held went stale (a queued
- * photo got uploaded, or a direct upload finished after the last read).
+ * Photos: server list + media outbox + this session's photos, counted in
+ * `services/visit-photo-count.ts`. Until 2026-09-14 «Foto: N» was local state
+ * and the Galaxy S23 showed «Foto: 0» after a reinstall for a visit with 3
+ * photos on the server. On each fresh copy of the visit the local queue is
+ * re-read and shown at once; the server again only when the count held went
+ * stale (a queued photo got uploaded, or a direct upload finished after the
+ * last read). Until the first server read lands, photos already on the server
+ * count as 0 — see the limits in that module.
  */
 export function useActiveVisitProgress(visit: { id: string } | null) {
   const visitId = visit?.id ?? null
@@ -56,14 +60,13 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
   const [queued, setQueued] = useState(false)
   const [signedHere, setSignedHere] = useState(false)
   const [padVisible, setPadVisible] = useState(false)
-  const [heldPhotos, setHeldPhotos] = useState<HeldPhotos>({ visitId: null, snapshot: EMPTY_VISIT_PHOTOS })
+  const [photoState, setPhotoState] = useState<VisitPhotoState>(EMPTY_VISIT_PHOTO_STATE)
   // Re-renders the count right after a direct upload, before the re-read lands.
   const [, setUploadTick] = useState(0)
-  const heldPhotosRef = useRef<HeldPhotos>(heldPhotos)
+  const photoStateRef = useRef<VisitPhotoState>(photoState)
   // Reads can overlap (a sync refresh and a just-taken photo); an older answer
-  // must not overwrite a newer one.
+  // must not overwrite a newer one. Photos order their reads in `foldPhotoRead`.
   const readSeq = useRef(0)
-  const photosAppliedSeq = useRef(0)
   const requirementsAppliedSeq = useRef(0)
   const currentVisitId = useRef<string | null>(visitId)
   currentVisitId.current = visitId
@@ -77,25 +80,28 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
   }, [visitId])
 
   const applyPhotos = useCallback((read: number, forVisitId: string, photoRead: VisitPhotoRead) => {
-    if (currentVisitId.current !== forVisitId || read <= photosAppliedSeq.current) return
-    photosAppliedSeq.current = read
-    const next = { visitId: forVisitId, snapshot: applyPhotoRead(photosOf(heldPhotosRef.current, forVisitId), photoRead) }
-    heldPhotosRef.current = next
-    setHeldPhotos(next)
+    if (currentVisitId.current !== forVisitId) return
+    const next = foldPhotoRead(photoStateRef.current, forVisitId, read, photoRead)
+    if (next === photoStateRef.current) return
+    photoStateRef.current = next
+    setPhotoState(next)
   }, [])
 
   const load = useCallback(async (force = false) => {
     if (!visitId) return
     const read = ++readSeq.current
     const uploadsAtReadStart = sessionUploadsFor(visitId)
-    const held = photosOf(heldPhotosRef.current, visitId)
+    const sessionQueuedIds = sessionQueuedFor(visitId)
+    const held = photosForVisit(photoStateRef.current, visitId)
     // The queue before the server: a photo uploaded in between is counted
     // twice until the next read instead of not at all.
     const queuedIds = await mediaUploadIdsForVisit(visitId).catch(() => held.queuedIds)
-    if (!force && !needsServerPhotoRead(held, queuedIds, uploadsAtReadStart)) {
-      applyPhotos(read, visitId, { serverCount: null, queuedIds, uploadsAtReadStart })
-      return
-    }
+    const local = { queuedIds, uploadsAtReadStart, sessionQueuedIds }
+    // Show the local queue now. The photo just queued usually means coverage is
+    // bad, and the workspace read below can hang until its 20 s timeout; the
+    // main button must not offer «Foto çək» again meanwhile.
+    applyPhotos(read, visitId, { ...local, serverCount: null })
+    if (!force && !needsServerPhotoRead(held, queuedIds, uploadsAtReadStart, sessionQueuedIds)) return
     const pending = await hasQueuedVisitSignature(visitId).catch(() => false)
     let workspace: VisitWorkspace | null = null
     try {
@@ -108,7 +114,7 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
       requirementsAppliedSeq.current = read
       setRequirements(workspace.requirements)
     }
-    applyPhotos(read, visitId, { serverCount: workspace ? workspace.photosCount : null, queuedIds, uploadsAtReadStart })
+    if (workspace) applyPhotos(read, visitId, { ...local, serverCount: workspace.photosCount })
   }, [applyPhotos, visitId])
 
   const loadRef = useRef(load)
@@ -137,8 +143,12 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
     loadRef.current().catch(() => {})
   }, [])
 
-  /** A photo went to the media outbox (or anything else changed): re-read what is needed. */
-  const refresh = useCallback(() => {
+  /**
+   * A photo went to the media outbox under `outboxId`: remember it for both
+   * tabs, then re-read the queue (shown before any network call).
+   */
+  const recordQueued = useCallback((forVisitId: string, outboxId: string) => {
+    sessionQueued.set(forVisitId, [...(sessionQueued.get(forVisitId) ?? []), outboxId])
     loadRef.current().catch(() => {})
   }, [])
 
@@ -155,10 +165,10 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
       save,
     },
     photos: {
-      /** «Foto: N»: server + queued + uploaded here since the last read. */
-      count: visitPhotoCount(photosOf(heldPhotos, visitId), sessionUploadsFor(visitId)),
+      /** «Foto: N»: server + queued + taken here since the last read. */
+      count: visitPhotoCount(photosForVisit(photoState, visitId), sessionUploadsFor(visitId)),
       recordUpload,
-      refresh,
+      recordQueued,
     },
   }
 }
