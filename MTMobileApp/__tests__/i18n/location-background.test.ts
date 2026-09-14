@@ -11,8 +11,8 @@ import ru from "../../src/i18n/locales/ru.json"
  * the service can't regress back to hardcoded strings.
  *
  * Covered keys:
- *   location.taskTitle — Android notification title ("MTM — Location Tracking")
- *   location.taskDesc  — Android notification body  ("Your location is being shared")
+ *   location.taskTitle — Android notification title ("LeadDrive — workday")
+ *   location.taskDesc  — Android notification body  ("Your location is recorded during the workday")
  */
 
 type Locales = typeof az
@@ -55,5 +55,12 @@ describe("G1 — location.* i18n keys (background service)", () => {
     expect(getPath(en as unknown as Record<string, unknown>, "location.taskTitle")).not.toBe(
       getPath(ru as unknown as Record<string, unknown>, "location.taskTitle")
     )
+  })
+
+  it("names the app the store lists, not the old MTM label", () => {
+    // Google Play reviews the foreground location service against the app's
+    // store name; a notification titled "MTM" belonged to no listed app.
+    const titles = ALL_LOCALES.map(([, locale]) => String(getPath(locale as unknown as Record<string, unknown>, "location.taskTitle")))
+    expect(titles.filter((title) => !title.startsWith("LeadDrive") || title.includes("MTM"))).toEqual([])
   })
 })
