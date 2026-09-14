@@ -34,3 +34,24 @@ export function isExpandedTabletWidth(width: number) {
 export function isTwoPaneWidth(width: number) {
   return width >= LAYOUT_BREAKPOINTS.tablet
 }
+
+/** Width of the navigation rail that tab screens get from 600 dp up. */
+export const NAV_RAIL_WIDTH = 124
+
+/**
+ * The width a tab screen actually has: from 600 dp the navigation rail takes
+ * NAV_RAIL_WIDTH off the left.
+ *
+ * Deciding two panes on the window width split a tablet held upright (Redmi
+ * Pad SE, 686 dp) into columns that had 562 dp between them — a phone's width:
+ * the route's action pane ran off the right edge and the calendar's day title
+ * broke into syllables (2026-09-14). Screens inside the tabs ask this instead.
+ */
+export function tabContentWidth(windowWidth: number) {
+  return isTabletWidth(windowWidth) ? windowWidth - NAV_RAIL_WIDTH : windowWidth
+}
+
+/** Two panes on a tab screen: the room right of the rail must fit them. */
+export function isTwoPaneTabWidth(windowWidth: number) {
+  return isTwoPaneWidth(tabContentWidth(windowWidth))
+}

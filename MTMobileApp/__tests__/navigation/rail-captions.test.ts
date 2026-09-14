@@ -13,7 +13,7 @@ const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/
 
 describe("B19: the navigation rail has room for its captions", () => {
   it("uses one rail width wherever the rail shows", () => {
-    expect(navigator).toContain("const RAIL_WIDTH = 124")
+    expect(navigator).toContain("const RAIL_WIDTH = NAV_RAIL_WIDTH")
     expect(navigator).toContain("width: RAIL_WIDTH,")
     expect(navigator).not.toMatch(/width:\s*expandedRail\s*\?/)
     expect(navigator).not.toContain("? 112 : 82")

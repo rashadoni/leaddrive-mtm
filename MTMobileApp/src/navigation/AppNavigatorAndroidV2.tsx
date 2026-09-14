@@ -10,9 +10,9 @@ import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
-import { isTabletWidth } from "../theme/layoutBreakpoints"
+import { isTabletWidth, NAV_RAIL_WIDTH } from "../theme/layoutBreakpoints"
 
-const RAIL_WIDTH = 124
+const RAIL_WIDTH = NAV_RAIL_WIDTH
 import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
 
 import ServerScreen from "../screens/server/ServerScreen"
