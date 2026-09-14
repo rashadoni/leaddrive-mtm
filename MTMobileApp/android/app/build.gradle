@@ -94,7 +94,12 @@ android {
         // Route Field is an in-place update of the shipping MTM APK.  Keep
         // its application id and advance versionCode, so Android preserves
         // the v1 outbox instead of treating the rebuild as a fresh install.
-        versionCode 43
+        //
+        // CI sets MTM_VERSION_CODE to 1000 + the workflow run number. Google
+        // Play refuses a second upload with the same versionCode, and every CI
+        // build used to carry 43. 1000+ stays above the installed base (42/43)
+        // and keeps growing with each run. A local build without it stays 43.
+        versionCode((System.getenv("MTM_VERSION_CODE") ?: "43").toInteger())
         versionName "3.1.0"
     }
     signingConfigs {
