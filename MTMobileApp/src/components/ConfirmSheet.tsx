@@ -8,6 +8,7 @@ import {
   Animated,
   Platform,
 } from "react-native"
+import { fieldTheme } from "../theme/fieldTheme"
 
 interface ConfirmSheetProps {
   visible: boolean
@@ -28,7 +29,7 @@ interface ConfirmSheetProps {
 export default function ConfirmSheet({
   visible,
   icon,
-  iconColor = "#6C63FF",
+  iconColor = fieldTheme.color.primary,
   title,
   message,
   cancelText = "Cancel",
@@ -42,7 +43,11 @@ export default function ConfirmSheet({
   const slideAnim = useRef(new Animated.Value(400)).current
   const backdropAnim = useRef(new Animated.Value(0)).current
 
-  const btnColor = confirmColor || (destructive ? "#ef4444" : "#6C63FF")
+  // Callers that pass no colour got the generic purple: the «OK» of the
+  // notices on «Bu gün» and on the visit screen. The default is the brand
+  // green now, like every other primary action (2026-09-14). Destructive keeps
+  // its red.
+  const btnColor = confirmColor || (destructive ? "#ef4444" : fieldTheme.color.primary)
 
   useEffect(() => {
     if (visible) {
