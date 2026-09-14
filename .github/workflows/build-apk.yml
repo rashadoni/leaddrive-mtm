@@ -95,19 +95,20 @@ jobs:
       - name: Build release APK and Play bundle
         if: steps.scope.outputs.build == 'true'
         working-directory: MTMobileApp/android
-        env:
-          # Google Play needs a new, larger versionCode for every upload.
-          MTM_VERSION_CODE: ${{ 1000 + github.run_number }}
         # The .aab is what Google Play accepts for a new app; the .apk stays
-        # for direct installs. Same key, same versionCode.
-        run: ./gradlew assembleRelease bundleRelease --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
+        # for direct installs. Same key, same versionCode. Google Play needs a
+        # new, larger versionCode for every upload. (Expressions have no
+        # arithmetic, so the sum is done by the shell.)
+        run: |
+          export MTM_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
+          ./gradlew assembleRelease bundleRelease --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
 
       - name: Rename APK with version
         if: steps.scope.outputs.build == 'true'
         id: apk
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          VERSION_CODE=$((1000 + ${{ github.run_number }}))
+          VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
           OUT="leaddrive-mtm-v${VERSION}.apk"
           AAB="leaddrive-mtm-v${VERSION}-${VERSION_CODE}.aab"
           cp android/app/build/outputs/apk/release/app-release.apk "$OUT"
