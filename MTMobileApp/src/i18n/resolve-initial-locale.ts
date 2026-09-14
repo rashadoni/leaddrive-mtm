@@ -6,7 +6,7 @@
  *      Trumps everything — user explicitly chose this.
  *   2. First supported device locale (typical RN flow gives an array
  *      in user-preference order from the OS).
- *   3. Fallback to "ru" — most legacy Mars seed data + Russian-speaking
+ *   3. Fallback to "ru" — most legacy pilot seed data + Russian-speaking
  *      dev team, so it's the safest default for unknown locales.
  *
  * Pure function — no AsyncStorage, no `react-native-localize`. The boot
@@ -56,6 +56,6 @@ export function resolveInitialLocale(input: ResolveInitialLocaleInput): Supporte
     if (supported) return supported
   }
 
-  // 3. Hard fallback — most legacy Mars seed data is in Russian.
+  // 3. Hard fallback — most legacy pilot seed data is in Russian.
   return DEFAULT_LOCALE
 }

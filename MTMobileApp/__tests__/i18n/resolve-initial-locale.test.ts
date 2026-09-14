@@ -41,7 +41,7 @@ describe("resolveInitialLocale (M1-1a)", () => {
     ).toBe("en")
   })
 
-  it("all unsupported → DEFAULT_LOCALE (ru, per Mars seed convention)", () => {
+  it("all unsupported → DEFAULT_LOCALE (ru, per pilot seed convention)", () => {
     expect(
       resolveInitialLocale({ storedLocale: null, deviceLocales: ["fr-FR", "de-DE"] }),
     ).toBe(DEFAULT_LOCALE)

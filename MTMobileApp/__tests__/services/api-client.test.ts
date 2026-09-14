@@ -71,7 +71,7 @@ describe("ApiClient — resolveDomain", () => {
   it("expands a short name to .leaddrivecrm.org", () => {
     expect(client.resolveDomain("app")).toBe("app.leaddrivecrm.org")
     expect(client.resolveDomain("guven")).toBe("guven.leaddrivecrm.org")
-    expect(client.resolveDomain("afigroup")).toBe("afigroup.leaddrivecrm.org")
+    expect(client.resolveDomain("acme")).toBe("acme.leaddrivecrm.org")
   })
 
   it("passes through if input already contains a dot", () => {
@@ -127,8 +127,8 @@ describe("ApiClient — slugForDomain (F-35 security)", () => {
 
   it("maps any *.leaddrivecrm.org subdomain to its prefix", () => {
     expect(client.slugForDomain("guven.leaddrivecrm.org")).toBe("guven")
-    expect(client.slugForDomain("afigroup.leaddrivecrm.org")).toBe("afigroup")
-    expect(client.slugForDomain("mars-demo.leaddrivecrm.org")).toBe("mars-demo")
+    expect(client.slugForDomain("acme.leaddrivecrm.org")).toBe("acme")
+    expect(client.slugForDomain("pilot-demo.leaddrivecrm.org")).toBe("pilot-demo")
   })
 
   it("maps the hardcoded custom domain fanum.tech → 'fanum'", () => {
@@ -316,25 +316,25 @@ describe("ApiClient — credentials", () => {
   it("stores only a normalized email and never a password", async () => {
     ;(AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined)
     ;(AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
-      JSON.stringify({ email: "rauf@mars.az" }),
+      JSON.stringify({ email: "rauf@pilot.example" }),
     )
-    await api.saveCredentials(" Rauf@Mars.AZ ")
+    await api.saveCredentials(" Rauf@Pilot.Example ")
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       "@mtm_saved_login",
-      JSON.stringify({ email: "rauf@mars.az" }),
+      JSON.stringify({ email: "rauf@pilot.example" }),
     )
     const creds = await api.getSavedCredentials()
-    expect(creds).toEqual({ email: "rauf@mars.az" })
+    expect(creds).toEqual({ email: "rauf@pilot.example" })
   })
 
   it("removes a legacy plaintext password while retaining the email", async () => {
     ;(AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
-      JSON.stringify({ email: "Rauf@Mars.AZ", password: "must-not-remain" }),
+      JSON.stringify({ email: "Rauf@Pilot.Example", password: "must-not-remain" }),
     )
-    await expect(api.getSavedCredentials()).resolves.toEqual({ email: "rauf@mars.az" })
+    await expect(api.getSavedCredentials()).resolves.toEqual({ email: "rauf@pilot.example" })
     expect(AsyncStorage.setItem).toHaveBeenCalledWith(
       "@mtm_saved_login",
-      JSON.stringify({ email: "rauf@mars.az" }),
+      JSON.stringify({ email: "rauf@pilot.example" }),
     )
   })
 
@@ -614,7 +614,7 @@ describe("ApiClient — login", () => {
       ok: true,
       json: async () => ({ success: true, data: { token: "tok-xyz", agent } }),
     })
-    await api.login("rauf@mars.az", "pass")
+    await api.login("rauf@pilot.example", "pass")
     expect(client.token).toBe("tok-xyz")
     expect(client.agentId).toBe("ag-1")
     expect(client._agentRole).toBe("AGENT")

@@ -357,7 +357,7 @@ class ApiClient {
     // F-35: tenant-scope the lookup so an agent with a colliding email in
     // another org can't accidentally log into the wrong tenant. The slug
     // is derived from the stored server domain ("app" → "leaddrive",
-    // "afigroup" → "afigroup", "fanum.tech" → "fanum"); when no clean
+    // "acme" → "acme", "fanum.tech" → "fanum"); when no clean
     // derivation is possible we omit the field and the server falls
     // through to the legacy path with a deprecation warning.
     const storedServer = await AsyncStorage.getItem(STORAGE_KEY_SERVER)

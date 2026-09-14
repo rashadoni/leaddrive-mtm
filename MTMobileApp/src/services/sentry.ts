@@ -9,7 +9,7 @@
  * Why a wrapper:
  *   1. Keep `buildSentryConfig` testable in jest without mocking the
  *      native bridge.
- *   2. Single seam to mute Sentry entirely if Mars asks for offline-
+ *   2. Single seam to mute Sentry entirely if the pilot customer asks for offline-
  *      only operation (set DSN="").
  *   3. Concentrate the PII boundary — Sentry capture calls everywhere
  *      else just use the SDK directly, but ID propagation lives here.
