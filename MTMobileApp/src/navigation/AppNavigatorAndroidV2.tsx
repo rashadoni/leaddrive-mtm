@@ -140,7 +140,10 @@ function MainTabs() {
                 // below the 840 "expanded" line) cut every caption to "B…", "T…".
                 // 112 still left "Tapşırı…": the label got 51 dp on the phone. 124
                 // gives it 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
-                width: RAIL_WIDTH,
+                // The rail pads itself by the left inset, so a phone turned with
+                // its camera cutout on the left lost 45 dp of that and read
+                // "Bu …", "Təq…" again (Galaxy S23, same day): add the inset.
+                width: RAIL_WIDTH + insets.left,
                 backgroundColor: fieldTheme.color.surface,
                 borderRightColor: fieldTheme.color.border,
                 borderRightWidth: 1,

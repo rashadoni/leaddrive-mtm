@@ -629,7 +629,7 @@ function StopRow({
       </View>
       <View style={styles.stopCopy}>
         <View style={styles.stopTitleRow}>
-          <Text style={[styles.stopName, point.status === "VISITED" && styles.stopNameDone]} numberOfLines={1}>
+          <Text style={[styles.stopName, point.status === "VISITED" && styles.stopNameDone]} numberOfLines={2}>
             {point.customer.name}
           </Text>
           <View style={styles.stopStatus}>
@@ -637,7 +637,7 @@ function StopRow({
             <Text style={[styles.stopStatusText, { color: status.color }]}>{status.label}</Text>
           </View>
         </View>
-        {point.customer.address ? <Text style={styles.stopAddress} numberOfLines={1}>{point.customer.address}</Text> : null}
+        {point.customer.address ? <Text style={styles.stopAddress} numberOfLines={2}>{point.customer.address}</Text> : null}
         <View style={styles.stopMeta}>
           {point.visitedAt ? (
             <View style={styles.metaItem}>
@@ -1807,8 +1807,10 @@ const styles = StyleSheet.create({
   stopNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
   stopNumberTextRecommended: { color: fieldTheme.color.onColor },
   stopCopy: { flex: 1, minWidth: 0 },
-  stopTitleRow: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "center" },
-  stopName: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  // In a narrow list (a phone on its side) the name keeps its words and the
+  // status moves under it, instead of "ADV-Sto…" beside the status.
+  stopTitleRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, alignItems: "center" },
+  stopName: { flexGrow: 1, flexShrink: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
   stopNameDone: { color: fieldTheme.color.inkMuted },
   stopStatus: { flexDirection: "row", alignItems: "center", gap: 3 },
   stopStatusText: { fontSize: 10, fontWeight: "800" },
