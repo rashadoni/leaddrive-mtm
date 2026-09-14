@@ -32,7 +32,7 @@ import {
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { LAYOUT_TOUCH_TARGETS, isShortWindow, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
+import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 
@@ -196,11 +196,17 @@ export function calendarLanguage(language: string): CalendarLanguage {
   return "ru"
 }
 
+/**
+ * Room right of the rail the split calendar needs. At 600 (the generic
+ * two-pane line) a phone on its side got it with 654 dp and every text broke:
+ * «14 senty…», «14 sen / tyabr», «Tamaml / anan» (Galaxy S23, 2026-09-14). The
+ * day list and the day plan each need ~360 dp, so the split waits for 720; a
+ * tablet in landscape (973) keeps it, the phone gets one full-width column.
+ */
+export const CALENDAR_TWO_PANE_CONTENT_WIDTH = 720
+
 export function calendarLayout(width: number): "phone" | "tablet" {
-  // The app's persistent navigation rail also consumes horizontal space. A
-  // split master/detail calendar is only comfortable at the expanded tablet
-  // breakpoint; narrower tablets get the clear single-column layout.
-  return isTwoPaneTabWidth(width) ? "tablet" : "phone"
+  return tabContentWidth(width) >= CALENDAR_TWO_PANE_CONTENT_WIDTH ? "tablet" : "phone"
 }
 
 type AgendaTaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"

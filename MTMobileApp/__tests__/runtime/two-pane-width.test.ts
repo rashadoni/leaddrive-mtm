@@ -33,7 +33,13 @@ describe("B19: one answer to what a tablet is", () => {
   it("is used by the two screens that waited for 840", () => {
     const week = read("screens/week/WeekScreen.tsx")
     const tasks = read("screens/tasks/TasksScreen.tsx")
-    expect(week).toContain('return isTwoPaneTabWidth(width) ? "tablet" : "phone"')
+    // The calendar asks for more than the generic line: at 654 dp beside the
+    // rail every date broke mid-word on the phone held sideways (2026-09-14).
+    expect(week).toContain('return tabContentWidth(width) >= CALENDAR_TWO_PANE_CONTENT_WIDTH ? "tablet" : "phone"')
+    expect(week).toContain("export const CALENDAR_TWO_PANE_CONTENT_WIDTH = 720")
+    expect(tabContentWidth(823) >= 720).toBe(false)
+    expect(tabContentWidth(1097) >= 720).toBe(true)
+    expect(tabContentWidth(686) >= 720).toBe(false)
     expect(tasks).toContain("const tablet = isTwoPaneTabWidth(width)")
     // The old gate must not linger beside the new one.
     expect(week).not.toContain("isExpandedTabletWidth")
