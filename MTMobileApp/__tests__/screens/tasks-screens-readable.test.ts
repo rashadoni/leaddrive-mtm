@@ -9,7 +9,9 @@ const tasks = fs.readFileSync(path.resolve(__dirname, "../../src/screens/tasks/T
 const detail = fs.readFileSync(path.resolve(__dirname, "../../src/screens/tasks/TaskDetailScreen.tsx"), "utf8")
 
 function style(source: string, name: string) {
-  const start = source.indexOf(`  ${name}: {`)
+  // Anchored to a line start: the copy objects have `    emptyTitle: {` too.
+  const start = source.indexOf(`\n  ${name}: {`)
+  expect(start).toBeGreaterThan(-1)
   return source.slice(start, source.indexOf("},", start))
 }
 
