@@ -866,8 +866,8 @@
     "hintsNote": "Turning hints back on also restores the ones you dismissed with ✕."
   },
   "location": {
-    "taskTitle": "MTM — Location Tracking",
-    "taskDesc": "Your location is being shared in real time"
+    "taskTitle": "LeadDrive — workday",
+    "taskDesc": "Your location is recorded during the workday"
   },
   "dashboard": {
     "title": "Dashboard",
