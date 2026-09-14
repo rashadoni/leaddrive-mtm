@@ -35,6 +35,10 @@ describe("check-out note dialog wears the app's colours", () => {
     expect(dialog).toContain('import { fieldTheme } from "../theme/fieldTheme"')
     expect(dialog.match(GENERIC_PURPLE)).toBeNull()
     expect(dialog.match(/#[0-9a-f]{3,8}\b/gi)).toBeNull()
+    // A hand-typed rgb()/rgba() copy of a token passes the hex check and stays
+    // behind when the theme changes; the backdrop is built from ink instead.
+    expect(dialog.match(/rgba?\(/gi)).toBeNull()
+    expect(styleBlock("scrim")).toContain("backgroundColor: fieldTheme.color.ink + ")
   })
 
   it("makes «Təsdiq et» the brand's primary button and «Ləğv et» the quiet one", () => {
@@ -68,10 +72,28 @@ describe("check-out note dialog wears the app's colours", () => {
 
 describe("check-out note dialog stays reachable on a phone on its side", () => {
   it("moves out of the keyboard's way on Android too", () => {
-    // Android had `behavior={undefined}`: nothing moved and the keyboard lay
-    // over the buttons.
+    // Android had `behavior={undefined}`; "padding" is the second path, zero
+    // when the platform has already shrunk the window.
     expect(dialog).toContain('<KeyboardAvoidingView style={styles.scrim} behavior="padding">')
     expect(dialog).not.toContain(": undefined")
+  })
+
+  it("keeps the platform's own keyboard resize: the dialog window is not edge-to-edge", () => {
+    // `navigationBarTranslucent` makes React Native's modal window edge-to-edge,
+    // and Android then stops shrinking it for the keyboard (adjustResize); a
+    // non-translucent modal's content view fits the keyboard by itself.
+    const modal = dialog.slice(dialog.indexOf("<Modal"), dialog.indexOf("</Modal>"))
+    expect(modal).not.toContain("navigationBarTranslucent")
+    expect(modal).not.toContain("statusBarTranslucent")
+  })
+
+  it("keeps the keyboard's full-screen editor from covering the dialog", () => {
+    // Held sideways, a keyboard app may switch to its own full-screen text
+    // editor (Android extract mode, the landscape default) and hide the
+    // dialog and «Təsdiq et» while the agent types.
+    const field = dialog.slice(dialog.indexOf("<TextInput"), dialog.indexOf("/>", dialog.indexOf("<TextInput")))
+    expect(field).toContain("disableFullscreenUI")
+    expect(field).not.toContain("disableFullscreenUI={false}")
   })
 
   it("scrolls the whole card as one page, never the field in a frame", () => {
@@ -92,8 +114,8 @@ describe("check-out note dialog stays reachable on a phone on its side", () => {
   })
 
   it("measures insets of its own window, where the navigation bar can be on the side", () => {
-    expect(dialog).toContain("statusBarTranslucent")
-    expect(dialog).toContain("navigationBarTranslucent")
+    // The provider inside the modal measures what still overlaps this window,
+    // not the app root's insets, so nothing is padded twice.
     expect(dialog).toContain("<SafeAreaProvider>")
     expect(dialog).toContain("paddingLeft: insets.left + fieldTheme.space.lg")
     expect(dialog).toContain("paddingRight: insets.right + fieldTheme.space.lg")

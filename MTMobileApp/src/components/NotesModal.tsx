@@ -37,19 +37,21 @@ export default function NotesModal({ visible, title, message, onCancel, onSubmit
     onCancel()
   }
 
-  // The modal is its own Android window. Drawn under the system bars and
-  // measured by a provider inside it, its insets are the modal's own: on a
-  // phone on its side the navigation bar is on one side and the camera cutout
-  // on the other, and the app root reports neither for this window (the same
-  // fix as SignaturePadModal, Galaxy S23, 2026-09-14).
+  // The modal is its own Android window, and it is deliberately NOT translucent
+  // (unlike SignaturePadModal, which has no text field to type into). React
+  // Native gives every modal window adjustResize, and for a non-translucent one
+  // its content view fits the system windows, keyboard included: the platform
+  // itself shrinks the dialog above the keyboard. `navigationBarTranslucent`
+  // makes the window edge-to-edge, where Android no longer resizes it, and the
+  // buttons would then depend on keyboard events reaching a separate window —
+  // not checked on the Galaxy S23 on its side (2026-09-14). The provider inside
+  // still measures this window, so nothing is padded twice or left under a bar.
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
       onRequestClose={handleCancel}
-      statusBarTranslucent
-      navigationBarTranslucent
     >
       <SafeAreaProvider>
         <NotesCard
@@ -96,9 +98,10 @@ function NotesCard({ title, message, text, onChangeText, onCancel, onSubmit }: C
     pageHeight.current = next
   }
 
-  // Android's behavior was `undefined`, so nothing moved and the keyboard lay
-  // over the buttons. "padding" pads only by the part of the keyboard that
-  // overlaps this view: if the system already shrank the window, that is zero.
+  // A second path on Android, where behavior used to be `undefined`: "padding"
+  // pads only by the part of the keyboard that still overlaps this view. When
+  // the system has already shrunk the window, that is zero; the old card simply
+  // stood taller than the room left and had no page to scroll.
   return (
     <KeyboardAvoidingView style={styles.scrim} behavior="padding">
       <ScrollView
@@ -137,6 +140,10 @@ function NotesCard({ title, message, text, onChangeText, onCancel, onSubmit }: C
               accessibilityLabel={t("notesModal.placeholder")}
               multiline
               autoFocus
+              // On a phone on its side Android's keyboards may otherwise open
+              // their own full-screen editor (the landscape default) and hide
+              // the whole dialog, «Təsdiq et» included, while the agent types.
+              disableFullscreenUI
               onFocus={() => {
                 focused.current = true
               }}
@@ -168,8 +175,9 @@ function NotesCard({ title, message, text, onChangeText, onCancel, onSubmit }: C
 }
 
 const styles = StyleSheet.create({
-  // Ink at half strength: a dim of the app's own dark, not a neutral black.
-  scrim: { flex: 1, backgroundColor: "rgba(19, 35, 31, 0.55)" },
+  // Ink at 55% (alpha 8C): a dim of the app's own dark, not a neutral black,
+  // built from the token so it follows fieldTheme if ink changes.
+  scrim: { flex: 1, backgroundColor: fieldTheme.color.ink + "8C" },
   fill: { flex: 1 },
   page: { flexGrow: 1, justifyContent: "center", alignItems: "center" },
   card: {
