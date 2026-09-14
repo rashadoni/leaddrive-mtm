@@ -284,6 +284,14 @@ export default function PlanningWorkspaceCore({
   const [saveMode, setSaveMode] = useState<SaveMode>("draft")
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string } | null>(null)
+  // The result is shown at the top of the scroll, and the save button is at
+  // the bottom. On the phone the manager saw only the dock's «Saxlanacaq
+  // qaralama yoxdur.» — which reads as a failure — while «1 qaralama
+  // saxlanıldı.» sat above the fold (2026-09-13). Bring the result into view.
+  const workspaceScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null)
+  useEffect(() => {
+    if (saveMessage) workspaceScrollRef.current?.scrollTo({ y: 0, animated: true })
+  }, [saveMessage])
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const hintsEnabled = useHintsStore((state) => state.enabled)
   const dismissedHints = useHintsStore((state) => state.dismissed)
@@ -821,8 +829,10 @@ export default function PlanningWorkspaceCore({
         }
       : {
           icon: saveMode === "publish" ? "send" : "save",
-          label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : "managerShell.planSaveDraftAction"),
-          hint: !canSave && !saving ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
+          label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : writes.length > 1 ? "managerShell.planSaveDraftAction" : "managerShell.planSaveDraftActionOne"),
+          // Right after a save there is nothing left to save, and saying so
+          // under the button contradicts the success message above.
+          hint: !canSave && !saving && !saveMessage ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
           disabled: !canSave,
           onPress: confirmAndSave,
         }
@@ -836,7 +846,8 @@ export default function PlanningWorkspaceCore({
               <Icon name="arrow-back" size={24} color={fieldTheme.color.onColor} />
             </Pressable>
           ) : null}
-          <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View>
+          {/* Decorative; on the phone it cost the title two lines of wrapping. */}
+          {tablet ? <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View> : null}
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{selfPlanning ? selfCopy.eyebrow : t("managerShell.planEyebrow")}</Text>
             <Text style={styles.title}>{selfPlanning ? selfCopy.title : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
@@ -860,6 +871,7 @@ export default function PlanningWorkspaceCore({
       </View>
 
       <ScrollView
+        ref={workspaceScrollRef}
         style={styles.workspaceScroll}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl enabled={!saving} refreshing={refreshing} onRefresh={() => { void refresh() }} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
