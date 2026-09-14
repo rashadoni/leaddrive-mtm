@@ -51,6 +51,7 @@ import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
+  routeActionPanelState,
   routeScreenPresentation,
   type RouteBannerMode,
   type RouteDataOrigin,
@@ -471,6 +472,18 @@ function RouteExecutionGate({
           disabled={busy || disabled}
         />
       ) : null}
+    </View>
+  )
+}
+
+// Stands where the panel will be while routeActionPanelState cannot yet tell
+// which one it is: the loading words the list already uses, no order and no
+// button (Galaxy S23, 2026-09-14 — the gate asked to start a started route).
+function RouteActionPanelLoading({ copy }: { copy: (typeof ROUTE_COPY)[RouteLanguage] }) {
+  return (
+    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading]} testID="route-action-panel-loading">
+      <ActivityIndicator color={fieldTheme.color.primary} />
+      <Text style={styles.actionEmptyText}>{copy.loading}</Text>
     </View>
   )
 }
@@ -925,6 +938,13 @@ export default function RouteScreen() {
   const { signature, photos } = useActiveVisitProgress(activeVisit)
   const [routeOrigin, setRouteOrigin] = useState<RouteDataOrigin>("none")
   const [loadIssue, setLoadIssue] = useState<RouteLoadIssue>("none")
+  // False until the first visit lookup settles, success or not: before that a
+  // missing activeVisit means "not read yet", not "no visit open".
+  const [activeVisitKnown, setActiveVisitKnown] = useState(false)
+  // True only when the last route read that finished said today has no route.
+  // A failed read with no saved copy leaves it false: the route is unknown
+  // then, not absent, and the panel must not ask to start it.
+  const [routeKnownAbsent, setRouteKnownAbsent] = useState(false)
 
   const fetchActiveVisit = useCallback(async () => {
     try {
@@ -977,6 +997,7 @@ export default function RouteScreen() {
         if (!routeData) {
           setRoute(null)
           setRouteOrigin("none")
+          setRouteKnownAbsent(true)
           return
         }
         if (routeData.id) {
@@ -991,17 +1012,21 @@ export default function RouteScreen() {
           if (detail.success && detail.data) {
             setRoute(sanitizeRouteDistances(detail.data))
             setRouteOrigin("live")
+            setRouteKnownAbsent(false)
             return
           }
         }
         setRoute(routeData)
         setRouteOrigin("live")
+        setRouteKnownAbsent(false)
       } else {
         setRoute(null)
         setRouteOrigin("none")
+        setRouteKnownAbsent(true)
       }
     } catch (error: any) {
       if (error.message === "ABORTED" || error.message === "SESSION_EXPIRED") return
+      setRouteKnownAbsent(false)
       const authAgent = useAuthStore.getState().agent
       if (authAgent) {
         try {
@@ -1027,9 +1052,17 @@ export default function RouteScreen() {
   useAutoRefresh(
     useCallback(() => {
       fetchRoute()
-      fetchActiveVisit()
+      fetchActiveVisit().catch(() => {}).then(() => setActiveVisitKnown(true))
     }, [fetchRoute, fetchActiveVisit]),
   )
+
+  // The action panel waits for the workday store (see routeActionPanelState).
+  // AndroidApp hydrates it at start-up, but the App.tsx entry (AppNavigator)
+  // does not; hydrate() is a no-op once done, so asking here keeps the wait finite
+  // on every entry instead of trusting that someone else already asked.
+  useEffect(() => {
+    if (!workdayHydrated) useWorkdayStore.getState().hydrate().catch(() => {})
+  }, [workdayHydrated])
 
   const sortedPoints = useMemo(
     () => route?.points ? [...route.points].sort((left, right) => left.orderIndex - right.orderIndex) : [],
@@ -1371,8 +1404,24 @@ export default function RouteScreen() {
 
   const routeStartReady = route?.status === "PLANNED" && routeOrigin === "live" &&
     typeof route.version === "number" && Number.isInteger(route.version) && route.version > 0
-  const routeExecutionReady = workdayActive && route?.status === "IN_PROGRESS"
-  const actionPanel = activeVisit || routeExecutionReady ? (
+  const actionPanelState = routeActionPanelState({
+    loading,
+    hasRoute: Boolean(route),
+    routeStatus: route?.status,
+    routeKnownAbsent,
+    workdayHydrated,
+    workdayActive,
+    workdayPaused,
+    hasActiveVisit: Boolean(activeVisit),
+    activeVisitKnown,
+  })
+  const actionPanel = actionPanelState === "loading" ? (
+    <RouteActionPanelLoading copy={copy} />
+  ) : actionPanelState === "route-unknown" ? (
+    // The list beside it already says the route did not load and offers a
+    // retry; a second card here would only repeat it.
+    null
+  ) : actionPanelState === "visit" || actionPanelState === "point" ? (
     <PointActionPanel
       point={focusPoint}
       nextPoint={nextPoint}
@@ -1392,7 +1441,7 @@ export default function RouteScreen() {
     />
   ) : (
     <RouteExecutionGate
-      mode={workdayPaused ? "paused" : workdayActive ? "route" : "workday"}
+      mode={actionPanelState === "gate-paused" ? "paused" : actionPanelState === "gate-route" ? "route" : "workday"}
       busy={workdayActive ? startingRoute : startingWorkday || workdayTransitionPending}
       copy={copy}
       onPress={() => {
@@ -1750,6 +1799,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: fieldTheme.color.border,
   },
+  // The same gap the real panel keeps under the summary, so nothing jumps
+  // when the real panel takes its place.
+  actionPanelLoading: { marginTop: fieldTheme.space.lg },
   actionEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 21, textAlign: "center", maxWidth: 320 },
   actionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },

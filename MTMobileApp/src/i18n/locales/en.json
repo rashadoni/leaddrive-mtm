@@ -976,5 +976,22 @@
     "saveFailed": "Could not save the signature. Try again.",
     "buttonRequired": "Customer signature — required",
     "taken": "Signature taken"
+  },
+  "photoCapture": {
+    "permissionBody": "Allow camera access to take a photo.",
+    "permissionDenied": "Camera access is not allowed. Tap “Open Settings” and turn on the camera under Permissions.",
+    "allow": "Allow",
+    "cancel": "Cancel",
+    "close": "Close",
+    "noCamera": "Camera not found. Close and open it again; if that does not help, restart the phone.",
+    "flash": "Flash",
+    "flashOn": "Flash: on",
+    "flashOff": "Flash: off",
+    "capture": "Take photo",
+    "preview": "Captured photo",
+    "retake": "Retake",
+    "usePhoto": "Save photo",
+    "captureFailedTitle": "Photo not taken",
+    "captureFailedBody": "Close the camera, open it again and take the photo once more."
   }
 }
