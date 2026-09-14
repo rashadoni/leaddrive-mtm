@@ -1010,60 +1010,49 @@ export default function VisitScreen() {
       loadState={loadState}
       language={i18n.language}
       tablet={tablet}
-      refreshing={refreshing}
       bottomPadding={Math.max(insets.bottom, fieldTheme.space.lg)}
-      onRefresh={refresh}
       onRetry={retry}
       onOpenVisit={openVisitSummary}
     />
   )
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerInner}>
-          <View style={styles.headerRow}>
-            {navigation.canGoBack() && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={copy.back}
-                onPress={() => navigation.goBack()}
-                style={({ pressed }) => [
-                  styles.backButton,
-                  { width: touchTarget, height: touchTarget },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
-              </Pressable>
-            )}
-            <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
-              <Text style={styles.headerTitle}>{copy.title}</Text>
-              <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
-            </View>
+  const header = (
+    <View style={[styles.header, { paddingTop: headerTop }]}>
+      <View style={styles.headerInner}>
+        <View style={styles.headerRow}>
+          {navigation.canGoBack() && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.back}
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [
+                styles.backButton,
+                { width: touchTarget, height: touchTarget },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+            </Pressable>
+          )}
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+            <Text style={styles.headerTitle}>{copy.title}</Text>
+            <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
           </View>
         </View>
       </View>
+    </View>
+  )
 
+  return (
+    <View style={styles.container}>
       {tablet ? (
-        <View style={styles.tabletBody}>
-          <ScrollView
-            style={styles.tabletActionPane}
-            contentContainerStyle={[styles.actionContent, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xl) }]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <VisitActionPanel {...commonPanelProps} />
-          </ScrollView>
-          <View style={styles.tabletHistoryPane}>{history}</View>
-        </View>
-      ) : (
-        <FlatList
-          data={visits}
-          keyExtractor={(visit) => visit.id}
+        // One page on a tablet: the two columns used to scroll separately
+        // under a fixed header, and in landscape (Redmi Pad SE, 2026-09-14)
+        // both were boxes with their own scroll.
+        <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[styles.phoneContent, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xl) }]}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, fieldTheme.space.xl) }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1072,21 +1061,47 @@ export default function VisitScreen() {
               colors={[fieldTheme.color.primary]}
             />
           }
-          ListHeaderComponent={
-            <>
+        >
+          {header}
+          <View style={styles.tabletBody}>
+            <View style={[styles.tabletActionPane, styles.actionContent]}>
               <VisitActionPanel {...commonPanelProps} />
-              <HistoryHeading copy={copy} count={visits.length} />
-            </>
-          }
-          ListEmptyComponent={
-            loadState === "loading"
-              ? null
-              : loadState === "error"
+            </View>
+            <View style={styles.tabletHistoryPane}>{history}</View>
+          </View>
+        </ScrollView>
+      ) : (
+        <>
+          {header}
+          <FlatList
+            data={visits}
+            keyExtractor={(visit) => visit.id}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.phoneContent, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xl) }]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={refresh}
+                tintColor={fieldTheme.color.primary}
+                colors={[fieldTheme.color.primary]}
+              />
+            }
+            ListHeaderComponent={
+              <>
+                <VisitActionPanel {...commonPanelProps} />
+                <HistoryHeading copy={copy} count={visits.length} />
+              </>
+            }
+            ListEmptyComponent={
+              loadState === "loading"
                 ? null
-                : <EmptyHistory copy={copy} />
-          }
-          renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={i18n.language} onPress={openVisitSummary} />}
-        />
+                : loadState === "error"
+                  ? null
+                  : <EmptyHistory copy={copy} />
+            }
+            renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={i18n.language} onPress={openVisitSummary} />}
+          />
+        </>
       )}
 
       <NotesModal
@@ -1516,9 +1531,7 @@ function HistoryPanel({
   loadState,
   language,
   tablet,
-  refreshing,
   bottomPadding,
-  onRefresh,
   onRetry,
   onOpenVisit,
 }: {
@@ -1527,37 +1540,21 @@ function HistoryPanel({
   loadState: LoadState
   language: string
   tablet: boolean
-  refreshing: boolean
   bottomPadding: number
-  onRefresh: () => void
   onRetry: () => void
   onOpenVisit: (visit: Visit) => void
 }) {
   return (
-    <FlatList
-      data={visits}
-      keyExtractor={(visit) => visit.id}
-      contentContainerStyle={[styles.historyContent, { paddingBottom: bottomPadding }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor={fieldTheme.color.primary}
-          colors={[fieldTheme.color.primary]}
-        />
-      }
-      ListHeaderComponent={
-        <HistoryHeading copy={copy} count={visits.length} />
-      }
-      ListEmptyComponent={
-        loadState === "loading"
+    <View style={[styles.historyContent, { paddingBottom: bottomPadding }]}>
+      <HistoryHeading copy={copy} count={visits.length} />
+      {visits.length === 0
+        ? loadState === "loading"
           ? <LoadingState copy={copy} />
           : loadState === "error"
             ? <StateNotice kind="error" copy={copy} onRetry={onRetry} />
             : <EmptyHistory copy={copy} tablet={tablet} />
-      }
-      renderItem={({ item }) => <VisitRow visit={item} copy={copy} language={language} onPress={onOpenVisit} />}
-    />
+        : visits.map((item) => <VisitRow visit={item} key={item.id} copy={copy} language={language} onPress={onOpenVisit} />)}
+    </View>
   )
 }
 
@@ -1726,11 +1723,11 @@ const styles = StyleSheet.create({
     padding: fieldTheme.space.lg,
   },
   tabletBody: {
-    flex: 1,
     width: "100%",
     maxWidth: 1180,
     alignSelf: "center",
     flexDirection: "row",
+    alignItems: "flex-start",
     gap: fieldTheme.space.lg,
     paddingHorizontal: fieldTheme.space.lg,
   },
@@ -1872,7 +1869,7 @@ const styles = StyleSheet.create({
   secondaryActionRow: { flexDirection: "row", marginTop: fieldTheme.space.lg },
   secondaryButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md },
   secondaryButtonText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
-  historyContent: { flexGrow: 1, paddingVertical: fieldTheme.space.lg },
+  historyContent: { paddingVertical: fieldTheme.space.lg },
   historyHeading: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
   historyTitle: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 27, fontWeight: "900", marginTop: 2 },
   historyCountPill: { minHeight: 32, justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },

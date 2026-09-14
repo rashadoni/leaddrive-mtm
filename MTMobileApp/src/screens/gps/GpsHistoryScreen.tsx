@@ -309,34 +309,10 @@ export default function GpsHistoryScreen() {
         <EmptyHistory t={t} />
       </ScrollView>
     )
-  } else if (expandedTablet) {
-    content = (
-      <View style={styles.tabletPage}>
-        <View style={styles.tabletColumns}>
-          <View style={styles.masterPanel}>
-            <FlatList
-              data={model.timelinePoints}
-              keyExtractor={pointKey}
-              renderItem={renderPoint}
-              ListHeaderComponent={timelineHeader}
-              contentContainerStyle={styles.timelineListTablet}
-              refreshControl={(
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={refresh}
-                  tintColor={fieldTheme.color.primary}
-                  colors={[fieldTheme.color.primary]}
-                />
-              )}
-            />
-          </View>
-          <ScrollView style={styles.detailPanel} contentContainerStyle={styles.detailPanelContent}>
-            {overview}
-          </ScrollView>
-        </View>
-      </View>
-    )
   } else {
+    // One list on every width. A tablet used to get a 350 dp timeline box
+    // beside a details box, each with its own scroll; in landscape (Redmi Pad
+    // SE, 2026-09-14) that was 332 points in a 720 px frame.
     content = (
       <FlatList
         data={model.timelinePoints}
@@ -1002,12 +978,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14 },
   phoneList: { width: "100%", maxWidth: 1000, alignSelf: "center", padding: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl, flexGrow: 1 },
-  tabletPage: { flex: 1, width: "100%", maxWidth: 1180, alignSelf: "center", padding: fieldTheme.space.lg },
-  tabletColumns: { flex: 1, flexDirection: "row", gap: fieldTheme.space.lg },
-  masterPanel: { width: 350, minWidth: 320, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, overflow: "hidden" },
-  detailPanel: { flex: 1 },
-  detailPanelContent: { paddingBottom: fieldTheme.space.xxl },
-  timelineListTablet: { padding: fieldTheme.space.md, paddingBottom: fieldTheme.space.xl, flexGrow: 1 },
   summaryGrid: { flexDirection: "row", gap: fieldTheme.space.sm },
   summaryGridTablet: { gap: fieldTheme.space.md },
   summaryCard: { flex: 1, minHeight: 108, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md },
