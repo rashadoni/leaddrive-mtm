@@ -23,6 +23,7 @@ import { isManagerRole } from "../../auth/roles"
 import SyncStatusChip from "../../components/SyncStatusChip"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { upperFirst } from "../../lib/upper"
 import {
   LAYOUT_TOUCH_TARGETS,
   isExpandedTabletWidth,
@@ -391,11 +392,11 @@ export default function DashboardScreen() {
       ? managerStats.stale ? managerCopy.stale(managerUpdatedTime) : managerCopy.updated(managerUpdatedTime)
       : t("dashboardV2.unavailable")
     : t(dataAvailable ? "dashboardV2.actual" : "dashboardV2.unavailable")
-  const today = new Date().toLocaleDateString(i18n.language, {
+  const today = upperFirst(new Date().toLocaleDateString(i18n.language, {
     weekday: "long",
     day: "numeric",
     month: "long",
-  })
+  }), i18n.language)
 
   const openManagerWidget = (id: DashboardWidgetId) => {
     navigation.navigate(managerWidgetDestination(id))
@@ -812,7 +813,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
   },
   greeting: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "800", letterSpacing: -0.6 },
-  date: { color: "#C8E0D7", fontSize: 13, textTransform: "capitalize" },
+  date: { color: "#C8E0D7", fontSize: 13 },
   headerActions: {
     flexDirection: "row",
     flexWrap: "wrap",
