@@ -9,40 +9,35 @@
 # What it configures on `main`:
 #   - changes arrive only through a pull request (no direct push, no force push,
 #     no branch deletion)
-#   - `agent-review` must be green before merge
+#   - `scope` and `tests` (ci.yml) must be green before merge
 #   - no required approvals: the owner works alone, and a rule nobody can
 #     satisfy is how production became undeployable in the first place
 #
 # Usage:  bash scripts/ci/configure-main-protection.sh [owner/repo]
 set -euo pipefail
 
-REPO="${1:-rashadrahimov/leaddrive-mtm}"
+REPO="${1:-rashadoni/leaddrive-mtm}"
 BRANCH="${BRANCH:-main}"
 
 command -v gh >/dev/null || { echo "gh is required" >&2; exit 1; }
 
 echo "Configuring branch protection on ${REPO}@${BRANCH}"
 
-# `required_status_checks.contexts` is deliberately just agent-review: it is the
-# one check that runs for every pull request, including documentation-only ones.
-# The heavy jobs keep their path filters, and requiring a check that never
-# starts would leave such a pull request unmergeable for ever.
-gh api -X PUT "repos/${REPO}/branches/${BRANCH}/protection" \
+# Required checks: `scope` and `tests` from .github/workflows/ci.yml (owner
+# decision 2026-09-14, replacing `agent-review`, which without its API key was
+# green on every pull request and reviewed nothing). ci.yml runs on EVERY pull
+# request — no paths filter — so neither check can leave a pull request waiting
+# for a status that never starts; `tests` skips itself when the app is untouched.
+#
+# Only the required-checks list is changed. The live protection has settings
+# this script never owned (enforce_admins was switched on by hand), and a full
+# PUT of the protection object would silently reset them.
+gh api -X PATCH "repos/${REPO}/branches/${BRANCH}/protection/required_status_checks" \
   -H "Accept: application/vnd.github+json" \
   --input - <<'JSON'
 {
-  "required_status_checks": {
-    "strict": false,
-    "contexts": ["agent-review"]
-  },
-  "enforce_admins": false,
-  "required_pull_request_reviews": null,
-  "restrictions": null,
-  "allow_force_pushes": false,
-  "allow_deletions": false,
-  "required_linear_history": false,
-  "required_conversation_resolution": false,
-  "block_creations": false
+  "strict": false,
+  "contexts": ["scope", "tests"]
 }
 JSON
 
