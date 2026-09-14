@@ -490,6 +490,50 @@ export function assignPlanningTarget(
   return [...targets, { ...target, date }]
 }
 
+/**
+ * The days a day's plan can be copied to: the other working days (Monday to
+ * Friday) of the window that are still open and have nothing planned yet.
+ * Copying onto a day that already has stops would silently merge two plans.
+ */
+export function planningCopyTargetDates(input: {
+  dates: string[]
+  fromDate: string
+  today: string
+  blockedDates: Set<string>
+  plannedDates: Set<string>
+}): string[] {
+  return input.dates.filter((date) => {
+    if (date === input.fromDate || date < input.today) return false
+    if (input.blockedDates.has(date) || input.plannedDates.has(date)) return false
+    const weekday = new Date(`${date}T00:00:00.000Z`).getUTCDay()
+    return weekday !== 0 && weekday !== 6
+  })
+}
+
+/**
+ * Put a day's stops onto another date in the same order and at the same local
+ * times. Only targets the server returned for that date are copied: a target
+ * valid on Monday is not assumed to be valid on Tuesday (see
+ * planningTargetForDate), so `resolved` must come from a lookup for `date`.
+ */
+export function copyPlanningDay(
+  assignments: PlanningAssignedTarget[],
+  sources: PlanningAssignedTarget[],
+  date: string,
+  resolved: PlanningTarget[],
+  timezone?: string | null,
+): PlanningAssignedTarget[] {
+  let next = assignments
+  for (const source of sources) {
+    const match = resolved.find((item) => item.key === source.key)
+    const confirmed = match ? planningTargetForDate(match, date) : null
+    if (!confirmed) continue
+    const time = normalizePlanningTimeSlot(planningTimeLabel(source.plannedTime, timezone)) ?? nextPlanningTime(next, date, timezone)
+    next = assignPlanningTarget(next, { ...confirmed, plannedTime: planningLocalTimeToIso(date, time, timezone) }, date)
+  }
+  return next
+}
+
 export function removePlanningTarget(targets: PlanningAssignedTarget[], key: string, date?: string): PlanningAssignedTarget[] {
   return targets.filter((target) => target.key !== key || (date !== undefined && target.date !== date))
 }

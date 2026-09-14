@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -32,6 +33,7 @@ import {
 import {
   assignPlanningTarget,
   buildPlanningRouteWrites,
+  copyPlanningDay,
   editablePlanningTargets,
   invalidPlanningAssignmentDates,
   lockedPlanningDates,
@@ -39,6 +41,7 @@ import {
   movePlanningTarget,
   nextPlanningTime,
   normalizePlanningTimeSlot,
+  planningCopyTargetDates,
   planningDateKeys,
   planningDraftConflictDates,
   planningPublishConflictDates,
@@ -59,7 +62,9 @@ import {
 } from "../../services/manager-planning"
 import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday } from "../../services/planning-month"
 
-type PlanningStep = 1 | 2 | 3
+// One-screen plan (owner decision 2026-09-14): the review step repeated the
+// fill step — same day list, same day editor — and only added the save choice.
+type PlanningStep = 1 | 2
 type SaveMode = "draft" | "publish"
 
 /**
@@ -182,6 +187,11 @@ function formatPlanDate(value: string, language: string, compact = false): strin
   return upperFirst(formatLocalizedDate(value, language, compact
     ? { day: "numeric", month: "long", timeZone: "UTC" }
     : { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }), language)
+}
+
+/** "B.e." / "Пн" / "Mon": a day tile's label, in the reader's language. */
+function weekdayShort(date: string, language: string): string {
+  return upperFirst(formatLocalizedDate(date, language, { weekday: "short", timeZone: "UTC" }), language)
 }
 
 function uniqueTargets(assignments: PlanningTarget[], routes: PlanningDetailedRoute[]): PlanningTarget[] {
@@ -346,11 +356,12 @@ export default function PlanningWorkspaceCore({
   const planningHintId = `planning.${singleDay ? "day" : "week"}.step.${step}`
   const planningHelpKey = step === 1
     ? (singleDay ? "managerShell.planHelpDayStep1" : "managerShell.planHelpWeekStep1")
-    : step === 2
-      ? (singleDay ? "managerShell.planHelpDayStep2" : "managerShell.planHelpWeekStep2")
-      : (singleDay ? "managerShell.planHelpDayStep3" : "managerShell.planHelpWeekStep3")
+    : (singleDay ? "managerShell.planHelpDayStep2" : "managerShell.planHelpWeekStep2")
+  // The plan screen explained itself three times over (coach, section intro,
+  // card subtitle). It opens clean; the "?" in the header still brings the
+  // hint back.
   const plannerHelpVisible = forcedHelpStep === step || (
-    hintsHydrated && hintsEnabled && !dismissedHints.includes(planningHintId)
+    step === 1 && hintsHydrated && hintsEnabled && !dismissedHints.includes(planningHintId)
   )
 
   useEffect(() => {
@@ -540,8 +551,10 @@ export default function PlanningWorkspaceCore({
    * here because these are labels, not values compared against the server.
    */
   const monthWeekdayLabels = useMemo(() => Array.from({ length: 7 }, (_, index) => {
+    // Hermes has no narrow Azerbaijani weekdays and printed 1–7 over the grid
+    // (tablet, 2026-09-14); the shared formatter carries its own AZ names.
     const day = new Date(Date.UTC(2026, 5, 1 + index))
-    return day.toLocaleDateString(i18n.language, { weekday: "narrow", timeZone: "UTC" })
+    return upperFirst(formatLocalizedDate(day, i18n.language, { weekday: "short", timeZone: "UTC" }), i18n.language)
   }), [i18n.language])
 
   const changeWindow = (nextAnchor: string, nextHorizon = horizon) => {
@@ -581,7 +594,7 @@ export default function PlanningWorkspaceCore({
   }
 
   const toggleTarget = (target: PlanningTarget) => {
-    if (saving || !activeDateEditable) return
+    if (saving || copying || !activeDateEditable) return
     const selected = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
     if (selected) {
       setAssignments((current) => removePlanningTarget(current, target.key, activeDate))
@@ -812,6 +825,58 @@ export default function PlanningWorkspaceCore({
     )
   }
 
+  const [copying, setCopying] = useState(false)
+  const [copyMessage, setCopyMessage] = useState<{ tone: "success" | "warning" | "danger"; text: string } | null>(null)
+  useEffect(() => { setCopyMessage(null) }, [activeDate])
+  const activeMutableTargets = useMemo(() => assignments.filter((target) => target.date === activeDate), [activeDate, assignments])
+  const copyTargetDates = useMemo(() => singleDay ? [] : planningCopyTargetDates({
+    dates,
+    fromDate: activeDate,
+    today,
+    blockedDates: new Set([...lockedDates, ...multipleDraftDates]),
+    plannedDates: new Set(dates.filter((date) => targetsForPlanningDay(date, assignments, routes).length > 0)),
+  }), [activeDate, assignments, dates, lockedDates, multipleDraftDates, routes, singleDay, today])
+
+  // "Copy to other days": the server is asked about every stop on every target
+  // day — a customer valid on Monday is not assumed valid on Tuesday.
+  const copyDayToOtherDays = async () => {
+    if (saving || copying || activeMutableTargets.length === 0 || copyTargetDates.length === 0) return
+    const version = contextVersion.current
+    const sources = activeMutableTargets
+    setCopying(true)
+    setCopyMessage(null)
+    try {
+      const lookups: Array<{ date: string; resolved: PlanningTarget[] }> = []
+      for (const date of copyTargetDates) {
+        const resolved: PlanningTarget[] = []
+        for (const source of sources) {
+          const page = await targetSource.loadTargets({ kind: source.kind === "contact" ? "contact" : "organization", date, search: source.name || undefined })
+          const match = page.targets.find((item) => item.key === source.key)
+          if (match) resolved.push(match)
+        }
+        lookups.push({ date, resolved })
+      }
+      if (version !== contextVersion.current) return
+      let updated = assignments
+      const copied: string[] = []
+      for (const { date, resolved } of lookups) {
+        const before = updated.length
+        updated = copyPlanningDay(updated, sources, date, resolved, tenantTimezone)
+        if (updated.length > before) copied.push(date)
+      }
+      setAssignments(updated)
+      if (copied.length > 0) markDirty(copied)
+      setSaveMessage(null)
+      setCopyMessage(copied.length > 0
+        ? { tone: "success", text: t("managerShell.planCopied", { count: copied.length, days: copied.map((date) => weekdayShort(date, i18n.language)).join(", ") }) }
+        : { tone: "warning", text: t("managerShell.planCopyNone") })
+    } catch {
+      if (version === contextVersion.current) setCopyMessage({ tone: "danger", text: t("managerShell.planCopyFailed") })
+    } finally {
+      setCopying(false)
+    }
+  }
+
   const footerAction = step === 1
     ? {
         icon: "arrow-forward",
@@ -820,15 +885,7 @@ export default function PlanningWorkspaceCore({
         disabled: saving || !agentId || loadingPlan || planError || multipleDraftDates.length > 0,
         onPress: () => setStep(2),
       }
-    : step === 2
-      ? {
-          icon: "checkmark-done-outline",
-          label: t(singleDay ? "managerShell.planReviewDay" : "managerShell.planReviewWeek"),
-          hint: matrixTargets.length === 0 && dirtyDates.size === 0 ? t("managerShell.planSelectAtLeastOne") : undefined,
-          disabled: saving || (matrixTargets.length === 0 && dirtyDates.size === 0),
-          onPress: () => setStep(3),
-        }
-      : {
+    : {
           icon: saveMode === "publish" ? "send" : "save",
           label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : writes.length > 1 ? "managerShell.planSaveDraftAction" : "managerShell.planSaveDraftActionOne"),
           // Right after a save there is nothing left to save, and saying so
@@ -962,6 +1019,9 @@ export default function PlanningWorkspaceCore({
                   {monthCells.map((cell, index) => {
                     if (!cell.date) return <View key={`blank-${index}`} style={styles.monthCell} />
                     const selected = cell.date === anchor
+                    // Picking a week start used to mark one day; the six after
+                    // it now read as part of the same choice.
+                    const inWindow = !singleDay && !selected && dates.includes(cell.date)
                     const disabled = saving || cell.past
                     return (
                       <Pressable
@@ -976,6 +1036,7 @@ export default function PlanningWorkspaceCore({
                           styles.monthDay,
                           cell.weekend && styles.monthDayWeekend,
                           cell.today && styles.monthDayToday,
+                          inWindow && styles.monthDayInWindow,
                           selected && styles.monthDaySelected,
                           disabled && styles.monthDayDisabled,
                           pressed && styles.pressed,
@@ -1034,9 +1095,9 @@ export default function PlanningWorkspaceCore({
             )}
             {multipleDraftDates.length > 0 ? <Notice tone="warning" icon="git-compare-outline" title={t("managerShell.planMultipleDraftsTitle")} body={t("managerShell.planMultipleDraftsBody")} /> : null}
           </View>
-        ) : step === 2 ? (
+        ) : (
           <View style={styles.stepBody}>
-            <SectionIntro number="2" title={t("managerShell.planStepTargets")} body={t(singleDay ? "managerShell.planStepTargetsDayBody" : "managerShell.planStepTargetsWeekBody")} />
+            <SectionIntro number="2" title={t("managerShell.planStepTargets")} />
             <View style={styles.selectionSummary}>
               <Icon name="calendar-outline" size={20} color={fieldTheme.color.blue} />
               <Text style={styles.selectionSummaryText}>{t(singleDay ? "managerShell.planSelectionSummaryDay" : "managerShell.planSelectionSummaryWeek", { people: mutableTargetCount, visits: assignments.length })}</Text>
@@ -1074,6 +1135,22 @@ export default function PlanningWorkspaceCore({
               onRemove={removeDayTarget}
               t={t}
             />
+            {!singleDay && activeDateEditable && activeMutableTargets.length > 0 && copyTargetDates.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: saving || copying }}
+                disabled={saving || copying}
+                onPress={() => { void copyDayToOtherDays() }}
+                style={({ pressed }) => [styles.copyDayButton, (saving || copying) && styles.disabled, pressed && styles.pressed]}
+              >
+                {copying ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} /> : <Icon name="copy-outline" size={19} color={fieldTheme.color.primaryStrong} />}
+                <View style={styles.copyDayCopy}>
+                  <Text style={styles.copyDayTitle}>{t(copying ? "managerShell.planCopying" : "managerShell.planCopyDay")}</Text>
+                  <Text style={styles.copyDayHint}>{t("managerShell.planCopyDayHint", { days: copyTargetDates.map((date) => weekdayShort(date, i18n.language)).join(", ") })}</Text>
+                </View>
+              </Pressable>
+            ) : null}
+            {copyMessage ? <Notice tone={copyMessage.tone} icon={copyMessage.tone === "success" ? "checkmark-circle" : "alert-circle"} title={copyMessage.text} /> : null}
 
             <View style={styles.targetBrowser}>
               <View style={styles.targetBrowserHeading}>
@@ -1132,12 +1209,8 @@ export default function PlanningWorkspaceCore({
                   ? t("managerShell.planResultsLoaded", { loaded: targetResults.length })
                   : t("managerShell.planResults", { loaded: targetResults.length, total: targetTotal })}
                 </Text>
-                <ScrollView
-                  nestedScrollEnabled
-                  style={[styles.targetListScroller, tablet && styles.targetListScrollerTablet]}
-                  contentContainerStyle={[styles.targetList, tablet && styles.targetListTablet]}
-                  showsVerticalScrollIndicator={targetResults.length > (tablet ? 6 : 4)}
-                >
+                {/* No box with its own scroll (owner, 2026-09-14): the page scrolls. */}
+                <View style={[styles.targetList, tablet && styles.targetListTablet]}>
                   {targetResults.map((target) => {
                     const selectedTarget = activeDayTargets.find((assignment) => assignment.key === target.key)
                     const mutableSelection = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
@@ -1146,11 +1219,15 @@ export default function PlanningWorkspaceCore({
                     const displayTarget = selectedTarget ?? resolved ?? target
                     const unavailable = !selected && !resolved
                     const disabled = saving || !activeDateEditable || (selected && !mutableSelection) || (!selected && !resolved)
+                    const otherDays = singleDay ? "" : dates
+                      .filter((date) => date !== activeDate && targetsForPlanningDay(date, assignments, routes).some((row) => row.key === target.key))
+                      .map((date) => weekdayShort(date, i18n.language))
+                      .join(", ")
                     return (
-                      <TargetOption key={target.key} target={displayTarget} selected={selected} unavailable={unavailable} disabled={disabled} onPress={() => toggleTarget(target)} t={t} tablet={tablet} />
+                      <TargetOption key={target.key} target={displayTarget} selected={selected} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} onPress={() => toggleTarget(target)} t={t} tablet={tablet} />
                     )
                   })}
-                </ScrollView>
+                </View>
                 {showTargetMoreError ? (
                   <InlineEmpty
                     icon="cloud-offline-outline"
@@ -1194,52 +1271,7 @@ export default function PlanningWorkspaceCore({
             )}
             </View>
             {!activeDateEditable ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
-          </View>
-        ) : (
-          <View style={styles.stepBody}>
-            <SectionIntro number="3" title={t(singleDay ? "managerShell.planStepReviewDay" : "managerShell.planStepReviewWeek")} body={t(singleDay ? "managerShell.planStepReviewDayBody" : "managerShell.planStepReviewWeekBody")} />
-            <View style={styles.selectionSummary}>
-              <Icon name="person-circle-outline" size={21} color={fieldTheme.color.primary} />
-              <Text style={styles.selectionSummaryText}>{selectedAgent?.name} · {horizon === 1 ? formatPlanDate(anchor, i18n.language, true) : t("managerShell.planDateRange", { start: formatPlanDate(dates[0], i18n.language, true), end: formatPlanDate(dates[dates.length - 1], i18n.language, true) })}</Text>
-              <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.textButton, saving && styles.disabled]} onPress={() => setStep(2)}><Text style={styles.textButtonText}>{t("managerShell.planEditTargets")}</Text></Pressable>
-            </View>
-
-            <View style={styles.matrixHelp}>
-              <Icon name="create-outline" size={19} color={fieldTheme.color.blue} />
-              <Text style={styles.matrixHelpText}>{t(singleDay ? "managerShell.planDayReviewHelp" : "managerShell.planWeekReviewHelp")}</Text>
-            </View>
-            {!singleDay ? (
-              <WeekDayChooser
-                dates={dates}
-                activeDate={activeDate}
-                assignments={assignments}
-                routes={routes}
-                lockedDates={lockedDates}
-                multipleDraftDates={multipleDraftDates}
-                today={today}
-                timezone={tenantTimezone}
-                language={i18n.language}
-                tablet={tablet}
-                disabled={saving}
-                onSelect={setActiveDate}
-                t={t}
-              />
-            ) : null}
-            <DayPlanEditor
-              date={activeDate}
-              rows={activeDayTargets}
-              lockedCells={lockedCells}
-              editable={activeDateEditable}
-              saving={saving}
-              timezone={tenantTimezone}
-              language={i18n.language}
-              onTime={changeDayTargetTime}
-              onMove={moveDayTarget}
-              onRemove={removeDayTarget}
-              t={t}
-            />
             {matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
-
             <View style={styles.savePanel}>
               <Text style={styles.fieldLabel}>{t("managerShell.planFinishMode")}</Text>
               <Text style={styles.fieldHelp}>{t("managerShell.planFinishModeHelp")}</Text>
@@ -1267,7 +1299,7 @@ export default function PlanningWorkspaceCore({
         showBack={step > 1}
         disabled={saving}
         bottomInset={Math.max(safeAreaInsets.bottom, fieldTheme.space.sm)}
-        onBack={() => setStep(step === 3 ? 2 : 1)}
+        onBack={() => setStep(1)}
       />
     </View>
   )
@@ -1277,7 +1309,6 @@ function StepRail({ step, hasAgent, hasReview, singleDay, disabled, onStep, t }:
   const steps: Array<{ value: PlanningStep; label: string; enabled: boolean }> = [
     { value: 1, label: t("managerShell.planRailSetup"), enabled: true },
     { value: 2, label: t("managerShell.planRailTargets"), enabled: hasAgent },
-    { value: 3, label: t(singleDay ? "managerShell.planRailDayReview" : "managerShell.planRailWeekAssign"), enabled: hasAgent && hasReview },
   ]
   return (
     <View style={styles.stepRail} accessibilityRole="tablist">
@@ -1338,28 +1369,27 @@ function PlannerCoach({ title, body, dismissLabel, tablet, onDismiss }: { title:
 }
 
 function WeekSnapshot({ dates, routes, loading, language, t }: { dates: string[]; routes: PlanningDetailedRoute[]; loading: boolean; language: string; t: any }) {
+  // Seven equal tiles in one row: it used to be a strip of 116 dp cards that
+  // scrolled sideways inside the page (tablet, 2026-09-14).
   return (
     <View style={styles.weekSnapshot}>
       <View style={styles.snapshotHeading}>
-        <View><Text style={styles.snapshotTitle}>{t("managerShell.planExistingWeek")}</Text><Text style={styles.snapshotBody}>{t("managerShell.planExistingWeekBody")}</Text></View>
+        <Text style={styles.snapshotTitle}>{t("managerShell.planExistingWeek")}</Text>
         {loading ? <ActivityIndicator color={fieldTheme.color.primary} /> : null}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayRail}>
+      <View style={styles.weekTiles}>
         {dates.map((date) => {
           const dayRoutes = routes.filter((route) => route.date === date)
           const points = dayRoutes.reduce((sum, route) => sum + route.total, 0)
           return (
-            <View key={date} style={styles.daySnapshot}>
-              <Text style={styles.daySnapshotDate}>{formatPlanDate(date, language, true)}</Text>
-              <Text style={styles.daySnapshotValue}>{points}</Text>
-              <Text style={styles.daySnapshotLabel}>{t("managerShell.planStopsShort")}</Text>
-              <View style={styles.dayStatuses}>
-                {dayRoutes.length > 0 ? dayRoutes.slice(0, 2).map((route) => <StatusPill key={route.id} status={route.status} t={t} compact />) : <Text style={styles.dayEmpty}>{t("managerShell.planDayEmpty")}</Text>}
-              </View>
+            <View key={date} style={styles.weekTile} accessibilityLabel={`${formatPlanDate(date, language)}: ${points}`}>
+              <Text style={styles.weekTileWeekday}>{weekdayShort(date, language)}</Text>
+              <Text style={styles.weekTileDay}>{Number(date.slice(8))}</Text>
+              <Text style={[styles.weekTileCount, points === 0 && styles.weekTileCountEmpty]}>{points > 0 ? points : "–"}</Text>
             </View>
           )
         })}
-      </ScrollView>
+      </View>
     </View>
   )
 }
@@ -1369,13 +1399,14 @@ function StatusPill({ status, t, compact = false }: { status: string; t: any; co
   return <View style={[styles.statusPill, tone, compact && styles.statusPillCompact]}><Text style={styles.statusPillText}>{t(routeStatusKey(status))}</Text></View>
 }
 
-function TargetOption({ target, selected, unavailable, disabled, onPress, t, tablet }: { target: PlanningTarget; selected: boolean; unavailable: boolean; disabled: boolean; onPress: () => void; t: any; tablet: boolean }) {
+function TargetOption({ target, selected, unavailable, disabled, otherDays, onPress, t, tablet }: { target: PlanningTarget; selected: boolean; unavailable: boolean; disabled: boolean; otherDays?: string; onPress: () => void; t: any; tablet: boolean }) {
   return (
     <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.targetOption, tablet && styles.targetOptionTablet, selected && styles.targetOptionSelected, disabled && styles.disabled, pressed && styles.pressed]}>
       <View style={[styles.targetMark, selected && styles.targetMarkSelected]}><Icon name={selected ? "checkmark" : target.kind === "contact" ? "medkit-outline" : "business-outline"} size={20} color={selected ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} /></View>
       <View style={styles.targetCopy}>
         <Text style={styles.targetName}>{target.name || t("managerShell.planUnnamedTarget")}</Text>
         <Text style={styles.targetMeta}>{target.kind === "contact" ? target.organizationName || t("managerShell.planNoWorkplace") : target.address || t("managerShell.planAddressMissing")}</Text>
+        {otherDays ? <Text style={styles.targetAlsoOn}>{t("managerShell.planAlsoOn", { days: otherDays })}</Text> : null}
         {unavailable || !target.eligible ? <Text style={styles.targetProblem}>{t("managerShell.planNoActiveWorkplace")}</Text> : null}
       </View>
       <Text style={[styles.targetAction, selected && styles.targetActionSelected]}>{t(selected ? "managerShell.planRemove" : "managerShell.planAdd")}</Text>
@@ -1398,116 +1429,102 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
   onSelect: (date: string) => void
   t: any
 }) {
+  // All seven days at once. The old list scrolled sideways with a full date on
+  // every card, so four of seven fit and the fourth was cut in half.
   return (
-    <View style={styles.weekDayChooser} testID="mtm-mobile-week-day-list">
-      <View style={styles.weekDayHeading}>
-        <View style={styles.weekDayHeadingIcon}><Icon name="calendar-outline" size={21} color={fieldTheme.color.blue} /></View>
-        <View style={styles.weekDayHeadingCopy}>
-          <Text style={styles.fieldLabel}>{t("managerShell.planWeekDayTitle")}</Text>
-          <Text style={styles.fieldHelp}>{t("managerShell.planWeekDayBody")}</Text>
-        </View>
-      </View>
-      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} contentContainerStyle={styles.weekDayRows}>
-        {dates.map((date) => {
-          const rows = targetsForPlanningDay(date, assignments, routes)
-          const times = rows.map((row) => planningTimeLabel(row.plannedTime, timezone)).filter(Boolean).sort()
-          const locked = date < today || lockedDates.has(date) || multipleDraftDates.includes(date)
-          const selected = date === activeDate
-          return (
-            <Pressable
-              key={date}
-              accessibilityRole="tab"
-              accessibilityState={{ selected, disabled }}
-              disabled={disabled}
-              onPress={() => onSelect(date)}
-              style={({ pressed }) => [styles.weekDayRow, tablet && styles.weekDayRowTablet, selected && styles.weekDayRowActive, locked && styles.weekDayRowLocked, pressed && styles.pressed]}
-            >
-              <View style={[styles.weekDayNumber, selected && styles.weekDayNumberActive]}><Text style={[styles.weekDayNumberText, selected && styles.weekDayNumberTextActive]}>{dates.indexOf(date) + 1}</Text></View>
-              <View style={styles.weekDayCopy}>
-                <Text style={[styles.weekDayDate, selected && styles.weekDayDateActive]}>{formatPlanDate(date, language)}</Text>
-                <Text style={styles.weekDaySummary}>
-                  {rows.length > 0
-                    ? t("managerShell.planDayVisits", { count: rows.length })
-                    : t("managerShell.planDayEmpty")}
-                  {times.length > 0 ? ` · ${times[0]}${times.length > 1 ? `–${times[times.length - 1]}` : ""}` : ""}
-                </Text>
+    <View style={styles.weekDayChooser} testID="mtm-mobile-week-day-list" accessibilityRole="tablist">
+      {dates.map((date) => {
+        const rows = targetsForPlanningDay(date, assignments, routes)
+        const locked = date < today || lockedDates.has(date) || multipleDraftDates.includes(date)
+        const selected = date === activeDate
+        const weekday = new Date(`${date}T00:00:00.000Z`).getUTCDay()
+        const weekend = weekday === 0 || weekday === 6
+        return (
+          <Pressable
+            key={date}
+            accessibilityRole="tab"
+            accessibilityLabel={`${formatPlanDate(date, language)}, ${rows.length > 0 ? t("managerShell.planDayVisits", { count: rows.length }) : t("managerShell.planDayEmpty")}`}
+            accessibilityState={{ selected, disabled }}
+            disabled={disabled}
+            onPress={() => onSelect(date)}
+            style={({ pressed }) => [
+              styles.weekDayTile,
+              tablet && styles.weekDayTileTablet,
+              weekend && styles.weekDayTileWeekend,
+              date === today && styles.weekDayTileToday,
+              selected && styles.weekDayTileActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Text style={[styles.weekDayTileWeekday, selected && styles.weekDayTileTextActive]}>{weekdayShort(date, language)}</Text>
+            <Text style={[styles.weekDayTileDay, selected && styles.weekDayTileTextActive]}>{Number(date.slice(8))}</Text>
+            {locked ? (
+              <Icon name="lock-closed" size={14} color={selected ? fieldTheme.color.onColor : fieldTheme.color.amber} />
+            ) : (
+              <View style={[styles.weekDayTileBadge, rows.length === 0 && styles.weekDayTileBadgeEmpty, selected && styles.weekDayTileBadgeActive]}>
+                <Text style={[styles.weekDayTileBadgeText, selected && styles.weekDayTileBadgeTextActive]}>{rows.length > 0 ? rows.length : " "}</Text>
               </View>
-              {locked ? <Icon name="lock-closed" size={18} color={fieldTheme.color.amber} /> : <Icon name="chevron-forward" size={20} color={selected ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />}
-            </Pressable>
-          )
-        })}
-      </ScrollView>
+            )}
+          </Pressable>
+        )
+      })}
     </View>
   )
 }
 
-function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; disabled: boolean; label: string; onCommit: (time: string) => boolean }) {
-  const safeValue = normalizePlanningTimeSlot(value) ?? "09:00"
-  const [hour, setHour] = useState(safeValue.slice(0, 2))
-  const [minute, setMinute] = useState(safeValue.slice(3))
-  useEffect(() => {
-    const next = normalizePlanningTimeSlot(value) ?? "09:00"
-    setHour(next.slice(0, 2))
-    setMinute(next.slice(3))
-  }, [value])
+/** Half-hour slots a visit can start at; the route API accepts only :00 and :30. */
+const TIME_SLOTS = Array.from({ length: 30 }, (_, index) => {
+  const minutes = 7 * 60 + index * 30
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
+})
 
-  const restore = () => {
-    const next = normalizePlanningTimeSlot(value) ?? "09:00"
-    setHour(next.slice(0, 2))
-    setMinute(next.slice(3))
-  }
-  const commit = (nextHour = hour, nextMinute = minute) => {
-    if (!/^\d{1,2}$/.test(nextHour)) {
-      restore()
-      return
-    }
-    const numericHour = Number(nextHour)
-    if (numericHour > 23) {
-      restore()
-      return
-    }
-    const normalizedHour = String(numericHour).padStart(2, "0")
-    const nextTime = `${normalizedHour}:${nextMinute}`
-    if (!onCommit(nextTime)) {
-      restore()
-      return
-    }
-    setHour(normalizedHour)
-    setMinute(nextMinute)
-  }
+/**
+ * One button that shows the time; tapping it opens a grid of half-hour slots.
+ * It replaced an hour field plus a 00/30 switch that the owner had "never seen
+ * a time picker like" (2026-09-14): typing an hour and then choosing minutes
+ * was two unfamiliar steps for one choice.
+ */
+function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; disabled: boolean; label: string; onCommit: (time: string) => boolean }) {
+  const current = normalizePlanningTimeSlot(value) ?? "09:00"
+  const [open, setOpen] = useState(false)
   return (
-    <View style={[styles.routeTimeField, disabled && styles.routeTimeFieldDisabled]}>
-      <Icon name="time-outline" size={18} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
-      <TextInput
-        value={hour}
-        onChangeText={(next) => setHour(next.replace(/\D/g, "").slice(0, 2))}
-        onBlur={() => commit()}
-        onSubmitEditing={() => commit()}
-        placeholder="09"
-        placeholderTextColor={fieldTheme.color.inkMuted}
-        keyboardType="number-pad"
-        maxLength={2}
-        editable={!disabled}
-        accessibilityLabel={label}
-        style={styles.routeTimeHourInput}
-      />
-      <Text style={styles.routeTimeColon}>:</Text>
-      <View style={styles.routeTimeMinuteOptions}>
-        {(["00", "30"] as const).map((slot) => (
-          <Pressable
-            key={slot}
-            accessibilityRole="radio"
-            accessibilityLabel={`${label}: ${slot}`}
-            accessibilityState={{ selected: minute === slot, disabled }}
-            disabled={disabled}
-            onPress={() => commit(hour, slot)}
-            style={({ pressed }) => [styles.routeTimeMinuteButton, minute === slot && styles.routeTimeMinuteButtonActive, disabled && styles.disabled, pressed && styles.pressed]}
-          >
-            <Text style={[styles.routeTimeMinuteText, minute === slot && styles.routeTimeMinuteTextActive]}>{slot}</Text>
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${current}`}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.routeTimeField, disabled && styles.routeTimeFieldDisabled, pressed && styles.pressed]}
+      >
+        <Icon name="time-outline" size={18} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
+        <Text style={[styles.routeTimeValue, disabled && styles.disabledText]}>{current}</Text>
+        {disabled ? null : <Icon name="chevron-down" size={16} color={fieldTheme.color.primaryStrong} />}
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.timeSheetBackdrop} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={label}>
+          <Pressable style={styles.timeSheet} onPress={() => undefined}>
+            <Text style={styles.timeSheetTitle}>{label}</Text>
+            <View style={styles.timeSlotGrid}>
+              {TIME_SLOTS.map((slot) => {
+                const selected = slot === current
+                return (
+                  <Pressable
+                    key={slot}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => { if (onCommit(slot)) setOpen(false) }}
+                    style={({ pressed }) => [styles.timeSlot, selected && styles.timeSlotActive, pressed && styles.pressed]}
+                  >
+                    <Text style={[styles.timeSlotText, selected && styles.timeSlotTextActive]}>{slot}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
           </Pressable>
-        ))}
-      </View>
-    </View>
+        </Pressable>
+      </Modal>
+    </>
   )
 }
 
@@ -1688,6 +1705,7 @@ const styles = StyleSheet.create({
   monthDay: { borderRadius: fieldTheme.radius.sm },
   monthDayWeekend: { backgroundColor: fieldTheme.color.surfaceStrong },
   monthDayToday: { borderWidth: 1, borderColor: fieldTheme.color.primary },
+  monthDayInWindow: { backgroundColor: fieldTheme.color.primarySoft },
   monthDaySelected: { backgroundColor: fieldTheme.color.primary },
   monthDayDisabled: { opacity: 0.35 },
   monthDayText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "700" },
@@ -1715,14 +1733,6 @@ const styles = StyleSheet.create({
   weekSnapshot: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   snapshotHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   snapshotTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
-  snapshotBody: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
-  dayRail: { gap: fieldTheme.space.sm },
-  daySnapshot: { width: 116, minHeight: 96, gap: 2, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  daySnapshotDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900" },
-  daySnapshotValue: { color: fieldTheme.color.blue, fontSize: 20, lineHeight: 24, fontWeight: "900" },
-  daySnapshotLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
-  dayStatuses: { gap: 4, marginTop: 3 },
-  dayEmpty: { color: fieldTheme.color.inkMuted, fontSize: 10 },
   statusPill: { alignSelf: "flex-start", minHeight: 26, justifyContent: "center", paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill },
   statusPillCompact: { minHeight: 22 },
   statusDraft: { backgroundColor: fieldTheme.color.amberSoft },
@@ -1740,23 +1750,7 @@ const styles = StyleSheet.create({
   selectionSummaryText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   textButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: 8 },
   textButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  weekDayChooser: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
-  weekDayHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  weekDayHeadingIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.blueSoft },
-  weekDayHeadingCopy: { flex: 1 },
-  weekDayRows: { gap: 7, paddingRight: 2 },
-  weekDayRow: { width: 174, minHeight: 58, flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 8, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  weekDayRowTablet: { width: 184 },
-  weekDayRowActive: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
-  weekDayRowLocked: { backgroundColor: fieldTheme.color.amberSoft },
-  weekDayNumber: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong },
-  weekDayNumberActive: { backgroundColor: fieldTheme.color.primary },
-  weekDayNumberText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900" },
-  weekDayNumberTextActive: { color: fieldTheme.color.onColor },
-  weekDayCopy: { flex: 1, gap: 3 },
-  weekDayDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900" },
-  weekDayDateActive: { color: fieldTheme.color.primaryStrong },
-  weekDaySummary: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15 },
+  weekDayChooser: { flexDirection: "row", gap: 6 },
   dayPlanEditor: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   dayPlanHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   dayPlanHeaderIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary },
@@ -1775,15 +1769,17 @@ const styles = StyleSheet.create({
   dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
   dayStopName: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
   dayStopMeta: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
-  routeTimeField: { minWidth: 164, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  routeTimeField: { minWidth: 104, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  routeTimeValue: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900", fontVariant: ["tabular-nums"] },
+  timeSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.45)" },
+  timeSheet: { width: "100%", maxWidth: 460, gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
+  timeSheetTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
+  timeSlotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  timeSlot: { width: "23%", minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  timeSlotActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  timeSlotText: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800", fontVariant: ["tabular-nums"] },
+  timeSlotTextActive: { color: fieldTheme.color.onColor },
   routeTimeFieldDisabled: { borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surfaceStrong },
-  routeTimeHourInput: { width: 28, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingVertical: 0, paddingHorizontal: 0, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900", textAlign: "center" },
-  routeTimeColon: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
-  routeTimeMinuteOptions: { flexDirection: "row", gap: 4 },
-  routeTimeMinuteButton: { minWidth: 32, minHeight: 32, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  routeTimeMinuteButtonActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
-  routeTimeMinuteText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
-  routeTimeMinuteTextActive: { color: fieldTheme.color.onColor },
   dayStopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   dayStopAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
   dayStopRemove: { backgroundColor: fieldTheme.color.dangerSoft },
@@ -1806,8 +1802,6 @@ const styles = StyleSheet.create({
   resultCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
   loadMoreTargets: { alignSelf: "center", minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   loadMoreTargetsText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  targetListScroller: { maxHeight: 278 },
-  targetListScrollerTablet: { maxHeight: 326 },
   targetList: { gap: 6, paddingRight: 2 },
   targetListTablet: { flexDirection: "row", flexWrap: "wrap" },
   targetOption: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: 9, paddingVertical: 7, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
@@ -1825,8 +1819,6 @@ const styles = StyleSheet.create({
   inlineEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
   inlineEmptyAction: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", paddingHorizontal: 16, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   inlineEmptyActionText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
-  matrixHelp: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
-  matrixHelpText: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   matrixList: { gap: fieldTheme.space.sm },
   dayReviewList: { gap: fieldTheme.space.md },
   dailyReviewRow: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
@@ -1848,6 +1840,30 @@ const styles = StyleSheet.create({
   matrixCellDisabled: { opacity: 0.48 },
   matrixCellDay: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
   matrixCellDaySelected: { color: fieldTheme.color.ink, fontWeight: "900" },
+  copyDayButton: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, paddingVertical: 8, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
+  copyDayCopy: { flex: 1 },
+  copyDayTitle: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
+  copyDayHint: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 1 },
+  targetAlsoOn: { color: fieldTheme.color.primaryStrong, fontSize: 11, lineHeight: 15, fontWeight: "700" },
+  weekTiles: { flexDirection: "row", gap: 6 },
+  weekTile: { flex: 1, minWidth: 0, alignItems: "center", gap: 1, paddingVertical: 6, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekTileWeekday: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  weekTileDay: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
+  weekTileCount: { color: fieldTheme.color.blue, fontSize: 13, fontWeight: "900" },
+  weekTileCountEmpty: { color: fieldTheme.color.inkMuted },
+  weekDayTile: { flex: 1, minWidth: 0, minHeight: 72, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  weekDayTileTablet: { minHeight: 84 },
+  weekDayTileWeekend: { backgroundColor: fieldTheme.color.surfaceStrong },
+  weekDayTileToday: { borderColor: fieldTheme.color.primary },
+  weekDayTileActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
+  weekDayTileWeekday: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
+  weekDayTileDay: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 22, fontWeight: "900" },
+  weekDayTileTextActive: { color: fieldTheme.color.onColor },
+  weekDayTileBadge: { minWidth: 20, height: 18, paddingHorizontal: 5, alignItems: "center", justifyContent: "center", borderRadius: 9, backgroundColor: fieldTheme.color.primarySoft },
+  weekDayTileBadgeEmpty: { backgroundColor: "transparent" },
+  weekDayTileBadgeActive: { backgroundColor: fieldTheme.color.onColor },
+  weekDayTileBadgeText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
+  weekDayTileBadgeTextActive: { color: fieldTheme.color.primaryStrong },
   savePanel: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   permissionNote: { color: fieldTheme.color.amber, fontSize: 11, lineHeight: 16, fontWeight: "800" },
   actionDock: { gap: 4, paddingTop: 7, paddingHorizontal: 10, backgroundColor: fieldTheme.color.surface, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, shadowColor: fieldTheme.color.ink, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: -3 }, elevation: 9 },
