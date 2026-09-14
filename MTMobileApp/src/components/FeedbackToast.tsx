@@ -16,11 +16,13 @@ interface FeedbackToastProps {
 }
 
 /**
- * The visit screen's own toast, until it moves to `notify()` from
- * `services/app-feedback`. It wore Tailwind's green, red, amber and blue with
- * a slate body — nothing else in the field app does (2026-09-14) — and sat at
- * a fixed 40 dp from the top, under the status bar on a phone with a cutout.
- * Colours now come from the same tone table as the app-wide notice.
+ * A screen-owned toast, left on the screens not yet moved to `notify()` from
+ * `services/app-feedback`: tasks, task detail, contact detail and the manager
+ * workspace (the visit screen moved on 2026-09-14). It wore Tailwind's green,
+ * red, amber and blue with a slate body — nothing else in the field app does —
+ * and sat at a fixed 40 dp from the top, under the status bar on a phone with
+ * a cutout. Colours now come from the same tone table as the app-wide notice,
+ * so those four screens look different on the device from that day.
  */
 export default function FeedbackToast({
   visible,

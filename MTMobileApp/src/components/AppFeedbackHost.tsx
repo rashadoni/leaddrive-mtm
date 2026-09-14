@@ -19,6 +19,7 @@ import {
   appFeedbackStore,
   dismissChoice,
   dismissNotice,
+  markNoticeShown,
   noticeRemainingMs,
   type AppChoice,
 } from "../services/app-feedback"
@@ -48,22 +49,27 @@ export default function AppFeedbackHost() {
 }
 
 /**
- * The notice card. The host mounts one over the app window. A full-screen
- * modal of the app (camera, signature pad) is its own Android window and
- * covers that one: such a modal mounts another `<AppNoticeLayer />` inside its
- * own content, and both show the same notice — the one underneath is hidden.
+ * The notice card. The host mounts one over the app window. A sheet or a
+ * full-screen modal of the app is its own Android window and covers that one:
+ * a modal that reports while it is open mounts another `<AppNoticeLayer />`
+ * inside its own content (the route tab's phone sheet, the organization
+ * explorer's sheets), and every layer shows the same notice on the same clock
+ * — the one underneath is hidden. A modal without a layer does not use
+ * `notify()` while open: the camera says a failed shot inline, and the
+ * screens ask a failed signature save in a sheet above the pad.
  */
 export function AppNoticeLayer() {
   const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const notice = useStore(appFeedbackStore, (state) => state.notice)
+  const shownAt = useStore(appFeedbackStore, (state) => state.noticeShownAt)
   const hasSuccessor = useStore(appFeedbackStore, (state) => state.pendingNotices.length > 0)
   // An open choice is a modal window above this one: a notice timing out
   // under its scrim would never be read, so it waits until the choice closes.
   const choiceOpen = useStore(appFeedbackStore, (state) => state.choice !== null)
   const progress = useRef(new Animated.Value(0)).current
-  const shown = useRef<{ id: number; at: number } | null>(null)
+  const drawn = useRef<number | null>(null)
 
   const leave = useCallback((id: number) => {
     Animated.timing(progress, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => dismissNotice(id))
@@ -71,24 +77,29 @@ export function AppNoticeLayer() {
 
   useEffect(() => {
     if (!notice || choiceOpen) {
-      shown.current = null
+      drawn.current = null
       progress.setValue(0)
       return
     }
-    if (shown.current?.id !== notice.id) {
-      shown.current = { id: notice.id, at: Date.now() }
+    if (drawn.current !== notice.id) {
+      drawn.current = notice.id
       progress.setValue(0)
       Animated.timing(progress, { toValue: 1, duration: 180, useNativeDriver: true }).start()
     }
+    // The clock lives in the store, not in this layer: a layer mounted later
+    // (a sheet opening) times out with the others instead of being cut short
+    // by the root layer's own earlier timer.
+    const since = shownAt ?? markNoticeShown(notice.id)
+    if (since === null) return
     const remaining = noticeRemainingMs({
-      shownAt: shown.current.at,
+      shownAt: since,
       now: Date.now(),
       durationMs: notice.durationMs,
       hasSuccessor,
     })
     const timer = setTimeout(() => leave(notice.id), remaining)
     return () => clearTimeout(timer)
-  }, [choiceOpen, hasSuccessor, leave, notice, progress])
+  }, [choiceOpen, hasSuccessor, leave, notice, progress, shownAt])
 
   if (!notice || choiceOpen) return null
 

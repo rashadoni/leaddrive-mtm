@@ -1,5 +1,6 @@
 import {
   APP_CHOICE_MAX_BUTTONS,
+  CHOICE_SWAP_GUARD_MS,
   NOTICE_DURATION_MS,
   NOTICE_MIN_VISIBLE_MS,
   NOTICE_QUEUE_LIMIT,
@@ -9,6 +10,7 @@ import {
   dismissAllChoices,
   dismissChoice,
   dismissNotice,
+  markNoticeShown,
   noticeDurationMs,
   noticeRemainingMs,
   notify,
@@ -24,8 +26,17 @@ import {
 const state = () => appFeedbackStore.getState()
 const titles = () => [state().notice?.title, ...state().pendingNotices.map((notice) => notice.title)]
 
+// The store reads Date.now() for the swap guard; tests move this clock by hand.
+let clock = 1_000_000
+
 beforeEach(() => {
+  clock = 1_000_000
+  jest.spyOn(Date, "now").mockImplementation(() => clock)
   resetAppFeedback()
+})
+
+afterEach(() => {
+  jest.restoreAllMocks()
 })
 
 describe("notify", () => {
@@ -104,6 +115,40 @@ describe("notice timing", () => {
     expect(long).toBeGreaterThan(short)
   })
 
+  it("starts a notice's clock once, whichever layer draws it first", () => {
+    const first = notify({ tone: "error", title: "İş günü başlamadı" })
+    expect(state().noticeShownAt).toBeNull()
+    // The root layer draws it; a sheet opened 3.5 s later reads the same time.
+    expect(markNoticeShown(first, 5000)).toBe(5000)
+    expect(markNoticeShown(first, 8500)).toBe(5000)
+    expect(state().noticeShownAt).toBe(5000)
+    expect(noticeRemainingMs({ shownAt: 5000, now: 8500, durationMs: 4000, hasSuccessor: false })).toBe(500)
+  })
+
+  it("gives the next notice a clock of its own and ignores a notice not on screen", () => {
+    const first = notify({ tone: "success", title: "first" })
+    const second = notify({ tone: "success", title: "second" })
+    markNoticeShown(first, 5000)
+    expect(markNoticeShown(second, 6000)).toBeNull()
+    expect(state().noticeShownAt).toBe(5000)
+    dismissNotice(first)
+    expect(state().noticeShownAt).toBeNull()
+    expect(markNoticeShown(second, 9000)).toBe(9000)
+    dismissNotice(second)
+    notify({ tone: "info", title: "third" })
+    expect(state().noticeShownAt).toBeNull()
+  })
+
+  it("stops the clock of a notice while a choice covers it", () => {
+    const id = notify({ tone: "warning", title: "Sinxronizasiya ziddiyyəti" })
+    markNoticeShown(id, 5000)
+    void ask({ title: "choose", buttons: [{ text: "OK", value: true }], dismissValue: false })
+    expect(state().noticeShownAt).toBeNull()
+    dismissChoice(state().choice!.id)
+    // Its reading time starts again when a layer draws it after the choice.
+    expect(markNoticeShown(id, 20000)).toBe(20000)
+  })
+
   it("keeps the full time alone and yields early to a waiting notice", () => {
     expect(noticeRemainingMs({ shownAt: 1000, now: 2000, durationMs: 5000, hasSuccessor: false })).toBe(4000)
     expect(noticeRemainingMs({ shownAt: 1000, now: 2000, durationMs: 5000, hasSuccessor: true })).toBe(NOTICE_MIN_VISIBLE_MS - 1000)
@@ -172,10 +217,66 @@ describe("ask", () => {
     dismissChoice(firstId)
     expect(state().choice?.title).toBe("second")
 
+    clock += CHOICE_SWAP_GUARD_MS
     answerChoice(state().choice!.id, 1)
     await expect(first).resolves.toBe("a")
     await expect(second).resolves.toBe("c")
     expect(order).toEqual(["first:a", "second:c"])
+    expect(state().choice).toBeNull()
+  })
+
+  it("does not let the second tap of a double tap answer the choice that took the sheet", async () => {
+    // VisitScreen: «Open settings» for a refused permission, then the queued
+    // out-of-zone question whose red «Check in anyway» sits in the same place.
+    void ask({ title: "Settings", buttons: [{ text: "Cancel", value: false, style: "cancel" }, { text: "Open settings", value: true }], dismissValue: false })
+    const forced = ask({
+      title: "Too far",
+      buttons: [{ text: "Cancel", value: false, style: "cancel" }, { text: "Check in anyway", value: true, style: "destructive" }],
+      dismissValue: false,
+    })
+    answerChoice(state().choice!.id, 1)
+    const tooFar = state().choice!
+    expect(tooFar.title).toBe("Too far")
+
+    clock += 120
+    answerChoice(tooFar.id, 1)
+    dismissChoice(tooFar.id)
+    expect(state().choice?.id).toBe(tooFar.id)
+
+    // Read and pressed after the moment: answered as usual.
+    clock += CHOICE_SWAP_GUARD_MS
+    answerChoice(tooFar.id, 0)
+    await expect(forced).resolves.toBe(false)
+    expect(state().choice).toBeNull()
+  })
+
+  it("guards a choice raised right after an answer, and not one raised later", async () => {
+    const first = ask({ title: "first", buttons: [{ text: "A", value: "a" }], dismissValue: "x" })
+    answerChoice(state().choice!.id, 0)
+    await expect(first).resolves.toBe("a")
+
+    // The sheet closed and reopened at once for the next question.
+    clock += 100
+    const soon = ask({ title: "soon", buttons: [{ text: "B", value: "b" }], dismissValue: "y" })
+    const soonId = state().choice!.id
+    answerChoice(soonId, 0)
+    expect(state().choice?.id).toBe(soonId)
+    clock += CHOICE_SWAP_GUARD_MS
+    answerChoice(soonId, 0)
+    await expect(soon).resolves.toBe("b")
+
+    clock += 1000
+    const later = ask({ title: "later", buttons: [{ text: "C", value: "c" }], dismissValue: "z" })
+    answerChoice(state().choice!.id, 0)
+    await expect(later).resolves.toBe("c")
+  })
+
+  it("still closes a guarded choice when the session ends", async () => {
+    void ask({ title: "first", buttons: [{ text: "A", value: 1 }], dismissValue: 0 })
+    const second = ask({ title: "second", buttons: [{ text: "B", value: 2 }], dismissValue: 0 })
+    answerChoice(state().choice!.id, 0)
+    dismissAllChoices()
+    await expect(second).resolves.toBe(0)
     expect(state().choice).toBeNull()
   })
 
@@ -206,7 +307,7 @@ describe("ask", () => {
     resetAppFeedback()
     await expect(open).resolves.toBe("open-dismissed")
     await expect(waiting).resolves.toBe("waiting-dismissed")
-    expect(state()).toEqual({ notice: null, pendingNotices: [], choice: null, pendingChoices: [] })
+    expect(state()).toEqual({ notice: null, noticeShownAt: null, pendingNotices: [], choice: null, pendingChoices: [] })
   })
 
   it("closes every choice when the session ends, and keeps the notice that may explain why", async () => {

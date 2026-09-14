@@ -37,7 +37,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe("the app's notice and choice wear fieldTheme", () => {
-  it("writes no colour by hand in the host, the tone table or the visit toast", () => {
+  it("writes no colour by hand in the host, the tone table or the screens' toast", () => {
     for (const source of [host, toast, tones]) {
       expect(source.match(/#[0-9a-f]{3,8}\b/gi)).toBeNull()
       expect(source.match(/rgba?\(/gi)).toBeNull()
@@ -102,6 +102,16 @@ describe("the notice", () => {
     expect(layer).toContain("onPress={() => leave(notice.id)}")
     expect(layer).toContain("if (!notice || choiceOpen) return null")
     expect(layer).toContain('pointerEvents="box-none"')
+  })
+
+  it("times out on the store's clock, the same in every layer", () => {
+    // A sheet's own layer opened late used to lose the notice to the root
+    // layer's earlier timer, half a second after drawing it.
+    const layer = host.slice(host.indexOf("export function AppNoticeLayer()"), host.indexOf("function AppChoiceSheet()"))
+    expect(layer).toContain("useStore(appFeedbackStore, (state) => state.noticeShownAt)")
+    expect(layer).toContain("const since = shownAt ?? markNoticeShown(notice.id)")
+    expect(layer).toContain("shownAt: since,")
+    expect(layer).not.toMatch(/at: Date\.now\(\)/)
   })
 
   it("lies below the status bar and right of the navigation rail", () => {

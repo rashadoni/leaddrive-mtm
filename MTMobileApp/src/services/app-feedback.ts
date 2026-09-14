@@ -60,6 +60,14 @@ export interface AppChoice {
 
 export interface AppFeedbackState {
   notice: AppNotice | null
+  /**
+   * When the notice was first drawn, by whichever notice layer drew it first;
+   * null until then and while an open choice hides it. One clock for every
+   * layer: a sheet that opens with its own layer 3.5 s into a 4 s notice
+   * shows the last half second, and the root layer's timer does not pull the
+   * notice out from under a layer that has just drawn it.
+   */
+  noticeShownAt: number | null
   pendingNotices: AppNotice[]
   choice: AppChoice | null
   pendingChoices: AppChoice[]
@@ -80,8 +88,18 @@ export const NOTICE_MIN_VISIBLE_MS = 1800
 
 export const NOTICE_DURATION_MS = { min: 3000, max: 7000, perCharacter: 45, base: 2000 } as const
 
+/**
+ * A choice that takes the screen within this long of the previous answer
+ * ignores presses for this long. The sheet stays open and the next choice's
+ * buttons land where the answered ones were: a double tap on «Open settings»
+ * would otherwise press «Check in anyway» behind it, unread (VisitScreen,
+ * refused location permission followed by the out-of-zone question).
+ */
+export const CHOICE_SWAP_GUARD_MS = 350
+
 const initialState = (): AppFeedbackState => ({
   notice: null,
+  noticeShownAt: null,
   pendingNotices: [],
   choice: null,
   pendingChoices: [],
@@ -93,6 +111,8 @@ type Pending = { values: unknown[]; dismissValue: unknown; resolve: (value: unkn
 
 const resolvers = new Map<number, Pending>()
 let nextId = 1
+let lastAnsweredAt = Number.NEGATIVE_INFINITY
+let swapGuard: { id: number; until: number } | null = null
 
 /**
  * Reading time grows with the text: a title alone is gone in 3 s, a body that
@@ -126,9 +146,9 @@ function sameNotice(a: AppNotice, b: Omit<AppNotice, "id" | "durationMs">): bool
 }
 
 /**
- * A non-blocking notice: replaces `Alert.alert(title, body)` whose only button
- * was «OK». Returns the notice id. The same text twice in a row (a sync that
- * reports the same conflict again) is shown once.
+ * A non-blocking notice: replaces the system `Alert.alert` with a title, a
+ * body and only «OK». Returns the notice id. The same text twice in a row (a
+ * sync that reports the same conflict again) is shown once.
  */
 export function notify(input: NotifyInput): number {
   const draft = {
@@ -150,7 +170,7 @@ export function notify(input: NotifyInput): number {
       : noticeDurationMs(draft.title, draft.message),
   }
   if (!state.notice) {
-    appFeedbackStore.setState({ notice })
+    appFeedbackStore.setState({ notice, noticeShownAt: null })
   } else {
     appFeedbackStore.setState({
       pendingNotices: [...state.pendingNotices, notice].slice(-NOTICE_QUEUE_LIMIT),
@@ -164,18 +184,31 @@ export function dismissNotice(id: number): void {
   const state = appFeedbackStore.getState()
   if (state.notice?.id === id) {
     const [next, ...rest] = state.pendingNotices
-    appFeedbackStore.setState({ notice: next ?? null, pendingNotices: rest })
+    appFeedbackStore.setState({ notice: next ?? null, noticeShownAt: null, pendingNotices: rest })
   } else if (state.pendingNotices.some((notice) => notice.id === id)) {
     appFeedbackStore.setState({ pendingNotices: state.pendingNotices.filter((notice) => notice.id !== id) })
   }
 }
 
 /**
- * A blocking choice: replaces `Alert.alert(title, body, buttons)` and the
- * `new Promise(resolve => Alert.alert(..., [{ onPress: () => resolve(x) }]))`
- * pattern. Resolves with the pressed button's value, or with `dismissValue`
- * when the sheet is closed without a button. A second ask while one is open
- * waits for it; neither is dropped nor answered on the agent's behalf.
+ * A notice layer drew the notice `id`. The first call starts its clock; later
+ * calls, from the other layers, return that same time. Null when `id` is not
+ * the notice on screen.
+ */
+export function markNoticeShown(id: number, now: number = Date.now()): number | null {
+  const state = appFeedbackStore.getState()
+  if (state.notice?.id !== id) return null
+  if (state.noticeShownAt !== null) return state.noticeShownAt
+  appFeedbackStore.setState({ noticeShownAt: now })
+  return now
+}
+
+/**
+ * A blocking choice: replaces the system `Alert.alert` with buttons, and the
+ * pattern of a `new Promise` resolved from those buttons' `onPress`. Resolves
+ * with the pressed button's value, or with `dismissValue` when the sheet is
+ * closed without a button. A second ask while one is open waits for it;
+ * neither is dropped nor answered on the agent's behalf.
  */
 export function ask<T>(input: AskInput<T>): Promise<T> {
   const count = input.buttons.length
@@ -196,19 +229,37 @@ export function ask<T>(input: AskInput<T>): Promise<T> {
       resolve: resolve as (value: unknown) => void,
     })
     const state = appFeedbackStore.getState()
-    if (!state.choice) appFeedbackStore.setState({ choice })
-    else appFeedbackStore.setState({ pendingChoices: [...state.pendingChoices, choice] })
+    if (!state.choice) {
+      armSwapGuard(choice.id)
+      // The notice under the sheet stops its clock and gets its reading time
+      // again once the choice closes.
+      appFeedbackStore.setState({ choice, noticeShownAt: null })
+    } else {
+      appFeedbackStore.setState({ pendingChoices: [...state.pendingChoices, choice] })
+    }
   })
+}
+
+/** Guards `id` when it takes the screen right after an answer; see CHOICE_SWAP_GUARD_MS. */
+function armSwapGuard(id: number, now: number = Date.now()): void {
+  swapGuard = now - lastAnsweredAt < CHOICE_SWAP_GUARD_MS ? { id, until: now + CHOICE_SWAP_GUARD_MS } : null
 }
 
 function settleChoice(id: number, pick: (pending: Pending) => unknown): void {
   const state = appFeedbackStore.getState()
-  // Only the choice on screen can be answered: a late second tap on a sheet
-  // that is already closing must not answer the one queued behind it.
+  // Only the choice on screen can be answered: a tap on a sheet that is
+  // already fading out cannot answer the one still queued.
   if (state.choice?.id !== id) return
+  // A choice that replaced the one just answered is not answered by the
+  // second tap of the same double tap: that touch is new, lands on this
+  // choice's own button and carries its id, so only time tells it apart.
+  const now = Date.now()
+  if (swapGuard?.id === id && now < swapGuard.until) return
   const pending = resolvers.get(id)
   resolvers.delete(id)
+  lastAnsweredAt = now
   const [next, ...rest] = state.pendingChoices
+  if (next) armSwapGuard(next.id, now)
   appFeedbackStore.setState({ choice: next ?? null, pendingChoices: rest })
   pending?.resolve(pick(pending))
 }
@@ -234,6 +285,7 @@ export function dismissChoice(id: number): void {
 export function dismissAllChoices(): void {
   const pending = [...resolvers.values()]
   resolvers.clear()
+  swapGuard = null
   appFeedbackStore.setState({ choice: null, pendingChoices: [] })
   for (const entry of pending) entry.resolve(entry.dismissValue)
 }
@@ -241,5 +293,6 @@ export function dismissAllChoices(): void {
 /** Clears notices and choices; no caller of ask() stays suspended. For tests. */
 export function resetAppFeedback(): void {
   dismissAllChoices()
+  lastAnsweredAt = Number.NEGATIVE_INFINITY
   appFeedbackStore.setState(initialState())
 }
