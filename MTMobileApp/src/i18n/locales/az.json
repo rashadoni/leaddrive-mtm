@@ -976,5 +976,22 @@
     "saveFailed": "İmzanı saxlamaq alınmadı. Yenidən cəhd edin.",
     "buttonRequired": "Müştəri imzası — mütləqdir",
     "taken": "İmza alındı"
+  },
+  "photoCapture": {
+    "permissionBody": "Foto çəkmək üçün kameraya icazə verin.",
+    "permissionDenied": "Kameraya icazə verilməyib. «Tənzimləmələri aç» basın və İcazələr bölümündə kameranı açın.",
+    "allow": "İcazə ver",
+    "cancel": "Ləğv et",
+    "close": "Bağla",
+    "noCamera": "Kamera tapılmadı. Bağlayıb yenidən açın; alınmasa, telefonu yenidən işə salın.",
+    "flash": "Flaş",
+    "flashOn": "Flaş: açıq",
+    "flashOff": "Flaş: bağlı",
+    "capture": "Foto çək",
+    "preview": "Çəkilmiş foto",
+    "retake": "Yenidən çək",
+    "usePhoto": "Fotonu saxla",
+    "captureFailedTitle": "Foto çəkilmədi",
+    "captureFailedBody": "Kameranı bağlayıb yenidən açın və bir daha çəkin."
   }
 }
