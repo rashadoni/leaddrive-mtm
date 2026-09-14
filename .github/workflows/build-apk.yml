@@ -92,24 +92,32 @@ jobs:
           chmod 600 android/app/mtm-release.keystore
           test -s android/app/mtm-release.keystore
 
-      - name: Build release APK
+      - name: Build release APK and Play bundle
         if: steps.scope.outputs.build == 'true'
         working-directory: MTMobileApp/android
-        run: ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
+        # The .aab is what Google Play accepts for a new app; the .apk stays
+        # for direct installs. Same key, same versionCode. Google Play needs a
+        # new, larger versionCode for every upload. (Expressions have no
+        # arithmetic, so the sum is done by the shell.)
+        run: |
+          export MTM_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
+          ./gradlew assembleRelease bundleRelease --no-daemon --no-parallel --max-workers=2 --console=plain --stacktrace
 
       - name: Rename APK with version
         if: steps.scope.outputs.build == 'true'
         id: apk
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          VERSION_CODE=$(sed -nE 's/^[[:space:]]*versionCode[[:space:]]+([0-9]+).*/\1/p' android/app/build.gradle | head -n 1)
-          test -n "$VERSION_CODE"
+          VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
           OUT="leaddrive-mtm-v${VERSION}.apk"
+          AAB="leaddrive-mtm-v${VERSION}-${VERSION_CODE}.aab"
           cp android/app/build/outputs/apk/release/app-release.apk "$OUT"
+          cp android/app/build/outputs/bundle/release/app-release.aab "$AAB"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "file=$OUT" >> "$GITHUB_OUTPUT"
-          ls -lh "$OUT"
+          echo "aab=$AAB" >> "$GITHUB_OUTPUT"
+          ls -lh "$OUT" "$AAB"
 
       - name: Verify package, version and release signature
         id: verify
@@ -117,6 +125,7 @@ jobs:
         env:
           EMULATOR_BUILD: ${{ inputs.emulator_build }}
           APK_FILE: ${{ steps.apk.outputs.file }}
+          AAB_FILE: ${{ steps.apk.outputs.aab }}
           EXPECTED_VERSION: ${{ steps.apk.outputs.version }}
           EXPECTED_VERSION_CODE: ${{ steps.apk.outputs.version_code }}
           GH_TOKEN: ${{ github.token }}
@@ -192,6 +201,18 @@ jobs:
           printf 'Release certificate SHA-256: %s\n' "$NEW_CERT"
           sha256sum "$APK_FILE" | tee "$APK_FILE.sha256"
 
+          # The Play bundle must carry the same certificate: it is the key
+          # Google Play will be told to sign with, so installs from the store
+          # and direct APK installs update each other.
+          AAB_CERT=$(keytool -printcert -jarfile "$AAB_FILE" | sed -nE 's/^[[:space:]]*SHA256: //p' | head -n 1 | tr -d ':' | tr 'A-F' 'a-f')
+          test -n "$AAB_CERT"
+          if [ "$AAB_CERT" != "$EXPECTED_CERT" ]; then
+            echo "::error::Bundle signed with $AAB_CERT, expected $EXPECTED_CERT"
+            exit 1
+          fi
+          printf 'Bundle certificate SHA-256: %s\n' "$AAB_CERT"
+          sha256sum "$AAB_FILE" | tee "$AAB_FILE.sha256"
+
       - uses: actions/upload-artifact@v4
         if: steps.scope.outputs.build == 'true'
         with:
@@ -199,6 +220,8 @@ jobs:
           path: |
             MTMobileApp/${{ steps.apk.outputs.file }}
             MTMobileApp/${{ steps.apk.outputs.file }}.sha256
+            MTMobileApp/${{ steps.apk.outputs.aab }}
+            MTMobileApp/${{ steps.apk.outputs.aab }}.sha256
           retention-days: 30
           if-no-files-found: error
 
@@ -218,4 +241,6 @@ jobs:
           gh release upload "$TAG" \
             "${{ steps.apk.outputs.file }}" \
             "${{ steps.apk.outputs.file }}.sha256" \
+            "${{ steps.apk.outputs.aab }}" \
+            "${{ steps.apk.outputs.aab }}.sha256" \
             --clobber

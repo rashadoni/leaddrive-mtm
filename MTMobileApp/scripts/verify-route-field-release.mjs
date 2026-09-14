@@ -36,7 +36,8 @@ const applicationId = match(profile, /applicationId:\s*"([^"]+)"/, "Route Field 
 const apkVersion = match(profile, /apkVersion:\s*"([^"]+)"/, "Route Field APK version")
 const gradleNamespace = match(gradle, /namespace\s+"([^"]+)"/, "Android namespace")
 const gradleApplicationId = match(gradle, /applicationId\s+"([^"]+)"/, "Android application id")
-const versionCode = match(gradle, /versionCode\s+(\d+)/, "Android versionCode")
+// CI overrides it with MTM_VERSION_CODE; the literal fallback is the local build.
+const versionCode = match(gradle, /versionCode(?:\s+|\(\(System\.getenv\("MTM_VERSION_CODE"\) \?: ")(\d+)/, "Android versionCode")
 const versionName = match(gradle, /versionName\s+"([^"]+)"/, "Android versionName")
 
 requireEqual(gradleNamespace, applicationId, "namespace")
