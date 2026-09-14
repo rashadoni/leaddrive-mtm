@@ -155,10 +155,12 @@ function AppContent() {
       if (!latestWorkdayId || cancelled) return
 
       setTrackingWorkdayId(latestWorkdayId)
+      // No stop here when this run was cancelled meanwhile. A cancel means the
+      // effect ran again, and that run decides: it stops tracking itself when
+      // the workday ended, or keeps the service when only the app came back to
+      // the foreground (a closed permission sheet does that). Stopping here
+      // killed the service the next run had just relied on, 14 ms after start.
       await startTracking()
-      if (cancelled) {
-        await stopTracking()
-      }
     })().catch(() => {})
 
     return () => {
