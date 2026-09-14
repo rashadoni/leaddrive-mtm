@@ -1,6 +1,7 @@
 import React from "react"
-import { StatusBar } from "react-native"
+import { StatusBar, useWindowDimensions } from "react-native"
 import { useIsFocused } from "@react-navigation/native"
+import { isTabletWidth } from "../theme/layoutBreakpoints"
 
 /**
  * Dark status bar icons for a screen whose top is light.
@@ -13,8 +14,13 @@ import { useIsFocused } from "@react-navigation/native"
  * Rendered only while the screen is focused: tab screens stay mounted, and a
  * mounted `StatusBar` keeps its props on the stack. Unmounting on blur hands
  * the bar back to the app-wide `light-content`.
+ *
+ * Not with the side rail: there the navigator paints a green band under the
+ * whole status bar, and dark icons on it would be the same problem inverted.
  */
 export default function LightScreenStatusBar() {
   const focused = useIsFocused()
+  const { width } = useWindowDimensions()
+  if (isTabletWidth(width)) return null
   return focused ? <StatusBar barStyle="dark-content" /> : null
 }
