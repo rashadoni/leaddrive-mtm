@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { upperInitial } from "../../lib/upper"
 import {
   ActivityIndicator,
@@ -46,8 +46,7 @@ import SignaturePadModal from "../../components/SignaturePadModal"
 import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
-import FeedbackToast from "../../components/FeedbackToast"
-import ConfirmSheet from "../../components/ConfirmSheet"
+import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -387,7 +386,6 @@ export default function VisitScreen() {
   const [agentCoords, setAgentCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
-  const [pendingGeofenceResolve, setPendingGeofenceResolve] = useState<((value: boolean) => void) | null>(null)
   const [checkInIssue, setCheckInIssue] = useState<CheckInIssue | null>(null)
   // T4: route execution already refused to run during a break; the ad-hoc
   // check-in on this screen did not, so the one path that bypassed the route
@@ -399,28 +397,11 @@ export default function VisitScreen() {
   const workdayPaused = activeWorkday?.key === currentWorkdayKey
     && activeWorkday.syncState === "CONFIRMED"
     && activeWorkday.paused === true
-  const [toast, setToast] = useState<{
-    visible: boolean
-    type: "success" | "error" | "warning" | "info"
-    title: string
-    message?: string
-  }>({ visible: false, type: "success", title: "" })
-  const [confirm, setConfirm] = useState<{
-    visible: boolean
-    title: string
-    message: string
-    confirmText?: string
-    confirmColor?: string
-    destructive?: boolean
-    hideCancel?: boolean
-    onConfirm: () => void
-  }>({ visible: false, title: "", message: "", onConfirm: () => {} })
-
-  const showToast = (
-    type: "success" | "error" | "warning" | "info",
-    title: string,
-    message?: string,
-  ) => setToast({ visible: true, type, title, message })
+  // Notices and choices go through the app's shared layer (`notify`, `ask`),
+  // drawn by the one AppFeedbackHost at the root (2026-09-14). The screen's
+  // own bottom sheet (ConfirmSheet) read no safe-area insets and painted
+  // white and slate outside fieldTheme; the shared sheet measures its own
+  // window (camera cutout, navigation bar on the side) and wears the brand.
 
   useEffect(() => {
     Geolocation.getCurrentPosition(
@@ -552,16 +533,19 @@ export default function VisitScreen() {
       })
       if (result === PermissionsAndroid.RESULTS.GRANTED) return true
       if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-        setConfirm({
-          visible: true,
+        // Not awaited, as before: the check-in reports the refused permission
+        // at once, and Settings opens only if the agent picks it.
+        void ask({
           title: t("permission.locationDeniedTitle"),
           message: t("permission.locationDeniedBody"),
-          confirmText: t("permission.openSettings"),
-          confirmColor: fieldTheme.color.danger,
-          onConfirm: () => {
-            setConfirm((current) => ({ ...current, visible: false }))
-            Linking.openSettings()
-          },
+          tone: "warning",
+          buttons: [
+            { text: copy.cancel, value: false, style: "cancel" },
+            { text: t("permission.openSettings"), value: true },
+          ],
+          dismissValue: false,
+        }).then((openSettings) => {
+          if (openSettings) Linking.openSettings()
         })
       }
       return false
@@ -585,7 +569,7 @@ export default function VisitScreen() {
         )
       })
     } catch {
-      showToast("error", t("common.error"), t("visit.gpsSignalLost"))
+      notify({ tone: "error", title: t("common.error"), message: t("visit.gpsSignalLost") })
       return null
     }
   }
@@ -614,37 +598,60 @@ export default function VisitScreen() {
     }
   }
 
-  const handleCheckIn = (customer: Customer) => {
-    if (mutating || activeVisit) return
-    setConfirm({
-      visible: true,
-      title: t("visit.checkInPromptTitle", { name: customer.name }),
-      message: customer.address || t("visit.noAddress"),
-      confirmText: t("visit.checkInButton"),
-      confirmColor: fieldTheme.color.primary,
-      onConfirm: () => {
-        setConfirm((current) => ({ ...current, visible: false }))
-        performCheckIn(customer)
-      },
-    })
+  // One «Start», one prompt, one check-in. ask() queues a second prompt where
+  // ConfirmSheet replaced the first, and `mutating` stays false while the
+  // prompt is open: a double tap queued two prompts and, answered twice, two
+  // check-ins for one customer. Held until that check-in has run.
+  const checkInStarting = useRef(false)
+
+  const handleCheckIn = async (customer: Customer) => {
+    if (mutating || activeVisit || checkInStarting.current) return
+    checkInStarting.current = true
+    try {
+      const start = await ask({
+        title: t("visit.checkInPromptTitle", { name: customer.name }),
+        message: customer.address || t("visit.noAddress"),
+        buttons: [
+          { text: copy.cancel, value: false, style: "cancel" },
+          { text: t("visit.checkInButton"), value: true },
+        ],
+        dismissValue: false,
+      })
+      if (start) await performCheckIn(customer)
+    } finally {
+      checkInStarting.current = false
+    }
   }
 
+  /**
+   * A server or client answer the agent has to read: it stays until a button
+   * is pressed. With `onConfirm` it offers that action beside «Cancel», and
+   * the action runs only when it is the button pressed; closing the sheet
+   * with the back button or a tap outside it is «Cancel».
+   */
   const showOutcomeSheet = (
     title: string,
     message: string,
-    options: { confirmText?: string; confirmColor?: string; onConfirm?: () => void } = {},
+    options: { tone?: FeedbackTone; confirmText?: string; onConfirm?: () => void } = {},
   ) => {
-    setConfirm({
-      visible: true,
+    const { onConfirm } = options
+    const confirmText = options.confirmText ?? t("common.ok")
+    const tone = options.tone ?? "warning"
+    if (!onConfirm) {
+      void ask({ title, message, tone, buttons: [{ text: confirmText, value: true }], dismissValue: true })
+      return
+    }
+    void ask({
       title,
       message,
-      confirmText: options.confirmText ?? t("common.ok"),
-      confirmColor: options.confirmColor,
-      hideCancel: !options.onConfirm,
-      onConfirm: () => {
-        setConfirm((current) => ({ ...current, visible: false }))
-        options.onConfirm?.()
-      },
+      tone,
+      buttons: [
+        { text: copy.cancel, value: false, style: "cancel" },
+        { text: confirmText, value: true },
+      ],
+      dismissValue: false,
+    }).then((confirmed) => {
+      if (confirmed) onConfirm()
     })
   }
 
@@ -671,10 +678,10 @@ export default function VisitScreen() {
   const explainCheckInOutcome = (customer: Customer, outcome: CheckInOutcome, retry: () => void) => {
     switch (outcome.kind) {
       case "accepted":
-        showToast("success", t("visit.checkInAcceptedTitle"), t("visit.checkInAcceptedBody", { name: customer.name }))
+        notify({ tone: "success", title: t("visit.checkInAcceptedTitle"), message: t("visit.checkInAcceptedBody", { name: customer.name }) })
         return
       case "queued":
-        showToast("success", t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: customer.name }))
+        notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: customer.name }) })
         return
       case "offline":
         showOutcomeSheet(t("visit.checkInOfflineTitle"), t("visit.checkInOfflineBody", { name: customer.name }), {
@@ -693,16 +700,17 @@ export default function VisitScreen() {
         showNoCoordinates(customer)
         return
       case "active_visit":
-        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedActiveVisit"))
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedActiveVisit"), { tone: "error" })
         return
       case "route_mismatch":
-        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedRouteMismatch"))
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedRouteMismatch"), { tone: "error" })
         return
       case "customer_missing":
-        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedCustomerMissing", { name: customer.name }))
+        showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedCustomerMissing", { name: customer.name }), { tone: "error" })
         return
       case "server_error":
         showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRejectedServer", { message: outcome.message ?? "" }), {
+          tone: "error",
           confirmText: t("common.retry"),
           onConfirm: retry,
         })
@@ -745,6 +753,7 @@ export default function VisitScreen() {
             .some((item) => item.operationId === operationId && item.status === "conflict")
           if (stillRejected) {
             showOutcomeSheet(t("visit.checkInRejectedTitle"), t("visit.checkInRetryFailed"), {
+              tone: "error",
               confirmText: t("common.retry"),
               onConfirm: retry,
             })
@@ -756,7 +765,7 @@ export default function VisitScreen() {
     }
     explainCheckInOutcome(customer, outcome, retry)
     if (outcome.kind === "accepted" && conflicted > 0) {
-      showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+      notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
     }
   }
 
@@ -770,7 +779,7 @@ export default function VisitScreen() {
       // that is not there.
       if (workdayPaused) {
         setCheckInIssue({ kind: "workday-paused" })
-        showToast("warning", copy.issuePausedTitle, copy.issuePausedBody)
+        notify({ tone: "warning", title: copy.issuePausedTitle, message: copy.issuePausedBody })
         return
       }
       // Owner decision: no coordinates on the client card means no check-in, with an explanation.
@@ -794,17 +803,17 @@ export default function VisitScreen() {
           latitude: lastKnownPosition.latitude,
           longitude: lastKnownPosition.longitude,
         }
-        showToast(
-          "warning",
-          t("visit.usingLastPosition"),
-          t("visit.lastPositionAccuracy", {
+        notify({
+          tone: "warning",
+          title: t("visit.usingLastPosition"),
+          message: t("visit.lastPositionAccuracy", {
             accuracy: lastKnownPosition.accuracy?.toFixed(0) || "?",
           }),
-        )
+        })
       }
       if (!coords) {
         setCheckInIssue({ kind: "no-position", reason: located.failure ?? "gps" })
-        showToast("error", t("visit.gpsUnavailable"), t("visit.gpsCantDetermine"))
+        notify({ tone: "error", title: t("visit.gpsUnavailable"), message: t("visit.gpsCantDetermine") })
         return
       }
 
@@ -816,7 +825,7 @@ export default function VisitScreen() {
       })
       if (precondition.kind === "implausible-distance") {
         setCheckInIssue(precondition)
-        showToast("error", copy.issueSuspiciousTitle, checkInIssueText(precondition, copy).body)
+        notify({ tone: "error", title: copy.issueSuspiciousTitle, message: checkInIssueText(precondition, copy).body })
         return
       }
 
@@ -826,35 +835,32 @@ export default function VisitScreen() {
         if (distance > GEOFENCE_DEFAULT) {
           if (!api.canForceCheckIn) {
             setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })
-            showToast(
-              "error",
-              t("visit.tooFarTitle"),
-              t("visit.tooFarAskSupervisor", {
+            notify({
+              tone: "error",
+              title: t("visit.tooFarTitle"),
+              message: t("visit.tooFarAskSupervisor", {
                 distance: formatDistance(distance),
                 name: customer.name,
                 max: GEOFENCE_DEFAULT,
               }),
-            )
+            })
             return
           }
-          const proceed = await new Promise<boolean>((resolve) => {
-            setPendingGeofenceResolve(() => (value: boolean) => resolve(value))
-            setConfirm({
-              visible: true,
-              title: t("visit.tooFarTitle"),
-              message: t("visit.tooFarBody", {
-                distance: formatDistance(distance),
-                name: customer.name,
-                max: GEOFENCE_DEFAULT,
-              }),
-              confirmText: t("visit.checkInAnyway"),
-              confirmColor: fieldTheme.color.danger,
-              onConfirm: () => {
-                setConfirm((current) => ({ ...current, visible: false }))
-                setPendingGeofenceResolve(null)
-                resolve(true)
-              },
-            })
+          // «Cancel», the back button and a tap outside the sheet all answer
+          // false; only «Check in anyway» forces the visit (red, as before).
+          const proceed = await ask({
+            title: t("visit.tooFarTitle"),
+            message: t("visit.tooFarBody", {
+              distance: formatDistance(distance),
+              name: customer.name,
+              max: GEOFENCE_DEFAULT,
+            }),
+            tone: "warning",
+            buttons: [
+              { text: copy.cancel, value: false, style: "cancel" },
+              { text: t("visit.checkInAnyway"), value: true, style: "destructive" },
+            ],
+            dismissValue: false,
           })
           if (!proceed) {
             setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })
@@ -878,7 +884,7 @@ export default function VisitScreen() {
       if (error.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-in error:", error?.message ?? error)
         setCheckInIssue({ kind: "server" })
-        showToast("error", t("common.error"), t("visit.checkInFailed"))
+        notify({ tone: "error", title: t("common.error"), message: t("visit.checkInFailed") })
       }
     } finally {
       setMutating(false)
@@ -888,8 +894,20 @@ export default function VisitScreen() {
   const handleCheckOut = () => {
     if (!activeVisit || mutating) return
     if (signature.blocksCheckOut) {
-      showToast("warning", t("signature.requiredTitle"), t("signature.requiredBody"))
-      signature.openPad()
+      // Asked first, as on the route tab. A notice raised here went under the
+      // pad, which opened in the same tick as a window of its own.
+      void ask({
+        title: t("signature.requiredTitle"),
+        message: t("signature.requiredBody"),
+        tone: "warning",
+        buttons: [
+          { text: copy.cancel, value: false, style: "cancel" },
+          { text: t("signature.signNow"), value: true },
+        ],
+        dismissValue: false,
+      }).then((signNow) => {
+        if (signNow) signature.openPad()
+      })
       return
     }
     setNotesVisible(true)
@@ -898,10 +916,19 @@ export default function VisitScreen() {
   const handleSignatureSave = async (capture: SignatureCapture, signerName?: string) => {
     try {
       await signature.save(capture, signerName)
-      showToast("success", t("signature.savedTitle"), t("signature.savedBody"))
+      notify({ tone: "success", title: t("signature.savedTitle"), message: t("signature.savedBody") })
     } catch (error: any) {
       console.warn("[VisitScreen] signature error:", error?.message ?? error)
-      showToast("error", t("common.error"), t("signature.saveFailed"))
+      // The pad stays open after a failed save and covers a notice, so this
+      // is a sheet above it, as on the route tab; not awaited, so the pad's
+      // Save button is released at once.
+      void ask({
+        title: t("common.error"),
+        message: t("signature.saveFailed"),
+        tone: "error",
+        buttons: [{ text: t("common.ok"), value: true }],
+        dismissValue: true,
+      })
     }
   }
 
@@ -923,20 +950,20 @@ export default function VisitScreen() {
         notes: notes || undefined,
       })
       setActiveVisit(visit)
-      showToast("success", t("visit.checkOutQueuedTitle"), t("visit.checkOutQueuedBody"))
+      notify({ tone: "success", title: t("visit.checkOutQueuedTitle"), message: t("visit.checkOutQueuedBody") })
       runMobileSync().then(async (result) => {
         await fetchData()
         if (result.conflicted > 0) {
-          showToast("warning", t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+          notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
         }
       }).catch(() => {})
     } catch (error: any) {
       if (error.message !== "SESSION_EXPIRED") {
         console.warn("[VisitScreen] check-out error:", error?.message ?? error)
         if (error?.code === "PHOTO_REQUIRED") {
-          showToast("error", t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
+          notify({ tone: "warning", title: t("visit.photoRequiredTitle"), message: t("visit.photoRequiredBody") })
         } else {
-          showToast("error", t("common.error"), t("visit.checkOutFailed"))
+          notify({ tone: "error", title: t("common.error"), message: t("visit.checkOutFailed") })
         }
       }
     } finally {
@@ -970,12 +997,12 @@ export default function VisitScreen() {
         longitude: uploadCoords?.longitude,
       })
       photos.recordUpload(activeVisit.id)
-      showToast("success", t("visit.photoSavedTitle"), t("visit.photoSavedBody"))
+      notify({ tone: "success", title: t("visit.photoSavedTitle"), message: t("visit.photoSavedBody") })
     } catch (error: any) {
       console.warn("[VisitScreen] photo upload error:", error?.message ?? error)
       if (error?.message !== "SESSION_EXPIRED") {
         if (error?.code === "MAX_PHOTOS_REACHED") {
-          showToast("error", t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
+          notify({ tone: "warning", title: t("visit.photoLimitTitle"), message: t("visit.photoLimitBody") })
         } else {
           const queuedPhoto = await enqueueMediaUpload({
             filePath: path,
@@ -985,7 +1012,7 @@ export default function VisitScreen() {
             longitude: uploadCoords?.longitude,
           })
           photos.recordQueued(activeVisit.id, queuedPhoto.id)
-          showToast("success", t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
+          notify({ tone: "success", title: t("visit.photoQueuedTitle"), message: t("visit.photoQueuedBody") })
         }
       }
     }
@@ -1173,31 +1200,6 @@ export default function VisitScreen() {
               }
             : undefined
         }
-      />
-      <ConfirmSheet
-        visible={confirm.visible}
-        title={confirm.title}
-        message={confirm.message}
-        cancelText={copy.cancel}
-        confirmText={confirm.confirmText}
-        confirmColor={confirm.confirmColor}
-        destructive={confirm.destructive}
-        hideCancel={confirm.hideCancel}
-        onCancel={() => {
-          setConfirm((current) => ({ ...current, visible: false }))
-          if (pendingGeofenceResolve) {
-            pendingGeofenceResolve(false)
-            setPendingGeofenceResolve(null)
-          }
-        }}
-        onConfirm={confirm.onConfirm}
-      />
-      <FeedbackToast
-        visible={toast.visible}
-        type={toast.type}
-        title={toast.title}
-        message={toast.message}
-        onDismiss={() => setToast((current) => ({ ...current, visible: false }))}
       />
     </View>
   )

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -15,11 +14,14 @@ import {
   View,
 } from "react-native"
 import { useNavigation } from "@react-navigation/native"
+import { SafeAreaProvider } from "react-native-safe-area-context"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { managerApi } from "../../services/manager-api"
+import { notify } from "../../services/app-feedback"
+import { AppNoticeLayer } from "../../components/AppFeedbackHost"
 import { readOfflineOrganizations } from "../../services/offline-reads"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
@@ -245,7 +247,7 @@ export default function OrganizationExplorerScreen() {
       setSaveOpen(false)
       await fetchConfiguration()
     } catch (error: any) {
-      Alert.alert(t("common.error"), error.message)
+      notify({ tone: "error", title: t("common.error"), message: error.message })
     } finally {
       setSavingView(false)
     }
@@ -273,7 +275,7 @@ export default function OrganizationExplorerScreen() {
       setAssignmentPreview(response.data)
       setIdempotencyKey(makeOrganizationAssignmentIdempotencyKey())
     } catch (error: any) {
-      Alert.alert(t("common.error"), error.message)
+      notify({ tone: "error", title: t("common.error"), message: error.message })
     } finally {
       setAssigning(false)
     }
@@ -291,10 +293,10 @@ export default function OrganizationExplorerScreen() {
       setSelectedIds(new Set())
       setSelectionMode(false)
       await Promise.all([fetchRows(1, false), fetchConfiguration()])
-      Alert.alert(t("organizations.assignmentDoneTitle"), t("organizations.assignmentDoneBody"))
+      notify({ tone: "success", title: t("organizations.assignmentDoneTitle"), message: t("organizations.assignmentDoneBody") })
     } catch (error: any) {
       setAssignmentPreview(null)
-      Alert.alert(t("common.error"), error.message)
+      notify({ tone: "error", title: t("common.error"), message: error.message })
     } finally {
       setAssigning(false)
     }
@@ -489,8 +491,14 @@ function DetailSection({ title, values }: { title: string; values: Array<[string
   return <View style={styles.detailSection}><Text style={styles.detailSectionTitle}>{title}</Text>{values.filter(([, value]) => value).map(([label, value]) => <View key={label} style={styles.detailField}><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>)}</View>
 }
 
+/**
+ * A sheet is its own Android window and covers the app's notice. The errors
+ * of «Save view», preview and assignment are raised while their sheet is still
+ * open (the system dialog used to sit above it), so the sheet carries its own
+ * notice layer; its provider measures this window, not the app's.
+ */
 function Sheet({ visible, onClose, children, tablet = false }: { visible: boolean; onClose: () => void; children: React.ReactNode; tablet?: boolean }) {
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><Pressable style={styles.backdrop} onPress={onClose}><Pressable style={[styles.sheet, tablet && styles.sheetTablet]} onPress={() => {}}>{children}</Pressable></Pressable></Modal>
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><SafeAreaProvider><Pressable style={styles.backdrop} onPress={onClose}><Pressable style={[styles.sheet, tablet && styles.sheetTablet]} onPress={() => {}}>{children}</Pressable></Pressable><AppNoticeLayer /></SafeAreaProvider></Modal>
 }
 
 function FilterSheet({ visible, tablet, filters, facets, onChange, onClose, t }: any) {

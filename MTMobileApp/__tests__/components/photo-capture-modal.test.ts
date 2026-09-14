@@ -83,13 +83,11 @@ describe("camera screen speaks the app language", () => {
         return /["'`]/.test(withoutKeys) || /\.message\b/.test(withoutKeys)
       })
     expect(literalTexts).toEqual([])
-    // Alerts: title AND body are both t() calls. The native error text used to
-    // be the body (English, technical), and a check on the title alone would
-    // let `t("…title"), e?.message || t("…body")` come back unnoticed.
-    const alertCalls = code.match(/Alert\.alert\(/g) ?? []
-    const translatedAlerts = code.match(/Alert\.alert\(\s*t\("[\w.]+"\)\s*,\s*t\("[\w.]+"\)\s*\)/g) ?? []
-    expect(alertCalls.length).toBeGreaterThan(0)
-    expect(translatedAlerts).toHaveLength(alertCalls.length)
+    // The failed-shot message: title AND body are both t() calls. The native
+    // error text used to be the body (English, technical), and a check on the
+    // title alone would let `e?.message || t("…body")` come back unnoticed.
+    expect(code).toContain("<Text style={styles.captureFailedTitle}>{t(\"photoCapture.captureFailedTitle\")}</Text>")
+    expect(code).toContain("<Text style={styles.captureFailedBody}>{t(\"photoCapture.captureFailedBody\")}</Text>")
     // The exception text may reach the log, never the agent's screen.
     const withoutLogs = code.replace(/console\.(warn|error|log)\([^\n]*/g, " ")
     expect(withoutLogs.match(/\.message\b/g)).toBeNull()
@@ -166,12 +164,46 @@ describe("a photo leaves the camera only after «Fotonu saxla»", () => {
     const capture = code.slice(code.indexOf("const handleCapture = async () => {"), code.indexOf("const handleRetake"))
     expect(capture.indexOf("if (!mounted.current) return")).toBeGreaterThan(-1)
     expect(capture.indexOf("if (!mounted.current) return")).toBeLessThan(capture.indexOf("setPreviewPath(finalPath)"))
-    expect(capture.lastIndexOf("if (!mounted.current) return")).toBeLessThan(capture.indexOf("Alert.alert("))
+    expect(capture.indexOf("setCaptureFailed(true)")).toBeGreaterThan(-1)
+    expect(capture.lastIndexOf("if (!mounted.current) return")).toBeLessThan(capture.indexOf("setCaptureFailed(true)"))
   })
 
   it("sends a refused permission to Settings instead of a button that does nothing", () => {
     expect(code).toContain("setPermissionDenied(true)")
     expect(code).toContain("Linking.openSettings()")
     expect(code).toContain("t(\"permission.openSettings\")")
+  })
+})
+
+describe("a failed shot is said on the camera screen, not in a system dialog", () => {
+  // 2026-09-14: the app's messages left Android's grey dialog for the app's
+  // own notice layer. That layer sits in the app window, and this modal is a
+  // window of its own above it, so a notice raised here would be hidden. The
+  // camera says it inline, in the error notice's colours, over the viewfinder.
+  it("draws no system dialog and no app notice from the camera", () => {
+    expect(code).not.toMatch(/\bAlert\b/)
+    expect(code).not.toContain("notify(")
+  })
+
+  it("shows the message only on the viewfinder and clears it on the next shot or a tap", () => {
+    const capture = code.slice(code.indexOf("const handleCapture = async () => {"), code.indexOf("const handleRetake"))
+    expect(capture.indexOf("setCaptureFailed(false)")).toBeGreaterThan(-1)
+    expect(capture.indexOf("setCaptureFailed(false)")).toBeLessThan(capture.indexOf("camera.current.takePhoto"))
+    expect(code).toContain("onPress={() => setCaptureFailed(false)}")
+    // Between the live <Camera> and the shutter bar: the preview never shows it.
+    const viewfinder = code.slice(code.indexOf("ref={camera}"), code.indexOf("styles.bottomBar"))
+    expect(code.indexOf("ref={camera}")).toBeGreaterThan(code.indexOf("{previewPath ? ("))
+    expect(viewfinder).toContain("{captureFailed ? (")
+    expect(code.match(/\{captureFailed \? \(/g)).toHaveLength(1)
+  })
+
+  it("keeps the message clear of the insets and above the shutter", () => {
+    const frame = code.slice(code.indexOf("{captureFailed ? ("), code.indexOf("styles.bottomBar"))
+    expect(frame).toContain("bottom: insets.bottom + fieldTheme.space.xl + CAPTURE_BUTTON_SIZE + fieldTheme.space.md")
+    expect(frame).toContain("left: insets.left + fieldTheme.space.lg")
+    expect(frame).toContain("right: insets.right + fieldTheme.space.lg")
+    expect(code).toContain("width: CAPTURE_BUTTON_SIZE,")
+    expect(code).toMatch(/captureFailed: \{[^}]*backgroundColor: FEEDBACK_TONE_COLORS\.error\.background,/)
+    expect(code).toContain('accessibilityRole="alert"')
   })
 })

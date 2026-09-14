@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   AppState,
   Modal,
   Pressable,
@@ -25,6 +24,7 @@ import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../.
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import { api } from "../../services/api"
+import { ask } from "../../services/app-feedback"
 import {
   DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
   mobileRouteTargetLabel,
@@ -801,7 +801,7 @@ export default function PlanningWorkspaceCore({
     }
   }
 
-  const confirmAndSave = () => {
+  const confirmAndSave = async () => {
     const clearingWrites = writes.filter((write) => write.clearsExistingDraft)
     if (clearingWrites.length === 0) {
       void save()
@@ -815,14 +815,19 @@ export default function PlanningWorkspaceCore({
           start: formatPlanDate(clearedDates[0], i18n.language, true),
           end: formatPlanDate(clearedDates[clearedDates.length - 1], i18n.language, true),
         })
-    Alert.alert(
-      `${t("common.clear")}: ${dateLabel}`,
-      `${t("managerShell.planRemove")} ${clearedPoints} ${t("managerShell.planStopsShort")}?`,
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("common.clear"), style: "destructive", onPress: () => { void save() } },
+    // The app's own sheet, not the system dialog (2026-09-14). Only «Clear»
+    // saves; «Cancel», the back button and a tap outside keep the drafts.
+    const clear = await ask({
+      title: `${t("common.clear")}: ${dateLabel}`,
+      message: `${t("managerShell.planRemove")} ${clearedPoints} ${t("managerShell.planStopsShort")}?`,
+      tone: "warning",
+      buttons: [
+        { text: t("common.cancel"), value: false, style: "cancel" },
+        { text: t("common.clear"), value: true, style: "destructive" },
       ],
-    )
+      dismissValue: false,
+    })
+    if (clear) void save()
   }
 
   const [copying, setCopying] = useState(false)

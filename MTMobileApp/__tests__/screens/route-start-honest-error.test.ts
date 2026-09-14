@@ -11,8 +11,9 @@ const source = fs.readFileSync(path.resolve(__dirname, "../../src/screens/route/
 
 describe("route start tells offline apart from a server refusal", () => {
   it("says no connection only when the device is offline", () => {
-    expect(source).toContain('if (useSyncStatusStore.getState().online === false) {\n          Alert.alert(copy.routeStartQueuedTitle, copy.routeStartQueuedBody)')
-    expect(source).toContain("Alert.alert(copy.routeStartDeferredTitle, copy.routeStartDeferredBody)")
+    expect(source).toContain('if (useSyncStatusStore.getState().online === false) {\n          notify({ tone: "success", title: copy.routeStartQueuedTitle, message: copy.routeStartQueuedBody })')
+    // A refusal is not a saved start: it reads as a warning, not in green.
+    expect(source).toContain('} else {\n          notify({ tone: "warning", title: copy.routeStartDeferredTitle, message: copy.routeStartDeferredBody })')
   })
 
   it("has the server-refusal message in all three languages", () => {

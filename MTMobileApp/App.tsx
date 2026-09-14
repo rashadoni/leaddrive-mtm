@@ -3,6 +3,7 @@ import { StatusBar, Platform, PermissionsAndroid, AppState, AppStateStatus, View
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import AppNavigator from './src/navigation/AppNavigator'
 import { ErrorBoundary } from './src/components/ErrorBoundary'
+import AppFeedbackHost from './src/components/AppFeedbackHost'
 import { useAuthStore } from './src/store/auth'
 import { useHintsStore } from './src/store/hints'
 import { startTracking, stopTracking } from './src/services/location'
@@ -145,6 +146,9 @@ function AppContent() {
       <ErrorBoundary>
         <AppNavigator />
       </ErrorBoundary>
+      {/* Screens shared with the Android runtime call notify() and ask();
+          without a host here an ask() would never resolve in this shell. */}
+      <AppFeedbackHost />
     </SafeAreaProvider>
   )
 }

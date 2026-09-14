@@ -13,6 +13,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context"
 import NetInfo from "@react-native-community/netinfo"
 import AppNavigatorAndroidV2 from "../navigation/AppNavigatorAndroidV2"
 import { ErrorBoundary } from "../components/ErrorBoundary"
+import AppFeedbackHost from "../components/AppFeedbackHost"
 import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
 import { useWorkdayStore, workdayKey } from "../store/workday"
@@ -23,6 +24,7 @@ import { markMobileOffline } from "../services/sync-engine"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { refreshRouteFieldSession } from "../services/field-session"
+import { dismissAllChoices } from "../services/app-feedback"
 import { fieldTheme } from "../theme/fieldTheme"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
@@ -78,6 +80,14 @@ function AppContent() {
     })
     return unsubscribe
   }, [isLoggedIn, refreshAdmissionAndSync])
+
+  // A choice asked by a screen the logout just tore down must not stay over
+  // the login screen and answer for it.
+  const wasLoggedIn = useRef(isLoggedIn)
+  useEffect(() => {
+    if (wasLoggedIn.current && !isLoggedIn) dismissAllChoices()
+    wasLoggedIn.current = isLoggedIn
+  }, [isLoggedIn])
 
   useEffect(() => {
     api.setUnauthorizedHandler((reason) => {
@@ -187,6 +197,13 @@ function AppContent() {
       <ErrorBoundary>
         <AppNavigatorAndroidV2 />
       </ErrorBoundary>
+      {/* After the navigator, so its notice lies over every tab, stack screen
+          and the logged-out screens; outside the boundary, so a screen that
+          crashed does not take the app's messages down with it. Screens call
+          notify() and ask() from services/app-feedback instead of Alert.alert:
+          the system dialog read as "a Windows popup" after check-in on the
+          Route tab (2026-09-14). */}
+      <AppFeedbackHost />
     </SafeAreaProvider>
   )
 }

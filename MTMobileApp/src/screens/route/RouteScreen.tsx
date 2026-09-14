@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Linking,
   Modal,
@@ -16,12 +15,14 @@ import {
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import { useNavigation } from "@react-navigation/native"
+import { SafeAreaProvider } from "react-native-safe-area-context"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import i18next from "i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
+import { ask, notify } from "../../services/app-feedback"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
 import { enqueueMediaUpload } from "../../services/media-outbox"
@@ -42,6 +43,7 @@ import { refreshRouteFieldSession } from "../../services/field-session"
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
+import { AppNoticeLayer } from "../../components/AppFeedbackHost"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import SignaturePadModal from "../../components/SignaturePadModal"
@@ -1138,7 +1140,7 @@ export default function RouteScreen() {
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") {
         if (error?.code === "MAX_PHOTOS_REACHED") {
-          Alert.alert(t("visit.photoLimitTitle"), t("visit.photoLimitBody"))
+          notify({ tone: "warning", title: t("visit.photoLimitTitle"), message: t("visit.photoLimitBody") })
         } else {
           const queuedPhoto = await enqueueMediaUpload({
             filePath: path,
@@ -1148,7 +1150,7 @@ export default function RouteScreen() {
             longitude: uploadCoords?.longitude,
           })
           photos.recordQueued(activeVisit.id, queuedPhoto.id)
-          Alert.alert(t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
+          notify({ tone: "success", title: t("visit.photoQueuedTitle"), message: t("visit.photoQueuedBody") })
         }
       }
     }
@@ -1167,7 +1169,7 @@ export default function RouteScreen() {
     setNavigationStartedFor(point.id)
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`).catch(() => {
       setNavigationStartedFor(null)
-      Alert.alert(t("common.error"), copy.noAddress)
+      notify({ tone: "error", title: t("common.error"), message: copy.noAddress })
     })
   }
 
@@ -1179,7 +1181,7 @@ export default function RouteScreen() {
       await refreshRouteFieldSession()
       await fetchRoute()
     } catch {
-      Alert.alert(t("common.error"), copy.workdayStartFailed)
+      notify({ tone: "error", title: t("common.error"), message: copy.workdayStartFailed })
     } finally {
       setStartingWorkday(false)
     }
@@ -1212,14 +1214,14 @@ export default function RouteScreen() {
         // parks it too. On an online tablet the app said "no connection" while
         // production rejected every START with a database error (2026-09-14).
         if (useSyncStatusStore.getState().online === false) {
-          Alert.alert(copy.routeStartQueuedTitle, copy.routeStartQueuedBody)
+          notify({ tone: "success", title: copy.routeStartQueuedTitle, message: copy.routeStartQueuedBody })
         } else {
-          Alert.alert(copy.routeStartDeferredTitle, copy.routeStartDeferredBody)
+          notify({ tone: "warning", title: copy.routeStartDeferredTitle, message: copy.routeStartDeferredBody })
         }
       } else if (code === "MTM_ROUTE_WORKDAY_REQUIRED") {
-        Alert.alert(copy.workdayRequiredTitle, copy.workdayRequiredBody)
+        notify({ tone: "warning", title: copy.workdayRequiredTitle, message: copy.workdayRequiredBody })
       } else {
-        Alert.alert(t("common.error"), copy.routeStartFailed)
+        notify({ tone: "error", title: t("common.error"), message: copy.routeStartFailed })
       }
       await fetchRoute()
     } finally {
@@ -1232,24 +1234,24 @@ export default function RouteScreen() {
     if (!hasUsableCoordinates(point.customer)) {
       // Owner decision 2 (audit 2026-09-05): no coordinates, no check-in. The
       // server would answer NO_COORDINATES; say it here, before GPS.
-      Alert.alert(
-        t("route.noCoordinatesTitle"),
-        t("route.noCoordinatesBody", { name: point.customer.name }),
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          {
-            text: t("visit.reportToManager"),
-            onPress: () => {
-              Share.share({
-                message: t("visit.reportToManagerMessage", {
-                  name: point.customer.name,
-                  address: point.customer.address || t("visit.noAddress"),
-                }),
-              }).catch(() => {})
-            },
-          },
+      const report = await ask({
+        title: t("route.noCoordinatesTitle"),
+        message: t("route.noCoordinatesBody", { name: point.customer.name }),
+        tone: "warning",
+        buttons: [
+          { text: t("common.cancel"), value: false, style: "cancel" },
+          { text: t("visit.reportToManager"), value: true },
         ],
-      )
+        dismissValue: false,
+      })
+      if (report) {
+        Share.share({
+          message: t("visit.reportToManagerMessage", {
+            name: point.customer.name,
+            address: point.customer.address || t("visit.noAddress"),
+          }),
+        }).catch(() => {})
+      }
       return
     }
     setMutating(true)
@@ -1269,12 +1271,14 @@ export default function RouteScreen() {
         if (cacheFresh) {
           coords = { latitude: lastKnownPosition!.latitude, longitude: lastKnownPosition!.longitude }
         } else {
-          await new Promise<void>((resolve) => {
-            Alert.alert(
-              t("route.locationUnavailableTitle"),
-              t("route.locationUnavailableBody"),
-              [{ text: t("common.retry"), onPress: () => resolve() }],
-            )
+          // Held until answered, as before: check-in stays locked while the
+          // sheet is open. The back button closes it the same way as «Retry».
+          await ask({
+            title: t("route.locationUnavailableTitle"),
+            message: t("route.locationUnavailableBody"),
+            tone: "error",
+            buttons: [{ text: t("common.retry"), value: "retry" }],
+            dismissValue: "closed",
           })
           setMutating(false)
           return
@@ -1294,23 +1298,34 @@ export default function RouteScreen() {
       let forceCheckIn = false
       if (coords && measuredDistance != null && measuredDistance > GEOFENCE_DEFAULT) {
         const canOverride = api.canForceCheckIn
-        const proceed = await new Promise<boolean>((resolve) => {
-          const buttons: Array<{ text: string; onPress: () => void; style?: "cancel" }> = canOverride
-            ? [
-                { text: t("common.cancel"), onPress: () => resolve(false), style: "cancel" },
-                { text: t("route.tryAnyway"), onPress: () => resolve(true) },
-              ]
-            : [
-                // Without the right to start out of zone the only way on is to
-                // get there, so the answer offers the way, not just «OK».
-                { text: copy.openMaps, onPress: () => { resolve(false); handleNavigate(point) } },
-                { text: t("common.ok"), onPress: () => resolve(false), style: "cancel" },
-              ]
-          const message = canOverride
-            ? t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT })
-            : t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT })
-          Alert.alert(t("visit.tooFarTitle"), message, buttons)
-        })
+        let proceed = false
+        if (canOverride) {
+          proceed = await ask({
+            title: t("visit.tooFarTitle"),
+            message: t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT }),
+            tone: "warning",
+            buttons: [
+              { text: t("common.cancel"), value: false, style: "cancel" },
+              { text: t("route.tryAnyway"), value: true },
+            ],
+            dismissValue: false,
+          })
+        } else {
+          // Without the right to start out of zone the only way on is to get
+          // there, so the answer offers the way, not just «OK». Either answer
+          // ends this check-in.
+          const pick = await ask<"ok" | "maps">({
+            title: t("visit.tooFarTitle"),
+            message: t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT }),
+            tone: "warning",
+            buttons: [
+              { text: t("common.ok"), value: "ok", style: "cancel" },
+              { text: copy.openMaps, value: "maps" },
+            ],
+            dismissValue: "ok",
+          })
+          if (pick === "maps") handleNavigate(point)
+        }
         if (!proceed) {
           setMutating(false)
           return
@@ -1329,15 +1344,15 @@ export default function RouteScreen() {
       setActiveVisit(visit)
       setPhonePanelVisible(false)
       setSelectedPointId(point.id)
-      Alert.alert(t("visit.checkInQueuedTitle"), t("visit.checkInQueuedBody", { name: point.customer.name }))
+      notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: point.customer.name }) })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
-        if (result.conflicted > 0) Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+        if (result.conflicted > 0) notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
       }).catch(() => {})
     } catch (error: any) {
       if (error.message !== "SESSION_EXPIRED") {
         console.warn("[RouteScreen] check-in error:", error?.message ?? error)
-        Alert.alert(t("common.error"), t("visit.checkInFailed"))
+        notify({ tone: "error", title: t("common.error"), message: t("visit.checkInFailed") })
       }
     } finally {
       setMutating(false)
@@ -1347,10 +1362,18 @@ export default function RouteScreen() {
   const handleCheckOut = () => {
     if (!activeVisit || mutating) return
     if (signature.blocksCheckOut) {
-      Alert.alert(t("signature.requiredTitle"), t("signature.requiredBody"), [
-        { text: t("common.cancel"), style: "cancel" },
-        { text: t("signature.signNow"), onPress: signature.openPad },
-      ])
+      void ask({
+        title: t("signature.requiredTitle"),
+        message: t("signature.requiredBody"),
+        tone: "warning",
+        buttons: [
+          { text: t("common.cancel"), value: false, style: "cancel" },
+          { text: t("signature.signNow"), value: true },
+        ],
+        dismissValue: false,
+      }).then((signNow) => {
+        if (signNow) signature.openPad()
+      })
       return
     }
     setNotesVisible(true)
@@ -1359,10 +1382,19 @@ export default function RouteScreen() {
   const handleSignatureSave = async (capture: SignatureCapture, signerName?: string) => {
     try {
       await signature.save(capture, signerName)
-      Alert.alert(t("signature.savedTitle"), t("signature.savedBody"))
+      notify({ tone: "success", title: t("signature.savedTitle"), message: t("signature.savedBody") })
     } catch (error: any) {
       console.warn("[RouteScreen] signature error:", error?.message ?? error)
-      Alert.alert(t("common.error"), t("signature.saveFailed"))
+      // The pad stays open after a failed save, and it is a window of its own
+      // that covers a notice. A sheet opens above it, like the system dialog
+      // did; not awaited, so the pad's Save button is released at once.
+      void ask({
+        title: t("common.error"),
+        message: t("signature.saveFailed"),
+        tone: "error",
+        buttons: [{ text: t("common.ok"), value: true }],
+        dismissValue: true,
+      })
     }
   }
 
@@ -1386,16 +1418,16 @@ export default function RouteScreen() {
         notes: notes || undefined,
       })
       setActiveVisit(visit)
-      Alert.alert(t("visit.checkOutQueuedTitle"), t("visit.checkOutQueuedBody"))
+      notify({ tone: "success", title: t("visit.checkOutQueuedTitle"), message: t("visit.checkOutQueuedBody") })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
-        if (result.conflicted > 0) Alert.alert(t("visit.syncConflictTitle"), t("visit.syncConflictBody"))
+        if (result.conflicted > 0) notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
       }).catch(() => {})
     } catch (error: any) {
       if (error.message !== "SESSION_EXPIRED") {
         console.warn("[RouteScreen] check-out error:", error?.message ?? error)
-        if (error?.code === "PHOTO_REQUIRED") Alert.alert(t("visit.photoRequiredTitle"), t("visit.photoRequiredBody"))
-        else Alert.alert(t("common.error"), t("visit.checkOutFailed"))
+        if (error?.code === "PHOTO_REQUIRED") notify({ tone: "warning", title: t("visit.photoRequiredTitle"), message: t("visit.photoRequiredBody") })
+        else notify({ tone: "error", title: t("common.error"), message: t("visit.checkOutFailed") })
       }
     } finally {
       setMutating(false)
@@ -1639,23 +1671,32 @@ export default function RouteScreen() {
       />
 
       <Modal visible={phonePanelVisible} transparent animationType="slide" onRequestClose={() => setPhonePanelVisible(false)}>
-        <View style={styles.modalLayer}>
-          <Pressable style={styles.modalBackdrop} onPress={() => setPhonePanelVisible(false)} accessibilityLabel={copy.close} />
-          <View style={styles.phoneSheet}>
-            <View style={styles.sheetTopRow}>
-              <View style={styles.sheetHandle} />
-              <Pressable
-                onPress={() => setPhonePanelVisible(false)}
-                accessibilityRole="button"
-                accessibilityLabel={copy.close}
-                style={styles.sheetClose}
-              >
-                <Icon name="close" size={22} color={fieldTheme.color.ink} />
-              </Pressable>
+        {/* Insets of this window, not the app's: the sheet is not translucent,
+            so its content already starts below the status bar, and the root
+            provider's top inset put the notice a status bar lower here. */}
+        <SafeAreaProvider>
+          <View style={styles.modalLayer}>
+            <Pressable style={styles.modalBackdrop} onPress={() => setPhonePanelVisible(false)} accessibilityLabel={copy.close} />
+            <View style={styles.phoneSheet}>
+              <View style={styles.sheetTopRow}>
+                <View style={styles.sheetHandle} />
+                <Pressable
+                  onPress={() => setPhonePanelVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.close}
+                  style={styles.sheetClose}
+                >
+                  <Icon name="close" size={22} color={fieldTheme.color.ink} />
+                </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={styles.sheetContent}>{actionPanel}</ScrollView>
             </View>
-            <ScrollView contentContainerStyle={styles.sheetContent}>{actionPanel}</ScrollView>
+            {/* This sheet is its own Android window and hides the app's notice
+                layer, while check-in, route start, photo and check-out report
+                from inside it. The system dialog used to draw over it. */}
+            <AppNoticeLayer />
           </View>
-        </View>
+        </SafeAreaProvider>
       </Modal>
 
       <NotesModal

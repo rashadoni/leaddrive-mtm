@@ -993,5 +993,8 @@
     "usePhoto": "Save photo",
     "captureFailedTitle": "Photo not taken",
     "captureFailedBody": "Close the camera, open it again and take the photo once more."
+  },
+  "appFeedback": {
+    "dismissNotice": "Tap to close"
   }
 }
