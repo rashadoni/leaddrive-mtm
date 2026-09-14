@@ -890,7 +890,7 @@ export default function PlanningWorkspaceCore({
           label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : writes.length > 1 ? "managerShell.planSaveDraftAction" : "managerShell.planSaveDraftActionOne"),
           // Right after a save there is nothing left to save, and saying so
           // under the button contradicts the success message above.
-          hint: !canSave && !saving && !saveMessage ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
+          hint: !canSave && !saving && !saveMessage ? t(matrixTargets.length === 0 && dirtyDates.size === 0 ? "managerShell.planSelectAtLeastOne" : writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
           disabled: !canSave,
           onPress: confirmAndSave,
         }
@@ -1461,7 +1461,7 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
             {locked ? (
               <Icon name="lock-closed" size={14} color={selected ? fieldTheme.color.onColor : fieldTheme.color.amber} />
             ) : (
-              <View style={[styles.weekDayTileBadge, rows.length === 0 && styles.weekDayTileBadgeEmpty, selected && styles.weekDayTileBadgeActive]}>
+              <View style={[styles.weekDayTileBadge, rows.length === 0 && styles.weekDayTileBadgeEmpty, selected && rows.length > 0 && styles.weekDayTileBadgeActive]}>
                 <Text style={[styles.weekDayTileBadgeText, selected && styles.weekDayTileBadgeTextActive]}>{rows.length > 0 ? rows.length : " "}</Text>
               </View>
             )}
