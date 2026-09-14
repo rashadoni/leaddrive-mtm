@@ -25,8 +25,10 @@ import {
   type VisitWorkspace,
 } from "../../services/visit-workspace"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import ShortWindowPage from "../../components/ShortWindowPage"
+import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 type LoadState = "loading" | "ready" | "offline" | "error"
 type Language = "ru" | "az" | "en"
@@ -224,10 +226,14 @@ export default function VisitWorkspaceScreen() {
   const cachedNotice = cachedViewNotice({ online, requestFailed: true })
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const route = useRoute<RouteProp<RootStackParamList, "VisitWorkspace">>()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const headerTop = useHeaderTop()
   const tablet = isTabletWidth(width)
+  // A phone on its side (384 dp): the header pinned 36% of the height above
+  // the summary. There it is the first thing on the page and scrolls away
+  // (2026-09-14, no inner scroll).
+  const short = isShortWindow(height)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const copy = COPY[languageFor(i18n.language)]
   const { visitId, name } = route.params
@@ -279,55 +285,63 @@ export default function VisitWorkspaceScreen() {
   const title = data?.customer.name || name || copy.eyebrow
   const statusVisual = visitStatusVisual(data?.status ?? "")
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerInner}>
-          <View style={styles.headerRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={copy.back}
-              onPress={() => navigation.goBack()}
-              style={({ pressed }) => [
-                styles.backButton,
-                { width: touchTarget, height: touchTarget },
-                pressed && styles.pressed,
-              ]}
-            >
-              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
-            </Pressable>
-            <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
-              <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
-              <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
-            </View>
-            {data ? (
-              <View style={[styles.headerStatus, { backgroundColor: statusVisual.background }]}>
-                <Icon name={statusVisual.icon} size={18} color={statusVisual.color} />
-                <Text style={[styles.headerStatusText, { color: statusVisual.color }]}>
-                  {codeLabel(data.status, copy.status)}
-                </Text>
-              </View>
-            ) : null}
+  const header = (
+    <View style={[styles.header, { paddingTop: headerTop }]}>
+      <View style={styles.headerInner}>
+        <View style={styles.headerRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={copy.back}
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [
+              styles.backButton,
+              { width: touchTarget, height: touchTarget },
+              pressed && styles.pressed,
+            ]}
+          >
+            <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+          </Pressable>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+            <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
+            <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
           </View>
+          {data ? (
+            <View style={[styles.headerStatus, { backgroundColor: statusVisual.background }]}>
+              <Icon name={statusVisual.icon} size={18} color={statusVisual.color} />
+              <Text style={[styles.headerStatusText, { color: statusVisual.color }]}>
+                {codeLabel(data.status, copy.status)}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
+    </View>
+  )
+
+  return (
+    <View style={styles.container}>
+      {short ? null : header}
 
       {loadState === "loading" && !data ? (
-        <StatePanel
-          icon="reader-outline"
-          title={copy.loadingTitle}
-          body={copy.loadingBody}
-          loading
-        />
+        <ShortWindowPage short={short} header={header}>
+          <StatePanel
+            icon="reader-outline"
+            title={copy.loadingTitle}
+            body={copy.loadingBody}
+            loading
+          />
+        </ShortWindowPage>
       ) : loadState === "error" && !data ? (
-        <StatePanel
-          icon="alert-circle-outline"
-          title={copy.errorTitle}
-          body={copy.errorBody}
-          action={copy.retry}
-          onAction={fetchWorkspace}
-        />
+        <ShortWindowPage short={short} header={header}>
+          <StatePanel
+            icon="alert-circle-outline"
+            title={copy.errorTitle}
+            body={copy.errorBody}
+            action={copy.retry}
+            onAction={fetchWorkspace}
+          />
+        </ShortWindowPage>
       ) : data ? (
         <ScrollView
           refreshControl={
@@ -344,6 +358,7 @@ export default function VisitWorkspaceScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          {short ? <View style={styles.headerInScroll}>{header}</View> : null}
           <View style={styles.content}>
             {loadState === "offline" ? (
               <Notice
@@ -488,7 +503,8 @@ export default function VisitWorkspaceScreen() {
             </View>
           </View>
         </ScrollView>
-      ) : null}
+      ) : short ? header : null}
+      {short ? <StatusBarBand /> : null}
     </View>
   )
 }
@@ -617,6 +633,9 @@ const styles = StyleSheet.create({
   headerStatus: { minHeight: 38, maxWidth: 150, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.md },
   headerStatusText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: "900", textAlign: "center" },
   scrollContent: { paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+  // The header inside scrollContent: full bleed over its padding, which comes
+  // back below it.
+  headerInScroll: { marginHorizontal: -fieldTheme.space.lg, marginTop: -fieldTheme.space.lg, marginBottom: fieldTheme.space.lg },
   content: { width: "100%", maxWidth: 1180, alignSelf: "center", gap: fieldTheme.space.lg },
   notice: { minHeight: 76, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: "#E8D69F", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, padding: fieldTheme.space.md },
   noticeCopy: { flex: 1, minWidth: 190 },

@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-na
 import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
+import StatusBarBand from "../../components/StatusBarBand"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import RouteContactsList from "./RouteContactsList.android"
 import RouteOrganizationExplorerScreen from "./RouteOrganizationExplorerScreen.android"
 
@@ -30,59 +31,72 @@ const TABS: Array<{ key: BaseTab; icon: string; labelKey: string; bodyKey: strin
 export default function RouteBaseScreen() {
   const { t } = useTranslation()
   const navigation = useNavigation()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const headerTop = useHeaderTop()
   const tablet = isTabletWidth(width)
+  // A phone on its side (384 dp): title, subtitle and the two tabs pinned 54%
+  // of the height and the cards scrolled in the strip under them. There the
+  // header goes into the list and scrolls away (2026-09-14, no inner scroll).
+  const short = isShortWindow(height)
   const [tab, setTab] = useState<BaseTab>("organizations")
   const active = TABS.find((item) => item.key === tab) ?? TABS[0]
   const canGoBack = navigation.canGoBack()
 
-  return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerInner}>
-          <View style={styles.titleRow}>
-            {canGoBack ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("baseHub.back")}
-                onPress={() => navigation.goBack()}
-                style={({ pressed }) => [styles.backButton, tablet && styles.backButtonTablet, pressed && styles.pressed]}
-              >
-                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
-              </Pressable>
-            ) : null}
-            <View style={styles.titleCopy}>
-              <Text style={styles.eyebrow}>{t("baseHub.eyebrow")}</Text>
-              <Text style={styles.headerTitle}>{t("baseHub.title")}</Text>
-              <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.segment, tablet && styles.segmentTablet]}>
-            {TABS.map((item) => {
-              const selected = tab === item.key
-              return (
-                <Pressable
-                  key={item.key}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={t(item.labelKey)}
-                  onPress={() => setTab(item.key)}
-                  style={({ pressed }) => [styles.segmentButton, tablet && styles.segmentButtonTablet, selected && styles.segmentButtonActive, pressed && styles.pressed]}
-                >
-                  <Icon name={selected ? item.icon.replace("-outline", "") : item.icon} size={21} color={selected ? fieldTheme.color.primaryStrong : "#C8DDD4"} />
-                  <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{t(item.labelKey)}</Text>
-                </Pressable>
-              )
-            })}
+  const header = (
+    <View style={[styles.header, { paddingTop: headerTop }]}>
+      <View style={styles.headerInner}>
+        <View style={styles.titleRow}>
+          {canGoBack ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("baseHub.back")}
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [styles.backButton, tablet && styles.backButtonTablet, pressed && styles.pressed]}
+            >
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+            </Pressable>
+          ) : null}
+          <View style={styles.titleCopy}>
+            <Text style={styles.eyebrow}>{t("baseHub.eyebrow")}</Text>
+            <Text style={styles.headerTitle}>{t("baseHub.title")}</Text>
+            <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
         </View>
+
+        <View style={[styles.segment, tablet && styles.segmentTablet]}>
+          {TABS.map((item) => {
+            const selected = tab === item.key
+            return (
+              <Pressable
+                key={item.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                accessibilityLabel={t(item.labelKey)}
+                onPress={() => setTab(item.key)}
+                style={({ pressed }) => [styles.segmentButton, tablet && styles.segmentButtonTablet, selected && styles.segmentButtonActive, pressed && styles.pressed]}
+              >
+                <Icon name={selected ? item.icon.replace("-outline", "") : item.icon} size={21} color={selected ? fieldTheme.color.primaryStrong : "#C8DDD4"} />
+                <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{t(item.labelKey)}</Text>
+              </Pressable>
+            )
+          })}
+        </View>
       </View>
+    </View>
+  )
+
+  return (
+    <View style={styles.container}>
+      {short ? null : header}
 
       <View style={styles.content}>
-        {tab === "organizations" ? <RouteOrganizationExplorerScreen /> : <RouteContactsList />}
+        {/* On a short window the list draws the header as its first rows: the
+            tabs and the search scroll away with the cards, one page. */}
+        {tab === "organizations"
+          ? <RouteOrganizationExplorerScreen header={short ? header : undefined} />
+          : <RouteContactsList header={short ? header : undefined} />}
       </View>
+      {short ? <StatusBarBand /> : null}
     </View>
   )
 }

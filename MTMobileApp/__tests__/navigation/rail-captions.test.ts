@@ -14,7 +14,9 @@ const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/
 describe("B19: the navigation rail has room for its captions", () => {
   it("uses one rail width wherever the rail shows", () => {
     expect(navigator).toContain("const RAIL_WIDTH = NAV_RAIL_WIDTH")
-    expect(navigator).toContain("width: RAIL_WIDTH,")
+    // Plus the left inset: the rail pads by it, and a camera cutout on the
+    // left took 45 dp from the captions on a Galaxy S23 turned that way.
+    expect(navigator).toContain("width: RAIL_WIDTH + insets.left,")
     expect(navigator).not.toMatch(/width:\s*expandedRail\s*\?/)
     expect(navigator).not.toContain("? 112 : 82")
   })

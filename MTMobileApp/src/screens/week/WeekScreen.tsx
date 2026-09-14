@@ -11,6 +11,7 @@ import {
 } from "react-native"
 import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
+import ShortWindowPage from "../../components/ShortWindowPage"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import i18next from "i18next"
@@ -31,7 +32,7 @@ import {
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
+import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 
@@ -195,11 +196,17 @@ export function calendarLanguage(language: string): CalendarLanguage {
   return "ru"
 }
 
+/**
+ * Room right of the rail the split calendar needs. At 600 (the generic
+ * two-pane line) a phone on its side got it with 654 dp and every text broke:
+ * «14 senty…», «14 sen / tyabr», «Tamaml / anan» (Galaxy S23, 2026-09-14). The
+ * day list and the day plan each need ~360 dp, so the split waits for 720; a
+ * tablet in landscape (973) keeps it, the phone gets one full-width column.
+ */
+export const CALENDAR_TWO_PANE_CONTENT_WIDTH = 720
+
 export function calendarLayout(width: number): "phone" | "tablet" {
-  // The app's persistent navigation rail also consumes horizontal space. A
-  // split master/detail calendar is only comfortable at the expanded tablet
-  // breakpoint; narrower tablets get the clear single-column layout.
-  return isTwoPaneTabWidth(width) ? "tablet" : "phone"
+  return tabContentWidth(width) >= CALENDAR_TWO_PANE_CONTENT_WIDTH ? "tablet" : "phone"
 }
 
 type AgendaTaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"
@@ -332,7 +339,7 @@ export default function WeekScreen() {
   const online = useSyncStatusStore((state) => state.online)
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tabNavigation = useNavigation<NavigationProp<WeekTabParams>>()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const myAgentId = useAuthStore((state) => state.agent?.id)
@@ -389,6 +396,11 @@ export default function WeekScreen() {
   const copy = CALENDAR_COPY[language]
   const layout = calendarLayout(width)
   const tablet = layout === "tablet"
+  // A phone on its side (384 dp): the header scrolls away with the week instead
+  // of pinning 46% of the height above it (2026-09-14, no inner scroll). No
+  // StatusBarBand here: the header is light, and in landscape the rail layout
+  // already paints the green band under the clock.
+  const short = isShortWindow(height)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const selectedDay = useMemo(
     () => data?.days.find((day) => day.date === selectedDate) ?? null,
@@ -450,45 +462,55 @@ export default function WeekScreen() {
     />
   )
 
+  const header = (
+    <CalendarHeader
+      title={copy.title}
+      subtitle={copy.subtitle}
+      range={data ? formatRange(data.weekStart, data.weekEndExclusive, i18n.language) : ""}
+      todayLabel={t("week.today")}
+      previousWeekLabel={copy.previousWeek}
+      nextWeekLabel={copy.nextWeek}
+      loading={loading}
+      currentWeek={currentWeek}
+      touchTarget={touchTarget}
+      headerTop={headerTop}
+      onPrevious={() => changeWeek(-7)}
+      onNext={() => changeWeek(7)}
+      onToday={returnToToday}
+    />
+  )
+
   return (
     <View style={styles.container}>
       <LightScreenStatusBar />
-      <CalendarHeader
-        title={copy.title}
-        subtitle={copy.subtitle}
-        range={data ? formatRange(data.weekStart, data.weekEndExclusive, i18n.language) : ""}
-        todayLabel={t("week.today")}
-        previousWeekLabel={copy.previousWeek}
-        nextWeekLabel={copy.nextWeek}
-        loading={loading}
-        currentWeek={currentWeek}
-        touchTarget={touchTarget}
-        headerTop={headerTop}
-        onPrevious={() => changeWeek(-7)}
-        onNext={() => changeWeek(7)}
-        onToday={returnToToday}
-      />
+      {short ? null : header}
 
       {loading ? (
-        <LoadingState title={copy.loadingTitle} body={copy.loadingBody} />
+        <ShortWindowPage short={short} header={header}>
+          <LoadingState title={copy.loadingTitle} body={copy.loadingBody} />
+        </ShortWindowPage>
       ) : !data && offline ? (
-        <StatePanel
-          icon="cloud-offline-outline"
-          title={copy.errorTitle}
-          body={copy.errorBody}
-          action={copy.retry}
-          onAction={retry}
-          touchTarget={touchTarget}
-        />
+        <ShortWindowPage short={short} header={header}>
+          <StatePanel
+            icon="cloud-offline-outline"
+            title={copy.errorTitle}
+            body={copy.errorBody}
+            action={copy.retry}
+            onAction={retry}
+            touchTarget={touchTarget}
+          />
+        </ShortWindowPage>
       ) : !data || data.days.length === 0 ? (
-        <StatePanel
-          icon="calendar-clear-outline"
-          title={copy.emptyWeekTitle}
-          body={copy.emptyWeekBody}
-          action={copy.retry}
-          onAction={retry}
-          touchTarget={touchTarget}
-        />
+        <ShortWindowPage short={short} header={header}>
+          <StatePanel
+            icon="calendar-clear-outline"
+            title={copy.emptyWeekTitle}
+            body={copy.emptyWeekBody}
+            action={copy.retry}
+            onAction={retry}
+            touchTarget={touchTarget}
+          />
+        </ShortWindowPage>
       ) : (
         <ScrollView
           ref={scrollRef}
@@ -500,6 +522,8 @@ export default function WeekScreen() {
           refreshControl={refreshControl}
           showsVerticalScrollIndicator={false}
         >
+          {short ? <View style={tablet ? styles.headerInScrollTablet : styles.headerInScroll}>{header}</View> : null}
+
           {notice !== "none" && (
             <OfflineNotice
               notice={notice}
@@ -1303,6 +1327,10 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.4 },
   scroll: { padding: fieldTheme.space.lg },
   scrollTablet: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: fieldTheme.space.xl },
+  // The header inside the padded scroll: full bleed, and the padding it cancels
+  // above the content comes back below it.
+  headerInScroll: { marginHorizontal: -fieldTheme.space.lg, marginTop: -fieldTheme.space.lg, marginBottom: fieldTheme.space.lg },
+  headerInScrollTablet: { marginHorizontal: -fieldTheme.space.xl, marginTop: -fieldTheme.space.xl, marginBottom: fieldTheme.space.xl },
   center: { flex: 1, minHeight: 300, justifyContent: "center", alignItems: "center", padding: fieldTheme.space.xl },
   stateIconSoft: {
     width: 64,

@@ -26,10 +26,13 @@ import {
 } from "../../services/gps-history"
 import { shiftDateKey } from "../../services/week"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import ShortWindowPage from "../../components/ShortWindowPage"
+import StatusBarBand from "../../components/StatusBarBand"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import {
   isExpandedTabletWidth,
+  isShortWindow,
   isTabletWidth,
   LAYOUT_TOUCH_TARGETS,
 } from "../../theme/layoutBreakpoints"
@@ -73,9 +76,13 @@ function pointKey(point: GpsTimelinePoint): string {
 export default function GpsHistoryScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
+  // A phone on its side (384 dp): the header with the day switcher took 51% of
+  // the height and the day scrolled under it. There it becomes the first thing
+  // on the page and scrolls away (2026-09-14, no inner scroll).
+  const short = isShortWindow(height)
   const headerTop = useHeaderTop()
   const bootstrapTimezone = useBootstrapStore((state) => state.data?.timezone)
   const safeBootstrapTimezone = useMemo(
@@ -274,21 +281,105 @@ export default function GpsHistoryScreen() {
     />
   ) : null
 
+  const header = (
+    <View style={[styles.header, { paddingTop: headerTop }]}>
+      <View style={styles.headerInner}>
+        <View style={styles.titleRow}>
+          {navigation.canGoBack() && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("gpsHistory.back")}
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
+            >
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+            </Pressable>
+          )}
+          <View style={styles.titleCopy}>
+            <Text style={styles.eyebrow}>{t("gpsHistory.eyebrow")}</Text>
+            <Text style={styles.headerTitle}>{t("gpsHistory.title")}</Text>
+            <Text style={styles.headerSubtitle}>{t("gpsHistory.subtitle")}</Text>
+          </View>
+        </View>
+
+        <View style={styles.dayNavigation}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("gpsHistory.previousDay")}
+            onPress={() => moveDay(-1)}
+            style={({ pressed }) => [styles.navButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
+          >
+            <Icon name="chevron-back" size={22} color={fieldTheme.color.onColor} />
+          </Pressable>
+          <View style={styles.dateCopy}>
+            <Text style={styles.dateLabel}>{formatDate(anchor, i18n.language)}</Text>
+            {!isToday && (
+              <Pressable accessibilityRole="button" onPress={() => selectDate(currentDateKey)} style={styles.todayButton}>
+                <Text style={styles.todayText}>{t("gpsHistory.today")}</Text>
+              </Pressable>
+            )}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("gpsHistory.nextDay")}
+            accessibilityState={{ disabled: isToday }}
+            disabled={isToday}
+            onPress={() => moveDay(1)}
+            style={({ pressed }) => [
+              styles.navButton,
+              { width: touchTarget, height: touchTarget },
+              isToday && styles.disabled,
+              pressed && !isToday && styles.pressed,
+            ]}
+          >
+            <Icon name="chevron-forward" size={22} color={fieldTheme.color.onColor} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("gpsHistory.refresh")}
+            accessibilityState={{ disabled: loading || refreshing }}
+            disabled={loading || refreshing}
+            onPress={refresh}
+            style={({ pressed }) => [
+              styles.navButton,
+              { width: touchTarget, height: touchTarget },
+              (loading || refreshing) && styles.disabled,
+              pressed && styles.pressed,
+            ]}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+            ) : (
+              <Icon name="refresh" size={21} color={fieldTheme.color.onColor} />
+            )}
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  )
+
   let content: React.ReactNode
   if (loading && !data) {
     content = (
-      <View style={styles.center} accessibilityLiveRegion="polite">
-        <ActivityIndicator size="large" color={fieldTheme.color.primary} />
-        <Text style={styles.loadingText}>{t("common.loading")}</Text>
-      </View>
+      <ShortWindowPage short={short} header={header}>
+        <View style={styles.center} accessibilityLiveRegion="polite">
+          <ActivityIndicator size="large" color={fieldTheme.color.primary} />
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
+        </View>
+      </ShortWindowPage>
     )
   } else if (!data) {
+    const failure = <FailureState issue={loadIssue} refreshing={refreshing} t={t} onRetry={refresh} onBack={() => navigation.goBack()} />
+    // The failure card is centred in the scroll; on a short window the header
+    // goes on top and the centring moves into a box below it, so the header
+    // never floats down to the middle with the card.
     content = (
       <ScrollView
-        contentContainerStyle={styles.failureScroll}
+        contentContainerStyle={short ? styles.shortPage : styles.failureScroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       >
-        <FailureState issue={loadIssue} refreshing={refreshing} t={t} onRetry={refresh} onBack={() => navigation.goBack()} />
+        {short ? header : null}
+        {short ? <View style={styles.failureScroll}>{failure}</View> : failure}
       </ScrollView>
     )
   } else if (data.points.length === 0) {
@@ -304,6 +395,7 @@ export default function GpsHistoryScreen() {
           />
         )}
       >
+        {short ? <View style={styles.headerInScroll}>{header}</View> : null}
         {loadIssue !== "none" && <LoadNotice issue={loadIssue} t={t} onRetry={refresh} />}
         <SummaryGrid data={data} tablet={tablet} t={t} />
         <EmptyHistory t={t} />
@@ -320,6 +412,7 @@ export default function GpsHistoryScreen() {
         renderItem={renderPoint}
         ListHeaderComponent={(
           <>
+            {short ? <View style={styles.headerInScroll}>{header}</View> : null}
             {overview}
             {timelineHeader}
           </>
@@ -339,81 +432,9 @@ export default function GpsHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerInner}>
-          <View style={styles.titleRow}>
-            {navigation.canGoBack() && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("gpsHistory.back")}
-                onPress={() => navigation.goBack()}
-                style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
-              >
-                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
-              </Pressable>
-            )}
-            <View style={styles.titleCopy}>
-              <Text style={styles.eyebrow}>{t("gpsHistory.eyebrow")}</Text>
-              <Text style={styles.headerTitle}>{t("gpsHistory.title")}</Text>
-              <Text style={styles.headerSubtitle}>{t("gpsHistory.subtitle")}</Text>
-            </View>
-          </View>
-
-          <View style={styles.dayNavigation}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("gpsHistory.previousDay")}
-              onPress={() => moveDay(-1)}
-              style={({ pressed }) => [styles.navButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
-            >
-              <Icon name="chevron-back" size={22} color={fieldTheme.color.onColor} />
-            </Pressable>
-            <View style={styles.dateCopy}>
-              <Text style={styles.dateLabel}>{formatDate(anchor, i18n.language)}</Text>
-              {!isToday && (
-                <Pressable accessibilityRole="button" onPress={() => selectDate(currentDateKey)} style={styles.todayButton}>
-                  <Text style={styles.todayText}>{t("gpsHistory.today")}</Text>
-                </Pressable>
-              )}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("gpsHistory.nextDay")}
-              accessibilityState={{ disabled: isToday }}
-              disabled={isToday}
-              onPress={() => moveDay(1)}
-              style={({ pressed }) => [
-                styles.navButton,
-                { width: touchTarget, height: touchTarget },
-                isToday && styles.disabled,
-                pressed && !isToday && styles.pressed,
-              ]}
-            >
-              <Icon name="chevron-forward" size={22} color={fieldTheme.color.onColor} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("gpsHistory.refresh")}
-              accessibilityState={{ disabled: loading || refreshing }}
-              disabled={loading || refreshing}
-              onPress={refresh}
-              style={({ pressed }) => [
-                styles.navButton,
-                { width: touchTarget, height: touchTarget },
-                (loading || refreshing) && styles.disabled,
-                pressed && styles.pressed,
-              ]}
-            >
-              {refreshing ? (
-                <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
-              ) : (
-                <Icon name="refresh" size={21} color={fieldTheme.color.onColor} />
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </View>
+      {short ? null : header}
       {content}
+      {short ? <StatusBarBand /> : null}
     </View>
   )
 }
@@ -978,6 +999,9 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14 },
   phoneList: { width: "100%", maxWidth: 1000, alignSelf: "center", padding: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl, flexGrow: 1 },
+  // The header inside phoneList/emptyScroll: full bleed over their padding,
+  // which comes back below it.
+  headerInScroll: { marginHorizontal: -fieldTheme.space.lg, marginTop: -fieldTheme.space.lg, marginBottom: fieldTheme.space.lg },
   summaryGrid: { flexDirection: "row", gap: fieldTheme.space.sm },
   summaryGridTablet: { gap: fieldTheme.space.md },
   summaryCard: { flex: 1, minHeight: 108, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md },
@@ -1041,6 +1065,7 @@ const styles = StyleSheet.create({
   loadNoticeBody: { color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, marginTop: 2 },
   noticeRetry: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.55)" },
   failureScroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
+  shortPage: { flexGrow: 1 },
   failure: { width: "100%", maxWidth: 480, alignItems: "center", padding: fieldTheme.space.xl, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   failureIcon: { width: 72, height: 72, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.amberSoft },
   failureTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 26, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.lg },

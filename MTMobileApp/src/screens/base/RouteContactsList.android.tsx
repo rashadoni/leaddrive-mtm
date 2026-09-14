@@ -73,8 +73,14 @@ function mergeUnique(current: RouteContactListItem[], next: RouteContactListItem
   return [...byId.values()]
 }
 
-/** Route Field catalog: v2-only, read/search only, and server-scoped to this AGENT. */
-export default function RouteContactsList() {
+/**
+ * Route Field catalog: v2-only, read/search only, and server-scoped to this AGENT.
+ *
+ * `header` is the customer base's header on a short window (a phone on its
+ * side): it and the search become the list's first rows so they scroll away.
+ * They are elements, not components, so the search keeps focus while typing.
+ */
+export default function RouteContactsList({ header }: { header?: React.ReactNode }) {
   const { t, i18n } = useTranslation()
   const copy = COPY[languageFor(i18n.language)]
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -159,33 +165,37 @@ export default function RouteContactsList() {
     void loadRows(debouncedSearch, nextPage, true)
   }
 
+  const topArea = (
+    <View style={styles.topArea}>
+      <View style={styles.scopeNote} accessibilityLiveRegion="polite">
+        <Icon name="shield-checkmark-outline" size={19} color={fieldTheme.color.primaryStrong} />
+        <Text style={styles.scopeText}>{copy.scope}</Text>
+      </View>
+      <View style={styles.searchBox}>
+        <Icon name="search" size={21} color={fieldTheme.color.inkMuted} />
+        <TextInput
+          testID="route-contacts-search"
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t("contacts.searchPlaceholder")}
+          placeholderTextColor={fieldTheme.color.inkMuted}
+          autoCorrect={false}
+          returnKeyType="search"
+          accessibilityLabel={t("contacts.searchPlaceholder")}
+        />
+        {search ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={t("common.clear")} onPress={() => setSearch("")} style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
+            <Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  )
+
   return (
     <View style={styles.root}>
-      <View style={styles.topArea}>
-        <View style={styles.scopeNote} accessibilityLiveRegion="polite">
-          <Icon name="shield-checkmark-outline" size={19} color={fieldTheme.color.primaryStrong} />
-          <Text style={styles.scopeText}>{copy.scope}</Text>
-        </View>
-        <View style={styles.searchBox}>
-          <Icon name="search" size={21} color={fieldTheme.color.inkMuted} />
-          <TextInput
-            testID="route-contacts-search"
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-            placeholder={t("contacts.searchPlaceholder")}
-            placeholderTextColor={fieldTheme.color.inkMuted}
-            autoCorrect={false}
-            returnKeyType="search"
-            accessibilityLabel={t("contacts.searchPlaceholder")}
-          />
-          {search ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={t("common.clear")} onPress={() => setSearch("")} style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}>
-              <Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+      {header ? null : topArea}
 
       <FlatList
         key={tablet ? "route-contacts-tablet" : "route-contacts-phone"}
@@ -195,6 +205,7 @@ export default function RouteContactsList() {
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadding }]}
         columnWrapperStyle={tablet ? styles.tabletRow : undefined}
         keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={header ? <View style={styles.headerInList}>{header}{topArea}</View> : null}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[fieldTheme.color.primary]} tintColor={fieldTheme.color.primary} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.35}
@@ -252,6 +263,9 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, minHeight: 52, fontSize: 15, color: fieldTheme.color.ink, paddingHorizontal: fieldTheme.space.md },
   clearButton: { minWidth: LAYOUT_TOUCH_TARGETS.compact, minHeight: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center" },
   listContent: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.md, flexGrow: 1 },
+  // Header and search inside listContent: full bleed over its padding, and the
+  // top padding it cancels comes back under the search.
+  headerInList: { marginHorizontal: -fieldTheme.space.lg, marginTop: -fieldTheme.space.md, marginBottom: fieldTheme.space.md },
   tabletRow: { gap: fieldTheme.space.md },
   card: { minHeight: 132, flexDirection: "row", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.lg, marginBottom: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border },
   cardTablet: { flex: 1 },
