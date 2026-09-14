@@ -55,3 +55,19 @@ export function tabContentWidth(windowWidth: number) {
 export function isTwoPaneTabWidth(windowWidth: number) {
   return isTwoPaneWidth(tabContentWidth(windowWidth))
 }
+
+/**
+ * A window this short (a phone on its side, ~384 dp) cannot spare a pinned
+ * header: it scrolls with the page.
+ *
+ * Galaxy S23 in landscape, 823×384 dp (2026-09-14): the calendar's header took
+ * 46% of the height, GPS history's 51%, the customers' header with its tabs
+ * 54%, and the content scrolled in the strip left under it. The owner's rule is
+ * one scrolling page — a frame with its own scroll is a bug. Portrait phones
+ * and tablets in either orientation are taller and keep their pinned headers.
+ */
+export const SHORT_WINDOW_HEIGHT = 500
+
+export function isShortWindow(height: number) {
+  return height < SHORT_WINDOW_HEIGHT
+}
