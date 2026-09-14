@@ -31,7 +31,7 @@ import {
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { LAYOUT_TOUCH_TARGETS, isTwoPaneWidth } from "../../theme/layoutBreakpoints"
+import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 
@@ -199,7 +199,7 @@ export function calendarLayout(width: number): "phone" | "tablet" {
   // The app's persistent navigation rail also consumes horizontal space. A
   // split master/detail calendar is only comfortable at the expanded tablet
   // breakpoint; narrower tablets get the clear single-column layout.
-  return isTwoPaneWidth(width) ? "tablet" : "phone"
+  return isTwoPaneTabWidth(width) ? "tablet" : "phone"
 }
 
 type AgendaTaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT"

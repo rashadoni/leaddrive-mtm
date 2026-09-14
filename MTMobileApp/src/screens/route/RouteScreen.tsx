@@ -45,7 +45,7 @@ import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { LAYOUT_TOUCH_TARGETS, isTabletWidth } from "../../theme/layoutBreakpoints"
+import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
   routeScreenPresentation,
   type RouteBannerMode,
@@ -302,7 +302,8 @@ function routeLanguage(language: string): RouteLanguage {
 }
 
 export function routeLayout(width: number): "phone" | "tablet" {
-  return isTabletWidth(width) ? "tablet" : "phone"
+  // The room right of the rail, not the window: see tabContentWidth.
+  return isTwoPaneTabWidth(width) ? "tablet" : "phone"
 }
 
 function distanceColor(meters: number): string {

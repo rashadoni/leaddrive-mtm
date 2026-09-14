@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { LAYOUT_BREAKPOINTS, isTabletWidth, isExpandedTabletWidth, isTwoPaneWidth } from "../../src/theme/layoutBreakpoints"
+import { LAYOUT_BREAKPOINTS, NAV_RAIL_WIDTH, isTabletWidth, isExpandedTabletWidth, isTwoPaneTabWidth, isTwoPaneWidth, tabContentWidth } from "../../src/theme/layoutBreakpoints"
 
 /**
  * Field UX audit 2026-09-05, task B19: two panes from 600 dp.
@@ -33,15 +33,15 @@ describe("B19: one answer to what a tablet is", () => {
   it("is used by the two screens that waited for 840", () => {
     const week = read("screens/week/WeekScreen.tsx")
     const tasks = read("screens/tasks/TasksScreen.tsx")
-    expect(week).toContain('return isTwoPaneWidth(width) ? "tablet" : "phone"')
-    expect(tasks).toContain("const tablet = isTwoPaneWidth(width)")
+    expect(week).toContain('return isTwoPaneTabWidth(width) ? "tablet" : "phone"')
+    expect(tasks).toContain("const tablet = isTwoPaneTabWidth(width)")
     // The old gate must not linger beside the new one.
     expect(week).not.toContain("isExpandedTabletWidth")
     expect(tasks).not.toContain("isExpandedTabletWidth")
   })
 
   it("leaves the screens that were already right alone", () => {
-    expect(read("screens/route/RouteScreen.tsx")).toContain('return isTabletWidth(width) ? "tablet" : "phone"')
+    expect(read("screens/route/RouteScreen.tsx")).toContain('return isTwoPaneTabWidth(width) ? "tablet" : "phone"')
     expect(read("screens/base/BaseScreen.tsx")).toContain("const tablet = isTabletWidth(width)")
   })
 
@@ -51,7 +51,8 @@ describe("B19: one answer to what a tablet is", () => {
     // The navigation rail no longer steps at 840: at 82 dp a phone in landscape
     // (823 dp) cut every caption to "B…" (device acceptance 2026-09-14). The
     // rail is 124 dp wherever it shows; see rail-captions.test.ts.
-    expect(read("navigation/AppNavigatorAndroidV2.tsx")).toContain("const RAIL_WIDTH = 124")
+    expect(NAV_RAIL_WIDTH).toBe(124)
+    expect(read("navigation/AppNavigatorAndroidV2.tsx")).toContain("const RAIL_WIDTH = NAV_RAIL_WIDTH")
   })
 
   it("gives the master pane a floor so a 600 dp split stays readable", () => {
@@ -60,5 +61,22 @@ describe("B19: one answer to what a tablet is", () => {
     expect(read("screens/week/WeekScreen.tsx")).toContain("minWidth: 0,\n    minHeight: 460,")
     // Tasks no longer has a master pane: on a tablet it is one page with two
     // columns of cards (see tasks-one-page.test.ts).
+  })
+
+describe("two panes on a tab screen count the room right of the rail", () => {
+  it("keeps a tablet held upright in one column", () => {
+    // Redmi Pad SE portrait, 2026-09-14: 686 dp window, 562 dp beside the rail.
+    expect(tabContentWidth(686)).toBe(562)
+    expect(isTwoPaneTabWidth(686)).toBe(false)
+  })
+
+  it("still splits the landscape phone and the landscape tablet", () => {
+    expect(isTwoPaneTabWidth(823)).toBe(true)
+    expect(isTwoPaneTabWidth(1097)).toBe(true)
+  })
+
+  it("leaves phones alone: no rail, no subtraction", () => {
+    expect(tabContentWidth(412)).toBe(412)
+    expect(isTwoPaneTabWidth(412)).toBe(false)
   })
 })

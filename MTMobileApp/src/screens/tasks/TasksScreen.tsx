@@ -30,7 +30,7 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { isTwoPaneWidth } from "../../theme/layoutBreakpoints"
+import { isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import { taskWorkflowStatus, type TaskWorkflowStatus } from "./tasks-workflow-state"
 
 type TaskStatus = TaskWorkflowStatus
@@ -383,7 +383,7 @@ export default function TasksScreen() {
   const copy = useMemo(() => copyFor(i18n.language), [i18n.language])
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
-  const tablet = isTwoPaneWidth(width)
+  const tablet = isTwoPaneTabWidth(width)
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const [tasks, setTasks] = useState<Task[]>([])
