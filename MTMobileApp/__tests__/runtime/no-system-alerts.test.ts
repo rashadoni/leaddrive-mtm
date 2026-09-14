@@ -19,10 +19,6 @@ import { join, relative, sep } from "path"
  * the list is empty when the migration is done.
  */
 const ALLOWED_SYSTEM_ALERT_FILES: string[] = [
-  "src/components/PhotoCaptureModal.tsx",
-  "src/screens/base/OrganizationExplorerScreen.tsx",
-  "src/screens/planning/PlanningWorkspaceCore.android.tsx",
-  "src/screens/route/RouteScreen.tsx",
 ]
 
 const APP_ROOT = join(__dirname, "..", "..")

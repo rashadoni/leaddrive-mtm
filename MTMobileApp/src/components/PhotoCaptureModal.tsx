@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Linking,
   Modal,
@@ -22,6 +21,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { photoWatermarkPipeline } from "../lib/photo-watermark"
 import { useBootstrapStore } from "../store/bootstrap"
 import { fieldTheme } from "../theme/fieldTheme"
+import { FEEDBACK_TONE_COLORS } from "./feedback-tone"
 
 /**
  * M1-2: when this context is passed, every captured photo gets EXIF tags
@@ -56,6 +56,8 @@ interface Props {
 // (2026-09-14: purple «Use Photo» and English labels on the Galaxy S23).
 const VIEWFINDER_BLACK = "#000000"
 
+const CAPTURE_BUTTON_SIZE = 76
+
 export default function PhotoCaptureModal(props: Props) {
   if (!props.visible) return null
   // The modal is its own Android window, drawn under the system bars (target
@@ -88,6 +90,12 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
   const [flash, setFlash] = useState<"off" | "on">("off")
   const [previewPath, setPreviewPath] = useState<string | null>(null)
   const [permissionDenied, setPermissionDenied] = useState(false)
+  // A failed shot is said on the camera screen itself. This modal is its own
+  // Android window, drawn over the app's notice layer, and the step it names
+  // («close the camera, open it again») is on this screen: the message stays
+  // until the agent shoots again or taps it, instead of timing out while the
+  // agent is still aiming.
+  const [captureFailed, setCaptureFailed] = useState(false)
   // Tenant policy, server-authoritative. Null bootstrap (not yet loaded, or
   // the call failed) resolves to `false` — the direction that cannot leak a
   // customer name into a file we no longer control.
@@ -103,6 +111,7 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
   const handleCapture = async () => {
     if (!camera.current || capturing) return
     setCapturing(true)
+    setCaptureFailed(false)
     try {
       // Fetch GPS in parallel with the shutter so the preview shows the
       // watermark with no perceptible extra delay.
@@ -143,7 +152,7 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
       // Closing the camera mid-shot rejects takePhoto; nobody is looking.
       if (!mounted.current) return
       // The native message is English and technical; the agent needs a step.
-      Alert.alert(t("photoCapture.captureFailedTitle"), t("photoCapture.captureFailedBody"))
+      setCaptureFailed(true)
     } finally {
       if (mounted.current) setCapturing(false)
     }
@@ -299,6 +308,38 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
             </Pressable>
           </View>
 
+          {captureFailed ? (
+            <View
+              pointerEvents="box-none"
+              style={[
+                styles.captureFailedFrame,
+                {
+                  // Above the shutter, clear of the cutout and the navigation
+                  // bar: on a phone on its side (384 dp tall) it fits between
+                  // the top bar and the shutter without covering either.
+                  bottom: insets.bottom + fieldTheme.space.xl + CAPTURE_BUTTON_SIZE + fieldTheme.space.md,
+                  left: insets.left + fieldTheme.space.lg,
+                  right: insets.right + fieldTheme.space.lg,
+                },
+              ]}
+            >
+              <Pressable
+                testID="photo-capture-failed"
+                accessibilityRole="alert"
+                accessibilityLiveRegion="assertive"
+                accessibilityHint={t("appFeedback.dismissNotice")}
+                onPress={() => setCaptureFailed(false)}
+                style={({ pressed }) => [styles.captureFailed, pressed && styles.pressed]}
+              >
+                <Icon name={FEEDBACK_TONE_COLORS.error.icon} size={26} color={FEEDBACK_TONE_COLORS.error.accent} />
+                <View style={styles.captureFailedCopy}>
+                  <Text style={styles.captureFailedTitle}>{t("photoCapture.captureFailedTitle")}</Text>
+                  <Text style={styles.captureFailedBody}>{t("photoCapture.captureFailedBody")}</Text>
+                </View>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={[styles.bottomBar, { bottom: insets.bottom + fieldTheme.space.xl, left: insets.left, right: insets.right }]}>
             <Pressable
               accessibilityRole="button"
@@ -378,9 +419,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   captureBtn: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: CAPTURE_BUTTON_SIZE,
+    height: CAPTURE_BUTTON_SIZE,
+    borderRadius: CAPTURE_BUTTON_SIZE / 2,
     backgroundColor: fieldTheme.color.surface,
     justifyContent: "center",
     alignItems: "center",
@@ -395,6 +436,29 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: fieldTheme.color.border,
   },
+  captureFailedFrame: {
+    position: "absolute",
+    alignItems: "center",
+  },
+  // The same card as the app's error notice (FEEDBACK_TONE_COLORS.error).
+  captureFailed: {
+    width: "100%",
+    maxWidth: 560,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.md,
+    paddingVertical: fieldTheme.space.md,
+    paddingHorizontal: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1,
+    borderLeftWidth: 5,
+    backgroundColor: FEEDBACK_TONE_COLORS.error.background,
+    borderColor: FEEDBACK_TONE_COLORS.error.border,
+    borderLeftColor: FEEDBACK_TONE_COLORS.error.accent,
+  },
+  captureFailedCopy: { flex: 1, gap: 2 },
+  captureFailedTitle: { fontSize: 16, lineHeight: 21, fontWeight: "800", color: fieldTheme.color.ink },
+  captureFailedBody: { fontSize: 15, lineHeight: 20, color: fieldTheme.color.ink },
   previewBar: {
     position: "absolute",
     alignItems: "center",

@@ -43,8 +43,8 @@ describe("customer signature on visit screens", () => {
   it("the out-of-zone answer names an action, not «override»", () => {
     const texts = [az, en, ru].flatMap((dict: any) => [dict.route.tooFarSupervisorBody, dict.visit.tooFarAskSupervisor])
     expect(texts.filter((text) => /override/i.test(text))).toEqual([])
-    const alert = route.slice(route.indexOf("const canOverride = api.canForceCheckIn"), route.indexOf('t("route.tooFarSupervisorBody"'))
-    expect(alert).toContain("handleNavigate(point)")
+    const tooFar = route.slice(route.indexOf('t("route.tooFarSupervisorBody"'), route.indexOf("forceCheckIn = true"))
+    expect(tooFar).toContain('if (pick === "maps") handleNavigate(point)')
   })
 })
 
