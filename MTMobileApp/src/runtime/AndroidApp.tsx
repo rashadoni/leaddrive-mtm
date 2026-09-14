@@ -85,6 +85,25 @@ function AppContent() {
     })
   }, [])
 
+  // The GPS service must be visible while it records. Android 13+ hides every
+  // notification of an app without POST_NOTIFICATIONS, and the app never asked
+  // for it: on a Redmi Pad SE the location service ran with nothing in the
+  // shade (2026-09-14). Ask once per launch, before tracking starts; a refusal
+  // does not stop the workday, the system still lists the service.
+  const notificationAsked = useRef(false)
+  const requestTrackingNotification = useCallback(async (): Promise<void> => {
+    if (Platform.OS !== "android" || Number(Platform.Version) < 33) return
+    const permission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+    if (!permission || notificationAsked.current) return
+    try {
+      if (await PermissionsAndroid.check(permission)) return
+      notificationAsked.current = true
+      await PermissionsAndroid.request(permission)
+    } catch {
+      // Tracking does not depend on the answer.
+    }
+  }, [])
+
   const requestForegroundLocation = useCallback(async (): Promise<boolean> => {
     if (Platform.OS !== "android") return true
     try {
@@ -123,6 +142,7 @@ function AppContent() {
       // so wait for the AppState listener below to retry after the return.
       if (AppState.currentState !== "active") return
       if (!await requestForegroundLocation() || cancelled) return
+      await requestTrackingNotification()
       if (AppState.currentState !== "active" || cancelled) return
 
       const auth = useAuthStore.getState()
@@ -144,7 +164,7 @@ function AppContent() {
     return () => {
       cancelled = true
     }
-  }, [activeWorkdayId, foregroundEpoch, mayTrack, requestForegroundLocation])
+  }, [activeWorkdayId, foregroundEpoch, mayTrack, requestForegroundLocation, requestTrackingNotification])
 
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
