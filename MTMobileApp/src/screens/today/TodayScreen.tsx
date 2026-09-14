@@ -425,7 +425,7 @@ export default function TodayScreen() {
 
         <View style={[styles.content, twoPane && styles.contentTablet]}>
           <View style={[styles.primaryColumn, twoPane && styles.primaryColumnTablet]}>
-            <View style={[styles.workdayPanel, !twoPane && styles.workdayPanelSingle]}>
+            <View style={styles.workdayPanel}>
               <View style={styles.workdayCopy}>
                 <View style={styles.workdayTitleRow}>
                   <View style={[styles.statusDot, workdayActive && styles.statusDotActive]} />
@@ -740,21 +740,19 @@ const styles = StyleSheet.create({
     flex: 1.15,
     minWidth: 0,
   },
+  // Buttons under the text on a tablet too. Beside it, «Fasilə» and «Günü
+  // bitir» left the text 130 dp and «İş günü 11 sentyabr, 20:57-da başlayıb»
+  // ran to three lines (Redmi Pad SE in landscape, 2026-09-14).
   workdayPanel: {
     minHeight: 126,
     padding: fieldTheme.space.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    alignItems: "stretch",
     gap: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.lg,
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
     backgroundColor: fieldTheme.color.surface,
-  },
-  workdayPanelSingle: {
-    flexDirection: "column",
-    alignItems: "stretch",
   },
   workdayCopy: {
     flex: 1,
