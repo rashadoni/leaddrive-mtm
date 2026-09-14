@@ -37,6 +37,7 @@ import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useHintsStore } from "../../store/hints"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
+import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -148,6 +149,8 @@ const ROUTE_COPY = {
     routeStartQueuedTitle: "Начало маршрута сохранено",
     routeStartQueuedBody: "Нет связи. Запрос на запуск будет отправлен автоматически, когда интернет вернётся.",
     routeStartFailed: "Не удалось начать маршрут. Обновите план и повторите.",
+    routeStartDeferredTitle: "Маршрут ещё не начат",
+    routeStartDeferredBody: "Сервер не принял запрос на запуск. Приложение повторит его автоматически; если не получится, сообщите руководителю.",
   },
   az: {
     title: "Bugünkü marşrut",
@@ -219,6 +222,8 @@ const ROUTE_COPY = {
     routeStartQueuedTitle: "Marşrutun başlanması yadda saxlanıldı",
     routeStartQueuedBody: "Bağlantı yoxdur. Başlama sorğusu internet qayıdanda avtomatik göndəriləcək.",
     routeStartFailed: "Marşrutu başlatmaq alınmadı. Planı yeniləyib yenidən cəhd edin.",
+    routeStartDeferredTitle: "Marşrut hələ başlamayıb",
+    routeStartDeferredBody: "Server başlama sorğusunu qəbul etmədi. Tətbiq onu avtomatik təkrar göndərəcək; alınmasa, rəhbərinizə bildirin.",
   },
   en: {
     title: "Today's route",
@@ -290,6 +295,8 @@ const ROUTE_COPY = {
     routeStartQueuedTitle: "Route start saved",
     routeStartQueuedBody: "There is no connection. The start request will be sent automatically when it returns.",
     routeStartFailed: "We could not start the route. Refresh the plan and try again.",
+    routeStartDeferredTitle: "The route has not started yet",
+    routeStartDeferredBody: "The server did not accept the start request. The app will retry it automatically; if it keeps failing, tell your manager.",
   },
 } as const
 
@@ -1134,7 +1141,14 @@ export default function RouteScreen() {
     } catch (error: unknown) {
       const code = (error as { code?: unknown } | null)?.code
       if (code === "MOBILE_ROUTE_COMMAND_QUEUED") {
-        Alert.alert(copy.routeStartQueuedTitle, copy.routeStartQueuedBody)
+        // A parked command is not proof of a dead connection: a server error
+        // parks it too. On an online tablet the app said "no connection" while
+        // production rejected every START with a database error (2026-09-14).
+        if (useSyncStatusStore.getState().online === false) {
+          Alert.alert(copy.routeStartQueuedTitle, copy.routeStartQueuedBody)
+        } else {
+          Alert.alert(copy.routeStartDeferredTitle, copy.routeStartDeferredBody)
+        }
       } else if (code === "MTM_ROUTE_WORKDAY_REQUIRED") {
         Alert.alert(copy.workdayRequiredTitle, copy.workdayRequiredBody)
       } else {
