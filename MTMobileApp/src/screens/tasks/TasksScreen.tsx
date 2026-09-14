@@ -1035,7 +1035,10 @@ const styles = StyleSheet.create({
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: fieldTheme.space.xl, paddingHorizontal: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1280, alignSelf: "center", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.lg },
   headerInnerPhone: { flexDirection: "column", alignItems: "stretch", gap: fieldTheme.space.md },
-  headerCopy: { flex: 1 },
+  // Not `flex: 1`: on the phone the header is a column with no height of its
+  // own, and a zero flex basis there collapses the title block to 0 px — the
+  // phone showed an empty green band with the title missing (2026-09-14).
+  headerCopy: { flexGrow: 1, flexShrink: 1 },
   eyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   eyebrow: { color: fieldTheme.color.primarySoft, fontSize: 12, fontWeight: "800" },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: fieldTheme.space.sm },
@@ -1122,7 +1125,9 @@ const styles = StyleSheet.create({
   detailOpenText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
   emptyState: { flex: 1, minHeight: 260, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: fieldTheme.color.primarySoft, alignItems: "center", justifyContent: "center", marginBottom: fieldTheme.space.lg },
-  emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "900", textAlign: "center" },
+  // Stretched, not sized to its own measurement: centred heavy text measured
+  // itself one word short on the phone and «Yeni tapşırıq yoxdur» lost «yoxdur».
+  emptyTitle: { alignSelf: "stretch", color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "900", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 360, marginTop: fieldTheme.space.sm },
   emptyButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.lg, marginTop: fieldTheme.space.lg },
   emptyButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
