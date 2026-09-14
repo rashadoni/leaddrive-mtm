@@ -59,3 +59,18 @@ describe("visit workspace mapping", () => {
     })
   })
 })
+
+describe("visit summary address (found on the phone 2026-09-13)", () => {
+  it("falls back to the city the server sends", () => {
+    expect(toVisitWorkspace({ id: "v3", customer: { name: "Bravo Market", city: "Baku" } }).customer.address).toBe("Baku")
+    expect(toVisitWorkspace({ id: "v4", customer: { name: "Bravo Market", address: "Nizami 5", city: "Baku" } }).customer.address).toBe("Nizami 5")
+  })
+
+  it("labels the address row as an address, not as the client", () => {
+    const fs = require("fs") as typeof import("fs")
+    const path = require("path") as typeof import("path")
+    const screen = fs.readFileSync(path.resolve(__dirname, "../../src/screens/visit/VisitWorkspaceScreen.tsx"), "utf8")
+    expect(screen).toContain('label={copy.address} value={data.customer.address || copy.noAddress}')
+    expect(screen).not.toContain("copy.client")
+  })
+})
