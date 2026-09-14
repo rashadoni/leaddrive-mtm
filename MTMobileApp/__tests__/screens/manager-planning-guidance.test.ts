@@ -16,7 +16,7 @@ describe("mobile planning guidance", () => {
     expect(source).toContain('planning.${singleDay ? "day" : "week"}.step.${step}')
     expect(source).toContain('managerShell.planHelpAction')
     expect(source).toContain('managerShell.planHelpDayStep1')
-    expect(source).toContain('managerShell.planHelpWeekStep3')
+    expect(source).toContain('managerShell.planHelpWeekStep2')
     expect(source).toContain("<PlannerCoach")
     expect(source).toContain("dismissHint(planningHintId)")
   })
@@ -45,12 +45,12 @@ describe("mobile planning guidance", () => {
     expect(source).not.toContain("<MatrixRow")
   })
 
-  it("keeps long planning data inside compact scrollers and the next action always reachable", () => {
+  it("keeps the next action reachable and the plan itself on one scrolling page", () => {
+    // Owner, 2026-09-14: no boxes with their own scroll. The customer list and
+    // the day chooser used to scroll inside the page; the page scrolls now.
     expect(source).toContain("<PlannerActionDock")
-    expect(source).toContain("nestedScrollEnabled")
-    expect(source).toContain("styles.agentListScroller")
-    expect(source).toContain("styles.targetListScroller")
-    expect(source).toContain("horizontal nestedScrollEnabled")
+    expect(source).not.toContain("styles.targetListScroller")
+    expect(source).not.toContain("horizontal nestedScrollEnabled")
     expect(calendarSource).toContain("styles.agendaListScroller")
   })
 
