@@ -13,6 +13,7 @@ import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import SyncStatusChip from "../../components/SyncStatusChip"
+import StatusBarBand from "../../components/StatusBarBand"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
@@ -644,6 +645,7 @@ export default function TodayScreen() {
         onCancel={() => setNotice(null)}
         onConfirm={() => setNotice(null)}
       />
+      <StatusBarBand />
     </View>
   )
 }
