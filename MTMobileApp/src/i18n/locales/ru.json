@@ -149,7 +149,7 @@
     "checkInButton": "Зайти",
     "tooFarTitle": "Слишком далеко",
     "tooFarBody": "Вы в {{distance}} от {{name}}.\nДля чек-ина нужно быть ближе {{max}}м.",
-    "tooFarAskSupervisor": "{{distance}} от {{name}} (макс. {{max}}м). Обратитесь к супервайзеру.",
+    "tooFarAskSupervisor": "Вы в {{distance}} от {{name}} (не дальше {{max}} м). Подойдите ближе; если точка стоит не там, скажите руководителю.",
     "checkInAnyway": "Зайти всё равно",
     "checkedInTitle": "Чек-ин выполнен",
     "checkedInBody": "Вы сейчас в {{name}}",
@@ -689,7 +689,8 @@
     "actionVisitNote": "Заметка визита",
     "actionChecklist": "Чек-лист",
     "actionFeedback": "Обратная связь",
-    "actionNextAction": "Следующее действие"
+    "actionNextAction": "Следующее действие",
+    "actionSignature": "Подпись клиента"
   },
   "gpsHistory": {
     "accessTitle": "История GPS доступна полевому агенту",
@@ -797,7 +798,7 @@
     "locationUnavailableTitle": "Местоположение недоступно",
     "locationUnavailableBody": "Не удалось определить ваше положение. Убедитесь, что GPS включен, и попробуйте снова.",
     "tryAnyway": "Всё равно попробовать",
-    "tooFarSupervisorBody": "Вы в {{distance}} от {{name}}.\nНужно быть ближе {{max}}м. Обратитесь к супервайзеру за override."
+    "tooFarSupervisorBody": "Вы в {{distance}} от {{name}}, а начать визит можно не дальше {{max}} м.\nПодойдите к клиенту и попробуйте снова. Если точка на карте стоит не там, скажите руководителю: адрес можно исправить в CRM."
   },
   "notesModal": {
     "placeholder": "Введите заметки…",
@@ -957,5 +958,23 @@
     "routeDeviation": "Агент в {{deviationMeters}} м от запланированного маршрута (допустимо {{thresholdMeters}} м)",
     "agentRouteDeviation": "Вы в {{deviationMeters}} м от запланированного маршрута",
     "agentOutOfZoneCheckIn": "Ваша отметка в «{{customerName}}» записана в {{distanceMeters}} м (допустимо {{geofenceRadius}} м)"
+  },
+  "signature": {
+    "title": "Подпись клиента",
+    "hint": "Пусть клиент распишется пальцем в белом поле ниже. Не получилось — нажмите «Очистить» и начните заново.",
+    "signerNamePlaceholder": "Имя подписавшего (необязательно)",
+    "padLabel": "Поле для подписи",
+    "clear": "Очистить",
+    "save": "Сохранить подпись",
+    "cancel": "Закрыть",
+    "tooShort": "Подпись слишком короткая — распишитесь чуть больше.",
+    "requiredTitle": "Нужна подпись клиента",
+    "requiredBody": "Этот визит не завершить без подписи. Попросите клиента расписаться пальцем на экране.",
+    "signNow": "Взять подпись",
+    "savedTitle": "Подпись сохранена",
+    "savedBody": "Подпись добавлена к визиту и уйдёт на сервер, когда будет связь.",
+    "saveFailed": "Не удалось сохранить подпись. Попробуйте ещё раз.",
+    "buttonRequired": "Подпись клиента — обязательно",
+    "taken": "Подпись получена"
   }
 }

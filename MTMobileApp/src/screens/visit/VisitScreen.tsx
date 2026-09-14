@@ -42,6 +42,9 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
+import SignaturePadModal from "../../components/SignaturePadModal"
+import { useVisitSignature } from "../../hooks/useVisitSignature"
+import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import FeedbackToast from "../../components/FeedbackToast"
 import ConfirmSheet from "../../components/ConfirmSheet"
@@ -374,6 +377,7 @@ export default function VisitScreen() {
   const [loadState, setLoadState] = useState<LoadState>("loading")
   const [refreshing, setRefreshing] = useState(false)
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null)
+  const signature = useVisitSignature(activeVisit)
   const [mutating, setMutating] = useState(false)
   const [notesVisible, setNotesVisible] = useState(false)
   const [cameraVisible, setCameraVisible] = useState(false)
@@ -882,7 +886,22 @@ export default function VisitScreen() {
 
   const handleCheckOut = () => {
     if (!activeVisit || mutating) return
+    if (signature.blocksCheckOut) {
+      showToast("warning", t("signature.requiredTitle"), t("signature.requiredBody"))
+      signature.openPad()
+      return
+    }
     setNotesVisible(true)
+  }
+
+  const handleSignatureSave = async (capture: SignatureCapture, signerName?: string) => {
+    try {
+      await signature.save(capture, signerName)
+      showToast("success", t("signature.savedTitle"), t("signature.savedBody"))
+    } catch (error: any) {
+      console.warn("[VisitScreen] signature error:", error?.message ?? error)
+      showToast("error", t("common.error"), t("signature.saveFailed"))
+    }
   }
 
   const performCheckOut = async (notes?: string) => {
@@ -1000,6 +1019,8 @@ export default function VisitScreen() {
     onCheckIn: () => selectedCustomer && handleCheckIn(selectedCustomer),
     onPhoto: () => setCameraVisible(true),
     onCheckOut: handleCheckOut,
+    signature,
+    onSignature: signature.openPad,
     onRetry: retry,
     checkInIssue,
   }
@@ -1116,6 +1137,12 @@ export default function VisitScreen() {
           performCheckOut(text)
         }}
       />
+      <SignaturePadModal
+        visible={signature.padVisible}
+        customerName={activeVisit?.customer?.name}
+        onCancel={signature.closePad}
+        onSave={handleSignatureSave}
+      />
       <PhotoCaptureModal
         visible={cameraVisible}
         onClose={() => setCameraVisible(false)}
@@ -1226,6 +1253,8 @@ function VisitActionPanel({
   onCheckOut,
   onRetry,
   checkInIssue,
+  signature,
+  onSignature,
 }: {
   copy: Copy
   checkInIssue: CheckInIssue | null
@@ -1247,6 +1276,8 @@ function VisitActionPanel({
   onPhoto: () => void
   onCheckOut: () => void
   onRetry: () => void
+  signature: { visible: boolean; required: boolean; signed: boolean }
+  onSignature: () => void
 }) {
   // The panel knows only that loading ended in the "offline" state, which is
   // set on any failed request. What to call it depends on the radio, and the
@@ -1275,6 +1306,7 @@ function VisitActionPanel({
           <View style={styles.activeMeta}>
             <MetaPill icon="time-outline" text={copy.elapsed.replace("{{count}}", String(elapsedMin))} />
             <MetaPill icon="camera-outline" text={copy.photos.replace("{{count}}", String(photoCount))} />
+            {signature.visible && signature.signed ? <MetaPill icon="checkmark-done-outline" text={translate("signature.taken")} /> : null}
           </View>
 
           {activeVisit.customer?.address && (
@@ -1307,6 +1339,24 @@ function VisitActionPanel({
               <Icon name="camera-outline" size={21} color={fieldTheme.color.primary} />
               <Text style={styles.secondaryButtonText}>{copy.addPhoto}</Text>
             </Pressable>
+            {signature.visible && !signature.signed && !activeVisit.pendingCheckOut ? (
+              <Pressable
+                testID="visit-signature-button"
+                accessibilityRole="button"
+                accessibilityLabel={signature.required ? translate("signature.buttonRequired") : translate("signature.title")}
+                disabled={mutating}
+                onPress={onSignature}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  { minHeight: touchTarget },
+                  mutating && styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Icon name="create-outline" size={21} color={fieldTheme.color.primary} />
+                <Text style={styles.secondaryButtonText}>{signature.required ? translate("signature.buttonRequired") : translate("signature.title")}</Text>
+              </Pressable>
+            ) : null}
           </View>
 
           <Pressable
@@ -1868,7 +1918,7 @@ const styles = StyleSheet.create({
   addressText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
   pendingNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
   pendingText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "700" },
-  secondaryActionRow: { flexDirection: "row", marginTop: fieldTheme.space.lg },
+  secondaryActionRow: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   secondaryButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md },
   secondaryButtonText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
   historyContent: { paddingVertical: fieldTheme.space.lg },

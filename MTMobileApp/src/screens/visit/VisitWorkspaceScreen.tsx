@@ -174,6 +174,7 @@ function actionLabel(t: (key: string) => string, key: string): string {
     CHECKLIST: "visitWorkspace.actionChecklist",
     FEEDBACK: "visitWorkspace.actionFeedback",
     NEXT_ACTION: "visitWorkspace.actionNextAction",
+    SIGNATURE: "visitWorkspace.actionSignature",
   }
   return map[key] ? t(map[key]) : key
 }

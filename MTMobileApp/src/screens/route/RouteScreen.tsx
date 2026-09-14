@@ -44,6 +44,9 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
+import SignaturePadModal from "../../components/SignaturePadModal"
+import { useVisitSignature } from "../../hooks/useVisitSignature"
+import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
@@ -96,6 +99,9 @@ const ROUTE_COPY = {
     arrivedCheckIn: "Я приехал — начать визит",
     takePhoto: "Сделать фото",
     takeAnotherPhoto: "Добавить ещё фото",
+    takeSignature: "Подпись клиента",
+    takeSignatureRequired: "Подпись клиента — обязательно",
+    signatureTaken: "Подпись получена",
     finishVisit: "Завершить визит",
     finishingVisit: "Завершение…",
     waitingForSync: "Ожидает отправки",
@@ -169,6 +175,9 @@ const ROUTE_COPY = {
     arrivedCheckIn: "Gəldim — ziyarətə başla",
     takePhoto: "Foto çək",
     takeAnotherPhoto: "Daha bir foto əlavə et",
+    takeSignature: "Müştəri imzası",
+    takeSignatureRequired: "Müştəri imzası — mütləqdir",
+    signatureTaken: "İmza alındı",
     finishVisit: "Ziyarəti bitir",
     finishingVisit: "Ziyarət bitirilir…",
     waitingForSync: "Göndərilmə gözlənilir",
@@ -242,6 +251,9 @@ const ROUTE_COPY = {
     arrivedCheckIn: "I've arrived — start visit",
     takePhoto: "Take a photo",
     takeAnotherPhoto: "Add another photo",
+    takeSignature: "Customer signature",
+    takeSignatureRequired: "Customer signature — required",
+    signatureTaken: "Signature taken",
     finishVisit: "Finish visit",
     finishingVisit: "Finishing…",
     waitingForSync: "Waiting to send",
@@ -713,6 +725,8 @@ function PointActionPanel({
   onCheckIn,
   onPhoto,
   onCheckOut,
+  signature,
+  onSignature,
 }: {
   point: RoutePoint | null
   nextPoint: RoutePoint | null
@@ -727,6 +741,8 @@ function PointActionPanel({
   onCheckIn: (point: RoutePoint) => void
   onPhoto: () => void
   onCheckOut: () => void
+  signature: { visible: boolean; required: boolean; signed: boolean }
+  onSignature: () => void
 }) {
   if (activeVisit) {
     const pending = activeVisit.pendingCheckOut
@@ -748,6 +764,12 @@ function PointActionPanel({
             <Icon name="camera-outline" size={17} color={fieldTheme.color.primaryStrong} />
             <Text style={styles.factText}>{renderTemplate(copy.photos, { count: photoCount })}</Text>
           </View>
+          {signature.visible && signature.signed ? (
+            <View style={styles.factPill} testID="route-signature-taken">
+              <Icon name="checkmark-done-outline" size={17} color={fieldTheme.color.primaryStrong} />
+              <Text style={styles.factText}>{copy.signatureTaken}</Text>
+            </View>
+          ) : null}
         </View>
         {pending ? (
           <ActionButton label={copy.waitingForSync} icon="cloud-upload-outline" onPress={() => {}} disabled />
@@ -767,6 +789,15 @@ function PointActionPanel({
             <ActionButton label={copy.takeAnotherPhoto} icon="camera-outline" onPress={onPhoto} disabled={mutating} tone="secondary" />
           </>
         )}
+        {!pending && signature.visible && !signature.signed ? (
+          <ActionButton
+            label={signature.required ? copy.takeSignatureRequired : copy.takeSignature}
+            icon="create-outline"
+            onPress={onSignature}
+            disabled={mutating}
+            tone="secondary"
+          />
+        ) : null}
       </View>
     )
   }
@@ -889,6 +920,7 @@ export default function RouteScreen() {
   const [notesVisible, setNotesVisible] = useState(false)
   const [photoCount, setPhotoCount] = useState(0)
   const [cameraVisible, setCameraVisible] = useState(false)
+  const signature = useVisitSignature(activeVisit)
   const [routeOrigin, setRouteOrigin] = useState<RouteDataOrigin>("none")
   const [loadIssue, setLoadIssue] = useState<RouteLoadIssue>("none")
 
@@ -1234,7 +1266,12 @@ export default function RouteScreen() {
                 { text: t("common.cancel"), onPress: () => resolve(false), style: "cancel" },
                 { text: t("route.tryAnyway"), onPress: () => resolve(true) },
               ]
-            : [{ text: t("common.ok"), onPress: () => resolve(false) }]
+            : [
+                // Without the right to start out of zone the only way on is to
+                // get there, so the answer offers the way, not just «OK».
+                { text: copy.openMaps, onPress: () => { resolve(false); handleNavigate(point) } },
+                { text: t("common.ok"), onPress: () => resolve(false), style: "cancel" },
+              ]
           const message = canOverride
             ? t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT })
             : t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT })
@@ -1275,7 +1312,24 @@ export default function RouteScreen() {
 
   const handleCheckOut = () => {
     if (!activeVisit || mutating) return
+    if (signature.blocksCheckOut) {
+      Alert.alert(t("signature.requiredTitle"), t("signature.requiredBody"), [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("signature.signNow"), onPress: signature.openPad },
+      ])
+      return
+    }
     setNotesVisible(true)
+  }
+
+  const handleSignatureSave = async (capture: SignatureCapture, signerName?: string) => {
+    try {
+      await signature.save(capture, signerName)
+      Alert.alert(t("signature.savedTitle"), t("signature.savedBody"))
+    } catch (error: any) {
+      console.warn("[RouteScreen] signature error:", error?.message ?? error)
+      Alert.alert(t("common.error"), t("signature.saveFailed"))
+    }
   }
 
   const performCheckOut = async (notes?: string) => {
@@ -1332,6 +1386,8 @@ export default function RouteScreen() {
       onCheckIn={handleCheckIn}
       onPhoto={() => setCameraVisible(true)}
       onCheckOut={handleCheckOut}
+      signature={signature}
+      onSignature={signature.openPad}
     />
   ) : (
     <RouteExecutionGate
@@ -1471,6 +1527,7 @@ export default function RouteScreen() {
           onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
         />
         <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
+        <SignaturePadModal visible={signature.padVisible} customerName={activeVisit?.customer?.name} onCancel={signature.closePad} onSave={handleSignatureSave} />
         <StatusBarBand />
       </View>
     )
@@ -1559,6 +1616,7 @@ export default function RouteScreen() {
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />
       <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
+      <SignaturePadModal visible={signature.padVisible} customerName={activeVisit?.customer?.name} onCancel={signature.closePad} onSave={handleSignatureSave} />
       <StatusBarBand />
     </View>
   )
