@@ -122,65 +122,73 @@ function MainTabs() {
   }
 
   return (
-    <Tab.Navigator
-      key="route-field-tabs"
-      initialRouteName="Today"
-      screenOptions={{
-        headerShown: false,
-        tabBarPosition: tablet ? "left" : "bottom",
-        tabBarVariant: tablet ? "material" : "uikit",
-        tabBarActiveTintColor: fieldTheme.color.primaryStrong,
-        tabBarInactiveTintColor: fieldTheme.color.inkMuted,
-        tabBarActiveBackgroundColor: fieldTheme.color.primarySoft,
-        tabBarLabelPosition: "below-icon",
-        tabBarStyle: tablet
-          ? {
-              // One width for the rail. At 82 dp a phone held in landscape (823 dp,
-              // below the 840 "expanded" line) cut every caption to "B…", "T…".
-              // 112 still left "Tapşırı…": the label got 51 dp on the phone. 124
-              // gives it 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
-              width: RAIL_WIDTH,
-              backgroundColor: fieldTheme.color.surface,
-              borderRightColor: fieldTheme.color.border,
-              borderRightWidth: 1,
-              borderTopWidth: 0,
-              paddingTop: Math.max(insets.top, 12),
-              paddingBottom: Math.max(insets.bottom, 12),
-              elevation: 0,
-            }
-          : {
-              height: tabBarHeight,
-              paddingTop: 7,
-              paddingBottom: Math.max(insets.bottom, 8),
-              backgroundColor: fieldTheme.color.surface,
-              borderTopColor: fieldTheme.color.border,
-              borderTopWidth: 1,
-              elevation: 10,
-              shadowColor: fieldTheme.color.ink,
-              shadowOffset: { width: 0, height: -3 },
-              shadowOpacity: 0.08,
-              shadowRadius: 8,
-            },
-        tabBarItemStyle: tablet
-          ? {
-              minHeight: 62,
-              marginHorizontal: 8,
-              marginVertical: 3,
-              borderRadius: fieldTheme.radius.md,
-            }
-          : { paddingHorizontal: 2 },
-        tabBarLabelStyle: styles.tabLabel,
-      }}
-    >
-      {AGENT_TAB_NAMES.map((name) => (
-        <Tab.Screen
-          key={name}
-          name={name}
-          component={TAB_COMPONENTS[name]}
-          options={tabOptions(name, t(TAB_LABEL_KEYS[name]))}
-        />
-      ))}
-    </Tab.Navigator>
+    <View style={styles.tabsRoot}>
+      <Tab.Navigator
+        key="route-field-tabs"
+        initialRouteName="Today"
+        screenOptions={{
+          headerShown: false,
+          tabBarPosition: tablet ? "left" : "bottom",
+          tabBarVariant: tablet ? "material" : "uikit",
+          tabBarActiveTintColor: fieldTheme.color.primaryStrong,
+          tabBarInactiveTintColor: fieldTheme.color.inkMuted,
+          tabBarActiveBackgroundColor: fieldTheme.color.primarySoft,
+          tabBarLabelPosition: "below-icon",
+          tabBarStyle: tablet
+            ? {
+                // One width for the rail. At 82 dp a phone held in landscape (823 dp,
+                // below the 840 "expanded" line) cut every caption to "B…", "T…".
+                // 112 still left "Tapşırı…": the label got 51 dp on the phone. 124
+                // gives it 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
+                width: RAIL_WIDTH,
+                backgroundColor: fieldTheme.color.surface,
+                borderRightColor: fieldTheme.color.border,
+                borderRightWidth: 1,
+                borderTopWidth: 0,
+                paddingTop: Math.max(insets.top, 12),
+                paddingBottom: Math.max(insets.bottom, 12),
+                elevation: 0,
+              }
+            : {
+                height: tabBarHeight,
+                paddingTop: 7,
+                paddingBottom: Math.max(insets.bottom, 8),
+                backgroundColor: fieldTheme.color.surface,
+                borderTopColor: fieldTheme.color.border,
+                borderTopWidth: 1,
+                elevation: 10,
+                shadowColor: fieldTheme.color.ink,
+                shadowOffset: { width: 0, height: -3 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+              },
+          tabBarItemStyle: tablet
+            ? {
+                minHeight: 62,
+                marginHorizontal: 8,
+                marginVertical: 3,
+                borderRadius: fieldTheme.radius.md,
+              }
+            : { paddingHorizontal: 2 },
+          tabBarLabelStyle: styles.tabLabel,
+        }}
+      >
+        {AGENT_TAB_NAMES.map((name) => (
+          <Tab.Screen
+            key={name}
+            name={name}
+            component={TAB_COMPONENTS[name]}
+            options={tabOptions(name, t(TAB_LABEL_KEYS[name]))}
+          />
+        ))}
+      </Tab.Navigator>
+      {/* With the rail the clock sits over the rail's light top, and the battery
+          over whatever the screen starts with: white on white on the phone held
+          in landscape (2026-09-14). One green band under the whole status bar
+          keeps the app-wide light icons readable on every tab; light screens
+          leave the icons light in this layout (LightScreenStatusBar). */}
+      {tablet && insets.top > 0 ? <View pointerEvents="none" style={[styles.railStatusBand, { height: insets.top }]} /> : null}
+    </View>
   )
 }
 
@@ -260,6 +268,8 @@ export default function AppNavigatorAndroidV2() {
 }
 
 const styles = StyleSheet.create({
+  tabsRoot: { flex: 1 },
+  railStatusBand: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldTheme.color.primaryStrong },
   loader: {
     flex: 1,
     justifyContent: "center",

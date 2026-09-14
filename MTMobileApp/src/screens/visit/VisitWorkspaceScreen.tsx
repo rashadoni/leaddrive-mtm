@@ -44,7 +44,7 @@ const COPY = {
     errorBody: "Проверьте интернет и попробуйте снова.",
     retry: "Попробовать снова",
     overview: "Коротко о визите",
-    client: "Клиент",
+    address: "Адрес",
     contact: "Контакт",
     noAddress: "Адрес не указан",
     noContact: "Контакт не выбран",
@@ -83,7 +83,7 @@ const COPY = {
     errorBody: "İnterneti yoxlayın və yenidən cəhd edin.",
     retry: "Yenidən cəhd et",
     overview: "Ziyarət haqqında qısa məlumat",
-    client: "Müştəri",
+    address: "Ünvan",
     contact: "Kontakt",
     noAddress: "Ünvan göstərilməyib",
     noContact: "Kontakt seçilməyib",
@@ -122,7 +122,7 @@ const COPY = {
     errorBody: "Check your connection and try again.",
     retry: "Try again",
     overview: "Visit at a glance",
-    client: "Client",
+    address: "Address",
     contact: "Contact",
     noAddress: "No address provided",
     noContact: "No contact selected",
@@ -364,7 +364,8 @@ export default function VisitWorkspaceScreen() {
                   <Text style={styles.sectionTitle}>{data.customer.name || title}</Text>
                 </View>
               </View>
-              <InfoLine icon="pin-outline" label={copy.client} value={data.customer.address || copy.noAddress} />
+              {/* The client's name is the card title; this row was labelled «Müştəri» and showed the address. */}
+              <InfoLine icon="pin-outline" label={copy.address} value={data.customer.address || copy.noAddress} />
               <InfoLine
                 icon="person-outline"
                 label={copy.contact}

@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api } from "../../services/api"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -24,6 +26,7 @@ interface Props {
 export default function ServerScreen({ onServerSelected }: Props) {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const tablet = isTabletWidth(width)
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
@@ -68,9 +71,15 @@ export default function ServerScreen({ onServerSelected }: Props) {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {/* A light screen: the app-wide light-content icons were white on it
+          (clock on the Redmi Pad SE, 2026-09-14). Not a tab, so no focus
+          juggling: the bar returns to light-content when this unmounts. */}
+      <StatusBar barStyle="dark-content" />
       <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.scrollContent}
+        // Android 16 draws the app under the status bar (edge-to-edge is
+        // enforced), and the green header sat under the clock (2026-09-14).
+        contentContainerStyle={[styles.scrollContent, { paddingTop: fieldTheme.space.xl + insets.top }]}
       >
         <View style={[styles.shell, tablet && styles.shellTablet]}>
           <View style={[styles.intro, tablet && styles.introTablet]}>

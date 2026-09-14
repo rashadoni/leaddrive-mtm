@@ -20,6 +20,8 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice, type CachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { upperFirst } from "../../lib/upper"
 import {
   toWeekData,
   shiftDateKey,
@@ -303,12 +305,12 @@ function weekdayShort(dateKey: string, lang: string): string {
 
 function formatFullDate(dateKey: string, lang: string): string {
   const date = dateFromKey(dateKey)
-  return date?.toLocaleDateString(lang, {
+  return date ? upperFirst(formatLocalizedDate(date, lang, {
     weekday: "long",
     day: "numeric",
     month: "long",
     timeZone: "UTC",
-  }) ?? ""
+  }), lang) : ""
 }
 
 function formatRange(start: string, endExclusive: string, lang: string): string {
@@ -317,7 +319,7 @@ function formatRange(start: string, endExclusive: string, lang: string): string 
   const firstDate = dateFromKey(start)
   const lastDate = dateFromKey(last)
   if (!firstDate || !lastDate) return ""
-  return `${firstDate.toLocaleDateString(lang, options)} – ${lastDate.toLocaleDateString(lang, options)}`
+  return `${formatLocalizedDate(firstDate, lang, options)} – ${formatLocalizedDate(lastDate, lang, options)}`
 }
 
 /** The sibling tab this screen can hand today over to. */
@@ -1296,7 +1298,7 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.border,
   },
   rangeBlock: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center" },
-  rangeLabel: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "800", textTransform: "capitalize" },
+  rangeLabel: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "800" },
   pressed: { opacity: 0.72, transform: [{ scale: 0.985 }] },
   disabled: { opacity: 0.4 },
   scroll: { padding: fieldTheme.space.lg },
@@ -1416,14 +1418,14 @@ const styles = StyleSheet.create({
   dateTextToday: { color: fieldTheme.color.onColor },
   daySelectorCopy: { flex: 1, minWidth: 0 },
   daySelectorTitleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  daySelectorTitle: { flex: 1, minWidth: 0, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800", textTransform: "capitalize" },
+  daySelectorTitle: { flex: 1, minWidth: 0, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   daySelectorMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   todayTag: { color: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 8, paddingVertical: 3, fontSize: 10, lineHeight: 13, fontWeight: "800" },
   detailHeadingRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.lg },
   largeDateTile: { width: 72, height: 72, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
   largeDateNumber: { color: fieldTheme.color.ink, fontSize: 30, lineHeight: 34, fontWeight: "900" },
   detailHeadingCopy: { flex: 1 },
-  detailTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900", textTransform: "capitalize" },
+  detailTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900" },
   detailSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
   dayMetrics: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xl },
   dayMetric: { flex: 1, minHeight: 106, justifyContent: "center", padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
@@ -1458,7 +1460,7 @@ const styles = StyleSheet.create({
   phoneDayToday: { borderColor: fieldTheme.color.primary },
   phoneDayHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   phoneDayTitleBlock: { flex: 1, minWidth: 0 },
-  phoneDayTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900", textTransform: "capitalize" },
+  phoneDayTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900" },
   phoneDaySubtitle: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   phoneMetrics: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   compactMetric: { flex: 1, minHeight: 68, justifyContent: "center", paddingHorizontal: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surfaceStrong },
