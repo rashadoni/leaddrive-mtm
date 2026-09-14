@@ -55,5 +55,9 @@ describe("signature pad on a phone on its side", () => {
     expect(compactBranch).toContain("{saveButton}")
     expect(pad).toContain("paddingLeft: insets.left")
     expect(pad).toContain("paddingRight: insets.right")
+    // Insets of the modal's own window, not the app's: the navigation bar on
+    // the right is reported only there.
+    expect(pad.indexOf("<SafeAreaProvider>")).toBeGreaterThan(pad.indexOf("<Modal"))
+    expect(pad).toContain("navigationBarTranslucent")
   })
 })

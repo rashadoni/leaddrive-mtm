@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 import { WebView, type WebViewMessageEvent } from "react-native-webview"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { fieldTheme } from "../theme/fieldTheme"
@@ -61,7 +61,22 @@ interface Props {
   onSave: (capture: SignatureCapture, signerName?: string) => Promise<void>
 }
 
-export default function SignaturePadModal({ visible, customerName, onCancel, onSave }: Props) {
+export default function SignaturePadModal(props: Props) {
+  // The modal is its own Android window, drawn under the system bars. Insets
+  // from the app's root provider describe the app window instead: on a phone
+  // on its side the navigation bar sits on the right and the root reports 0
+  // there, so the close button and «İmzanı saxla» went under it. A provider
+  // inside the modal measures the modal's own window.
+  return (
+    <Modal visible={props.visible} animationType="slide" onRequestClose={props.onCancel} statusBarTranslucent navigationBarTranslucent>
+      <SafeAreaProvider>
+        <SignaturePad {...props} />
+      </SafeAreaProvider>
+    </Modal>
+  )
+}
+
+function SignaturePad({ visible, customerName, onCancel, onSave }: Props) {
   const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const dimensions = useWindowDimensions()
@@ -218,43 +233,41 @@ export default function SignaturePadModal({ visible, customerName, onCancel, onS
     : null
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
-      <View
-        testID="signature-pad"
-        style={[
-          styles.screen,
-          {
-            paddingTop: insets.top + fieldTheme.space.md,
-            paddingBottom: insets.bottom + fieldTheme.space.md,
-            paddingLeft: insets.left + fieldTheme.space.lg,
-            paddingRight: insets.right + fieldTheme.space.lg,
-          },
-        ]}
-      >
-        <View style={[styles.statusBand, { height: insets.top }]} />
-        {compact ? (
-          <View style={styles.compactRow}>
-            {padView}
-            <View style={styles.sidePanel}>
-              {header}
-              {nameInput}
-              <View style={styles.sideSpacer} />
-              {tooShort}
-              <View style={styles.sideActions}>{saveButton}{clearButton}</View>
-            </View>
-          </View>
-        ) : (
-          <>
+    <View
+      testID="signature-pad"
+      style={[
+        styles.screen,
+        {
+          paddingTop: insets.top + fieldTheme.space.md,
+          paddingBottom: insets.bottom + fieldTheme.space.md,
+          paddingLeft: insets.left + fieldTheme.space.lg,
+          paddingRight: insets.right + fieldTheme.space.lg,
+        },
+      ]}
+    >
+      <View style={[styles.statusBand, { height: insets.top }]} />
+      {compact ? (
+        <View style={styles.compactRow}>
+          {padView}
+          <View style={styles.sidePanel}>
             {header}
-            <Text style={styles.hint}>{t("signature.hint")}</Text>
             {nameInput}
-            {padView}
-            <View style={styles.actions}>{clearButton}{saveButton}</View>
+            <View style={styles.sideSpacer} />
             {tooShort}
-          </>
-        )}
-      </View>
-    </Modal>
+            <View style={styles.sideActions}>{saveButton}{clearButton}</View>
+          </View>
+        </View>
+      ) : (
+        <>
+          {header}
+          <Text style={styles.hint}>{t("signature.hint")}</Text>
+          {nameInput}
+          {padView}
+          <View style={styles.actions}>{clearButton}{saveButton}</View>
+          {tooShort}
+        </>
+      )}
+    </View>
   )
 }
 
