@@ -43,7 +43,7 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import SignaturePadModal from "../../components/SignaturePadModal"
-import { useVisitSignature } from "../../hooks/useVisitSignature"
+import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import FeedbackToast from "../../components/FeedbackToast"
@@ -377,11 +377,12 @@ export default function VisitScreen() {
   const [loadState, setLoadState] = useState<LoadState>("loading")
   const [refreshing, setRefreshing] = useState(false)
   const [activeVisit, setActiveVisit] = useState<Visit | null>(null)
-  const signature = useVisitSignature(activeVisit)
+  // «Foto: N» reads what the visit really has (server + media outbox + uploads
+  // here), not a counter that a restart reset to 0 — Galaxy S23, 2026-09-14.
+  const { signature, photos } = useActiveVisitProgress(activeVisit)
   const [mutating, setMutating] = useState(false)
   const [notesVisible, setNotesVisible] = useState(false)
   const [cameraVisible, setCameraVisible] = useState(false)
-  const [photoCount, setPhotoCount] = useState(0)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [agentCoords, setAgentCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -968,7 +969,7 @@ export default function VisitScreen() {
         latitude: uploadCoords?.latitude,
         longitude: uploadCoords?.longitude,
       })
-      setPhotoCount((count) => count + 1)
+      photos.recordUpload(activeVisit.id)
       showToast("success", t("visit.photoSavedTitle"), t("visit.photoSavedBody"))
     } catch (error: any) {
       console.warn("[VisitScreen] photo upload error:", error?.message ?? error)
@@ -983,6 +984,7 @@ export default function VisitScreen() {
             latitude: uploadCoords?.latitude,
             longitude: uploadCoords?.longitude,
           })
+          photos.refresh()
           showToast("success", t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }
@@ -1004,7 +1006,7 @@ export default function VisitScreen() {
     copy,
     activeVisit,
     elapsedMin,
-    photoCount,
+    photoCount: photos.count,
     mutating,
     customers: visibleCustomers,
     totalCustomers: customersWithDistance.length,

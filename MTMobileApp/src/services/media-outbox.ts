@@ -58,6 +58,15 @@ export async function allMediaUploads() {
   return (await read()).filter((item) => Boolean(scope) && item.scopeKey === scope)
 }
 
+/**
+ * Ids of the photos still waiting for one visit, deferred ones included: they
+ * are the visit's photos as much as the server's, and «Foto: N» counts them
+ * (device report 2026-09-14, «Foto: 0» after a restart).
+ */
+export async function mediaUploadIdsForVisit(visitId: string): Promise<string[]> {
+  return (await allMediaUploads()).filter((item) => item.visitId === visitId).map((item) => item.id)
+}
+
 export async function acknowledgeMediaUpload(id: string) {
   const scope = requireOfflineScope()
   await serializeMutation(async () => {

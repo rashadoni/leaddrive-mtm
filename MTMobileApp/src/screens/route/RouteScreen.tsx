@@ -45,7 +45,7 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import SignaturePadModal from "../../components/SignaturePadModal"
-import { useVisitSignature } from "../../hooks/useVisitSignature"
+import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
@@ -918,9 +918,11 @@ export default function RouteScreen() {
   const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
-  const [photoCount, setPhotoCount] = useState(0)
   const [cameraVisible, setCameraVisible] = useState(false)
-  const signature = useVisitSignature(activeVisit)
+  // «Foto: N» and the photo-first main button read what the visit really has
+  // (server + media outbox + uploads here), not a counter that a restart reset
+  // to 0 — Galaxy S23, 2026-09-14: 3 photos on the server, «Foto: 0» shown.
+  const { signature, photos } = useActiveVisitProgress(activeVisit)
   const [routeOrigin, setRouteOrigin] = useState<RouteDataOrigin>("none")
   const [loadIssue, setLoadIssue] = useState<RouteLoadIssue>("none")
 
@@ -935,7 +937,6 @@ export default function RouteScreen() {
           active ? { ...active, status: "CHECKED_IN", pendingCheckOut: false } : null,
         )
         setActiveVisit(reconciled)
-        if (!reconciled) setPhotoCount(0)
       }
     } catch {
       // Keep the local visit visible when a refresh fails in weak coverage.
@@ -1100,7 +1101,7 @@ export default function RouteScreen() {
         latitude: coords?.latitude,
         longitude: coords?.longitude,
       })
-      setPhotoCount((count) => count + 1)
+      photos.recordUpload(activeVisit.id)
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") {
         if (error?.code === "MAX_PHOTOS_REACHED") {
@@ -1113,7 +1114,7 @@ export default function RouteScreen() {
             latitude: uploadCoords?.latitude,
             longitude: uploadCoords?.longitude,
           })
-          setPhotoCount((count) => count + 1)
+          photos.refresh()
           Alert.alert(t("visit.photoQueuedTitle"), t("visit.photoQueuedBody"))
         }
       }
@@ -1377,7 +1378,7 @@ export default function RouteScreen() {
       nextPoint={nextPoint}
       activeVisit={activeVisit}
       navigationStarted={Boolean(focusPoint && navigationStartedFor === focusPoint.id)}
-      photoCount={photoCount}
+      photoCount={photos.count}
       elapsedMin={elapsedMin}
       mutating={mutating}
       language={i18n.language}
