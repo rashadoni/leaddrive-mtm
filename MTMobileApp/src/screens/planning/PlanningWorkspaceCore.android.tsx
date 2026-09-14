@@ -288,7 +288,7 @@ export default function PlanningWorkspaceCore({
   // the bottom. On the phone the manager saw only the dock's «Saxlanacaq
   // qaralama yoxdur.» — which reads as a failure — while «1 qaralama
   // saxlanıldı.» sat above the fold (2026-09-13). Bring the result into view.
-  const workspaceScrollRef = useRef<ScrollView>(null)
+  const workspaceScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null)
   useEffect(() => {
     if (saveMessage) workspaceScrollRef.current?.scrollTo({ y: 0, animated: true })
   }, [saveMessage])
