@@ -101,9 +101,6 @@ const VISIT_COPY = {
     subtitle: "Плановые визиты начинайте из Маршрута. Здесь — внеплановый визит и история.",
     helpFlow: "Как провести визит:\n1. Плановый — откройте «Маршрут» и выберите точку.\n2. Внеплановый — найдите клиента ниже.\n3. Начните визит, добавьте нужные фото и нажмите «Завершить».",
     back: "Назад",
-    plannedTitle: "Визит уже есть в плане?",
-    plannedBody: "Откройте «Маршрут»: там сохранены порядок точек, навигация и плановый чек-ин.",
-    openRoute: "Открыть маршрут",
     manualEyebrow: "Внеплановый визит",
     manualTitle: "Выберите клиента",
     manualBody: "Используйте этот шаг, только если клиента нет в сегодняшнем маршруте.",
@@ -172,9 +169,6 @@ const VISIT_COPY = {
     subtitle: "Planlı ziyarətləri Marşrutdan başladın. Burada plansız ziyarət və tarixçə var.",
     helpFlow: "Ziyarəti necə aparmalı:\n1. Planlıdırsa «Marşrut»u açıb nöqtəni seçin.\n2. Plansızdırsa müştərini aşağıda tapın.\n3. Ziyarətə başlayın, lazım olan fotoları əlavə edib «Bitir» düyməsinə toxunun.",
     back: "Geri",
-    plannedTitle: "Ziyarət artıq plandadır?",
-    plannedBody: "«Marşrut»u açın: nöqtələrin sırası, naviqasiya və planlı giriş oradadır.",
-    openRoute: "Marşrutu aç",
     manualEyebrow: "Plansız ziyarət",
     manualTitle: "Müştəri seçin",
     manualBody: "Bu addımı yalnız müştəri bugünkü marşrutda olmadıqda istifadə edin.",
@@ -243,9 +237,6 @@ const VISIT_COPY = {
     subtitle: "Start planned visits from Route. This screen is for an unplanned visit and history.",
     helpFlow: "How to complete a visit:\n1. For a planned visit, open Route and choose the stop.\n2. For an unplanned visit, find the client below.\n3. Start the visit, add required photos, then tap Finish.",
     back: "Back",
-    plannedTitle: "Already in today's plan?",
-    plannedBody: "Open Route for the stop order, navigation and the planned check-in.",
-    openRoute: "Open route",
     manualEyebrow: "Unplanned visit",
     manualTitle: "Choose a client",
     manualBody: "Use this step only when the client is not on today's route.",
@@ -988,7 +979,6 @@ export default function VisitScreen() {
     fetchData()
   }
 
-  const openRoute = () => navigation.navigate("Main", { screen: "Route" })
 
   const commonPanelProps = {
     copy,
@@ -1003,7 +993,6 @@ export default function VisitScreen() {
     loadState,
     tablet,
     touchTarget,
-    onOpenRoute: openRoute,
     onSearch: setSearchQuery,
     onClearSearch: () => setSearchQuery(""),
     onSelectCustomer: (customer: Customer) => setSelectedCustomerId(customer.id),
@@ -1212,7 +1201,6 @@ function VisitActionPanel({
   loadState,
   tablet,
   touchTarget,
-  onOpenRoute,
   onSearch,
   onClearSearch,
   onSelectCustomer,
@@ -1235,7 +1223,6 @@ function VisitActionPanel({
   loadState: LoadState
   tablet: boolean
   touchTarget: number
-  onOpenRoute: () => void
   onSearch: (value: string) => void
   onClearSearch: () => void
   onSelectCustomer: (customer: Customer) => void
@@ -1332,24 +1319,6 @@ function VisitActionPanel({
   return (
     <View style={styles.actionStack}>
       <HintCard id="visits.flow.v2" text={copy.helpFlow} style={styles.visitHint} />
-      <View style={styles.routeGuide}>
-        <View style={styles.routeGuideIcon}>
-          <Icon name="navigate-outline" size={23} color={fieldTheme.color.blue} />
-        </View>
-        <View style={styles.routeGuideCopy}>
-          <Text style={styles.routeGuideTitle}>{copy.plannedTitle}</Text>
-          <Text style={styles.routeGuideBody}>{copy.plannedBody}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={copy.openRoute}
-          onPress={onOpenRoute}
-          style={({ pressed }) => [styles.routeButton, { minHeight: touchTarget }, pressed && styles.pressed]}
-        >
-          <Text style={styles.routeButtonText}>{copy.openRoute}</Text>
-          <Icon name="arrow-forward" size={18} color={fieldTheme.color.blue} />
-        </Pressable>
-      </View>
 
       {loadState === "offline" && <StateNotice kind="offline" copy={copy} cachedTitle={cachedTitle} onRetry={onRetry} />}
 
@@ -1770,38 +1739,6 @@ const styles = StyleSheet.create({
   actionContent: { paddingVertical: fieldTheme.space.lg },
   actionStack: { gap: fieldTheme.space.md },
   visitHint: { marginHorizontal: 0, marginTop: 0, alignItems: "flex-start" },
-  routeGuide: {
-    backgroundColor: fieldTheme.color.blueSoft,
-    borderWidth: 1,
-    borderColor: "#B8D0F0",
-    borderRadius: fieldTheme.radius.md,
-    padding: fieldTheme.space.md,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: fieldTheme.space.sm,
-  },
-  routeGuideIcon: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: fieldTheme.color.surface,
-  },
-  routeGuideCopy: { flex: 1, minWidth: 190 },
-  routeGuideTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
-  routeGuideBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  routeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: fieldTheme.space.xs,
-    paddingHorizontal: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.sm,
-    backgroundColor: fieldTheme.color.surface,
-  },
-  routeButtonText: { color: fieldTheme.color.blue, fontSize: 13, fontWeight: "900" },
   manualCard: {
     backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
