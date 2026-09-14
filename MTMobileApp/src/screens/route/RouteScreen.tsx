@@ -939,6 +939,10 @@ export default function RouteScreen() {
   // False until the first visit lookup settles, success or not: before that a
   // missing activeVisit means "not read yet", not "no visit open".
   const [activeVisitKnown, setActiveVisitKnown] = useState(false)
+  // True only when the last route read that finished said today has no route.
+  // A failed read with no saved copy leaves it false: the route is unknown
+  // then, not absent, and the panel must not ask to start it.
+  const [routeKnownAbsent, setRouteKnownAbsent] = useState(false)
 
   const fetchActiveVisit = useCallback(async () => {
     try {
@@ -992,6 +996,7 @@ export default function RouteScreen() {
         if (!routeData) {
           setRoute(null)
           setRouteOrigin("none")
+          setRouteKnownAbsent(true)
           return
         }
         if (routeData.id) {
@@ -1006,17 +1011,21 @@ export default function RouteScreen() {
           if (detail.success && detail.data) {
             setRoute(sanitizeRouteDistances(detail.data))
             setRouteOrigin("live")
+            setRouteKnownAbsent(false)
             return
           }
         }
         setRoute(routeData)
         setRouteOrigin("live")
+        setRouteKnownAbsent(false)
       } else {
         setRoute(null)
         setRouteOrigin("none")
+        setRouteKnownAbsent(true)
       }
     } catch (error: any) {
       if (error.message === "ABORTED" || error.message === "SESSION_EXPIRED") return
+      setRouteKnownAbsent(false)
       const authAgent = useAuthStore.getState().agent
       if (authAgent) {
         try {
@@ -1398,6 +1407,7 @@ export default function RouteScreen() {
     loading,
     hasRoute: Boolean(route),
     routeStatus: route?.status,
+    routeKnownAbsent,
     workdayHydrated,
     workdayActive,
     workdayPaused,
@@ -1406,6 +1416,10 @@ export default function RouteScreen() {
   })
   const actionPanel = actionPanelState === "loading" ? (
     <RouteActionPanelLoading copy={copy} />
+  ) : actionPanelState === "route-unknown" ? (
+    // The list beside it already says the route did not load and offers a
+    // retry; a second card here would only repeat it.
+    null
   ) : actionPanelState === "visit" || actionPanelState === "point" ? (
     <PointActionPanel
       point={focusPoint}

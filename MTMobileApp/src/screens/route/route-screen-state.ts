@@ -46,6 +46,7 @@ export type RouteActionPanelState =
   | "gate-workday"
   | "gate-route"
   | "gate-paused"
+  | "route-unknown"
 
 /**
  * Picks what the action panel may say, and says nothing until it knows.
@@ -62,12 +63,23 @@ export type RouteActionPanelState =
  * An open visit is the one fact that outranks the rest: it is already on the
  * device, so a refetch or a slow store must never hide the visit controls.
  * Once everything is read, the choice is exactly the one the screen made
- * before — including a loaded day with no route.
+ * before — including a day the server said has no route.
+ *
+ * A read that failed is not such a day. Offline or after the 20 s timeout,
+ * with no saved copy for today, the route may well be IN_PROGRESS on the
+ * server; the list already says it could not load and offers a retry, so the
+ * panel says nothing rather than ask for «Marşruta başla» (the tablet pane —
+ * and the S23 held sideways, 823 dp — draws the panel without a route).
+ * `routeKnownAbsent` is the outcome of the last read that finished, not the
+ * live load issue: a timed refetch clears that issue the moment it starts,
+ * and the old order would flash back for the whole request. The workday and
+ * pause gates stay — they come from the device, not from the route.
  */
 export function routeActionPanelState({
   loading,
   hasRoute,
   routeStatus,
+  routeKnownAbsent,
   workdayHydrated,
   workdayActive,
   workdayPaused,
@@ -77,6 +89,7 @@ export function routeActionPanelState({
   loading: boolean
   hasRoute: boolean
   routeStatus: string | null | undefined
+  routeKnownAbsent: boolean
   workdayHydrated: boolean
   workdayActive: boolean
   workdayPaused: boolean
@@ -87,6 +100,6 @@ export function routeActionPanelState({
   if (!workdayHydrated || !activeVisitKnown || (loading && !hasRoute)) return "loading"
   if (workdayActive && hasRoute && routeStatus === "IN_PROGRESS") return "point"
   if (workdayPaused) return "gate-paused"
-  if (workdayActive) return "gate-route"
+  if (workdayActive) return hasRoute || routeKnownAbsent ? "gate-route" : "route-unknown"
   return "gate-workday"
 }

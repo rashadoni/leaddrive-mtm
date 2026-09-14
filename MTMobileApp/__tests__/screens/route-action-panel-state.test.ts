@@ -18,6 +18,7 @@ const settled = {
   loading: false,
   hasRoute: true,
   routeStatus: "IN_PROGRESS",
+  routeKnownAbsent: false,
   workdayHydrated: true,
   workdayActive: true,
   workdayPaused: false,
@@ -91,19 +92,59 @@ describe("route action panel: no instruction before the facts are read", () => {
     expect(routeActionPanelState({ ...settled, loading: true })).toBe("point")
   })
 
-  it("behaves as before once a day without a route is loaded", () => {
+  it("behaves as before once the server said today has no route", () => {
     // Unchanged on purpose: the tablet pane showed these gates before the fix.
-    expect(routeActionPanelState({ ...settled, hasRoute: false, routeStatus: undefined })).toBe("gate-route")
-    expect(routeActionPanelState({ ...settled, hasRoute: false, routeStatus: undefined, workdayActive: false })).toBe("gate-workday")
+    const noRoute = { ...settled, hasRoute: false, routeStatus: undefined, routeKnownAbsent: true }
+    expect(routeActionPanelState(noRoute)).toBe("gate-route")
+    expect(routeActionPanelState({ ...noRoute, workdayActive: false })).toBe("gate-workday")
+    expect(routeActionPanelState({ ...noRoute, workdayActive: false, workdayPaused: true })).toBe("gate-paused")
+    // A timed refetch of that empty day keeps saying what was last read.
+    expect(routeActionPanelState({ ...noRoute, loading: false })).toBe("gate-route")
+  })
+
+  it("does not ask to start a route that failed to load with no saved copy", () => {
+    // Offline or after the 20 s timeout: the route may be IN_PROGRESS on the
+    // server. The tablet pane (and the S23 sideways, 823 dp) draws the panel
+    // beside the «Marşrut yüklənmədi» retry card.
+    const unread = { ...settled, hasRoute: false, routeStatus: undefined, routeKnownAbsent: false }
+    expect(routeActionPanelState(unread)).toBe("route-unknown")
+    // The same while a timed refetch runs without the loading flag.
+    expect(routeActionPanelState({ ...unread, loading: false })).toBe("route-unknown")
+    // A retry pressed by hand shows the wait again.
+    expect(routeActionPanelState({ ...unread, loading: true })).toBe("loading")
+    // The workday and pause gates come from the device, not the route.
+    expect(routeActionPanelState({ ...unread, workdayActive: false })).toBe("gate-workday")
+    expect(routeActionPanelState({ ...unread, workdayActive: false, workdayPaused: true })).toBe("gate-paused")
+    // An open visit still wins.
+    expect(routeActionPanelState({ ...unread, hasActiveVisit: true })).toBe("visit")
+  })
+
+  it("keeps a route that is on screen deciding the panel whatever the last read did", () => {
+    // A retained or saved route after a failed read still shows its own gate.
+    expect(routeActionPanelState({ ...settled, routeStatus: "PLANNED", routeKnownAbsent: false })).toBe("gate-route")
+    expect(routeActionPanelState({ ...settled, routeKnownAbsent: false })).toBe("point")
   })
 
   it("wires the screen through the function, in both layouts, with a wait that has no button", () => {
     const call = source.slice(source.indexOf("const actionPanelState = routeActionPanelState({"), source.indexOf("const header = ("))
     expect(call).toContain("loading,")
+    expect(call).toContain("routeKnownAbsent,")
     expect(call).toContain("workdayHydrated,")
     expect(call).toContain("activeVisitKnown,")
     expect(call).toContain('actionPanelState === "loading" ? (\n    <RouteActionPanelLoading copy={copy} />')
     expect(call).not.toContain("activeVisit || routeExecutionReady")
+    expect(call).toContain('actionPanelState === "route-unknown" ? (')
+
+    // Only a read that finished with no route for today confirms absence; a
+    // failed read clears it, so a timeout never turns into «Marşruta başla».
+    const fetchRouteSource = source.slice(
+      source.indexOf("const fetchRoute = useCallback("),
+      source.indexOf("useAutoRefresh(", source.indexOf("const fetchRoute = useCallback(")),
+    )
+    expect(fetchRouteSource.split("setRouteKnownAbsent(true)").length - 1).toBe(2)
+    const catchBlock = fetchRouteSource.slice(fetchRouteSource.indexOf("} catch (error: any) {"))
+    expect(catchBlock).toContain('return\n      setRouteKnownAbsent(false)')
+    expect(catchBlock).not.toContain("setRouteKnownAbsent(true)")
 
     const placeholder = source.slice(
       source.indexOf("function RouteActionPanelLoading("),
