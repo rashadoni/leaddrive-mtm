@@ -46,3 +46,14 @@ describe("customer signature on visit screens", () => {
     expect(alert).toContain("handleNavigate(point)")
   })
 })
+
+describe("signature pad on a phone on its side", () => {
+  it("moves the controls beside the pad when the screen is short", () => {
+    expect(pad).toContain("dimensions.width > dimensions.height && dimensions.height < 560")
+    const compactBranch = pad.slice(pad.indexOf("{compact ? ("), pad.indexOf(") : (", pad.indexOf("{compact ? (")))
+    expect(compactBranch).toContain("{padView}")
+    expect(compactBranch).toContain("{saveButton}")
+    expect(pad).toContain("paddingLeft: insets.left")
+    expect(pad).toContain("paddingRight: insets.right")
+  })
+})

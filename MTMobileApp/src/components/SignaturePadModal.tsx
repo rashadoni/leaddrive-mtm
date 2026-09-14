@@ -7,6 +7,7 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native"
 import { WebView, type WebViewMessageEvent } from "react-native-webview"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -63,6 +64,11 @@ interface Props {
 export default function SignaturePadModal({ visible, customerName, onCancel, onSave }: Props) {
   const { t } = useTranslation()
   const insets = useSafeAreaInsets()
+  const dimensions = useWindowDimensions()
+  // A phone on its side is ~390 dp tall: title, hint, name, pad and buttons
+  // stacked do not fit, and «İmzanı saxla» fell below the screen (Galaxy S23,
+  // 2026-09-14). There the pad takes the left and the controls a side column.
+  const compact = dimensions.width > dimensions.height && dimensions.height < 560
   const webViewRef = useRef<WebView>(null)
   const strokes = useRef<SignatureStroke[]>([])
   const padSize = useRef({ width: 0, height: 0 })
@@ -80,6 +86,13 @@ export default function SignaturePadModal({ visible, customerName, onCancel, onS
     setSaving(false)
     setPadKey((key) => key + 1)
   }, [visible])
+
+  // Turning the device swaps the layout and remounts the pad with an empty
+  // canvas; drop the strokes too, or «Save» would keep lines nobody sees.
+  useEffect(() => {
+    strokes.current = []
+    setInk(0)
+  }, [compact])
 
   const handleMessage = (event: WebViewMessageEvent) => {
     let message: any
@@ -115,90 +128,131 @@ export default function SignaturePadModal({ visible, customerName, onCancel, onS
     }
   }
 
+  const header = (
+    <View style={styles.header}>
+      <View style={styles.headerCopy}>
+        <Text style={styles.title}>{t("signature.title")}</Text>
+        {customerName ? <Text style={styles.subtitle} numberOfLines={1}>{customerName}</Text> : null}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("signature.cancel")}
+        onPress={onCancel}
+        hitSlop={12}
+        style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+      >
+        <Icon name="close" size={26} color={fieldTheme.color.ink} />
+      </Pressable>
+    </View>
+  )
+
+  const nameInput = (
+    <TextInput
+      value={signerName}
+      onChangeText={setSignerName}
+      placeholder={t("signature.signerNamePlaceholder")}
+      placeholderTextColor={fieldTheme.color.inkMuted}
+      accessibilityLabel={t("signature.signerNamePlaceholder")}
+      maxLength={120}
+      autoCapitalize="words"
+      returnKeyType="done"
+      style={styles.nameInput}
+    />
+  )
+
+  const padView = (
+    <View style={[styles.padCard, compact && styles.padCardCompact]}>
+      <WebView
+        key={padKey}
+        ref={webViewRef}
+        testID="signature-pad-canvas"
+        source={{ html: PAD_HTML, baseUrl: "about:blank" }}
+        originWhitelist={["about:blank"]}
+        onShouldStartLoadWithRequest={(request) => request.url === "about:blank"}
+        onMessage={handleMessage}
+        javaScriptEnabled
+        domStorageEnabled={false}
+        allowFileAccess={false}
+        allowUniversalAccessFromFileURLs={false}
+        setSupportMultipleWindows={false}
+        scrollEnabled={false}
+        overScrollMode="never"
+        bounces={false}
+        style={styles.pad}
+        accessibilityLabel={t("signature.padLabel")}
+      />
+    </View>
+  )
+
+  const clearButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: ink === 0 || saving }}
+      disabled={ink === 0 || saving}
+      onPress={clear}
+      style={({ pressed }) => [styles.secondaryButton, compact && styles.buttonCompact, (ink === 0 || saving) && styles.disabled, pressed && styles.pressed]}
+    >
+      <Icon name="refresh-outline" size={21} color={fieldTheme.color.primary} />
+      <Text style={styles.secondaryText}>{t("signature.clear")}</Text>
+    </Pressable>
+  )
+
+  const saveButton = (
+    <Pressable
+      testID="signature-pad-save"
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !canSave }}
+      disabled={!canSave}
+      onPress={save}
+      style={({ pressed }) => [styles.primaryButton, compact && styles.buttonCompact, !canSave && styles.disabled, pressed && styles.pressed]}
+    >
+      {saving
+        ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+        : <Icon name="checkmark-circle" size={22} color={fieldTheme.color.onColor} />}
+      <Text style={styles.primaryText}>{t("signature.save")}</Text>
+    </Pressable>
+  )
+
+  const tooShort = ink > 0 && ink < SIGNATURE_MIN_INK_PX
+    ? <Text style={styles.tooShort}>{t("signature.tooShort")}</Text>
+    : null
+
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
       <View
         testID="signature-pad"
-        style={[styles.screen, { paddingTop: insets.top + fieldTheme.space.md, paddingBottom: insets.bottom + fieldTheme.space.md }]}
+        style={[
+          styles.screen,
+          {
+            paddingTop: insets.top + fieldTheme.space.md,
+            paddingBottom: insets.bottom + fieldTheme.space.md,
+            paddingLeft: insets.left + fieldTheme.space.lg,
+            paddingRight: insets.right + fieldTheme.space.lg,
+          },
+        ]}
       >
-        <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.title}>{t("signature.title")}</Text>
-            {customerName ? <Text style={styles.subtitle} numberOfLines={1}>{customerName}</Text> : null}
+        <View style={[styles.statusBand, { height: insets.top }]} />
+        {compact ? (
+          <View style={styles.compactRow}>
+            {padView}
+            <View style={styles.sidePanel}>
+              {header}
+              {nameInput}
+              <View style={styles.sideSpacer} />
+              {tooShort}
+              <View style={styles.sideActions}>{saveButton}{clearButton}</View>
+            </View>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("signature.cancel")}
-            onPress={onCancel}
-            hitSlop={12}
-            style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
-          >
-            <Icon name="close" size={26} color={fieldTheme.color.ink} />
-          </Pressable>
-        </View>
-
-        <Text style={styles.hint}>{t("signature.hint")}</Text>
-
-        <TextInput
-          value={signerName}
-          onChangeText={setSignerName}
-          placeholder={t("signature.signerNamePlaceholder")}
-          placeholderTextColor={fieldTheme.color.inkMuted}
-          accessibilityLabel={t("signature.signerNamePlaceholder")}
-          maxLength={120}
-          autoCapitalize="words"
-          returnKeyType="done"
-          style={styles.nameInput}
-        />
-
-        <View style={styles.padCard}>
-          <WebView
-            key={padKey}
-            ref={webViewRef}
-            testID="signature-pad-canvas"
-            source={{ html: PAD_HTML, baseUrl: "about:blank" }}
-            originWhitelist={["about:blank"]}
-            onShouldStartLoadWithRequest={(request) => request.url === "about:blank"}
-            onMessage={handleMessage}
-            javaScriptEnabled
-            domStorageEnabled={false}
-            allowFileAccess={false}
-            allowUniversalAccessFromFileURLs={false}
-            setSupportMultipleWindows={false}
-            scrollEnabled={false}
-            overScrollMode="never"
-            bounces={false}
-            style={styles.pad}
-            accessibilityLabel={t("signature.padLabel")}
-          />
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: ink === 0 || saving }}
-            disabled={ink === 0 || saving}
-            onPress={clear}
-            style={({ pressed }) => [styles.secondaryButton, (ink === 0 || saving) && styles.disabled, pressed && styles.pressed]}
-          >
-            <Icon name="refresh-outline" size={21} color={fieldTheme.color.primary} />
-            <Text style={styles.secondaryText}>{t("signature.clear")}</Text>
-          </Pressable>
-          <Pressable
-            testID="signature-pad-save"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSave }}
-            disabled={!canSave}
-            onPress={save}
-            style={({ pressed }) => [styles.primaryButton, !canSave && styles.disabled, pressed && styles.pressed]}
-          >
-            {saving
-              ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
-              : <Icon name="checkmark-circle" size={22} color={fieldTheme.color.onColor} />}
-            <Text style={styles.primaryText}>{t("signature.save")}</Text>
-          </Pressable>
-        </View>
-        {ink > 0 && ink < SIGNATURE_MIN_INK_PX ? <Text style={styles.tooShort}>{t("signature.tooShort")}</Text> : null}
+        ) : (
+          <>
+            {header}
+            <Text style={styles.hint}>{t("signature.hint")}</Text>
+            {nameInput}
+            {padView}
+            <View style={styles.actions}>{clearButton}{saveButton}</View>
+            {tooShort}
+          </>
+        )}
       </View>
     </Modal>
   )
@@ -211,6 +265,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: fieldTheme.space.lg,
     gap: fieldTheme.space.md,
   },
+  statusBand: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldTheme.color.primaryStrong },
+  compactRow: { flex: 1, flexDirection: "row", gap: fieldTheme.space.lg },
+  sidePanel: { width: 300, gap: fieldTheme.space.md },
+  sideSpacer: { flex: 1 },
+  sideActions: { gap: fieldTheme.space.sm },
   header: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   headerCopy: { flex: 1, gap: 2 },
   title: { fontSize: 22, fontWeight: "800", color: fieldTheme.color.ink },
@@ -243,6 +302,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     overflow: "hidden",
   },
+  padCardCompact: { minHeight: 0 },
+  buttonCompact: { flex: 0, minHeight: 52 },
   pad: { flex: 1, backgroundColor: "#FFFFFF" },
   actions: { flexDirection: "row", gap: fieldTheme.space.md },
   secondaryButton: {
