@@ -62,6 +62,7 @@ describe("B19: one answer to what a tablet is", () => {
     // Tasks no longer has a master pane: on a tablet it is one page with two
     // columns of cards (see tasks-one-page.test.ts).
   })
+})
 
 describe("two panes on a tab screen count the room right of the rail", () => {
   it("keeps a tablet held upright in one column", () => {
