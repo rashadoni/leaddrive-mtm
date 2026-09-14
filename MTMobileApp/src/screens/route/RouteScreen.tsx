@@ -1397,51 +1397,56 @@ export default function RouteScreen() {
   if (tablet) {
     return (
       <View style={styles.container}>
-        {header}
-        <View style={styles.tabletTop}>
-          <ConnectionBanner mode={presentation.banner} copy={copy} />
-          {route ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
-          {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
-        </View>
-        <View style={styles.tabletBody}>
-          <View style={styles.tabletListPane}>
-            <View style={styles.sectionHeading}>
-              <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-              <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
-            </View>
-            <FlatList
-              data={sortedPoints}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={[styles.tabletListContent, sortedPoints.length === 0 && styles.listGrow]}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
-              ListEmptyComponent={emptyState}
-              renderItem={({ item, index }) => (
-                <StopRow
-                  point={item}
-                  index={index}
-                  selected={focusPoint?.id === item.id}
-                  recommended={nextPoint?.id === item.id}
-                  onPress={() => handlePointPress(item)}
-                  language={i18n.language}
-                  copy={copy}
-                />
-              )}
-            />
+        {/* One page that scrolls, not two panes that each scroll inside what
+            is left under the header. Held in landscape (Redmi Pad SE,
+            2026-09-14) the panes got about 170 dp: the stop list showed one
+            and a half stops in a box, and «Marşruta başla» was cut in half. */}
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: touchTarget }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
+        >
+          {header}
+          <View style={styles.tabletTop}>
+            <ConnectionBanner mode={presentation.banner} copy={copy} />
+            {route ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
+            {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
           </View>
-          <ScrollView style={styles.tabletActionPane} contentContainerStyle={[styles.tabletActionContent, { paddingBottom: touchTarget }]}>
-            {remaining === 0 && totalPoints > 0 && !activeVisit ? (
-              <View style={styles.completeCard}>
-                <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
-                <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
-                <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
+          <View style={styles.tabletBody}>
+            <View style={styles.tabletListPane}>
+              <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
+                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+                <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
               </View>
-            ) : actionPanel}
-            {canPlanOwnRoutes ? (
-              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
-            ) : null}
-            {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
-          </ScrollView>
-        </View>
+              <View style={styles.tabletListContent}>
+                {sortedPoints.length === 0 ? emptyState : sortedPoints.map((item, index) => (
+                  <StopRow
+                    key={item.id}
+                    point={item}
+                    index={index}
+                    selected={focusPoint?.id === item.id}
+                    recommended={nextPoint?.id === item.id}
+                    onPress={() => handlePointPress(item)}
+                    language={i18n.language}
+                    copy={copy}
+                  />
+                ))}
+              </View>
+            </View>
+            <View style={styles.tabletActionPane}>
+              {remaining === 0 && totalPoints > 0 && !activeVisit ? (
+                <View style={styles.completeCard}>
+                  <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
+                  <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
+                  <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
+                </View>
+              ) : actionPanel}
+              {canPlanOwnRoutes ? (
+                <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
+              ) : null}
+              {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
+            </View>
+          </View>
+        </ScrollView>
         <NotesModal
           visible={notesVisible}
           title={t("visit.checkOutButton")}
@@ -1547,7 +1552,6 @@ const styles = StyleSheet.create({
   phoneMain: { paddingHorizontal: fieldTheme.space.lg },
   phoneRowWrap: { paddingHorizontal: fieldTheme.space.lg },
   phoneFooter: { paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
-  listGrow: { flexGrow: 1, justifyContent: "center" },
 
   header: {
     backgroundColor: fieldTheme.color.primaryStrong,
@@ -1756,11 +1760,13 @@ const styles = StyleSheet.create({
   hintClose: { width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: "center", justifyContent: "center" },
 
   tabletTop: { paddingHorizontal: fieldTheme.space.xl },
-  tabletBody: { flex: 1, flexDirection: "row", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
+  tabletBody: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
   tabletListPane: { flex: 1, minWidth: 280, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, overflow: "hidden" },
   tabletListContent: { padding: fieldTheme.space.lg, paddingTop: 0 },
+  // The heading sat on the pane's edge: «Marşrut nöqtələri» touched the left
+  // border and «2 dayanacaq» the right one.
+  tabletSectionHeading: { marginTop: fieldTheme.space.lg, paddingHorizontal: fieldTheme.space.lg },
   tabletActionPane: { flex: 1, minWidth: 300 },
-  tabletActionContent: { paddingBottom: fieldTheme.space.xl },
 
   modalLayer: { flex: 1, justifyContent: "flex-end" },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(19,35,31,0.48)" },
