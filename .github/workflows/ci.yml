@@ -1,0 +1,75 @@
+name: CI
+
+# The required checks on main (owner decision 2026-09-14, the same one made for
+# leaddrive-v2 on 2026-09-11): GitHub's own tests, not a paid AI reviewer.
+# `agent-review` was the only required check, and without its API key it went
+# green on every pull request by design — pull requests #18–#27 were merged
+# with nobody's review and with jest/tsc not required at all.
+#
+# A required check must report on EVERY pull request, or a pull request outside
+# its paths waits for ever on "Expected — waiting for status". So there is no
+# `paths` filter here: `scope` always runs and decides; `tests` depends on it and
+# is skipped when the app did not change (a skipped job counts as passed). Both
+# are required — a failed `scope` would otherwise skip `tests` into a pass.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scope:
+    name: scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.detect.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect app changes
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          printf '%s\n' "$changed"
+          # Tests and tsc read everything under MTMobileApp/ except prose.
+          if printf '%s\n' "$changed" | grep -E '^MTMobileApp/' | grep -qvE '^MTMobileApp/(docs/|.*\.(md|mdx)$)'; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          elif printf '%s\n' "$changed" | grep -qE '^\.github/workflows/ci\.yml$'; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  tests:
+    name: tests
+    needs: scope
+    if: needs.scope.outputs.app == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: MTMobileApp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: MTMobileApp/package-lock.json
+      - name: Install JS dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Run tests
+        run: npx jest --ci
+      - name: Run TypeScript check
+        run: npx tsc --noEmit
