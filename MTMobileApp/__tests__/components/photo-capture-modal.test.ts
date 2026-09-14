@@ -70,13 +70,33 @@ describe("camera screen speaks the app language", () => {
       "\"Error\"",
     ]
     expect(oldCopy.filter((text) => code.includes(text))).toEqual([])
-    // Every <Text> renders an expression, never a literal.
+    // Every <Text> renders an expression, never a literal: once the t("key")
+    // calls and compared values (flash === "on") are taken out, no quote may
+    // remain, so neither `Close` nor {"Close"} nor {flag ? t("a") : "Close"}
+    // gets through.
     const literalTexts = Array.from(code.matchAll(/<Text\b[^>]*>([\s\S]*?)<\/Text>/g), (match) => match[1].trim())
-      .filter((children) => !/^\{[\s\S]*\}$/.test(children))
+      .filter((children) => {
+        if (!/^\{[\s\S]*\}$/.test(children)) return true
+        const withoutKeys = children
+          .replace(/\bt\("[\w.]+"\)/g, "")
+          .replace(/[!=]==\s*"[^"\n]*"/g, "")
+        return /["'`]/.test(withoutKeys) || /\.message\b/.test(withoutKeys)
+      })
     expect(literalTexts).toEqual([])
-    // Alerts and screen-reader labels go through t() too.
-    expect(code.match(/Alert\.alert\((?!t\()/g)).toBeNull()
-    expect(code.match(/accessibilityLabel=(?!\{t\()/g)).toBeNull()
+    // Alerts: title AND body are both t() calls. The native error text used to
+    // be the body (English, technical), and a check on the title alone would
+    // let `t("…title"), e?.message || t("…body")` come back unnoticed.
+    const alertCalls = code.match(/Alert\.alert\(/g) ?? []
+    const translatedAlerts = code.match(/Alert\.alert\(\s*t\("[\w.]+"\)\s*,\s*t\("[\w.]+"\)\s*\)/g) ?? []
+    expect(alertCalls.length).toBeGreaterThan(0)
+    expect(translatedAlerts).toHaveLength(alertCalls.length)
+    // The exception text may reach the log, never the agent's screen.
+    const withoutLogs = code.replace(/console\.(warn|error|log)\([^\n]*/g, " ")
+    expect(withoutLogs.match(/\.message\b/g)).toBeNull()
+    // Screen-reader labels are a single t() call, nothing glued on.
+    const labels = code.match(/accessibilityLabel=/g) ?? []
+    const translatedLabels = code.match(/accessibilityLabel=\{t\("[\w.]+"\)\}/g) ?? []
+    expect(translatedLabels).toHaveLength(labels.length)
   })
 })
 
