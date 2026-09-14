@@ -17,7 +17,7 @@ describe("tablet screens scroll as one page", () => {
     expect(tablet).toContain("{header}")
     const panel = visits.slice(visits.indexOf("function HistoryPanel("), visits.indexOf("function HistoryHeading("))
     expect(panel).not.toContain("<FlatList")
-    expect(panel).toContain("visits.map((item) => <VisitRow key={item.id}")
+    expect(panel).toContain("visits.map((item) => <VisitRow visit={item} key={item.id}")
     const body = visits.slice(visits.indexOf("\n  tabletBody: {"), visits.indexOf("},", visits.indexOf("\n  tabletBody: {")))
     expect(body).not.toContain("flex: 1")
     expect(body).toContain('alignItems: "flex-start"')
