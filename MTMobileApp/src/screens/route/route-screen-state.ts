@@ -38,3 +38,55 @@ export function routeScreenPresentation({
   if (issue === "timeout") return { banner: "slow-retained", empty: null }
   return { banner: null, empty: null }
 }
+
+export type RouteActionPanelState =
+  | "loading"
+  | "visit"
+  | "point"
+  | "gate-workday"
+  | "gate-route"
+  | "gate-paused"
+
+/**
+ * Picks what the action panel may say, and says nothing until it knows.
+ *
+ * Galaxy S23, 2026-09-14: right after opening the Route tab the panel read
+ * «Marşrutun başlanması gözlənilir» and asked for «Marşruta başla» beside
+ * «Marşrut və ziyarətlər yüklənir…» and «0 dayanacaq». The route was already
+ * IN_PROGRESS; a few seconds later the real panel replaced the order. A null
+ * route while the first request runs is not a route that waits to start, an
+ * unread workday store is not a day that was never started, and an unread
+ * visit list is not a free hand to check in somewhere else. Each of those
+ * shows a neutral wait instead of an instruction.
+ *
+ * An open visit is the one fact that outranks the rest: it is already on the
+ * device, so a refetch or a slow store must never hide the visit controls.
+ * Once everything is read, the choice is exactly the one the screen made
+ * before — including a loaded day with no route.
+ */
+export function routeActionPanelState({
+  loading,
+  hasRoute,
+  routeStatus,
+  workdayHydrated,
+  workdayActive,
+  workdayPaused,
+  hasActiveVisit,
+  activeVisitKnown,
+}: {
+  loading: boolean
+  hasRoute: boolean
+  routeStatus: string | null | undefined
+  workdayHydrated: boolean
+  workdayActive: boolean
+  workdayPaused: boolean
+  hasActiveVisit: boolean
+  activeVisitKnown: boolean
+}): RouteActionPanelState {
+  if (hasActiveVisit) return "visit"
+  if (!workdayHydrated || !activeVisitKnown || (loading && !hasRoute)) return "loading"
+  if (workdayActive && hasRoute && routeStatus === "IN_PROGRESS") return "point"
+  if (workdayPaused) return "gate-paused"
+  if (workdayActive) return "gate-route"
+  return "gate-workday"
+}

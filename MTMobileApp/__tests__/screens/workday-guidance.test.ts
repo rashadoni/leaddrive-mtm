@@ -35,6 +35,10 @@ describe("Route Field product boundary", () => {
     path.resolve(__dirname, "../../src/screens/route/RouteScreen.tsx"),
     "utf8",
   )
+  const routeScreenStateSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/route/route-screen-state.ts"),
+    "utf8",
+  )
   const manifestSource = fs.readFileSync(
     path.resolve(__dirname, "../../android/app/src/main/AndroidManifest.xml"),
     "utf8",
@@ -154,7 +158,10 @@ describe("Route Field product boundary", () => {
   it("keeps planned routes view-only until the day and then the route are explicitly started", () => {
     expect(routeScreenSource).toContain("RouteExecutionGate")
     expect(routeScreenSource).toContain("workdayActive")
-    expect(routeScreenSource).toContain('route?.status === "IN_PROGRESS"')
+    // The panel choice moved into a pure function (2026-09-14) so it can also
+    // wait while the route is loading; the rule itself did not change.
+    expect(routeScreenSource).toContain("routeStatus: route?.status")
+    expect(routeScreenStateSource).toContain('workdayActive && hasRoute && routeStatus === "IN_PROGRESS"')
     expect(routeScreenSource).toContain("submitRouteCommand")
     expect(routeScreenSource).toContain('command: "START"')
   })
