@@ -1553,7 +1553,7 @@ function HistoryPanel({
           : loadState === "error"
             ? <StateNotice kind="error" copy={copy} onRetry={onRetry} />
             : <EmptyHistory copy={copy} tablet={tablet} />
-        : visits.map((item) => <VisitRow key={item.id} visit={item} copy={copy} language={language} onPress={onOpenVisit} />)}
+        : visits.map((item) => <VisitRow visit={item} key={item.id} copy={copy} language={language} onPress={onOpenVisit} />)}
     </View>
   )
 }
