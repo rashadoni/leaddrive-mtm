@@ -52,12 +52,12 @@ Google подпишет своим ключом, версия из Play не у�
 
 **Qısa təsvir** (≤ 80):
 ```
-Səyyar satış komandası üçün marşrut, ziyarət və tapşırıqlar — LeadDrive CRM ilə
+Səyyar komanda üçün marşrut, ziyarət və tapşırıqlar — LeadDrive CRM ilə
 ```
 
 **Tam təsvir:**
 ```
-LeadDrive Route Field — LeadDrive CRM-in səyyar əməkdaşlar üçün mobil tətbiqidir: tibbi nümayəndələr, merçendayzerlər və sahədə işləyən satış agentləri üçün.
+LeadDrive Route Field — LeadDrive CRM-in səyyar əməkdaşlar üçün mobil tətbiqidir: tibbi nümayəndələr, merçendayzerlər və nöqtələrə gedən agentlər üçün.
 
 Gün bir ekranda
 • Bugünkü marşrut və növbəti nöqtə «Bu gün» ekranında
@@ -92,12 +92,12 @@ Tətbiq LeadDrive CRM istifadə edən şirkətlərin əməkdaşları üçündür
 
 **Краткое описание** (≤ 80):
 ```
-Маршруты, визиты и задачи для полевой команды продаж — вместе с LeadDrive CRM
+Маршруты, визиты и задачи для полевой команды — вместе с LeadDrive CRM
 ```
 
 **Полное описание:**
 ```
-LeadDrive Route Field — мобильное приложение LeadDrive CRM для полевых сотрудников: медицинских представителей, мерчендайзеров и торговых агентов.
+LeadDrive Route Field — мобильное приложение LeadDrive CRM для полевых сотрудников: медицинских представителей, мерчендайзеров и агентов, которые объезжают точки.
 
 День на одном экране
 • Сегодняшний маршрут и следующая точка на экране «Сегодня»
@@ -132,12 +132,12 @@ LeadDrive Route Field — мобильное приложение LeadDrive CRM 
 
 **Short description** (≤ 80):
 ```
-Routes, visits and tasks for field sales teams — works with LeadDrive CRM
+Routes, visits and tasks for field teams — works with LeadDrive CRM
 ```
 
 **Full description:**
 ```
-LeadDrive Route Field is the LeadDrive CRM mobile app for field staff: medical representatives, merchandisers and sales agents on the road.
+LeadDrive Route Field is the LeadDrive CRM mobile app for field staff: medical representatives, merchandisers and agents who visit points on the road.
 
 Your day on one screen
 • Today's route and the next stop on the Today screen
@@ -203,6 +203,9 @@ The app is for employees of companies that use LeadDrive CRM. Signing in require
 
 ### Ads
 **No**, рекламы нет.
+
+### Платежи
+Онлайн-оплаты и покупок в приложении нет: агенты фиксируют визиты и задачи, деньги через приложение не проходят. В консоли — бесплатное приложение без In-app products и подписок; раздел Monetization не заполнять, платёжный профиль продавца не нужен.
 
 ### Content rating (анкета IARC)
 - Category: **All other app types** (утилита, продуктивность)
