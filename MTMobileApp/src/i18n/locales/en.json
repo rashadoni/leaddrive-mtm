@@ -149,7 +149,7 @@
     "checkInButton": "Check In",
     "tooFarTitle": "Too Far Away",
     "tooFarBody": "You are {{distance}} from {{name}}.\nYou need to be within {{max}}m to check in.",
-    "tooFarAskSupervisor": "{{distance}} from {{name}} (max {{max}}m). Ask your supervisor.",
+    "tooFarAskSupervisor": "You are {{distance}} from {{name}} (within {{max}} m needed). Move closer; if the pin is wrong, tell your manager.",
     "checkInAnyway": "Check In Anyway",
     "checkedInTitle": "Checked In",
     "checkedInBody": "You are now at {{name}}",
@@ -689,7 +689,8 @@
     "actionVisitNote": "Visit note",
     "actionChecklist": "Checklist",
     "actionFeedback": "Feedback",
-    "actionNextAction": "Next action"
+    "actionNextAction": "Next action",
+    "actionSignature": "Customer signature"
   },
   "gpsHistory": {
     "accessTitle": "GPS history is available to field agents",
@@ -797,7 +798,7 @@
     "locationUnavailableTitle": "Location Unavailable",
     "locationUnavailableBody": "Could not determine your position. Please make sure GPS is enabled and try again.",
     "tryAnyway": "Try Anyway",
-    "tooFarSupervisorBody": "You are {{distance}} from {{name}}.\nMust be within {{max}}m. Ask your supervisor if you need an override."
+    "tooFarSupervisorBody": "You are {{distance}} from {{name}}; a visit can start within {{max}} m.\nGo to the customer and try again. If the pin is in the wrong place, tell your manager: the address can be fixed in the CRM."
   },
   "notesModal": {
     "placeholder": "Enter notes…",
@@ -957,5 +958,23 @@
     "routeDeviation": "Agent is {{deviationMeters}} m off the planned route (allowed {{thresholdMeters}} m)",
     "agentRouteDeviation": "You are {{deviationMeters}} m off the planned route",
     "agentOutOfZoneCheckIn": "Your check-in at {{customerName}} was recorded {{distanceMeters}} m away (allowed {{geofenceRadius}} m)"
+  },
+  "signature": {
+    "title": "Customer signature",
+    "hint": "Ask the customer to sign with a finger in the white area below. If it goes wrong, tap “Clear” and start again.",
+    "signerNamePlaceholder": "Signer’s name (optional)",
+    "padLabel": "Signature area",
+    "clear": "Clear",
+    "save": "Save signature",
+    "cancel": "Close",
+    "tooShort": "The signature is too short — draw a little more.",
+    "requiredTitle": "Customer signature needed",
+    "requiredBody": "This visit cannot be finished without a signature. Ask the customer to sign with a finger on the screen.",
+    "signNow": "Take signature",
+    "savedTitle": "Signature saved",
+    "savedBody": "The signature was added to the visit and will be sent when there is a connection.",
+    "saveFailed": "Could not save the signature. Try again.",
+    "buttonRequired": "Customer signature — required",
+    "taken": "Signature taken"
   }
 }
