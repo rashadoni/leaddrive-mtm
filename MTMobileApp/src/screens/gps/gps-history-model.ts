@@ -281,7 +281,36 @@ export function buildGpsRouteDocument(
         return element;
       }
 
-      function marker(overlay, point, color, radius, label) {
+      // Labels used to sit to the right of every marker. On the phone the
+      // selected point near the right edge lost «Seçilmiş» off the map, and on
+      // the start or end point it wrote over «Başlanğıc»/«Son» (2026-09-13).
+      // The selected label now goes above its marker, side labels flip left at
+      // the right edge, and both stay inside the view.
+      function placeLabel(text, point, radius, above) {
+        var viewBox = (document.getElementById("overlay").getAttribute("viewBox") || "").split(" ");
+        var viewWidth = Number(viewBox[2]) || window.innerWidth || 320;
+        var length = text.getComputedTextLength ? text.getComputedTextLength() : text.textContent.length * 7;
+        var margin = 6;
+        var x = point.x + radius + 7;
+        var y = point.y + 4;
+        var anchor = "start";
+        if (above) {
+          x = point.x;
+          y = point.y - radius - 14;
+          anchor = "middle";
+          if (y < 14) y = point.y + radius + 22;
+          if (x - length / 2 < margin) { x = margin; anchor = "start"; }
+          else if (x + length / 2 > viewWidth - margin) { x = viewWidth - margin; anchor = "end"; }
+        } else if (x + length > viewWidth - margin) {
+          x = point.x - radius - 7;
+          anchor = "end";
+        }
+        text.setAttribute("x", x);
+        text.setAttribute("y", y);
+        text.setAttribute("text-anchor", anchor);
+      }
+
+      function marker(overlay, point, color, radius, label, above) {
         var group = svgElement("g", {});
         group.appendChild(svgElement("circle", { cx: point.x, cy: point.y, r: radius + 4, fill: "#fbfdfc", opacity: .95 }));
         group.appendChild(svgElement("circle", { cx: point.x, cy: point.y, r: radius, fill: color, stroke: "#fbfdfc", "stroke-width": 2 }));
@@ -298,6 +327,7 @@ export function buildGpsRouteDocument(
         text.textContent = label;
         group.appendChild(text);
         overlay.appendChild(group);
+        placeLabel(text, point, radius, above);
         return group;
       }
 
@@ -335,7 +365,7 @@ export function buildGpsRouteDocument(
         selectedIndex = Math.max(0, Math.min(selectedIndex, screenPoints.length - 1));
         var overlay = document.getElementById("overlay");
         var point = screenPoints[selectedIndex];
-        var group = marker(overlay, point, "#a43b25", 8, labels.current);
+        var group = marker(overlay, point, "#a43b25", 8, labels.current, true);
         group.setAttribute("id", "current-marker");
         var pulse = svgElement("circle", {
           cx: point.x,
