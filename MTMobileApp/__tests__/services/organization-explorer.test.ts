@@ -5,7 +5,7 @@ import {
 } from "../../src/services/organization-explorer"
 
 describe("organization explorer read models", () => {
-  it("keeps SwissMed geography, manager and active assignment context", () => {
+  it("keeps reference-CRM geography, manager and active assignment context", () => {
     expect(toExplorerOrganization({
       id: "org-1",
       name: "Central Clinic",

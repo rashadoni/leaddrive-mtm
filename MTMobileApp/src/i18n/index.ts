@@ -4,7 +4,7 @@
  * Locale resolution order (per `resolveInitialLocale`):
  *   1. User's stored choice from Profile screen (AsyncStorage)
  *   2. First supported device locale (react-native-localize)
- *   3. Hard fallback to Russian (Mars seed data convention)
+ *   3. Hard fallback to Russian (pilot seed data convention)
  *
  * Boot sequence: App.tsx awaits `initI18n()` before rendering trees that
  * use `useTranslation()`. After init, `setLocale(code)` switches at

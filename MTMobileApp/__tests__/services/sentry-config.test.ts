@@ -50,18 +50,18 @@ describe("buildSentryConfig (M1-3)", () => {
   })
 
   it("attaches organizationId as a tag when provided", () => {
-    const cfg = buildSentryConfig({ ...valid, organizationId: "org-mars" })
-    expect(cfg!.initialScope?.tags?.organization_id).toBe("org-mars")
+    const cfg = buildSentryConfig({ ...valid, organizationId: "org-pilot" })
+    expect(cfg!.initialScope?.tags?.organization_id).toBe("org-pilot")
   })
 
   it("attaches BOTH agentId + organizationId together", () => {
     const cfg = buildSentryConfig({
       ...valid,
       agentId: "agent-123",
-      organizationId: "org-mars",
+      organizationId: "org-pilot",
     })
     expect(cfg!.initialScope?.user?.id).toBe("agent-123")
-    expect(cfg!.initialScope?.tags?.organization_id).toBe("org-mars")
+    expect(cfg!.initialScope?.tags?.organization_id).toBe("org-pilot")
   })
 
   it("no initialScope when neither agentId nor organizationId present", () => {

@@ -1,13 +1,13 @@
-# SwissMed → LeadDrive MTM parity register
+# Reference CRM → LeadDrive MTM parity register
 
 **Version:** 0.4
 **Date:** 2026-07-19
-**Scope:** the 18 supplied SwissMed/QuadraSoft CRM 3.1 photographs, in attachment order
+**Scope:** the 18 supplied photographs of the reference distributor's QuadraSoft CRM 3.1, in attachment order
 **Target:** LeadDrive MTM for Agent and Manager, tablet-first with smartphone support
 **Out of scope:** LeadShelf planograms and shelf-management functions
 
 The detailed pharmaceutical implementation packages derived from the same 18
-photographs are maintained in `mtm-swissmed-parity-gaps.md`. That document is
+photographs are maintained in `mtm-reference-parity-gaps.md`. That document is
 normative for doctor/clinic assignments, KOL/scoring, psychotype, Target/MOI,
 per-brand potential, relationship history, promotions, and contact-by-day planning.
 
@@ -41,7 +41,7 @@ The role shell, configurable home, and client-local workday lifecycle gate are f
 | **Partial** | A related screen, API, or foundation exists, but material fields, roles, states, actions, or UI are missing. |
 | **Missing** | No usable implementation of the photographed workflow was found. |
 
-No SWM item is currently classified as fully implemented because every photograph contains material SwissMed capabilities beyond the inspected mobile slice.
+No SWM item is currently classified as fully implemented because every photograph contains material reference-CRM capabilities beyond the inspected mobile slice.
 
 ## Cross-cutting target contract
 
@@ -67,7 +67,7 @@ No SWM item is currently classified as fully implemented because every photograp
 - A cold restart in airplane mode must preserve the active workday and unfinished visit.
 - Manager live monitoring and heavy administration are online-first; cached last-known data must be visibly timestamped and never presented as live.
 
-### Configurable SwissMed terminology
+### Configurable reference-CRM terminology
 
 The photographs contain customer-specific or ambiguous terms. Until a signed glossary is supplied, these must be dictionary/formula configuration, not hard-coded semantics:
 
@@ -278,7 +278,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photograph 6, organization detail tabs, address/GPS, shipments, contacts, employees, and organization fields.
 
 **Target roles:** Agent reads field context and requests updates; Manager/Admin edit according to policy.
-**Current state: Partial.** An organization detail card (`src/screens/base/OrganizationDetailScreen.tsx`, `GET /organizations/[id]`) now shows requisites, linked contacts (primary marker, tap-to-call), recent visit history, and a brand-potential summary, reached by tapping a row in the “База / Организации” list. Missing: the full SwissMed tab set, departments, personnel, shipments, in-card editing, and the complete history model.
+**Current state: Partial.** An organization detail card (`src/screens/base/OrganizationDetailScreen.tsx`, `GET /organizations/[id]`) now shows requisites, linked contacts (primary marker, tap-to-call), recent visit history, and a brand-potential summary, reached by tapping a row in the “База / Организации” list. Missing: the full reference-CRM tab set, departments, personnel, shipments, in-card editing, and the complete history model.
 
 **Data**
 
@@ -310,7 +310,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 **Source:** photographs 7–8, assigned organization list with geography, type, territory, owner, last visit, and compact/dense results.
 
 **Target roles:** Agent and Manager.
-**Current state: Partial.** The “База / Организации” catalogue now lists the agent's assigned organizations explicitly (server search, category/type, city, contact/visit counts), backed by the durable customers cache offline, with a detail card per row. Missing: full SwissMed filters, last-visit/coverage context, saved views, and a map/list toggle.
+**Current state: Partial.** The “База / Организации” catalogue now lists the agent's assigned organizations explicitly (server search, category/type, city, contact/visit counts), backed by the durable customers cache offline, with a detail card per row. Missing: full reference-CRM filters, last-visit/coverage context, saved views, and a map/list toggle.
 
 **Data and filters**
 
@@ -510,7 +510,7 @@ Every configurable term needs a tenant-scoped code, localized label (RU/AZ/EN), 
 - Every KPI exposes numerator, denominator, period, filters, formula version, and source records.
 - Android and web return the same value from a server-authoritative calculation.
 - Period changes produce different scoped queries, not relabelled all-time counters.
-- A signed reference dataset reconciles to the agreed manual SwissMed calculation before cutover.
+- A signed reference dataset reconciles to the agreed manual calculation of the reference distributor before cutover.
 
 ### SWM-14 — Full task detail and recurrence
 

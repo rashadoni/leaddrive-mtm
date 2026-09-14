@@ -53,10 +53,10 @@ const mockGetStoredAgent = api.getStoredAgent as jest.Mock
 const SAMPLE_AGENT = {
   id: "ag-1",
   name: "Rauf Aliyev",
-  email: "rauf@mars.az",
+  email: "rauf@pilot.example",
   role: "AGENT",
   organizationId: "org-1",
-  organizationName: "Mars Overseas",
+  organizationName: "Pilot Distributor",
 }
 
 function resetStore() {
@@ -131,7 +131,7 @@ describe("useAuthStore — setServer", () => {
 describe("useAuthStore — login", () => {
   it("sets isLoggedIn=true and populates agent on success", async () => {
     mockLogin.mockResolvedValue({ success: true, data: { agent: SAMPLE_AGENT } })
-    await useAuthStore.getState().login("rauf@mars.az", "password")
+    await useAuthStore.getState().login("rauf@pilot.example", "password")
     const { isLoggedIn, agent } = useAuthStore.getState()
     expect(isLoggedIn).toBe(true)
     expect(agent).toEqual(SAMPLE_AGENT)
@@ -256,7 +256,7 @@ describe("useAuthStore — checkAuth", () => {
     expect(isLoggedIn).toBe(true)
     expect(hasServer).toBe(true)
     expect(serverDomain).toBe("guven.leaddrivecrm.org")
-    expect(companyName).toBe("Mars Overseas") // from agent.organizationName
+    expect(companyName).toBe("Pilot Distributor") // from agent.organizationName
     expect(agent).toEqual(SAMPLE_AGENT)
     expect(isLoading).toBe(false)
     expect(useKpiStore.getState().scopeKey).toBe("org-1:ag-1")

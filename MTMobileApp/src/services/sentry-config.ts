@@ -31,7 +31,7 @@ export interface SentryConfig {
   environment: string
   release: string
   /** 0-1, fraction of transactions sampled for perf. Lower in prod
-   * to keep the bill predictable — Mars Overseas pilot is ~7 reps,
+   * to keep the bill predictable — the pilot customer has ~7 reps,
    * 50% is plenty; production rollout (351 reps) drops to 0.1. */
   tracesSampleRate: number
   /**
@@ -71,7 +71,7 @@ export function buildSentryConfig(input: SentryConfigInput): SentryConfig | null
     // Always capture every crash — these are the whole point of the
     // integration. Tune down only if a 3rd-party error storm fires.
     sampleRate: 1.0,
-    // Never auto-attach IP / cookies / request headers. Mars's agents
+    // Never auto-attach IP / cookies / request headers. The pilot customer's agents
     // are PII subjects under Azerbaijan data law; supervisor audits
     // already carry the controlled subset of identity we need.
     sendDefaultPii: false,

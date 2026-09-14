@@ -51,7 +51,7 @@ npm run android                  # in another — installs to running device/emu
 
 ### API base URL — no `.env` needed
 
-The Android app reads its backend URL at runtime from `ServerScreen` (the user types the tenant domain on first launch and the app validates it via `/api/v1/mtm/ping`). There is no build-time env file to configure — a fresh clone running on a test device should be pointed at `app.leaddrivecrm.org` (or any tenant subdomain like `mars.leaddrivecrm.org`) through that picker. The picked value persists in `AsyncStorage` and survives app restarts.
+The Android app reads its backend URL at runtime from `ServerScreen` (the user types the tenant domain on first launch and the app validates it via `/api/v1/mtm/ping`). There is no build-time env file to configure — a fresh clone running on a test device should be pointed at `app.leaddrivecrm.org` (or any tenant subdomain like `your-company.leaddrivecrm.org`) through that picker. The picked value persists in `AsyncStorage` and survives app restarts.
 
 ## Pre-commit hook — why it matters
 
