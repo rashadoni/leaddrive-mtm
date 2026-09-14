@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -70,6 +71,10 @@ export default function ServerScreen({ onServerSelected }: Props) {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      {/* A light screen: the app-wide light-content icons were white on it
+          (clock on the Redmi Pad SE, 2026-09-14). Not a tab, so no focus
+          juggling: the bar returns to light-content when this unmounts. */}
+      <StatusBar barStyle="dark-content" />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         // Android 16 draws the app under the status bar (edge-to-edge is
