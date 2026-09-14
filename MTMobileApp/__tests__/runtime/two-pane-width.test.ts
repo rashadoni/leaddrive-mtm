@@ -58,6 +58,7 @@ describe("B19: one answer to what a tablet is", () => {
     // 38 % of 600 is 228 dp for a row carrying a date tile and a full date.
     expect(read("screens/week/WeekScreen.tsx")).toContain('dayMaster: { width: "42%", minWidth: 216')
     expect(read("screens/week/WeekScreen.tsx")).toContain("minWidth: 0,\n    minHeight: 460,")
-    expect(read("screens/tasks/TasksScreen.tsx")).toContain("tabletList: { flex: 0.44, minWidth: 0 }")
+    // Tasks no longer has a master pane: on a tablet it is one page with two
+    // columns of cards (see tasks-one-page.test.ts).
   })
 })

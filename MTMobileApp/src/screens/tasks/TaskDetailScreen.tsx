@@ -157,7 +157,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     syncingTitle: "Идёт синхронизация",
     syncingBody: "Проверяем сервер и отправляем сохранённые изменения.",
     syncErrorTitle: "Нужно проверить синхронизацию",
-    syncErrorBody: "Откройте индикатор синхронизации вверху, чтобы повторить или решить конфликт.",
+    syncErrorBody: "Откройте индикатор синхронизации на экране «Сегодня», чтобы повторить или решить конфликт.",
     savedOnDevice: "Сохранено на устройстве",
     savedOnDeviceBody: "Изменение отправится на сервер, когда появится интернет.",
     serverSavedBody: "Изменение подтверждено сервером.",
@@ -209,7 +209,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     syncingTitle: "Sinxronizasiya gedir",
     syncingBody: "Server yoxlanılır və saxlanmış dəyişikliklər göndərilir.",
     syncErrorTitle: "Sinxronizasiyanı yoxlamaq lazımdır",
-    syncErrorBody: "Təkrar cəhd və ya konflikti həll etmək üçün yuxarıdakı sinxronizasiya göstəricisini açın.",
+    syncErrorBody: "Təkrar cəhd və ya konflikti həll etmək üçün «Bu gün» ekranında sinxronizasiya göstəricisini açın.",
     savedOnDevice: "Cihazda saxlanıldı",
     savedOnDeviceBody: "İnternet gələndə dəyişiklik serverə göndəriləcək.",
     serverSavedBody: "Dəyişiklik server tərəfindən təsdiqləndi.",
@@ -261,7 +261,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     syncingTitle: "Sync in progress",
     syncingBody: "Checking the server and sending saved changes.",
     syncErrorTitle: "Sync needs attention",
-    syncErrorBody: "Open the sync indicator above to retry or resolve a conflict.",
+    syncErrorBody: "Open the sync indicator on the Today screen to retry or resolve a conflict.",
     savedOnDevice: "Saved on this device",
     savedOnDeviceBody: "The change will be sent to the server when a connection is available.",
     serverSavedBody: "The server confirmed the change.",
@@ -593,7 +593,7 @@ export default function TaskDetailScreen() {
         <View style={styles.contentFrame}>
           {phase === "syncing" ? (
             <Notice icon="sync-outline" tone="blue" title={copy.syncingTitle} body={copy.syncingBody} busy />
-          ) : phase === "error" || conflicts > 0 ? (
+          ) : phase === "error" || taskConflict ? (
             <Notice icon="warning-outline" tone="danger" title={copy.syncErrorTitle} body={copy.syncErrorBody} />
           ) : phase === "offline" ? (
             <Notice
@@ -816,7 +816,7 @@ export default function TaskDetailScreen() {
         <View style={[styles.actionDockInner, expandedTablet && styles.actionDockInnerTablet]}>
           <View style={styles.actionDockCopy}>
             <View style={styles.nextStepRow}>
-              <View style={styles.nextStepNumber}><Text style={styles.nextStepNumberText}>5</Text></View>
+              <View style={styles.nextStepNumber}><Icon name="arrow-forward" size={14} color={fieldTheme.color.primaryStrong} /></View>
               <Text style={styles.nextStepLabel}>{copy.nextStep}</Text>
             </View>
             {!primaryAction ? <Text style={styles.actionDockHint}>{noActionBody}</Text> : null}
@@ -1169,7 +1169,6 @@ const styles = StyleSheet.create({
   actionDockCopy: { flex: 1, minWidth: 0 },
   nextStepRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   nextStepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
-  nextStepNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   nextStepLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 },
   actionDockHint: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, marginTop: 4 },
   actionDockError: { color: fieldTheme.color.danger, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 4 },

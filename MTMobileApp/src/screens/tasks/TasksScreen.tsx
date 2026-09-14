@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useMemo, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -6,7 +6,6 @@ import {
   Modal,
   Platform,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -395,7 +394,6 @@ export default function TasksScreen() {
   const notice = cachedViewNotice({ online, requestFailed: offline })
   const [loadError, setLoadError] = useState(false)
   const [activeTab, setActiveTab] = useState<TaskStatus>("PENDING")
-  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
@@ -530,7 +528,6 @@ export default function TasksScreen() {
     () => sortTasks(tasks.filter((task) => taskWorkflowStatus(task) === activeTab)),
     [activeTab, tasks],
   )
-  const focusedTask = filtered.find((task) => task.id === focusedTaskId) ?? filtered[0] ?? null
   const overdueCount = tasks.filter(isOverdue).length
   const dueTodayCount = tasks.filter((task) => daysFromToday(task.dueDate) === 0 && taskWorkflowStatus(task) !== "COMPLETED").length
   const inProgressCount = tasks.filter((task) => taskWorkflowStatus(task) === "IN_PROGRESS").length
@@ -546,10 +543,6 @@ export default function TasksScreen() {
           ? copy.focusCalm
           : copy.focusDone
 
-  useEffect(() => {
-    if (!filtered.some((task) => task.id === focusedTaskId)) setFocusedTaskId(filtered[0]?.id ?? null)
-  }, [filtered, focusedTaskId])
-
   const openTask = (task: Task) => navigation.navigate("TaskDetail", { task })
   const refresh = () => {
     setRefreshing(true)
@@ -558,24 +551,28 @@ export default function TasksScreen() {
   }
 
   const renderTask = ({ item, index }: { item: Task; index: number }) => (
-    <TaskCard
-      task={item}
-      copy={copy}
-      language={i18n.language}
-      tablet={tablet}
-      focus={index === 0 && activeTab !== "COMPLETED"}
-      busy={updatingTaskId === item.id}
-      onPress={() => {
-        if (tablet) setFocusedTaskId(item.id)
-        else openTask(item)
-      }}
-      onOpen={() => openTask(item)}
-      onStatus={(status) => handleStatusChange(item, status)}
-    />
+    <View style={tablet ? styles.gridCell : styles.listCell}>
+      <TaskCard
+        task={item}
+        copy={copy}
+        language={i18n.language}
+        tablet={tablet}
+        focus={index === 0 && activeTab !== "COMPLETED"}
+        busy={updatingTaskId === item.id}
+        onPress={() => openTask(item)}
+        onOpen={() => openTask(item)}
+        onStatus={(status) => handleStatusChange(item, status)}
+      />
+    </View>
   )
 
-  return (
-    <View style={styles.container}>
+  // One list is the whole page, on the phone and on the tablet. The header,
+  // the focus strip and the tabs used to stay put while the list scrolled in
+  // what was left; on the tablet a second pane scrolled beside it. Held in
+  // landscape (Redmi Pad SE, 2026-09-14) that left a 522 px box of tasks next
+  // to a 518 px box of details: "this is not Windows or a browser".
+  const listHeader = (
+    <>
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={[styles.headerInner, !tablet && styles.headerInnerPhone]}>
           <View style={styles.headerCopy}>
@@ -589,7 +586,7 @@ export default function TasksScreen() {
         </View>
       </View>
 
-      <View style={styles.body}>
+      <View style={styles.bodyTop}>
         <TouchableOpacity
           style={styles.focusStrip}
           activeOpacity={recommendedTab ? 0.82 : 1}
@@ -665,48 +662,28 @@ export default function TasksScreen() {
             )
           })}
         </View>
-
-        {loading && tasks.length === 0 ? (
-          <LoadingState copy={copy} />
-        ) : tablet ? (
-          <View style={styles.tabletWorkspace}>
-            <FlatList
-              data={filtered}
-              keyExtractor={(task) => task.id}
-              renderItem={renderTask}
-              style={styles.tabletList}
-              contentContainerStyle={styles.tabletListContent}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
-              ListEmptyComponent={<EmptyState copy={copy} status={activeTab} onRetry={offline ? refresh : undefined} />}
-            />
-            <View style={styles.detailPane}>
-              {focusedTask ? (
-                <TaskDetailPanel
-                  task={focusedTask}
-                  copy={copy}
-                  language={i18n.language}
-                  pendingSync={pendingSync}
-                  busy={updatingTaskId === focusedTask.id}
-                  onOpen={() => openTask(focusedTask)}
-                  onStatus={(status) => handleStatusChange(focusedTask, status)}
-                />
-              ) : (
-                <EmptyState copy={copy} status={activeTab} onRetry={offline ? refresh : undefined} />
-              )}
-            </View>
-          </View>
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(task) => task.id}
-            renderItem={renderTask}
-            style={styles.phoneList}
-            contentContainerStyle={[styles.phoneListContent, { paddingBottom: tabBarPadding }]}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
-            ListEmptyComponent={<EmptyState copy={copy} status={activeTab} onRetry={offline ? refresh : undefined} />}
-          />
-        )}
       </View>
+    </>
+  )
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        key={tablet ? "tasks-grid" : "tasks-list"}
+        data={loading && tasks.length === 0 ? [] : filtered}
+        keyExtractor={(task) => task.id}
+        numColumns={tablet ? 2 : 1}
+        columnWrapperStyle={tablet ? styles.gridRow : undefined}
+        renderItem={renderTask}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <View style={styles.listCell}>
+            {loading && tasks.length === 0 ? <LoadingState copy={copy} /> : <EmptyState copy={copy} status={activeTab} onRetry={offline ? refresh : undefined} />}
+          </View>
+        }
+        contentContainerStyle={{ paddingBottom: tabBarPadding }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
+      />
 
       <CompletionModal
         visible={notesVisible}
@@ -808,7 +785,6 @@ function TaskCard({
             {focus ? <Text style={styles.focusTaskLabel}>{copy.focus}</Text> : null}
             <Text style={styles.taskTitle} numberOfLines={tablet ? 2 : 3}>{task.title}</Text>
           </View>
-          {tablet ? <Icon name="chevron-forward" size={21} color={fieldTheme.color.inkMuted} /> : null}
         </View>
 
         <View style={styles.taskSignals}>
@@ -839,107 +815,16 @@ function TaskCard({
         ) : null}
       </TouchableOpacity>
 
-      {!tablet ? (
-        <View style={styles.cardActions}>
-          {status === "PENDING" ? (
-            <PrimaryButton icon="play" label={busy ? copy.starting : copy.start} busy={busy} onPress={() => onStatus("IN_PROGRESS")} />
-          ) : status === "IN_PROGRESS" ? (
-            <PrimaryButton icon="checkmark" label={busy ? copy.completing : copy.complete} busy={busy} onPress={() => onStatus("COMPLETED")} />
-          ) : null}
-          <TouchableOpacity style={[styles.detailsButton, status === "COMPLETED" && styles.detailsButtonWide]} onPress={onOpen} accessibilityRole="button">
-            <Text style={styles.detailsButtonText}>{copy.openDetails}</Text>
-            <Icon name="arrow-forward" size={18} color={fieldTheme.color.primaryStrong} />
-          </TouchableOpacity>
-        </View>
-      ) : null}
-    </View>
-  )
-}
-
-function TaskDetailPanel({
-  task,
-  copy,
-  language,
-  pendingSync,
-  busy,
-  onOpen,
-  onStatus,
-}: {
-  task: Task
-  copy: FriendlyCopy
-  language: string
-  pendingSync: number
-  busy: boolean
-  onOpen: () => void
-  onStatus: (status: TaskStatus) => void
-}) {
-  const priority = normalizedPriority(task.priority)
-  const priorityCopy = copy.priority[priority]
-  const visual = priorityVisual(priority)
-  const status = taskWorkflowStatus(task)
-  const progress = taskProgress(task)
-  return (
-    <ScrollView contentContainerStyle={styles.detailContent} showsVerticalScrollIndicator={false}>
-      <Text style={styles.detailEyebrow}>{copy.detailTitle}</Text>
-      <Text style={styles.detailHeading}>{task.title}</Text>
-      <View style={styles.detailStatusRow}>
-        <View style={[styles.detailStatus, { backgroundColor: visual.fill }]}>
-          <Icon name={visual.icon} size={18} color={visual.ink} />
-          <Text style={[styles.detailStatusText, { color: visual.ink }]}>{priorityCopy}</Text>
-        </View>
-        <View style={styles.detailStatus}>
-          <Icon name="ellipse" size={12} color={status === "COMPLETED" ? fieldTheme.color.success : status === "IN_PROGRESS" ? fieldTheme.color.blue : fieldTheme.color.amber} />
-          <Text style={styles.detailStatusText}>{copy.status[status].replace(/^\d\s·\s/, "")}</Text>
-        </View>
-      </View>
-
-      <DetailLine icon="reader-outline" label={copy.description} value={task.description?.trim() || copy.noDescription} />
-      <DetailLine
-        icon="business-outline"
-        label={copy.customer}
-        value={task.customer?.name?.trim() || copy.noCustomer}
-        secondary={task.customer?.address?.trim() || undefined}
-      />
-      <DetailLine icon="calendar-outline" label={copy.due} value={dueText(task, copy, language)} danger={isOverdue(task)} />
-      <DetailLine
-        icon={pendingSync > 0 ? "cloud-upload-outline" : "cloud-done-outline"}
-        label={copy.syncState}
-        value={pendingSync > 0 ? copy.syncPending : copy.syncSaved}
-      />
-      {progress !== null && status === "IN_PROGRESS" ? (
-        <View style={styles.detailProgress}>
-          <View style={styles.progressHeading}>
-            <Text style={styles.progressLabel}>{copy.progress}</Text>
-            <Text style={styles.progressValue}>{progress}%</Text>
-          </View>
-          <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
-        </View>
-      ) : null}
-      {status === "COMPLETED" && task.result ? <DetailLine icon="checkmark-circle-outline" label={copy.result} value={task.result} /> : null}
-
-      <View style={styles.detailActions}>
+      <View style={styles.cardActions}>
         {status === "PENDING" ? (
           <PrimaryButton icon="play" label={busy ? copy.starting : copy.start} busy={busy} onPress={() => onStatus("IN_PROGRESS")} />
         ) : status === "IN_PROGRESS" ? (
           <PrimaryButton icon="checkmark" label={busy ? copy.completing : copy.complete} busy={busy} onPress={() => onStatus("COMPLETED")} />
         ) : null}
-        <TouchableOpacity style={styles.detailOpenButton} onPress={onOpen} accessibilityRole="button">
-          <Icon name="open-outline" size={19} color={fieldTheme.color.primaryStrong} />
-          <Text style={styles.detailOpenText}>{copy.openDetails}</Text>
+        <TouchableOpacity style={[styles.detailsButton, status === "COMPLETED" && styles.detailsButtonWide]} onPress={onOpen} accessibilityRole="button">
+          <Text style={styles.detailsButtonText}>{copy.openDetails}</Text>
+          <Icon name="arrow-forward" size={18} color={fieldTheme.color.primaryStrong} />
         </TouchableOpacity>
-      </View>
-    </ScrollView>
-  )
-}
-
-function DetailLine({ icon, label, value, secondary, danger }: { icon: string; label: string; value: string; secondary?: string; danger?: boolean }) {
-  return (
-    <View style={styles.detailLine}>
-      <View style={styles.detailLineIcon}><Icon name={icon} size={21} color={danger ? fieldTheme.color.danger : fieldTheme.color.primaryStrong} /></View>
-      <View style={styles.detailLineCopy}>
-        <Text style={styles.detailLineLabel}>{label}</Text>
-        <Text style={[styles.detailLineValue, danger && styles.detailLineDanger]}>{value}</Text>
-        {secondary ? <Text style={styles.detailLineSecondary}>{secondary}</Text> : null}
       </View>
     </View>
   )
@@ -1035,12 +920,20 @@ const styles = StyleSheet.create({
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: fieldTheme.space.xl, paddingHorizontal: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1280, alignSelf: "center", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.lg },
   headerInnerPhone: { flexDirection: "column", alignItems: "stretch", gap: fieldTheme.space.md },
-  headerCopy: { flex: 1 },
+  // Not `flex: 1`: on the phone the header is a column with no height of its
+  // own, and a zero flex basis there collapses the title block to 0 px — the
+  // phone showed an empty green band with the title missing (2026-09-14).
+  headerCopy: { flexGrow: 1, flexShrink: 1 },
   eyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   eyebrow: { color: fieldTheme.color.primarySoft, fontSize: 12, fontWeight: "800" },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: fieldTheme.space.sm },
   headerSubtitle: { color: "#CDE2D9", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
-  body: { flex: 1, width: "100%", maxWidth: 1280, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+  // No flex: 1 — inside the list's content a zero flex basis is 0 px.
+  bodyTop: { width: "100%", maxWidth: 1280, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+  listCell: { width: "100%", maxWidth: 1280, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, marginBottom: fieldTheme.space.md },
+  gridRow: { width: "100%", maxWidth: 1280 + fieldTheme.space.lg * 2, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg - 6 },
+  // maxWidth keeps an odd last card at half width instead of stretching.
+  gridCell: { flex: 1, maxWidth: "50%", paddingHorizontal: 6, marginBottom: fieldTheme.space.md },
   focusStrip: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#B7DDCE", backgroundColor: fieldTheme.color.primarySoft, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
   focusIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
   noticeCopy: { flex: 1 },
@@ -1068,12 +961,6 @@ const styles = StyleSheet.create({
   tabCountActive: { backgroundColor: "rgba(248,252,250,0.2)" },
   tabCountText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900" },
   tabCountTextActive: { color: fieldTheme.color.onColor },
-  phoneList: { flex: 1 },
-  phoneListContent: { gap: fieldTheme.space.md },
-  tabletWorkspace: { flex: 1, flexDirection: "row", gap: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
-  tabletList: { flex: 0.44, minWidth: 0 },
-  tabletListContent: { gap: fieldTheme.space.md, paddingBottom: fieldTheme.space.xl },
-  detailPane: { flex: 0.56, minWidth: 0, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, overflow: "hidden" },
   taskCard: { borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.lg },
   taskTapArea: { minHeight: 48 },
   taskCardFocus: { borderColor: "#8BBFAE", backgroundColor: "#F4FAF7" },
@@ -1103,26 +990,11 @@ const styles = StyleSheet.create({
   detailsButton: { minHeight: 48, flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md },
   detailsButtonWide: { flex: 1 },
   detailsButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900", textAlign: "center", flexShrink: 1 },
-  detailContent: { padding: fieldTheme.space.xl, gap: fieldTheme.space.lg },
-  detailEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900", letterSpacing: 0.6 },
-  detailHeading: { color: fieldTheme.color.ink, fontSize: 25, lineHeight: 31, fontWeight: "900", maxWidth: 680 },
-  detailStatusRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  detailStatus: { minHeight: 36, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },
-  detailStatusText: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "800" },
-  detailLine: { minHeight: 64, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingTop: fieldTheme.space.lg },
-  detailLineIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: fieldTheme.color.surfaceStrong, alignItems: "center", justifyContent: "center" },
-  detailLineCopy: { flex: 1 },
-  detailLineLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
-  detailLineValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "800", marginTop: 3 },
-  detailLineSecondary: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
-  detailLineDanger: { color: fieldTheme.color.danger },
-  detailProgress: { borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingTop: fieldTheme.space.lg },
-  detailActions: { gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
-  detailOpenButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
-  detailOpenText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
   emptyState: { flex: 1, minHeight: 260, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, backgroundColor: fieldTheme.color.primarySoft, alignItems: "center", justifyContent: "center", marginBottom: fieldTheme.space.lg },
-  emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "900", textAlign: "center" },
+  // Stretched, not sized to its own measurement: centred heavy text measured
+  // itself one word short on the phone and «Yeni tapşırıq yoxdur» lost «yoxdur».
+  emptyTitle: { alignSelf: "stretch", color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "900", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 360, marginTop: fieldTheme.space.sm },
   emptyButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.lg, marginTop: fieldTheme.space.lg },
   emptyButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
