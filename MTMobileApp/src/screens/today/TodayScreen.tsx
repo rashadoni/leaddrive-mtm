@@ -24,6 +24,7 @@ import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
   cachedRouteAsTodaySummary,
@@ -358,6 +359,13 @@ export default function TodayScreen() {
         minute: "2-digit",
       })
     : null
+  // A workday left open past midnight read "started at 20:57" the next morning,
+  // as if it had started today (measured on the phone 2026-09-14). The date is
+  // said only when it is not today.
+  const startedOn = workdayActive && currentWorkday?.startedAt
+    && new Date(currentWorkday.startedAt).toDateString() !== new Date().toDateString()
+    ? formatLocalizedDate(new Date(currentWorkday.startedAt), i18n.language, { day: "numeric", month: "long" })
+    : null
   const pausedSince = workdayPaused && currentWorkday?.pausedAt
     ? new Date(currentWorkday.pausedAt).toLocaleTimeString(i18n.language, {
         hour: "2-digit",
@@ -417,7 +425,7 @@ export default function TodayScreen() {
 
         <View style={[styles.content, twoPane && styles.contentTablet]}>
           <View style={[styles.primaryColumn, twoPane && styles.primaryColumnTablet]}>
-            <View style={[styles.workdayPanel, !twoPane && styles.workdayPanelSingle]}>
+            <View style={styles.workdayPanel}>
               <View style={styles.workdayCopy}>
                 <View style={styles.workdayTitleRow}>
                   <View style={[styles.statusDot, workdayActive && styles.statusDotActive]} />
@@ -449,7 +457,9 @@ export default function TodayScreen() {
                               ? t("todayV2.dayPausedSince", { time: pausedSince })
                               : t("todayV2.dayPausedBody"))
                           : workdayActive && startedAt
-                          ? t("todayV2.dayStartedAt", { time: startedAt })
+                          ? (startedOn
+                            ? t("todayV2.dayStartedOnAt", { date: startedOn, time: startedAt })
+                            : t("todayV2.dayStartedAt", { time: startedAt }))
                           : workdayFinishedToday
                             ? t("todayV2.dayFinishedAt", { time: finishedAt ?? "" })
                             : t("todayV2.dayStartHint")}
@@ -730,21 +740,19 @@ const styles = StyleSheet.create({
     flex: 1.15,
     minWidth: 0,
   },
+  // Buttons under the text on a tablet too. Beside it, «Fasilə» and «Günü
+  // bitir» left the text 130 dp and «İş günü 11 sentyabr, 20:57-da başlayıb»
+  // ran to three lines (Redmi Pad SE in landscape, 2026-09-14).
   workdayPanel: {
     minHeight: 126,
     padding: fieldTheme.space.lg,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    alignItems: "stretch",
     gap: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.lg,
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
     backgroundColor: fieldTheme.color.surface,
-  },
-  workdayPanelSingle: {
-    flexDirection: "column",
-    alignItems: "stretch",
   },
   workdayCopy: {
     flex: 1,
