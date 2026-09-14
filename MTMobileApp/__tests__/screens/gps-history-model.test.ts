@@ -101,4 +101,27 @@ describe("GPS history playback model", () => {
     expect(html).not.toMatch(/<script[^>]+src=/)
     expect(html).not.toContain("</script><script>unsafe()")
   })
+
+  it("keeps marker labels inside the map and the selected label off the start and end labels", () => {
+    // On the phone (2026-09-13) «Seçilmiş» was cut at the right edge and wrote
+    // over «Başlanğıc»/«Son». Checked in headless Chromium at 360×260 and
+    // 200×160: every label inside the view, no two overlapping.
+    const model = createGpsPlaybackModel([
+      { id: "a", recordedAt: "2026-08-20T09:00:00.000Z", latitude: 40.4, longitude: 49.8 },
+      { id: "b", recordedAt: "2026-08-20T09:01:00.000Z", latitude: 40.41, longitude: 49.81 },
+    ])
+    const html = buildGpsRouteDocument(model.routeSegments, {
+      language: "az",
+      routeLabel: "GPS marşrut xəritəsi",
+      start: "Başlanğıc",
+      end: "Son",
+      current: "Seçilmiş",
+      mapLoading: "Xəritə yüklənir…",
+      mapUnavailable: "Xəritə əlçatan deyil.",
+      mapAttribution: "© OpenStreetMap · © CARTO",
+    })
+    expect(html).toContain("placeLabel(text, point, radius, above);")
+    expect(html).toContain('marker(overlay, point, "#a43b25", 8, labels.current, true)')
+    expect(html).toContain('anchor = "end";')
+  })
 })
