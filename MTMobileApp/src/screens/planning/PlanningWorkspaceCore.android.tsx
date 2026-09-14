@@ -22,6 +22,7 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { upperFirst } from "../../lib/upper"
 import { api } from "../../services/api"
 import {
   DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
@@ -178,9 +179,9 @@ function routeStatusKey(status: string): string {
 }
 
 function formatPlanDate(value: string, language: string, compact = false): string {
-  return formatLocalizedDate(value, language, compact
+  return upperFirst(formatLocalizedDate(value, language, compact
     ? { day: "numeric", month: "long", timeZone: "UTC" }
-    : { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+    : { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }), language)
 }
 
 function uniqueTargets(assignments: PlanningTarget[], routes: PlanningDetailedRoute[]): PlanningTarget[] {
@@ -284,6 +285,14 @@ export default function PlanningWorkspaceCore({
   const [saveMode, setSaveMode] = useState<SaveMode>("draft")
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string } | null>(null)
+  // The result is shown at the top of the scroll, and the save button is at
+  // the bottom. On the phone the manager saw only the dock's «Saxlanacaq
+  // qaralama yoxdur.» — which reads as a failure — while «1 qaralama
+  // saxlanıldı.» sat above the fold (2026-09-13). Bring the result into view.
+  const workspaceScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null)
+  useEffect(() => {
+    if (saveMessage) workspaceScrollRef.current?.scrollTo({ y: 0, animated: true })
+  }, [saveMessage])
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const hintsEnabled = useHintsStore((state) => state.enabled)
   const dismissedHints = useHintsStore((state) => state.dismissed)
@@ -821,8 +830,10 @@ export default function PlanningWorkspaceCore({
         }
       : {
           icon: saveMode === "publish" ? "send" : "save",
-          label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : "managerShell.planSaveDraftAction"),
-          hint: !canSave && !saving ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
+          label: saving ? t("managerShell.planSaving") : t(saveMode === "publish" ? "managerShell.planSaveAndPublish" : writes.length > 1 ? "managerShell.planSaveDraftAction" : "managerShell.planSaveDraftActionOne"),
+          // Right after a save there is nothing left to save, and saying so
+          // under the button contradicts the success message above.
+          hint: !canSave && !saving && !saveMessage ? t(writes.length === 0 ? "managerShell.planNoDraftChanges" : "managerShell.planResolveWarnings") : undefined,
           disabled: !canSave,
           onPress: confirmAndSave,
         }
@@ -836,7 +847,8 @@ export default function PlanningWorkspaceCore({
               <Icon name="arrow-back" size={24} color={fieldTheme.color.onColor} />
             </Pressable>
           ) : null}
-          <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View>
+          {/* Decorative; on the phone it cost the title two lines of wrapping. */}
+          {tablet ? <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View> : null}
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{selfPlanning ? selfCopy.eyebrow : t("managerShell.planEyebrow")}</Text>
             <Text style={styles.title}>{selfPlanning ? selfCopy.title : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
@@ -860,6 +872,7 @@ export default function PlanningWorkspaceCore({
       </View>
 
       <ScrollView
+        ref={workspaceScrollRef}
         style={styles.workspaceScroll}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl enabled={!saving} refreshing={refreshing} onRefresh={() => { void refresh() }} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
@@ -1705,7 +1718,7 @@ const styles = StyleSheet.create({
   snapshotBody: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   dayRail: { gap: fieldTheme.space.sm },
   daySnapshot: { width: 116, minHeight: 96, gap: 2, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  daySnapshotDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900", textTransform: "capitalize" },
+  daySnapshotDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900" },
   daySnapshotValue: { color: fieldTheme.color.blue, fontSize: 20, lineHeight: 24, fontWeight: "900" },
   daySnapshotLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   dayStatuses: { gap: 4, marginTop: 3 },
@@ -1741,14 +1754,14 @@ const styles = StyleSheet.create({
   weekDayNumberText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900" },
   weekDayNumberTextActive: { color: fieldTheme.color.onColor },
   weekDayCopy: { flex: 1, gap: 3 },
-  weekDayDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900", textTransform: "capitalize" },
+  weekDayDate: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "900" },
   weekDayDateActive: { color: fieldTheme.color.primaryStrong },
   weekDaySummary: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15 },
   dayPlanEditor: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   dayPlanHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   dayPlanHeaderIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary },
   dayPlanHeaderCopy: { flex: 1, gap: 2 },
-  dayPlanDate: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900", textTransform: "capitalize" },
+  dayPlanDate: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900" },
   dayPlanCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   dayPlanLockedPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.amberSoft },
   dayPlanLockedText: { color: fieldTheme.color.amber, fontSize: 10, fontWeight: "900" },
@@ -1778,7 +1791,7 @@ const styles = StyleSheet.create({
   targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   targetBrowserHeadingCopy: { flex: 1 },
   activeDayPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
-  activeDayPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900", textTransform: "capitalize" },
+  activeDayPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
   targetTypeTabs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   targetTypeButton: { minWidth: 104, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 9, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetTypeButtonActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
@@ -1833,7 +1846,7 @@ const styles = StyleSheet.create({
   matrixCellSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
   matrixCellLocked: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
   matrixCellDisabled: { opacity: 0.48 },
-  matrixCellDay: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800", textTransform: "capitalize" },
+  matrixCellDay: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800" },
   matrixCellDaySelected: { color: fieldTheme.color.ink, fontWeight: "900" },
   savePanel: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   permissionNote: { color: fieldTheme.color.amber, fontSize: 11, lineHeight: 16, fontWeight: "800" },

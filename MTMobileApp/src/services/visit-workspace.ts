@@ -84,7 +84,9 @@ export function toVisitWorkspace(raw: any): VisitWorkspace {
     customer: {
       name: str(customer.name) ?? "",
       objectType: str(customer.objectType),
-      address: str(customer.address),
+      // The server sends `city`; a client with no street address is known by
+      // it everywhere else in the app, and here read «Ünvan göstərilməyib».
+      address: str(customer.address) ?? str(customer.city),
       phone: str(customer.phone),
     },
     contact: contactRaw

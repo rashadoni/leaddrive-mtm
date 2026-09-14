@@ -1443,7 +1443,7 @@ export default function RouteScreen() {
               {canPlanOwnRoutes ? (
                 <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
               ) : null}
-              <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
+              {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
             </View>
           </View>
         </ScrollView>
@@ -1507,7 +1507,9 @@ export default function RouteScreen() {
             {canPlanOwnRoutes ? (
               <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
-            <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} />
+            {/* Both sentences are about a route: the list to pull and its green
+                panel. Without one, the hint offered the refresh B9 took away. */}
+            {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
           </View>
         }
       />

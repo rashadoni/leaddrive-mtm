@@ -58,3 +58,21 @@ describe("B20: the way in is above the fold", () => {
     }
   })
 })
+
+describe("sign-in screens clear the status bar (found on the phone 2026-09-14)", () => {
+  it.each([
+    ["login", () => login],
+    ["server", () => server],
+  ])("pads the %s screen by the top inset", (_name, read) => {
+    // Android 16 enforces edge-to-edge: the clock was drawn over the logo.
+    expect(read()).toContain("contentContainerStyle={[styles.scrollContent, { paddingTop: fieldTheme.space.xl + insets.top }]}")
+  })
+
+  it("draws dark status bar icons on the light sign-in and access screens", () => {
+    const access = fs.readFileSync(path.resolve(__dirname, "../../src/screens/auth/RouteFieldAccessScreen.android.tsx"), "utf8")
+    const missing = [["login", login], ["server", server], ["access", access]]
+      .filter(([, source]) => !source.includes('<StatusBar barStyle="dark-content" />'))
+      .map(([name]) => name)
+    expect(missing).toEqual([])
+  })
+})
