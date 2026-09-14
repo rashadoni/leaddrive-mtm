@@ -993,5 +993,8 @@
     "usePhoto": "Fotonu saxla",
     "captureFailedTitle": "Foto çəkilmədi",
     "captureFailedBody": "Kameranı bağlayıb yenidən açın və bir daha çəkin."
+  },
+  "appFeedback": {
+    "dismissNotice": "Bağlamaq üçün toxunun"
   }
 }

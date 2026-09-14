@@ -993,5 +993,8 @@
     "usePhoto": "Сохранить фото",
     "captureFailedTitle": "Фото не сделано",
     "captureFailedBody": "Закройте камеру, откройте снова и снимите ещё раз."
+  },
+  "appFeedback": {
+    "dismissNotice": "Нажмите, чтобы закрыть"
   }
 }
