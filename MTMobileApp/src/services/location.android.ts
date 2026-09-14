@@ -139,22 +139,43 @@ function sleep(ms: number) {
 
 let foregroundIntervalId: ReturnType<typeof setInterval> | null = null
 
-export async function startTracking() {
-  if (BackgroundService.isRunning()) return
+// Android kills the whole app when a foreground service is stopped before it
+// has posted its notification (ForegroundServiceDidNotStartInTimeException).
+// `BackgroundService.start` resolves as soon as the service is requested, not
+// when it is up, so a stop right after a start crashes. On a Galaxy S23 it did
+// exactly that 14 ms after the notification sheet closed (2026-09-14). Every
+// start and stop therefore runs in one queue, and a stop waits until the
+// service has had time to come up.
+const MIN_SERVICE_RUN_BEFORE_STOP_MS = 3_000
+let trackingQueue: Promise<void> = Promise.resolve()
+let serviceStartedAt = 0
 
-  try {
-    Geolocation.setRNConfiguration({
-      skipPermissionRequests: true,
-      locationProvider: "android",
-    })
-    await BackgroundService.start(backgroundTask, {
-      ...backgroundOptions,
-      taskTitle: i18n.t("location.taskTitle"),
-      taskDesc: i18n.t("location.taskDesc"),
-    })
-  } catch {
-    startForegroundTracking()
-  }
+function inTrackingQueue(step: () => Promise<void>): Promise<void> {
+  const run = trackingQueue.then(step, step)
+  trackingQueue = run.catch(() => {})
+  return run
+}
+
+export function startTracking(): Promise<void> {
+  return inTrackingQueue(async () => {
+    if (BackgroundService.isRunning()) return
+
+    try {
+      Geolocation.setRNConfiguration({
+        skipPermissionRequests: true,
+        locationProvider: "android",
+      })
+      serviceStartedAt = Date.now()
+      await BackgroundService.start(backgroundTask, {
+        ...backgroundOptions,
+        taskTitle: i18n.t("location.taskTitle"),
+        taskDesc: i18n.t("location.taskDesc"),
+      })
+    } catch {
+      serviceStartedAt = 0
+      startForegroundTracking()
+    }
+  })
 }
 
 function startForegroundTracking() {
@@ -165,18 +186,24 @@ function startForegroundTracking() {
   }, SEND_INTERVAL)
 }
 
-export async function stopTracking() {
-  if (BackgroundService.isRunning()) {
-    try {
-      await BackgroundService.stop()
-    } catch {
-      // The foreground fallback is stopped below even if the native service
-      // already ended or Android rejected the stop call.
+export function stopTracking(): Promise<void> {
+  return inTrackingQueue(async () => {
+    if (BackgroundService.isRunning()) {
+      const wait = serviceStartedAt + MIN_SERVICE_RUN_BEFORE_STOP_MS - Date.now()
+      if (wait > 0) await sleep(wait)
     }
-  }
+    if (BackgroundService.isRunning()) {
+      try {
+        await BackgroundService.stop()
+      } catch {
+        // The foreground fallback is stopped below even if the native service
+        // already ended or Android rejected the stop call.
+      }
+    }
 
-  if (foregroundIntervalId !== null) {
-    clearInterval(foregroundIntervalId)
-    foregroundIntervalId = null
-  }
+    if (foregroundIntervalId !== null) {
+      clearInterval(foregroundIntervalId)
+      foregroundIntervalId = null
+    }
+  })
 }
