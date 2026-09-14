@@ -9,6 +9,7 @@ import {
   deferMediaUpload,
   enqueueMediaUpload,
   flushMediaOutbox,
+  mediaUploadIdsForVisit,
   pendingMediaUploads,
 } from "../../src/services/media-outbox"
 import { setOfflineScope } from "../../src/services/offline-scope"
@@ -32,6 +33,22 @@ describe("durable media outbox", () => {
     expect((await pendingMediaUploads()).map((entry) => entry.id)).toEqual([item.id])
     await acknowledgeMediaUpload(item.id)
     expect(await pendingMediaUploads()).toEqual([])
+  })
+
+  it("lists one visit's waiting photos, deferred ones included, for «Foto: N»", async () => {
+    const first = await enqueueMediaUpload({ filePath: "/cache/a.jpg", visitId: "visit-1" })
+    const deferred = await enqueueMediaUpload({ filePath: "/cache/b.jpg", visitId: "visit-1" })
+    await enqueueMediaUpload({ filePath: "/cache/c.jpg", visitId: "visit-2" })
+    await enqueueMediaUpload({ filePath: "/cache/d.jpg" })
+    await deferMediaUpload(deferred.id, Date.now())
+
+    expect((await mediaUploadIdsForVisit("visit-1")).sort()).toEqual([first.id, deferred.id].sort())
+    await acknowledgeMediaUpload(first.id)
+    expect(await mediaUploadIdsForVisit("visit-1")).toEqual([deferred.id])
+
+    // Another agent's queue on the same phone is not this visit's photos.
+    setOfflineScope("org-1", "agent-2")
+    expect(await mediaUploadIdsForVisit("visit-1")).toEqual([])
   })
 
   it("serializes concurrent enqueues without losing either upload", async () => {

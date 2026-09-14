@@ -17,7 +17,8 @@ const pad = read("components/SignaturePadModal.tsx")
 
 describe("customer signature on visit screens", () => {
   it.each([["route", route], ["visits", visits]])("%s screen offers the pad and guards check-out", (_name, source) => {
-    expect(source).toContain("useVisitSignature(activeVisit)")
+    // One hook reads the visit workspace for the signature and «Foto: N» alike.
+    expect(source).toContain("const { signature, photos } = useActiveVisitProgress(activeVisit)")
     expect(source).toContain("<SignaturePadModal")
     const guard = source.slice(source.indexOf("const handleCheckOut = () => {"), source.indexOf("setNotesVisible(true)", source.indexOf("const handleCheckOut = () => {")))
     expect(guard).toContain("signature.blocksCheckOut")

@@ -99,6 +99,8 @@ export function toVisitWorkspace(raw: any): VisitWorkspace {
       : undefined,
     requirements: mappedRequirements,
     tasks: tasks.map((t) => ({ id: String(t?.id ?? ""), title: str(t?.title) ?? "", status: str(t?.status) ?? "" })),
+    // The endpoint lists the newest 20 photos (`take: 20`), so this stops at 20.
+    // «Foto: N» on the visit screens builds on it; see services/visit-photo-count.ts.
     photosCount: photos.length,
   }
 }
