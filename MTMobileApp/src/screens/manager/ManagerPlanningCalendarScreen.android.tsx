@@ -32,7 +32,7 @@ import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
-import { upper } from "../../lib/upper"
+import { upper, upperFirst } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
 
@@ -151,7 +151,7 @@ function calendarLanguage(value: string): Language {
 
 function formatPeriod(anchor: string, mode: ManagerCalendarMode, language: string, from: string, to: string): string {
   if (mode === "month") {
-    return formatLocalizedDate(anchor, language, { month: "long", year: "numeric", timeZone: "UTC" })
+    return upperFirst(formatLocalizedDate(anchor, language, { month: "long", year: "numeric", timeZone: "UTC" }), language)
   }
   const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", timeZone: "UTC" }
   const first = formatLocalizedDate(from, language, options)
@@ -524,7 +524,7 @@ function DayAgenda({ date, routes, language, copy, onCreate }: {
   return (
     <View style={styles.agenda}>
       <View style={styles.agendaHeading}>
-        <View><Text style={styles.agendaEyebrow}>{copy.routes}</Text><Text style={styles.agendaTitle}>{copy.dayTitle.replace("{{date}}", formatDate(date, language))}</Text></View>
+        <View><Text style={styles.agendaEyebrow}>{copy.routes}</Text><Text style={styles.agendaTitle}>{upperFirst(copy.dayTitle.replace("{{date}}", formatDate(date, language)), language)}</Text></View>
         <View style={styles.agendaCount}><Text style={styles.agendaCountText}>{routes.length}</Text></View>
       </View>
       {routes.length > 0 ? (
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   periodNavigator: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   periodCopy: { minHeight: LAYOUT_TOUCH_TARGETS.compact, minWidth: 160, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm },
-  periodTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textTransform: "capitalize", textAlign: "center" },
+  periodTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textAlign: "center" },
   todayLink: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "800" },
   summaryRow: { flexDirection: "row", gap: 6 },
   summaryCard: { flex: 1, minHeight: 60, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
   agenda: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   agendaHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   agendaEyebrow: { color: fieldTheme.color.primary, fontSize: 10, fontWeight: "900", letterSpacing: 0.7 },
-  agendaTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 19, fontWeight: "900", textTransform: "capitalize" },
+  agendaTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 19, fontWeight: "900" },
   agendaCount: { minWidth: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
   agendaCountText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
   agendaListScroller: { maxHeight: 292 },

@@ -24,6 +24,14 @@ describe("locale-blind upper-casing", () => {
     expect(offenders.map((file) => file.slice(root.length + 1))).toEqual([])
   })
 
+  it("does not use textTransform capitalize either", () => {
+    // It raised every word of a date — «14 Sentyabr 2026, Bazar Ertəsi» on the
+    // phone (2026-09-13) — and upper-cases with the device locale like the
+    // uppercase transform. Sentence case goes through `upperFirst`.
+    const offenders = sourceFiles(root).filter((file) => /textTransform:\s*["']capitalize["']/.test(readFileSync(file, "utf8")))
+    expect(offenders.map((file) => file.slice(root.length + 1))).toEqual([])
+  })
+
   it("does not build avatar initials with toUpperCase()", () => {
     const offenders = sourceFiles(root).filter((file) => /charAt\(0\)\.toUpperCase\(\)|slice\(0, 1\)\.toUpperCase\(\)/.test(readFileSync(file, "utf8")))
     expect(offenders.map((file) => file.slice(root.length + 1))).toEqual([])
