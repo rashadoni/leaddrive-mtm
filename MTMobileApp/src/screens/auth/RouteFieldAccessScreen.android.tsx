@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -41,6 +41,10 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
 
   return (
     <View style={[styles.root, { paddingTop: Math.max(insets.top, fieldTheme.space.xl) }]}>
+      {/* A light screen: the app-wide light-content icons were white on it
+          (clock on the Redmi Pad SE, 2026-09-14). Not a tab, so no focus
+          juggling: the bar returns to light-content when this unmounts. */}
+      <StatusBar barStyle="dark-content" />
       <View style={styles.card}>
         <View style={styles.icon}>
           {checking
