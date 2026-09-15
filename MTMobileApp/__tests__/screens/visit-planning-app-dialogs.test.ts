@@ -114,7 +114,7 @@ describe("visit screen", () => {
     expect(choice).toContain('{ text: t("visit.checkInAnyway"), value: true, style: "destructive" }')
     expect(choice).toContain("dismissValue: false")
     const refused = between(perform, "if (!proceed) {", "forceCheckIn = true")
-    expect(refused).toContain('setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })')
+    expect(refused).toContain('setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name, maxMeters: radius })')
     expect(refused).toContain("return")
     // The visit is queued after the answer, never beside it.
     expect(perform.indexOf("const proceed = await ask({")).toBeLessThan(perform.indexOf("await queueVisitCheckIn({"))
