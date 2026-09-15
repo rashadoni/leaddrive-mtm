@@ -465,6 +465,7 @@ export const mobileResources = {
     },
     contactTransfer: {
       back: "Назад",
+      disabledNote: "Контакты в организации выключены — передавать нечего.",
       eyebrow: "Управление базой",
       title: "Передача контактов",
       subtitle: "Атомарная смена ответственного с предпросмотром визитов, планов и исключений.",
@@ -989,6 +990,7 @@ export const mobileResources = {
     },
     contactTransfer: {
       back: "Back",
+      disabledNote: "Contacts are turned off for your organization, so there is nothing to transfer.",
       eyebrow: "Base governance",
       title: "Contact transfer",
       subtitle: "Atomic ownership handover with a review of visits, plans, and excluded records.",
@@ -1513,6 +1515,7 @@ export const mobileResources = {
     },
     contactTransfer: {
       back: "Geri",
+      disabledNote: "Təşkilatınızda kontaktlar söndürülüb — ötürüləcək bir şey yoxdur.",
       eyebrow: "Baza idarəetməsi",
       title: "Kontaktların ötürülməsi",
       subtitle: "Ziyarət, plan və istisnaları öncədən yoxlayan atomar məsul şəxs dəyişikliyi.",

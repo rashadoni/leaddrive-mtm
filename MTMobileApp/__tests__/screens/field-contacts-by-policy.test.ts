@@ -85,6 +85,27 @@ describe("other doors into contacts", () => {
     expect(gated).toContain("value={data.contact?.name || copy.noContact}")
   })
 
+  it("manager workspace hides the contact transfer entry when contacts are off", () => {
+    const manager = read("manager/ManagerWorkspaceScreen.android.tsx")
+    expect(manager).toContain("const canTransferContacts = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies))")
+    const gated = between(manager, "{canTransferContacts ? (", ") : null}")
+    expect(gated).toContain('navigation.navigate("ContactTransfer")')
+    expect(manager.split('navigation.navigate("ContactTransfer")')).toHaveLength(2)
+  })
+
+  it("contact transfer screen reached anyway explains, loads no contacts and goes back", () => {
+    const transfer = read("manager/ContactTransferScreen.android.tsx")
+    expect(transfer).toContain("const transferAvailable = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies))")
+    expect(transfer).toContain("if (!transferAvailable || !sourceId) {")
+    expect(transfer).toContain('t("contactTransfer.disabledNote")')
+    const leave = between(transfer, "if (transferAvailable) return", "}, [navigation, transferAvailable])")
+    expect(leave).toContain("navigation.goBack()")
+    const notes = (["ru", "en", "az"] as const).map(
+      (locale) => typeof (mobileResources[locale].contactTransfer as Record<string, string>).disabledNote,
+    )
+    expect(notes).toEqual(["string", "string", "string"])
+  })
+
   it("planner drops doctor target types when contacts are off", () => {
     const planning = read("planning/PlanningWorkspaceCore.android.tsx")
     expect(planning).toContain(`const contactsEnabled = ${POLICY_SELECTOR}`)

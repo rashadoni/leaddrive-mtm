@@ -1,4 +1,4 @@
-import { fieldContactsEnabled, plannableTargetTypes } from "../../src/lib/field-contacts-policy"
+import { contactTransferAvailable, fieldContactsEnabled, plannableTargetTypes } from "../../src/lib/field-contacts-policy"
 
 describe("fieldContactsEnabled", () => {
   it("shows contacts when the answer is missing (older server, cached bootstrap)", () => {
@@ -30,5 +30,14 @@ describe("plannableTargetTypes", () => {
 
   it("falls back to places-only defaults when only doctor types were configured", () => {
     expect(plannableTargetTypes([doctors], defaults, false)).toEqual([pharmacies, clinics])
+  })
+})
+
+describe("contactTransferAvailable", () => {
+  it("follows the contacts switch, keeping transfer on when the answer is missing", () => {
+    expect(contactTransferAvailable(undefined)).toBe(true)
+    expect(contactTransferAvailable({})).toBe(true)
+    expect(contactTransferAvailable({ fieldContactsEnabled: true })).toBe(true)
+    expect(contactTransferAvailable({ fieldContactsEnabled: false })).toBe(false)
   })
 })

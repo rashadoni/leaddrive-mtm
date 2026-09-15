@@ -29,3 +29,14 @@ export function plannableTargetTypes<T extends { direction: string }>(
   const places = configured.filter((target) => target.direction !== "DOCTOR")
   return places.length > 0 ? places : defaults.filter((target) => target.direction !== "DOCTOR")
 }
+
+/**
+ * Transferring contacts between agents is a contact screen too: it lists the
+ * agent's people by name. With contacts switched off it has nothing to offer,
+ * so neither the manager's entry nor the screen itself may open the list.
+ */
+export function contactTransferAvailable(
+  policies: { fieldContactsEnabled?: boolean } | null | undefined,
+): boolean {
+  return fieldContactsEnabled(policies)
+}
