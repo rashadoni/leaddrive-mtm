@@ -19,6 +19,8 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
+import { useBootstrapStore } from "../../store/bootstrap"
+import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
 import {
   toVisitWorkspace,
   type VisitRequirement,
@@ -237,6 +239,7 @@ export default function VisitWorkspaceScreen() {
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const copy = COPY[languageFor(i18n.language)]
   const { visitId, name } = route.params
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
 
   const [data, setData] = useState<VisitWorkspace | null>(null)
   const [loadState, setLoadState] = useState<LoadState>("loading")
@@ -382,12 +385,17 @@ export default function VisitWorkspaceScreen() {
               </View>
               {/* The client's name is the card title; this row was labelled «Müştəri» and showed the address. */}
               <InfoLine icon="pin-outline" label={copy.address} value={data.customer.address || copy.noAddress} />
-              <InfoLine
-                icon="person-outline"
-                label={copy.contact}
-                value={data.contact?.name || copy.noContact}
-                secondary={[data.contact?.specialty, data.contact?.phone].filter(Boolean).join(" · ") || undefined}
-              />
+              {/* With field contacts switched off "Kontakt seçilməyib" reads as a
+                  step the agent skipped. A contact already linked to an older
+                  visit is history and still shows. */}
+              {contactsEnabled || data.contact?.name ? (
+                <InfoLine
+                  icon="person-outline"
+                  label={copy.contact}
+                  value={data.contact?.name || copy.noContact}
+                  secondary={[data.contact?.specialty, data.contact?.phone].filter(Boolean).join(" · ") || undefined}
+                />
+              ) : null}
               <View style={styles.statGrid}>
                 <Stat icon="log-in-outline" label={t("visitWorkspace.fieldCheckIn")} value={formatTime(data.checkInAt)} />
                 <Stat icon="log-out-outline" label={t("visitWorkspace.fieldCheckOut")} value={formatTime(data.checkOutAt)} />

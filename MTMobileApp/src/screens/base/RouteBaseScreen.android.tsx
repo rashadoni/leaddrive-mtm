@@ -1,10 +1,12 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import StatusBarBand from "../../components/StatusBarBand"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import RouteContactsList from "./RouteContactsList.android"
@@ -38,8 +40,17 @@ export default function RouteBaseScreen() {
   // of the height and the cards scrolled in the strip under them. There the
   // header goes into the list and scrolls away (2026-09-14, no inner scroll).
   const short = isShortWindow(height)
+  // The organization can switch field contacts off. Then the hub is a list of
+  // places only: no segment with a single choice, no way into people.
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const [tab, setTab] = useState<BaseTab>("organizations")
-  const active = TABS.find((item) => item.key === tab) ?? TABS[0]
+  // The switch can arrive with a bootstrap refresh while the agent sits on the
+  // contacts tab; move them to the places instead of leaving a hidden list open.
+  useEffect(() => {
+    if (!contactsEnabled && tab === "contacts") setTab("organizations")
+  }, [contactsEnabled, tab])
+  const visibleTab: BaseTab = contactsEnabled ? tab : "organizations"
+  const active = TABS.find((item) => item.key === visibleTab) ?? TABS[0]
   const canGoBack = navigation.canGoBack()
 
   const header = (
@@ -63,24 +74,26 @@ export default function RouteBaseScreen() {
           </View>
         </View>
 
-        <View style={[styles.segment, tablet && styles.segmentTablet]}>
-          {TABS.map((item) => {
-            const selected = tab === item.key
-            return (
-              <Pressable
-                key={item.key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                accessibilityLabel={t(item.labelKey)}
-                onPress={() => setTab(item.key)}
-                style={({ pressed }) => [styles.segmentButton, tablet && styles.segmentButtonTablet, selected && styles.segmentButtonActive, pressed && styles.pressed]}
-              >
-                <Icon name={selected ? item.icon.replace("-outline", "") : item.icon} size={21} color={selected ? fieldTheme.color.primaryStrong : "#C8DDD4"} />
-                <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{t(item.labelKey)}</Text>
-              </Pressable>
-            )
-          })}
-        </View>
+        {contactsEnabled ? (
+          <View style={[styles.segment, tablet && styles.segmentTablet]}>
+            {TABS.map((item) => {
+              const selected = visibleTab === item.key
+              return (
+                <Pressable
+                  key={item.key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={t(item.labelKey)}
+                  onPress={() => setTab(item.key)}
+                  style={({ pressed }) => [styles.segmentButton, tablet && styles.segmentButtonTablet, selected && styles.segmentButtonActive, pressed && styles.pressed]}
+                >
+                  <Icon name={selected ? item.icon.replace("-outline", "") : item.icon} size={21} color={selected ? fieldTheme.color.primaryStrong : "#C8DDD4"} />
+                  <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{t(item.labelKey)}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+        ) : null}
       </View>
     </View>
   )
@@ -92,7 +105,7 @@ export default function RouteBaseScreen() {
       <View style={styles.content}>
         {/* On a short window the list draws the header as its first rows: the
             tabs and the search scroll away with the cards, one page. */}
-        {tab === "organizations"
+        {visibleTab === "organizations"
           ? <RouteOrganizationExplorerScreen header={short ? header : undefined} />
           : <RouteContactsList header={short ? header : undefined} />}
       </View>

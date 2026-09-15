@@ -287,3 +287,17 @@ describe("bootstrap policies — own route planning", () => {
     expect(toBootstrap({ policies: {} }).policies.canPlanOwnRoutes).toBe(false)
   })
 })
+
+describe("bootstrap policies — field contacts", () => {
+  it("hides contacts only on an explicit false", () => {
+    expect(toBootstrap({ policies: { fieldContactsEnabled: false } }).policies.fieldContactsEnabled).toBe(false)
+    expect(toBootstrap({ policies: { fieldContactsEnabled: true } }).policies.fieldContactsEnabled).toBe(true)
+  })
+
+  it("keeps contacts shown when an older server omits the field or sends junk", () => {
+    expect(toBootstrap({ capabilities: [] }).policies.fieldContactsEnabled).toBe(true)
+    expect(toBootstrap({ policies: {} }).policies.fieldContactsEnabled).toBe(true)
+    expect(toBootstrap({ policies: { fieldContactsEnabled: "false" } }).policies.fieldContactsEnabled).toBe(true)
+    expect(toBootstrap({ policies: { fieldContactsEnabled: null } }).policies.fieldContactsEnabled).toBe(true)
+  })
+})

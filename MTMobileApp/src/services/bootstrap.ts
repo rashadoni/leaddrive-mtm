@@ -70,6 +70,13 @@ export interface BootstrapPolicies {
   photoWatermark: boolean
   /** Whether this particular field agent may create and edit only own routes. */
   canPlanOwnRoutes: boolean
+  /**
+   * Whether the organization shows field contacts (doctors, pharmacists).
+   * Optional on purpose: a bootstrap cached before the field existed has no
+   * value, and read it only through `fieldContactsEnabled()`, which treats a
+   * missing answer as "shown" — contacts were always visible before.
+   */
+  fieldContactsEnabled?: boolean
 }
 
 export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
@@ -354,6 +361,9 @@ export function toBootstrap(raw: any): BootstrapData {
       // Missing means an older server: do not expose a planning action that
       // cannot be confirmed by the server yet.
       canPlanOwnRoutes: record(raw?.policies)?.canPlanOwnRoutes === true,
+      // Opposite default to the two above: only an explicit `false` hides
+      // contacts. An older server that omits it keeps the app as it was.
+      fieldContactsEnabled: record(raw?.policies)?.fieldContactsEnabled !== false,
     },
     routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday
