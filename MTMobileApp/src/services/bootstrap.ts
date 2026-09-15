@@ -77,6 +77,11 @@ export interface BootstrapPolicies {
    * missing answer as "shown" — contacts were always visible before.
    */
   fieldContactsEnabled?: boolean
+  /**
+   * Whether the organization shows pharmacy promotions. Optional for the same
+   * reason; read it only through `pharmacyPromotionsEnabled()`.
+   */
+  pharmacyPromotionsEnabled?: boolean
 }
 
 export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
@@ -364,6 +369,8 @@ export function toBootstrap(raw: any): BootstrapData {
       // Opposite default to the two above: only an explicit `false` hides
       // contacts. An older server that omits it keeps the app as it was.
       fieldContactsEnabled: record(raw?.policies)?.fieldContactsEnabled !== false,
+      // Same tolerant default for pharmacy promotions.
+      pharmacyPromotionsEnabled: record(raw?.policies)?.pharmacyPromotionsEnabled !== false,
     },
     routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday

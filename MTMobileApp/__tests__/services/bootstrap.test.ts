@@ -301,3 +301,19 @@ describe("bootstrap policies — field contacts", () => {
     expect(toBootstrap({ policies: { fieldContactsEnabled: null } }).policies.fieldContactsEnabled).toBe(true)
   })
 })
+
+describe("bootstrap policies — pharmacy promotions", () => {
+  it("hides promotions only on an explicit false", () => {
+    expect(toBootstrap({ policies: { pharmacyPromotionsEnabled: false } }).policies.pharmacyPromotionsEnabled).toBe(false)
+    expect(toBootstrap({ policies: { pharmacyPromotionsEnabled: true } }).policies.pharmacyPromotionsEnabled).toBe(true)
+    // Independent of the contacts switch.
+    expect(toBootstrap({ policies: { pharmacyPromotionsEnabled: false } }).policies.fieldContactsEnabled).toBe(true)
+  })
+
+  it("keeps promotions shown when an older server omits the field or sends junk", () => {
+    expect(toBootstrap({ capabilities: [] }).policies.pharmacyPromotionsEnabled).toBe(true)
+    expect(toBootstrap({ policies: {} }).policies.pharmacyPromotionsEnabled).toBe(true)
+    expect(toBootstrap({ policies: { pharmacyPromotionsEnabled: "false" } }).policies.pharmacyPromotionsEnabled).toBe(true)
+    expect(toBootstrap({ policies: { pharmacyPromotionsEnabled: null } }).policies.pharmacyPromotionsEnabled).toBe(true)
+  })
+})

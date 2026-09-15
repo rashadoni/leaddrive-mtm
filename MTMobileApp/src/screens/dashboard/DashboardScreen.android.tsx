@@ -16,6 +16,8 @@ import { i18n as mobileI18n } from "../../i18n/index.android"
 import { useKpiStore, type KpiStats } from "../../store/kpi"
 import { useAuthStore } from "../../store/auth"
 import { useDashboardLayoutStore } from "../../store/dashboard-layout"
+import { useBootstrapStore } from "../../store/bootstrap"
+import { pharmacyPromotionsEnabled } from "../../lib/pharmacy-promotions-policy"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -41,6 +43,7 @@ import {
   managerWidgetDestination,
   moveWidget,
   sanitizeWidgetIds,
+  widgetIdsToSave,
   widgetsForWorkspace,
 } from "./dashboard-layout"
 import { managerApi } from "../../services/manager-api"
@@ -267,8 +270,12 @@ export default function DashboardScreen() {
     [agent?.id, agent?.organizationId, workspace, deviceClass]
   )
   const layoutKey = layoutStorageKey(context.tenantId, context.userId, workspace, deviceClass)
-  const selectedIds = sanitizeWidgetIds(workspace, layouts[layoutKey] ?? defaultWidgetIds(workspace))
-  const availableWidgets = widgetsForWorkspace(workspace)
+  // The organization can switch pharmacy promotions off; its card then leaves
+  // both the dashboard and the widget picker. A missing answer keeps it.
+  const promotionsEnabled = useBootstrapStore((state) => pharmacyPromotionsEnabled(state.data?.policies))
+  const widgetPolicy = useMemo(() => ({ pharmacyPromotionsEnabled: promotionsEnabled }), [promotionsEnabled])
+  const selectedIds = sanitizeWidgetIds(workspace, layouts[layoutKey] ?? defaultWidgetIds(workspace, widgetPolicy), widgetPolicy)
+  const availableWidgets = widgetsForWorkspace(workspace, widgetPolicy)
   const maxWidgets = Math.min(6, availableWidgets.length)
   const selectedWidgets = selectedIds
     .map((id) => DASHBOARD_WIDGETS.find((widget) => widget.id === id))
@@ -311,9 +318,11 @@ export default function DashboardScreen() {
 
   const save = useCallback(
     (ids: DashboardWidgetId[]) => {
-      setLayout(context, ids).catch(() => setMessage(t("common.error")))
+      // Cards hidden by policy stay in the stored layout (display-only filter).
+      const toSave = widgetIdsToSave(workspace, ids, layouts[layoutKey], widgetPolicy)
+      setLayout(context, toSave).catch(() => setMessage(t("common.error")))
     },
-    [context, setLayout, t]
+    [context, setLayout, t, workspace, layouts, layoutKey, widgetPolicy]
   )
 
   const toggleWidget = (id: DashboardWidgetId) => {
