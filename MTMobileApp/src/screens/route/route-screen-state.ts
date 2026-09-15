@@ -47,6 +47,7 @@ export type RouteActionPanelState =
   | "gate-route"
   | "gate-paused"
   | "route-unknown"
+  | "finished"
 
 /**
  * Picks what the action panel may say, and says nothing until it knows.
@@ -98,6 +99,9 @@ export function routeActionPanelState({
 }): RouteActionPanelState {
   if (hasActiveVisit) return "visit"
   if (!workdayHydrated || !activeVisitKnown || (loading && !hasRoute)) return "loading"
+  // Redmi Pad SE, 2026-09-15: after the last visit the tab said «no route
+  // today» and asked to start the route that had just been finished.
+  if (hasRoute && routeStatus === "COMPLETED") return "finished"
   if (workdayActive && hasRoute && routeStatus === "IN_PROGRESS") return "point"
   if (workdayPaused) return "gate-paused"
   if (workdayActive) return hasRoute || routeKnownAbsent ? "gate-route" : "route-unknown"
