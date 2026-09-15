@@ -69,6 +69,8 @@ interface RoutePoint {
   plannedTime?: string
   visitedAt?: string
   distanceMeters?: number | null
+  /** The server's check-in zone for this stop (customer radius, else the organization's). */
+  geofenceRadiusMeters?: number | null
   customer: { id: string; name: string; address?: string; latitude?: number; longitude?: number }
 }
 
@@ -318,6 +320,17 @@ const ROUTE_COPY = {
 } as const
 
 const GEOFENCE_DEFAULT = 100
+
+/**
+ * The zone the server will accept. Redmi Pad SE, 2026-09-15: the app refused
+ * «ən çox 100 m» while the organization allowed 250 m, so an agent 150 m away
+ * was turned back from a check-in the server would have taken. 100 m stays
+ * only for a server that does not send the radius.
+ */
+export function checkInRadiusMeters(point: { geofenceRadiusMeters?: number | null }): number {
+  const radius = point.geofenceRadiusMeters
+  return typeof radius === "number" && Number.isFinite(radius) && radius > 0 ? radius : GEOFENCE_DEFAULT
+}
 /** How long the route read waits for a GPS fix before showing the stops without distances. */
 const ROUTE_STOPS_BEFORE_GPS_MS = 1500
 
@@ -332,8 +345,8 @@ export function routeLayout(width: number): "phone" | "tablet" {
   return isTwoPaneTabWidth(width) ? "tablet" : "phone"
 }
 
-function distanceColor(meters: number): string {
-  if (meters < GEOFENCE_DEFAULT) return fieldTheme.color.success
+function distanceColor(meters: number, radius: number = GEOFENCE_DEFAULT): string {
+  if (meters < radius) return fieldTheme.color.success
   if (meters < 500) return fieldTheme.color.amber
   return fieldTheme.color.danger
 }
@@ -675,8 +688,8 @@ function StopRow({
           ) : null}
           {point.distanceMeters != null && point.status !== "VISITED" ? (
             <View style={styles.metaItem}>
-              <Icon name="navigate-outline" size={15} color={distanceColor(point.distanceMeters)} />
-              <Text style={[styles.metaText, { color: distanceColor(point.distanceMeters) }]}>
+              <Icon name="navigate-outline" size={15} color={distanceColor(point.distanceMeters, checkInRadiusMeters(point))} />
+              <Text style={[styles.metaText, { color: distanceColor(point.distanceMeters, checkInRadiusMeters(point)) }]}>
                 {formatDistance(point.distanceMeters)}
               </Text>
             </View>
@@ -873,8 +886,8 @@ function PointActionPanel({
         ) : null}
         {point.distanceMeters != null ? (
           <View style={styles.detailFact}>
-            <Icon name="navigate-outline" size={18} color={distanceColor(point.distanceMeters)} />
-            <Text style={[styles.detailFactText, { color: distanceColor(point.distanceMeters) }]}>
+            <Icon name="navigate-outline" size={18} color={distanceColor(point.distanceMeters, checkInRadiusMeters(point))} />
+            <Text style={[styles.detailFactText, { color: distanceColor(point.distanceMeters, checkInRadiusMeters(point)) }]}>
               {renderTemplate(copy.distanceAway, { distance: formatDistance(point.distanceMeters) })}
             </Text>
           </View>
@@ -1378,13 +1391,13 @@ export default function RouteScreen() {
           ))
         : point.distanceMeters
       let forceCheckIn = false
-      if (coords && measuredDistance != null && measuredDistance > GEOFENCE_DEFAULT) {
+      if (coords && measuredDistance != null && measuredDistance > checkInRadiusMeters(point)) {
         const canOverride = api.canForceCheckIn
         let proceed = false
         if (canOverride) {
           proceed = await ask({
             title: t("visit.tooFarTitle"),
-            message: t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT }),
+            message: t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: checkInRadiusMeters(point) }),
             tone: "warning",
             buttons: [
               { text: t("common.cancel"), value: false, style: "cancel" },
@@ -1398,7 +1411,7 @@ export default function RouteScreen() {
           // ends this check-in.
           const pick = await ask<"ok" | "maps">({
             title: t("visit.tooFarTitle"),
-            message: t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: GEOFENCE_DEFAULT }),
+            message: t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: checkInRadiusMeters(point) }),
             tone: "warning",
             buttons: [
               { text: t("common.ok"), value: "ok", style: "cancel" },
