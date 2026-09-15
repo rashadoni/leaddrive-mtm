@@ -318,6 +318,8 @@ const ROUTE_COPY = {
 } as const
 
 const GEOFENCE_DEFAULT = 100
+/** How long the route read waits for a GPS fix before showing the stops without distances. */
+const ROUTE_STOPS_BEFORE_GPS_MS = 1500
 
 function routeLanguage(language: string): RouteLanguage {
   if (language.toLowerCase().startsWith("az")) return "az"
@@ -1023,13 +1025,32 @@ export default function RouteScreen() {
           return
         }
         if (routeData.id) {
-          const coords = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+          const coordsRequest = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
             Geolocation.getCurrentPosition(
               (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
               () => resolve(null),
               { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
             )
           })
+          // Galaxy S23, 2026-09-15: after «Planı dəyiş» the tab kept showing
+          // the removed stop for the whole GPS wait (up to 8 s before the
+          // workday). Stops come first; distances follow when a fix arrives.
+          let coords = await Promise.race([
+            coordsRequest,
+            new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), ROUTE_STOPS_BEFORE_GPS_MS)),
+          ])
+          if (coords === undefined) {
+            const quick = await api.getRoute(routeData.id, undefined, signal)
+            if (quick.success && quick.data) {
+              setRoute(sanitizeRouteDistances(quick.data))
+              setRouteOrigin("live")
+              setRouteKnownAbsent(false)
+              setLoading(false)
+              setRefreshing(false)
+            }
+            coords = await coordsRequest
+            if (!coords && quick.success && quick.data) return
+          }
           const detail = await api.getRoute(routeData.id, coords ?? undefined, signal)
           if (detail.success && detail.data) {
             setRoute(sanitizeRouteDistances(detail.data))

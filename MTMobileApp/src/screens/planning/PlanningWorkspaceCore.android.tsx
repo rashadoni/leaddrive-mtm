@@ -758,7 +758,13 @@ export default function PlanningWorkspaceCore({
       // Only a pending stop moves. Stepping past a visited one keeps the
       // visited stops in their order, which is all the server requires.
       if (!editableEditStop(target, date)) return
-      setEditStops((current) => movePlanningTarget(current, target.key, date, direction))
+      setEditStops((current) => {
+        // A visited neighbour keeps its time: the server refuses a retime.
+        const dayStops = current.filter((stop) => stop.date === date)
+        const index = dayStops.findIndex((stop) => stop.key === target.key)
+        const neighbour = index < 0 ? undefined : dayStops[index + direction]
+        return movePlanningTarget(current, target.key, date, direction, !neighbour || !isPublishedStopLocked(neighbour))
+      })
       setHighlightKeys(new Set())
       return
     }
@@ -1389,9 +1395,14 @@ export default function PlanningWorkspaceCore({
             <SectionIntro number="2" title={t("managerShell.planStepTargets")} />
             <View style={styles.selectionSummary}>
               <Icon name="calendar-outline" size={20} color={fieldTheme.color.blue} />
+              {/* One day counts the stops on screen: a published day has no
+                  draft assignments, and «0 müştəri seçilib» sat above its two
+                  stops right after «Planı dəyiş» (Galaxy S23, 2026-09-15). */}
               <Text style={styles.selectionSummaryText}>{t(singleDay ? "managerShell.planSelectionSummaryDay" : "managerShell.planSelectionSummaryWeek", editing
                 ? { people: editStops.length, visits: editStops.length }
-                : { people: mutableTargetCount, visits: assignments.length })}</Text>
+                : singleDay
+                  ? { people: new Set(activeDayTargets.map((target) => target.key)).size, visits: activeDayTargets.length }
+                  : { people: mutableTargetCount, visits: assignments.length })}</Text>
               <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || editing }} disabled={saving || editing} style={[styles.textButton, (saving || editing) && styles.disabled]} onPress={() => setStep(1)}><Text style={styles.textButtonText}>{t("managerShell.planChangeSetup")}</Text></Pressable>
             </View>
 

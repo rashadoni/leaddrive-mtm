@@ -220,6 +220,16 @@ describe("friendly manager planning model", () => {
       { ...clinic, date: "2026-08-24", plannedTime: "14:27" },
     ], "2026-08-24", "Asia/Baku")).toBe("15:00")
     expect(movePlanningTarget(rows, doctor.key, "2026-08-24", -1).map((target) => target.key)).toEqual([doctor.key, clinic.key])
+    // The time stays with the slot: the stop moved up takes the earlier time.
+    expect(movePlanningTarget(rows, doctor.key, "2026-08-24", -1).map((target) => [target.key, target.plannedTime])).toEqual([
+      [doctor.key, nineBaku],
+      [clinic.key, rows[1].plannedTime],
+    ])
+    expect(movePlanningTarget(rows, doctor.key, "2026-08-24", -1, false).map((target) => [target.key, target.plannedTime])).toEqual([
+      [doctor.key, rows[1].plannedTime],
+      [clinic.key, nineBaku],
+    ])
+    expect(movePlanningTarget([rows[0], { ...rows[1], plannedTime: null }], doctor.key, "2026-08-24", -1).map((target) => target.plannedTime)).toEqual([null, nineBaku])
     expect(updatePlanningTargetTime(rows, clinic.key, "2026-08-24", null)[0].plannedTime).toBeNull()
   })
 
