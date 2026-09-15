@@ -168,3 +168,26 @@ describe("route action panel: no instruction before the facts are read", () => {
     expect(phone).toContain(") : route ? actionPanel : null}")
   })
 })
+
+/**
+ * Redmi Pad SE, 2026-09-15: right after the last visit the tab read «Bu gün
+ * marşrut yoxdur» and «Marşrutun başlanması gözlənilir» with a disabled start
+ * button, and after a check-out the panel stayed on the stop just visited.
+ */
+describe("route action panel after the route is done", () => {
+  it("says the route is finished, whatever the workday is doing", () => {
+    expect([
+      routeActionPanelState({ ...settled, routeStatus: "COMPLETED" }),
+      routeActionPanelState({ ...settled, routeStatus: "COMPLETED", workdayActive: false }),
+      routeActionPanelState({ ...settled, routeStatus: "COMPLETED", hasActiveVisit: true }),
+    ]).toEqual(["finished", "finished", "visit"])
+  })
+
+  it("keeps today's finished route and moves the panel on after a check-out", () => {
+    expect(source).toContain("const statusRank: Record<string, number> = { IN_PROGRESS: 2, PLANNED: 1, COMPLETED: 0 }")
+    expect(source).toContain('<RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} />')
+    expect(source.match(/routeFinishedBody: "/g)).toHaveLength(3)
+    const checkOut = source.slice(source.indexOf("const performCheckOut"), source.indexOf("const performCheckOut") + 1500)
+    expect(checkOut).toContain("setSelectedPointId(null)")
+  })
+})

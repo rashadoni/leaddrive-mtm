@@ -158,6 +158,8 @@ const ROUTE_COPY = {
     workdayPausedBody: "Маршрут и рабочий GPS заблокированы. Возобновите рабочий день в HRM, прежде чем начинать маршрут.",
     routeStartRequiredTitle: "Маршрут ждёт запуска",
     routeStartRequiredBody: "Рабочий день уже начат. Нажмите «Начать маршрут», прежде чем строить путь или начинать визит.",
+    routeFinishedTitle: "Маршрут завершён",
+    routeFinishedBody: "Посещено точек: {{visited}} из {{total}}. Завершите рабочий день на экране «Сегодня», когда закончите.",
     startRoute: "Начать маршрут",
     routeStarting: "Запускаем маршрут…",
     routeStartQueuedTitle: "Начало маршрута сохранено",
@@ -234,6 +236,8 @@ const ROUTE_COPY = {
     workdayPausedBody: "Marşrut və iş GPS-i bloklanıb. Marşruta başlamazdan əvvəl HRM-də iş gününü davam etdirin.",
     routeStartRequiredTitle: "Marşrutun başlanması gözlənilir",
     routeStartRequiredBody: "İş günü artıq başlayıb. Yolu açmazdan və ya ziyarətə başlamazdan əvvəl «Marşruta başla» düyməsinə toxunun.",
+    routeFinishedTitle: "Marşrut tamamlandı",
+    routeFinishedBody: "Ziyarət edilən nöqtələr: {{visited}} / {{total}}. İşi bitirəndə «Bu gün» ekranında iş gününü bitirin.",
     startRoute: "Marşruta başla",
     routeStarting: "Marşrut başladılır…",
     routeStartQueuedTitle: "Marşrutun başlanması yadda saxlanıldı",
@@ -310,6 +314,8 @@ const ROUTE_COPY = {
     workdayPausedBody: "Route work and GPS are blocked. Resume the workday in HRM before starting the route.",
     routeStartRequiredTitle: "Route is waiting to start",
     routeStartRequiredBody: "The workday has started. Tap Start route before getting directions or beginning a visit.",
+    routeFinishedTitle: "Route finished",
+    routeFinishedBody: "Stops visited: {{visited}} of {{total}}. End the workday on the Today screen when you are done.",
     startRoute: "Start route",
     routeStarting: "Starting route…",
     routeStartQueuedTitle: "Route start saved",
@@ -486,6 +492,25 @@ function RouteExecutionGate({
           disabled={busy || disabled}
         />
       ) : null}
+    </View>
+  )
+}
+
+function RouteFinishedPanel({ visited, total, copy }: {
+  visited: number
+  total: number
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+}) {
+  return (
+    <View style={styles.actionPanel} accessibilityLiveRegion="polite" testID="route-action-panel-finished">
+      <View style={styles.actionEyebrowRow}>
+        <Icon name="checkmark-circle" size={19} color={fieldTheme.color.success} />
+        <Text style={styles.actionEyebrow}>{copy.routeFinishedTitle}</Text>
+      </View>
+      <Text style={styles.actionTitle}>{copy.routeFinishedTitle}</Text>
+      <Text style={styles.actionAddress}>
+        {copy.routeFinishedBody.replace("{{visited}}", String(visited)).replace("{{total}}", String(total))}
+      </Text>
     </View>
   )
 }
@@ -1021,10 +1046,12 @@ export default function RouteScreen() {
       if (!response.success || !response.data?.routes?.length) response = await api.getRoutes(undefined, signal)
       if (!response.success) throw new Error(response.error || "ROUTE_LOAD_FAILED")
       if (response.success && response.data?.routes?.length > 0) {
-        const activeStatuses = new Set(["PLANNED", "IN_PROGRESS"])
+        // Today's finished route stays on screen as finished: dropping it
+        // made the tab say «no route today» right after the last visit.
+        const statusRank: Record<string, number> = { IN_PROGRESS: 2, PLANNED: 1, COMPLETED: 0 }
         const activeForToday = response.data.routes
-          .filter((candidate: any) => routeDateKey(candidate.date) === today && activeStatuses.has(candidate.status))
-          .sort((left: any, right: any) => Number(right.status === "IN_PROGRESS") - Number(left.status === "IN_PROGRESS"))
+          .filter((candidate: any) => routeDateKey(candidate.date) === today && candidate.status in statusRank)
+          .sort((left: any, right: any) => statusRank[right.status] - statusRank[left.status])
         const routeData = activeForToday[0]
         if (!routeData) {
           setRoute(null)
@@ -1508,6 +1535,9 @@ export default function RouteScreen() {
         notes: notes || undefined,
       })
       setActiveVisit(visit)
+      // The panel moves on to the next stop instead of staying on the one
+      // just finished (Redmi Pad SE, 2026-09-15).
+      setSelectedPointId(null)
       notify({ tone: "success", title: t("visit.checkOutQueuedTitle"), message: t("visit.checkOutQueuedBody") })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
@@ -1539,6 +1569,8 @@ export default function RouteScreen() {
   })
   const actionPanel = actionPanelState === "loading" ? (
     <RouteActionPanelLoading copy={copy} />
+  ) : actionPanelState === "finished" ? (
+    <RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} />
   ) : actionPanelState === "route-unknown" ? (
     // The list beside it already says the route did not load and offers a
     // retry; a second card here would only repeat it.
