@@ -1,5 +1,6 @@
 import {
   acknowledgeRouteCommand,
+  conflictRouteCommands,
   enqueueRouteCommand,
   submitRouteCommand,
   type MobileRouteCommandAppliedResponse,
@@ -21,12 +22,14 @@ export type PublishedRouteUpdateDeps = {
   enqueue: (input: MobileRouteCommandInput) => Promise<RouteCommandJournalItem>
   submit: (input: MobileRouteCommandInput, send: RouteCommandSender) => Promise<MobileRouteCommandAppliedResponse>
   discard: (operationId: string) => Promise<boolean>
+  conflicts: () => Promise<RouteCommandJournalItem[]>
 }
 
 const DEFAULT_DEPS: PublishedRouteUpdateDeps = {
   enqueue: enqueueRouteCommand,
   submit: (input, send) => submitRouteCommand(input, send),
   discard: acknowledgeRouteCommand,
+  conflicts: conflictRouteCommands,
 }
 
 /**
@@ -48,6 +51,14 @@ export function isDefinitiveRouteCommandRejection(status: unknown): boolean {
  * a conflict that would hold back every later route command (START included).
  * Without an answer (network, 5xx) it stays queued: the server may have
  * applied it, and only the receipt can say.
+ *
+ * Operation ids and server receipts: the server stores a refusal (409) under
+ * its operation id and answers MOBILE_ROUTE_COMMAND_IDEMPOTENCY_MISMATCH when
+ * that id comes back with another payload. Every attempt after a refusal must
+ * therefore carry a new id. Removing the refused entry guarantees it: the
+ * journal only reuses an id for an equal envelope that is still in it. A
+ * refused entry left behind by an earlier failed removal is dropped before
+ * enqueueing, for the same reason.
  */
 export async function submitPublishedRouteUpdate(
   input: { routeId: string; expectedVersion: number; points: PublishedRoutePoint[] },
@@ -59,6 +70,8 @@ export async function submitPublishedRouteUpdate(
     routeId: input.routeId,
     payload: { expectedVersion: input.expectedVersion, points: input.points.map((point) => ({ ...point })) },
   }
+  const stale = (await deps.conflicts()).filter((entry) => entry.command === "UPDATE_PUBLISHED" && entry.routeId === input.routeId)
+  for (const entry of stale) await deps.discard(entry.operationId)
   // Equal envelopes deduplicate in the journal, so this is the item that
   // submit() below sends.
   const item = await deps.enqueue(command)

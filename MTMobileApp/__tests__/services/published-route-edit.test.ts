@@ -259,6 +259,7 @@ describe("server answers to UPDATE_PUBLISHED", () => {
       "managerShell.planEditProblemTitle",
       "managerShell.planPublishedReadOnlyBody",
       "managerShell.planEditSaveDraftsFirst",
+      "managerShell.planEditReloaded",
     ]
     const missing: string[] = []
     for (const locale of ["az", "ru", "en"] as const) {

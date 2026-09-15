@@ -2,6 +2,13 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 )
 
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import {
+  allRouteCommandJournalEntries,
+  enqueueRouteCommand,
+  flushRouteCommandJournal,
+} from "../../src/services/route-command-journal"
+import { setOfflineScope } from "../../src/services/offline-scope"
 import type {
   MobileRouteCommandInput,
   MobileRouteCommandRequest,
@@ -13,6 +20,7 @@ import {
   submitPublishedRouteUpdate,
   type PublishedRouteUpdateDeps,
 } from "../../src/services/published-route-update"
+import { publishedRouteEditErrorOutcome } from "../../src/services/published-route-edit"
 
 /**
  * UPDATE_PUBLISHED goes through the durable route-command journal like every
@@ -54,6 +62,7 @@ function harness(sendResult: (request: MobileRouteCommandRequest) => Promise<unk
       discarded.push(operationId)
       return true
     },
+    conflicts: async () => [],
   }
   return { deps, enqueued, discarded, send: sendResult }
 }
@@ -130,5 +139,91 @@ describe("submitPublishedRouteUpdate", () => {
   it("treats 5xx, 408 and 429 as no answer, and every other 4xx as a decision", () => {
     expect([400, 403, 404, 409, 422].every(isDefinitiveRouteCommandRejection)).toBe(true)
     expect([408, 429, 500, 503, undefined].some(isDefinitiveRouteCommandRejection)).toBe(false)
+  })
+})
+
+/**
+ * Server review of #218: a 409 is stored as a receipt under its operation id,
+ * and the same id with another payload is MOBILE_ROUTE_COMMAND_IDEMPOTENCY_MISMATCH.
+ * These run against the real journal to prove every attempt after a refusal
+ * carries a new id.
+ */
+describe("operation ids after a refusal (real journal)", () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear()
+    setOfflineScope("org-1", "agent-1")
+  })
+
+  function recordingServer(answers: Array<(request: MobileRouteCommandRequest) => unknown>) {
+    const ids: string[] = []
+    const send: RouteCommandSender = async (request) => {
+      ids.push(request.operationId)
+      const answer = answers[ids.length - 1]
+      if (!answer) throw new Error("no answer scripted")
+      return answer(request)
+    }
+    return { ids, send }
+  }
+
+  const refuse = (code: string, extra: Record<string, unknown> = {}) => () => {
+    throw Object.assign(new Error(code), { code, status: 409, ...extra })
+  }
+  const apply = (version: number) => () => ({ success: true, data: { id: "route-1", version, status: "PLANNED" } })
+
+  it("sends the same change again under a new id after ROUTE_VISITED_POINTS_LOCKED", async () => {
+    const server = recordingServer([refuse("ROUTE_VISITED_POINTS_LOCKED", { pointIds: ["p1"], currentVersion: 3 }), apply(4)])
+    await failure(submitPublishedRouteUpdate(input, server.send))
+    expect(await allRouteCommandJournalEntries()).toEqual([])
+    await expect(submitPublishedRouteUpdate(input, server.send)).resolves.toMatchObject({ data: { version: 4 } })
+    expect(server.ids).toHaveLength(2)
+    expect(server.ids[1]).not.toBe(server.ids[0])
+  })
+
+  it("starts «Yenidən başla» on a fresh version under a new id after a version conflict", async () => {
+    const server = recordingServer([refuse("ROUTE_VERSION_CONFLICT", { currentVersion: 5 }), apply(6)])
+    const error = await failure(submitPublishedRouteUpdate(input, server.send))
+    expect(error.code).toBe("ROUTE_VERSION_CONFLICT")
+    await submitPublishedRouteUpdate({ ...input, expectedVersion: 5 }, server.send)
+    expect(new Set(server.ids).size).toBe(2)
+    expect(await allRouteCommandJournalEntries()).toEqual([])
+  })
+
+  it("reloads after the server's unstored race conflict that carries no currentVersion", async () => {
+    const server = recordingServer([refuse("ROUTE_VERSION_CONFLICT"), apply(4)])
+    const error = await failure(submitPublishedRouteUpdate(input, server.send))
+    expect(error.currentVersion).toBeUndefined()
+    expect(publishedRouteEditErrorOutcome(error).action).toBe("reload-and-ask")
+    await submitPublishedRouteUpdate(input, server.send)
+    expect(server.ids[1]).not.toBe(server.ids[0])
+  })
+
+  it("drops the entry on MOBILE_ROUTE_COMMAND_IDEMPOTENCY_MISMATCH and reloads before a new id", async () => {
+    const server = recordingServer([refuse("MOBILE_ROUTE_COMMAND_IDEMPOTENCY_MISMATCH"), apply(4)])
+    const error = await failure(submitPublishedRouteUpdate(input, server.send))
+    expect(publishedRouteEditErrorOutcome(error)).toMatchObject({
+      action: "reload-and-ask",
+      messageKey: "managerShell.planEditReloaded",
+    })
+    expect(await allRouteCommandJournalEntries()).toEqual([])
+    await submitPublishedRouteUpdate(input, server.send)
+    expect(server.ids[1]).not.toBe(server.ids[0])
+  })
+
+  it("never resends a refused id left in the journal by an earlier failed removal", async () => {
+    // A background flush pins the refusal as a conflict entry.
+    await enqueueRouteCommand({ command: "UPDATE_PUBLISHED", routeId: "route-1", payload: { expectedVersion: 3, points: input.points } })
+    const pinned = recordingServer([refuse("ROUTE_POINT_CHANGE_PENDING", { pointIds: ["p2"], currentVersion: 3 })])
+    await flushRouteCommandJournal(pinned.send)
+    expect((await allRouteCommandJournalEntries()).map((entry) => entry.status)).toEqual(["conflict"])
+
+    const server = recordingServer([apply(4)])
+    await submitPublishedRouteUpdate(input, server.send)
+    expect(server.ids).toHaveLength(1)
+    expect(server.ids[0]).not.toBe(pinned.ids[0])
+    expect(await allRouteCommandJournalEntries()).toEqual([])
+  })
+
+  it("treats any other 409 it has no rule for as a reason to reload", () => {
+    expect(publishedRouteEditErrorOutcome({ code: "SOMETHING_NEW", status: 409 })).toMatchObject({ action: "reload-and-ask", code: "SOMETHING_NEW" })
   })
 })

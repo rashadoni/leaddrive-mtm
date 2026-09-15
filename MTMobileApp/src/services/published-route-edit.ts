@@ -217,7 +217,14 @@ export type PublishedRouteEditErrorOutcome = {
 }
 
 const OUTCOMES: Record<string, Omit<PublishedRouteEditErrorOutcome, "code">> = {
+  // Also the server's unstored race answer (rolled back, no currentVersion):
+  // the same reload covers it.
   ROUTE_VERSION_CONFLICT: { messageKey: "managerShell.planEditVersionConflict", tone: "warning", action: "reload-and-ask" },
+  // The server keys receipts by operation id. These two mean the id is
+  // unusable: the entry is already dropped from the journal, so the next
+  // attempt — after a reload — gets a new id.
+  MOBILE_ROUTE_COMMAND_IDEMPOTENCY_MISMATCH: { messageKey: "managerShell.planEditReloaded", tone: "warning", action: "reload-and-ask" },
+  MOBILE_ROUTE_COMMAND_RECEIPT_EXPIRED: { messageKey: "managerShell.planEditReloaded", tone: "warning", action: "reload-and-ask" },
   ROUTE_TRANSITION_INVALID: { messageKey: "managerShell.planEditRouteClosed", tone: "warning", action: "exit-edit" },
   MTM_ROUTE_NOT_FOUND: { messageKey: "managerShell.planEditRouteClosed", tone: "warning", action: "exit-edit" },
   ROUTE_VISITED_POINTS_LOCKED: { messageKey: "managerShell.planEditVisitedLocked", tone: "warning", action: "restart-edit" },
@@ -246,6 +253,16 @@ export function publishedRouteEditErrorOutcome(error: unknown): PublishedRouteEd
   const code = (error as { code?: unknown } | null)?.code
   const known = typeof code === "string" ? OUTCOMES[code] : undefined
   if (known && typeof code === "string") return { ...known, code }
+  // A 409 this app has no rule for is still a statement about the route as
+  // the server holds it now; editing on top of the old copy would repeat it.
+  if ((error as { status?: unknown } | null)?.status === 409) {
+    return {
+      messageKey: "managerShell.planEditReloaded",
+      tone: "warning",
+      action: "reload-and-ask",
+      code: typeof code === "string" && code ? code : "UNKNOWN",
+    }
+  }
   return {
     messageKey: "managerShell.planEditFailed",
     tone: "error",
