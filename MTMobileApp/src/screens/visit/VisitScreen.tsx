@@ -49,6 +49,8 @@ import StatusBarBand from "../../components/StatusBarBand"
 import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { useBootstrapStore } from "../../store/bootstrap"
+import { checkInRadiusMeters } from "../../lib/check-in-radius"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
   filterVisitCustomers,
@@ -94,7 +96,7 @@ type CheckInIssue =
   | { kind: "no-coordinates" }
   | { kind: "implausible-distance"; distanceMeters: number }
   | { kind: "no-position"; reason: PositionFailure }
-  | { kind: "too-far"; distanceMeters: number; name: string }
+  | { kind: "too-far"; distanceMeters: number; name: string; maxMeters: number }
   | { kind: "server" }
 
 const VISIT_COPY = {
@@ -304,7 +306,6 @@ const VISIT_COPY = {
   },
 } as const
 
-const GEOFENCE_DEFAULT = 100
 const MAX_CACHED_LOCATION_AGE_MS = 120_000
 
 function formatDistance(meters: number): string {
@@ -312,8 +313,8 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`
 }
 
-function distanceTone(meters: number): { color: string; background: string } {
-  if (meters < GEOFENCE_DEFAULT) {
+function distanceTone(meters: number, radius: number): { color: string; background: string } {
+  if (meters < radius) {
     return { color: fieldTheme.color.success, background: fieldTheme.color.successSoft }
   }
   if (meters < 500) {
@@ -693,7 +694,7 @@ export default function VisitScreen() {
         showOutcomeSheet(t("visit.tooFarTitle"), t("visit.checkInRejectedTooFar", {
           name: customer.name,
           distance: formatCheckInDistance(outcome.distanceMeters),
-          max: outcome.maxMeters ?? GEOFENCE_DEFAULT,
+          max: outcome.maxMeters ?? checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies),
         }))
         return
       case "no_coordinates":
@@ -832,16 +833,18 @@ export default function VisitScreen() {
       let forceCheckIn = false
       if (precondition.kind === "ready") {
         const distance = precondition.distanceMeters
-        if (distance > GEOFENCE_DEFAULT) {
+        // The organization's zone, as the server enforces it (lib/check-in-radius.ts).
+        const radius = checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies)
+        if (distance > radius) {
           if (!api.canForceCheckIn) {
-            setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })
+            setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name, maxMeters: radius })
             notify({
               tone: "error",
               title: t("visit.tooFarTitle"),
               message: t("visit.tooFarAskSupervisor", {
                 distance: formatDistance(distance),
                 name: customer.name,
-                max: GEOFENCE_DEFAULT,
+                max: radius,
               }),
             })
             return
@@ -853,7 +856,7 @@ export default function VisitScreen() {
             message: t("visit.tooFarBody", {
               distance: formatDistance(distance),
               name: customer.name,
-              max: GEOFENCE_DEFAULT,
+              max: radius,
             }),
             tone: "warning",
             buttons: [
@@ -863,7 +866,7 @@ export default function VisitScreen() {
             dismissValue: false,
           })
           if (!proceed) {
-            setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name })
+            setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name, maxMeters: radius })
             return
           }
           forceCheckIn = true
@@ -1229,7 +1232,7 @@ function checkInIssueText(issue: CheckInIssue, copy: Copy): { title: string; bod
         body: copy.issueTooFarBody
           .replace("{{name}}", issue.name)
           .replace("{{distance}}", formatDistanceMeters(issue.distanceMeters))
-          .replace("{{max}}", String(GEOFENCE_DEFAULT)),
+          .replace("{{max}}", String(issue.maxMeters)),
       }
     case "server":
       return { title: copy.issueServerTitle, body: copy.issueServerBody }
@@ -1519,7 +1522,7 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
 }) {
   const { t } = useTranslation()
   const category = categoryTone(customer.category)
-  const distance = customer.distanceMeters == null ? null : distanceTone(customer.distanceMeters)
+  const distance = customer.distanceMeters == null ? null : distanceTone(customer.distanceMeters, checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies))
   return (
     <Pressable
       accessibilityRole="radio"

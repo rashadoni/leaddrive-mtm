@@ -82,6 +82,8 @@ export interface BootstrapPolicies {
    * reason; read it only through `pharmacyPromotionsEnabled()`.
    */
   pharmacyPromotionsEnabled?: boolean
+  /** The organization's check-in zone in meters; read through `checkInRadiusMeters()`. */
+  checkInGeofenceRadiusMeters?: number | null
 }
 
 export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
@@ -371,6 +373,9 @@ export function toBootstrap(raw: any): BootstrapData {
       fieldContactsEnabled: record(raw?.policies)?.fieldContactsEnabled !== false,
       // Same tolerant default for pharmacy promotions.
       pharmacyPromotionsEnabled: record(raw?.policies)?.pharmacyPromotionsEnabled !== false,
+      checkInGeofenceRadiusMeters: typeof record(raw?.policies)?.checkInGeofenceRadiusMeters === "number"
+        ? record(raw?.policies)?.checkInGeofenceRadiusMeters as number
+        : null,
     },
     routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday
