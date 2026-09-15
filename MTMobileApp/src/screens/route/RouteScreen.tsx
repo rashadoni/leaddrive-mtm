@@ -1048,8 +1048,18 @@ export default function RouteScreen() {
               setLoading(false)
               setRefreshing(false)
             }
+            if (quick.success && quick.data) {
+              // Fresh stops are on screen: a failed distance read must not put
+              // the saved offline copy (with the removed stop) back.
+              const fix = await coordsRequest
+              if (!fix) return
+              try {
+                const detailed = await api.getRoute(routeData.id, fix, signal)
+                if (detailed.success && detailed.data) setRoute(sanitizeRouteDistances(detailed.data))
+              } catch {}
+              return
+            }
             coords = await coordsRequest
-            if (!coords && quick.success && quick.data) return
           }
           const detail = await api.getRoute(routeData.id, coords ?? undefined, signal)
           if (detail.success && detail.data) {
