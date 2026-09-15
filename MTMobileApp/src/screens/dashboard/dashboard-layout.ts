@@ -94,6 +94,32 @@ export function sanitizeWidgetIds(
   return unique.length > 0 ? unique : defaultWidgetIds(workspace, policy)
 }
 
+/**
+ * The list to persist after an edit made while a policy hides some widgets.
+ * `next` is what the agent arranged from the visible cards; a widget that was
+ * in the stored layout and is hidden only by policy is carried over (in its
+ * stored position where possible), so switching the feature back on restores
+ * the card instead of losing it to the first edit. Display still filters.
+ */
+export function widgetIdsToSave(
+  workspace: DashboardWorkspace,
+  next: DashboardWidgetId[],
+  stored: unknown,
+  policy: DashboardWidgetPolicy = {},
+): DashboardWidgetId[] {
+  if (!Array.isArray(stored)) return next
+  const visible = new Set(widgetsForWorkspace(workspace, policy).map((widget) => widget.id))
+  const known = new Set(widgetsForWorkspace(workspace).map((widget) => widget.id))
+  const result = next.filter((id) => visible.has(id))
+  stored.forEach((id, index) => {
+    if (typeof id !== "string") return
+    const widgetId = id as DashboardWidgetId
+    if (!known.has(widgetId) || visible.has(widgetId) || result.includes(widgetId)) return
+    result.splice(Math.min(index, result.length), 0, widgetId)
+  })
+  return result.slice(0, 6)
+}
+
 export const DASHBOARD_MIN_CARD_WIDTH = 200
 
 export function dashboardColumns(

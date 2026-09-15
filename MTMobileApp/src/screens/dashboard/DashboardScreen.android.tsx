@@ -43,6 +43,7 @@ import {
   managerWidgetDestination,
   moveWidget,
   sanitizeWidgetIds,
+  widgetIdsToSave,
   widgetsForWorkspace,
 } from "./dashboard-layout"
 import { managerApi } from "../../services/manager-api"
@@ -272,7 +273,7 @@ export default function DashboardScreen() {
   // The organization can switch pharmacy promotions off; its card then leaves
   // both the dashboard and the widget picker. A missing answer keeps it.
   const promotionsEnabled = useBootstrapStore((state) => pharmacyPromotionsEnabled(state.data?.policies))
-  const widgetPolicy = { pharmacyPromotionsEnabled: promotionsEnabled }
+  const widgetPolicy = useMemo(() => ({ pharmacyPromotionsEnabled: promotionsEnabled }), [promotionsEnabled])
   const selectedIds = sanitizeWidgetIds(workspace, layouts[layoutKey] ?? defaultWidgetIds(workspace, widgetPolicy), widgetPolicy)
   const availableWidgets = widgetsForWorkspace(workspace, widgetPolicy)
   const maxWidgets = Math.min(6, availableWidgets.length)
@@ -317,9 +318,11 @@ export default function DashboardScreen() {
 
   const save = useCallback(
     (ids: DashboardWidgetId[]) => {
-      setLayout(context, ids).catch(() => setMessage(t("common.error")))
+      // Cards hidden by policy stay in the stored layout (display-only filter).
+      const toSave = widgetIdsToSave(workspace, ids, layouts[layoutKey], widgetPolicy)
+      setLayout(context, toSave).catch(() => setMessage(t("common.error")))
     },
-    [context, setLayout, t]
+    [context, setLayout, t, workspace, layouts, layoutKey, widgetPolicy]
   )
 
   const toggleWidget = (id: DashboardWidgetId) => {
