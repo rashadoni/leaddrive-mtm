@@ -72,7 +72,8 @@ function persistedFinished(value: unknown): FinishedWorkday | null {
     typeof parsed.finishedAt !== "string" ||
     typeof parsed.dateKey !== "string"
   ) return null
-  return { key: parsed.key, workdayId: parsed.workdayId, finishedAt: parsed.finishedAt, dateKey: parsed.dateKey }
+  // Saved by builds that kept the server's full timestamp as the day.
+  return { key: parsed.key, workdayId: parsed.workdayId, finishedAt: parsed.finishedAt, dateKey: parsed.dateKey.slice(0, 10) }
 }
 
 async function rememberFinishedWorkday(key: string, workday: BootstrapWorkday): Promise<FinishedWorkday> {
@@ -81,7 +82,10 @@ async function rememberFinishedWorkday(key: string, workday: BootstrapWorkday): 
     key,
     workdayId: workday.id,
     finishedAt,
-    dateKey: workday.workDate ?? localDateKey(new Date(finishedAt)),
+    // The server sends workDate as a Prisma date ("2026-09-15T00:00:00.000Z");
+    // compared whole with localDateKey() it never matched, so a finished day
+    // was offered again as "not started" (Redmi Pad SE, 2026-09-15).
+    dateKey: workday.workDate?.slice(0, 10) || localDateKey(new Date(finishedAt)),
   }
   await AsyncStorage.setItem(FINISHED_STORAGE_KEY, JSON.stringify(finished))
   return finished
@@ -259,14 +263,22 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       await AsyncStorage.removeItem(STORAGE_KEY)
       // The server closed this very shift: remember when, so "Today" shows
       // "finished at" instead of "not started" (audit M-05).
-      const finishedWorkday = workday && workday.id === local.workdayId && isWorkdayFinished(workday) && !startConflict && !finishConflict
+      // A START refused because today's shift already exists and is finished
+      // (MTM_WORKDAY_ALREADY_EXISTS, e.g. closed on another device): the day
+      // is over here too. Without this the button came back and every tap
+      // queued one more refused START.
+      const rejectedStartOnFinishedDay = startConflict && !!workday && isWorkdayFinished(workday) &&
+        workday.workDate?.slice(0, 10) === localDateKey(new Date(local.startedAt))
+      const finishedWorkday = workday && isWorkdayFinished(workday) && (
+        (workday.id === local.workdayId && !startConflict && !finishConflict) || rejectedStartOnFinishedDay
+      )
         ? await rememberFinishedWorkday(key, workday)
         : get().finishedWorkday
       if (get().activeWorkday?.workdayId === local.workdayId) {
         set({
           activeWorkday: null,
           finishedWorkday,
-          syncError: startConflict ? "START_CONFLICT" : finishConflict ? "FINISH_CONFLICT" : null,
+          syncError: startConflict && !rejectedStartOnFinishedDay ? "START_CONFLICT" : finishConflict ? "FINISH_CONFLICT" : null,
         })
       }
     } else if (workday && isWorkdayFinished(workday)) {

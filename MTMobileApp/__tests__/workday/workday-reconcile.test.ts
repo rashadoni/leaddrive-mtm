@@ -182,6 +182,39 @@ describe("finished workday memory (field UX audit M-05 / B3)", () => {
     expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe("START_PENDING")
   })
 
+  it("keeps only the day of the server's workDate timestamp", async () => {
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-iso", status: "COMPLETED", workDate: "2026-09-15T00:00:00.000Z",
+      startedAt: "2026-09-15T05:00:00.000Z", completedAt: "2026-09-15T09:00:00.000Z",
+    })
+    expect(useWorkdayStore.getState().finishedWorkday?.dateKey).toBe("2026-09-15")
+  })
+
+  it("closes the day on this device when its START was refused because today's shift is finished", async () => {
+    const now = new Date()
+    const dateKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-")
+    useWorkdayStore.setState({ activeWorkday: { key: "t:a", workdayId: "wd-local", startedAt: now.toISOString(), syncState: "START_PENDING" } })
+    mockedAllOutboxOperations.mockResolvedValue([queuedWorkday("START", "wd-local", "conflict")])
+
+    await useWorkdayStore.getState().reconcileFromServer("t:a", {
+      id: "srv-morning", status: "COMPLETED", workDate: `${dateKey}T00:00:00.000Z`,
+      startedAt: now.toISOString(), completedAt: now.toISOString(),
+    })
+
+    const state = useWorkdayStore.getState()
+    expect([state.activeWorkday, state.syncError, state.finishedWorkday?.workdayId, state.finishedWorkday?.dateKey])
+      .toEqual([null, null, "srv-morning", dateKey])
+  })
+
+  it("still reports a refused START when the server's shift is not today's finished one", async () => {
+    useWorkdayStore.setState({ activeWorkday: { key: "t:a", workdayId: "wd-local", startedAt: new Date().toISOString(), syncState: "START_PENDING" } })
+    mockedAllOutboxOperations.mockResolvedValue([queuedWorkday("START", "wd-local", "conflict")])
+
+    await useWorkdayStore.getState().reconcileFromServer("t:a", null)
+
+    expect([useWorkdayStore.getState().syncError, useWorkdayStore.getState().finishedWorkday]).toEqual(["START_CONFLICT", null])
+  })
+
   it("hydrates the remembered finish", async () => {
     await AsyncStorage.setItem("@mtm_finished_workday_v1", JSON.stringify({ key: "t:a", workdayId: "srv-5", finishedAt: "2026-09-05T18:24:00.000Z", dateKey: "2026-09-05" }))
     useWorkdayStore.setState({ hydrated: false })
