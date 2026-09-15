@@ -44,6 +44,10 @@ export interface PlanningTarget {
   workplaces?: PlanningWorkplace[]
   validOnDate?: string
   plannedTime?: string | null
+  /** Server route point id; present only on stops read from a saved route. */
+  pointId?: string
+  /** Server point status (PENDING, VISITED, SKIPPED, …) of a saved stop. */
+  pointStatus?: string
 }
 
 export interface PlanningRouteAssignment {
@@ -385,6 +389,14 @@ export function toPlanningDetailedRoute(raw: any): PlanningDetailedRoute | null 
     if (!customerId) return []
     const contactId = str(point?.contactId) ?? str(point?.contact?.id)
     const plannedTime = str(point?.plannedTime) ?? null
+    // A published route keeps visited stops fixed; the editor needs to know
+    // which saved stop is which and whether field work already touched it.
+    const pointId = str(point?.id)
+    const pointStatus = str(point?.status)
+    const saved: Pick<PlanningTarget, "pointId" | "pointStatus"> = {
+      ...(pointId ? { pointId } : {}),
+      ...(pointStatus ? { pointStatus } : {}),
+    }
     if (contactId) {
       return [{
         key: planningTargetKey(customerId, contactId),
@@ -397,6 +409,7 @@ export function toPlanningDetailedRoute(raw: any): PlanningDetailedRoute | null 
         eligible: true,
         validOnDate: routeDate,
         plannedTime,
+        ...saved,
       }]
     }
     return [{
@@ -407,6 +420,7 @@ export function toPlanningDetailedRoute(raw: any): PlanningDetailedRoute | null 
       address: str(customer?.address) ?? str(customer?.city),
       eligible: true,
       plannedTime,
+      ...saved,
     }]
   })
   return {
@@ -460,7 +474,12 @@ export function lockedPlanningTargetCells(routes: PlanningDetailedRoute[]): stri
     .flatMap((route) => route.points.map((point) => `${route.date}|${point.key}`)))]
 }
 
-/** Active published work blocks creation of a second route for that agent/day. */
+/**
+ * Active published work blocks creation of a second route for that agent/day.
+ * Such a day is not frozen for its own agent: "Planı dəyiş" opens it in the
+ * published-route editor (services/published-route-edit.ts), which sends
+ * UPDATE_PUBLISHED instead of a second draft.
+ */
 export function lockedPlanningDates(routes: PlanningDetailedRoute[]): string[] {
   return [...new Set(routes
     .filter((route) => route.status === "PLANNED" || route.status === "IN_PROGRESS")
