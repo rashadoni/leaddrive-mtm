@@ -187,6 +187,9 @@ describe("friendly manager planning model", () => {
       route({ id: "draft", points: [doctor] }),
       route({ id: "planned", date: "2026-08-25", status: "PLANNED", points: [clinic] }),
     ]
+    // A published day is not folded into the mutable drafts and cannot get a
+    // second route. It is not frozen for its agent any more: «Planı dəyiş»
+    // edits that route itself (published-route-edit.test.ts).
     expect(editablePlanningTargets(routes, "agent-1")).toEqual([{ ...doctor, date: "2026-08-24" }])
     expect(lockedPlanningDates(routes)).toEqual(["2026-08-25"])
   })

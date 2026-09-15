@@ -330,6 +330,14 @@ class ApiClient {
         if (typeof data.recommendedPageSize === "number" && Number.isFinite(data.recommendedPageSize)) {
           err.recommendedPageSize = Math.max(1, Math.min(500, Math.floor(data.recommendedPageSize)))
         }
+        // A refused route change names the stops it is about, so the planner
+        // can mark them instead of saying "something is wrong".
+        if (Array.isArray(data.pointIds)) {
+          err.pointIds = data.pointIds.filter((id: unknown): id is string => typeof id === "string")
+        }
+        if (typeof data.currentVersion === "number" && Number.isInteger(data.currentVersion)) {
+          err.currentVersion = data.currentVersion
+        }
         throw err
       }
 

@@ -51,7 +51,7 @@ export type RootStackParamList = {
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
   /** Route Field planning is self-only; team planning remains in the legacy shell. */
-  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7 } | undefined
+  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } | undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -70,12 +70,13 @@ const PlanningBuilderScreen = ({
   route,
 }: {
   navigation: { goBack: () => void }
-  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7 } }
+  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } }
 }) => (
   <RouteSelfPlanningWorkspace
     onClose={() => navigation.goBack()}
     initialDate={route.params?.initialDate}
     initialHorizon={route.params?.initialHorizon}
+    editPublished={route.params?.editPublished}
   />
 )
 

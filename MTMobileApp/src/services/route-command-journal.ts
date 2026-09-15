@@ -31,6 +31,12 @@ export type MobileRouteCommandRequest =
     }
   | {
       operationId: string
+      command: "UPDATE_PUBLISHED"
+      routeId: string
+      payload: { expectedVersion: number; points: MobileRouteCommandPoint[] }
+    }
+  | {
+      operationId: string
       command: "PUBLISH"
       routeId: string
       payload: { expectedVersion: number }
@@ -49,6 +55,15 @@ export type MobileRouteCommandInput =
     }
   | {
       command: "UPDATE_DRAFT"
+      routeId: string
+      payload: { expectedVersion: number; points: MobileRouteCommandPoint[] }
+    }
+  | {
+      /**
+       * Change a route that is already published (PLANNED or IN_PROGRESS).
+       * Same point shape as UPDATE_DRAFT; the server keeps visited stops.
+       */
+      command: "UPDATE_PUBLISHED"
       routeId: string
       payload: { expectedVersion: number; points: MobileRouteCommandPoint[] }
     }
@@ -127,7 +142,7 @@ function isPayloadForCommand(command: unknown, payload: unknown): boolean {
   if (command === "CREATE_DRAFT") {
     return typeof payload.date === "string" && Array.isArray(payload.points) && payload.points.every(isPoint)
   }
-  if (command === "UPDATE_DRAFT") {
+  if (command === "UPDATE_DRAFT" || command === "UPDATE_PUBLISHED") {
     return typeof payload.expectedVersion === "number"
       && Number.isFinite(payload.expectedVersion)
       && Array.isArray(payload.points)
@@ -214,7 +229,7 @@ function requestFor(item: RouteCommandJournalItem): MobileRouteCommandRequest {
       payload: clone(item.payload),
     }
   }
-  if (item.command === "UPDATE_DRAFT") {
+  if (item.command === "UPDATE_DRAFT" || item.command === "UPDATE_PUBLISHED") {
     return {
       operationId: item.operationId,
       command: item.command,
@@ -241,6 +256,7 @@ function journalItemFor(input: MobileRouteCommandInput, scopeKey: string): Route
   }
   if (input.command === "CREATE_DRAFT") return { ...input, ...metadata }
   if (input.command === "UPDATE_DRAFT") return { ...input, ...metadata }
+  if (input.command === "UPDATE_PUBLISHED") return { ...input, ...metadata }
   return { ...input, ...metadata }
 }
 

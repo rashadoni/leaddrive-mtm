@@ -41,6 +41,7 @@ import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
 import { submitRouteCommand } from "../../services/route-command-journal"
+import { publishedRouteEditAvailability } from "../../services/published-route-edit"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { AppNoticeLayer } from "../../components/AppFeedbackHost"
@@ -77,6 +78,7 @@ interface Route {
   date: string
   status: string
   version?: number | null
+  agentId?: string | null
   totalPoints: number
   visitedPoints: number
   points: RoutePoint[]
@@ -713,6 +715,23 @@ function InlineHint({ text, dismissLabel }: { text: string; dismissLabel: string
   )
 }
 
+/** «Planı dəyiş» next to the stop list of today's own published route. */
+function ChangePlanButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      hitSlop={8}
+      testID="route-change-plan"
+      style={({ pressed }) => [styles.changePlanButton, pressed && styles.pressed]}
+    >
+      <Icon name="create-outline" size={17} color={fieldTheme.color.primaryStrong} />
+      <Text style={styles.changePlanText}>{label}</Text>
+    </Pressable>
+  )
+}
+
 function OwnRoutePlanningCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; onPress: () => void }) {
   return (
     <View style={styles.ownRouteCard}>
@@ -915,6 +934,7 @@ export default function RouteScreen() {
   // screen by mistake.
   const canPlanOwnRoutes = String(agent?.role).toUpperCase() === "AGENT"
     && ownRoutePlanningPolicy
+  const online = useSyncStatusStore((state) => state.online)
   const { width } = useWindowDimensions()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
@@ -1186,6 +1206,37 @@ export default function RouteScreen() {
       setStartingWorkday(false)
     }
   }
+
+  // Owner, 2026-09-15: a published route could not be changed at all. Only a
+  // live read counts: a cached copy may hold a version the server moved past.
+  const changePlanAvailability = route && routeOrigin === "live"
+    ? publishedRouteEditAvailability({
+        role: agent?.role,
+        canPlanOwnRoutes: ownRoutePlanningPolicy,
+        agentId: agent?.id,
+        routeAgentId: route.agentId,
+        status: route.status,
+        version: route.version,
+        online,
+      })
+    : "unavailable"
+  const openChangePlan = () => {
+    if (!route) return
+    if (changePlanAvailability === "offline") {
+      notify({ tone: "warning", title: t("managerShell.planEditProblemTitle"), message: t("managerShell.planEditOffline") })
+      return
+    }
+    if (changePlanAvailability !== "available") return
+    const date = routeDateKey(route.date)
+    navigation.navigate("PlanningBuilder", {
+      ...(date ? { initialDate: date } : {}),
+      initialHorizon: 1,
+      editPublished: true,
+    })
+  }
+  const changePlanAction = changePlanAvailability !== "unavailable"
+    ? <ChangePlanButton label={t("managerShell.planChangePublished")} onPress={openChangePlan} />
+    : null
 
   const handleStartRoute = async () => {
     if (
@@ -1569,7 +1620,10 @@ export default function RouteScreen() {
             <View style={styles.tabletListPane}>
               <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
                 <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
+                <View style={styles.sectionHeadingEnd}>
+                  {changePlanAction}
+                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
+                </View>
               </View>
               <View style={styles.tabletListContent}>
                 {sortedPoints.length === 0 ? emptyState : sortedPoints.map((item, index) => (
@@ -1639,7 +1693,10 @@ export default function RouteScreen() {
               {sortedPoints.length > 0 ? (
                 <View style={styles.sectionHeading}>
                   <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
+                  <View style={styles.sectionHeadingEnd}>
+                    {changePlanAction}
+                    <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
+                  </View>
                 </View>
               ) : null}
             </View>
@@ -1881,6 +1938,9 @@ const styles = StyleSheet.create({
   sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: fieldTheme.space.xl, marginBottom: fieldTheme.space.sm },
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
   sectionCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  sectionHeadingEnd: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, flexShrink: 1 },
+  changePlanButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  changePlanText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   stopRow: {
     minHeight: 86,
     flexDirection: "row",

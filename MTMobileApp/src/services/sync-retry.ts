@@ -7,6 +7,10 @@ export type RetryableSyncError = Error & {
   retryAfterMs?: number
   /** Optional server hint for a safe replay of an oversized read page. */
   recommendedPageSize?: number
+  /** Route stops a route command was refused for (ROUTE_VISITED_POINTS_LOCKED, …). */
+  pointIds?: string[]
+  /** The route version the server holds when it refused a versioned command. */
+  currentVersion?: number
 }
 
 /**

@@ -99,6 +99,32 @@ describe("durable Route Field route-command journal", () => {
     expect(await allRouteCommandJournalEntries()).toEqual([])
   })
 
+  it("persists a published-route change and reads it back instead of calling the journal corrupt", async () => {
+    // A journal entry the reader does not recognise makes the whole journal
+    // ROUTE_COMMAND_JOURNAL_CORRUPT, which would stop every route command.
+    const updatePublished = {
+      command: "UPDATE_PUBLISHED" as const,
+      routeId: "route-1",
+      payload: {
+        expectedVersion: 3,
+        points: [
+          { customerId: "customer-1", contactId: null, plannedTime: "2026-08-31T09:00:00.000Z" },
+          { customerId: "customer-2", contactId: "contact-2", plannedTime: null },
+        ],
+      },
+    }
+    const item = await enqueueRouteCommand(updatePublished)
+    expect(await allRouteCommandJournalEntries()).toEqual([
+      expect.objectContaining({ operationId: item.operationId, command: "UPDATE_PUBLISHED", status: "pending" }),
+    ])
+    expect((await enqueueRouteCommand(updatePublished)).operationId).toBe(item.operationId)
+    await expect(flushRouteCommandJournal(async (request) => {
+      expect(request).toEqual({ ...updatePublished, operationId: item.operationId })
+      return { success: true, data: { id: "route-1", status: "PLANNED", version: 4, publishedVersion: 4 } }
+    })).resolves.toMatchObject({ sent: 1, deferred: 0, conflicted: 0 })
+    expect(await allRouteCommandJournalEntries()).toEqual([])
+  })
+
   it("pins a terminal route conflict locally and never lets a later command leapfrog it", async () => {
     const first = await enqueueRouteCommand(createDraft)
     const second = await enqueueRouteCommand({
