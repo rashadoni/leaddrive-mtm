@@ -27,6 +27,7 @@ import { managerApi } from "../../services/manager-api"
 import { hasCapability } from "../../services/bootstrap"
 import { captureOneShotLocation } from "../../services/self-location-share"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { contactTransferAvailable } from "../../lib/field-contacts-policy"
 import { toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
 import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../services/manager-approvals"
 import {
@@ -88,6 +89,8 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
   const canShareSelfLocation = useBootstrapStore((state) => hasCapability(state.capabilities, "SELF_LOCATION_SHARE"))
+  // No "transfer contacts" door when the organization switched contacts off.
+  const canTransferContacts = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies))
   const [team, setTeam] = useState<ManagerTeamAgent[]>([])
   const [locations, setLocations] = useState<ManagerLocationEvidence[]>([])
   const [planning, setPlanning] = useState<PlanningRoute[]>([])
@@ -317,14 +320,16 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
                 </Pressable>
               </View>
             )}
-            <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
-              <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.onColor} /></View>
-              <View style={styles.transferActionCopy}>
-                <Text style={styles.transferActionTitle}>{t("managerShell.transferContacts")}</Text>
-                <Text style={styles.transferActionBody}>{t("managerShell.transferContactsBody")}</Text>
-              </View>
-              <Icon name="chevron-forward" size={21} color={fieldTheme.color.primary} />
-            </Pressable>
+            {canTransferContacts ? (
+              <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
+                <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.onColor} /></View>
+                <View style={styles.transferActionCopy}>
+                  <Text style={styles.transferActionTitle}>{t("managerShell.transferContacts")}</Text>
+                  <Text style={styles.transferActionBody}>{t("managerShell.transferContactsBody")}</Text>
+                </View>
+                <Icon name="chevron-forward" size={21} color={fieldTheme.color.primary} />
+              </Pressable>
+            ) : null}
             <View style={[styles.teamSnapshot, expandedTablet && styles.teamSnapshotTablet]}>
               <View style={styles.snapshotCopy}>
                 <Text style={styles.snapshotTitle}>{t("managerShell.teamSnapshot", { defaultValue: "Team status" })}</Text>

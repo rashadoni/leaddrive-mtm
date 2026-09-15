@@ -28,6 +28,8 @@ import {
   type TransferAgent,
 } from "../../services/contact-transfer"
 import { upperInitial } from "../../lib/upper"
+import { contactTransferAvailable } from "../../lib/field-contacts-policy"
+import { useBootstrapStore } from "../../store/bootstrap"
 
 type Navigation = NativeStackNavigationProp<RootStackParamList>
 
@@ -45,6 +47,10 @@ export default function ContactTransferScreen() {
   const headerTop = useHeaderTop()
   const { width } = useWindowDimensions()
   const tablet = isTabletWidth(width)
+  // The manager entry is hidden when contacts are off, but a stale back stack
+  // or a future deep link can still land here: say why and leave, and never
+  // load the agent's contact list.
+  const transferAvailable = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies))
   const [agents, setAgents] = useState<TransferAgent[]>([])
   const [sourceId, setSourceId] = useState("")
   const [targetId, setTargetId] = useState("")
@@ -77,7 +83,15 @@ export default function ContactTransferScreen() {
   }, [t])
 
   useEffect(() => {
-    if (!sourceId) {
+    if (transferAvailable) return
+    const timer = setTimeout(() => {
+      if (navigation.canGoBack()) navigation.goBack()
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [navigation, transferAvailable])
+
+  useEffect(() => {
+    if (!transferAvailable || !sourceId) {
       setContacts([])
       setTotal(0)
       return
@@ -93,7 +107,7 @@ export default function ContactTransferScreen() {
         .finally(() => setLoadingContacts(false))
     }, 300)
     return () => clearTimeout(timer)
-  }, [search, sourceId, t])
+  }, [search, sourceId, t, transferAvailable])
 
   const targetAgents = useMemo(
     () => agents.filter((agent) => agent.id !== sourceId && agent.status === "ACTIVE"),
@@ -173,6 +187,26 @@ export default function ContactTransferScreen() {
     } finally {
       setBusy(null)
     }
+  }
+
+  if (!transferAvailable) {
+    return (
+      <View style={styles.root}>
+        <View style={[styles.header, { paddingTop: headerTop }]}>
+          <View style={styles.headerRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t("contactTransfer.back")} style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Icon name="arrow-back" size={22} color={fieldTheme.color.onColor} />
+            </Pressable>
+            <View style={styles.headerCopy}>
+              <Text style={styles.title}>{t("contactTransfer.title")}</Text>
+            </View>
+          </View>
+        </View>
+        <View style={[styles.content, tablet && styles.contentTablet]} accessibilityLiveRegion="polite">
+          <MessageBand icon="information-circle" tone="amber" text={t("contactTransfer.disabledNote")} />
+        </View>
+      </View>
+    )
   }
 
   return (

@@ -20,6 +20,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
+import { fieldContactsEnabled, plannableTargetTypes } from "../../lib/field-contacts-policy"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
@@ -254,6 +255,7 @@ export default function PlanningWorkspaceCore({
   const expandedTablet = isExpandedTabletWidth(width)
   const tenantTimezone = useBootstrapStore((state) => state.data?.timezone)
   const configuredTargetTypes = useBootstrapStore((state) => state.data?.routeTargetTypes)
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const selfPlanning = agentSource.kind === "self"
   const selfCopy = SELF_PLANNER_COPY[selfPlannerLanguage(i18n.language)]
   const [clock, setClock] = useState(() => new Date())
@@ -265,8 +267,12 @@ export default function PlanningWorkspaceCore({
   const dates = useMemo(() => planningDateKeys(anchor, horizon), [anchor, horizon])
   const singleDay = horizon === 1
   const routeTargetTypes = useMemo(
-    () => configuredTargetTypes?.filter((target) => target.enabled) ?? DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
-    [configuredTargetTypes],
+    () => plannableTargetTypes(
+      configuredTargetTypes?.filter((target) => target.enabled) ?? DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
+      DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
+      contactsEnabled,
+    ),
+    [configuredTargetTypes, contactsEnabled],
   )
   const [agents, setAgents] = useState<PlanningAgent[]>([])
   const [agentId, setAgentId] = useState("")

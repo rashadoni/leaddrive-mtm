@@ -14,7 +14,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
+import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
@@ -72,7 +74,12 @@ export default function MoreScreen() {
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
   const tablet = isTabletWidth(width)
-  const actions = COMMON_ACTIONS
+  // With field contacts switched off the customers hub holds places only, so
+  // the link must not promise doctors and contacts the agent will not find.
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
+  const actions = contactsEnabled
+    ? COMMON_ACTIONS
+    : COMMON_ACTIONS.map((action) => action.route === "Base" ? { ...action, bodyKey: "moreV2.baseBodyPlaces" } : action)
 
   const open = (route: MoreRoute) => {
     switch (route) {

@@ -21,6 +21,8 @@ import {
   type RouteOrganizationListItem,
 } from "../../services/route-organization-list"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
+import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
@@ -90,6 +92,8 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
   const { width } = useWindowDimensions()
   const tablet = isTabletWidth(width)
   const tabBarPadding = useTabBarPadding()
+  // "3 kontakt" on a card points at people the organization has hidden.
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const [rows, setRows] = useState<RouteOrganizationListItem[]>([])
   const [search, setSearch] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -251,7 +255,7 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
               </View>
               {item.address ? <View style={styles.detailRow}><Icon name="location-outline" size={16} color={fieldTheme.color.inkMuted} /><Text style={styles.detailText} numberOfLines={1}>{item.address}</Text></View> : null}
               {item.phone ? <View style={styles.detailRow}><Icon name="call-outline" size={16} color={fieldTheme.color.inkMuted} /><Text style={styles.detailText} numberOfLines={1}>{item.phone}</Text></View> : null}
-              {typeof item.contactsCount === "number" ? <Text style={styles.countText}>{t("organizations.contactsTemplate", { count: item.contactsCount })}</Text> : null}
+              {contactsEnabled && typeof item.contactsCount === "number" ? <Text style={styles.countText}>{t("organizations.contactsTemplate", { count: item.contactsCount })}</Text> : null}
             </Pressable>
           )
         }}

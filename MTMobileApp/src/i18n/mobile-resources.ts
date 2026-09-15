@@ -23,6 +23,7 @@ export const mobileResources = {
       visitsBody: "Посмотреть историю или оформить визит вручную",
       baseTitle: "Клиенты и организации",
       baseBody: "Найти клинику, аптеку, врача или контакт",
+      baseBodyPlaces: "Найти клинику, аптеку или другую организацию",
       gpsTitle: "Мой GPS",
       gpsBody: "Проверить историю маршрута и принятые координаты",
       profileTitle: "Профиль",
@@ -464,6 +465,7 @@ export const mobileResources = {
     },
     contactTransfer: {
       back: "Назад",
+      disabledNote: "Контакты в организации выключены — передавать нечего.",
       eyebrow: "Управление базой",
       title: "Передача контактов",
       subtitle: "Атомарная смена ответственного с предпросмотром визитов, планов и исключений.",
@@ -558,6 +560,7 @@ export const mobileResources = {
       visitsBody: "View history or record a manual visit",
       baseTitle: "Clients & organizations",
       baseBody: "Find a clinic, pharmacy, doctor, or contact",
+      baseBodyPlaces: "Find a clinic, pharmacy, or another organization",
       gpsTitle: "My GPS",
       gpsBody: "Review route history and accepted locations",
       profileTitle: "Profile",
@@ -987,6 +990,7 @@ export const mobileResources = {
     },
     contactTransfer: {
       back: "Back",
+      disabledNote: "Contacts are turned off for your organization, so there is nothing to transfer.",
       eyebrow: "Base governance",
       title: "Contact transfer",
       subtitle: "Atomic ownership handover with a review of visits, plans, and excluded records.",
@@ -1081,6 +1085,7 @@ export const mobileResources = {
       visitsBody: "Tarixçəyə baxın və ya əl ilə ziyarət yaradın",
       baseTitle: "Müştərilər və təşkilatlar",
       baseBody: "Klinika, aptek, həkim və ya kontakt tapın",
+      baseBodyPlaces: "Klinika, aptek və ya başqa təşkilat tapın",
       gpsTitle: "Mənim GPS-im",
       gpsBody: "Marşrut tarixçəsini və qəbul edilmiş mövqeləri yoxlayın",
       profileTitle: "Profil",
@@ -1510,6 +1515,7 @@ export const mobileResources = {
     },
     contactTransfer: {
       back: "Geri",
+      disabledNote: "Təşkilatınızda kontaktlar söndürülüb — ötürüləcək bir şey yoxdur.",
       eyebrow: "Baza idarəetməsi",
       title: "Kontaktların ötürülməsi",
       subtitle: "Ziyarət, plan və istisnaları öncədən yoxlayan atomar məsul şəxs dəyişikliyi.",

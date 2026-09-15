@@ -23,6 +23,8 @@ import {
   type RouteOrganizationVisit,
 } from "../../services/route-organization-detail"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { statusLabel } from "../../lib/status-labels"
@@ -40,6 +42,7 @@ const COPY = {
     errorBody: "Проверьте соединение и повторите попытку. Для защиты данных приложение не переходит на расширенную старую карточку.",
     retry: "Повторить",
     routeOnly: "Карточка содержит только данные точки, её активные контакты и ваши последние визиты.",
+    routeOnlyPlaces: "Карточка содержит только данные точки и ваши последние визиты.",
     essentials: "Главное",
     contacts: "Контакты",
     visits: "Мои последние визиты",
@@ -66,6 +69,7 @@ const COPY = {
     errorBody: "Bağlantını yoxlayın və yenidən cəhd edin. Məlumatların qorunması üçün tətbiq geniş köhnə karta keçmir.",
     retry: "Yenidən cəhd et",
     routeOnly: "Kart yalnız nöqtə məlumatlarını, aktiv kontaktları və son ziyarətlərinizi göstərir.",
+    routeOnlyPlaces: "Kart yalnız nöqtə məlumatlarını və son ziyarətlərinizi göstərir.",
     essentials: "Əsas məlumatlar",
     contacts: "Kontaktlar",
     visits: "Son ziyarətlərim",
@@ -92,6 +96,7 @@ const COPY = {
     errorBody: "Check your connection and try again. To protect data, the app will not fall back to the broad legacy card.",
     retry: "Try again",
     routeOnly: "This card shows only location information, active contacts, and your recent visits.",
+    routeOnlyPlaces: "This card shows only location information and your recent visits.",
     essentials: "Essentials",
     contacts: "Contacts",
     visits: "My recent visits",
@@ -204,6 +209,9 @@ export default function RouteOrganizationDetailScreen() {
   const tablet = isExpandedTabletWidth(width)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const { id, name } = route.params
+  // Switched off by the organization: the card is about the place only, with
+  // no list of people and no way into a contact card from here.
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const [detail, setDetail] = useState<RouteOrganizationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -299,7 +307,7 @@ export default function RouteOrganizationDetailScreen() {
     <View style={styles.content}>
       <View style={styles.scopeNote} accessibilityLiveRegion="polite">
         <Icon name="shield-checkmark-outline" size={19} color={fieldTheme.color.primaryStrong} />
-        <Text style={styles.scopeText}>{copy.routeOnly}</Text>
+        <Text style={styles.scopeText}>{contactsEnabled ? copy.routeOnly : copy.routeOnlyPlaces}</Text>
       </View>
 
       <Section title={copy.essentials}>
@@ -314,25 +322,27 @@ export default function RouteOrganizationDetailScreen() {
         </View>
       </Section>
 
-      <Section title={copy.contacts} count={contacts.length}>
-        {visibleContacts.length === 0 ? <Text style={styles.emptyText}>{copy.noContacts}</Text> : visibleContacts.map((contact, index) => {
-          const subtitle = [contact.position, contact.specialty || (contact.type ? t(CONTACT_TYPE_LABEL[contact.type] ?? "contacts.typeOther") : "")].filter(Boolean).join(" · ")
-          return (
-            <View key={usableId(contact.id) ? contact.id : `${contact.name}-${index}`} style={styles.relationshipRow}>
-              <Pressable accessibilityRole="button" onPress={() => openContact(contact)} style={({ pressed }) => [styles.relationshipMain, { minHeight: touchTarget }, pressed && styles.pressed]}>
-                <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}><Text style={styles.avatarText}>{upperInitial(contact.name)}</Text></View>
-                <View style={styles.relationshipCopy}>
-                  <View style={styles.nameLine}><Text style={styles.relationshipName} numberOfLines={1}>{contact.name || copy.unknown}</Text>{contact.isPrimary ? <Text style={styles.primaryText}>{copy.primary}</Text> : null}</View>
-                  {subtitle ? <Text style={styles.relationshipSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
-                </View>
-                <Icon name="chevron-forward" size={19} color={fieldTheme.color.inkMuted} />
-              </Pressable>
-              {contact.phone ? <Pressable accessibilityRole="button" accessibilityLabel={`${copy.call}: ${contact.name}`} onPress={() => call(contact.phone)} style={({ pressed }) => [styles.callButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={20} color={fieldTheme.color.primaryStrong} /></Pressable> : null}
-            </View>
-          )
-        })}
-        {contacts.length > 4 ? <ExpandButton expanded={contactsExpanded} label={contactsExpanded ? copy.showLess : copy.showAll(contacts.length)} onPress={() => setContactsExpanded((value) => !value)} touchTarget={touchTarget} /> : null}
-      </Section>
+      {contactsEnabled ? (
+        <Section title={copy.contacts} count={contacts.length}>
+          {visibleContacts.length === 0 ? <Text style={styles.emptyText}>{copy.noContacts}</Text> : visibleContacts.map((contact, index) => {
+            const subtitle = [contact.position, contact.specialty || (contact.type ? t(CONTACT_TYPE_LABEL[contact.type] ?? "contacts.typeOther") : "")].filter(Boolean).join(" · ")
+            return (
+              <View key={usableId(contact.id) ? contact.id : `${contact.name}-${index}`} style={styles.relationshipRow}>
+                <Pressable accessibilityRole="button" onPress={() => openContact(contact)} style={({ pressed }) => [styles.relationshipMain, { minHeight: touchTarget }, pressed && styles.pressed]}>
+                  <View style={[styles.avatar, contact.isPrimary && styles.avatarPrimary]}><Text style={styles.avatarText}>{upperInitial(contact.name)}</Text></View>
+                  <View style={styles.relationshipCopy}>
+                    <View style={styles.nameLine}><Text style={styles.relationshipName} numberOfLines={1}>{contact.name || copy.unknown}</Text>{contact.isPrimary ? <Text style={styles.primaryText}>{copy.primary}</Text> : null}</View>
+                    {subtitle ? <Text style={styles.relationshipSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
+                  </View>
+                  <Icon name="chevron-forward" size={19} color={fieldTheme.color.inkMuted} />
+                </Pressable>
+                {contact.phone ? <Pressable accessibilityRole="button" accessibilityLabel={`${copy.call}: ${contact.name}`} onPress={() => call(contact.phone)} style={({ pressed }) => [styles.callButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={20} color={fieldTheme.color.primaryStrong} /></Pressable> : null}
+              </View>
+            )
+          })}
+          {contacts.length > 4 ? <ExpandButton expanded={contactsExpanded} label={contactsExpanded ? copy.showLess : copy.showAll(contacts.length)} onPress={() => setContactsExpanded((value) => !value)} touchTarget={touchTarget} /> : null}
+        </Section>
+      ) : null}
 
       <Section title={copy.visits} count={visits.length}>
         {visibleVisits.length === 0 ? <Text style={styles.emptyText}>{copy.noVisits}</Text> : visibleVisits.map((visit) => (
