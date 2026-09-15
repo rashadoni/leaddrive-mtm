@@ -63,20 +63,35 @@ export function layoutStorageKey(
   return [tenantId || "unknown-tenant", userId || "unknown-user", workspace, deviceClass].join(":")
 }
 
-export function widgetsForWorkspace(workspace: DashboardWorkspace) {
-  return DASHBOARD_WIDGETS.filter((widget) => widget.workspace === workspace)
+/**
+ * Organization switches that remove a widget. Absent = shown: callers pass
+ * the value read through the tolerant policy helpers.
+ */
+export interface DashboardWidgetPolicy {
+  pharmacyPromotionsEnabled?: boolean
 }
 
-export function defaultWidgetIds(workspace: DashboardWorkspace): DashboardWidgetId[] {
-  return widgetsForWorkspace(workspace).slice(0, 4).map((widget) => widget.id)
+export function widgetsForWorkspace(workspace: DashboardWorkspace, policy: DashboardWidgetPolicy = {}) {
+  return DASHBOARD_WIDGETS.filter((widget) =>
+    widget.workspace === workspace
+    && !(widget.id === "promotions" && policy.pharmacyPromotionsEnabled === false)
+  )
 }
 
-export function sanitizeWidgetIds(workspace: DashboardWorkspace, ids: unknown): DashboardWidgetId[] {
-  const allowed = new Set(widgetsForWorkspace(workspace).map((widget) => widget.id))
-  if (!Array.isArray(ids)) return defaultWidgetIds(workspace)
+export function defaultWidgetIds(workspace: DashboardWorkspace, policy: DashboardWidgetPolicy = {}): DashboardWidgetId[] {
+  return widgetsForWorkspace(workspace, policy).slice(0, 4).map((widget) => widget.id)
+}
+
+export function sanitizeWidgetIds(
+  workspace: DashboardWorkspace,
+  ids: unknown,
+  policy: DashboardWidgetPolicy = {},
+): DashboardWidgetId[] {
+  const allowed = new Set(widgetsForWorkspace(workspace, policy).map((widget) => widget.id))
+  if (!Array.isArray(ids)) return defaultWidgetIds(workspace, policy)
   const result = ids.filter((id): id is DashboardWidgetId => typeof id === "string" && allowed.has(id as DashboardWidgetId))
   const unique = Array.from(new Set(result)).slice(0, 6)
-  return unique.length > 0 ? unique : defaultWidgetIds(workspace)
+  return unique.length > 0 ? unique : defaultWidgetIds(workspace, policy)
 }
 
 export const DASHBOARD_MIN_CARD_WIDTH = 200
