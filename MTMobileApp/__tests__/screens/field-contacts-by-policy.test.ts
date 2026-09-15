@@ -101,7 +101,7 @@ describe("other doors into contacts", () => {
     const leave = between(transfer, "if (transferAvailable) return", "}, [navigation, transferAvailable])")
     expect(leave).toContain("navigation.goBack()")
     const notes = (["ru", "en", "az"] as const).map(
-      (locale) => typeof (mobileResources[locale].contactTransfer as Record<string, string>).disabledNote,
+      (locale) => typeof (mobileResources[locale].contactTransfer as { disabledNote?: string }).disabledNote,
     )
     expect(notes).toEqual(["string", "string", "string"])
   })
