@@ -571,13 +571,26 @@ export function movePlanningTarget(
   key: string,
   date: string,
   direction: -1 | 1,
+  /** False keeps both stops' times (the neighbour's time may not change). */
+  swapTimes = true,
 ): PlanningAssignedTarget[] {
   const dayTargets = targets.filter((target) => target.date === date)
   const index = dayTargets.findIndex((target) => target.key === key)
   const nextIndex = index + direction
   if (index < 0 || nextIndex < 0 || nextIndex >= dayTargets.length) return targets
   const reordered = [...dayTargets]
-  ;[reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]]
+  const moving = reordered[index]
+  const neighbour = reordered[nextIndex]
+  // The time belongs to the slot, not to the customer: moving a stop up gives
+  // it the earlier time. Keeping the times made «1. 11:30, 2. 10:00» (Galaxy
+  // S23, 2026-09-15). Only when both stops have a time to exchange.
+  if (swapTimes && moving.plannedTime && neighbour.plannedTime) {
+    reordered[index] = { ...neighbour, plannedTime: moving.plannedTime }
+    reordered[nextIndex] = { ...moving, plannedTime: neighbour.plannedTime }
+  } else {
+    reordered[index] = neighbour
+    reordered[nextIndex] = moving
+  }
   let cursor = 0
   return targets.map((target) => target.date === date ? reordered[cursor++] : target)
 }
