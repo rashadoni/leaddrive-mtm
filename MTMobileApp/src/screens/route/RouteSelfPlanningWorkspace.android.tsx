@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react"
 import PlanningWorkspaceCore, {
   type PlanningWorkspaceAgentSource,
+  type PlanningWorkspacePublishedEditSource,
   type PlanningWorkspaceTargetSource,
   type PlanningWorkspaceWriteSource,
 } from "../planning/PlanningWorkspaceCore.android"
@@ -10,6 +11,7 @@ import type { PlanningHorizon, PlanningTarget } from "../../services/manager-pla
 import { api } from "../../services/api"
 import { toRoutePlanningTarget } from "../../services/route-planning-target"
 import { submitRouteCommand } from "../../services/route-command-journal"
+import { submitPublishedRouteUpdate } from "../../services/published-route-update"
 import { fieldEligibilityReason } from "../../lib/field-eligibility-reason"
 
 /**
@@ -20,10 +22,13 @@ export default function RouteSelfPlanningWorkspace({
   onClose,
   initialDate,
   initialHorizon,
+  editPublished,
 }: {
   onClose?: () => void
   initialDate?: string
   initialHorizon?: PlanningHorizon
+  /** Route tab «Planı dəyiş»: open initialDate's published route in the editor. */
+  editPublished?: boolean
 }) {
   const mayPlanOwnRoutes = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   const currentAgent = useAuthStore((state) => state.agent)
@@ -112,6 +117,22 @@ export default function RouteSelfPlanningWorkspace({
     },
   }), [])
 
+  // «Planı dəyiş». Online only, and sent through the same durable journal as
+  // every route command (persisted operation id, idempotent retry); see
+  // services/published-route-update.ts for why a refused change is removed
+  // from the journal instead of parking there.
+  const publishedEditSource = useMemo<PlanningWorkspacePublishedEditSource>(() => ({
+    role: currentAgent?.role,
+    canPlanOwnRoutes: mayPlanOwnRoutes,
+    updatePublished: async ({ routeId, expectedVersion, points }) => {
+      const response = await submitPublishedRouteUpdate(
+        { routeId, expectedVersion, points },
+        (request) => api.executeRouteCommand(request),
+      )
+      return { version: response.data.version }
+    },
+  }), [currentAgent?.role, mayPlanOwnRoutes])
+
   return (
     <PlanningWorkspaceCore
       onClose={onClose}
@@ -120,6 +141,8 @@ export default function RouteSelfPlanningWorkspace({
       writeSource={writeSource}
       initialDate={initialDate}
       initialHorizon={initialHorizon}
+      publishedEditSource={publishedEditSource}
+      initialEditPublished={editPublished === true}
     />
   )
 }

@@ -180,7 +180,8 @@ describe("visit screen", () => {
 
 describe("self planner", () => {
   it("clears saved drafts only when «Clear» is the answer", () => {
-    expect(planning).toContain('import { ask } from "../../services/app-feedback"')
+    // notify: the published-route editor reports through the same host.
+    expect(planning).toContain('import { ask, notify } from "../../services/app-feedback"')
     const confirm = between(planning, "const confirmAndSave = async () => {", "const [copying, setCopying]")
     // Nothing to clear: saves at once, nothing asked.
     const direct = between(confirm, "if (clearingWrites.length === 0) {", "}")

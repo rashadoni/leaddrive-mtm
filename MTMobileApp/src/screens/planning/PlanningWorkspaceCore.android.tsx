@@ -25,7 +25,8 @@ import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../.
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import { api } from "../../services/api"
-import { ask } from "../../services/app-feedback"
+import { ask, notify } from "../../services/app-feedback"
+import { useSyncStatusStore } from "../../store/sync-status"
 import {
   DEFAULT_MOBILE_ROUTE_TARGET_TYPES,
   mobileRouteTargetLabel,
@@ -62,6 +63,19 @@ import {
   type PlanningTarget,
 } from "../../services/manager-planning"
 import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday } from "../../services/planning-month"
+import {
+  buildUpdatePublishedPoints,
+  isPublishedStopLocked,
+  publishedRouteEditAvailability,
+  publishedRouteEditChanged,
+  publishedRouteEditErrorOutcome,
+  publishedRouteEditProblemKey,
+  publishedRouteEditStops,
+  publishedRouteForDay,
+  publishedStopKeysForPointIds,
+  validatePublishedRouteEdit,
+  type PublishedRoutePoint,
+} from "../../services/published-route-edit"
 
 // One-screen plan (owner decision 2026-09-14): the review step repeated the
 // fill step — same day list, same day editor — and only added the save choice.
@@ -126,6 +140,29 @@ export type PlanningWorkspaceWriteSource = {
   publishDraft: (input: { routeId: string; expectedVersion: number }) => Promise<void>
 }
 
+/**
+ * «Planı dəyiş» for a published day. Only Route Field's self planner supplies
+ * it; the legacy team planner has no such source, so its published days stay
+ * read-only exactly as before.
+ */
+export type PlanningWorkspacePublishedEditSource = {
+  role: string | null | undefined
+  canPlanOwnRoutes: boolean
+  updatePublished: (input: {
+    routeId: string
+    expectedVersion: number
+    points: PublishedRoutePoint[]
+  }) => Promise<{ version: number }>
+}
+
+type PublishedEditSession = {
+  routeId: string
+  date: string
+  version: number
+  /** The day as published, to tell a change from none and locked stops from new ones. */
+  original: PlanningAssignedTarget[]
+}
+
 type PlanningTargetContinuation = {
   cursor: string
   queryKey: string
@@ -138,6 +175,9 @@ export type PlanningWorkspaceCoreProps = {
   writeSource: PlanningWorkspaceWriteSource
   initialDate?: string
   initialHorizon?: PlanningHorizon
+  publishedEditSource?: PlanningWorkspacePublishedEditSource
+  /** Open the published route of initialDate straight in the editor (Route tab). */
+  initialEditPublished?: boolean
 }
 
 const SELF_PLANNER_COPY = {
@@ -246,6 +286,8 @@ export default function PlanningWorkspaceCore({
   writeSource,
   initialDate,
   initialHorizon,
+  publishedEditSource,
+  initialEditPublished,
 }: PlanningWorkspaceCoreProps) {
   const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
@@ -322,6 +364,12 @@ export default function PlanningWorkspaceCore({
   const savingRef = useRef(false)
   const contextVersion = useRef(0)
   const previousToday = useRef(today)
+  const online = useSyncStatusStore((state) => state.online)
+  const [editSession, setEditSession] = useState<PublishedEditSession | null>(null)
+  const [editStops, setEditStops] = useState<PlanningAssignedTarget[]>([])
+  const [highlightKeys, setHighlightKeys] = useState<Set<string>>(() => new Set())
+  const autoEditPending = useRef(Boolean(initialEditPublished))
+  const editing = editSession !== null
 
   const selectedAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? null, [agentId, agents])
   const activeTargetType = useMemo(
@@ -357,8 +405,38 @@ export default function PlanningWorkspaceCore({
   const invalidAssignmentDates = useMemo(() => invalidPlanningAssignmentDates(assignments), [assignments])
   const matrixTargets = useMemo(() => uniqueTargets(assignments, routes), [assignments, routes])
   const mutableTargetCount = useMemo(() => new Set(assignments.map((target) => target.key)).size, [assignments])
-  const activeDayTargets = useMemo(() => targetsForPlanningDay(activeDate, assignments, routes), [activeDate, assignments, routes])
-  const activeDateEditable = activeDate >= today && !lockedDates.has(activeDate) && !multipleDraftDates.includes(activeDate)
+  const editingActiveDate = editSession !== null && editSession.date === activeDate
+  const activeDayTargets = useMemo(
+    () => editingActiveDate ? editStops : targetsForPlanningDay(activeDate, assignments, routes),
+    [activeDate, assignments, editStops, editingActiveDate, routes],
+  )
+  const activeDateEditable = editingActiveDate || (
+    !editing && activeDate >= today && !lockedDates.has(activeDate) && !multipleDraftDates.includes(activeDate)
+  )
+  // The published route of the day on screen, when this planner may change it.
+  const activePublishedRoute = useMemo(
+    () => publishedEditSource && agentId && activeDate >= today ? publishedRouteForDay(routes, activeDate, agentId) : null,
+    [activeDate, agentId, publishedEditSource, routes, today],
+  )
+  const activeEditAvailability = activePublishedRoute && publishedEditSource
+    ? publishedRouteEditAvailability({
+        role: publishedEditSource.role,
+        canPlanOwnRoutes: publishedEditSource.canPlanOwnRoutes,
+        agentId,
+        routeAgentId: activePublishedRoute.agentId,
+        status: activePublishedRoute.status,
+        version: activePublishedRoute.version,
+        online,
+      })
+    : "unavailable"
+  const editLockedCells = useMemo(
+    () => editSession
+      ? new Set(editStops.filter(isPublishedStopLocked).map((stop) => `${editSession.date}|${stop.key}`))
+      : null,
+    [editSession, editStops],
+  )
+  const editChanged = editSession ? publishedRouteEditChanged(editSession.original, editStops) : false
+  const editProblem = editSession ? validatePublishedRouteEdit(editSession.original, editStops) : null
   const planningHintId = `planning.${singleDay ? "day" : "week"}.step.${step}`
   const planningHelpKey = step === 1
     ? (singleDay ? "managerShell.planHelpDayStep1" : "managerShell.planHelpWeekStep1")
@@ -422,8 +500,8 @@ export default function PlanningWorkspaceCore({
     }
   }, [agentSource])
 
-  const loadPlan = useCallback(async (selectedAgentId: string, selectedDates: string[], preserve = false) => {
-    if (!selectedAgentId) return
+  const loadPlan = useCallback(async (selectedAgentId: string, selectedDates: string[], preserve = false): Promise<PlanningDetailedRoute[] | null> => {
+    if (!selectedAgentId) return null
     const requestId = ++planRequest.current
     setLoadingPlan(true)
     setPlanError(false)
@@ -433,16 +511,18 @@ export default function PlanningWorkspaceCore({
     }
     try {
       const responses = await Promise.all(selectedDates.map((date) => api.getRoutesForAgent(date, selectedAgentId)))
-      if (requestId !== planRequest.current) return
+      if (requestId !== planRequest.current) return null
       const nextRoutes = detailedRoutesFromResponses(responses)
       setRoutes(nextRoutes)
       setAssignments(editablePlanningTargets(nextRoutes, selectedAgentId))
       setDirtyDates(new Set())
       setCanPublish(responses.some((response: any) => response?.data?.capabilities?.canPublish === true))
       setUpdatedAt(Date.now())
+      return nextRoutes
     } catch (error: any) {
-      if (requestId !== planRequest.current || error?.message === "SESSION_EXPIRED") return
+      if (requestId !== planRequest.current || error?.message === "SESSION_EXPIRED") return null
       setPlanError(true)
+      return null
     } finally {
       if (requestId === planRequest.current) setLoadingPlan(false)
     }
@@ -564,7 +644,7 @@ export default function PlanningWorkspaceCore({
   }), [i18n.language])
 
   const changeWindow = (nextAnchor: string, nextHorizon = horizon) => {
-    if (saving) return
+    if (saving || editing) return
     planRequest.current += 1
     saveRequest.current += 1
     contextVersion.current += 1
@@ -579,7 +659,7 @@ export default function PlanningWorkspaceCore({
   }
 
   const selectAgent = (id: string) => {
-    if (saving || id === agentId) return
+    if (saving || editing || id === agentId) return
     planRequest.current += 1
     saveRequest.current += 1
     contextVersion.current += 1
@@ -601,6 +681,24 @@ export default function PlanningWorkspaceCore({
 
   const toggleTarget = (target: PlanningTarget) => {
     if (saving || copying || !activeDateEditable) return
+    if (editingActiveDate) {
+      const existing = editStops.find((stop) => stop.key === target.key)
+      if (existing) {
+        if (isPublishedStopLocked(existing)) return
+        setEditStops((current) => current.filter((stop) => stop.key !== target.key))
+      } else {
+        const resolved = planningTargetForDate(target, activeDate)
+        if (!resolved) return
+        setEditStops((current) => {
+          const time = nextPlanningTime(current, activeDate, tenantTimezone)
+          const plannedTime = planningLocalTimeToIso(activeDate, time, tenantTimezone)
+          // A stop added now is new to the route: no point id, never locked.
+          return [...current, { ...resolved, pointId: undefined, pointStatus: undefined, plannedTime, date: activeDate }]
+        })
+      }
+      setHighlightKeys(new Set())
+      return
+    }
     const selected = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
     if (selected) {
       setAssignments((current) => removePlanningTarget(current, target.key, activeDate))
@@ -617,7 +715,20 @@ export default function PlanningWorkspaceCore({
     setSaveMessage(null)
   }
 
+  /** The stop may be changed in the published-route editor right now. */
+  const editableEditStop = (target: PlanningTarget, date: string): boolean => {
+    if (saving || !editSession || date !== editSession.date) return false
+    const stop = editStops.find((item) => item.key === target.key)
+    return Boolean(stop) && !isPublishedStopLocked(stop as PlanningAssignedTarget)
+  }
+
   const removeDayTarget = (target: PlanningTarget, date: string) => {
+    if (editing) {
+      if (!editableEditStop(target, date)) return
+      setEditStops((current) => current.filter((stop) => stop.key !== target.key))
+      setHighlightKeys(new Set())
+      return
+    }
     if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return
     setAssignments((current) => removePlanningTarget(current, target.key, date))
     markDirty([date])
@@ -625,6 +736,14 @@ export default function PlanningWorkspaceCore({
   }
 
   const changeDayTargetTime = (target: PlanningTarget, date: string, time: string): boolean => {
+    if (editing) {
+      if (!editableEditStop(target, date)) return false
+      const editedTime = planningLocalTimeToIso(date, time, tenantTimezone)
+      if (!editedTime) return false
+      setEditStops((current) => updatePlanningTargetTime(current, target.key, date, editedTime))
+      setHighlightKeys(new Set())
+      return true
+    }
     if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return false
     const plannedTime = planningLocalTimeToIso(date, time, tenantTimezone)
     if (!plannedTime) return false
@@ -635,6 +754,14 @@ export default function PlanningWorkspaceCore({
   }
 
   const moveDayTarget = (target: PlanningTarget, date: string, direction: -1 | 1) => {
+    if (editing) {
+      // Only a pending stop moves. Stepping past a visited one keeps the
+      // visited stops in their order, which is all the server requires.
+      if (!editableEditStop(target, date)) return
+      setEditStops((current) => movePlanningTarget(current, target.key, date, direction))
+      setHighlightKeys(new Set())
+      return
+    }
     if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return
     setAssignments((current) => movePlanningTarget(current, target.key, date, direction))
     markDirty([date])
@@ -888,6 +1015,157 @@ export default function PlanningWorkspaceCore({
     }
   }
 
+  const exitPublishedEdit = () => {
+    setEditSession(null)
+    setEditStops([])
+    setHighlightKeys(new Set())
+  }
+
+  const startPublishedEdit = (route: PlanningDetailedRoute, highlightPointIds: string[] = []) => {
+    if (!publishedEditSource) return
+    const availability = publishedRouteEditAvailability({
+      role: publishedEditSource.role,
+      canPlanOwnRoutes: publishedEditSource.canPlanOwnRoutes,
+      agentId,
+      routeAgentId: route.agentId,
+      status: route.status,
+      version: route.version,
+      online: useSyncStatusStore.getState().online,
+    })
+    if (availability === "offline") {
+      notify({ tone: "warning", title: t("managerShell.planEditProblemTitle"), message: t("managerShell.planEditOffline") })
+      return
+    }
+    if (availability !== "available") return
+    // A reload after the change replaces the drafts on screen with server
+    // truth; unsaved draft work on other days must not vanish silently.
+    if (dirtyDates.size > 0) {
+      notify({ tone: "warning", title: t("managerShell.planEditProblemTitle"), message: t("managerShell.planEditSaveDraftsFirst") })
+      return
+    }
+    const stops = publishedRouteEditStops(route)
+    setEditSession({ routeId: route.id, date: route.date, version: route.version, original: stops })
+    setEditStops(stops)
+    setHighlightKeys(new Set(publishedStopKeysForPointIds(stops, highlightPointIds)))
+    setActiveDate(route.date)
+    setSaveMessage(null)
+    setStep(2)
+  }
+
+  // Route tab «Planı dəyiş»: open today's published route in the editor once
+  // the plan has loaded. One attempt only — if it is not editable, the day is
+  // simply shown.
+  useEffect(() => {
+    if (!autoEditPending.current || loadingPlan || !agentId || updatedAt === null) return
+    autoEditPending.current = false
+    const route = publishedRouteForDay(routes, activeDate, agentId)
+    if (route) startPublishedEdit(route)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDate, agentId, loadingPlan, routes, updatedAt])
+
+  const cancelPublishedEdit = async () => {
+    if (saving || !editSession) return
+    if (publishedRouteEditChanged(editSession.original, editStops)) {
+      const discard = await ask({
+        title: t("managerShell.planEditDiscardTitle"),
+        message: t("managerShell.planEditDiscardBody"),
+        tone: "warning",
+        buttons: [
+          { text: t("managerShell.planEditKeepEditing"), value: false, style: "cancel" },
+          { text: t("managerShell.planCancelEdit"), value: true, style: "destructive" },
+        ],
+        dismissValue: false,
+      })
+      if (!discard) return
+    }
+    exitPublishedEdit()
+  }
+
+  const publishPublishedEdit = async () => {
+    const session = editSession
+    if (!session || !publishedEditSource || savingRef.current) return
+    const problem = validatePublishedRouteEdit(session.original, editStops)
+    if (problem) {
+      setHighlightKeys(new Set(problem.keys))
+      notify({ tone: "warning", title: t("managerShell.planEditProblemTitle"), message: t(publishedRouteEditProblemKey(problem.code)) })
+      return
+    }
+    // Online only (see publishedRouteEditAvailability): a change parked for
+    // later would race the agent's own check-ins at the stops it moves.
+    if (useSyncStatusStore.getState().online === false) {
+      notify({ tone: "warning", title: t("managerShell.planEditProblemTitle"), message: t("managerShell.planEditOffline") })
+      return
+    }
+    const operationAgentId = agentId
+    const operationDates = [...dates]
+    const stops = editStops
+    savingRef.current = true
+    setSaving(true)
+    try {
+      await publishedEditSource.updatePublished({
+        routeId: session.routeId,
+        expectedVersion: session.version,
+        points: buildUpdatePublishedPoints(stops),
+      })
+      exitPublishedEdit()
+      notify({ tone: "success", title: t("managerShell.planEditUpdated"), message: t("managerShell.planEditUpdatedBody") })
+      await loadPlan(operationAgentId, operationDates, true)
+    } catch (error: unknown) {
+      const outcome = publishedRouteEditErrorOutcome(error)
+      if (outcome.code === "SESSION_EXPIRED") return
+      console.warn("[planner] UPDATE_PUBLISHED not applied:", outcome.code)
+      const rawPointIds = (error as { pointIds?: unknown } | null)?.pointIds
+      const pointIds = Array.isArray(rawPointIds) ? rawPointIds.filter((id): id is string => typeof id === "string") : []
+      const message = t(outcome.messageKey)
+      if (outcome.action === "keep-edit") {
+        setHighlightKeys(new Set(publishedStopKeysForPointIds(stops, pointIds)))
+        notify({ tone: outcome.tone, title: t("managerShell.planEditProblemTitle"), message })
+      } else if (outcome.action === "exit-edit") {
+        exitPublishedEdit()
+        notify({ tone: outcome.tone, title: t("managerShell.planEditProblemTitle"), message })
+        await loadPlan(operationAgentId, operationDates, true)
+      } else {
+        exitPublishedEdit()
+        const fresh = await loadPlan(operationAgentId, operationDates, true)
+        const freshRoute = fresh ? publishedRouteForDay(fresh, session.date, operationAgentId) : null
+        if (outcome.action === "restart-edit") {
+          notify({ tone: outcome.tone, title: t("managerShell.planEditProblemTitle"), message })
+          if (freshRoute) startPublishedEdit(freshRoute, pointIds)
+        } else {
+          const restart = await ask({
+            title: t("managerShell.planEditProblemTitle"),
+            message,
+            tone: "warning",
+            buttons: [
+              { text: t("managerShell.planCancelEdit"), value: false, style: "cancel" },
+              { text: t("managerShell.planEditRestart"), value: true },
+            ],
+            dismissValue: false,
+          })
+          if (restart && freshRoute) startPublishedEdit(freshRoute)
+        }
+      }
+    } finally {
+      setSaving(false)
+      savingRef.current = false
+    }
+  }
+
+  // While a published day is open, the dock publishes that change instead.
+  const editAction = {
+    icon: "send",
+    label: saving ? t("managerShell.planPublishingEdit") : t("managerShell.planPublishEdit"),
+    hint: saving
+      ? undefined
+      : !editChanged
+        ? t("managerShell.planEditNoChanges")
+        : editProblem
+          ? t(publishedRouteEditProblemKey(editProblem.code))
+          : undefined,
+    disabled: saving || !editChanged || editProblem !== null,
+    onPress: () => { void publishPublishedEdit() },
+  }
+
   const footerAction = step === 1
     ? {
         icon: "arrow-forward",
@@ -946,7 +1224,7 @@ export default function PlanningWorkspaceCore({
         refreshControl={<RefreshControl enabled={!saving} refreshing={refreshing} onRefresh={() => { void refresh() }} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
         contentContainerStyle={[styles.content, tablet && styles.contentTablet]}
       >
-        <StepRail step={step} hasAgent={Boolean(agentId)} hasReview={matrixTargets.length > 0 || dirtyDates.size > 0} singleDay={singleDay} disabled={saving} onStep={setStep} t={t} />
+        <StepRail step={step} hasAgent={Boolean(agentId)} hasReview={matrixTargets.length > 0 || dirtyDates.size > 0} singleDay={singleDay} disabled={saving || editing} onStep={setStep} t={t} />
 
         {plannerHelpVisible ? (
           <PlannerCoach
@@ -1111,8 +1389,10 @@ export default function PlanningWorkspaceCore({
             <SectionIntro number="2" title={t("managerShell.planStepTargets")} />
             <View style={styles.selectionSummary}>
               <Icon name="calendar-outline" size={20} color={fieldTheme.color.blue} />
-              <Text style={styles.selectionSummaryText}>{t(singleDay ? "managerShell.planSelectionSummaryDay" : "managerShell.planSelectionSummaryWeek", { people: mutableTargetCount, visits: assignments.length })}</Text>
-              <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.textButton, saving && styles.disabled]} onPress={() => setStep(1)}><Text style={styles.textButtonText}>{t("managerShell.planChangeSetup")}</Text></Pressable>
+              <Text style={styles.selectionSummaryText}>{t(singleDay ? "managerShell.planSelectionSummaryDay" : "managerShell.planSelectionSummaryWeek", editing
+                ? { people: editStops.length, visits: editStops.length }
+                : { people: mutableTargetCount, visits: assignments.length })}</Text>
+              <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving || editing }} disabled={saving || editing} style={[styles.textButton, (saving || editing) && styles.disabled]} onPress={() => setStep(1)}><Text style={styles.textButtonText}>{t("managerShell.planChangeSetup")}</Text></Pressable>
             </View>
 
             {!singleDay ? (
@@ -1127,17 +1407,25 @@ export default function PlanningWorkspaceCore({
                 timezone={tenantTimezone}
                 language={i18n.language}
                 tablet={tablet}
-                disabled={saving}
+                disabled={saving || editing}
                 onSelect={setActiveDate}
                 t={t}
               />
             ) : null}
 
+            {editingActiveDate ? (
+              <Notice tone="neutral" icon="create-outline" title={t("managerShell.planEditingTitle")} body={t("managerShell.planEditingBody")} />
+            ) : null}
             <DayPlanEditor
               date={activeDate}
               rows={activeDayTargets}
-              lockedCells={lockedCells}
+              lockedCells={editingActiveDate && editLockedCells ? editLockedCells : lockedCells}
               editable={activeDateEditable}
+              editingPublished={editingActiveDate}
+              highlightKeys={editingActiveDate ? highlightKeys : undefined}
+              changePlan={!editing && activePublishedRoute && activeEditAvailability !== "unavailable"
+                ? { label: t("managerShell.planChangePublished"), onPress: () => startPublishedEdit(activePublishedRoute) }
+                : undefined}
               saving={saving}
               timezone={tenantTimezone}
               language={i18n.language}
@@ -1146,7 +1434,7 @@ export default function PlanningWorkspaceCore({
               onRemove={removeDayTarget}
               t={t}
             />
-            {!singleDay && activeDateEditable && activeMutableTargets.length > 0 && copyTargetDates.length > 0 ? (
+            {!singleDay && !editing && activeDateEditable && activeMutableTargets.length > 0 && copyTargetDates.length > 0 ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ disabled: saving || copying }}
@@ -1224,7 +1512,9 @@ export default function PlanningWorkspaceCore({
                 <View style={[styles.targetList, tablet && styles.targetListTablet]}>
                   {targetResults.map((target) => {
                     const selectedTarget = activeDayTargets.find((assignment) => assignment.key === target.key)
-                    const mutableSelection = assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
+                    const mutableSelection = editingActiveDate
+                      ? Boolean(selectedTarget) && !isPublishedStopLocked(selectedTarget as PlanningAssignedTarget)
+                      : assignments.some((assignment) => assignment.key === target.key && assignment.date === activeDate)
                     const selected = Boolean(selectedTarget)
                     const resolved = planningTargetForDate(target, activeDate)
                     const displayTarget = selectedTarget ?? resolved ?? target
@@ -1281,8 +1571,23 @@ export default function PlanningWorkspaceCore({
               />
             )}
             </View>
-            {!activeDateEditable ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
-            {matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
+            {/*
+              A published day used to say only "view-only, choose another
+              period" (owner, 2026-09-15: "I can't change it"). Its own agent
+              now gets the way in, named on the button it points to.
+            */}
+            {!activeDateEditable && activePublishedRoute && activeEditAvailability !== "unavailable" ? (
+              <Notice
+                tone="neutral"
+                icon="lock-closed-outline"
+                title={t("managerShell.planPublishedReadOnlyTitle")}
+                body={t("managerShell.planPublishedReadOnlyBody")}
+                action={!saving ? t("managerShell.planChangePublished") : undefined}
+                onAction={!saving ? () => startPublishedEdit(activePublishedRoute) : undefined}
+              />
+            ) : !activeDateEditable ? <Notice tone="warning" icon="lock-closed-outline" title={t("managerShell.planNoEditableDateTitle")} body={t("managerShell.planNoEditableDateBody")} /> : null}
+            {!editing && matrixTargets.length === 0 && dirtyDates.size > 0 ? <Notice tone="warning" icon="trash-outline" title={t("managerShell.planEmptyDraftTitle")} body={t("managerShell.planEmptyDraftBody")} /> : null}
+            {editing ? null : (
             <View style={styles.savePanel}>
               <Text style={styles.fieldLabel}>{t("managerShell.planFinishMode")}</Text>
               <Text style={styles.fieldHelp}>{t("managerShell.planFinishModeHelp")}</Text>
@@ -1301,16 +1606,18 @@ export default function PlanningWorkspaceCore({
               {multipleDraftDates.length > 0 ? <Notice tone="warning" icon="git-compare-outline" title={t("managerShell.planMultipleDraftsTitle")} body={t("managerShell.planMultipleDraftsBody")} /> : null}
               {invalidAssignmentDates.length > 0 ? <Notice tone="warning" icon="business-outline" title={t("managerShell.planNoActiveWorkplace")} body={t("managerShell.planResolveWarnings")} /> : null}
             </View>
+            )}
           </View>
         )}
       </ScrollView>
       <PlannerActionDock
-        action={footerAction}
-        backLabel={t("contactTransfer.back")}
-        showBack={step > 1}
+        action={editing ? editAction : footerAction}
+        backLabel={editing ? t("managerShell.planCancelEdit") : t("contactTransfer.back")}
+        backIcon={editing ? "close" : "arrow-back"}
+        showBack={step > 1 || editing}
         disabled={saving}
         bottomInset={Math.max(safeAreaInsets.bottom, fieldTheme.space.sm)}
-        onBack={() => setStep(1)}
+        onBack={editing ? () => { void cancelPublishedEdit() } : () => setStep(1)}
       />
     </View>
   )
@@ -1539,11 +1846,16 @@ function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; d
   )
 }
 
-function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, language, onTime, onMove, onRemove, t }: {
+function DayPlanEditor({ date, rows, lockedCells, editable, editingPublished = false, highlightKeys, changePlan, saving, timezone, language, onTime, onMove, onRemove, t }: {
   date: string
   rows: PlanningAssignedTarget[]
   lockedCells: Set<string>
   editable: boolean
+  /** Editing a published day: a locked row is a visited stop and says so. */
+  editingPublished?: boolean
+  /** Rows the server or the client check named as the problem. */
+  highlightKeys?: Set<string>
+  changePlan?: { label: string; onPress: () => void }
   saving: boolean
   timezone?: string | null
   language: string
@@ -1560,7 +1872,19 @@ function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, la
           <Text style={styles.dayPlanDate}>{formatPlanDate(date, language)}</Text>
           <Text style={styles.dayPlanCount}>{rows.length > 0 ? t("managerShell.planDayVisits", { count: rows.length }) : t("managerShell.planDayEmpty")}</Text>
         </View>
-        {!editable ? <View style={styles.dayPlanLockedPill}><Icon name="lock-closed" size={14} color={fieldTheme.color.amber} /><Text style={styles.dayPlanLockedText}>{t("managerShell.planLockedShort")}</Text></View> : null}
+        {!editable && changePlan ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: saving }}
+            disabled={saving}
+            onPress={changePlan.onPress}
+            testID={`mtm-mobile-change-plan-${date}`}
+            style={({ pressed }) => [styles.dayPlanChangeButton, saving && styles.disabled, pressed && styles.pressed]}
+          >
+            <Icon name="create-outline" size={16} color={fieldTheme.color.onColor} />
+            <Text style={styles.dayPlanChangeText}>{changePlan.label}</Text>
+          </Pressable>
+        ) : !editable ? <View style={styles.dayPlanLockedPill}><Icon name="lock-closed" size={14} color={fieldTheme.color.amber} /><Text style={styles.dayPlanLockedText}>{t("managerShell.planLockedShort")}</Text></View> : null}
       </View>
       {rows.length === 0 ? (
         <View style={styles.dayPlanEmpty}>
@@ -1572,8 +1896,9 @@ function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, la
           {rows.map((target, index) => {
             const locked = lockedCells.has(`${date}|${target.key}`)
             const controlsDisabled = saving || !editable || locked
+            const highlighted = highlightKeys?.has(target.key) === true
             return (
-              <View key={`${date}|${target.key}`} style={[styles.dayStopRow, locked && styles.dayStopRowLocked]}>
+              <View key={`${date}|${target.key}`} style={[styles.dayStopRow, locked && styles.dayStopRowLocked, highlighted && styles.dayStopRowHighlighted]}>
                 <View style={styles.dayStopOrder}><Text style={styles.dayStopOrderText}>{index + 1}</Text></View>
                 <View style={styles.dayStopCopy}>
                   <Text style={styles.dayStopName}>{target.name}</Text>
@@ -1585,7 +1910,12 @@ function DayPlanEditor({ date, rows, lockedCells, editable, saving, timezone, la
                   label={`${t("managerShell.planVisitTime")}: ${target.name}`}
                   onCommit={(time) => onTime(target, date, time)}
                 />
-                {locked ? (
+                {locked && editingPublished ? (
+                  <View style={styles.dayStopVisited} accessibilityLabel={t("managerShell.planVisitedStop")}>
+                    <Icon name="lock-closed" size={14} color={fieldTheme.color.amber} />
+                    <Text numberOfLines={1} style={styles.dayStopVisitedText}>{t("managerShell.planVisitedStop")}</Text>
+                  </View>
+                ) : locked ? (
                   <Icon name="lock-closed" size={19} color={fieldTheme.color.amber} />
                 ) : (
                   <View style={styles.dayStopActions}>
@@ -1630,9 +1960,10 @@ function InlineEmpty({ icon, text, action, onAction }: { icon: string; text: str
   )
 }
 
-function PlannerActionDock({ action, backLabel, showBack, disabled, bottomInset, onBack }: {
+function PlannerActionDock({ action, backLabel, backIcon = "arrow-back", showBack, disabled, bottomInset, onBack }: {
   action: { icon: string; label: string; hint?: string; disabled: boolean; onPress: () => void }
   backLabel: string
+  backIcon?: string
   showBack: boolean
   disabled: boolean
   bottomInset: number
@@ -1644,7 +1975,7 @@ function PlannerActionDock({ action, backLabel, showBack, disabled, bottomInset,
       <View style={styles.actionDockRow}>
         {showBack ? (
           <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onBack} style={({ pressed }) => [styles.backAction, disabled && styles.disabled, pressed && styles.pressed]}>
-            <Icon name="arrow-back" size={20} color={fieldTheme.color.primaryStrong} />
+            <Icon name={backIcon} size={20} color={fieldTheme.color.primaryStrong} />
             <Text style={styles.backActionText}>{backLabel}</Text>
           </Pressable>
         ) : null}
@@ -1770,11 +2101,16 @@ const styles = StyleSheet.create({
   dayPlanCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   dayPlanLockedPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.amberSoft },
   dayPlanLockedText: { color: fieldTheme.color.amber, fontSize: 10, fontWeight: "900" },
+  dayPlanChangeButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
+  dayPlanChangeText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
   dayPlanEmpty: { minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderStyle: "dashed", borderColor: fieldTheme.color.border },
   dayPlanEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center" },
   dayStopList: { gap: 6 },
   dayStopRow: { minHeight: 66, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, padding: 7, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
   dayStopRowLocked: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
+  dayStopRowHighlighted: { borderColor: fieldTheme.color.danger, borderWidth: 2, backgroundColor: fieldTheme.color.dangerSoft },
+  dayStopVisited: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  dayStopVisitedText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "900" },
   dayStopOrder: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
   dayStopOrderText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
