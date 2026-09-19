@@ -88,7 +88,8 @@ export default function RouteSelfPlanningWorkspace({
         : null
       const eligibility = fieldEligibilityReason(response?.data?.eligibility?.reason)
       if (targets.length > 0 || !nextPage || attempt === 1) {
-        return { targets, nextPage: query.targetId && targets.length > 0 ? null : nextPage, eligibility }
+        if (query.targetId && targets.length > 0) return { targets, nextPage: null, eligibility }
+        return { targets, nextPage, eligibility }
       }
       page = nextPage
     }

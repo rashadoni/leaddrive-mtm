@@ -224,7 +224,7 @@ function MainTabs() {
                 borderRadius: fieldTheme.radius.md,
               }
             : { paddingHorizontal: 2 },
-          tabBarLabelStyle: tablet ? styles.tabLabel : styles.tabLabelPhone,
+          tabBarLabelStyle: styles.tabLabel,
         }}
       >
         {AGENT_TAB_NAMES.map((name) => (
@@ -339,11 +339,6 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 12,
     lineHeight: 15,
-    fontWeight: "700",
-  },
-  tabLabelPhone: {
-    fontSize: 10,
-    lineHeight: 13,
     fontWeight: "700",
   },
 })
