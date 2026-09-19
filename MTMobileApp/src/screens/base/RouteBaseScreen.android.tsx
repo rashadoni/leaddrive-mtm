@@ -69,7 +69,7 @@ export default function RouteBaseScreen() {
           ) : null}
           <View style={styles.titleCopy}>
             <Text style={styles.eyebrow}>{t("baseHub.eyebrow")}</Text>
-            <Text style={styles.headerTitle}>{t("baseHub.title")}</Text>
+            <Text style={styles.headerTitle}>{t(contactsEnabled ? "baseHub.title" : "baseHub.placesTitle")}</Text>
             <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
         </View>

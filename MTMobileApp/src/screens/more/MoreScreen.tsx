@@ -79,7 +79,7 @@ export default function MoreScreen() {
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const actions = contactsEnabled
     ? COMMON_ACTIONS
-    : COMMON_ACTIONS.map((action) => action.route === "Base" ? { ...action, bodyKey: "moreV2.baseBodyPlaces" } : action)
+    : COMMON_ACTIONS.map((action) => action.route === "Base" ? { ...action, titleKey: "moreV2.baseTitlePlaces", bodyKey: "moreV2.baseBodyPlaces" } : action)
 
   const open = (route: MoreRoute) => {
     switch (route) {

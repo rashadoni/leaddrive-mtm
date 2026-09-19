@@ -50,6 +50,7 @@ describe("Daha çox menu does not promise contacts when they are off", () => {
 
   it("swaps the customers subtitle for the places-only one", () => {
     expect(more).toContain(`const contactsEnabled = ${POLICY_SELECTOR}`)
+    expect(more).toContain('titleKey: "moreV2.baseTitlePlaces"')
     expect(more).toContain('bodyKey: "moreV2.baseBodyPlaces"')
     expect(more).toContain('bodyKey: "moreV2.baseBody"')
   })
@@ -63,6 +64,10 @@ describe("Daha çox menu does not promise contacts when they are off", () => {
       "Find a clinic, pharmacy, or another organization",
       "Klinika, aptek və ya başqa təşkilat tapın",
     ])
+    const titles = (["ru", "en", "az"] as const).map(
+      (locale) => (mobileResources[locale].moreV2 as Record<string, string>).baseTitlePlaces,
+    )
+    expect(titles).toEqual(["Места", "Places", "Məkanlar"])
   })
 })
 
