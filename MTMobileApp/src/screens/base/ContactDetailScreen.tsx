@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { commercialApi } from "../../services/commercial-api"
-import { toContactDetail, type BrandPotential, type ContactDetail, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
+import { toContactDetail, type BrandPotential, type ContactClientTypeField, type ContactDetail, type ContactLocalizedLabels, type ContactWorkplace, type DoctorAssessment } from "../../services/contact-detail"
 import { readOfflineContactDetail } from "../../services/offline-reads"
 import { useAuthStore } from "../../store/auth"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -38,6 +38,18 @@ import { upper } from "../../lib/upper"
 const TYPE_KEY: Record<string, string> = { DOCTOR: "contacts.typeDoctor", PHARMACIST: "contacts.typePharmacist", OTHER: "contacts.typeOther" }
 const OBJECT_TYPE_KEY: Record<string, string> = { PHARMACY: "organizations.objectPharmacy", CLINIC: "organizations.objectClinic", STORE: "organizations.objectStore", OTHER: "organizations.objectOther" }
 type Section = "summary" | "overview" | "scoring" | "brands" | "workplaces" | "requests" | "history"
+
+function localizedLabel(labels: ContactLocalizedLabels | undefined, locale: string): string {
+  if (!labels) return ""
+  const language = locale.toLowerCase().split("-")[0] as keyof ContactLocalizedLabels
+  return labels[language] || labels.ru || labels.en || labels.az
+}
+
+function clientTypeFieldValue(field: ContactClientTypeField, locale: string): string {
+  const value = String(field.value)
+  if (field.type !== "SELECT") return value
+  return localizedLabel(field.options.find((option) => option.code === value)?.labels, locale) || value
+}
 
 function operationKey(kind: string): string {
   return `contact-${kind}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -123,7 +135,8 @@ export default function ContactDetailScreen() {
   const agentRequest = Boolean(detail?.canRequestChanges && !detail?.canManage)
   const canChange = Boolean(detail && !offline && (detail.canManage || detail.canRequestChanges))
   const title = detail?.name || name || ""
-  const subtitle = detail ? detail.specialty || (detail.type ? t(TYPE_KEY[detail.type] ?? "contacts.typeOther") : "") : ""
+  const clientTypeLabel = detail ? localizedLabel(detail.clientType?.labels, i18n.language) : ""
+  const subtitle = detail ? detail.specialty || clientTypeLabel || (detail.type ? t(TYPE_KEY[detail.type] ?? "contacts.typeOther") : "") : ""
   const saveContact = async (fields: ContactEditFields, reason: string) => {
     if (!detail) return
     setBusy(true)
@@ -390,7 +403,7 @@ export default function ContactDetailScreen() {
           <Pressable accessibilityRole="button" accessibilityLabel={t("baseHub.back")} style={styles.backBtn} onPress={() => navigation.goBack()}><Icon name="arrow-back" size={22} color={fieldTheme.color.onColor} /><Text style={styles.backText}>{t("baseHub.back")}</Text></Pressable>
           <View style={styles.avatar}><Text style={styles.avatarText}>{upper(title.split(" ").slice(0, 2).map((part) => part[0] ?? "").join(""))}</Text></View>
           <View style={styles.headerMain}><Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>{!!subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}</View>
-          {detail?.category && <View style={styles.categoryBadge}><Text style={styles.categoryText}>{detail.category}</Text></View>}
+          {(clientTypeLabel || detail?.category) && <View style={styles.categoryBadge}><Text style={styles.categoryText} numberOfLines={2}>{clientTypeLabel || detail?.category}</Text></View>}
         </View>
       </View>
 
@@ -416,6 +429,7 @@ export default function ContactDetailScreen() {
               onToggleManage={() => setManageExpanded((value) => !value)}
               canChange={canChange}
               agentRequest={agentRequest}
+              locale={i18n.language}
               offline={offline}
               onEdit={() => setEditVisible(true)}
               onDuplicate={() => setDuplicateVisible(true)}
@@ -429,7 +443,7 @@ export default function ContactDetailScreen() {
           {detail && section !== "summary" && (
             <SectionReturn title={t(`contacts.tab_${section}`)} onBack={() => setSection("summary")} t={t} />
           )}
-          {detail && section === "overview" && <Overview detail={detail} tablet={tablet} t={t} />}
+          {detail && section === "overview" && <Overview detail={detail} tablet={tablet} locale={i18n.language} t={t} />}
           {detail && section === "scoring" && <Scoring detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={() => setAssessmentVisible(true)} onDecision={(assessment, decision) => setAssessmentDecision({ assessment, decision })} />}
           {detail && section === "brands" && <BrandPotentials detail={detail} offline={offline} tablet={tablet} locale={i18n.language} t={t} onAdd={(previous) => { setPotentialPrevious(previous ?? null); setPotentialVisible(true) }} onDecision={(potential, decision) => setPotentialDecision({ potential, decision })} onEnd={setEndPotential} onVisit={(visitId, visitName) => navigation.navigate("VisitWorkspace", { visitId, name: visitName })} />}
           {detail && section === "workplaces" && (
@@ -538,6 +552,7 @@ function FriendlySummary({
   onToggleManage,
   canChange,
   agentRequest,
+  locale,
   offline,
   onEdit,
   onDuplicate,
@@ -562,6 +577,7 @@ function FriendlySummary({
   onToggleManage: () => void
   canChange: boolean
   agentRequest: boolean
+  locale: string
   offline: boolean
   onEdit: () => void
   onDuplicate: () => void
@@ -573,6 +589,7 @@ function FriendlySummary({
   const address = [snapshot.primaryWorkplace?.city, snapshot.primaryWorkplace?.address].filter(Boolean).join(", ")
   const currentAssessment = detail.doctorAssessments[0]
   const managementAvailable = detail.canManage || detail.canRequestChanges || detail.canRecordBrandPotential
+  const clientTypeLabel = localizedLabel(detail.clientType?.labels, locale)
   const hasSecondaryContact = Boolean(
     (onCall && primaryAction !== "call")
     || (onWhatsapp && primaryAction !== "whatsapp")
@@ -594,6 +611,7 @@ function FriendlySummary({
           <Text style={styles.eyebrow}>{t("contacts.friendlyAtGlance")}</Text>
           <Text style={styles.identityName}>{detail.name}</Text>
           <View style={styles.identityPills}>
+            {!!clientTypeLabel && <SummaryPill icon="people-outline" text={clientTypeLabel} />}
             {!!detail.type && <SummaryPill icon="person-outline" text={t(TYPE_KEY[detail.type] ?? "contacts.typeOther")} />}
             {!!detail.specialty && <SummaryPill icon="medical-outline" text={detail.specialty} />}
             {!!detail.category && <SummaryPill icon="star-outline" text={detail.category} />}
@@ -914,11 +932,13 @@ function Fact({ icon, value }: { icon: string; value?: string }) {
   return <View style={styles.fact}><Icon name={icon} size={16} color="#5E7069" /><Text style={styles.factText}>{value}</Text></View>
 }
 
-function Overview({ detail, tablet, t }: { detail: ContactDetail; tablet: boolean; t: (key: string) => string }) {
+function Overview({ detail, tablet, locale, t }: { detail: ContactDetail; tablet: boolean; locale: string; t: (key: string) => string }) {
   const address = [detail.postalCode, detail.addressRegion, detail.addressLocality, detail.addressDistrict, detail.addressStreet].filter(Boolean).join(", ")
+  const clientTypeLabel = localizedLabel(detail.clientType?.labels, locale)
   return (
     <View style={[styles.overviewGrid, tablet && styles.overviewGridTablet]}>
-      <View style={[styles.card, tablet && styles.halfCard]}><Text style={styles.cardTitle}>{t("contacts.sectionPersonal")}</Text><Field label={t("contacts.fieldLastName")} value={detail.lastName} /><Field label={t("contacts.fieldFirstName")} value={detail.firstName} /><Field label={t("contacts.fieldMiddleName")} value={detail.middleName} /><Field label={t("contacts.fieldBirthDate")} value={detail.birthDate} /><Field label={t("contacts.fieldGender")} value={detail.gender} /><Field label={t("contacts.fieldType")} value={detail.type ? t(TYPE_KEY[detail.type] ?? "contacts.typeOther") : undefined} /><Field label={t("contacts.fieldSpecialty")} value={detail.specialty} /><Field label={t("contacts.fieldQualification")} value={detail.qualificationCategory} /><Field label={t("contacts.fieldProfile")} value={detail.profile} /><Field label={t("contacts.fieldProductCategory")} value={detail.productCategory} /></View>
+      <View style={[styles.card, tablet && styles.halfCard]}><Text style={styles.cardTitle}>{t("contacts.sectionPersonal")}</Text><Field label={t("contacts.fieldLastName")} value={detail.lastName} /><Field label={t("contacts.fieldFirstName")} value={detail.firstName} /><Field label={t("contacts.fieldMiddleName")} value={detail.middleName} /><Field label={t("contacts.fieldBirthDate")} value={detail.birthDate} /><Field label={t("contacts.fieldGender")} value={detail.gender} /><Field label={t("contacts.fieldClientType")} value={clientTypeLabel} /><Field label={t("contacts.fieldType")} value={detail.type ? t(TYPE_KEY[detail.type] ?? "contacts.typeOther") : undefined} /><Field label={t("contacts.fieldSpecialty")} value={detail.specialty} /><Field label={t("contacts.fieldQualification")} value={detail.qualificationCategory} /><Field label={t("contacts.fieldProfile")} value={detail.profile} /><Field label={t("contacts.fieldProductCategory")} value={detail.productCategory} /></View>
+      {detail.clientType && detail.clientType.fields.length > 0 && <View style={[styles.card, tablet && styles.halfCard]}><Text style={styles.cardTitle}>{t("contacts.sectionClientType")}</Text>{detail.clientType.fields.map((field) => <Field key={field.key} label={localizedLabel(field.labels, locale)} value={clientTypeFieldValue(field, locale)} />)}</View>}
       <View style={[styles.card, tablet && styles.halfCard]}><Text style={styles.cardTitle}>{t("contacts.sectionCommunication")}</Text><Field label={t("contacts.fieldWorkPhone")} value={detail.workPhone} /><Field label={t("contacts.fieldHomePhone")} value={detail.homePhone} /><Field label={t("contacts.fieldMobilePhone")} value={detail.mobilePhone || detail.phone} /><Field label={t("contacts.fieldViber")} value={detail.viberPhone} /><Field label={t("contacts.fieldWhatsapp")} value={detail.whatsappPhone} /><Field label={t("contacts.fieldTelegram")} value={detail.telegramPhone || detail.messengerPhone} /><Field label={t("contacts.fieldEmail")} value={detail.email} /></View>
       <View style={[styles.card, tablet && styles.halfCard]}><Text style={styles.cardTitle}>{t("contacts.sectionHomeAddress")}</Text><Field label={t("contacts.fieldAddress")} value={address} /><Field label={t("contacts.fieldNotes")} value={detail.notes} /></View>
       <View style={[styles.card, tablet && styles.halfCard]}><Text style={styles.cardTitle}>{t("contacts.sectionDataQuality")}</Text><Field label={t("contacts.fieldStatus")} value={detail.status} /><Field label={t("contacts.fieldVerification")} value={detail.verificationStatus} /><Field label={t("contacts.fieldConsent")} value={detail.consentStatus} /><Field label={t("contacts.fieldPreference")} value={detail.contactPreference} /><Field label={t("contacts.fieldSource")} value={detail.source} /><Field label={t("contacts.fieldCode")} value={detail.externalCode} /><Field label={t("contacts.fieldDuplicateOf")} value={detail.duplicateOfName || detail.duplicateOfContactId} /></View>
