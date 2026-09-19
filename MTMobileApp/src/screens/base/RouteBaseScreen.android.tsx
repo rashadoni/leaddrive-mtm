@@ -51,7 +51,11 @@ export default function RouteBaseScreen() {
   }, [contactsEnabled, tab])
   const visibleTab: BaseTab = contactsEnabled ? tab : "organizations"
   const active = TABS.find((item) => item.key === visibleTab) ?? TABS.find((item) => item.key === "organizations")!
-  const canGoBack = navigation.canGoBack()
+  // `navigation.canGoBack()` also bubbles through the parent tab navigator.
+  // That made the Clients/Places tab root show a misleading back arrow merely
+  // because the agent had opened it from Today. Only a screen pushed inside
+  // this local stack should expose the header back action.
+  const canGoBack = (navigation.getState()?.index ?? 0) > 0
 
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>

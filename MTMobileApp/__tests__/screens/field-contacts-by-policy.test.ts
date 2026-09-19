@@ -48,10 +48,13 @@ describe("Müştərilər hub follows the contacts switch", () => {
 describe("other doors into contacts", () => {
   it("keeps the clients directory in the global tabs and labels places honestly when contacts are off", () => {
     const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/AppNavigatorAndroidV2.tsx"), "utf8")
+    const base = read("base/RouteBaseScreen.android.tsx")
     expect(navigator).toContain('function ClientsStackNavigator()')
     expect(navigator).toContain('<ClientsStack.Screen name="ClientsHome" component={RouteBaseScreen} />')
     expect(navigator).toContain('Clients: ClientsStackNavigator')
     expect(navigator).toContain('name === "Clients" && !contactsEnabled ? "navV2.places"')
+    expect(base).toContain("const canGoBack = (navigation.getState()?.index ?? 0) > 0")
+    expect(base).not.toContain("const canGoBack = navigation.canGoBack()")
     const labels = (["ru", "en", "az"] as const).map(
       (locale) => (mobileResources[locale].navV2 as Record<string, string>).places,
     )
