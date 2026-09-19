@@ -21,7 +21,7 @@ import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
 import { fieldContactsEnabled, plannableTargetTypes } from "../../lib/field-contacts-policy"
-import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { isExpandedTabletWidth, isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import { api } from "../../services/api"
@@ -1745,6 +1745,8 @@ function CompactPlanDatePicker({
   t: any
 }) {
   const [open, setOpen] = useState(false)
+  const { height } = useWindowDimensions()
+  const shortWindow = isShortWindow(height)
   const visibleMonthKey = monthCells.find((cell) => cell.date)?.date ?? anchor
   const visibleMonth = new Date(`${visibleMonthKey}T00:00:00.000Z`)
   const monthLabel = upperFirst(formatLocalizedDate(visibleMonth, language, {
@@ -1772,10 +1774,10 @@ function CompactPlanDatePicker({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.dateSheetBackdrop} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={t("managerShell.planCancelEdit")}>
-          <Pressable style={styles.dateSheet} onPress={() => undefined}>
-            <View style={styles.dateSheetHeader}>
-              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, pressed && styles.pressed]} onPress={onPreviousMonth}>
+        <Pressable style={[styles.dateSheetBackdrop, shortWindow && styles.dateSheetBackdropShort]} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={t("managerShell.planCancelEdit")}>
+          <Pressable style={[styles.dateSheet, shortWindow && styles.dateSheetShort]} onPress={() => undefined}>
+            <View style={[styles.dateSheetHeader, shortWindow && styles.dateSheetHeaderShort]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, shortWindow && styles.squareButtonShort, pressed && styles.pressed]} onPress={onPreviousMonth}>
                 <Icon name="chevron-back" size={23} color={fieldTheme.color.primaryStrong} />
               </Pressable>
               <View style={styles.dateCopy}>
@@ -1784,16 +1786,16 @@ function CompactPlanDatePicker({
                   <Text style={styles.todayButtonText}>{t("managerShell.planToday")}</Text>
                 </Pressable>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, pressed && styles.pressed]} onPress={onNextMonth}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, shortWindow && styles.squareButtonShort, pressed && styles.pressed]} onPress={onNextMonth}>
                 <Icon name="chevron-forward" size={23} color={fieldTheme.color.primaryStrong} />
               </Pressable>
             </View>
-            <View style={styles.monthWeekdays} accessibilityRole="none">
+            <View style={[styles.monthWeekdays, shortWindow && styles.monthWeekdaysShort]} accessibilityRole="none">
               {weekdayLabels.map((label, index) => <Text key={`${label}-${index}`} style={styles.monthWeekday}>{label}</Text>)}
             </View>
             <View style={styles.monthGrid} testID="planning-month-grid">
               {monthCells.map((cell, index) => {
-                if (!cell.date) return <View key={`blank-${index}`} style={styles.monthCell} />
+                if (!cell.date) return <View key={`blank-${index}`} style={[styles.monthCell, shortWindow && styles.monthCellShort]} />
                 const selected = cell.date === anchor
                 const inWindow = !singleDay && !selected && dates.includes(cell.date)
                 const cellDisabled = disabled || cell.past
@@ -1807,6 +1809,7 @@ function CompactPlanDatePicker({
                     onPress={() => { onSelect(cell.date as string); setOpen(false) }}
                     style={({ pressed }) => [
                       styles.monthCell,
+                      shortWindow && styles.monthCellShort,
                       styles.monthDay,
                       cell.weekend && styles.monthDayWeekend,
                       cell.today && styles.monthDayToday,
@@ -2159,6 +2162,12 @@ const styles = StyleSheet.create({
   dateSheet: { width: "100%", maxWidth: 520, gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   dateSheetHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
+  dateSheetBackdropShort: { padding: fieldTheme.space.sm },
+  dateSheetShort: { maxWidth: 640, gap: 4, padding: fieldTheme.space.sm },
+  dateSheetHeaderShort: { minHeight: LAYOUT_TOUCH_TARGETS.compact },
+  squareButtonShort: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact },
+  monthWeekdaysShort: { marginTop: 0 },
+  monthCellShort: { height: 38, aspectRatio: undefined },
   dateCopy: { flex: 1, alignItems: "center", gap: 5 },
   dateTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900", textAlign: "center" },
   todayButton: { minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
