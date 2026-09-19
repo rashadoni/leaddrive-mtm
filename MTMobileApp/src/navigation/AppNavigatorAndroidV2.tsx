@@ -9,6 +9,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
+import { fieldContactsEnabled } from "../lib/field-contacts-policy"
 import { fieldTheme } from "../theme/fieldTheme"
 import { isTabletWidth, NAV_RAIL_WIDTH } from "../theme/layoutBreakpoints"
 
@@ -36,6 +37,7 @@ import RouteSelfPlanningWorkspace from "../screens/route/RouteSelfPlanningWorksp
 import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.android"
 import type { RawTask } from "../services/task-detail"
 import type { MobileProductPresentation } from "../services/product-presentations"
+import type { RoutePlanningTargetHint } from "../services/route-planning-target"
 import { AGENT_TAB_NAMES } from "./role-tabs"
 
 export type RootStackParamList = {
@@ -56,25 +58,33 @@ export type RootStackParamList = {
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
   /** Route Field planning is self-only; team planning remains in the legacy shell. */
-  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } | undefined
+  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } | undefined
 }
 
 export type MoreStackParamList = {
   MoreHome: undefined
   Visits: undefined
-  Base: undefined
   GpsHistory: undefined
   Profile: undefined
 }
 
+export type ClientsStackParamList = {
+  ClientsHome: undefined
+  OrganizationDetail: { id: string; name?: string }
+  ContactDetail: { id: string; name?: string }
+  DoctorCreateRequest: undefined
+}
+
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const MoreStack = createNativeStackNavigator<MoreStackParamList>()
+const ClientsStack = createNativeStackNavigator<ClientsStackParamList>()
 const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
   Today: { active: "today", inactive: "today-outline" },
   Calendar: { active: "calendar-number", inactive: "calendar-number-outline" },
   Route: { active: "navigate", inactive: "navigate-outline" },
+  Clients: { active: "people", inactive: "people-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
   More: { active: "ellipsis-horizontal-circle", inactive: "ellipsis-horizontal-circle-outline" },
 }
@@ -84,13 +94,14 @@ const PlanningBuilderScreen = ({
   route,
 }: {
   navigation: { goBack: () => void }
-  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } }
+  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } }
 }) => (
   <RouteSelfPlanningWorkspace
     onClose={() => navigation.goBack()}
     initialDate={route.params?.initialDate}
     initialHorizon={route.params?.initialHorizon}
     editPublished={route.params?.editPublished}
+    initialTarget={route.params?.initialTarget}
   />
 )
 
@@ -101,10 +112,20 @@ function MoreStackNavigator() {
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
       <MoreStack.Screen name="MoreHome" component={MoreScreen} />
       <MoreStack.Screen name="Visits" component={VisitScreen} />
-      <MoreStack.Screen name="Base" component={RouteBaseScreen} />
       <MoreStack.Screen name="GpsHistory" component={GpsHistoryScreen} />
       <MoreStack.Screen name="Profile" component={ProfileScreen} />
     </MoreStack.Navigator>
+  )
+}
+
+function ClientsStackNavigator() {
+  return (
+    <ClientsStack.Navigator screenOptions={{ headerShown: false }}>
+      <ClientsStack.Screen name="ClientsHome" component={RouteBaseScreen} />
+      <ClientsStack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
+      <ClientsStack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
+      <ClientsStack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
+    </ClientsStack.Navigator>
   )
 }
 
@@ -112,6 +133,7 @@ const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
   Today: TodayScreen,
   Calendar: WeekScreen,
   Route: RouteScreen,
+  Clients: ClientsStackNavigator,
   Tasks: TasksScreen,
   More: MoreStackNavigator,
 }
@@ -120,15 +142,16 @@ const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {
   Today: "navV2.today",
   Calendar: "navV2.calendar",
   Route: "navV2.route",
+  Clients: "navV2.clients",
   Tasks: "navV2.tasks",
   More: "navV2.more",
 }
 
-function tabOptions(name: string, label: string) {
+function tabOptions(name: string, label: string, iconOverride?: { active: string; inactive: string }) {
   return {
     title: label,
     tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => {
-      const icon = ICONS[name] ?? ICONS.Today
+      const icon = iconOverride ?? ICONS[name] ?? ICONS.Today
       return <Icon name={focused ? icon.active : icon.inactive} size={22} color={color} />
     },
   }
@@ -139,6 +162,7 @@ function MainTabs() {
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const tablet = isTabletWidth(width)
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
 
@@ -200,7 +224,7 @@ function MainTabs() {
                 borderRadius: fieldTheme.radius.md,
               }
             : { paddingHorizontal: 2 },
-          tabBarLabelStyle: styles.tabLabel,
+          tabBarLabelStyle: tablet ? styles.tabLabel : styles.tabLabelPhone,
         }}
       >
         {AGENT_TAB_NAMES.map((name) => (
@@ -208,7 +232,11 @@ function MainTabs() {
             key={name}
             name={name}
             component={TAB_COMPONENTS[name]}
-            options={tabOptions(name, t(TAB_LABEL_KEYS[name]))}
+            options={tabOptions(
+              name,
+              t(name === "Clients" && !contactsEnabled ? "navV2.places" : TAB_LABEL_KEYS[name]),
+              name === "Clients" && !contactsEnabled ? { active: "business", inactive: "business-outline" } : undefined,
+            )}
           />
         ))}
       </Tab.Navigator>
@@ -311,6 +339,11 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 12,
     lineHeight: 15,
+    fontWeight: "700",
+  },
+  tabLabelPhone: {
+    fontSize: 10,
+    lineHeight: 13,
     fontWeight: "700",
   },
 })

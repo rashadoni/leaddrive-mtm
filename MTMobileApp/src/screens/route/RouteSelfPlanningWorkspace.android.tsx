@@ -9,7 +9,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
 import type { PlanningHorizon, PlanningTarget } from "../../services/manager-planning"
 import { api } from "../../services/api"
-import { toRoutePlanningTarget } from "../../services/route-planning-target"
+import { toRoutePlanningTarget, type RoutePlanningTargetHint } from "../../services/route-planning-target"
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { submitPublishedRouteUpdate } from "../../services/published-route-update"
 import { fieldEligibilityReason } from "../../lib/field-eligibility-reason"
@@ -23,12 +23,14 @@ export default function RouteSelfPlanningWorkspace({
   initialDate,
   initialHorizon,
   editPublished,
+  initialTarget,
 }: {
   onClose?: () => void
   initialDate?: string
   initialHorizon?: PlanningHorizon
   /** Route tab «Planı dəyiş»: open initialDate's published route in the editor. */
   editPublished?: boolean
+  initialTarget?: RoutePlanningTargetHint
 }) {
   const mayPlanOwnRoutes = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   const currentAgent = useAuthStore((state) => state.agent)
@@ -63,6 +65,7 @@ export default function RouteSelfPlanningWorkspace({
         kind: query.kind,
         date: query.date,
         search: query.search,
+        targetId: query.targetId,
         page,
         limit: 25,
         ...(query.kind === "organization" ? {
@@ -84,7 +87,9 @@ export default function RouteSelfPlanningWorkspace({
         ? response.data.nextPage
         : null
       const eligibility = fieldEligibilityReason(response?.data?.eligibility?.reason)
-      if (targets.length > 0 || !nextPage || attempt === 1) return { targets, nextPage, eligibility }
+      if (targets.length > 0 || !nextPage || attempt === 1) {
+        return { targets, nextPage: query.targetId && targets.length > 0 ? null : nextPage, eligibility }
+      }
       page = nextPage
     }
     return { targets: [], nextPage: null, eligibility: null }
@@ -141,6 +146,7 @@ export default function RouteSelfPlanningWorkspace({
       writeSource={writeSource}
       initialDate={initialDate}
       initialHorizon={initialHorizon}
+      initialTarget={initialTarget}
       publishedEditSource={publishedEditSource}
       initialEditPublished={editPublished === true}
     />

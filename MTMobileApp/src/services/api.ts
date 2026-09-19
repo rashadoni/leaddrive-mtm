@@ -758,6 +758,7 @@ class ApiClient {
     params: {
       kind: "organization" | "contact"
       date: string
+      targetId?: string
       search?: string
       page?: string
       limit?: number
@@ -767,6 +768,7 @@ class ApiClient {
     signal?: AbortSignal,
   ) {
     const query = new URLSearchParams({ kind: params.kind, date: params.date })
+    if (params.targetId) query.set("targetId", params.targetId)
     if (params.search) query.set("search", params.search)
     if (params.page) query.set("page", params.page)
     if (params.limit) query.set("limit", String(params.limit))

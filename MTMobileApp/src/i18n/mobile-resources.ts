@@ -14,6 +14,8 @@ export const mobileResources = {
       week: "Неделя",
       today: "Сегодня",
       calendar: "Календарь",
+      clients: "Клиенты",
+      places: "Места",
       more: "Ещё",
     },
     moreV2: {
@@ -593,6 +595,8 @@ export const mobileResources = {
       week: "Week",
       today: "Today",
       calendar: "Calendar",
+      clients: "Clients",
+      places: "Places",
       more: "More",
     },
     moreV2: {
@@ -1160,6 +1164,8 @@ export const mobileResources = {
       week: "Həftə",
       today: "Bu gün",
       calendar: "Təqvim",
+      clients: "Müştərilər",
+      places: "Məkanlar",
       more: "Daha çox",
     },
     moreV2: {

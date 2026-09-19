@@ -16,6 +16,7 @@ describe("Route Field planning target v2 boundary", () => {
     expect(apiSource).toContain("async getRoutePlanningTargets(")
     expect(apiSource).toContain('/mobile/route-field/planning-targets?${query.toString()}')
     expect(routePlannerSource).toContain("api.getRoutePlanningTargets")
+    expect(routePlannerSource).toContain("targetId: query.targetId")
     expect(routePlannerSource).toContain("query.continuation")
     expect(routePlannerSource).toContain("response?.data?.date !== query.date")
     expect(routePlannerSource).not.toContain("manager-api")

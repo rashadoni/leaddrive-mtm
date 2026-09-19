@@ -31,6 +31,7 @@ import { runMobileSync } from "../../services/sync-engine"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { buildContactSnapshot, selectContactPrimaryAction, type ContactPrimaryAction, type ContactPrimaryActionKind } from "./contact-detail-state"
 import { upper } from "../../lib/upper"
 
@@ -50,6 +51,7 @@ export default function ContactDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "ContactDetail">>()
   const headerTop = useHeaderTop()
   const agent = useAuthStore((state) => state.agent)
+  const mayPlanOwnRoutes = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   const { id, name } = route.params
 
   const [detail, setDetail] = useState<ContactDetail | null>(null)
@@ -373,6 +375,14 @@ export default function ContactDetailScreen() {
     else setSection("overview")
   }
 
+  const addToRoute = () => {
+    if (!detail) return
+    navigation.navigate("PlanningBuilder", {
+      initialHorizon: 1,
+      initialTarget: { kind: "contact", id: detail.id, name: detail.name },
+    })
+  }
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -395,6 +405,7 @@ export default function ContactDetailScreen() {
               tablet={tablet}
               primaryAction={primaryAction.kind}
               onPrimary={runPrimaryAction}
+              onAddToRoute={mayPlanOwnRoutes && !offline ? addToRoute : undefined}
               onCall={quickPhone ? () => open(`tel:${quickPhone}`) : undefined}
               onEmail={detail.email ? () => open(`mailto:${detail.email}`) : undefined}
               onWhatsapp={detail.whatsappPhone ? () => open(`https://wa.me/${detail.whatsappPhone!.replace(/\D/g, "")}`) : undefined}
@@ -516,6 +527,7 @@ function FriendlySummary({
   tablet,
   primaryAction,
   onPrimary,
+  onAddToRoute,
   onCall,
   onEmail,
   onWhatsapp,
@@ -539,6 +551,7 @@ function FriendlySummary({
   tablet: boolean
   primaryAction: ContactPrimaryActionKind
   onPrimary: () => void
+  onAddToRoute?: () => void
   onCall?: () => void
   onEmail?: () => void
   onWhatsapp?: () => void
@@ -604,6 +617,13 @@ function FriendlySummary({
             <Text style={styles.primaryButtonText}>{t(`contacts.primary_${primaryAction}`)}</Text>
             <Icon name="arrow-forward" size={19} color={fieldTheme.color.onColor} />
           </Pressable>
+          {onAddToRoute ? (
+            <Pressable accessibilityRole="button" onPress={onAddToRoute} style={({ pressed }) => [styles.routeButton, pressed && styles.pressed]}>
+              <Icon name="calendar-outline" size={20} color={fieldTheme.color.primaryStrong} />
+              <Text style={styles.routeButtonText}>{t("contacts.addToRoute")}</Text>
+              <Icon name="arrow-forward" size={18} color={fieldTheme.color.primaryStrong} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -972,6 +992,8 @@ const styles = StyleSheet.create({
   nextBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, marginTop: 5 },
   primaryButton: { minHeight: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 18, paddingHorizontal: 16, borderRadius: 15, backgroundColor: fieldTheme.color.primary },
   primaryButtonText: { flex: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  routeButton: { minHeight: 50, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, marginTop: 10, paddingHorizontal: 16, borderRadius: 15, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  routeButtonText: { flex: 1, color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900", textAlign: "center" },
   contactNowCard: { padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, gap: fieldTheme.space.md },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHeadingIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: fieldTheme.color.primarySoft },
