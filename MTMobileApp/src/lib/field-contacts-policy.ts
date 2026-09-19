@@ -1,16 +1,14 @@
 /**
- * Whether the organization shows field contacts (doctors, pharmacists) to its
- * agents. Kept free of React Native imports so the rule is tested on its own.
- *
- * Only an explicit `false` hides them. Contacts were always visible before the
- * tenant switch existed, so a server that does not send the field yet, or a
- * bootstrap cached by an older build, must keep the app as it was — hiding a
- * working screen on a missing answer would look like data loss to the agent.
+ * Clients are people (doctors, pharmacists and other contacts) and are the
+ * field application's primary directory for every tenant. Older server
+ * bootstraps may still carry the retired `fieldContactsEnabled=false` switch;
+ * ignoring it here prevents the app from reverting to the organization-only
+ * "Places" experience and hiding assigned people from agents.
  */
 export function fieldContactsEnabled(
-  policies: { fieldContactsEnabled?: boolean } | null | undefined,
+  _policies: { fieldContactsEnabled?: boolean } | null | undefined,
 ): boolean {
-  return policies?.fieldContactsEnabled !== false
+  return true
 }
 
 /**
@@ -28,9 +26,8 @@ export function plannableTargetTypes<T extends { direction: string }>(
 }
 
 /**
- * Transferring contacts between agents is a contact screen too: it lists the
- * agent's people by name. With contacts switched off it has nothing to offer,
- * so neither the manager's entry nor the screen itself may open the list.
+ * Transferring clients between agents follows the same always-available client
+ * directory rule.
  */
 export function contactTransferAvailable(
   policies: { fieldContactsEnabled?: boolean } | null | undefined,

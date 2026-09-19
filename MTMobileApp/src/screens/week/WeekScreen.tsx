@@ -60,6 +60,8 @@ const CALENDAR_COPY = {
     visitsDone: "Выполнено визитов",
     tasksDone: "Выполнено задач",
     routeStops: "Точек маршрута",
+    routeShort: "Маршрут",
+    moreRoutes: "ещё",
     openVisit: "Открыть визит",
     completed: "Выполнен",
     planned: "Запланирован",
@@ -109,6 +111,8 @@ const CALENDAR_COPY = {
     visitsDone: "Tamamlanan ziyarətlər",
     tasksDone: "Tamamlanan tapşırıqlar",
     routeStops: "Marşrut nöqtələri",
+    routeShort: "Marşrut",
+    moreRoutes: "daha",
     openVisit: "Ziyarəti aç",
     completed: "Tamamlanıb",
     planned: "Planlaşdırılıb",
@@ -158,6 +162,8 @@ const CALENDAR_COPY = {
     visitsDone: "Visits completed",
     tasksDone: "Tasks completed",
     routeStops: "Route stops",
+    routeShort: "Route",
+    moreRoutes: "more",
     openVisit: "Open visit",
     completed: "Completed",
     planned: "Planned",
@@ -923,13 +929,20 @@ function MonthCalendar({ days, anchor, selectedDate, lang, todayLabel, copy, tab
                 </View>
               </View>
               {tablet ? (
-                <View style={styles.monthSignalsTablet}>
-                  {hasRoute ? (
-                    <View style={[styles.monthSignal, styles.monthSignalRoute]}>
-                      <Icon name="navigate-outline" size={12} color={fieldTheme.color.primaryStrong} />
-                      <Text style={styles.monthSignalRouteText}>{day.plannedStops}</Text>
+                <View style={styles.monthAgendaTablet}>
+                  {day.routes.slice(0, 2).map((route, index) => (
+                    <View key={route.id || `${day.date}-${index}`} style={styles.monthRouteRow}>
+                      <View style={styles.monthRouteStripe} />
+                      <Text style={styles.monthRouteName} numberOfLines={1}>
+                        {route.name || copy.routeShort}
+                      </Text>
+                      <Text style={styles.monthRouteStops}>{route.plannedStops}</Text>
                     </View>
+                  ))}
+                  {day.routes.length > 2 ? (
+                    <Text style={styles.monthRouteMore}>+{day.routes.length - 2} {copy.moreRoutes}</Text>
                   ) : null}
+                  <View style={styles.monthSignalsTablet}>
                   {hasTasks ? (
                     <View style={[styles.monthSignal, styles.monthSignalTask]}>
                       <Icon name="checkbox-outline" size={12} color={fieldTheme.color.blue} />
@@ -942,12 +955,21 @@ function MonthCalendar({ days, anchor, selectedDate, lang, todayLabel, copy, tab
                       <Text style={styles.monthSignalVisitText}>{day.visitsTotal}</Text>
                     </View>
                   ) : null}
+                  </View>
                 </View>
               ) : (
-                <View style={styles.monthDots}>
-                  {hasRoute ? <View style={[styles.monthDot, styles.monthDotRoute]} /> : null}
-                  {hasTasks ? <View style={[styles.monthDot, styles.monthDotTask]} /> : null}
-                  {hasVisits ? <View style={[styles.monthDot, styles.monthDotVisit]} /> : null}
+                <View style={styles.monthAgendaPhone}>
+                  {hasRoute ? (
+                    <View style={styles.monthRouteCompact}>
+                      <Text style={styles.monthRouteCompactText} numberOfLines={1}>
+                        {copy.routeShort} · {day.plannedStops}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.monthDots}>
+                    {hasTasks ? <View style={[styles.monthDot, styles.monthDotTask]} /> : null}
+                    {hasVisits ? <View style={[styles.monthDot, styles.monthDotVisit]} /> : null}
+                  </View>
                 </View>
               )}
             </Pressable>
@@ -955,7 +977,7 @@ function MonthCalendar({ days, anchor, selectedDate, lang, todayLabel, copy, tab
         })}
       </View>
       <View style={styles.monthLegend}>
-        <View style={styles.monthLegendItem}><View style={[styles.monthDot, styles.monthDotRoute]} /><Text style={styles.monthLegendText}>{copy.routeStops}</Text></View>
+        <View style={styles.monthLegendItem}><View style={styles.monthLegendRoute} /><Text style={styles.monthLegendText}>{copy.routeShort}</Text></View>
         <View style={styles.monthLegendItem}><View style={[styles.monthDot, styles.monthDotTask]} /><Text style={styles.monthLegendText}>{copy.tasksShort}</Text></View>
         <View style={styles.monthLegendItem}><View style={[styles.monthDot, styles.monthDotVisit]} /><Text style={styles.monthLegendText}>{copy.visitsShort}</Text></View>
       </View>
@@ -1469,8 +1491,8 @@ const styles = StyleSheet.create({
   metricCopy: { flex: 1 },
   metricValue: { fontSize: 17, lineHeight: 21, fontWeight: "900" },
   metricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 14, fontWeight: "600", marginTop: 1 },
-  tabletWorkspace: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.lg },
-  monthPane: { width: "55%", minWidth: 430 },
+  tabletWorkspace: { flexDirection: "column", gap: fieldTheme.space.lg },
+  monthPane: { width: "100%" },
   monthCalendar: {
     overflow: "hidden",
     marginHorizontal: -10,
@@ -1494,7 +1516,7 @@ const styles = StyleSheet.create({
   monthGrid: { flexDirection: "row", flexWrap: "wrap" },
   monthCell: {
     width: "14.285714%",
-    minHeight: 58,
+    minHeight: 76,
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 5,
@@ -1503,7 +1525,7 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.border,
     backgroundColor: fieldTheme.color.surface,
   },
-  monthCellTablet: { minHeight: 86, alignItems: "stretch", paddingHorizontal: 5, paddingVertical: 6 },
+  monthCellTablet: { minHeight: 112, alignItems: "stretch", paddingHorizontal: 5, paddingVertical: 6 },
   monthCellOutside: { opacity: 0.42 },
   monthCellSelected: { backgroundColor: fieldTheme.color.primarySoft },
   monthCellTop: { minHeight: 30, alignItems: "center", justifyContent: "center" },
@@ -1512,21 +1534,28 @@ const styles = StyleSheet.create({
   monthNumberSelected: { backgroundColor: fieldTheme.color.primary },
   monthNumber: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900" },
   monthNumberEmphasis: { color: fieldTheme.color.onColor },
+  monthAgendaPhone: { width: "100%", minHeight: 30, alignItems: "stretch", justifyContent: "flex-end", gap: 4, paddingHorizontal: 2 },
+  monthRouteCompact: { minHeight: 17, justifyContent: "center", paddingHorizontal: 3, borderRadius: 3, backgroundColor: fieldTheme.color.primary },
+  monthRouteCompactText: { color: fieldTheme.color.onColor, fontSize: 8, lineHeight: 11, fontWeight: "900" },
   monthDots: { minHeight: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 },
   monthDot: { width: 6, height: 6, borderRadius: 3 },
-  monthDotRoute: { backgroundColor: fieldTheme.color.primary },
   monthDotTask: { backgroundColor: fieldTheme.color.blue },
   monthDotVisit: { backgroundColor: fieldTheme.color.success },
-  monthSignalsTablet: { minHeight: 28, flexDirection: "row", flexWrap: "wrap", alignContent: "center", gap: 3 },
+  monthAgendaTablet: { minHeight: 66, justifyContent: "flex-end", gap: 3 },
+  monthRouteRow: { minHeight: 20, flexDirection: "row", alignItems: "center", gap: 4, paddingRight: 4, borderRadius: 4, overflow: "hidden", backgroundColor: fieldTheme.color.primarySoft },
+  monthRouteStripe: { alignSelf: "stretch", width: 3, backgroundColor: fieldTheme.color.primary },
+  monthRouteName: { flex: 1, minWidth: 0, color: fieldTheme.color.primaryStrong, fontSize: 9, lineHeight: 12, fontWeight: "800" },
+  monthRouteStops: { color: fieldTheme.color.primaryStrong, fontSize: 9, lineHeight: 12, fontWeight: "900" },
+  monthRouteMore: { color: fieldTheme.color.primaryStrong, fontSize: 8, lineHeight: 10, fontWeight: "800", paddingLeft: 6 },
+  monthSignalsTablet: { minHeight: 22, flexDirection: "row", flexWrap: "wrap", alignContent: "center", gap: 3 },
   monthSignal: { minHeight: 22, flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 5, borderRadius: fieldTheme.radius.pill },
-  monthSignalRoute: { backgroundColor: fieldTheme.color.primarySoft },
   monthSignalTask: { backgroundColor: fieldTheme.color.blueSoft },
   monthSignalVisit: { backgroundColor: fieldTheme.color.successSoft },
-  monthSignalRouteText: { color: fieldTheme.color.primaryStrong, fontSize: 9, fontWeight: "900" },
   monthSignalTaskText: { color: fieldTheme.color.blue, fontSize: 9, fontWeight: "900" },
   monthSignalVisitText: { color: fieldTheme.color.success, fontSize: 9, fontWeight: "900" },
   monthLegend: { minHeight: 34, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 8, borderTopWidth: 1, borderColor: fieldTheme.color.border },
   monthLegendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  monthLegendRoute: { width: 14, height: 7, borderRadius: 2, backgroundColor: fieldTheme.color.primary },
   monthLegendText: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "700" },
   dayDetail: {
     flex: 1,

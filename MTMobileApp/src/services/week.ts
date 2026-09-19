@@ -23,6 +23,13 @@ export interface WeekTaskItem extends RawTask {
   priority: string
 }
 
+export interface WeekRouteSummary {
+  id: string
+  name?: string
+  status?: string
+  plannedStops: number
+}
+
 export interface WeekDay {
   date: string
   isToday: boolean
@@ -32,6 +39,8 @@ export interface WeekDay {
   /** Server calendar day kind (WEEKEND, PUBLIC_HOLIDAY, …); labelled via status.dayKind. */
   calendarKind?: string
   routeCount: number
+  /** Compact route rows shown directly inside the Outlook-style month cell. */
+  routes: WeekRouteSummary[]
   /**
    * The day's route status, when the day has one answer to give (audit B5).
    * Several routes with different statuses have no single honest label, so
@@ -107,6 +116,12 @@ function mapDay(raw: any): WeekDay {
     nonWorkingReason: raw?.nonWorkingReason ? String(raw.nonWorkingReason) : undefined,
     calendarKind: raw?.calendarKind ? String(raw.calendarKind) : undefined,
     routeCount: routes.length,
+    routes: routes.map((route: any) => ({
+      id: String(route?.id ?? ""),
+      name: optStr(route?.name),
+      status: optStr(route?.effectiveStatus) ?? optStr(route?.status),
+      plannedStops: Array.isArray(route?.points) ? route.points.length : num(route?.totalPoints),
+    })),
     routeStatus,
     plannedStops,
     tasksTotal: num(raw?.tasks?.total),
