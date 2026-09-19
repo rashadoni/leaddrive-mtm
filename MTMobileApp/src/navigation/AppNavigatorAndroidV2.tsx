@@ -27,6 +27,7 @@ import RouteOrganizationDetailScreen from "../screens/base/RouteOrganizationDeta
 import RouteContactDetailScreen from "../screens/base/RouteContactDetailScreen.android"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import PresentationViewerScreen from "../screens/visit/PresentationViewerScreen"
+import DoctorCreateRequestScreen from "../screens/base/DoctorCreateRequestScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
@@ -45,6 +46,7 @@ export type RootStackParamList = {
   ContactDetail: { id: string; name?: string }
   VisitWorkspace: { visitId: string; name?: string }
   PresentationViewer: { visitId: string; product: MobileProductPresentation }
+  DoctorCreateRequest: undefined
   TaskDetail: { task: RawTask }
   Visits: undefined
   Base: undefined
@@ -242,6 +244,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
                 <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
                 <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
+                <Stack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
                 <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
                 <Stack.Screen name="Visits" component={VisitScreen} />
                 <Stack.Screen name="Base" component={RouteBaseScreen} />

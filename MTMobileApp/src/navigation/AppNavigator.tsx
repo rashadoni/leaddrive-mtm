@@ -19,6 +19,7 @@ import OrganizationDetailScreen from "../screens/base/OrganizationDetailScreen"
 import ContactDetailScreen from "../screens/base/ContactDetailScreen"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import PresentationViewerScreen from "../screens/visit/PresentationViewerScreen"
+import DoctorCreateRequestScreen from "../screens/base/DoctorCreateRequestScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import DashboardScreen from "../screens/dashboard/DashboardScreen"
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   ContactDetail: { id: string; name?: string }
   VisitWorkspace: { visitId: string; name?: string }
   PresentationViewer: { visitId: string; product: MobileProductPresentation }
+  DoctorCreateRequest: undefined
   TaskDetail: { task: RawTask }
   GpsHistory: undefined
 }
@@ -116,7 +118,8 @@ export default function AppNavigator() {
             <Stack.Screen name="OrganizationDetail" component={OrganizationDetailScreen} />
             <Stack.Screen name="ContactDetail" component={ContactDetailScreen} />
             <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
-            <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
+          <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
+          <Stack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
             <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
             <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
           </>

@@ -31,6 +31,7 @@ const COPY = {
     empty: "Доступных контактов пока нет.",
     emptySearch: "По этому запросу ничего не найдено.",
     error: "Не удалось загрузить контакты.",
+    addDoctor: "Добавить врача",
   },
   az: {
     scope: "Yalnız marşrutunuz üçün əlçatan aktiv kontaktlar və iş yerləri göstərilir.",
@@ -38,6 +39,7 @@ const COPY = {
     empty: "Hələ əlçatan kontakt yoxdur.",
     emptySearch: "Bu sorğu üzrə nəticə tapılmadı.",
     error: "Kontaktları yükləmək alınmadı.",
+    addDoctor: "Həkim əlavə et",
   },
   en: {
     scope: "Only active contacts and workplaces available to your route are shown.",
@@ -45,6 +47,7 @@ const COPY = {
     empty: "There are no available contacts yet.",
     emptySearch: "No contacts match this search.",
     error: "We could not load contacts.",
+    addDoctor: "Add doctor",
   },
 } as const
 
@@ -171,6 +174,14 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         <Icon name="shield-checkmark-outline" size={19} color={fieldTheme.color.primaryStrong} />
         <Text style={styles.scopeText}>{copy.scope}</Text>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigation.navigate("DoctorCreateRequest")}
+        style={({ pressed }) => [styles.addDoctorButton, pressed && styles.pressed]}
+      >
+        <Icon name="person-add-outline" size={20} color={fieldTheme.color.onColor} />
+        <Text style={styles.addDoctorText}>{copy.addDoctor}</Text>
+      </Pressable>
       <View style={styles.searchBox}>
         <Icon name="search" size={21} color={fieldTheme.color.inkMuted} />
         <TextInput
@@ -257,6 +268,8 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   topArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, gap: fieldTheme.space.md },
+  addDoctorButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.lg, backgroundColor: fieldTheme.color.primary },
+  addDoctorText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "800" },
   scopeNote: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   scopeText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   searchBox: { minHeight: 54, flexDirection: "row", alignItems: "center", backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, paddingLeft: fieldTheme.space.lg, borderWidth: 1, borderColor: fieldTheme.color.border },

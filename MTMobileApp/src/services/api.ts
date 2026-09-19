@@ -734,6 +734,21 @@ class ApiClient {
     return this.request(`/mobile/route-field/contacts${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
   }
 
+  async submitDoctorCreateRequest(data: {
+    idempotencyKey: string
+    displayName: string
+    specialtyName?: string | null
+    phone?: string | null
+    clinicName: string
+    address?: string | null
+    notes?: string | null
+  }) {
+    return this.request("/mobile/route-field/contact-create-requests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
   /**
    * Date-bound Route Field planner lookup. `page` is an opaque server cursor;
    * callers must never derive or increment it locally.
