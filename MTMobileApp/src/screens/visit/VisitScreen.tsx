@@ -129,6 +129,9 @@ const VISIT_COPY = {
     elapsed: "Идёт {{count}} мин",
     photos: "Фото: {{count}}",
     addPhoto: "Добавить фото",
+    openWorkspace: "Задачи и презентации",
+    visitWarning: "До 30 минут осталось не более 5 минут.",
+    visitOvertime: "Прошло 30 минут. Завершите визит, если работа закончена.",
     finish: "Завершить визит",
     finishing: "Сохраняем…",
     waitingSync: "Завершение сохранено на устройстве и ждёт синхронизации.",
@@ -197,6 +200,9 @@ const VISIT_COPY = {
     elapsed: "{{count}} dəq davam edir",
     photos: "Foto: {{count}}",
     addPhoto: "Foto əlavə et",
+    openWorkspace: "Tapşırıqlar və təqdimatlar",
+    visitWarning: "30 dəqiqəyə 5 dəqiqədən az qalıb.",
+    visitOvertime: "30 dəqiqə keçib. İş bitibsə, ziyarəti tamamlayın.",
     finish: "Ziyarəti bitir",
     finishing: "Yadda saxlanılır…",
     waitingSync: "Bitirmə cihazda saxlanılıb və sinxronizasiyanı gözləyir.",
@@ -265,6 +271,9 @@ const VISIT_COPY = {
     elapsed: "In progress for {{count}} min",
     photos: "Photos: {{count}}",
     addPhoto: "Add photo",
+    openWorkspace: "Tasks & presentations",
+    visitWarning: "The 30-minute mark is less than 5 minutes away.",
+    visitOvertime: "30 minutes have passed. Finish the visit if the work is done.",
     finish: "Finish visit",
     finishing: "Saving…",
     waitingSync: "Completion is saved on this device and is waiting to sync.",
@@ -1050,6 +1059,7 @@ export default function VisitScreen() {
     onSelectCustomer: (customer: Customer) => setSelectedCustomerId(customer.id),
     onCheckIn: () => selectedCustomer && handleCheckIn(selectedCustomer),
     onPhoto: () => setCameraVisible(true),
+    onOpenWorkspace: () => activeVisit && openVisitSummary(activeVisit),
     onCheckOut: handleCheckOut,
     signature,
     onSignature: signature.openPad,
@@ -1257,6 +1267,7 @@ function VisitActionPanel({
   onSelectCustomer,
   onCheckIn,
   onPhoto,
+  onOpenWorkspace,
   onCheckOut,
   onRetry,
   checkInIssue,
@@ -1281,6 +1292,7 @@ function VisitActionPanel({
   onSelectCustomer: (customer: Customer) => void
   onCheckIn: () => void
   onPhoto: () => void
+  onOpenWorkspace: () => void
   onCheckOut: () => void
   onRetry: () => void
   signature: { visible: boolean; required: boolean; signed: boolean }
@@ -1316,6 +1328,15 @@ function VisitActionPanel({
             {signature.visible && signature.signed ? <MetaPill icon="checkmark-done-outline" text={translate("signature.taken")} /> : null}
           </View>
 
+          {elapsedMin >= 25 ? (
+            <View style={[styles.visitTimeNotice, elapsedMin >= 30 && styles.visitTimeNoticeOvertime]} accessibilityLiveRegion="polite">
+              <Icon name={elapsedMin >= 30 ? "alert-circle" : "time-outline"} size={19} color={elapsedMin >= 30 ? fieldTheme.color.danger : fieldTheme.color.amber} />
+              <Text style={[styles.visitTimeNoticeText, elapsedMin >= 30 && styles.visitTimeNoticeTextOvertime]}>
+                {elapsedMin >= 30 ? copy.visitOvertime : copy.visitWarning}
+              </Text>
+            </View>
+          ) : null}
+
           {activeVisit.customer?.address && (
             <View style={styles.addressRow}>
               <Icon name="pin-outline" size={18} color={fieldTheme.color.inkMuted} />
@@ -1331,6 +1352,19 @@ function VisitActionPanel({
           )}
 
           <View style={styles.secondaryActionRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.openWorkspace}
+              onPress={onOpenWorkspace}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                { minHeight: touchTarget },
+                pressed && styles.pressed,
+              ]}
+            >
+              <Icon name="easel-outline" size={21} color={fieldTheme.color.primary} />
+              <Text style={styles.secondaryButtonText}>{copy.openWorkspace}</Text>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.addPhoto}
@@ -1919,6 +1953,10 @@ const styles = StyleSheet.create({
   finishButton: { backgroundColor: fieldTheme.color.coral },
   primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   activeMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
+  visitTimeNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
+  visitTimeNoticeOvertime: { backgroundColor: fieldTheme.color.dangerSoft },
+  visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
+  visitTimeNoticeTextOvertime: { color: fieldTheme.color.danger },
   metaPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },
   metaPillText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
   addressRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },

@@ -18,6 +18,19 @@ export interface VisitTaskItem {
   status: string
 }
 
+export interface VisitPresentationSession {
+  id: string
+  productId: string
+  documentId?: string
+  presentationVersion?: string
+  openedAt?: string
+  closedAt?: string
+  activeDurationSeconds: number
+  pageCount?: number
+  lastPage?: number
+  pagesViewed: number[]
+}
+
 export interface VisitWorkspace {
   id: string
   status: string
@@ -32,6 +45,7 @@ export interface VisitWorkspace {
   contact?: { name: string; type?: string; specialty?: string; phone?: string }
   requirements: VisitRequirement[]
   tasks: VisitTaskItem[]
+  presentationSessions: VisitPresentationSession[]
   photosCount: number
 }
 
@@ -55,6 +69,7 @@ export function toVisitWorkspace(raw: any): VisitWorkspace {
   const results = Array.isArray(raw?.actionResults) ? (raw.actionResults as any[]) : []
   const tasks = Array.isArray(raw?.tasks) ? (raw.tasks as any[]) : []
   const photos = Array.isArray(raw?.photos) ? (raw.photos as any[]) : []
+  const presentationSessions = Array.isArray(raw?.presentationSessions) ? (raw.presentationSessions as any[]) : []
 
   const mappedRequirements: VisitRequirement[] = requirements
     .filter((r) => str(r?.mode) !== "HIDDEN")
@@ -99,6 +114,20 @@ export function toVisitWorkspace(raw: any): VisitWorkspace {
       : undefined,
     requirements: mappedRequirements,
     tasks: tasks.map((t) => ({ id: String(t?.id ?? ""), title: str(t?.title) ?? "", status: str(t?.status) ?? "" })),
+    presentationSessions: presentationSessions.map((session) => ({
+      id: String(session?.id ?? ""),
+      productId: String(session?.productId ?? ""),
+      documentId: str(session?.documentId),
+      presentationVersion: str(session?.presentationVersion),
+      openedAt: str(session?.openedAt),
+      closedAt: str(session?.closedAt),
+      activeDurationSeconds: num(session?.activeDurationSeconds) ?? 0,
+      pageCount: num(session?.pageCount),
+      lastPage: num(session?.lastPage),
+      pagesViewed: Array.isArray(session?.pagesViewed)
+        ? session.pagesViewed.map((page: unknown) => Number(page)).filter(Number.isFinite)
+        : [],
+    })),
     // The endpoint lists the newest 20 photos (`take: 20`), so this stops at 20.
     // «Foto: N» on the visit screens builds on it; see services/visit-photo-count.ts.
     photosCount: photos.length,

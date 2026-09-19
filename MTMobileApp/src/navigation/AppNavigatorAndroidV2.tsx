@@ -26,6 +26,7 @@ import RouteBaseScreen from "../screens/base/RouteBaseScreen.android"
 import RouteOrganizationDetailScreen from "../screens/base/RouteOrganizationDetailScreen.android"
 import RouteContactDetailScreen from "../screens/base/RouteContactDetailScreen.android"
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
+import PresentationViewerScreen from "../screens/visit/PresentationViewerScreen"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
@@ -33,6 +34,7 @@ import TodayScreen from "../screens/today/TodayScreen"
 import RouteSelfPlanningWorkspace from "../screens/route/RouteSelfPlanningWorkspace.android"
 import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.android"
 import type { RawTask } from "../services/task-detail"
+import type { MobileProductPresentation } from "../services/product-presentations"
 import { AGENT_TAB_NAMES } from "./role-tabs"
 
 export type RootStackParamList = {
@@ -42,6 +44,7 @@ export type RootStackParamList = {
   OrganizationDetail: { id: string; name?: string }
   ContactDetail: { id: string; name?: string }
   VisitWorkspace: { visitId: string; name?: string }
+  PresentationViewer: { visitId: string; product: MobileProductPresentation }
   TaskDetail: { task: RawTask }
   Visits: undefined
   Base: undefined
@@ -238,6 +241,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
                 <Stack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
                 <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
+                <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
                 <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
                 <Stack.Screen name="Visits" component={VisitScreen} />
                 <Stack.Screen name="Base" component={RouteBaseScreen} />

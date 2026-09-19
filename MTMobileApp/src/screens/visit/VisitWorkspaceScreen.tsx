@@ -26,6 +26,11 @@ import {
   type VisitRequirement,
   type VisitWorkspace,
 } from "../../services/visit-workspace"
+import {
+  toPresentationCatalog,
+  visitTimeStatus,
+  type PresentationCatalog,
+} from "../../services/product-presentations"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import ShortWindowPage from "../../components/ShortWindowPage"
 import StatusBarBand from "../../components/StatusBarBand"
@@ -60,6 +65,13 @@ const COPY = {
     remaining: "Не выполнено",
     tasksCount: (count: number) => `Задач: ${count}`,
     noTasks: "К этому визиту задачи не привязаны.",
+    presentations: "Презентации продуктов",
+    presentationsHint: "Откройте утверждённый файл прямо во время визита.",
+    noProducts: "Для вас пока не назначены презентации.",
+    opened: "Открыто",
+    openPresentation: "Открыть презентацию",
+    visitWarning: "До рекомендуемых 30 минут осталось не более 5 минут.",
+    visitOvertime: "Прошло 30 минут. Завершите визит, если работа с клиентом закончена.",
     status: {
       PLANNED: "Запланирован",
       CHECKED_IN: "Идёт сейчас",
@@ -99,6 +111,13 @@ const COPY = {
     remaining: "Tamamlanmayıb",
     tasksCount: (count: number) => `Tapşırıq: ${count}`,
     noTasks: "Bu ziyarətə tapşırıq bağlanmayıb.",
+    presentations: "Məhsul təqdimatları",
+    presentationsHint: "Təsdiqlənmiş faylı ziyarət zamanı açın.",
+    noProducts: "Sizin üçün hələ təqdimat təyin edilməyib.",
+    opened: "Açılıb",
+    openPresentation: "Təqdimatı aç",
+    visitWarning: "Tövsiyə olunan 30 dəqiqəyə 5 dəqiqədən az qalıb.",
+    visitOvertime: "30 dəqiqə keçib. Müştəri ilə iş bitibsə, ziyarəti tamamlayın.",
     status: {
       PLANNED: "Planlaşdırılıb",
       CHECKED_IN: "İndi davam edir",
@@ -138,6 +157,13 @@ const COPY = {
     remaining: "Not completed",
     tasksCount: (count: number) => `${count} task${count === 1 ? "" : "s"}`,
     noTasks: "No tasks are linked to this visit.",
+    presentations: "Product presentations",
+    presentationsHint: "Open the approved file while you are with the customer.",
+    noProducts: "No presentations are assigned to you yet.",
+    opened: "Opened",
+    openPresentation: "Open presentation",
+    visitWarning: "The recommended 30-minute limit is less than 5 minutes away.",
+    visitOvertime: "30 minutes have passed. Finish the visit if the customer work is complete.",
     status: {
       PLANNED: "Planned",
       CHECKED_IN: "In progress",
@@ -242,14 +268,20 @@ export default function VisitWorkspaceScreen() {
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
 
   const [data, setData] = useState<VisitWorkspace | null>(null)
+  const [catalog, setCatalog] = useState<PresentationCatalog>({ groups: [], products: [] })
   const [loadState, setLoadState] = useState<LoadState>("loading")
   const [refreshing, setRefreshing] = useState(false)
+  const [clock, setClock] = useState(Date.now())
 
   const fetchWorkspace = useCallback(async () => {
     try {
-      const response = await api.getVisitWorkspace(visitId)
+      const [response, productResponse] = await Promise.all([
+        api.getVisitWorkspace(visitId),
+        api.getProductPresentations().catch(() => null),
+      ])
       if (!response.success || !response.data?.visit) throw new Error("VISIT_WORKSPACE_LOAD_FAILED")
       setData(toVisitWorkspace(response.data.visit))
+      if (productResponse?.success) setCatalog(toPresentationCatalog(productResponse.data))
       setLoadState("ready")
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") {
@@ -263,6 +295,12 @@ export default function VisitWorkspaceScreen() {
   useEffect(() => {
     fetchWorkspace()
   }, [fetchWorkspace])
+
+  useEffect(() => {
+    if (data?.status !== "CHECKED_IN") return
+    const interval = setInterval(() => setClock(Date.now()), 30_000)
+    return () => clearInterval(interval)
+  }, [data?.status])
 
   const refresh = () => {
     setRefreshing(true)
@@ -287,6 +325,8 @@ export default function VisitWorkspaceScreen() {
   )
   const title = data?.customer.name || name || copy.eyebrow
   const statusVisual = visitStatusVisual(data?.status ?? "")
+  const timeStatus = visitTimeStatus(data?.checkInAt, clock)
+  const groupName = new Map(catalog.groups.map((group) => [group.id, group.name]))
 
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -407,6 +447,72 @@ export default function VisitWorkspaceScreen() {
                 <Stat icon="images-outline" label={t("visitWorkspace.actionPhoto")} value={String(data.photosCount)} />
               </View>
             </View>
+
+            {data.status === "CHECKED_IN" && timeStatus !== "normal" ? (
+              <View style={[styles.timeNotice, timeStatus === "overtime" && styles.timeNoticeOvertime]} accessibilityLiveRegion="polite">
+                <Icon
+                  name={timeStatus === "overtime" ? "alert-circle" : "time-outline"}
+                  size={22}
+                  color={timeStatus === "overtime" ? fieldTheme.color.danger : fieldTheme.color.amber}
+                />
+                <Text style={[styles.timeNoticeText, timeStatus === "overtime" && styles.timeNoticeTextOvertime]}>
+                  {timeStatus === "overtime" ? copy.visitOvertime : copy.visitWarning}
+                </Text>
+              </View>
+            ) : null}
+
+            <SectionCard
+              icon="easel-outline"
+              title={copy.presentations}
+              badge={data.presentationSessions.length ? `${copy.opened}: ${data.presentationSessions.length}` : undefined}
+            >
+              <Text style={styles.presentationHint}>{copy.presentationsHint}</Text>
+              {data.status === "CHECKED_IN" ? (
+                catalog.products.length ? (
+                  <View style={styles.presentationList}>
+                    {catalog.products.map((product) => (
+                      <Pressable
+                        key={product.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${copy.openPresentation}: ${product.name}`}
+                        onPress={() => navigation.navigate("PresentationViewer", { visitId: data.id, product })}
+                        style={({ pressed }) => [styles.presentationRow, pressed && styles.pressed]}
+                      >
+                        <View style={styles.presentationIcon}>
+                          <Icon name="document-text-outline" size={22} color={fieldTheme.color.primaryStrong} />
+                        </View>
+                        <View style={styles.presentationCopy}>
+                          <Text style={styles.presentationTitle}>{product.name}</Text>
+                          <Text style={styles.presentationMeta} numberOfLines={1}>
+                            {[groupName.get(product.groupId), product.presentationVersion ? `v${product.presentationVersion}` : null, product.document.fileName].filter(Boolean).join(" · ")}
+                          </Text>
+                        </View>
+                        <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : <EmptyBlock icon="easel-outline" title={copy.noProducts} />
+              ) : data.presentationSessions.length ? (
+                <View style={styles.presentationList}>
+                  {data.presentationSessions.map((session) => {
+                    const product = catalog.products.find((item) => item.id === session.productId)
+                    return (
+                      <View key={session.id} style={styles.presentationRow}>
+                        <View style={styles.presentationIcon}>
+                          <Icon name="checkmark-circle-outline" size={22} color={fieldTheme.color.success} />
+                        </View>
+                        <View style={styles.presentationCopy}>
+                          <Text style={styles.presentationTitle}>{product?.name || copy.presentations}</Text>
+                          <Text style={styles.presentationMeta}>
+                            {formatTime(session.openedAt)} · {Math.max(1, Math.ceil(session.activeDurationSeconds / 60))} min
+                          </Text>
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+              ) : <EmptyBlock icon="easel-outline" title={copy.noProducts} />}
+            </SectionCard>
 
             <View style={[styles.columns, tablet && styles.columnsTablet]}>
               <View style={styles.column}>
@@ -652,6 +758,10 @@ const styles = StyleSheet.create({
   noticeButton: { minHeight: 44, minWidth: 116, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md },
   noticeButtonText: { color: fieldTheme.color.amber, fontSize: 12, fontWeight: "900" },
   overviewCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
+  timeNotice: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: "#E8D69F", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
+  timeNoticeOvertime: { borderColor: "#E9B3AE", backgroundColor: fieldTheme.color.dangerSoft },
+  timeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 13, lineHeight: 19, fontWeight: "900" },
+  timeNoticeTextOvertime: { color: fieldTheme.color.danger },
   sectionHeadingRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   sectionIcon: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderRadius: 15 },
   sectionHeadingCopy: { flex: 1 },
@@ -677,6 +787,13 @@ const styles = StyleSheet.create({
   cardBadge: { minHeight: 30, maxWidth: 150, justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.sm },
   cardBadgeText: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "900", textAlign: "center" },
   cardBody: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
+  presentationHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 18, marginTop: fieldTheme.space.md },
+  presentationList: { marginTop: fieldTheme.space.sm },
+  presentationRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
+  presentationIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.primarySoft },
+  presentationCopy: { flex: 1, minWidth: 0 },
+  presentationTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  presentationMeta: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
   progressTrack: { height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.surfaceStrong, overflow: "hidden", marginTop: fieldTheme.space.lg },
   progressFill: { height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },
   requirementList: { marginTop: fieldTheme.space.sm },
