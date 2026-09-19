@@ -1,7 +1,6 @@
 import React, { useRef, useState } from "react"
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +15,7 @@ import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
+import { ask } from "../../services/app-feedback"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
@@ -114,9 +114,14 @@ export default function DoctorCreateRequestScreen() {
       })
       if (!response?.success) throw new Error(response?.error || copy.failed)
       const count = Array.isArray(response.data?.duplicateCandidates) ? response.data.duplicateCandidates.length : 0
-      Alert.alert(copy.success, count ? copy.duplicate.replace("{{count}}", String(count)) : copy.successBody, [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ])
+      await ask({
+        title: copy.success,
+        message: count ? copy.duplicate.replace("{{count}}", String(count)) : copy.successBody,
+        tone: "success",
+        buttons: [{ text: "OK", value: true }],
+        dismissValue: true,
+      })
+      navigation.goBack()
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : copy.failed)
     } finally {
