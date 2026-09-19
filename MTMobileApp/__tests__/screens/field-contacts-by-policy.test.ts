@@ -69,6 +69,7 @@ describe("other doors into contacts", () => {
     const organization = read("base/RouteOrganizationDetailScreen.android.tsx")
     expect(organization).toContain('initialTarget: { kind: "organization", id: detail.id, name: detail.name }')
     expect(organization).toContain('t("contacts.addToRoute")')
+    expect(organization).toContain('directions: "Как добраться"')
     expect(planner).toContain('targetId: initialTarget?.id')
     expect(planner).toContain('`${initialTarget.kind}:${initialTarget.id}`')
     expect(planner).toContain('quickTargetPending')

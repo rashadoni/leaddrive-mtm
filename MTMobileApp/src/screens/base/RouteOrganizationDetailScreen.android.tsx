@@ -54,7 +54,7 @@ const COPY = {
     category: "Категория",
     status: "Статус",
     call: "Позвонить",
-    directions: "Построить путь",
+    directions: "Как добраться",
     primary: "Основной",
     showAll: (count: number) => `Показать все (${count})`,
     showLess: "Показать меньше",
