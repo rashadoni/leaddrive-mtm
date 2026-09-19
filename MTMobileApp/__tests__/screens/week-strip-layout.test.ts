@@ -31,11 +31,13 @@ describe("agent month calendar", () => {
     expect(source).not.toContain("function WeekStripDay(")
   })
 
-  it("makes routes, tasks and visits visible without crowding phone cells", () => {
+  it("shows a readable route row instead of reducing routes to a dot", () => {
     expect(monthComponent).toContain("hasRoute")
     expect(monthComponent).toContain("hasTasks")
     expect(monthComponent).toContain("hasVisits")
-    expect(monthComponent).toContain("styles.monthDotRoute")
+    expect(monthComponent).toContain("styles.monthRouteCompact")
+    expect(monthComponent).toContain("styles.monthRouteRow")
+    expect(monthComponent).not.toContain("styles.monthDotRoute")
     expect(monthComponent).toContain("styles.monthDotTask")
     expect(monthComponent).toContain("styles.monthDotVisit")
     expect(monthComponent).toContain("styles.monthSignalsTablet")
@@ -48,7 +50,7 @@ describe("agent month calendar", () => {
     expect(monthComponent).toContain("formatFullDate(day.date, lang)")
   })
 
-  it("keeps month and day detail visible side by side on a tablet", () => {
+  it("gives the Outlook-style month the full tablet width before day detail", () => {
     const tabletBranch = source.slice(
       source.indexOf("{tablet ? ("),
       source.indexOf(") : (", source.indexOf("{tablet ? (")),
@@ -56,7 +58,11 @@ describe("agent month calendar", () => {
     expect(tabletBranch).toContain("styles.tabletWorkspace")
     expect(tabletBranch).toContain("<MonthCalendar")
     expect(tabletBranch).toContain("<DayDetail")
-    expect(source).toContain('monthPane: { width: "55%", minWidth: 430 }')
+    expect(source).toContain('monthPane: { width: "100%" }')
+    expect(source).toContain('tabletWorkspace: { flexDirection: "column"')
+    expect(monthComponent).toContain("day.routes.slice(0, 2).map")
+    expect(monthComponent).toContain("route.name || copy.routeShort")
+    expect(monthComponent).toContain("copy.routeShort} · {day.plannedStops}")
   })
 
   it("opens route planning on the selected calendar date", () => {

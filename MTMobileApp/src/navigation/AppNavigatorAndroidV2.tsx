@@ -211,6 +211,7 @@ function MainTabs() {
                 borderTopColor: fieldTheme.color.border,
                 borderTopWidth: 1,
                 elevation: 10,
+                zIndex: 100,
                 shadowColor: fieldTheme.color.ink,
                 shadowOffset: { width: 0, height: -3 },
                 shadowOpacity: 0.08,
