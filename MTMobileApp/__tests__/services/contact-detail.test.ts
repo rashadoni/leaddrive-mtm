@@ -52,6 +52,38 @@ describe("contact detail mapping", () => {
     expect(detail.doctorAssessments).toEqual([])
   })
 
+  it("maps the configured client type and its category-specific fields", () => {
+    const detail = toContactDetail({
+      id: "k-category",
+      displayName: "Dr Category",
+      categoryData: { specialty: "CARDIOLOGY", clinic: "Central Clinic", empty: "" },
+      dictionaryAssignments: [{
+        kind: "CLIENT_TYPE",
+        entryCode: "DOCTOR",
+        effectiveTo: null,
+        valid: true,
+        entry: {
+          code: "DOCTOR",
+          labels: { ru: "Врач", az: "Həkim", en: "Doctor" },
+          fields: [
+            { key: "clinic", order: 2, type: "TEXT", labels: { ru: "Клиника", az: "Klinika", en: "Clinic" } },
+            { key: "specialty", order: 1, type: "SELECT", labels: { ru: "Специальность", az: "İxtisas", en: "Specialty" }, options: [{ code: "CARDIOLOGY", labels: { ru: "Кардиология", az: "Kardiologiya", en: "Cardiology" } }] },
+            { key: "empty", order: 3, type: "TEXT", labels: { ru: "Пусто", az: "Boş", en: "Empty" } },
+          ],
+        },
+      }],
+    })
+
+    expect(detail.clientType).toMatchObject({
+      code: "DOCTOR",
+      labels: { ru: "Врач", az: "Həkim", en: "Doctor" },
+    })
+    expect(detail.clientType?.fields.map((field) => [field.key, field.value])).toEqual([
+      ["specialty", "CARDIOLOGY"],
+      ["clinic", "Central Clinic"],
+    ])
+  })
+
   it("maps append-only pharmaceutical doctor scoring for live and offline cards", () => {
     const detail = toContactDetail({
       id: "k4",
@@ -136,7 +168,7 @@ describe("contact detail mapping", () => {
   })
 
   describe("i18n contract", () => {
-    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "sectionPersonal", "requestEditTitle", "changeHistory", "tab_scoring", "tab_brands", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED", "friendlyNextStep", "primary_call", "primary_none", "friendlyMoreDetails", "friendlyManage", "friendlyOfflineTitle"] as const
+    const KEYS = ["detailInfo", "detailWorkplaces", "detailNoWorkplaces", "detailOfflineNote", "fieldType", "fieldClientType", "sectionPersonal", "sectionClientType", "requestEditTitle", "changeHistory", "tab_scoring", "tab_brands", "scoringTitle", "scoringNoActiveFormula", "scoringStatus_VERIFIED", "friendlyNextStep", "primary_call", "primary_none", "friendlyMoreDetails", "friendlyManage", "friendlyOfflineTitle"] as const
     it.each([["en", en], ["ru", ru], ["az", az]])(
       "contacts detail keys present in %s",
       (_lang, locale) => {

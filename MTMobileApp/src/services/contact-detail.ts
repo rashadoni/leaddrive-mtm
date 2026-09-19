@@ -109,6 +109,26 @@ export interface BrandPotentialEligibleVisit extends BrandPotentialEvidenceVisit
   agentId?: string
 }
 
+export interface ContactLocalizedLabels {
+  ru: string
+  az: string
+  en: string
+}
+
+export interface ContactClientTypeField {
+  key: string
+  type: string
+  labels: ContactLocalizedLabels
+  value: string | number | boolean
+  options: Array<{ code: string; labels: ContactLocalizedLabels }>
+}
+
+export interface ContactClientType {
+  code: string
+  labels: ContactLocalizedLabels
+  fields: ContactClientTypeField[]
+}
+
 export interface ContactDetail {
   id: string
   updatedAt: string
@@ -122,6 +142,7 @@ export interface ContactDetail {
   profile?: string
   type?: string
   category?: string
+  clientType?: ContactClientType
   status?: string
   birthDate?: string
   gender?: string
@@ -180,6 +201,30 @@ export function toContactDetail(raw: any, envelope?: any): ContactDetail {
   const assessments = Array.isArray(raw?.doctorAssessments) ? raw.doctorAssessments : []
   const potentials = Array.isArray(raw?.fieldPotentials) ? raw.fieldPotentials : []
   const eligibleVisits = Array.isArray(envelope?.eligibleBrandPotentialVisits) ? envelope.eligibleBrandPotentialVisits : []
+  const categoryData = raw?.categoryData && typeof raw.categoryData === "object" && !Array.isArray(raw.categoryData)
+    ? raw.categoryData as Record<string, unknown>
+    : {}
+  const clientTypeAssignment = (Array.isArray(raw?.dictionaryAssignments) ? raw.dictionaryAssignments : [])
+    .find((assignment: any) => assignment?.kind === "CLIENT_TYPE" && assignment?.effectiveTo == null && assignment?.valid !== false && assignment?.entry)
+  const clientTypeEntry = clientTypeAssignment?.entry
+  const clientTypeFields = Array.isArray(clientTypeEntry?.fields) ? clientTypeEntry.fields : []
+  const clientType = clientTypeEntry?.labels ? {
+    code: opt(clientTypeEntry?.code) ?? opt(clientTypeAssignment?.entryCode) ?? "",
+    labels: clientTypeEntry.labels as ContactLocalizedLabels,
+    fields: clientTypeFields
+      .filter((field: any) => field?.key && field?.labels && categoryData[field.key] !== null && categoryData[field.key] !== undefined && String(categoryData[field.key]).length > 0)
+      .sort((left: any, right: any) => Number(left?.order ?? 0) - Number(right?.order ?? 0))
+      .map((field: any) => ({
+        key: String(field.key),
+        type: opt(field.type) ?? "TEXT",
+        labels: field.labels as ContactLocalizedLabels,
+        value: categoryData[field.key] as string | number | boolean,
+        options: Array.isArray(field.options) ? field.options.map((option: any) => ({
+          code: String(option?.code ?? ""),
+          labels: option?.labels as ContactLocalizedLabels,
+        })) : [],
+      })),
+  } : undefined
   return {
     id: String(raw?.id ?? ""),
     updatedAt: opt(raw?.updatedAt) ?? "",
@@ -193,6 +238,7 @@ export function toContactDetail(raw: any, envelope?: any): ContactDetail {
     profile: opt(raw?.profile),
     type: opt(raw?.type),
     category: opt(raw?.category),
+    clientType,
     status: opt(raw?.status),
     birthDate: date(raw?.birthDate),
     gender: opt(raw?.gender),
