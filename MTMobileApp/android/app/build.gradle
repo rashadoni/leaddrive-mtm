@@ -99,8 +99,8 @@ android {
         // Play refuses a second upload with the same versionCode, and every CI
         // build used to carry 43. 1000+ stays above the installed base (42/43)
         // and keeps growing with each run. A local build without it stays 43.
-        versionCode((System.getenv("MTM_VERSION_CODE") ?: "43").toInteger())
-        versionName "3.1.0"
+        versionCode((System.getenv("MTM_VERSION_CODE") ?: "44").toInteger())
+        versionName "3.2.0"
     }
     signingConfigs {
         debug {

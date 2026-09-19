@@ -950,6 +950,15 @@
       "MOVED_DAY_OFF": "Moved day off"
     }
   },
+  "alertTitles": {
+    "visitStillOpen": "Visit taking too long",
+    "outOfZoneCheckIn": "Check-in far from customer",
+    "outOfZoneCheckInForced": "Remote check-in approved",
+    "geofenceViolation": "Visit zone violation",
+    "routeDeviation": "Route deviation",
+    "agentRouteDeviation": "You left the planned route",
+    "agentOutOfZoneCheckIn": "Check-in far from customer"
+  },
   "alertMessages": {
     "visitStillOpen": "Visit at {{customerName}} has been open for {{minutes}} min (threshold {{thresholdMinutes}} min)",
     "outOfZoneCheckIn": "Check-in refused {{distanceMeters}} m from the customer (allowed {{geofenceRadius}} m)",

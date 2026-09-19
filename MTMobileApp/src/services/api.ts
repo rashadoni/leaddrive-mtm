@@ -734,6 +734,21 @@ class ApiClient {
     return this.request(`/mobile/route-field/contacts${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
   }
 
+  async submitDoctorCreateRequest(data: {
+    idempotencyKey: string
+    displayName: string
+    specialtyName?: string | null
+    phone?: string | null
+    clinicName: string
+    address?: string | null
+    notes?: string | null
+  }) {
+    return this.request("/mobile/route-field/contact-create-requests", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
   /**
    * Date-bound Route Field planner lookup. `page` is an opaque server cursor;
    * callers must never derive or increment it locally.
@@ -770,6 +785,46 @@ class ApiClient {
 
   async getVisitWorkspace(id: string, signal?: AbortSignal) {
     return this.request(`/mobile/visits/${id}/workspace`, { signal })
+  }
+
+  async getProductPresentations(signal?: AbortSignal) {
+    return this.request("/mobile/products", { signal })
+  }
+
+  async startPresentationSession(data: {
+    clientSessionId: string
+    visitId: string
+    productId: string
+    openedAt: string
+    location?: { latitude: number; longitude: number } | null
+    pageCount?: number | null
+  }) {
+    return this.request("/mobile/presentation-sessions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async savePresentationSession(id: string, data: {
+    lastViewedAt: string
+    activeDurationSeconds: number
+    pageCount?: number | null
+    lastPage?: number | null
+    pagesViewed?: number[]
+    pageEvents?: Array<{ page: number; viewedAt: string }>
+    closedAt?: string | null
+    closeLocation?: { latitude: number; longitude: number } | null
+  }) {
+    return this.request(`/mobile/presentation-sessions/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    })
+  }
+
+  authorizedDocumentSource(path: string): { uri: string; headers: Record<string, string> } | null {
+    const uri = this.resolveMediaUrl(path)
+    if (!uri || !this.token) return null
+    return { uri, headers: { Authorization: `Bearer ${this.token}` } }
   }
 
   // --- Orders ---

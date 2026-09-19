@@ -31,4 +31,9 @@ describe("Tasks is one scrolling page", () => {
     const bodyTop = source.slice(source.indexOf("\n  bodyTop: {"), source.indexOf("},", source.indexOf("\n  bodyTop: {")))
     expect(bodyTop).not.toContain("flex: 1")
   })
+
+  it("does not repeat the all-done message above an empty list", () => {
+    expect(source).toContain("{recommendedTab ? (")
+    expect(source).toContain("<EmptyState copy={copy} status={activeTab}")
+  })
 })

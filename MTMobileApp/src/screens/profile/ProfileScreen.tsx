@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -57,7 +57,7 @@ export default function ProfileScreen() {
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
-  const [profile, setProfile] = useState<any>(null)
+  const [, setProfile] = useState<any>(null)
   const [alerts, setAlerts] = useState<MtmAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -66,6 +66,23 @@ export default function ProfileScreen() {
   const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(getCurrentLocale())
   const hintsEnabled = useHintsStore((state) => state.enabled)
   const setHintsEnabled = useHintsStore((state) => state.setEnabled)
+  const alertGroups = useMemo(() => {
+    const groups: Array<{ alert: MtmAlert; count: number }> = []
+    const byKind = new Map<string, number>()
+    for (const alert of alerts) {
+      const message = readAlertMessage(alert.metadata)
+      const messageKey = message.kind === "localized" ? message.key : alert.type || alert.title
+      const key = `${alert.category}|${messageKey}`
+      const index = byKind.get(key)
+      if (index === undefined) {
+        byKind.set(key, groups.length)
+        groups.push({ alert, count: 1 })
+      } else {
+        groups[index].count += 1
+      }
+    }
+    return groups
+  }, [alerts])
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true)
@@ -119,21 +136,29 @@ export default function ProfileScreen() {
     <View style={styles.column}>
       {alerts.length > 0 ? (
         <SectionCard icon="notifications-outline" title={t("profile.alertsTitle")} count={alerts.length}>
-          {alerts.slice(0, 5).map((alert) => (
+          {alertGroups.slice(0, 3).map(({ alert, count }) => (
             <View key={alert.id} style={styles.alertRow}>
               <View style={[styles.alertIcon, { backgroundColor: severityTint(alert.category) }]}>
                 <Icon name="alert-outline" size={18} color={severityColor(alert.category)} />
               </View>
               <View style={styles.alertCopy}>
-                <Text style={styles.alertTitle}>{alert.title || alert.type?.replace(/_/g, " ")}</Text>
                 {(() => {
                   const message = readAlertMessage(alert.metadata)
+                  const title = message.kind === "localized"
+                    ? t(`alertTitles.${message.key}`)
+                    : alert.title || alert.type?.replace(/_/g, " ")
                   const text = message.kind === "localized"
                     ? t(`alertMessages.${message.key}`, message.params)
                     : alert.description
-                  return text ? <Text style={styles.alertDescription} numberOfLines={2}>{text}</Text> : null
+                  return (
+                    <>
+                      <Text style={styles.alertTitle}>{title}</Text>
+                      {text ? <Text style={styles.alertDescription} numberOfLines={2}>{text}</Text> : null}
+                    </>
+                  )
                 })()}
               </View>
+              {count > 1 ? <View style={styles.repeatBadge}><Text style={styles.repeatText}>×{count}</Text></View> : null}
               <Text style={styles.alertDate}>
                 {new Date(alert.createdAt).toLocaleDateString(i18n.language, { month: "short", day: "numeric" })}
               </Text>
@@ -376,6 +401,8 @@ const styles = StyleSheet.create({
   alertCopy: { flex: 1, minWidth: 0 },
   alertTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   alertDescription: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  repeatBadge: { minWidth: 34, height: 28, alignItems: "center", justifyContent: "center", paddingHorizontal: 7, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.amberSoft },
+  repeatText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "900" },
   alertDate: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   infoRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   infoIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas },

@@ -19,6 +19,7 @@ describe("alert messages (field UX audit A4)", () => {
     const missing: string[] = []
     for (const [name, bundle] of LOCALES) {
       for (const key of ALERT_MESSAGE_KEYS) {
+        if (typeof bundle.alertTitles?.[key] !== "string") missing.push(`${name}.json → alertTitles.${key}`)
         if (typeof bundle.alertMessages?.[key] !== "string") missing.push(`${name}.json → alertMessages.${key}`)
       }
     }

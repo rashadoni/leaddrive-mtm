@@ -28,6 +28,18 @@ describe("visit workspace mapping", () => {
         { requirementId: "r2", actionKey: "FEEDBACK", status: "WAIVED" },
       ],
       tasks: [{ id: "t1", title: "Follow up", status: "PENDING" }],
+      presentationSessions: [{
+        id: "ps1",
+        productId: "product-1",
+        documentId: "document-1",
+        presentationVersion: "2",
+        openedAt: "2026-07-19T09:04:00.000Z",
+        closedAt: "2026-07-19T09:10:00.000Z",
+        activeDurationSeconds: 312,
+        pageCount: 12,
+        lastPage: 6,
+        pagesViewed: [1, 2, "6", "bad"],
+      }],
       photos: [{ id: "p1" }, { id: "p2" }],
     })
     expect(w.id).toBe("v1")
@@ -37,6 +49,18 @@ describe("visit workspace mapping", () => {
     expect(w.requirements[0]).toEqual({ actionKey: "PHOTO", mode: "REQUIRED", done: true, waived: false })
     expect(w.requirements[1]).toEqual({ actionKey: "FEEDBACK", mode: "OPTIONAL", done: false, waived: true })
     expect(w.tasks).toEqual([{ id: "t1", title: "Follow up", status: "PENDING" }])
+    expect(w.presentationSessions).toEqual([{
+      id: "ps1",
+      productId: "product-1",
+      documentId: "document-1",
+      presentationVersion: "2",
+      openedAt: "2026-07-19T09:04:00.000Z",
+      closedAt: "2026-07-19T09:10:00.000Z",
+      activeDurationSeconds: 312,
+      pageCount: 12,
+      lastPage: 6,
+      pagesViewed: [1, 2, 6],
+    }])
     expect(w.photosCount).toBe(2)
   })
 
@@ -44,6 +68,7 @@ describe("visit workspace mapping", () => {
     const w = toVisitWorkspace({ id: "v2", customer: {} })
     expect(w.requirements).toEqual([])
     expect(w.tasks).toEqual([])
+    expect(w.presentationSessions).toEqual([])
     expect(w.contact).toBeUndefined()
     expect(w.photosCount).toBe(0)
   })

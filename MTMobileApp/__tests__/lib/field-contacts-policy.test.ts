@@ -24,12 +24,12 @@ describe("plannableTargetTypes", () => {
     expect(plannableTargetTypes([doctors, pharmacies], defaults, true)).toEqual([doctors, pharmacies])
   })
 
-  it("drops doctor types when contacts are hidden", () => {
-    expect(plannableTargetTypes([doctors, pharmacies], defaults, false)).toEqual([pharmacies])
+  it("keeps doctor route types when the general contacts directory is hidden", () => {
+    expect(plannableTargetTypes([doctors, pharmacies], defaults, false)).toEqual([doctors, pharmacies])
   })
 
-  it("falls back to places-only defaults when only doctor types were configured", () => {
-    expect(plannableTargetTypes([doctors], defaults, false)).toEqual([pharmacies, clinics])
+  it("keeps an administrator's doctor-only planning taxonomy", () => {
+    expect(plannableTargetTypes([doctors], defaults, false)).toEqual([doctors])
   })
 })
 

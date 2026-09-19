@@ -67,4 +67,11 @@ describe("B11: one thing in one place", () => {
     expect(profile).not.toContain("SyncStatusChip")
     expect(taskDetail).not.toContain("SyncStatusChip")
   })
+
+  it("groups repeated warnings instead of printing the same alert five times", () => {
+    expect(profile).toContain("const alertGroups = useMemo")
+    expect(profile).toContain("groups[index].count += 1")
+    expect(profile).toContain("alertGroups.slice(0, 3)")
+    expect(profile).not.toContain("alerts.slice(0, 5)")
+  })
 })

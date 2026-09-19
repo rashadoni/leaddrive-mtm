@@ -6,7 +6,7 @@ import { mobileResources } from "../../src/i18n/mobile-resources"
  * Week planner redesign agreed with the owner on 2026-09-14 ("каша, глаза
  * разбегаются"): one plan screen instead of fill + review, seven day tiles
  * without sideways scrolling, a customer tap adds to the selected day,
- * "copy to other days", and a time picker of half-hour slots.
+ * "copy to other days", with routes planned by date and stop order only.
  */
 const core = fs.readFileSync(path.resolve(__dirname, "../../src/screens/planning/PlanningWorkspaceCore.android.tsx"), "utf8")
 
@@ -15,7 +15,8 @@ describe("week planner on one screen", () => {
     expect(core).toContain("type PlanningStep = 1 | 2")
     expect(core).not.toContain("setStep(3)")
     expect(core).not.toContain('managerShell.planRailWeekAssign')
-    const footer = core.slice(core.indexOf("const footerAction = step === 1"), core.indexOf("return (", core.indexOf("const footerAction = step === 1")))
+    const footerStart = core.indexOf("const footerAction = selfPlanning")
+    const footer = core.slice(footerStart, core.indexOf("return (", footerStart))
     expect(footer).toContain("onPress: confirmAndSave")
   })
 
@@ -25,7 +26,7 @@ describe("week planner on one screen", () => {
   })
 
   it("shows all seven days as tiles, with no sideways scroll", () => {
-    const chooser = core.slice(core.indexOf("function WeekDayChooser("), core.indexOf("const TIME_SLOTS"))
+    const chooser = core.slice(core.indexOf("function WeekDayChooser("), core.indexOf("function DayPlanEditor("))
     expect(chooser).not.toContain("<ScrollView")
     expect(chooser).toContain("weekdayShort(date, language)")
     const snapshot = core.slice(core.indexOf("function WeekSnapshot("), core.indexOf("function StatusPill("))
@@ -40,14 +41,15 @@ describe("week planner on one screen", () => {
   it("copies a day only after the server confirms each stop for each day", () => {
     const copy = core.slice(core.indexOf("const copyDayToOtherDays"), core.indexOf("const footerAction"))
     expect(copy).toContain("targetSource.loadTargets({")
-    expect(copy).toContain("copyPlanningDay(updated, sources, date, resolved, tenantTimezone)")
+    expect(copy).toContain("copyPlanningDay(updated, sources, date, resolved)")
   })
 
-  it("picks a time from half-hour slots instead of typing an hour", () => {
-    const picker = core.slice(core.indexOf("const TIME_SLOTS"), core.indexOf("function DayPlanEditor("))
-    expect(picker).toContain("<Modal")
-    expect(picker).not.toContain("<TextInput")
-    expect(picker).toContain("7 * 60 + index * 30")
+  it("keeps the date compact and does not ask for visit hours", () => {
+    expect(core).toContain("function CompactPlanDatePicker(")
+    expect(core).toContain('managerShell.planDateOnlyHint')
+    expect(core).not.toContain("const TIME_SLOTS")
+    expect(core).not.toContain("function RouteTimeInput(")
+    expect(core).not.toContain('managerShell.planVisitTime')
   })
 
   it.each(["az", "ru", "en"] as const)("has the new %s strings", (locale) => {

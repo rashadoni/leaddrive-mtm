@@ -26,15 +26,16 @@ describe("B8: the planner picks a date from a month", () => {
   })
 
   it("draws the grid from the tested helper", () => {
-    expect(core).toContain('import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday } from "../../services/planning-month"')
+    expect(core).toContain('import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday, type PlanningMonthDay } from "../../services/planning-month"')
     expect(core).toContain("const monthCells = useMemo(() => planningMonthGrid(monthAnchor, today)")
+    expect(core).toContain("<CompactPlanDatePicker")
     expect(core).toContain('testID="planning-month-grid"')
   })
 
   it("marks the weekend and refuses the past", () => {
     expect(core).toContain("cell.weekend && styles.monthDayWeekend")
-    expect(core).toContain("const disabled = saving || cell.past")
-    expect(core).toContain("accessibilityState={{ selected, disabled }}")
+    expect(core).toContain("const cellDisabled = disabled || cell.past")
+    expect(core).toContain("accessibilityState={{ selected, disabled: cellDisabled }}")
   })
 
   it("opens the nearest working day, not whatever today is", () => {
@@ -43,7 +44,7 @@ describe("B8: the planner picks a date from a month", () => {
   })
 
   it("names every day for a screen reader, since the cell shows a bare number", () => {
-    expect(core).toContain("accessibilityLabel={formatPlanDate(cell.date, i18n.language)}")
+    expect(core).toContain("accessibilityLabel={formatPlanDate(cell.date, language)}")
   })
 
   it("keeps the month arrows labelled in all three languages", () => {

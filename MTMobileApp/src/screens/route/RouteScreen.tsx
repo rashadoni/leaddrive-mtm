@@ -115,6 +115,9 @@ const ROUTE_COPY = {
     waitingForSync: "Ожидает отправки",
     photos: "Фото: {{count}}",
     visitTimer: "Визит идёт {{minutes}} мин",
+    openWorkspace: "Задачи и презентации",
+    visitWarning: "До 30 минут осталось не более 5 минут.",
+    visitOvertime: "Прошло 30 минут. Завершите визит, если работа закончена.",
     recommended: "Рекомендуем идти по порядку. Следующая: {{name}}.",
     visited: "Посещено",
     skipped: "Пропущено",
@@ -193,6 +196,9 @@ const ROUTE_COPY = {
     waitingForSync: "Göndərilmə gözlənilir",
     photos: "Foto: {{count}}",
     visitTimer: "Ziyarət {{minutes}} dəqiqədir davam edir",
+    openWorkspace: "Tapşırıqlar və təqdimatlar",
+    visitWarning: "30 dəqiqəyə 5 dəqiqədən az qalıb.",
+    visitOvertime: "30 dəqiqə keçib. İş bitibsə, ziyarəti tamamlayın.",
     recommended: "Ardıcıllıqla getmək məsləhətdir. Növbəti: {{name}}.",
     visited: "Ziyarət edilib",
     skipped: "Buraxılıb",
@@ -271,6 +277,9 @@ const ROUTE_COPY = {
     waitingForSync: "Waiting to send",
     photos: "Photos: {{count}}",
     visitTimer: "Visit active for {{minutes}} min",
+    openWorkspace: "Tasks & presentations",
+    visitWarning: "The 30-minute mark is less than 5 minutes away.",
+    visitOvertime: "30 minutes have passed. Finish the visit if the work is done.",
     recommended: "Following the planned order is recommended. Next: {{name}}.",
     visited: "Visited",
     skipped: "Skipped",
@@ -698,13 +707,6 @@ function StopRow({
                 {new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
               </Text>
             </View>
-          ) : point.plannedTime ? (
-            <View style={styles.metaItem}>
-              <Icon name="time-outline" size={15} color={fieldTheme.color.inkMuted} />
-              <Text style={styles.metaText}>
-                {new Date(point.plannedTime).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
-              </Text>
-            </View>
           ) : null}
           {point.distanceMeters != null && point.status !== "VISITED" ? (
             <View style={styles.metaItem}>
@@ -788,11 +790,11 @@ function PointActionPanel({
   photoCount,
   elapsedMin,
   mutating,
-  language,
   copy,
   onNavigate,
   onCheckIn,
   onPhoto,
+  onOpenWorkspace,
   onCheckOut,
   signature,
   onSignature,
@@ -804,11 +806,11 @@ function PointActionPanel({
   photoCount: number
   elapsedMin: number
   mutating: boolean
-  language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
   onNavigate: (point: RoutePoint) => void
   onCheckIn: (point: RoutePoint) => void
   onPhoto: () => void
+  onOpenWorkspace: () => void
   onCheckOut: () => void
   signature: { visible: boolean; required: boolean; signed: boolean }
   onSignature: () => void
@@ -840,15 +842,25 @@ function PointActionPanel({
             </View>
           ) : null}
         </View>
+        {elapsedMin >= 25 ? (
+          <View style={[styles.visitTimeNotice, elapsedMin >= 30 && styles.visitTimeNoticeOvertime]} accessibilityLiveRegion="polite">
+            <Icon name={elapsedMin >= 30 ? "alert-circle" : "time-outline"} size={18} color={elapsedMin >= 30 ? fieldTheme.color.danger : fieldTheme.color.amber} />
+            <Text style={[styles.visitTimeNoticeText, elapsedMin >= 30 && styles.visitTimeNoticeTextOvertime]}>
+              {elapsedMin >= 30 ? copy.visitOvertime : copy.visitWarning}
+            </Text>
+          </View>
+        ) : null}
         {pending ? (
           <ActionButton label={copy.waitingForSync} icon="cloud-upload-outline" onPress={() => {}} disabled />
         ) : photoFirst ? (
           <>
+            <ActionButton label={copy.openWorkspace} icon="easel-outline" onPress={onOpenWorkspace} tone="secondary" />
             <ActionButton label={copy.takePhoto} icon="camera" onPress={onPhoto} disabled={mutating} />
             <ActionButton label={copy.finishVisit} icon="checkmark-circle-outline" onPress={onCheckOut} disabled={mutating} tone="secondary" />
           </>
         ) : (
           <>
+            <ActionButton label={copy.openWorkspace} icon="easel-outline" onPress={onOpenWorkspace} tone="secondary" />
             <ActionButton
               label={mutating ? copy.finishingVisit : copy.finishVisit}
               icon={mutating ? "hourglass-outline" : "checkmark-circle"}
@@ -896,14 +908,6 @@ function PointActionPanel({
           <Icon name="list-outline" size={18} color={fieldTheme.color.inkMuted} />
           <Text style={styles.detailFactText}>{renderTemplate(copy.stopNumber, { number: point.orderIndex + 1 })}</Text>
         </View>
-        {point.plannedTime ? (
-          <View style={styles.detailFact}>
-            <Icon name="time-outline" size={18} color={fieldTheme.color.inkMuted} />
-            <Text style={styles.detailFactText}>
-              {new Date(point.plannedTime).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
-            </Text>
-          </View>
-        ) : null}
         {point.distanceMeters != null ? (
           <View style={styles.detailFact}>
             <Icon name="navigate-outline" size={18} color={distanceColor(point.distanceMeters, pointCheckInRadius(point))} />
@@ -1584,11 +1588,11 @@ export default function RouteScreen() {
       photoCount={photos.count}
       elapsedMin={elapsedMin}
       mutating={mutating}
-      language={i18n.language}
       copy={copy}
       onNavigate={handleNavigate}
       onCheckIn={handleCheckIn}
       onPhoto={() => setCameraVisible(true)}
+      onOpenWorkspace={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisit.customer?.name })}
       onCheckOut={handleCheckOut}
       signature={signature}
       onSignature={signature.openPad}
@@ -1662,9 +1666,12 @@ export default function RouteScreen() {
             : t("route.noRouteHint")}
       </Text>
       <ActionButton
-        label={emptyError ? copy.retry : copy.refresh}
-        icon="refresh"
-        onPress={() => { setLoading(true); fetchRoute() }}
+        label={emptyError ? copy.retry : canPlanOwnRoutes ? copy.planOwnRoute : copy.refresh}
+        icon={emptyError || !canPlanOwnRoutes ? "refresh" : "add-circle-outline"}
+        onPress={() => {
+          if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder")
+          else { setLoading(true); fetchRoute() }
+        }}
         tone="secondary"
       />
     </View>
@@ -1719,7 +1726,7 @@ export default function RouteScreen() {
                   <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
                 </View>
               ) : actionPanel}
-              {canPlanOwnRoutes ? (
+              {canPlanOwnRoutes && route ? (
                 <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
               ) : null}
               {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
@@ -1788,7 +1795,7 @@ export default function RouteScreen() {
         )}
         ListFooterComponent={
           <View style={styles.phoneFooter}>
-            {canPlanOwnRoutes ? (
+            {canPlanOwnRoutes && route ? (
               <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
             {/* Both sentences are about a route: the list to pull and its green
@@ -1980,6 +1987,10 @@ const styles = StyleSheet.create({
   visitFacts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   factPill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 11, paddingVertical: 7 },
   factText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
+  visitTimeNotice: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
+  visitTimeNoticeOvertime: { backgroundColor: fieldTheme.color.dangerSoft },
+  visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
+  visitTimeNoticeTextOvertime: { color: fieldTheme.color.danger },
   detailFacts: { gap: fieldTheme.space.sm },
   detailFact: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   detailFactText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "600" },
