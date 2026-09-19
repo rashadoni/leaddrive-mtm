@@ -1,7 +1,6 @@
 import {
   copyPlanningDay,
   planningCopyTargetDates,
-  planningTimeLabel,
   type PlanningAssignedTarget,
   type PlanningTarget,
 } from "../../src/services/manager-planning"
@@ -58,23 +57,23 @@ describe("planningCopyTargetDates", () => {
 describe("copyPlanningDay", () => {
   const monday = [store("1", "2026-09-21", "2026-09-21T09:00:00.000Z"), store("2", "2026-09-21", "2026-09-21T09:30:00.000Z")]
 
-  it("copies in order with the same local times, for targets the server confirmed on that date", () => {
-    const next = copyPlanningDay(monday, monday, "2026-09-22", [serverTarget("1", "2026-09-22"), serverTarget("2", "2026-09-22")], "UTC")
+  it("copies in order without appointment times, for targets the server confirmed on that date", () => {
+    const next = copyPlanningDay(monday, monday, "2026-09-22", [serverTarget("1", "2026-09-22"), serverTarget("2", "2026-09-22")])
     const tuesday = next.filter((target) => target.date === "2026-09-22")
-    expect(tuesday.map((target) => [target.key, planningTimeLabel(target.plannedTime, "UTC")])).toEqual([
-      ["organization:1", "09:00"],
-      ["organization:2", "09:30"],
+    expect(tuesday.map((target) => [target.key, target.plannedTime])).toEqual([
+      ["organization:1", null],
+      ["organization:2", null],
     ])
   })
 
   it("skips a target the server did not return for that date", () => {
-    const next = copyPlanningDay(monday, monday, "2026-09-22", [serverTarget("2", "2026-09-22")], "UTC")
+    const next = copyPlanningDay(monday, monday, "2026-09-22", [serverTarget("2", "2026-09-22")])
     expect(next.filter((target) => target.date === "2026-09-22").map((target) => target.key)).toEqual(["organization:2"])
   })
 
   it("does not reuse Monday's validation for Tuesday", () => {
     // A lookup for the wrong date is not a confirmation.
-    const next = copyPlanningDay(monday, monday, "2026-09-22", [serverTarget("1", "2026-09-21")], "UTC")
+    const next = copyPlanningDay(monday, monday, "2026-09-22", [serverTarget("1", "2026-09-21")])
     expect(next.filter((target) => target.date === "2026-09-22")).toEqual([])
   })
 })

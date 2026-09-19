@@ -698,13 +698,6 @@ function StopRow({
                 {new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
               </Text>
             </View>
-          ) : point.plannedTime ? (
-            <View style={styles.metaItem}>
-              <Icon name="time-outline" size={15} color={fieldTheme.color.inkMuted} />
-              <Text style={styles.metaText}>
-                {new Date(point.plannedTime).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
-              </Text>
-            </View>
           ) : null}
           {point.distanceMeters != null && point.status !== "VISITED" ? (
             <View style={styles.metaItem}>
@@ -896,14 +889,6 @@ function PointActionPanel({
           <Icon name="list-outline" size={18} color={fieldTheme.color.inkMuted} />
           <Text style={styles.detailFactText}>{renderTemplate(copy.stopNumber, { number: point.orderIndex + 1 })}</Text>
         </View>
-        {point.plannedTime ? (
-          <View style={styles.detailFact}>
-            <Icon name="time-outline" size={18} color={fieldTheme.color.inkMuted} />
-            <Text style={styles.detailFactText}>
-              {new Date(point.plannedTime).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
-            </Text>
-          </View>
-        ) : null}
         {point.distanceMeters != null ? (
           <View style={styles.detailFact}>
             <Icon name="navigate-outline" size={18} color={distanceColor(point.distanceMeters, pointCheckInRadius(point))} />

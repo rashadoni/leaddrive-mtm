@@ -41,7 +41,8 @@ describe("mobile planning guidance", () => {
     expect(source).toContain("<WeekDayChooser")
     expect(source).toContain('testID="mtm-mobile-week-day-list"')
     expect(source).toContain("<DayPlanEditor")
-    expect(source).toContain("planningLocalTimeToIso")
+    expect(source).toContain("plannedTime: null")
+    expect(source).not.toContain("RouteTimeInput")
     expect(source).not.toContain("<MatrixRow")
   })
 

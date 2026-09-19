@@ -530,7 +530,7 @@ export function planningCopyTargetDates(input: {
 }
 
 /**
- * Put a day's stops onto another date in the same order and at the same local
+ * Put a day's stops onto another date in the same order, without appointment
  * times. Only targets the server returned for that date are copied: a target
  * valid on Monday is not assumed to be valid on Tuesday (see
  * planningTargetForDate), so `resolved` must come from a lookup for `date`.
@@ -540,15 +540,13 @@ export function copyPlanningDay(
   sources: PlanningAssignedTarget[],
   date: string,
   resolved: PlanningTarget[],
-  timezone?: string | null,
 ): PlanningAssignedTarget[] {
   let next = assignments
   for (const source of sources) {
     const match = resolved.find((item) => item.key === source.key)
     const confirmed = match ? planningTargetForDate(match, date) : null
     if (!confirmed) continue
-    const time = normalizePlanningTimeSlot(planningTimeLabel(source.plannedTime, timezone)) ?? nextPlanningTime(next, date, timezone)
-    next = assignPlanningTarget(next, { ...confirmed, plannedTime: planningLocalTimeToIso(date, time, timezone) }, date)
+    next = assignPlanningTarget(next, { ...confirmed, plannedTime: null }, date)
   }
   return next
 }

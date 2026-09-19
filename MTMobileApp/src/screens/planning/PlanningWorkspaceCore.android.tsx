@@ -41,28 +41,23 @@ import {
   lockedPlanningDates,
   lockedPlanningTargetCells,
   movePlanningTarget,
-  nextPlanningTime,
-  normalizePlanningTimeSlot,
   planningCopyTargetDates,
   planningDateKeys,
   planningDraftConflictDates,
   planningPublishConflictDates,
   planningTargetForDate,
-  planningLocalTimeToIso,
-  planningTimeLabel,
   planningTodayKey,
   planningWriteConflictDates,
   publishablePlanningDrafts,
   removePlanningTarget,
   toPlanningDetailedRoute,
-  updatePlanningTargetTime,
   type PlanningAgent,
   type PlanningAssignedTarget,
   type PlanningDetailedRoute,
   type PlanningHorizon,
   type PlanningTarget,
 } from "../../services/manager-planning"
-import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday } from "../../services/planning-month"
+import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday, type PlanningMonthDay } from "../../services/planning-month"
 import {
   buildUpdatePublishedPoints,
   isPublishedStopLocked,
@@ -689,12 +684,16 @@ export default function PlanningWorkspaceCore({
       } else {
         const resolved = planningTargetForDate(target, activeDate)
         if (!resolved) return
-        setEditStops((current) => {
-          const time = nextPlanningTime(current, activeDate, tenantTimezone)
-          const plannedTime = planningLocalTimeToIso(activeDate, time, tenantTimezone)
-          // A stop added now is new to the route: no point id, never locked.
-          return [...current, { ...resolved, pointId: undefined, pointStatus: undefined, plannedTime, date: activeDate }]
-        })
+        // A route is a dated ordered list, not an appointment calendar.
+        // Legacy server times stay on existing stops for audit compatibility,
+        // but every newly added stop is deliberately untimed.
+        setEditStops((current) => [...current, {
+          ...resolved,
+          pointId: undefined,
+          pointStatus: undefined,
+          plannedTime: null,
+          date: activeDate,
+        }])
       }
       setHighlightKeys(new Set())
       return
@@ -705,11 +704,7 @@ export default function PlanningWorkspaceCore({
     } else {
       const resolved = planningTargetForDate(target, activeDate)
       if (!resolved) return
-      setAssignments((current) => {
-        const time = nextPlanningTime(current, activeDate, tenantTimezone)
-        const plannedTime = planningLocalTimeToIso(activeDate, time, tenantTimezone)
-        return assignPlanningTarget(current, { ...resolved, plannedTime }, activeDate)
-      })
+      setAssignments((current) => assignPlanningTarget(current, { ...resolved, plannedTime: null }, activeDate))
     }
     markDirty([activeDate])
     setSaveMessage(null)
@@ -735,35 +730,15 @@ export default function PlanningWorkspaceCore({
     setSaveMessage(null)
   }
 
-  const changeDayTargetTime = (target: PlanningTarget, date: string, time: string): boolean => {
-    if (editing) {
-      if (!editableEditStop(target, date)) return false
-      const editedTime = planningLocalTimeToIso(date, time, tenantTimezone)
-      if (!editedTime) return false
-      setEditStops((current) => updatePlanningTargetTime(current, target.key, date, editedTime))
-      setHighlightKeys(new Set())
-      return true
-    }
-    if (saving || date < today || lockedDates.has(date) || multipleDraftDates.includes(date)) return false
-    const plannedTime = planningLocalTimeToIso(date, time, tenantTimezone)
-    if (!plannedTime) return false
-    setAssignments((current) => updatePlanningTargetTime(current, target.key, date, plannedTime))
-    markDirty([date])
-    setSaveMessage(null)
-    return true
-  }
-
   const moveDayTarget = (target: PlanningTarget, date: string, direction: -1 | 1) => {
     if (editing) {
       // Only a pending stop moves. Stepping past a visited one keeps the
       // visited stops in their order, which is all the server requires.
       if (!editableEditStop(target, date)) return
       setEditStops((current) => {
-        // A visited neighbour keeps its time: the server refuses a retime.
-        const dayStops = current.filter((stop) => stop.date === date)
-        const index = dayStops.findIndex((stop) => stop.key === target.key)
-        const neighbour = index < 0 ? undefined : dayStops[index + direction]
-        return movePlanningTarget(current, target.key, date, direction, !neighbour || !isPublishedStopLocked(neighbour))
+        // Legacy times belong to historical stops and stay untouched. Only
+        // the order changes; new stops are always untimed.
+        return movePlanningTarget(current, target.key, date, direction, false)
       })
       setHighlightKeys(new Set())
       return
@@ -1005,7 +980,7 @@ export default function PlanningWorkspaceCore({
       const copied: string[] = []
       for (const { date, resolved } of lookups) {
         const before = updated.length
-        updated = copyPlanningDay(updated, sources, date, resolved, tenantTimezone)
+        updated = copyPlanningDay(updated, sources, date, resolved)
         if (updated.length > before) copied.push(date)
       }
       setAssignments(updated)
@@ -1291,59 +1266,21 @@ export default function PlanningWorkspaceCore({
                   and the past is not offered at all — a route cannot be
                   planned into it.
                 */}
-                <View style={styles.dateNavigator}>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} accessibilityState={{ disabled: saving }} disabled={saving} style={({ pressed }) => [styles.squareButton, saving && styles.disabled, pressed && styles.pressed]} onPress={() => setMonthAnchor(shiftPlanningMonth(monthAnchor, -1))}>
-                    <Icon name="chevron-back" size={23} color={fieldTheme.color.primaryStrong} />
-                  </Pressable>
-                  <View style={styles.dateCopy}>
-                    <Text style={styles.dateTitle}>{formatPlanDate(anchor, i18n.language)}</Text>
-                    <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.todayButton, saving && styles.disabled]} onPress={() => { const next = nextPlanningWorkday(today); setMonthAnchor(next); changeWindow(next) }}>
-                      <Text style={styles.todayButtonText}>{t("managerShell.planToday")}</Text>
-                    </Pressable>
-                  </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} accessibilityState={{ disabled: saving }} disabled={saving} style={({ pressed }) => [styles.squareButton, saving && styles.disabled, pressed && styles.pressed]} onPress={() => setMonthAnchor(shiftPlanningMonth(monthAnchor, 1))}>
-                    <Icon name="chevron-forward" size={23} color={fieldTheme.color.primaryStrong} />
-                  </Pressable>
-                </View>
-                <View style={styles.monthWeekdays} accessibilityRole="none">
-                  {monthWeekdayLabels.map((label, index) => (
-                    <Text key={`${label}-${index}`} style={styles.monthWeekday}>{label}</Text>
-                  ))}
-                </View>
-                <View style={styles.monthGrid} testID="planning-month-grid">
-                  {monthCells.map((cell, index) => {
-                    if (!cell.date) return <View key={`blank-${index}`} style={styles.monthCell} />
-                    const selected = cell.date === anchor
-                    // Picking a week start used to mark one day; the six after
-                    // it now read as part of the same choice.
-                    const inWindow = !singleDay && !selected && dates.includes(cell.date)
-                    const disabled = saving || cell.past
-                    return (
-                      <Pressable
-                        key={cell.date}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected, disabled }}
-                        accessibilityLabel={formatPlanDate(cell.date, i18n.language)}
-                        disabled={disabled}
-                        onPress={() => changeWindow(cell.date as string)}
-                        style={({ pressed }) => [
-                          styles.monthCell,
-                          styles.monthDay,
-                          cell.weekend && styles.monthDayWeekend,
-                          cell.today && styles.monthDayToday,
-                          inWindow && styles.monthDayInWindow,
-                          selected && styles.monthDaySelected,
-                          disabled && styles.monthDayDisabled,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <Text style={[styles.monthDayText, selected && styles.monthDayTextSelected, disabled && styles.monthDayTextDisabled]}>
-                          {cell.day}
-                        </Text>
-                      </Pressable>
-                    )
-                  })}
-                </View>
+                <CompactPlanDatePicker
+                  anchor={anchor}
+                  dates={dates}
+                  singleDay={singleDay}
+                  today={today}
+                  monthCells={monthCells}
+                  weekdayLabels={monthWeekdayLabels}
+                  language={i18n.language}
+                  disabled={saving}
+                  onPreviousMonth={() => setMonthAnchor(shiftPlanningMonth(monthAnchor, -1))}
+                  onNextMonth={() => setMonthAnchor(shiftPlanningMonth(monthAnchor, 1))}
+                  onToday={() => { const next = nextPlanningWorkday(today); setMonthAnchor(next); changeWindow(next) }}
+                  onSelect={(date) => changeWindow(date)}
+                  t={t}
+                />
               </View>
 
               {selfPlanning ? null : (
@@ -1438,9 +1375,7 @@ export default function PlanningWorkspaceCore({
                 ? { label: t("managerShell.planChangePublished"), onPress: () => startPublishedEdit(activePublishedRoute) }
                 : undefined}
               saving={saving}
-              timezone={tenantTimezone}
               language={i18n.language}
-              onTime={changeDayTargetTime}
               onMove={moveDayTarget}
               onRemove={removeDayTarget}
               t={t}
@@ -1672,6 +1607,119 @@ function SectionIntro({ number, title, body }: { number: string; title: string; 
   )
 }
 
+function CompactPlanDatePicker({
+  anchor,
+  dates,
+  singleDay,
+  today,
+  monthCells,
+  weekdayLabels,
+  language,
+  disabled,
+  onPreviousMonth,
+  onNextMonth,
+  onToday,
+  onSelect,
+  t,
+}: {
+  anchor: string
+  dates: string[]
+  singleDay: boolean
+  today: string
+  monthCells: PlanningMonthDay[]
+  weekdayLabels: string[]
+  language: string
+  disabled: boolean
+  onPreviousMonth: () => void
+  onNextMonth: () => void
+  onToday: () => void
+  onSelect: (date: string) => void
+  t: any
+}) {
+  const [open, setOpen] = useState(false)
+  const visibleMonthKey = monthCells.find((cell) => cell.date)?.date ?? anchor
+  const visibleMonth = new Date(`${visibleMonthKey}T00:00:00.000Z`)
+  const monthLabel = upperFirst(formatLocalizedDate(visibleMonth, language, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }), language)
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${t("managerShell.planOpenDatePicker")}: ${formatPlanDate(anchor, language)}`}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [styles.compactDateButton, disabled && styles.disabled, pressed && styles.pressed]}
+      >
+        <View style={styles.compactDateIcon}><Icon name="calendar-outline" size={22} color={fieldTheme.color.primaryStrong} /></View>
+        <View style={styles.compactDateCopy}>
+          <Text style={styles.compactDateValue}>{formatPlanDate(anchor, language)}</Text>
+          <Text style={styles.compactDateHint}>{t(singleDay ? "managerShell.planDateOnlyHint" : "managerShell.planWeekDateOnlyHint")}</Text>
+        </View>
+        <Icon name="chevron-down" size={20} color={fieldTheme.color.primaryStrong} />
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.dateSheetBackdrop} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={t("managerShell.planCancelEdit")}>
+          <Pressable style={styles.dateSheet} onPress={() => undefined}>
+            <View style={styles.dateSheetHeader}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, pressed && styles.pressed]} onPress={onPreviousMonth}>
+                <Icon name="chevron-back" size={23} color={fieldTheme.color.primaryStrong} />
+              </Pressable>
+              <View style={styles.dateCopy}>
+                <Text style={styles.dateTitle}>{monthLabel}</Text>
+                <Pressable accessibilityRole="button" disabled={disabled} style={styles.todayButton} onPress={() => { onToday(); setOpen(false) }}>
+                  <Text style={styles.todayButtonText}>{t("managerShell.planToday")}</Text>
+                </Pressable>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, pressed && styles.pressed]} onPress={onNextMonth}>
+                <Icon name="chevron-forward" size={23} color={fieldTheme.color.primaryStrong} />
+              </Pressable>
+            </View>
+            <View style={styles.monthWeekdays} accessibilityRole="none">
+              {weekdayLabels.map((label, index) => <Text key={`${label}-${index}`} style={styles.monthWeekday}>{label}</Text>)}
+            </View>
+            <View style={styles.monthGrid} testID="planning-month-grid">
+              {monthCells.map((cell, index) => {
+                if (!cell.date) return <View key={`blank-${index}`} style={styles.monthCell} />
+                const selected = cell.date === anchor
+                const inWindow = !singleDay && !selected && dates.includes(cell.date)
+                const cellDisabled = disabled || cell.past
+                return (
+                  <Pressable
+                    key={cell.date}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected, disabled: cellDisabled }}
+                    accessibilityLabel={formatPlanDate(cell.date, language)}
+                    disabled={cellDisabled}
+                    onPress={() => { onSelect(cell.date as string); setOpen(false) }}
+                    style={({ pressed }) => [
+                      styles.monthCell,
+                      styles.monthDay,
+                      cell.weekend && styles.monthDayWeekend,
+                      cell.today && styles.monthDayToday,
+                      inWindow && styles.monthDayInWindow,
+                      selected && styles.monthDaySelected,
+                      cellDisabled && styles.monthDayDisabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.monthDayText, selected && styles.monthDayTextSelected, cellDisabled && styles.monthDayTextDisabled]}>{cell.day}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  )
+}
+
 function PlannerCoach({ title, body, dismissLabel, tablet, onDismiss }: { title: string; body: string; dismissLabel: string; tablet: boolean; onDismiss: () => void }) {
   return (
     <View style={[styles.plannerCoach, tablet && styles.plannerCoachTablet]} accessibilityLiveRegion="polite">
@@ -1801,63 +1849,7 @@ function WeekDayChooser({ dates, activeDate, assignments, routes, lockedDates, m
   )
 }
 
-/** Half-hour slots a visit can start at; the route API accepts only :00 and :30. */
-const TIME_SLOTS = Array.from({ length: 30 }, (_, index) => {
-  const minutes = 7 * 60 + index * 30
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
-})
-
-/**
- * One button that shows the time; tapping it opens a grid of half-hour slots.
- * It replaced an hour field plus a 00/30 switch that the owner had "never seen
- * a time picker like" (2026-09-14): typing an hour and then choosing minutes
- * was two unfamiliar steps for one choice.
- */
-function RouteTimeInput({ value, disabled, label, onCommit }: { value: string; disabled: boolean; label: string; onCommit: (time: string) => boolean }) {
-  const current = normalizePlanningTimeSlot(value) ?? "09:00"
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${current}`}
-        accessibilityState={{ disabled }}
-        disabled={disabled}
-        onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.routeTimeField, disabled && styles.routeTimeFieldDisabled, pressed && styles.pressed]}
-      >
-        <Icon name="time-outline" size={18} color={disabled ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
-        <Text style={[styles.routeTimeValue, disabled && styles.disabledText]}>{current}</Text>
-        {disabled ? null : <Icon name="chevron-down" size={16} color={fieldTheme.color.primaryStrong} />}
-      </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.timeSheetBackdrop} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={label}>
-          <Pressable style={styles.timeSheet} onPress={() => undefined}>
-            <Text style={styles.timeSheetTitle}>{label}</Text>
-            <View style={styles.timeSlotGrid}>
-              {TIME_SLOTS.map((slot) => {
-                const selected = slot === current
-                return (
-                  <Pressable
-                    key={slot}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    onPress={() => { if (onCommit(slot)) setOpen(false) }}
-                    style={({ pressed }) => [styles.timeSlot, selected && styles.timeSlotActive, pressed && styles.pressed]}
-                  >
-                    <Text style={[styles.timeSlotText, selected && styles.timeSlotTextActive]}>{slot}</Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-    </>
-  )
-}
-
-function DayPlanEditor({ date, rows, lockedCells, editable, editingPublished = false, highlightKeys, changePlan, saving, timezone, language, onTime, onMove, onRemove, t }: {
+function DayPlanEditor({ date, rows, lockedCells, editable, editingPublished = false, highlightKeys, changePlan, saving, language, onMove, onRemove, t }: {
   date: string
   rows: PlanningAssignedTarget[]
   lockedCells: Set<string>
@@ -1868,9 +1860,7 @@ function DayPlanEditor({ date, rows, lockedCells, editable, editingPublished = f
   highlightKeys?: Set<string>
   changePlan?: { label: string; onPress: () => void }
   saving: boolean
-  timezone?: string | null
   language: string
-  onTime: (target: PlanningTarget, date: string, time: string) => boolean
   onMove: (target: PlanningTarget, date: string, direction: -1 | 1) => void
   onRemove: (target: PlanningTarget, date: string) => void
   t: any
@@ -1915,12 +1905,6 @@ function DayPlanEditor({ date, rows, lockedCells, editable, editingPublished = f
                   <Text style={styles.dayStopName}>{target.name}</Text>
                   <Text style={styles.dayStopMeta}>{target.organizationName || target.address || t("managerShell.planAddressMissing")}</Text>
                 </View>
-                <RouteTimeInput
-                  value={planningTimeLabel(target.plannedTime, timezone)}
-                  disabled={controlsDisabled}
-                  label={`${t("managerShell.planVisitTime")}: ${target.name}`}
-                  onCommit={(time) => onTime(target, date, time)}
-                />
                 {locked && editingPublished ? (
                   <View style={styles.dayStopVisited} accessibilityLabel={t("managerShell.planVisitedStop")}>
                     <Icon name="lock-closed" size={14} color={fieldTheme.color.amber} />
@@ -2064,7 +2048,14 @@ const styles = StyleSheet.create({
   monthDayText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "700" },
   monthDayTextSelected: { color: fieldTheme.color.onColor },
   monthDayTextDisabled: { color: fieldTheme.color.inkMuted },
-  dateNavigator: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.xs, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft },
+  compactDateButton: { minHeight: 60, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: fieldTheme.color.blue },
+  compactDateIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surface },
+  compactDateCopy: { flex: 1, gap: 2 },
+  compactDateValue: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  compactDateHint: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "700" },
+  dateSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.45)" },
+  dateSheet: { width: "100%", maxWidth: 520, gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
+  dateSheetHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
   dateCopy: { flex: 1, alignItems: "center", gap: 5 },
   dateTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900", textAlign: "center" },
@@ -2127,17 +2118,6 @@ const styles = StyleSheet.create({
   dayStopCopy: { flex: 1, minWidth: 150, gap: 2 },
   dayStopName: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "900" },
   dayStopMeta: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
-  routeTimeField: { minWidth: 104, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
-  routeTimeValue: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900", fontVariant: ["tabular-nums"] },
-  timeSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.45)" },
-  timeSheet: { width: "100%", maxWidth: 460, gap: fieldTheme.space.md, padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
-  timeSheetTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  timeSlotGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  timeSlot: { width: "23%", minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, borderWidth: 1, borderColor: fieldTheme.color.border },
-  timeSlotActive: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary },
-  timeSlotText: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800", fontVariant: ["tabular-nums"] },
-  timeSlotTextActive: { color: fieldTheme.color.onColor },
-  routeTimeFieldDisabled: { borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surfaceStrong },
   dayStopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   dayStopAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
   dayStopRemove: { backgroundColor: fieldTheme.color.dangerSoft },
