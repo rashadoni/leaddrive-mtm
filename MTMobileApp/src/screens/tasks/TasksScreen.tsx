@@ -588,34 +588,33 @@ export default function TasksScreen() {
       </View>
 
       <View style={styles.bodyTop}>
-        <TouchableOpacity
-          style={styles.focusStrip}
-          activeOpacity={recommendedTab ? 0.82 : 1}
-          disabled={!recommendedTab}
-          onPress={() => recommendedTab && setActiveTab(recommendedTab)}
-          accessibilityRole={recommendedTab ? "button" : undefined}
-          accessibilityLabel={recommendedTab ? copy.showRecommended : undefined}
-        >
-          <View style={styles.focusIcon}>
-            <Icon name="navigate-outline" size={22} color={fieldTheme.color.primaryStrong} />
-          </View>
-          <View style={styles.noticeCopy}>
-            <Text style={styles.focusLabel}>{copy.focus}</Text>
-            <Text style={styles.focusMessage}>{focusMessage}</Text>
-            {lastUpdatedAt && !offline && !tablet ? (
-              <Text style={styles.freshnessInline}>{copy.refreshedAt(lastUpdatedAt.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }))}</Text>
+        {recommendedTab ? (
+          <TouchableOpacity
+            style={styles.focusStrip}
+            activeOpacity={0.82}
+            onPress={() => setActiveTab(recommendedTab)}
+            accessibilityRole="button"
+            accessibilityLabel={copy.showRecommended}
+          >
+            <View style={styles.focusIcon}>
+              <Icon name="navigate-outline" size={22} color={fieldTheme.color.primaryStrong} />
+            </View>
+            <View style={styles.noticeCopy}>
+              <Text style={styles.focusLabel}>{copy.focus}</Text>
+              <Text style={styles.focusMessage}>{focusMessage}</Text>
+              {lastUpdatedAt && !offline && !tablet ? (
+                <Text style={styles.freshnessInline}>{copy.refreshedAt(lastUpdatedAt.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }))}</Text>
+              ) : null}
+            </View>
+            {lastUpdatedAt && !offline && tablet ? (
+              <Text style={styles.freshness}>{copy.refreshedAt(lastUpdatedAt.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }))}</Text>
             ) : null}
-          </View>
-          {lastUpdatedAt && !offline && tablet ? (
-            <Text style={styles.freshness}>{copy.refreshedAt(lastUpdatedAt.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" }))}</Text>
-          ) : null}
-          {recommendedTab ? (
             <View style={[styles.focusAction, !tablet && styles.focusActionPhone]}>
               <Text style={styles.focusActionText}>{copy.showRecommended}</Text>
               <Icon name="arrow-forward" size={18} color={fieldTheme.color.primaryStrong} />
             </View>
-          ) : null}
-        </TouchableOpacity>
+          </TouchableOpacity>
+        ) : null}
 
         {offline ? (
           <Notice

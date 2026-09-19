@@ -790,7 +790,6 @@ function PointActionPanel({
   photoCount,
   elapsedMin,
   mutating,
-  language,
   copy,
   onNavigate,
   onCheckIn,
@@ -807,7 +806,6 @@ function PointActionPanel({
   photoCount: number
   elapsedMin: number
   mutating: boolean
-  language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
   onNavigate: (point: RoutePoint) => void
   onCheckIn: (point: RoutePoint) => void
@@ -1590,7 +1588,6 @@ export default function RouteScreen() {
       photoCount={photos.count}
       elapsedMin={elapsedMin}
       mutating={mutating}
-      language={i18n.language}
       copy={copy}
       onNavigate={handleNavigate}
       onCheckIn={handleCheckIn}
@@ -1669,9 +1666,12 @@ export default function RouteScreen() {
             : t("route.noRouteHint")}
       </Text>
       <ActionButton
-        label={emptyError ? copy.retry : copy.refresh}
-        icon="refresh"
-        onPress={() => { setLoading(true); fetchRoute() }}
+        label={emptyError ? copy.retry : canPlanOwnRoutes ? copy.planOwnRoute : copy.refresh}
+        icon={emptyError || !canPlanOwnRoutes ? "refresh" : "add-circle-outline"}
+        onPress={() => {
+          if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder")
+          else { setLoading(true); fetchRoute() }
+        }}
         tone="secondary"
       />
     </View>
@@ -1726,7 +1726,7 @@ export default function RouteScreen() {
                   <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
                 </View>
               ) : actionPanel}
-              {canPlanOwnRoutes ? (
+              {canPlanOwnRoutes && route ? (
                 <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
               ) : null}
               {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
@@ -1795,7 +1795,7 @@ export default function RouteScreen() {
         )}
         ListFooterComponent={
           <View style={styles.phoneFooter}>
-            {canPlanOwnRoutes ? (
+            {canPlanOwnRoutes && route ? (
               <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
             ) : null}
             {/* Both sentences are about a route: the list to pull and its green

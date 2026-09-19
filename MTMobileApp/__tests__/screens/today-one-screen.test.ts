@@ -42,4 +42,10 @@ describe("B7: Today keeps its workday actions in one row on a phone", () => {
     expect(today).not.toContain('t("todayV2.eyebrow")')
     expect(today).not.toContain("styles.eyebrow")
   })
+
+  it("uses one compact row when there is no route or task", () => {
+    expect(today).toContain('nextKind === "empty" ? (')
+    expect(today).toContain("styles.nextEmptyRow")
+    expect(today).toContain('onPress={nextAction}')
+  })
 })

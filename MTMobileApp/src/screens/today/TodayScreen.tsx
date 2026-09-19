@@ -538,71 +538,89 @@ export default function TodayScreen() {
           </View>
 
           <View style={[styles.primaryColumn, twoPane && styles.secondaryColumnTablet]}>
-            <View
-              accessibilityLiveRegion="polite"
-              style={[
-                styles.nextPanel,
-                nextKind === "route" && styles.nextPanelRoute,
-                nextKind === "tasks" && styles.nextPanelTasks,
-                nextKind === "unknown" && styles.nextPanelUnknown,
-              ]}
-            >
-              <View style={[styles.nextIcon, nextDark && styles.nextIconDark]}>
-                {nextKind === "loading"
-                  ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
-                  : <Icon
-                      name={nextCopy.icon}
-                      size={22}
-                      color={nextDark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
-                    />}
-              </View>
-              <Text style={[styles.nextEyebrow, nextDark && styles.nextTextOnDark]}>
-                {nextCopy.eyebrow}
-              </Text>
-              <Text style={[styles.nextTitle, nextDark && styles.nextTextOnDark]}>
-                {nextCopy.title}
-              </Text>
-              <Text style={[styles.nextBody, nextDark && styles.nextBodyOnDark]}>
-                {nextCopy.body}
-              </Text>
-              {nextCopy.supporting ? (
-                <Text style={[styles.nextSupporting, nextDark && styles.nextBodyOnDark]}>
-                  {nextCopy.supporting}
+            {nextKind === "empty" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${nextCopy.title}. ${nextCopy.body}`}
+                onPress={nextAction}
+                style={({ pressed }) => [styles.nextEmptyRow, pressed && styles.pressed]}
+              >
+                <View style={styles.nextEmptyIcon}>
+                  <Icon name="checkmark-circle" size={22} color={fieldTheme.color.success} />
+                </View>
+                <View style={styles.nextEmptyCopy}>
+                  <Text style={styles.nextEmptyTitle}>{nextCopy.title}</Text>
+                  <Text style={styles.nextEmptyAction}>{nextCopy.button}</Text>
+                </View>
+                <Icon name="chevron-forward" size={20} color={fieldTheme.color.primaryStrong} />
+              </Pressable>
+            ) : (
+              <View
+                accessibilityLiveRegion="polite"
+                style={[
+                  styles.nextPanel,
+                  nextKind === "route" && styles.nextPanelRoute,
+                  nextKind === "tasks" && styles.nextPanelTasks,
+                  nextKind === "unknown" && styles.nextPanelUnknown,
+                ]}
+              >
+                <View style={[styles.nextIcon, nextDark && styles.nextIconDark]}>
+                  {nextKind === "loading"
+                    ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
+                    : <Icon
+                        name={nextCopy.icon}
+                        size={22}
+                        color={nextDark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
+                      />}
+                </View>
+                <Text style={[styles.nextEyebrow, nextDark && styles.nextTextOnDark]}>
+                  {nextCopy.eyebrow}
                 </Text>
-              ) : null}
-              {routeSource === "cached" && nextKind === "route" ? (
-                <View style={styles.cachedBadge}>
-                  <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
-                  <Text style={styles.cachedBadgeText}>{t("todayV2.savedRoute")}</Text>
-                </View>
-              ) : null}
-              {nextKind === "tasks" && !stats && cachedOpenTasks != null ? (
-                <View style={styles.cachedBadge}>
-                  <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
-                  <Text style={styles.cachedBadgeText}>{t("todayV2.savedTasks")}</Text>
-                </View>
-              ) : null}
-              {nextCopy.button ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={nextAction}
-                  style={({ pressed }) => [
-                    styles.nextButton,
-                    !nextDark && styles.nextButtonLight,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.nextButtonText, !nextDark && styles.nextButtonTextLight]}>
-                    {nextCopy.button}
+                <Text style={[styles.nextTitle, nextDark && styles.nextTextOnDark]}>
+                  {nextCopy.title}
+                </Text>
+                <Text style={[styles.nextBody, nextDark && styles.nextBodyOnDark]}>
+                  {nextCopy.body}
+                </Text>
+                {nextCopy.supporting ? (
+                  <Text style={[styles.nextSupporting, nextDark && styles.nextBodyOnDark]}>
+                    {nextCopy.supporting}
                   </Text>
-                  <Icon
-                    name={nextKind === "unknown" ? "refresh" : nextCopy.startRoute || nextCopy.startWorkday ? "play" : "arrow-forward"}
-                    size={20}
-                    color={nextDark ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
-                  />
-                </Pressable>
-              ) : null}
-            </View>
+                ) : null}
+                {routeSource === "cached" && nextKind === "route" ? (
+                  <View style={styles.cachedBadge}>
+                    <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
+                    <Text style={styles.cachedBadgeText}>{t("todayV2.savedRoute")}</Text>
+                  </View>
+                ) : null}
+                {nextKind === "tasks" && !stats && cachedOpenTasks != null ? (
+                  <View style={styles.cachedBadge}>
+                    <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
+                    <Text style={styles.cachedBadgeText}>{t("todayV2.savedTasks")}</Text>
+                  </View>
+                ) : null}
+                {nextCopy.button ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={nextAction}
+                    style={({ pressed }) => [
+                      styles.nextButton,
+                      !nextDark && styles.nextButtonLight,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.nextButtonText, !nextDark && styles.nextButtonTextLight]}>
+                      {nextCopy.button}
+                    </Text>
+                    <Icon
+                      name={nextKind === "unknown" ? "refresh" : nextCopy.startRoute || nextCopy.startWorkday ? "play" : "arrow-forward"}
+                      size={20}
+                      color={nextDark ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
+                    />
+                  </Pressable>
+                ) : null}
+              </View>
+            )}
             {stats && stats.tasks.overdue > 0 ? (
               <Pressable
                 accessibilityRole="button"
@@ -852,6 +870,29 @@ const styles = StyleSheet.create({
     borderColor: "#E7CB8A",
     backgroundColor: fieldTheme.color.amberSoft,
   },
+  nextEmptyRow: {
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.md,
+    paddingHorizontal: fieldTheme.space.lg,
+    paddingVertical: fieldTheme.space.sm,
+    borderRadius: fieldTheme.radius.lg,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  nextEmptyIcon: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    backgroundColor: fieldTheme.color.successSoft,
+  },
+  nextEmptyCopy: { flex: 1, minWidth: 0 },
+  nextEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  nextEmptyAction: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17, fontWeight: "800", marginTop: 2 },
   nextIcon: {
     width: 40,
     height: 40,

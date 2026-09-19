@@ -57,7 +57,7 @@ export default function ProfileScreen() {
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
-  const [profile, setProfile] = useState<any>(null)
+  const [, setProfile] = useState<any>(null)
   const [alerts, setAlerts] = useState<MtmAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -125,13 +125,20 @@ export default function ProfileScreen() {
                 <Icon name="alert-outline" size={18} color={severityColor(alert.category)} />
               </View>
               <View style={styles.alertCopy}>
-                <Text style={styles.alertTitle}>{alert.title || alert.type?.replace(/_/g, " ")}</Text>
                 {(() => {
                   const message = readAlertMessage(alert.metadata)
+                  const title = message.kind === "localized"
+                    ? t(`alertTitles.${message.key}`)
+                    : alert.title || alert.type?.replace(/_/g, " ")
                   const text = message.kind === "localized"
                     ? t(`alertMessages.${message.key}`, message.params)
                     : alert.description
-                  return text ? <Text style={styles.alertDescription} numberOfLines={2}>{text}</Text> : null
+                  return (
+                    <>
+                      <Text style={styles.alertTitle}>{title}</Text>
+                      {text ? <Text style={styles.alertDescription} numberOfLines={2}>{text}</Text> : null}
+                    </>
+                  )
                 })()}
               </View>
               <Text style={styles.alertDate}>

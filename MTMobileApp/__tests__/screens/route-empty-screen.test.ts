@@ -57,8 +57,10 @@ describe("B9: the route screen without a route", () => {
     expect(blank).toEqual([])
   })
 
-  it("leaves the own-route planning card, which nothing else offers here", () => {
+  it("turns the empty state's only primary action into route planning", () => {
     expect(source).toContain("OwnRoutePlanningCard")
     expect(source).toContain("copy.planOwnRoute")
+    expect(source).toContain("label={emptyError ? copy.retry : canPlanOwnRoutes ? copy.planOwnRoute : copy.refresh}")
+    expect(source.match(/\{canPlanOwnRoutes && route \? \(/g)).toHaveLength(2)
   })
 })

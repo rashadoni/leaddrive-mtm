@@ -950,6 +950,15 @@
       "MOVED_DAY_OFF": "Köçürülmüş istirahət günü"
     }
   },
+  "alertTitles": {
+    "visitStillOpen": "Uzun çəkən ziyarət",
+    "outOfZoneCheckIn": "Müştəridən uzaq giriş",
+    "outOfZoneCheckInForced": "Uzaq giriş təsdiqləndi",
+    "geofenceViolation": "Ziyarət zonası pozuntusu",
+    "routeDeviation": "Marşrutdan yayınma",
+    "agentRouteDeviation": "Marşrutdan yayınmısınız",
+    "agentOutOfZoneCheckIn": "Müştəridən uzaq giriş"
+  },
   "alertMessages": {
     "visitStillOpen": "«{{customerName}}» ziyarəti {{minutes}} dəq açıqdır (hədd {{thresholdMinutes}} dəq)",
     "outOfZoneCheckIn": "Qeydiyyat rədd edildi: müştəridən {{distanceMeters}} m (icazə verilən {{geofenceRadius}} m)",

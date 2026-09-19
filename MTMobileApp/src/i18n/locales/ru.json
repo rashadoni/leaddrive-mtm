@@ -950,6 +950,15 @@
       "MOVED_DAY_OFF": "Перенесённый выходной"
     }
   },
+  "alertTitles": {
+    "visitStillOpen": "Визит затянулся",
+    "outOfZoneCheckIn": "Отметка далеко от клиента",
+    "outOfZoneCheckInForced": "Удалённая отметка подтверждена",
+    "geofenceViolation": "Нарушена зона визита",
+    "routeDeviation": "Отклонение от маршрута",
+    "agentRouteDeviation": "Вы отклонились от маршрута",
+    "agentOutOfZoneCheckIn": "Отметка далеко от клиента"
+  },
   "alertMessages": {
     "visitStillOpen": "Визит в «{{customerName}}» открыт уже {{minutes}} мин (порог {{thresholdMinutes}} мин)",
     "outOfZoneCheckIn": "Отметка отклонена: {{distanceMeters}} м от клиента (допустимо {{geofenceRadius}} м)",
