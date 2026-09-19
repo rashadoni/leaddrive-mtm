@@ -1490,7 +1490,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: "900",
     textAlign: "center",
-    textTransform: "uppercase",
   },
   monthGrid: { flexDirection: "row", flexWrap: "wrap" },
   monthCell: {
