@@ -1212,7 +1212,9 @@ export default function PlanningWorkspaceCore({
               <Icon name="help-circle-outline" size={22} color={fieldTheme.color.primaryStrong} />
             </Pressable>
           )}
-          {updatedAt ? (
+          {/* Self planning has one primary action: the bottom save button. A
+              sync checkmark here looked like a second confirmation action. */}
+          {updatedAt && !selfPlanning ? (
             <View style={styles.updatedPill}>
               <Icon name={planError ? "cloud-offline-outline" : "checkmark-circle"} size={16} color={planError ? fieldTheme.color.amber : fieldTheme.color.primaryStrong} />
               {tablet ? <Text style={styles.updatedText}>{planError ? t("managerShell.planLastLoaded") : t("managerShell.planUpdated")}</Text> : null}
