@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { LAYOUT_BREAKPOINTS, NAV_RAIL_WIDTH, isTabletWidth, isExpandedTabletWidth, isTwoPaneTabWidth, isTwoPaneWidth, tabContentWidth } from "../../src/theme/layoutBreakpoints"
+import { LAYOUT_BREAKPOINTS, NAV_RAIL_WIDTH, isTabletWidth, isExpandedTabletWidth, isTwoPaneTabWidth, isTwoPaneWidth, shouldUseNavigationRail, tabContentWidth } from "../../src/theme/layoutBreakpoints"
 
 /**
  * Field UX audit 2026-09-05, task B19: two panes from 600 dp.
@@ -28,6 +28,8 @@ describe("B19: one answer to what a tablet is", () => {
     expect(isTwoPaneWidth(824)).toBe(true)
     expect(isExpandedTabletWidth(824)).toBe(false)
     expect(isTabletWidth(824)).toBe(true)
+    expect(shouldUseNavigationRail(824, 384)).toBe(false)
+    expect(shouldUseNavigationRail(824, 600)).toBe(true)
   })
 
   it("is used by the two screens that waited for 840", () => {

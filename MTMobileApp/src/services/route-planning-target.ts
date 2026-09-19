@@ -1,7 +1,7 @@
 import type { PlanningTarget } from "./manager-planning"
 
 export type RoutePlanningTargetHint = {
-  kind: "contact"
+  kind: "contact" | "organization"
   id: string
   name: string
 }

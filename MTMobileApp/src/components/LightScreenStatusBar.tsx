@@ -1,7 +1,7 @@
 import React from "react"
 import { StatusBar, useWindowDimensions } from "react-native"
 import { useIsFocused } from "@react-navigation/native"
-import { isTabletWidth } from "../theme/layoutBreakpoints"
+import { shouldUseNavigationRail } from "../theme/layoutBreakpoints"
 
 /**
  * Dark status bar icons for a screen whose top is light.
@@ -20,7 +20,7 @@ import { isTabletWidth } from "../theme/layoutBreakpoints"
  */
 export default function LightScreenStatusBar() {
   const focused = useIsFocused()
-  const { width } = useWindowDimensions()
-  if (isTabletWidth(width)) return null
+  const { width, height } = useWindowDimensions()
+  if (shouldUseNavigationRail(width, height)) return null
   return focused ? <StatusBar barStyle="dark-content" /> : null
 }

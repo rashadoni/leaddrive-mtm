@@ -212,6 +212,7 @@ export default function RouteOrganizationDetailScreen() {
   // Switched off by the organization: the card is about the place only, with
   // no list of people and no way into a contact card from here.
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
+  const mayPlanOwnRoutes = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   const [detail, setDetail] = useState<RouteOrganizationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -280,6 +281,13 @@ export default function RouteOrganizationDetailScreen() {
   const openDirections = () => {
     if (address) void openExternal(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)
   }
+  const addToRoute = () => {
+    if (!detail) return
+    navigation.navigate("PlanningBuilder", {
+      initialHorizon: 1,
+      initialTarget: { kind: "organization", id: detail.id, name: detail.name },
+    })
+  }
   const openContact = (contact: RouteOrganizationContact) => {
     if (usableId(contact.id)) navigation.navigate("ContactDetail", { id: contact.id, name: contact.name })
   }
@@ -317,6 +325,7 @@ export default function RouteOrganizationDetailScreen() {
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
         {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={statusLabel(t, "customer", detail.status)} /> : null}
         <View style={styles.actions}>
+          {mayPlanOwnRoutes ? <Pressable accessibilityRole="button" onPress={addToRoute} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="calendar-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{t("contacts.addToRoute")}</Text></Pressable> : null}
           {address ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
           {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.call}</Text></Pressable> : null}
         </View>
@@ -412,6 +421,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
   actionButton: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   actionText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
+  routeActionButton: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  routeActionText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   emptyText: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   relationshipRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   relationshipMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm },

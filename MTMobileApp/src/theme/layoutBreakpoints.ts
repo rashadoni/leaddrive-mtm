@@ -71,3 +71,14 @@ export const SHORT_WINDOW_HEIGHT = 500
 export function isShortWindow(height: number) {
   return height < SHORT_WINDOW_HEIGHT
 }
+
+/**
+ * A rail needs vertical room for every primary destination. A phone turned
+ * sideways is wide enough to look tablet-like but only ~384 dp tall; six rail
+ * items cannot fit there without clipping the final destination. Keep the
+ * bottom bar on short windows and reserve the rail for actual tablet-sized
+ * canvases.
+ */
+export function shouldUseNavigationRail(width: number, height: number) {
+  return isTabletWidth(width) && !isShortWindow(height)
+}

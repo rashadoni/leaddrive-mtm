@@ -184,8 +184,8 @@ const SELF_PLANNER_COPY = {
     title: "Маршрут на день",
     daySubtitle: "Выберите дату и клиентов.",
     quickTitle: "Добавить в маршрут",
-    quickSubtitle: "Клиент уже выбран. Выберите дату и сохраните маршрут.",
-    quickClient: "Добавляем клиента",
+    quickSubtitle: "Точка уже выбрана. Выберите дату и сохраните маршрут.",
+    quickClient: "Добавляем в маршрут",
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
     routeDate: "Дата маршрута",
     chooseTargets: "Кого посетить?",
@@ -200,8 +200,8 @@ const SELF_PLANNER_COPY = {
     title: "Günlük marşrut",
     daySubtitle: "Tarixi və müştəriləri seçin.",
     quickTitle: "Marşruta əlavə et",
-    quickSubtitle: "Müştəri seçilib. Tarixi seçin və marşrutu yadda saxlayın.",
-    quickClient: "Əlavə olunan müştəri",
+    quickSubtitle: "Marşrut nöqtəsi seçilib. Tarixi seçin və marşrutu yadda saxlayın.",
+    quickClient: "Marşruta əlavə olunur",
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
     routeDate: "Marşrut tarixi",
     chooseTargets: "Kimə baş çəkəcəksiniz?",
@@ -216,8 +216,8 @@ const SELF_PLANNER_COPY = {
     title: "Daily route",
     daySubtitle: "Choose a date and customers.",
     quickTitle: "Add to route",
-    quickSubtitle: "The client is selected. Choose a date and save the route.",
-    quickClient: "Client to add",
+    quickSubtitle: "The route stop is selected. Choose a date and save the route.",
+    quickClient: "Adding to route",
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
     routeDate: "Route date",
     chooseTargets: "Who will you visit?",
@@ -381,7 +381,7 @@ export default function PlanningWorkspaceCore({
   const [editStops, setEditStops] = useState<PlanningAssignedTarget[]>([])
   const [highlightKeys, setHighlightKeys] = useState<Set<string>>(() => new Set())
   const autoEditPending = useRef(Boolean(initialEditPublished || initialTarget))
-  const quickTargetPending = useRef(initialTarget ? `contact:${initialTarget.id}` : null)
+  const quickTargetPending = useRef(initialTarget ? `${initialTarget.kind}:${initialTarget.id}` : null)
   const editing = editSession !== null
 
   const selectedAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? null, [agentId, agents])
@@ -665,7 +665,7 @@ export default function PlanningWorkspaceCore({
     planRequest.current += 1
     saveRequest.current += 1
     contextVersion.current += 1
-    quickTargetPending.current = initialTarget ? `contact:${initialTarget.id}` : null
+    quickTargetPending.current = initialTarget ? `${initialTarget.kind}:${initialTarget.id}` : null
     setAnchor(nextAnchor)
     setHorizon(nextHorizon)
     setActiveDate(nextAnchor)
@@ -1509,7 +1509,7 @@ export default function PlanningWorkspaceCore({
               </View>
               {initialTarget ? (
                 <View style={styles.quickTargetCard}>
-                  <View style={styles.quickTargetIcon}><Icon name="person" size={21} color={fieldTheme.color.primaryStrong} /></View>
+                  <View style={styles.quickTargetIcon}><Icon name={initialTarget.kind === "contact" ? "person" : "business"} size={21} color={fieldTheme.color.primaryStrong} /></View>
                   <View style={styles.quickTargetCopy}>
                     <Text style={styles.quickTargetLabel}>{selfCopy.quickClient}</Text>
                     <Text style={styles.quickTargetName}>{initialTarget.name}</Text>

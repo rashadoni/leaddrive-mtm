@@ -11,7 +11,7 @@ import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldContactsEnabled } from "../lib/field-contacts-policy"
 import { fieldTheme } from "../theme/fieldTheme"
-import { isTabletWidth, NAV_RAIL_WIDTH } from "../theme/layoutBreakpoints"
+import { NAV_RAIL_WIDTH, shouldUseNavigationRail } from "../theme/layoutBreakpoints"
 
 const RAIL_WIDTH = NAV_RAIL_WIDTH
 import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
@@ -159,11 +159,11 @@ function tabOptions(name: string, label: string, iconOverride?: { active: string
 
 function MainTabs() {
   const { t } = useTranslation()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
-  const tablet = isTabletWidth(width)
+  const rail = shouldUseNavigationRail(width, height)
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
 
   // This APK does not infer access from an agent role. A tenant may enable
@@ -179,18 +179,18 @@ function MainTabs() {
         initialRouteName="Today"
         screenOptions={{
           headerShown: false,
-          tabBarPosition: tablet ? "left" : "bottom",
-          tabBarVariant: tablet ? "material" : "uikit",
+          tabBarPosition: rail ? "left" : "bottom",
+          tabBarVariant: rail ? "material" : "uikit",
           tabBarActiveTintColor: fieldTheme.color.primaryStrong,
           tabBarInactiveTintColor: fieldTheme.color.inkMuted,
           tabBarActiveBackgroundColor: fieldTheme.color.primarySoft,
           tabBarLabelPosition: "below-icon",
-          tabBarStyle: tablet
+          tabBarStyle: rail
             ? {
-                // One width for the rail. At 82 dp a phone held in landscape (823 dp,
-                // below the 840 "expanded" line) cut every caption to "B…", "T…".
-                // 112 still left "Tapşırı…": the label got 51 dp on the phone. 124
-                // gives it 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
+                // One width for the rail. Earlier builds also exposed this on a
+                // short landscape phone; 82 dp cut every caption to "B…", "T…".
+                // 112 still left "Tapşırı…": the label got 51 dp. 124 gives it
+                // 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
                 // The rail pads itself by the left inset, so a phone turned with
                 // its camera cutout on the left lost 45 dp of that and read
                 // "Bu …", "Təq…" again (Galaxy S23, same day): add the inset.
@@ -216,7 +216,7 @@ function MainTabs() {
                 shadowOpacity: 0.08,
                 shadowRadius: 8,
               },
-          tabBarItemStyle: tablet
+          tabBarItemStyle: rail
             ? {
                 minHeight: 62,
                 marginHorizontal: 8,
@@ -245,7 +245,7 @@ function MainTabs() {
           in landscape (2026-09-14). One green band under the whole status bar
           keeps the app-wide light icons readable on every tab; light screens
           leave the icons light in this layout (LightScreenStatusBar). */}
-      {tablet && insets.top > 0 ? <View pointerEvents="none" style={[styles.railStatusBand, { height: insets.top }]} /> : null}
+      {rail && insets.top > 0 ? <View pointerEvents="none" style={[styles.railStatusBand, { height: insets.top }]} /> : null}
     </View>
   )
 }
