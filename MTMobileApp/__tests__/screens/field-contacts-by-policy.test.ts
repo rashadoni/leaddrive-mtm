@@ -40,7 +40,8 @@ describe("Müştərilər hub follows the contacts switch", () => {
     expect(base).toContain('if (!contactsEnabled && tab === "contacts") setTab("organizations")')
     expect(base).toContain('const visibleTab: BaseTab = contactsEnabled ? tab : "organizations"')
     expect(base).toContain('{visibleTab === "organizations"')
-    expect(base).toContain("const active = TABS.find((item) => item.key === visibleTab) ?? TABS[0]")
+    expect(base).toContain('const [tab, setTab] = useState<BaseTab>("contacts")')
+    expect(base).toContain('TABS.find((item) => item.key === "organizations")!')
   })
 })
 

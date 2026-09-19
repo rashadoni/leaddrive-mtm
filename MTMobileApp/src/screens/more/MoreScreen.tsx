@@ -42,7 +42,7 @@ const COMMON_ACTIONS: MoreAction[] = [
   },
   {
     route: "Base",
-    icon: "business-outline",
+    icon: "people-outline",
     titleKey: "moreV2.baseTitle",
     bodyKey: "moreV2.baseBody",
     iconColor: fieldTheme.color.primaryStrong,

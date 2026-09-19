@@ -723,13 +723,14 @@ class ApiClient {
 
   /** Mobile-only v2 catalog; its opaque page token is server-issued. */
   async getRouteContacts(
-    params?: { search?: string; page?: string; limit?: number },
+    params?: { search?: string; page?: string; limit?: number; type?: "DOCTOR" | "PHARMACIST" | "OTHER" },
     signal?: AbortSignal,
   ) {
     const query = new URLSearchParams()
     if (params?.search) query.set("search", params.search)
     if (params?.page) query.set("page", params.page)
     if (params?.limit) query.set("limit", String(params.limit))
+    if (params?.type) query.set("type", params.type)
     const qs = query.toString()
     return this.request(`/mobile/route-field/contacts${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
   }

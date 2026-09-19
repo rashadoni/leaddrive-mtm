@@ -404,12 +404,13 @@
   "baseHub": {
     "eyebrow": "Mənim bazam",
     "title": "Müştərilər",
+    "placesTab": "Məkanlar",
     "organizationsBody": "Aptek, klinika və ya başqa təşkilatı tapın.",
     "contactsBody": "Həkim, əczaçı və ya digər əlaqəli şəxsi tapın.",
     "back": "Geri"
   },
   "contacts": {
-    "title": "Kontaktlar",
+    "title": "Müştərilər",
     "guideTitle": "Burada təşkilatlar yox, insanlar saxlanılır",
     "guideBody": "Həkimi, əczaçını və ya digər əlaqə şəxsi tapın, əsas iş yerini yoxlayın və növbəti addım üçün kartını açın.",
     "guideSearch": "Şəxsi tapın",

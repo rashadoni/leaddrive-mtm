@@ -4,6 +4,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,6 +24,7 @@ import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoin
 import { upperInitial } from "../../lib/upper"
 
 type Language = "ru" | "az" | "en"
+type ContactTypeFilter = "ALL" | "DOCTOR" | "PHARMACIST" | "OTHER"
 
 const COPY = {
   ru: {
@@ -32,6 +34,8 @@ const COPY = {
     emptySearch: "По этому запросу ничего не найдено.",
     error: "Не удалось загрузить контакты.",
     addDoctor: "Добавить врача",
+    filterLabel: "Категория клиента",
+    all: "Все",
   },
   az: {
     scope: "Yalnız marşrutunuz üçün əlçatan aktiv kontaktlar və iş yerləri göstərilir.",
@@ -40,6 +44,8 @@ const COPY = {
     emptySearch: "Bu sorğu üzrə nəticə tapılmadı.",
     error: "Kontaktları yükləmək alınmadı.",
     addDoctor: "Həkim əlavə et",
+    filterLabel: "Müştəri kateqoriyası",
+    all: "Hamısı",
   },
   en: {
     scope: "Only active contacts and workplaces available to your route are shown.",
@@ -48,6 +54,8 @@ const COPY = {
     emptySearch: "No contacts match this search.",
     error: "We could not load contacts.",
     addDoctor: "Add doctor",
+    filterLabel: "Client category",
+    all: "All",
   },
 } as const
 
@@ -92,6 +100,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
   const tabBarPadding = useTabBarPadding()
   const [rows, setRows] = useState<RouteContactListItem[]>([])
   const [search, setSearch] = useState("")
+  const [typeFilter, setTypeFilter] = useState<ContactTypeFilter>("ALL")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [nextPage, setNextPage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -123,6 +132,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         search: term || undefined,
         page: page || undefined,
         limit: 25,
+        type: typeFilter === "ALL" ? undefined : typeFilter,
       }, controller.signal)
       if (currentRequest !== requestId.current) return
       if (!response?.success) throw new Error("ROUTE_CONTACTS_REQUEST_FAILED")
@@ -147,7 +157,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         setRefreshing(false)
       }
     }
-  }, [])
+  }, [typeFilter])
 
   useEffect(() => {
     void loadRows(debouncedSearch)
@@ -182,6 +192,29 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         <Icon name="person-add-outline" size={20} color={fieldTheme.color.onColor} />
         <Text style={styles.addDoctorText}>{copy.addDoctor}</Text>
       </Pressable>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filters}
+        accessibilityRole="tablist"
+        accessibilityLabel={copy.filterLabel}
+      >
+        {(["ALL", "DOCTOR", "PHARMACIST", "OTHER"] as ContactTypeFilter[]).map((value) => {
+          const selected = typeFilter === value
+          const label = value === "ALL" ? copy.all : t(TYPE_KEY[value])
+          return (
+            <Pressable
+              key={value}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setTypeFilter(value)}
+              style={({ pressed }) => [styles.filterChip, selected && styles.filterChipActive, pressed && styles.pressed]}
+            >
+              <Text style={[styles.filterText, selected && styles.filterTextActive]}>{label}</Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
       <View style={styles.searchBox}>
         <Icon name="search" size={21} color={fieldTheme.color.inkMuted} />
         <TextInput
@@ -270,6 +303,11 @@ const styles = StyleSheet.create({
   topArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, gap: fieldTheme.space.md },
   addDoctorButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.lg, backgroundColor: fieldTheme.color.primary },
   addDoctorText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "800" },
+  filters: { gap: fieldTheme.space.sm, paddingRight: fieldTheme.space.lg },
+  filterChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  filterChipActive: { backgroundColor: fieldTheme.color.primaryStrong, borderColor: fieldTheme.color.primaryStrong },
+  filterText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800" },
+  filterTextActive: { color: fieldTheme.color.onColor },
   scopeNote: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   scopeText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   searchBox: { minHeight: 54, flexDirection: "row", alignItems: "center", backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, paddingLeft: fieldTheme.space.lg, borderWidth: 1, borderColor: fieldTheme.color.border },

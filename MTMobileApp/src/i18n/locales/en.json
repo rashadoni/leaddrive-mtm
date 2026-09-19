@@ -404,12 +404,13 @@
   "baseHub": {
     "eyebrow": "My base",
     "title": "Clients",
+    "placesTab": "Places",
     "organizationsBody": "Find a pharmacy, clinic, or another organization.",
     "contactsBody": "Find a doctor, pharmacist, or another contact person.",
     "back": "Back"
   },
   "contacts": {
-    "title": "Contacts",
+    "title": "Clients",
     "guideTitle": "This section is about people, not organizations",
     "guideBody": "Find a doctor, pharmacist, or other contact; check the primary workplace; then open the card for the next action.",
     "guideSearch": "Find a person",

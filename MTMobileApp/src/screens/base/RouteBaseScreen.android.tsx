@@ -16,16 +16,16 @@ type BaseTab = "organizations" | "contacts"
 
 const TABS: Array<{ key: BaseTab; icon: string; labelKey: string; bodyKey: string }> = [
   {
-    key: "organizations",
-    icon: "business-outline",
-    labelKey: "organizations.title",
-    bodyKey: "baseHub.organizationsBody",
-  },
-  {
     key: "contacts",
     icon: "people-outline",
     labelKey: "contacts.title",
     bodyKey: "baseHub.contactsBody",
+  },
+  {
+    key: "organizations",
+    icon: "business-outline",
+    labelKey: "baseHub.placesTab",
+    bodyKey: "baseHub.organizationsBody",
   },
 ]
 
@@ -43,14 +43,14 @@ export default function RouteBaseScreen() {
   // The organization can switch field contacts off. Then the hub is a list of
   // places only: no segment with a single choice, no way into people.
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
-  const [tab, setTab] = useState<BaseTab>("organizations")
+  const [tab, setTab] = useState<BaseTab>("contacts")
   // The switch can arrive with a bootstrap refresh while the agent sits on the
   // contacts tab; move them to the places instead of leaving a hidden list open.
   useEffect(() => {
     if (!contactsEnabled && tab === "contacts") setTab("organizations")
   }, [contactsEnabled, tab])
   const visibleTab: BaseTab = contactsEnabled ? tab : "organizations"
-  const active = TABS.find((item) => item.key === visibleTab) ?? TABS[0]
+  const active = TABS.find((item) => item.key === visibleTab) ?? TABS.find((item) => item.key === "organizations")!
   const canGoBack = navigation.canGoBack()
 
   const header = (
