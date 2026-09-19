@@ -19,8 +19,8 @@ describe("light screens get dark status bar icons", () => {
   it("leaves the icons light over the rail layout's green status band", () => {
     // Landscape phone, 2026-09-14: the clock was white over the light rail.
     const navigator = read("navigation/AppNavigatorAndroidV2.tsx")
-    expect(navigator).toContain("{tablet && insets.top > 0 ? <View pointerEvents=\"none\" style={[styles.railStatusBand, { height: insets.top }]} /> : null}")
-    expect(component).toContain("if (isTabletWidth(width)) return null")
+    expect(navigator).toContain("{rail && insets.top > 0 ? <View pointerEvents=\"none\" style={[styles.railStatusBand, { height: insets.top }]} /> : null}")
+    expect(component).toContain("if (shouldUseNavigationRail(width, height)) return null")
   })
 
   it("is used on both light-topped tabs", () => {

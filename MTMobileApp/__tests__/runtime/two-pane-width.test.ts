@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { LAYOUT_BREAKPOINTS, NAV_RAIL_WIDTH, isTabletWidth, isExpandedTabletWidth, isTwoPaneTabWidth, isTwoPaneWidth, tabContentWidth } from "../../src/theme/layoutBreakpoints"
+import { LAYOUT_BREAKPOINTS, NAV_RAIL_WIDTH, isTabletWidth, isExpandedTabletWidth, isTwoPaneTabWidth, isTwoPaneWidth, shouldUseNavigationRail, tabContentWidth } from "../../src/theme/layoutBreakpoints"
 
 /**
  * Field UX audit 2026-09-05, task B19: two panes from 600 dp.
@@ -28,6 +28,8 @@ describe("B19: one answer to what a tablet is", () => {
     expect(isTwoPaneWidth(824)).toBe(true)
     expect(isExpandedTabletWidth(824)).toBe(false)
     expect(isTabletWidth(824)).toBe(true)
+    expect(shouldUseNavigationRail(824, 384)).toBe(false)
+    expect(shouldUseNavigationRail(824, 600)).toBe(true)
   })
 
   it("is used by the two screens that waited for 840", () => {
@@ -61,9 +63,9 @@ describe("B19: one answer to what a tablet is", () => {
     expect(read("navigation/AppNavigatorAndroidV2.tsx")).toContain("const RAIL_WIDTH = NAV_RAIL_WIDTH")
   })
 
-  it("gives the master pane a floor so a 600 dp split stays readable", () => {
-    // 38 % of 600 is 228 dp for a row carrying a date tile and a full date.
-    expect(read("screens/week/WeekScreen.tsx")).toContain('dayMaster: { width: "42%", minWidth: 216')
+  it("gives the month pane a floor so the seven-column grid stays readable", () => {
+    // The split activates only when the content area can hold a real month and day detail.
+    expect(read("screens/week/WeekScreen.tsx")).toContain('monthPane: { width: "55%", minWidth: 430')
     expect(read("screens/week/WeekScreen.tsx")).toContain("minWidth: 0,\n    minHeight: 460,")
     // Tasks no longer has a master pane: on a tablet it is one page with two
     // columns of cards (see tasks-one-page.test.ts).

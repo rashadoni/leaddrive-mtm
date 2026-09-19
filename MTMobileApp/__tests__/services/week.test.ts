@@ -1,4 +1,4 @@
-import { toWeekData, shiftDateKey } from "../../src/services/week"
+import { combineCalendarWeeks, monthGridWindow, shiftMonthKey, toWeekData, shiftDateKey } from "../../src/services/week"
 import { mobileResources } from "../../src/i18n/mobile-resources"
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
@@ -140,6 +140,70 @@ describe("shiftDateKey", () => {
 
   it("returns the input unchanged for an invalid date key", () => {
     expect(shiftDateKey("not-a-date", 7)).toBe("not-a-date")
+  })
+})
+
+
+describe("month grid calendar", () => {
+  it("builds six Monday-first rows around the active month", () => {
+    const window = monthGridWindow("2026-09-19")
+    expect(window).toEqual({
+      monthStart: "2026-09-01",
+      monthEndExclusive: "2026-10-01",
+      gridStart: "2026-08-31",
+      gridEndExclusive: "2026-10-12",
+      weekStarts: [
+        "2026-08-31",
+        "2026-09-07",
+        "2026-09-14",
+        "2026-09-21",
+        "2026-09-28",
+        "2026-10-05",
+      ],
+    })
+  })
+
+  it("moves by calendar month without leaking the old day number", () => {
+    expect(shiftMonthKey("2026-03-31", -1)).toBe("2026-02-01")
+    expect(shiftMonthKey("2026-12-19", 1)).toBe("2027-01-01")
+  })
+
+  it("merges week rows and recalculates the visible-month coverage", () => {
+    const window = monthGridWindow("2026-09-19")
+    const base = {
+      weekEndExclusive: "2026-09-07",
+      today: "2026-09-19",
+      days: [],
+      summary: {
+        visits: 2,
+        visitsCompleted: 1,
+        tasks: 3,
+        tasksCompleted: 2,
+        plannedStops: 4,
+        visitedStops: 2,
+        coveragePct: 50,
+      },
+    }
+    const merged = combineCalendarWeeks([
+      { ...base, weekStart: "2026-08-31", days: [{ date: "2026-09-01" } as any] },
+      {
+        ...base,
+        weekStart: "2026-09-07",
+        weekEndExclusive: "2026-09-14",
+        days: [{ date: "2026-09-08" } as any],
+      },
+    ], window)
+
+    expect(merged.days.map((day) => day.date)).toEqual(["2026-09-01", "2026-09-08"])
+    expect(merged.summary).toMatchObject({
+      visits: 4,
+      visitsCompleted: 2,
+      tasks: 6,
+      tasksCompleted: 4,
+      plannedStops: 8,
+      visitedStops: 4,
+      coveragePct: 50,
+    })
   })
 })
 

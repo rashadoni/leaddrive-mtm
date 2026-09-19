@@ -1,5 +1,11 @@
 import type { PlanningTarget } from "./manager-planning"
 
+export type RoutePlanningTargetHint = {
+  kind: "contact" | "organization"
+  id: string
+  name: string
+}
+
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>

@@ -24,8 +24,10 @@ import { useSyncStatusStore } from "../../store/sync-status"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import {
+  combineCalendarWeeks,
+  monthGridWindow,
+  shiftMonthKey,
   toWeekData,
-  shiftDateKey,
   type WeekData,
   type WeekDay,
   type WeekTaskItem,
@@ -41,18 +43,18 @@ type CalendarLanguage = "ru" | "az" | "en"
 const CALENDAR_COPY = {
   ru: {
     title: "Календарь",
-    subtitle: "Маршруты, визиты и задачи по дням",
-    loadingTitle: "Собираем план на неделю",
+    subtitle: "Месяц целиком: маршруты, визиты и задачи",
+    loadingTitle: "Собираем календарь на месяц",
     loadingBody: "Это займёт несколько секунд.",
     errorTitle: "Не удалось открыть календарь",
     errorBody: "Проверьте интернет и попробуйте ещё раз.",
-    staleBody: "Показываем последнюю загруженную неделю. Потяните экран вниз, когда связь появится.",
+    staleBody: "Показываем последний загруженный месяц. Потяните экран вниз, когда связь появится.",
     retry: "Попробовать снова",
-    summary: "Итоги недели",
+    summary: "Итоги месяца",
     dayPlan: "План на день",
-    chooseDay: "Выберите день слева, чтобы увидеть подробности.",
-    emptyWeekTitle: "На эту неделю ничего не запланировано",
-    emptyWeekBody: "Выберите другую неделю или вернитесь к сегодняшней дате.",
+    chooseDay: "Выберите день в календаре, чтобы увидеть подробности.",
+    emptyWeekTitle: "На этот месяц ничего не запланировано",
+    emptyWeekBody: "Выберите другой месяц или вернитесь к сегодняшней дате.",
     noVisits: "Визитов на этот день нет",
     noVisitsBody: "Маршрут и задачи всё равно показаны выше.",
     visitsDone: "Выполнено визитов",
@@ -63,8 +65,8 @@ const CALENDAR_COPY = {
     planned: "Запланирован",
     todayMarker: "Сегодня",
     openRoute: "Открыть маршрут",
-    previousWeek: "Предыдущая неделя",
-    nextWeek: "Следующая неделя",
+    previousWeek: "Предыдущий месяц",
+    nextWeek: "Следующий месяц",
     visitsShort: "Визиты",
     tasksShort: "Задачи",
     noAgenda: "На этот день планов нет",
@@ -90,18 +92,18 @@ const CALENDAR_COPY = {
   },
   az: {
     title: "Təqvim",
-    subtitle: "Marşrutlar, ziyarətlər və tapşırıqlar günlər üzrə",
-    loadingTitle: "Həftəlik plan hazırlanır",
+    subtitle: "Bütün ay: marşrutlar, ziyarətlər və tapşırıqlar",
+    loadingTitle: "Aylıq təqvim hazırlanır",
     loadingBody: "Bu, bir neçə saniyə çəkəcək.",
     errorTitle: "Təqvimi açmaq alınmadı",
     errorBody: "İnterneti yoxlayın və yenidən cəhd edin.",
-    staleBody: "Son yüklənmiş həftəni göstəririk. Bağlantı bərpa olunanda ekranı aşağı çəkin.",
+    staleBody: "Son yüklənmiş ayı göstəririk. Bağlantı bərpa olunanda ekranı aşağı çəkin.",
     retry: "Yenidən cəhd et",
-    summary: "Həftənin yekunu",
+    summary: "Ayın yekunu",
     dayPlan: "Günün planı",
-    chooseDay: "Ətraflı baxmaq üçün soldan günü seçin.",
-    emptyWeekTitle: "Bu həftə üçün plan yoxdur",
-    emptyWeekBody: "Başqa həftəni seçin və ya bugünkü tarixə qayıdın.",
+    chooseDay: "Ətraflı baxmaq üçün təqvimdə günü seçin.",
+    emptyWeekTitle: "Bu ay üçün plan yoxdur",
+    emptyWeekBody: "Başqa ayı seçin və ya bugünkü tarixə qayıdın.",
     noVisits: "Bu gün üçün ziyarət yoxdur",
     noVisitsBody: "Marşrut və tapşırıqlar yuxarıda göstərilir.",
     visitsDone: "Tamamlanan ziyarətlər",
@@ -112,8 +114,8 @@ const CALENDAR_COPY = {
     planned: "Planlaşdırılıb",
     todayMarker: "Bu gün",
     openRoute: "Marşrutu aç",
-    previousWeek: "Əvvəlki həftə",
-    nextWeek: "Növbəti həftə",
+    previousWeek: "Əvvəlki ay",
+    nextWeek: "Növbəti ay",
     visitsShort: "Ziyarət",
     tasksShort: "Tapşırıq",
     noAgenda: "Bu tarix üçün plan yoxdur",
@@ -139,18 +141,18 @@ const CALENDAR_COPY = {
   },
   en: {
     title: "Calendar",
-    subtitle: "Routes, visits and tasks, day by day",
-    loadingTitle: "Building your weekly plan",
+    subtitle: "Your whole month of routes, visits and tasks",
+    loadingTitle: "Building your monthly calendar",
     loadingBody: "This should only take a few seconds.",
     errorTitle: "We couldn't open the calendar",
     errorBody: "Check your connection and try again.",
-    staleBody: "Showing the last loaded week. Pull down when your connection returns.",
+    staleBody: "Showing the last loaded month. Pull down when your connection returns.",
     retry: "Try again",
-    summary: "Week summary",
+    summary: "Month summary",
     dayPlan: "Plan for the day",
-    chooseDay: "Choose a day on the left to see its details.",
-    emptyWeekTitle: "Nothing is planned for this week",
-    emptyWeekBody: "Choose another week or return to today's date.",
+    chooseDay: "Choose a day in the calendar to see its details.",
+    emptyWeekTitle: "Nothing is planned for this month",
+    emptyWeekBody: "Choose another month or return to today's date.",
     noVisits: "No visits planned for this day",
     noVisitsBody: "The route and tasks are still shown above.",
     visitsDone: "Visits completed",
@@ -161,8 +163,8 @@ const CALENDAR_COPY = {
     planned: "Planned",
     todayMarker: "Today",
     openRoute: "Open route",
-    previousWeek: "Previous week",
-    nextWeek: "Next week",
+    previousWeek: "Previous month",
+    nextWeek: "Next month",
     visitsShort: "Visits",
     tasksShort: "Tasks",
     noAgenda: "Nothing is planned for this day",
@@ -320,13 +322,28 @@ function formatFullDate(dateKey: string, lang: string): string {
   }), lang) : ""
 }
 
-function formatRange(start: string, endExclusive: string, lang: string): string {
-  const last = shiftDateKey(endExclusive, -1)
-  const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", timeZone: "UTC" }
-  const firstDate = dateFromKey(start)
-  const lastDate = dateFromKey(last)
-  if (!firstDate || !lastDate) return ""
-  return `${formatLocalizedDate(firstDate, lang, options)} – ${formatLocalizedDate(lastDate, lang, options)}`
+function localDateKey(now: Date = new Date()): string {
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function monthStartKey(value: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value.slice(0, 7)}-01` : value
+}
+
+function sameMonth(left: string, right: string): boolean {
+  return left.slice(0, 7) === right.slice(0, 7)
+}
+
+function formatMonthTitle(anchor: string, lang: string): string {
+  const date = dateFromKey(monthStartKey(anchor))
+  return date ? upperFirst(formatLocalizedDate(date, lang, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }), lang) : ""
 }
 
 /** The sibling tab this screen can hand today over to. */
@@ -347,7 +364,7 @@ export default function WeekScreen() {
   const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
   const canPlanOwnRoutes = String(myAgentRole).toUpperCase() === "AGENT"
     && ownRoutePlanningPolicy
-  const [anchor, setAnchor] = useState<string | null>(null)
+  const [anchor, setAnchor] = useState(() => monthStartKey(localDateKey()))
   const [data, setData] = useState<WeekData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -356,18 +373,19 @@ export default function WeekScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
 
-  const fetchWeek = useCallback(async (start: string | null) => {
+  const fetchMonth = useCallback(async (month: string) => {
     try {
-      const response = await api.getWeek(start ?? undefined)
-      if (response.success && response.data) {
-        const nextWeek = toWeekData(response.data)
-        setData(nextWeek)
+      const window = monthGridWindow(month)
+      const responses = await Promise.all(window.weekStarts.map((start) => api.getWeek(start)))
+      if (responses.every((response) => response.success && response.data)) {
+        const weeks = responses.map((response) => toWeekData(response.data))
+        setData(combineCalendarWeeks(weeks, window))
         setOffline(false)
       } else {
         setOffline(true)
       }
     } catch (error: any) {
-      // SESSION_EXPIRED is handled by the API interceptor. There is no week
+      // SESSION_EXPIRED is handled by the API interceptor. There is no month
       // cache yet, so every other failure must be visible instead of looking
       // like a genuinely empty calendar.
       if (error.message !== "SESSION_EXPIRED") setOffline(true)
@@ -378,19 +396,20 @@ export default function WeekScreen() {
   }, [])
 
   useEffect(() => {
-    fetchWeek(anchor)
-  }, [anchor, fetchWeek])
+    fetchMonth(anchor)
+  }, [anchor, fetchMonth])
 
   useEffect(() => {
     if (!data?.days.length) {
       setSelectedDate(null)
       return
     }
-    const selectedStillExists = data.days.some((day) => day.date === selectedDate)
+    const selectedStillExists = data.days.some((day) => day.date === selectedDate && sameMonth(day.date, anchor))
     if (selectedStillExists) return
-    const today = data.days.find((day) => day.isToday)
-    setSelectedDate((today ?? data.days[0]).date)
-  }, [data, selectedDate])
+    const today = data.days.find((day) => day.isToday && sameMonth(day.date, anchor))
+    const firstOfMonth = data.days.find((day) => day.date === monthStartKey(anchor))
+    setSelectedDate((today ?? firstOfMonth ?? data.days[0]).date)
+  }, [anchor, data, selectedDate])
 
   const language = calendarLanguage(i18n.language)
   const copy = CALENDAR_COPY[language]
@@ -406,30 +425,35 @@ export default function WeekScreen() {
     () => data?.days.find((day) => day.date === selectedDate) ?? null,
     [data, selectedDate],
   )
-  const currentWeek = Boolean(
-    data && data.today >= data.weekStart && data.today < data.weekEndExclusive,
-  )
+  const currentMonth = Boolean(data?.today && sameMonth(data.today, anchor))
 
-  const changeWeek = (offset: number) => {
+  const changeMonth = (offset: number) => {
     if (!data || loading) return
     setLoading(true)
-    setAnchor(shiftDateKey(data.weekStart, offset))
+    setAnchor(shiftMonthKey(anchor, offset))
+  }
+
+  const selectCalendarDay = (date: string) => {
+    setSelectedDate(date)
+    if (!sameMonth(date, anchor)) {
+      setLoading(true)
+      setAnchor(monthStartKey(date))
+    }
   }
 
   const returnToToday = () => {
-    if (data && currentWeek) {
+    if (data && currentMonth) {
       setSelectedDate(data.today)
       scrollRef.current?.scrollTo({ y: 0, animated: true })
       return
     }
     setLoading(true)
-    if (anchor === null) fetchWeek(null)
-    else setAnchor(null)
+    setAnchor(monthStartKey(localDateKey()))
   }
 
   const retry = () => {
     setLoading(true)
-    fetchWeek(anchor)
+    fetchMonth(anchor)
   }
 
   const openVisit = (id: string, name: string) => {
@@ -447,7 +471,10 @@ export default function WeekScreen() {
   }
 
   const openOwnRoutePlanner = () => {
-    navigation.navigate("PlanningBuilder")
+    navigation.navigate("PlanningBuilder", {
+      initialDate: selectedDate ?? anchor,
+      initialHorizon: 1,
+    })
   }
 
   const refreshControl = (
@@ -455,7 +482,7 @@ export default function WeekScreen() {
       refreshing={refreshing}
       onRefresh={() => {
         setRefreshing(true)
-        fetchWeek(anchor)
+        fetchMonth(anchor)
       }}
       tintColor={fieldTheme.color.primary}
       colors={[fieldTheme.color.primary]}
@@ -466,16 +493,16 @@ export default function WeekScreen() {
     <CalendarHeader
       title={copy.title}
       subtitle={copy.subtitle}
-      range={data ? formatRange(data.weekStart, data.weekEndExclusive, i18n.language) : ""}
+      range={data ? formatMonthTitle(anchor, i18n.language) : ""}
       todayLabel={t("week.today")}
       previousWeekLabel={copy.previousWeek}
       nextWeekLabel={copy.nextWeek}
       loading={loading}
-      currentWeek={currentWeek}
+      currentWeek={currentMonth}
       touchTarget={touchTarget}
       headerTop={headerTop}
-      onPrevious={() => changeWeek(-7)}
-      onNext={() => changeWeek(7)}
+      onPrevious={() => changeMonth(-1)}
+      onNext={() => changeMonth(1)}
       onToday={returnToToday}
     />
   )
@@ -532,7 +559,19 @@ export default function WeekScreen() {
             />
           )}
 
-          <WeekSummary data={data} title={copy.summary} t={t} tablet={tablet} />
+          {tablet ? (
+            <View style={styles.tabletWorkspace}>
+              <View style={styles.monthPane}>
+                <MonthCalendar
+                  days={data.days}
+                  anchor={anchor}
+                  selectedDate={selectedDate}
+                  lang={i18n.language}
+                  todayLabel={copy.todayMarker}
+                  copy={copy}
+                  tablet
+                  onSelect={selectCalendarDay}
+                />
           {canPlanOwnRoutes ? (
             <Pressable
               accessibilityRole="button"
@@ -551,23 +590,7 @@ export default function WeekScreen() {
               <Icon name="chevron-forward" size={22} color={fieldTheme.color.primary} />
             </Pressable>
           ) : null}
-
-          {tablet ? (
-            <View style={styles.tabletWorkspace}>
-              <View style={styles.dayMaster}>
-                {data.days.map((day) => (
-                  <DaySelector
-                    key={day.date}
-                    day={day}
-                    lang={i18n.language}
-                    selected={day.date === selectedDate}
-                    touchTarget={touchTarget}
-                    todayLabel={copy.todayMarker}
-                    visitsLabel={copy.visitsShort}
-                    tasksLabel={copy.tasksShort}
-                    onPress={() => setSelectedDate(day.date)}
-                  />
-                ))}
+                <WeekSummary data={data} title={copy.summary} t={t} tablet />
               </View>
               <View style={styles.dayDetail}>
                 {selectedDay ? (
@@ -587,18 +610,34 @@ export default function WeekScreen() {
             </View>
           ) : (
             <View style={styles.phoneDays}>
-              <View style={styles.weekStrip}>
-                {data.days.map((day) => (
-                  <WeekStripDay
-                    key={day.date}
-                    day={day}
-                    lang={i18n.language}
-                    selected={day.date === selectedDate}
-                    todayLabel={copy.todayMarker}
-                    onPress={() => setSelectedDate(day.date)}
-                  />
-                ))}
+              <MonthCalendar
+                days={data.days}
+                anchor={anchor}
+                selectedDate={selectedDate}
+                lang={i18n.language}
+                todayLabel={copy.todayMarker}
+                copy={copy}
+                tablet={false}
+                onSelect={selectCalendarDay}
+              />
+          {canPlanOwnRoutes ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.planOwnRoute}
+              accessibilityHint={copy.planOwnRouteHint}
+              onPress={openOwnRoutePlanner}
+              style={({ pressed }) => [styles.ownRoutePlanner, pressed && styles.pressed]}
+            >
+              <View style={styles.ownRoutePlannerIcon}>
+                <Icon name="add-circle-outline" size={24} color={fieldTheme.color.primary} />
               </View>
+              <View style={styles.ownRoutePlannerCopy}>
+                <Text style={styles.ownRoutePlannerTitle}>{copy.planOwnRoute}</Text>
+                <Text style={styles.ownRoutePlannerBody}>{copy.planOwnRouteHint}</Text>
+              </View>
+              <Icon name="chevron-forward" size={22} color={fieldTheme.color.primary} />
+            </Pressable>
+          ) : null}
               {selectedDay ? (
                 <PhoneDay
                   day={selectedDay}
@@ -613,6 +652,7 @@ export default function WeekScreen() {
               ) : (
                 <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
               )}
+              <WeekSummary data={data} title={copy.summary} t={t} tablet={false} />
             </View>
           )}
         </ScrollView>
@@ -819,51 +859,107 @@ function SummaryMetric({ icon, value, label, color, softColor }: {
   )
 }
 
-function DaySelector({ day, lang, selected, touchTarget, todayLabel, visitsLabel, tasksLabel, onPress }: {
-  day: WeekDay
+function MonthCalendar({ days, anchor, selectedDate, lang, todayLabel, copy, tablet, onSelect }: {
+  days: WeekDay[]
+  anchor: string
+  selectedDate: string | null
   lang: string
-  selected: boolean
-  touchTarget: number
   todayLabel: string
-  visitsLabel: string
-  tasksLabel: string
-  onPress: () => void
+  copy: Copy
+  tablet: boolean
+  onSelect: (date: string) => void
 }) {
+  const weekdayDays = days.slice(0, 7)
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.daySelector,
-        selected && styles.daySelectorSelected,
-        { minHeight: touchTarget },
-        pressed && styles.pressed,
-      ]}
-    >
-      <View style={[styles.dateTile, day.isToday && styles.dateTileToday]}>
-        <Text style={[styles.dateWeekday, day.isToday && styles.dateTextToday]}>
-          {weekdayShort(day.date, lang)}
-        </Text>
-        <Text style={[styles.dateNumber, day.isToday && styles.dateTextToday]}>
-          {formatDayNumber(day.date)}
-        </Text>
-      </View>
-      <View style={styles.daySelectorCopy}>
-        <View style={styles.daySelectorTitleRow}>
-          <Text style={styles.daySelectorTitle} numberOfLines={1}>
-            {formatFullDate(day.date, lang)}
+    <View style={[styles.monthCalendar, tablet && styles.monthCalendarTablet]}>
+      <View style={styles.monthWeekdays}>
+        {weekdayDays.map((day) => (
+          <Text key={day.date} style={styles.monthWeekday} numberOfLines={1}>
+            {weekdayShort(day.date, lang)}
           </Text>
-          {day.isToday && <Text style={styles.todayTag}>{todayLabel}</Text>}
-        </View>
-        <Text style={styles.daySelectorMeta}>
-          {day.isWorkingDay || day.visitsTotal > 0 || day.tasksTotal > 0
-            ? `${visitsLabel} ${day.visitsCompleted}/${day.visitsTotal} · ${tasksLabel} ${day.tasksCompleted}/${day.tasksTotal}`
-            : dayOffReason(day)}
-        </Text>
+        ))}
       </View>
-      <Icon name="chevron-forward" size={18} color={selected ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />
-    </Pressable>
+      <View style={styles.monthGrid}>
+        {days.map((day) => {
+          const selected = day.date === selectedDate
+          const current = sameMonth(day.date, anchor)
+          const hasRoute = day.routeCount > 0 || day.plannedStops > 0
+          const hasTasks = day.tasksTotal > 0
+          const hasVisits = day.visitsTotal > 0
+          const accessibilityLabel = [
+            formatFullDate(day.date, lang),
+            day.isToday ? todayLabel : null,
+            `${copy.routeStops}: ${day.plannedStops}`,
+            `${copy.visitsShort}: ${day.visitsTotal}`,
+            `${copy.tasksShort}: ${day.tasksTotal}`,
+          ].filter(Boolean).join(", ")
+          return (
+            <Pressable
+              key={day.date}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={accessibilityLabel}
+              onPress={() => onSelect(day.date)}
+              style={({ pressed }) => [
+                styles.monthCell,
+                tablet && styles.monthCellTablet,
+                !current && styles.monthCellOutside,
+                selected && styles.monthCellSelected,
+                pressed && styles.pressed,
+              ]}
+            >
+              <View style={styles.monthCellTop}>
+                <View style={[
+                  styles.monthNumberTile,
+                  day.isToday && !selected && styles.monthNumberToday,
+                  selected && styles.monthNumberSelected,
+                ]}>
+                  <Text style={[
+                    styles.monthNumber,
+                    (day.isToday || selected) && styles.monthNumberEmphasis,
+                  ]}>
+                    {formatDayNumber(day.date)}
+                  </Text>
+                </View>
+              </View>
+              {tablet ? (
+                <View style={styles.monthSignalsTablet}>
+                  {hasRoute ? (
+                    <View style={[styles.monthSignal, styles.monthSignalRoute]}>
+                      <Icon name="navigate-outline" size={12} color={fieldTheme.color.primaryStrong} />
+                      <Text style={styles.monthSignalRouteText}>{day.plannedStops}</Text>
+                    </View>
+                  ) : null}
+                  {hasTasks ? (
+                    <View style={[styles.monthSignal, styles.monthSignalTask]}>
+                      <Icon name="checkbox-outline" size={12} color={fieldTheme.color.blue} />
+                      <Text style={styles.monthSignalTaskText}>{day.tasksTotal}</Text>
+                    </View>
+                  ) : null}
+                  {hasVisits ? (
+                    <View style={[styles.monthSignal, styles.monthSignalVisit]}>
+                      <Icon name="person-outline" size={12} color={fieldTheme.color.success} />
+                      <Text style={styles.monthSignalVisitText}>{day.visitsTotal}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : (
+                <View style={styles.monthDots}>
+                  {hasRoute ? <View style={[styles.monthDot, styles.monthDotRoute]} /> : null}
+                  {hasTasks ? <View style={[styles.monthDot, styles.monthDotTask]} /> : null}
+                  {hasVisits ? <View style={[styles.monthDot, styles.monthDotVisit]} /> : null}
+                </View>
+              )}
+            </Pressable>
+          )
+        })}
+      </View>
+      <View style={styles.monthLegend}>
+        <View style={styles.monthLegendItem}><View style={[styles.monthDot, styles.monthDotRoute]} /><Text style={styles.monthLegendText}>{copy.routeStops}</Text></View>
+        <View style={styles.monthLegendItem}><View style={[styles.monthDot, styles.monthDotTask]} /><Text style={styles.monthLegendText}>{copy.tasksShort}</Text></View>
+        <View style={styles.monthLegendItem}><View style={[styles.monthDot, styles.monthDotVisit]} /><Text style={styles.monthLegendText}>{copy.visitsShort}</Text></View>
+      </View>
+    </View>
   )
 }
 
@@ -918,48 +1014,6 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
         />
       )}
     </View>
-  )
-}
-
-function WeekStripDay({ day, lang, selected, todayLabel, onPress }: {
-  day: WeekDay
-  lang: string
-  selected: boolean
-  todayLabel: string
-  onPress: () => void
-}) {
-  // A dot, not a number: seven counts in a row is a table nobody reads, and the
-  // question the strip answers is "which days have anything on them".
-  const planned = day.plannedStops > 0 || day.visitsTotal > 0 || day.tasksTotal > 0
-  const label = `${formatFullDate(day.date, lang)}${day.isToday ? `, ${todayLabel}` : ""}`
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.stripDay,
-        selected && styles.stripDaySelected,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.stripWeekday, selected && styles.stripTextSelected]} numberOfLines={1}>
-        {weekdayShort(day.date, lang)}
-      </Text>
-      <View style={[styles.stripNumberTile, day.isToday && styles.stripNumberTileToday]}>
-        <Text
-          style={[
-            styles.stripNumber,
-            day.isToday && styles.dateTextToday,
-            selected && !day.isToday && styles.stripTextSelected,
-          ]}
-        >
-          {formatDayNumber(day.date)}
-        </Text>
-      </View>
-      <View style={[styles.stripDot, planned && styles.stripDotPlanned]} />
-    </Pressable>
   )
 }
 
@@ -1416,7 +1470,64 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 17, lineHeight: 21, fontWeight: "900" },
   metricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 14, fontWeight: "600", marginTop: 1 },
   tabletWorkspace: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.lg },
-  dayMaster: { width: "42%", minWidth: 216, gap: fieldTheme.space.sm },
+  monthPane: { width: "55%", minWidth: 430 },
+  monthCalendar: {
+    overflow: "hidden",
+    marginHorizontal: -10,
+    marginBottom: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.lg,
+    backgroundColor: fieldTheme.color.surface,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+  },
+  monthCalendarTablet: { marginHorizontal: 0 },
+  monthWeekdays: { flexDirection: "row", backgroundColor: fieldTheme.color.surfaceStrong },
+  monthWeekday: {
+    width: "14.285714%",
+    paddingVertical: 8,
+    color: fieldTheme.color.inkMuted,
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  monthGrid: { flexDirection: "row", flexWrap: "wrap" },
+  monthCell: {
+    width: "14.285714%",
+    minHeight: 58,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 5,
+    borderTopWidth: 1,
+    borderRightWidth: 1,
+    borderColor: fieldTheme.color.border,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  monthCellTablet: { minHeight: 86, alignItems: "stretch", paddingHorizontal: 5, paddingVertical: 6 },
+  monthCellOutside: { opacity: 0.42 },
+  monthCellSelected: { backgroundColor: fieldTheme.color.primarySoft },
+  monthCellTop: { minHeight: 30, alignItems: "center", justifyContent: "center" },
+  monthNumberTile: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  monthNumberToday: { backgroundColor: fieldTheme.color.coral },
+  monthNumberSelected: { backgroundColor: fieldTheme.color.primary },
+  monthNumber: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900" },
+  monthNumberEmphasis: { color: fieldTheme.color.onColor },
+  monthDots: { minHeight: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 },
+  monthDot: { width: 6, height: 6, borderRadius: 3 },
+  monthDotRoute: { backgroundColor: fieldTheme.color.primary },
+  monthDotTask: { backgroundColor: fieldTheme.color.blue },
+  monthDotVisit: { backgroundColor: fieldTheme.color.success },
+  monthSignalsTablet: { minHeight: 28, flexDirection: "row", flexWrap: "wrap", alignContent: "center", gap: 3 },
+  monthSignal: { minHeight: 22, flexDirection: "row", alignItems: "center", gap: 2, paddingHorizontal: 5, borderRadius: fieldTheme.radius.pill },
+  monthSignalRoute: { backgroundColor: fieldTheme.color.primarySoft },
+  monthSignalTask: { backgroundColor: fieldTheme.color.blueSoft },
+  monthSignalVisit: { backgroundColor: fieldTheme.color.successSoft },
+  monthSignalRouteText: { color: fieldTheme.color.primaryStrong, fontSize: 9, fontWeight: "900" },
+  monthSignalTaskText: { color: fieldTheme.color.blue, fontSize: 9, fontWeight: "900" },
+  monthSignalVisitText: { color: fieldTheme.color.success, fontSize: 9, fontWeight: "900" },
+  monthLegend: { minHeight: 34, flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 8, borderTopWidth: 1, borderColor: fieldTheme.color.border },
+  monthLegendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  monthLegendText: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "700" },
   dayDetail: {
     flex: 1,
     minWidth: 0,

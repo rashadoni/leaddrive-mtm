@@ -12,6 +12,8 @@ describe("Route Field contact list v2 boundary", () => {
     expect(apiSource).toContain("async getRouteContacts(")
     expect(apiSource).toContain("/mobile/route-field/contacts${qs ? `?${qs}` : \"\"}")
     expect(routeListSource).toContain("api.getRouteContacts")
+    expect(apiSource).toContain('if (params?.type) query.set("type", params.type)')
+    expect(routeListSource).toContain('typeFilter === "ALL" ? undefined : typeFilter')
     expect(routeListSource).not.toContain("api.getContacts")
     expect(routeListSource).not.toContain("readOfflineContacts")
   })

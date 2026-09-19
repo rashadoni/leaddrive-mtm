@@ -1,18 +1,6 @@
 import fs from "fs"
 import path from "path"
 
-/**
- * Field UX audit 2026-09-05, task B6, and the device acceptance of B5 that
- * measured it: on a 1080×2316 phone the calendar rendered seven full day cards
- * of 754 px each — a week with nothing planned cost about 5300 px of scrolling
- * to establish that there was nothing to do. Every card was expanded, so the
- * selected day looked exactly like the other six, and the list opened on
- * Monday while today was Wednesday.
- *
- * The tablet already had the right shape: a list of days and one open day. The
- * fix is the phone getting the same idea in its own proportions — a strip of
- * seven, one card below it.
- */
 const source = fs.readFileSync(
   path.resolve(__dirname, "../../src/screens/week/WeekScreen.tsx"),
   "utf8",
@@ -23,57 +11,62 @@ const phoneBranch = source.slice(
   source.indexOf("</ScrollView>"),
 )
 
-describe("B6: the week fits one screen", () => {
-  it("draws seven days as a strip, not seven cards", () => {
-    expect(phoneBranch).toContain("styles.weekStrip")
-    expect(phoneBranch).toContain("<WeekStripDay")
-    expect(source).toContain("function WeekStripDay(")
+const monthComponent = source.slice(
+  source.indexOf("function MonthCalendar("),
+  source.indexOf("function DayDetail("),
+)
+
+describe("agent month calendar", () => {
+  it("loads six weeks for a familiar 42-day month grid", () => {
+    expect(source).toContain("monthGridWindow(month)")
+    expect(source).toContain("Promise.all(window.weekStarts.map")
+    expect(source).toContain("combineCalendarWeeks(weeks, window)")
   })
 
-  it("opens exactly one day, the selected one", () => {
-    // The old branch mapped every day to a PhoneDay; a card per day is what
-    // made six of the seven noise.
-    expect(phoneBranch).not.toContain("data.days.map((day) => (\n                <PhoneDay")
+  it("shows the month first and one selected day below on a phone", () => {
+    expect(phoneBranch).toContain("<MonthCalendar")
     expect(phoneBranch).toContain("{selectedDay ? (")
     expect((phoneBranch.match(/<PhoneDay/g) ?? [])).toHaveLength(1)
+    expect(phoneBranch.indexOf("<MonthCalendar")).toBeLessThan(phoneBranch.indexOf("<PhoneDay"))
+    expect(source).not.toContain("function WeekStripDay(")
   })
 
-  it("marks a day that has something on it without printing a table", () => {
-    const tile = source.slice(source.indexOf("function WeekStripDay("), source.indexOf("function PhoneDay("))
-    expect(tile).toContain("day.plannedStops > 0 || day.visitsTotal > 0 || day.tasksTotal > 0")
-    expect(tile).toContain("styles.stripDotPlanned")
-    // Seven counts across 1080 px is a table nobody reads.
-    expect(tile).not.toContain("visitsCompleted")
-    expect(tile).not.toContain("tasksCompleted")
+  it("makes routes, tasks and visits visible without crowding phone cells", () => {
+    expect(monthComponent).toContain("hasRoute")
+    expect(monthComponent).toContain("hasTasks")
+    expect(monthComponent).toContain("hasVisits")
+    expect(monthComponent).toContain("styles.monthDotRoute")
+    expect(monthComponent).toContain("styles.monthDotTask")
+    expect(monthComponent).toContain("styles.monthDotVisit")
+    expect(monthComponent).toContain("styles.monthSignalsTablet")
   })
 
-  it("names the day for a screen reader, since the tile shows only a number", () => {
-    const tile = source.slice(source.indexOf("function WeekStripDay("), source.indexOf("function PhoneDay("))
-    expect(tile).toContain("accessibilityLabel={label}")
-    expect(tile).toContain("formatFullDate(day.date, lang)")
-    expect(tile).toContain("accessibilityState={{ selected }}")
+  it("keeps every date selectable and fully described to a screen reader", () => {
+    expect(monthComponent).toContain('accessibilityRole="button"')
+    expect(monthComponent).toContain("accessibilityState={{ selected }}")
+    expect(monthComponent).toContain("accessibilityLabel={accessibilityLabel}")
+    expect(monthComponent).toContain("formatFullDate(day.date, lang)")
   })
 
-  it("selects today rather than hunting for its card", () => {
-    // returnToToday used to measure where the card sat and scroll there. With
-    // one card on screen there is nothing to scroll to, and the two refs that
-    // existed only to hold those offsets are gone.
-    expect(source).toContain("setSelectedDate(data.today)")
-    expect(source).not.toContain("phoneDayY")
-    expect(source).not.toContain("phoneListY")
+  it("keeps month and day detail visible side by side on a tablet", () => {
+    const tabletBranch = source.slice(
+      source.indexOf("{tablet ? ("),
+      source.indexOf(") : (", source.indexOf("{tablet ? (")),
+    )
+    expect(tabletBranch).toContain("styles.tabletWorkspace")
+    expect(tabletBranch).toContain("<MonthCalendar")
+    expect(tabletBranch).toContain("<DayDetail")
+    expect(source).toContain('monthPane: { width: "55%", minWidth: 430 }')
   })
 
-  it("keeps the week summary on one line", () => {
-    // Three stacked 62 px rows stood between the header and the first day.
+  it("opens route planning on the selected calendar date", () => {
+    expect(source).toContain("initialDate: selectedDate ?? anchor")
+    expect(source).toContain("initialHorizon: 1")
+  })
+
+  it("keeps the monthly summary compact and after the useful calendar", () => {
     const strip = source.slice(source.indexOf("  summaryStrip: {"), source.indexOf("  summaryStripTablet:"))
     expect(strip).toContain('flexDirection: "row"')
-    expect(strip).not.toContain('flexDirection: "column"')
-  })
-
-  it("leaves the tablet's master-detail alone", () => {
-    // The phone borrowed the tablet's idea; it must not have taken its layout.
-    expect(source).toContain("styles.tabletWorkspace")
-    expect(source).toContain("<DaySelector")
-    expect(source).toContain("<DayDetail")
+    expect(phoneBranch.indexOf("<MonthCalendar")).toBeLessThan(phoneBranch.lastIndexOf("<WeekSummary"))
   })
 })

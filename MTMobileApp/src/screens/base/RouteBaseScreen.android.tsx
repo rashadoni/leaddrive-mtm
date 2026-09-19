@@ -16,16 +16,16 @@ type BaseTab = "organizations" | "contacts"
 
 const TABS: Array<{ key: BaseTab; icon: string; labelKey: string; bodyKey: string }> = [
   {
-    key: "organizations",
-    icon: "business-outline",
-    labelKey: "organizations.title",
-    bodyKey: "baseHub.organizationsBody",
-  },
-  {
     key: "contacts",
     icon: "people-outline",
     labelKey: "contacts.title",
     bodyKey: "baseHub.contactsBody",
+  },
+  {
+    key: "organizations",
+    icon: "business-outline",
+    labelKey: "baseHub.placesTab",
+    bodyKey: "baseHub.organizationsBody",
   },
 ]
 
@@ -43,15 +43,19 @@ export default function RouteBaseScreen() {
   // The organization can switch field contacts off. Then the hub is a list of
   // places only: no segment with a single choice, no way into people.
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
-  const [tab, setTab] = useState<BaseTab>("organizations")
+  const [tab, setTab] = useState<BaseTab>("contacts")
   // The switch can arrive with a bootstrap refresh while the agent sits on the
   // contacts tab; move them to the places instead of leaving a hidden list open.
   useEffect(() => {
     if (!contactsEnabled && tab === "contacts") setTab("organizations")
   }, [contactsEnabled, tab])
   const visibleTab: BaseTab = contactsEnabled ? tab : "organizations"
-  const active = TABS.find((item) => item.key === visibleTab) ?? TABS[0]
-  const canGoBack = navigation.canGoBack()
+  const active = TABS.find((item) => item.key === visibleTab) ?? TABS.find((item) => item.key === "organizations")!
+  // `navigation.canGoBack()` also bubbles through the parent tab navigator.
+  // That made the Clients/Places tab root show a misleading back arrow merely
+  // because the agent had opened it from Today. Only a screen pushed inside
+  // this local stack should expose the header back action.
+  const canGoBack = (navigation.getState()?.index ?? 0) > 0
 
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -69,7 +73,7 @@ export default function RouteBaseScreen() {
           ) : null}
           <View style={styles.titleCopy}>
             <Text style={styles.eyebrow}>{t("baseHub.eyebrow")}</Text>
-            <Text style={styles.headerTitle}>{t("baseHub.title")}</Text>
+            <Text style={styles.headerTitle}>{t(contactsEnabled ? "baseHub.title" : "baseHub.placesTitle")}</Text>
             <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
         </View>

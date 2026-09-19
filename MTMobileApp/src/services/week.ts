@@ -66,6 +66,14 @@ export interface WeekData {
   summary: WeekSummary
 }
 
+export interface MonthGridWindow {
+  monthStart: string
+  monthEndExclusive: string
+  gridStart: string
+  gridEndExclusive: string
+  weekStarts: string[]
+}
+
 function num(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value)
   return Number.isFinite(n) ? n : 0
@@ -158,4 +166,72 @@ export function shiftDateKey(dateKey: string, deltaDays: number): string {
   if (Number.isNaN(d.getTime())) return dateKey
   d.setUTCDate(d.getUTCDate() + deltaDays)
   return d.toISOString().slice(0, 10)
+}
+
+function calendarDateKey(year: number, monthIndex: number, day: number): string {
+  return new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10)
+}
+
+/** Six Monday-first rows, matching the familiar Outlook-style month grid. */
+export function monthGridWindow(anchor: string): MonthGridWindow {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(anchor)
+  const fallback = new Date()
+  const year = match ? Number(match[1]) : fallback.getUTCFullYear()
+  const monthIndex = match ? Number(match[2]) - 1 : fallback.getUTCMonth()
+  const monthStart = calendarDateKey(year, monthIndex, 1)
+  const monthEndExclusive = calendarDateKey(year, monthIndex + 1, 1)
+  const first = new Date(`${monthStart}T00:00:00.000Z`)
+  const mondayOffset = (first.getUTCDay() + 6) % 7
+  const gridStart = shiftDateKey(monthStart, -mondayOffset)
+  const weekStarts = Array.from({ length: 6 }, (_, index) => shiftDateKey(gridStart, index * 7))
+  return {
+    monthStart,
+    monthEndExclusive,
+    gridStart,
+    gridEndExclusive: shiftDateKey(gridStart, 42),
+    weekStarts,
+  }
+}
+
+export function shiftMonthKey(anchor: string, deltaMonths: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(anchor)
+  if (!match) return anchor
+  return calendarDateKey(Number(match[1]), Number(match[2]) - 1 + deltaMonths, 1)
+}
+
+/** Merge the six non-overlapping week responses used by the month screen. */
+export function combineCalendarWeeks(weeks: WeekData[], window: MonthGridWindow): WeekData {
+  const days = new Map<string, WeekDay>()
+  for (const week of weeks) {
+    for (const day of week.days) days.set(day.date, day)
+  }
+  const summary = weeks.reduce<WeekSummary>((result, week) => ({
+    visits: result.visits + week.summary.visits,
+    visitsCompleted: result.visitsCompleted + week.summary.visitsCompleted,
+    tasks: result.tasks + week.summary.tasks,
+    tasksCompleted: result.tasksCompleted + week.summary.tasksCompleted,
+    plannedStops: result.plannedStops + week.summary.plannedStops,
+    visitedStops: result.visitedStops + week.summary.visitedStops,
+    coveragePct: 0,
+  }), {
+    visits: 0,
+    visitsCompleted: 0,
+    tasks: 0,
+    tasksCompleted: 0,
+    plannedStops: 0,
+    visitedStops: 0,
+    coveragePct: 0,
+  })
+  summary.coveragePct = summary.plannedStops > 0
+    ? (summary.visitedStops / summary.plannedStops) * 100
+    : 0
+  return {
+    weekStart: window.gridStart,
+    weekEndExclusive: window.gridEndExclusive,
+    today: weeks.find((week) => week.today)?.today ?? "",
+    days: Array.from(days.values())
+      .filter((day) => day.date >= window.gridStart && day.date < window.gridEndExclusive)
+      .sort((left, right) => left.date.localeCompare(right.date)),
+    summary,
+  }
 }

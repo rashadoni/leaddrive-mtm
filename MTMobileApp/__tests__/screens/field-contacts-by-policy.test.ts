@@ -40,32 +40,41 @@ describe("Müştərilər hub follows the contacts switch", () => {
     expect(base).toContain('if (!contactsEnabled && tab === "contacts") setTab("organizations")')
     expect(base).toContain('const visibleTab: BaseTab = contactsEnabled ? tab : "organizations"')
     expect(base).toContain('{visibleTab === "organizations"')
-    expect(base).toContain("const active = TABS.find((item) => item.key === visibleTab) ?? TABS[0]")
-  })
-})
-
-describe("Daha çox menu does not promise contacts when they are off", () => {
-  const more = read("more/MoreScreen.tsx")
-
-  it("swaps the customers subtitle for the places-only one", () => {
-    expect(more).toContain(`const contactsEnabled = ${POLICY_SELECTOR}`)
-    expect(more).toContain('bodyKey: "moreV2.baseBodyPlaces"')
-    expect(more).toContain('bodyKey: "moreV2.baseBody"')
-  })
-
-  it("has the places-only subtitle in every language, without doctors or contacts", () => {
-    const bodies = (["ru", "en", "az"] as const).map(
-      (locale) => (mobileResources[locale].moreV2 as Record<string, string>).baseBodyPlaces,
-    )
-    expect(bodies).toEqual([
-      "Найти клинику, аптеку или другую организацию",
-      "Find a clinic, pharmacy, or another organization",
-      "Klinika, aptek və ya başqa təşkilat tapın",
-    ])
+    expect(base).toContain('const [tab, setTab] = useState<BaseTab>("contacts")')
+    expect(base).toContain('TABS.find((item) => item.key === "organizations")!')
   })
 })
 
 describe("other doors into contacts", () => {
+  it("keeps the clients directory in the global tabs and labels places honestly when contacts are off", () => {
+    const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/AppNavigatorAndroidV2.tsx"), "utf8")
+    const base = read("base/RouteBaseScreen.android.tsx")
+    expect(navigator).toContain('function ClientsStackNavigator()')
+    expect(navigator).toContain('<ClientsStack.Screen name="ClientsHome" component={RouteBaseScreen} />')
+    expect(navigator).toContain('Clients: ClientsStackNavigator')
+    expect(navigator).toContain('name === "Clients" && !contactsEnabled ? "navV2.places"')
+    expect(base).toContain("const canGoBack = (navigation.getState()?.index ?? 0) > 0")
+    expect(base).not.toContain("const canGoBack = navigation.canGoBack()")
+    const labels = (["ru", "en", "az"] as const).map(
+      (locale) => (mobileResources[locale].navV2 as Record<string, string>).places,
+    )
+    expect(labels).toEqual(["Места", "Places", "Məkanlar"])
+  })
+
+  it("opens quick route planning with the selected client", () => {
+    const detail = read("base/ContactDetailScreen.tsx")
+    const planner = read("planning/PlanningWorkspaceCore.android.tsx")
+    expect(detail).toContain('t("contacts.addToRoute")')
+    expect(detail).toContain('initialTarget: { kind: "contact", id: detail.id, name: detail.name }')
+    const organization = read("base/RouteOrganizationDetailScreen.android.tsx")
+    expect(organization).toContain('initialTarget: { kind: "organization", id: detail.id, name: detail.name }')
+    expect(organization).toContain('t("contacts.addToRoute")')
+    expect(organization).toContain('directions: "Как добраться"')
+    expect(planner).toContain('targetId: initialTarget?.id')
+    expect(planner).toContain('`${initialTarget.kind}:${initialTarget.id}`')
+    expect(planner).toContain('quickTargetPending')
+  })
+
   it("organization card hides its contact list and the contact count on list cards", () => {
     const detail = read("base/RouteOrganizationDetailScreen.android.tsx")
     expect(detail).toContain(`const contactsEnabled = ${POLICY_SELECTOR}`)

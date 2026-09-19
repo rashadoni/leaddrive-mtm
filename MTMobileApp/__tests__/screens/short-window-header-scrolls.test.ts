@@ -39,6 +39,17 @@ describe("a short window cannot spare a pinned header", () => {
   })
 })
 
+describe("route date picker fits a short landscape window", () => {
+  const planner = read("screens/planning/PlanningWorkspaceCore.android.tsx")
+
+  it("uses fixed-height calendar rows instead of seven wide squares", () => {
+    expect(planner).toContain("const shortWindow = isShortWindow(height)")
+    expect(planner).toContain("shortWindow && styles.dateSheetShort")
+    expect(planner).toContain("shortWindow && styles.monthCellShort")
+    expect(planner).toContain("monthCellShort: { height: 38, aspectRatio: undefined }")
+  })
+})
+
 describe("Təqvim: the header is the first row of the week", () => {
   const week = read("screens/week/WeekScreen.tsx")
 

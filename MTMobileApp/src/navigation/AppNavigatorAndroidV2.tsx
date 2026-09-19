@@ -9,8 +9,9 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
+import { fieldContactsEnabled } from "../lib/field-contacts-policy"
 import { fieldTheme } from "../theme/fieldTheme"
-import { isTabletWidth, NAV_RAIL_WIDTH } from "../theme/layoutBreakpoints"
+import { NAV_RAIL_WIDTH, shouldUseNavigationRail } from "../theme/layoutBreakpoints"
 
 const RAIL_WIDTH = NAV_RAIL_WIDTH
 import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
@@ -36,6 +37,7 @@ import RouteSelfPlanningWorkspace from "../screens/route/RouteSelfPlanningWorksp
 import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.android"
 import type { RawTask } from "../services/task-detail"
 import type { MobileProductPresentation } from "../services/product-presentations"
+import type { RoutePlanningTargetHint } from "../services/route-planning-target"
 import { AGENT_TAB_NAMES } from "./role-tabs"
 
 export type RootStackParamList = {
@@ -56,16 +58,33 @@ export type RootStackParamList = {
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
   /** Route Field planning is self-only; team planning remains in the legacy shell. */
-  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } | undefined
+  PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } | undefined
+}
+
+export type MoreStackParamList = {
+  MoreHome: undefined
+  Visits: undefined
+  GpsHistory: undefined
+  Profile: undefined
+}
+
+export type ClientsStackParamList = {
+  ClientsHome: undefined
+  OrganizationDetail: { id: string; name?: string }
+  ContactDetail: { id: string; name?: string }
+  DoctorCreateRequest: undefined
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
+const MoreStack = createNativeStackNavigator<MoreStackParamList>()
+const ClientsStack = createNativeStackNavigator<ClientsStackParamList>()
 const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
   Today: { active: "today", inactive: "today-outline" },
   Calendar: { active: "calendar-number", inactive: "calendar-number-outline" },
   Route: { active: "navigate", inactive: "navigate-outline" },
+  Clients: { active: "people", inactive: "people-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
   More: { active: "ellipsis-horizontal-circle", inactive: "ellipsis-horizontal-circle-outline" },
 }
@@ -75,39 +94,64 @@ const PlanningBuilderScreen = ({
   route,
 }: {
   navigation: { goBack: () => void }
-  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } }
+  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } }
 }) => (
   <RouteSelfPlanningWorkspace
     onClose={() => navigation.goBack()}
     initialDate={route.params?.initialDate}
     initialHorizon={route.params?.initialHorizon}
     editPublished={route.params?.editPublished}
+    initialTarget={route.params?.initialTarget}
   />
 )
 
 type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
 
+function MoreStackNavigator() {
+  return (
+    <MoreStack.Navigator screenOptions={{ headerShown: false }}>
+      <MoreStack.Screen name="MoreHome" component={MoreScreen} />
+      <MoreStack.Screen name="Visits" component={VisitScreen} />
+      <MoreStack.Screen name="GpsHistory" component={GpsHistoryScreen} />
+      <MoreStack.Screen name="Profile" component={ProfileScreen} />
+    </MoreStack.Navigator>
+  )
+}
+
+function ClientsStackNavigator() {
+  return (
+    <ClientsStack.Navigator screenOptions={{ headerShown: false }}>
+      <ClientsStack.Screen name="ClientsHome" component={RouteBaseScreen} />
+      <ClientsStack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
+      <ClientsStack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
+      <ClientsStack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
+    </ClientsStack.Navigator>
+  )
+}
+
 const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
   Today: TodayScreen,
   Calendar: WeekScreen,
   Route: RouteScreen,
+  Clients: ClientsStackNavigator,
   Tasks: TasksScreen,
-  More: MoreScreen,
+  More: MoreStackNavigator,
 }
 
 const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {
   Today: "navV2.today",
   Calendar: "navV2.calendar",
   Route: "navV2.route",
+  Clients: "navV2.clients",
   Tasks: "navV2.tasks",
   More: "navV2.more",
 }
 
-function tabOptions(name: string, label: string) {
+function tabOptions(name: string, label: string, iconOverride?: { active: string; inactive: string }) {
   return {
     title: label,
     tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => {
-      const icon = ICONS[name] ?? ICONS.Today
+      const icon = iconOverride ?? ICONS[name] ?? ICONS.Today
       return <Icon name={focused ? icon.active : icon.inactive} size={22} color={color} />
     },
   }
@@ -115,10 +159,11 @@ function tabOptions(name: string, label: string) {
 
 function MainTabs() {
   const { t } = useTranslation()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
-  const tablet = isTabletWidth(width)
+  const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
+  const rail = shouldUseNavigationRail(width, height)
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
 
   // This APK does not infer access from an agent role. A tenant may enable
@@ -134,18 +179,18 @@ function MainTabs() {
         initialRouteName="Today"
         screenOptions={{
           headerShown: false,
-          tabBarPosition: tablet ? "left" : "bottom",
-          tabBarVariant: tablet ? "material" : "uikit",
+          tabBarPosition: rail ? "left" : "bottom",
+          tabBarVariant: rail ? "material" : "uikit",
           tabBarActiveTintColor: fieldTheme.color.primaryStrong,
           tabBarInactiveTintColor: fieldTheme.color.inkMuted,
           tabBarActiveBackgroundColor: fieldTheme.color.primarySoft,
           tabBarLabelPosition: "below-icon",
-          tabBarStyle: tablet
+          tabBarStyle: rail
             ? {
-                // One width for the rail. At 82 dp a phone held in landscape (823 dp,
-                // below the 840 "expanded" line) cut every caption to "B…", "T…".
-                // 112 still left "Tapşırı…": the label got 51 dp on the phone. 124
-                // gives it 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
+                // One width for the rail. Earlier builds also exposed this on a
+                // short landscape phone; 82 dp cut every caption to "B…", "T…".
+                // 112 still left "Tapşırı…": the label got 51 dp. 124 gives it
+                // 63, and "Tapşırıqlar" needs 59 (measured 2026-09-14).
                 // The rail pads itself by the left inset, so a phone turned with
                 // its camera cutout on the left lost 45 dp of that and read
                 // "Bu …", "Təq…" again (Galaxy S23, same day): add the inset.
@@ -171,7 +216,7 @@ function MainTabs() {
                 shadowOpacity: 0.08,
                 shadowRadius: 8,
               },
-          tabBarItemStyle: tablet
+          tabBarItemStyle: rail
             ? {
                 minHeight: 62,
                 marginHorizontal: 8,
@@ -187,7 +232,11 @@ function MainTabs() {
             key={name}
             name={name}
             component={TAB_COMPONENTS[name]}
-            options={tabOptions(name, t(TAB_LABEL_KEYS[name]))}
+            options={tabOptions(
+              name,
+              t(name === "Clients" && !contactsEnabled ? "navV2.places" : TAB_LABEL_KEYS[name]),
+              name === "Clients" && !contactsEnabled ? { active: "business", inactive: "business-outline" } : undefined,
+            )}
           />
         ))}
       </Tab.Navigator>
@@ -196,7 +245,7 @@ function MainTabs() {
           in landscape (2026-09-14). One green band under the whole status bar
           keeps the app-wide light icons readable on every tab; light screens
           leave the icons light in this layout (LightScreenStatusBar). */}
-      {tablet && insets.top > 0 ? <View pointerEvents="none" style={[styles.railStatusBand, { height: insets.top }]} /> : null}
+      {rail && insets.top > 0 ? <View pointerEvents="none" style={[styles.railStatusBand, { height: insets.top }]} /> : null}
     </View>
   )
 }

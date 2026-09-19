@@ -3,11 +3,12 @@ import { AGENT_TAB_NAMES, routeFieldTabNames } from "../../src/navigation/role-t
 describe("Route Field tabs", () => {
   it("keeps the route shell focused on today's field workflow", () => {
     expect(routeFieldTabNames()).toEqual(AGENT_TAB_NAMES)
-    expect(AGENT_TAB_NAMES).toEqual(["Today", "Calendar", "Route", "Tasks", "More"])
+    expect(AGENT_TAB_NAMES).toEqual(["Today", "Calendar", "Route", "Clients", "Tasks", "More"])
   })
 
-  it("uses exactly five unique route destinations for phone and tablet navigation", () => {
-    expect(new Set(AGENT_TAB_NAMES).size).toBe(5)
+  it("keeps clients as a first-class destination on phone and tablet", () => {
+    expect(new Set(AGENT_TAB_NAMES).size).toBe(6)
+    expect(Array.from(AGENT_TAB_NAMES)).toContain("Clients")
     expect(Array.from(AGENT_TAB_NAMES)).not.toContain("Planogram")
   })
 })

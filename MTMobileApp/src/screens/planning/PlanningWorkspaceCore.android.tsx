@@ -21,7 +21,7 @@ import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
 import { fieldContactsEnabled, plannableTargetTypes } from "../../lib/field-contacts-policy"
-import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { isExpandedTabletWidth, isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import { api } from "../../services/api"
@@ -58,6 +58,7 @@ import {
   type PlanningTarget,
 } from "../../services/manager-planning"
 import { planningMonthGrid, shiftPlanningMonth, nextPlanningWorkday, type PlanningMonthDay } from "../../services/planning-month"
+import type { RoutePlanningTargetHint } from "../../services/route-planning-target"
 import {
   buildUpdatePublishedPoints,
   isPublishedStopLocked,
@@ -94,6 +95,7 @@ export type PlanningWorkspaceAgentSource =
 export type PlanningWorkspaceTargetQuery = {
   kind: "organization" | "contact"
   date: string
+  targetId?: string
   search?: string
   objectType?: string
   organizationKind?: string
@@ -170,6 +172,7 @@ export type PlanningWorkspaceCoreProps = {
   writeSource: PlanningWorkspaceWriteSource
   initialDate?: string
   initialHorizon?: PlanningHorizon
+  initialTarget?: RoutePlanningTargetHint
   publishedEditSource?: PlanningWorkspacePublishedEditSource
   /** Open the published route of initialDate straight in the editor (Route tab). */
   initialEditPublished?: boolean
@@ -180,6 +183,9 @@ const SELF_PLANNER_COPY = {
     eyebrow: "Мой план",
     title: "Маршрут на день",
     daySubtitle: "Выберите дату и клиентов.",
+    quickTitle: "Добавить в маршрут",
+    quickSubtitle: "Точка уже выбрана. Выберите дату и сохраните маршрут.",
+    quickClient: "Добавляем в маршрут",
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
     routeDate: "Дата маршрута",
     chooseTargets: "Кого посетить?",
@@ -193,6 +199,9 @@ const SELF_PLANNER_COPY = {
     eyebrow: "Mənim planım",
     title: "Günlük marşrut",
     daySubtitle: "Tarixi və müştəriləri seçin.",
+    quickTitle: "Marşruta əlavə et",
+    quickSubtitle: "Marşrut nöqtəsi seçilib. Tarixi seçin və marşrutu yadda saxlayın.",
+    quickClient: "Marşruta əlavə olunur",
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
     routeDate: "Marşrut tarixi",
     chooseTargets: "Kimə baş çəkəcəksiniz?",
@@ -206,6 +215,9 @@ const SELF_PLANNER_COPY = {
     eyebrow: "My plan",
     title: "Daily route",
     daySubtitle: "Choose a date and customers.",
+    quickTitle: "Add to route",
+    quickSubtitle: "The route stop is selected. Choose a date and save the route.",
+    quickClient: "Adding to route",
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
     routeDate: "Route date",
     chooseTargets: "Who will you visit?",
@@ -285,6 +297,7 @@ export default function PlanningWorkspaceCore({
   writeSource,
   initialDate,
   initialHorizon,
+  initialTarget,
   publishedEditSource,
   initialEditPublished,
 }: PlanningWorkspaceCoreProps) {
@@ -322,8 +335,8 @@ export default function PlanningWorkspaceCore({
   const [dirtyDates, setDirtyDates] = useState<Set<string>>(() => new Set())
   const [activeDate, setActiveDate] = useState(anchor)
   const [targetTypeId, setTargetTypeId] = useState("")
-  const [targetSearch, setTargetSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [targetSearch, setTargetSearch] = useState(initialTarget?.name ?? "")
+  const [debouncedSearch, setDebouncedSearch] = useState(initialTarget?.name ?? "")
   const [targetResults, setTargetResults] = useState<PlanningTarget[]>([])
   const [targetTotal, setTargetTotal] = useState<number | null>(null)
   const [targetNextPage, setTargetNextPage] = useState<PlanningTargetContinuation | null>(null)
@@ -367,7 +380,8 @@ export default function PlanningWorkspaceCore({
   const [editSession, setEditSession] = useState<PublishedEditSession | null>(null)
   const [editStops, setEditStops] = useState<PlanningAssignedTarget[]>([])
   const [highlightKeys, setHighlightKeys] = useState<Set<string>>(() => new Set())
-  const autoEditPending = useRef(Boolean(initialEditPublished))
+  const autoEditPending = useRef(Boolean(initialEditPublished || initialTarget))
+  const quickTargetPending = useRef(initialTarget ? `${initialTarget.kind}:${initialTarget.id}` : null)
   const editing = editSession !== null
 
   const selectedAgent = useMemo(() => agents.find((agent) => agent.id === agentId) ?? null, [agentId, agents])
@@ -375,16 +389,19 @@ export default function PlanningWorkspaceCore({
     () => routeTargetTypes.find((target) => target.id === targetTypeId) ?? routeTargetTypes[0],
     [routeTargetTypes, targetTypeId],
   )
-  const targetKind = activeTargetType?.direction === "DOCTOR" ? "contact" : "organization"
+  const targetKind = initialTarget?.kind ?? (activeTargetType?.direction === "DOCTOR" ? "contact" : "organization")
   const targetQuery = useMemo<PlanningWorkspaceTargetQuery>(() => ({
     kind: targetKind,
     date: activeDate,
-    search: debouncedSearch || undefined,
-    ...(targetKind === "organization" ? {
+    targetId: initialTarget?.id,
+    // Search keeps quick-add compatible with a server that has not received
+    // the exact-id filter yet; the returned row is still matched by id below.
+    search: initialTarget?.name || debouncedSearch || undefined,
+    ...(!initialTarget && targetKind === "organization" ? {
       objectType: activeTargetType?.objectType ?? undefined,
       organizationKind: activeTargetType?.organizationKind ?? undefined,
     } : {}),
-  }), [activeDate, activeTargetType?.objectType, activeTargetType?.organizationKind, debouncedSearch, targetKind])
+  }), [activeDate, activeTargetType?.objectType, activeTargetType?.organizationKind, debouncedSearch, initialTarget, targetKind])
   // A server cursor is opaque and scoped to every one of these fields. Keep a
   // local provenance key as well, so a render immediately after a date/filter
   // change cannot offer a stale continuation before the fetching effect resets
@@ -392,6 +409,7 @@ export default function PlanningWorkspaceCore({
   const targetQueryKey = useMemo(() => JSON.stringify([
     targetQuery.kind,
     targetQuery.date,
+    targetQuery.targetId ?? "",
     targetQuery.search ?? "",
     targetQuery.objectType ?? "",
     targetQuery.organizationKind ?? "",
@@ -647,6 +665,7 @@ export default function PlanningWorkspaceCore({
     planRequest.current += 1
     saveRequest.current += 1
     contextVersion.current += 1
+    quickTargetPending.current = initialTarget ? `${initialTarget.kind}:${initialTarget.id}` : null
     setAnchor(nextAnchor)
     setHorizon(nextHorizon)
     setActiveDate(nextAnchor)
@@ -1055,6 +1074,37 @@ export default function PlanningWorkspaceCore({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDate, agentId, loadingPlan, routes, updatedAt])
 
+  // Quick add from a client card remains server-authoritative: the planner
+  // loads that exact person for the chosen date, lets the server resolve the
+  // valid workplace, and only then selects the stop. Changing the date resets
+  // the plan and rearms this effect through changeWindow().
+  useEffect(() => {
+    const pendingKey = quickTargetPending.current
+    if (!initialTarget || !pendingKey || loadingPlan || loadingTargets || updatedAt === null) return
+    const target = targetResults.find((item) => item.key === pendingKey)
+    if (!target) return
+    if (activeDayTargets.some((item) => item.key === pendingKey)) {
+      quickTargetPending.current = null
+      return
+    }
+    const resolved = planningTargetForDate(target, activeDate)
+    if (!resolved || !activeDateEditable) return
+    if (editingActiveDate) {
+      setEditStops((current) => [...current, {
+        ...resolved,
+        pointId: undefined,
+        pointStatus: undefined,
+        plannedTime: null,
+        date: activeDate,
+      }])
+    } else {
+      setAssignments((current) => assignPlanningTarget(current, { ...resolved, plannedTime: null }, activeDate))
+      markDirty([activeDate])
+    }
+    quickTargetPending.current = null
+    setSaveMessage(null)
+  }, [activeDate, activeDateEditable, activeDayTargets, editingActiveDate, initialTarget, loadingPlan, loadingTargets, targetResults, updatedAt])
+
   const cancelPublishedEdit = async () => {
     if (saving || !editSession) return
     if (publishedRouteEditChanged(editSession.original, editStops)) {
@@ -1199,8 +1249,8 @@ export default function PlanningWorkspaceCore({
           {tablet ? <View style={styles.headerIcon}><Icon name="calendar" size={26} color={fieldTheme.color.onColor} /></View> : null}
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{selfPlanning ? selfCopy.eyebrow : t("managerShell.planEyebrow")}</Text>
-            <Text style={styles.title}>{selfPlanning ? selfCopy.title : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
-            <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{selfPlanning ? (singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
+            <Text style={styles.title}>{selfPlanning ? (initialTarget ? selfCopy.quickTitle : selfCopy.title) : t(singleDay ? "managerShell.planDayTitle" : "managerShell.planWeekTitle")}</Text>
+            <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{selfPlanning ? (initialTarget ? selfCopy.quickSubtitle : singleDay ? selfCopy.daySubtitle : selfCopy.weekSubtitle) : t(singleDay ? "managerShell.planDayBody" : "managerShell.planWeekBody")}</Text>
           </View>
           {selfPlanning ? null : (
             <Pressable
@@ -1457,38 +1507,51 @@ export default function PlanningWorkspaceCore({
                   </View>
                 )}
               </View>
-              <View style={styles.targetTypeTabs} accessibilityRole="tablist">
-                {routeTargetTypes.map((type) => {
-                  const selected = activeTargetType?.id === type.id
-                  return (
-                    <Pressable
-                      key={type.id}
-                      accessibilityRole="tab"
-                      accessibilityState={{ selected, disabled: saving || !activeDateEditable }}
-                      disabled={saving || !activeDateEditable}
-                      style={({ pressed }) => [styles.targetTypeButton, selected && styles.targetTypeButtonActive, (saving || !activeDateEditable) && styles.disabled, pressed && styles.pressed]}
-                      onPress={() => { setTargetTypeId(type.id); setTargetSearch("") }}
-                    >
-                      <Icon name={targetTypeIcon(type)} size={19} color={selected ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
-                      <Text style={[styles.targetTypeText, selected && styles.targetTypeTextActive]}>{mobileRouteTargetLabel(type, i18n.language)}</Text>
-                    </Pressable>
-                  )
-                })}
-              </View>
-            <View style={styles.searchBox}>
-              <Icon name="search" size={20} color={fieldTheme.color.inkMuted} />
-              <TextInput
-                value={targetSearch}
-                onChangeText={setTargetSearch}
-                placeholder={selfPlanning ? selfCopy.searchPlaceholder : t("managerShell.planSearchTarget")}
-                placeholderTextColor={fieldTheme.color.inkMuted}
-                accessibilityLabel={t("managerShell.planSearch")}
-                style={styles.searchInput}
-                returnKeyType="search"
-                editable={!saving && activeDateEditable}
-              />
-              {targetSearch ? <Pressable accessibilityRole="button" accessibilityLabel={t("common.clear")} accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.clearButton, saving && styles.disabled]} onPress={() => setTargetSearch("")}><Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} /></Pressable> : null}
-            </View>
+              {initialTarget ? (
+                <View style={styles.quickTargetCard}>
+                  <View style={styles.quickTargetIcon}><Icon name={initialTarget.kind === "contact" ? "person" : "business"} size={21} color={fieldTheme.color.primaryStrong} /></View>
+                  <View style={styles.quickTargetCopy}>
+                    <Text style={styles.quickTargetLabel}>{selfCopy.quickClient}</Text>
+                    <Text style={styles.quickTargetName}>{initialTarget.name}</Text>
+                  </View>
+                  <Icon name="checkmark-circle" size={24} color={fieldTheme.color.primaryStrong} />
+                </View>
+              ) : (
+                <>
+                  <View style={styles.targetTypeTabs} accessibilityRole="tablist">
+                    {routeTargetTypes.map((type) => {
+                      const selected = activeTargetType?.id === type.id
+                      return (
+                        <Pressable
+                          key={type.id}
+                          accessibilityRole="tab"
+                          accessibilityState={{ selected, disabled: saving || !activeDateEditable }}
+                          disabled={saving || !activeDateEditable}
+                          style={({ pressed }) => [styles.targetTypeButton, selected && styles.targetTypeButtonActive, (saving || !activeDateEditable) && styles.disabled, pressed && styles.pressed]}
+                          onPress={() => { setTargetTypeId(type.id); setTargetSearch("") }}
+                        >
+                          <Icon name={targetTypeIcon(type)} size={19} color={selected ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
+                          <Text style={[styles.targetTypeText, selected && styles.targetTypeTextActive]}>{mobileRouteTargetLabel(type, i18n.language)}</Text>
+                        </Pressable>
+                      )
+                    })}
+                  </View>
+                  <View style={styles.searchBox}>
+                    <Icon name="search" size={20} color={fieldTheme.color.inkMuted} />
+                    <TextInput
+                      value={targetSearch}
+                      onChangeText={setTargetSearch}
+                      placeholder={selfPlanning ? selfCopy.searchPlaceholder : t("managerShell.planSearchTarget")}
+                      placeholderTextColor={fieldTheme.color.inkMuted}
+                      accessibilityLabel={t("managerShell.planSearch")}
+                      style={styles.searchInput}
+                      returnKeyType="search"
+                      editable={!saving && activeDateEditable}
+                    />
+                    {targetSearch ? <Pressable accessibilityRole="button" accessibilityLabel={t("common.clear")} accessibilityState={{ disabled: saving }} disabled={saving} style={[styles.clearButton, saving && styles.disabled]} onPress={() => setTargetSearch("")}><Icon name="close-circle" size={22} color={fieldTheme.color.inkMuted} /></Pressable> : null}
+                  </View>
+                </>
+              )}
             {selfPlanning ? null : <Text style={styles.scopeNote}>{t("managerShell.planScopeNote")}</Text>}
 
             {targetError ? (
@@ -1682,6 +1745,8 @@ function CompactPlanDatePicker({
   t: any
 }) {
   const [open, setOpen] = useState(false)
+  const { height } = useWindowDimensions()
+  const shortWindow = isShortWindow(height)
   const visibleMonthKey = monthCells.find((cell) => cell.date)?.date ?? anchor
   const visibleMonth = new Date(`${visibleMonthKey}T00:00:00.000Z`)
   const monthLabel = upperFirst(formatLocalizedDate(visibleMonth, language, {
@@ -1709,10 +1774,10 @@ function CompactPlanDatePicker({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.dateSheetBackdrop} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={t("managerShell.planCancelEdit")}>
-          <Pressable style={styles.dateSheet} onPress={() => undefined}>
-            <View style={styles.dateSheetHeader}>
-              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, pressed && styles.pressed]} onPress={onPreviousMonth}>
+        <Pressable style={[styles.dateSheetBackdrop, shortWindow && styles.dateSheetBackdropShort]} onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel={t("managerShell.planCancelEdit")}>
+          <Pressable style={[styles.dateSheet, shortWindow && styles.dateSheetShort]} onPress={() => undefined}>
+            <View style={[styles.dateSheetHeader, shortWindow && styles.dateSheetHeaderShort]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planPreviousMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, shortWindow && styles.squareButtonShort, pressed && styles.pressed]} onPress={onPreviousMonth}>
                 <Icon name="chevron-back" size={23} color={fieldTheme.color.primaryStrong} />
               </Pressable>
               <View style={styles.dateCopy}>
@@ -1721,16 +1786,16 @@ function CompactPlanDatePicker({
                   <Text style={styles.todayButtonText}>{t("managerShell.planToday")}</Text>
                 </Pressable>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, pressed && styles.pressed]} onPress={onNextMonth}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t("managerShell.planNextMonth")} disabled={disabled} style={({ pressed }) => [styles.squareButton, shortWindow && styles.squareButtonShort, pressed && styles.pressed]} onPress={onNextMonth}>
                 <Icon name="chevron-forward" size={23} color={fieldTheme.color.primaryStrong} />
               </Pressable>
             </View>
-            <View style={styles.monthWeekdays} accessibilityRole="none">
+            <View style={[styles.monthWeekdays, shortWindow && styles.monthWeekdaysShort]} accessibilityRole="none">
               {weekdayLabels.map((label, index) => <Text key={`${label}-${index}`} style={styles.monthWeekday}>{label}</Text>)}
             </View>
             <View style={styles.monthGrid} testID="planning-month-grid">
               {monthCells.map((cell, index) => {
-                if (!cell.date) return <View key={`blank-${index}`} style={styles.monthCell} />
+                if (!cell.date) return <View key={`blank-${index}`} style={[styles.monthCell, shortWindow && styles.monthCellShort]} />
                 const selected = cell.date === anchor
                 const inWindow = !singleDay && !selected && dates.includes(cell.date)
                 const cellDisabled = disabled || cell.past
@@ -1744,6 +1809,7 @@ function CompactPlanDatePicker({
                     onPress={() => { onSelect(cell.date as string); setOpen(false) }}
                     style={({ pressed }) => [
                       styles.monthCell,
+                      shortWindow && styles.monthCellShort,
                       styles.monthDay,
                       cell.weekend && styles.monthDayWeekend,
                       cell.today && styles.monthDayToday,
@@ -2096,6 +2162,12 @@ const styles = StyleSheet.create({
   dateSheet: { width: "100%", maxWidth: 520, gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   dateSheetHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
+  dateSheetBackdropShort: { padding: fieldTheme.space.sm },
+  dateSheetShort: { maxWidth: 640, gap: 4, padding: fieldTheme.space.sm },
+  dateSheetHeaderShort: { minHeight: LAYOUT_TOUCH_TARGETS.compact },
+  squareButtonShort: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact },
+  monthWeekdaysShort: { marginTop: 0 },
+  monthCellShort: { height: 38, aspectRatio: undefined },
   dateCopy: { flex: 1, alignItems: "center", gap: 5 },
   dateTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900", textAlign: "center" },
   todayButton: { minHeight: 28, justifyContent: "center", paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
@@ -2157,6 +2229,11 @@ const styles = StyleSheet.create({
   targetBrowser: { gap: 8, padding: 10, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetBrowserHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   targetBrowserHeadingCopy: { flex: 1 },
+  quickTargetCard: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  quickTargetIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface },
+  quickTargetCopy: { flex: 1, gap: 2 },
+  quickTargetLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "700" },
+  quickTargetName: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "800" },
   activeDayPill: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
   activeDayPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
   targetTypeTabs: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
