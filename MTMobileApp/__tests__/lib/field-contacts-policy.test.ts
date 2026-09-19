@@ -8,9 +8,9 @@ describe("fieldContactsEnabled", () => {
     expect(fieldContactsEnabled({ fieldContactsEnabled: undefined })).toBe(true)
   })
 
-  it("follows an explicit answer", () => {
+  it("keeps clients available when an older bootstrap explicitly disables contacts", () => {
     expect(fieldContactsEnabled({ fieldContactsEnabled: true })).toBe(true)
-    expect(fieldContactsEnabled({ fieldContactsEnabled: false })).toBe(false)
+    expect(fieldContactsEnabled({ fieldContactsEnabled: false })).toBe(true)
   })
 })
 
@@ -34,10 +34,10 @@ describe("plannableTargetTypes", () => {
 })
 
 describe("contactTransferAvailable", () => {
-  it("follows the contacts switch, keeping transfer on when the answer is missing", () => {
+  it("keeps client transfer available for old and new bootstraps", () => {
     expect(contactTransferAvailable(undefined)).toBe(true)
     expect(contactTransferAvailable({})).toBe(true)
     expect(contactTransferAvailable({ fieldContactsEnabled: true })).toBe(true)
-    expect(contactTransferAvailable({ fieldContactsEnabled: false })).toBe(false)
+    expect(contactTransferAvailable({ fieldContactsEnabled: false })).toBe(true)
   })
 })
