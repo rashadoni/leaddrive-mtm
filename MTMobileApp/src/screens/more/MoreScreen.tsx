@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
-import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
+import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
@@ -68,7 +68,7 @@ const COMMON_ACTIONS: MoreAction[] = [
 
 export default function MoreScreen() {
   const { t } = useTranslation()
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const headerTop = useHeaderTop()

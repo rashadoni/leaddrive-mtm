@@ -59,7 +59,16 @@ export type RootStackParamList = {
   PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean } | undefined
 }
 
+export type MoreStackParamList = {
+  MoreHome: undefined
+  Visits: undefined
+  Base: undefined
+  GpsHistory: undefined
+  Profile: undefined
+}
+
 const Stack = createNativeStackNavigator<RootStackParamList>()
+const MoreStack = createNativeStackNavigator<MoreStackParamList>()
 const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
@@ -87,12 +96,24 @@ const PlanningBuilderScreen = ({
 
 type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
 
+function MoreStackNavigator() {
+  return (
+    <MoreStack.Navigator screenOptions={{ headerShown: false }}>
+      <MoreStack.Screen name="MoreHome" component={MoreScreen} />
+      <MoreStack.Screen name="Visits" component={VisitScreen} />
+      <MoreStack.Screen name="Base" component={RouteBaseScreen} />
+      <MoreStack.Screen name="GpsHistory" component={GpsHistoryScreen} />
+      <MoreStack.Screen name="Profile" component={ProfileScreen} />
+    </MoreStack.Navigator>
+  )
+}
+
 const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
   Today: TodayScreen,
   Calendar: WeekScreen,
   Route: RouteScreen,
   Tasks: TasksScreen,
-  More: MoreScreen,
+  More: MoreStackNavigator,
 }
 
 const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {

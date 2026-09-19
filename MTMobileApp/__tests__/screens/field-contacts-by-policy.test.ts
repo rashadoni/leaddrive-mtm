@@ -72,6 +72,13 @@ describe("Daha çox menu does not promise contacts when they are off", () => {
 })
 
 describe("other doors into contacts", () => {
+  it("keeps the global tab bar around the clients directory", () => {
+    const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/AppNavigatorAndroidV2.tsx"), "utf8")
+    expect(navigator).toContain('function MoreStackNavigator()')
+    expect(navigator).toContain('<MoreStack.Screen name="Base" component={RouteBaseScreen} />')
+    expect(navigator).toContain('More: MoreStackNavigator')
+  })
+
   it("organization card hides its contact list and the contact count on list cards", () => {
     const detail = read("base/RouteOrganizationDetailScreen.android.tsx")
     expect(detail).toContain(`const contactsEnabled = ${POLICY_SELECTOR}`)
