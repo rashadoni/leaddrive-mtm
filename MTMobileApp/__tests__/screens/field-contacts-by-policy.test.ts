@@ -106,9 +106,11 @@ describe("other doors into contacts", () => {
     expect(notes).toEqual(["string", "string", "string"])
   })
 
-  it("planner drops doctor target types when contacts are off", () => {
+  it("planner keeps the administrator-owned route taxonomy independent from the contacts directory", () => {
     const planning = read("planning/PlanningWorkspaceCore.android.tsx")
     expect(planning).toContain(`const contactsEnabled = ${POLICY_SELECTOR}`)
     expect(planning).toContain("plannableTargetTypes(")
+    const policy = fs.readFileSync(path.resolve(__dirname, "../../src/lib/field-contacts-policy.ts"), "utf8")
+    expect(policy).toContain("return configured")
   })
 })

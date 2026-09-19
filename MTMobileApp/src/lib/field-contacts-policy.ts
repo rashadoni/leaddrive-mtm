@@ -14,20 +14,17 @@ export function fieldContactsEnabled(
 }
 
 /**
- * Route target types the planner may offer. A DOCTOR type makes the planner
- * search people, so with contacts switched off it is dropped — otherwise the
- * planner would be the one door left open into hidden contacts. If the tenant
- * configured only doctor types, the places-only defaults take their place so
- * the planner is never left with nothing to choose.
+ * Route target types are a separate, administrator-owned planning taxonomy.
+ * Hiding the general contacts directory must not silently remove doctors from
+ * route planning: an organization may intentionally let agents visit assigned
+ * doctors without exposing the whole contact catalogue.
  */
 export function plannableTargetTypes<T extends { direction: string }>(
   configured: T[],
-  defaults: T[],
-  contactsEnabled: boolean,
+  _defaults: T[],
+  _contactsEnabled: boolean,
 ): T[] {
-  if (contactsEnabled) return configured
-  const places = configured.filter((target) => target.direction !== "DOCTOR")
-  return places.length > 0 ? places : defaults.filter((target) => target.direction !== "DOCTOR")
+  return configured
 }
 
 /**

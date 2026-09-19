@@ -15,7 +15,8 @@ describe("week planner on one screen", () => {
     expect(core).toContain("type PlanningStep = 1 | 2")
     expect(core).not.toContain("setStep(3)")
     expect(core).not.toContain('managerShell.planRailWeekAssign')
-    const footer = core.slice(core.indexOf("const footerAction = step === 1"), core.indexOf("return (", core.indexOf("const footerAction = step === 1")))
+    const footerStart = core.indexOf("const footerAction = selfPlanning")
+    const footer = core.slice(footerStart, core.indexOf("return (", footerStart))
     expect(footer).toContain("onPress: confirmAndSave")
   })
 
