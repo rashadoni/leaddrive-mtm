@@ -26,8 +26,10 @@ describe("visit summary fits the phone", () => {
     expect(workspace).toContain("copy.tasksSubtitle")
   })
 
-  it("puts three facts in a row instead of one blue block per line", () => {
-    expect(workspace).toMatch(/stat: \{[^}]*flexBasis: "30%"/)
+  it("puts the facts side by side instead of one blue block per line", () => {
+    // Arrival and departure moved onto the roadmap, so the card carries two
+    // facts — duration and photos — and they share a row.
+    expect(workspace).toMatch(/stat: \{[^}]*flexBasis: "45%"/)
     expect(workspace).toMatch(/stat: \{[^}]*minHeight: 62/)
     expect(workspace).not.toMatch(/stat: \{[^}]*blueSoft/)
   })
