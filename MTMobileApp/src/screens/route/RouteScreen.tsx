@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
@@ -18,6 +18,8 @@ import { useNavigation } from "@react-navigation/native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
+import { ensureReminderChannel, requestNotificationPermission } from "../../services/field-notifications"
+import { cancelVisitOverrunReminders, scheduleVisitOverrunReminders } from "../../services/visit-overrun-reminder"
 import i18next from "i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
@@ -98,6 +100,8 @@ const ROUTE_COPY = {
     nextStop: "Следующая точка",
     selectedStop: "Выбранная точка",
     activeVisit: "Сейчас идёт визит",
+    reminderChannel: "Напоминания о визитах",
+    reminderChannelHint: "Напоминание, если визит идёт дольше обычного.",
     routeComplete: "Маршрут выполнен",
     routeCompleteBody: "Все плановые точки на сегодня посещены.",
     progress: "{{done}} из {{total}} точек готово",
@@ -184,6 +188,8 @@ const ROUTE_COPY = {
     nextStop: "Növbəti nöqtə",
     selectedStop: "Seçilmiş nöqtə",
     activeVisit: "Ziyarət davam edir",
+    reminderChannel: "Ziyarət xatırlatmaları",
+    reminderChannelHint: "Ziyarət adi haldan uzun sürərsə xatırladır.",
     routeComplete: "Marşrut tamamlandı",
     routeCompleteBody: "Bu günün bütün planlı nöqtələri ziyarət edilib.",
     progress: "{{total}} nöqtədən {{done}} hazırdır",
@@ -270,6 +276,8 @@ const ROUTE_COPY = {
     nextStop: "Next stop",
     selectedStop: "Selected stop",
     activeVisit: "Visit in progress",
+    reminderChannel: "Visit reminders",
+    reminderChannelHint: "A reminder when a visit runs longer than usual.",
     routeComplete: "Route complete",
     routeCompleteBody: "Every planned stop for today has been visited.",
     progress: "{{done}} of {{total}} stops complete",
@@ -1096,6 +1104,28 @@ export default function RouteScreen() {
     setActiveWorkspace(null)
     void fetchActiveWorkspace(activeVisit?.id)
   }, [activeVisit?.id, fetchActiveWorkspace])
+
+  // Local reminders for a visit that has run long. Keyed on the visit itself,
+  // so a check-in, a reconnect and a cold start all end with the same two
+  // alarms, and closing the visit takes them away. The phone knows when the
+  // visit started — none of this needs the server or a push service.
+  const remindedVisitId = useRef<string | null>(null)
+  useEffect(() => {
+    const visitId = activeVisit?.id ?? null
+    const previous = remindedVisitId.current
+    if (previous && previous !== visitId) void cancelVisitOverrunReminders(previous)
+    remindedVisitId.current = visitId
+    if (!activeVisit) return
+    void ensureReminderChannel(copy.reminderChannel, copy.reminderChannelHint)
+    // Asked at check-in, where the agent has just seen what the reminder is
+    // about, instead of at app start where such dialogs are dismissed.
+    if (!previous) void requestNotificationPermission()
+    void scheduleVisitOverrunReminders({
+      visitId: activeVisit.id,
+      checkInAt: activeVisit.checkInAt,
+      language: i18n.language,
+    })
+  }, [activeVisit, copy.reminderChannel, copy.reminderChannelHint, i18n.language])
 
   useEffect(() => {
     if (!activeVisit) {
