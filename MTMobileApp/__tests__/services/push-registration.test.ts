@@ -5,6 +5,10 @@ const service = fs.readFileSync(path.resolve(__dirname, "../../src/services/push
 const api = fs.readFileSync(path.resolve(__dirname, "../../src/services/api.ts"), "utf8")
 const auth = fs.readFileSync(path.resolve(__dirname, "../../src/store/auth.ts"), "utf8")
 const app = fs.readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8")
+const screen = fs.readFileSync(
+  path.resolve(__dirname, "../../src/screens/more/NotificationsScreen.tsx"),
+  "utf8",
+)
 const manifest = fs.readFileSync(path.resolve(__dirname, "../../android/app/src/main/AndroidManifest.xml"), "utf8")
 const pushService = fs.readFileSync(
   path.resolve(__dirname, "../../android/app/src/main/java/com/mtmobileapp/FieldPushService.kt"),
@@ -72,8 +76,42 @@ describe("the address the server keeps", () => {
     expect(api).toContain('method: "DELETE"')
   })
 
-  it("never lets a missing token break the app", () => {
-    expect(service).toContain("return false")
+  it("never lets a missing token break the flow", () => {
+    // Nothing here throws at the caller: every path ends in a written-down
+    // state, and `void registerPushToken()` at the call sites needs no catch.
+    expect(service).toContain('state: "noAddress"')
+    expect(service).toContain('state: "serverRefused"')
     expect(service).toContain("} catch {}")
+  })
+})
+
+/**
+ * A push that never arrives is indistinguishable from one nobody sent — from
+ * the phone, from the office, and from a session debugging it a month later.
+ * So the phone keeps the outcome of its last registration and shows it.
+ */
+describe("the agent can see whether push can reach this phone", () => {
+  it("remembers the outcome instead of failing silently", () => {
+    expect(service).toContain('const STATUS_KEY = "@mtm_push_status_v1"')
+    expect(service).toContain("export async function lastPushStatus()")
+  })
+
+  it("separates 'Google gave no address' from 'the server refused it'", () => {
+    expect(screen).toContain("copy.pushNoAddress")
+    expect(screen).toContain("copy.pushRefused")
+  })
+
+  /**
+   * Registered and still silent is the state that used to be invisible: the
+   * server has the address but no key to send with.
+   */
+  it("says when the address is registered and the server still cannot send", () => {
+    expect(service).toContain("pushEnabled")
+    expect(screen).toContain("push.serverSends === false ? copy.pushRegisteredOff")
+  })
+
+  it("lets the agent ask again from the screen", () => {
+    expect(screen).toContain("const checkPush = useCallback")
+    expect(screen).toContain("copy.pushCheck")
   })
 })
