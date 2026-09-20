@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
+  Animated,
   AppState,
   Image,
+  PanResponder,
   PixelRatio,
   Pressable,
   StyleSheet,
@@ -10,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
+import type { LayoutChangeEvent, NativeTouchEvent } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import type { RouteProp } from "@react-navigation/native"
@@ -28,6 +31,21 @@ import {
 } from "../../services/presentation-file"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
+import {
+  clampPan,
+  clampZoomScale,
+  fittedPageBox,
+  isDoubleTap,
+  isZoomed,
+  nextDoubleTapScale,
+  pinchDistance,
+  pinchFocus,
+  presentationRenderWidth,
+  zoomAroundFocus,
+  type ZoomPoint,
+  type ZoomSize,
+  type ZoomTransform,
+} from "./presentation-zoom"
 
 const COPY = {
   ru: {
@@ -47,6 +65,8 @@ const COPY = {
     externalHint: "LeadDrive не сможет подтвердить просмотр страниц PowerPoint, поэтому такой запуск не отмечает презентацию выполненной.",
     externalOpen: "Открыть PowerPoint",
     externalOpened: "Файл передан внешнему приложению. Просмотр страниц не подтверждён.",
+    zoomHint: "Увеличить",
+    zoomReset: "Вся страница",
   },
   az: {
     evidencePending: "Səhifənin göstərilməsi qeydə alınır…",
@@ -65,6 +85,8 @@ const COPY = {
     externalHint: "LeadDrive PowerPoint səhifələrinin baxışını təsdiqləyə bilməz, buna görə bu açılış təqdimatı tamamlanmış saymır.",
     externalOpen: "PowerPoint-i aç",
     externalOpened: "Fayl xarici tətbiqə ötürüldü. Səhifələrə baxış təsdiqlənməyib.",
+    zoomHint: "Böyüt",
+    zoomReset: "Bütün səhifə",
   },
   en: {
     evidencePending: "Recording the displayed page…",
@@ -83,6 +105,8 @@ const COPY = {
     externalHint: "LeadDrive cannot verify PowerPoint pages shown outside the app, so this handoff does not complete the presentation step.",
     externalOpen: "Open PowerPoint",
     externalOpened: "The file was handed to another app. Page viewing is not verified.",
+    zoomHint: "Zoom in",
+    zoomReset: "Fit page",
   },
 } as const
 
@@ -126,7 +150,7 @@ export default function PresentationViewerScreen() {
   const { visitId, product } = route.params
   const format = useMemo(() => presentationFormat(product.document), [product.document])
   const source = useMemo(() => api.authorizedDocumentSource(product.downloadUrl), [product.downloadUrl])
-  const targetRenderWidth = Math.min(1_600, Math.max(720, Math.round(width * PixelRatio.get())))
+  const targetRenderWidth = presentationRenderWidth(width, PixelRatio.get())
   const targetRenderWidthRef = useRef(targetRenderWidth)
   targetRenderWidthRef.current = targetRenderWidth
 
@@ -153,6 +177,152 @@ export default function PresentationViewerScreen() {
   const [attempt, setAttempt] = useState(0)
   const [viewer, setViewer] = useState<ViewerState>({ kind: "starting" })
   const [evidenceState, setEvidenceState] = useState<EvidenceState>("idle")
+  const [zoomedIn, setZoomedIn] = useState(false)
+
+  // The page is one Animated layer: gestures write these values directly, so a
+  // pinch does not re-render the screen (and does not interrupt the evidence
+  // timers running beside it).
+  const zoomScale = useRef(new Animated.Value(1)).current
+  const zoomX = useRef(new Animated.Value(0)).current
+  const zoomY = useRef(new Animated.Value(0)).current
+  const transform = useRef<ZoomTransform>({ scale: 1, x: 0, y: 0 })
+  const stageRef = useRef<View>(null)
+  const stageOrigin = useRef<ZoomPoint>({ x: 0, y: 0 })
+  const stageSize = useRef<ZoomSize>({ width: 0, height: 0 })
+  const pageSize = useRef<ZoomSize>({ width: 0, height: 0 })
+  const fittedSize = useRef<ZoomSize>({ width: 0, height: 0 })
+  // `dxBase` is where the drag counter stood when panning began: a gesture that
+  // starts as a pinch and ends on one finger must not jump by the whole
+  // distance the fingers travelled while pinching.
+  const gesture = useRef({ mode: "none" as "none" | "pan" | "pinch", distance: 0, scale: 1, x: 0, y: 0, dxBase: 0, dyBase: 0 })
+  const lastTapAt = useRef<number | null>(null)
+
+  const applyTransform = useCallback((next: ZoomTransform) => {
+    transform.current = next
+    zoomScale.setValue(next.scale)
+    zoomX.setValue(next.x)
+    zoomY.setValue(next.y)
+    setZoomedIn((current) => (current === isZoomed(next.scale) ? current : isZoomed(next.scale)))
+  }, [zoomScale, zoomX, zoomY])
+
+  const resetZoom = useCallback(() => {
+    applyTransform({ scale: 1, x: 0, y: 0 })
+  }, [applyTransform])
+
+  const measureFit = useCallback(() => {
+    fittedSize.current = fittedPageBox(stageSize.current, pageSize.current)
+    const bounded = clampPan(transform.current, fittedSize.current, stageSize.current, transform.current.scale)
+    applyTransform({ scale: transform.current.scale, x: bounded.x, y: bounded.y })
+  }, [applyTransform])
+
+  const onStageLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width: stageWidth, height: stageHeight } = event.nativeEvent.layout
+    stageSize.current = { width: stageWidth, height: stageHeight }
+    measureFit()
+    // Touches arrive in window coordinates, and the page layer is transformed,
+    // so a touch's own `locationX` is measured against a moving target. The
+    // stage origin converts them once, in the only frame that stays still.
+    stageRef.current?.measureInWindow((x, y, measuredWidth, measuredHeight) => {
+      stageOrigin.current = { x, y }
+      if (measuredWidth > 0 && measuredHeight > 0) {
+        stageSize.current = { width: measuredWidth, height: measuredHeight }
+        measureFit()
+      }
+    })
+  }, [measureFit])
+
+  const stagePoint = useCallback((touch: NativeTouchEvent): ZoomPoint => ({
+    x: touch.pageX - stageOrigin.current.x,
+    y: touch.pageY - stageOrigin.current.y,
+  }), [])
+
+  const zoomTo = useCallback((nextScale: number, focus: { x: number; y: number }) => {
+    applyTransform(zoomAroundFocus({
+      transform: transform.current,
+      nextScale,
+      focus,
+      stage: stageSize.current,
+      fitted: fittedSize.current,
+    }))
+  }, [applyTransform])
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: (event, state) => (
+      event.nativeEvent.touches.length >= 2
+      || (isZoomed(transform.current.scale) && (Math.abs(state.dx) > 2 || Math.abs(state.dy) > 2))
+    ),
+    onPanResponderGrant: (event) => {
+      const touches = event.nativeEvent.touches
+      gesture.current = {
+        mode: touches.length >= 2 ? "pinch" : "pan",
+        distance: touches.length >= 2 ? pinchDistance(stagePoint(touches[0]), stagePoint(touches[1])) : 0,
+        scale: transform.current.scale,
+        x: transform.current.x,
+        y: transform.current.y,
+        dxBase: 0,
+        dyBase: 0,
+      }
+      if (touches.length !== 1) return
+      const now = Date.now()
+      if (isDoubleTap(lastTapAt.current, now)) {
+        lastTapAt.current = null
+        gesture.current.mode = "none"
+        zoomTo(nextDoubleTapScale(transform.current.scale), stagePoint(touches[0]))
+        return
+      }
+      lastTapAt.current = now
+    },
+    onPanResponderMove: (event, state) => {
+      const touches = event.nativeEvent.touches
+      if (touches.length >= 2) {
+        const distance = pinchDistance(stagePoint(touches[0]), stagePoint(touches[1]))
+        if (gesture.current.mode !== "pinch" || gesture.current.distance <= 0) {
+          gesture.current = {
+            mode: "pinch",
+            distance,
+            scale: transform.current.scale,
+            x: transform.current.x,
+            y: transform.current.y,
+            dxBase: state.dx,
+            dyBase: state.dy,
+          }
+          return
+        }
+        const focus = pinchFocus(stagePoint(touches[0]), stagePoint(touches[1]))
+        zoomTo(clampZoomScale(gesture.current.scale * (distance / gesture.current.distance)), focus)
+        return
+      }
+      if (gesture.current.mode === "pinch") {
+        // The second finger left: carry on as a drag from where the pinch
+        // ended, not from where the two fingers first touched down.
+        gesture.current = {
+          mode: "pan",
+          distance: 0,
+          scale: transform.current.scale,
+          x: transform.current.x,
+          y: transform.current.y,
+          dxBase: state.dx,
+          dyBase: state.dy,
+        }
+        return
+      }
+      if (!isZoomed(transform.current.scale)) return
+      const moved = clampPan(
+        { x: gesture.current.x + (state.dx - gesture.current.dxBase), y: gesture.current.y + (state.dy - gesture.current.dyBase) },
+        fittedSize.current,
+        stageSize.current,
+        transform.current.scale,
+      )
+      applyTransform({ scale: transform.current.scale, x: moved.x, y: moved.y })
+    },
+    onPanResponderRelease: () => {
+      gesture.current = { mode: "none", distance: 0, scale: transform.current.scale, x: transform.current.x, y: transform.current.y, dxBase: 0, dyBase: 0 }
+    },
+    onPanResponderTerminate: () => {
+      gesture.current = { mode: "none", distance: 0, scale: transform.current.scale, x: transform.current.x, y: transform.current.y, dxBase: 0, dyBase: 0 }
+    },
+  }), [applyTransform, stagePoint, zoomTo])
 
   const activeDurationSeconds = useCallback((now: number) => (
     activeSeconds.current
@@ -254,12 +424,17 @@ export default function PresentationViewerScreen() {
         }
         return { kind: "pdf", filePath, pageIndex: zeroBasedPage, rendered, imageLoaded: false }
       })
+      // A new page starts fitted: carrying a zoom over would open the next
+      // slide somewhere in its middle with no way back but pinching out.
+      pageSize.current = { width: rendered.width, height: rendered.height }
+      fittedSize.current = fittedPageBox(stageSize.current, pageSize.current)
+      resetZoom()
       renderedUris.current.add(rendered.uri)
       pageCount.current = rendered.pageCount
     } catch {
       if (mounted.current && generation === renderGeneration.current) setViewer({ kind: "failed" })
     }
-  }, [])
+  }, [resetZoom])
 
   useEffect(() => {
     const generation = ++loadGeneration.current
@@ -421,15 +596,45 @@ export default function PresentationViewerScreen() {
         </View>
       ) : (
         <View style={styles.viewer}>
-          <View style={[styles.pageStage, tablet && styles.pageStageTablet]}>
-            <Image
-              accessibilityLabel={`${copy.page} ${viewer.pageIndex + 1} / ${viewer.rendered.pageCount}`}
-              source={{ uri: viewer.rendered.uri }}
-              resizeMode="contain"
-              style={styles.pageImage}
-              onLoad={() => markPageDisplayed(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
-              onError={() => setViewer({ kind: "failed" })}
-            />
+          <View
+            ref={stageRef}
+            style={[styles.pageStage, tablet && styles.pageStageTablet]}
+            onLayout={onStageLayout}
+            {...panResponder.panHandlers}
+          >
+            <Animated.View
+              style={[
+                styles.pageLayer,
+                { transform: [{ translateX: zoomX }, { translateY: zoomY }, { scale: zoomScale }] },
+              ]}
+            >
+              <Image
+                accessibilityLabel={`${copy.page} ${viewer.pageIndex + 1} / ${viewer.rendered.pageCount}`}
+                source={{ uri: viewer.rendered.uri }}
+                resizeMode="contain"
+                style={styles.pageImage}
+                onLoad={() => markPageDisplayed(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
+                onError={() => setViewer({ kind: "failed" })}
+              />
+            </Animated.View>
+            {viewer.imageLoaded ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={zoomedIn ? copy.zoomReset : copy.zoomHint}
+                onPress={() => {
+                  if (zoomedIn) {
+                    resetZoom()
+                    return
+                  }
+                  zoomTo(nextDoubleTapScale(1), { x: stageSize.current.width / 2, y: stageSize.current.height / 2 })
+                }}
+                style={({ pressed }) => [styles.zoomChip, pressed && styles.pressed]}
+                testID="presentation-zoom-chip"
+              >
+                <Icon name={zoomedIn ? "contract-outline" : "expand-outline"} size={16} color={fieldTheme.color.ink} />
+                <Text style={styles.zoomChipText}>{zoomedIn ? copy.zoomReset : copy.zoomHint}</Text>
+              </Pressable>
+            ) : null}
             {!viewer.imageLoaded ? (
               <View style={styles.pageLoader}>
                 <ActivityIndicator color={fieldTheme.color.primary} />
@@ -479,7 +684,10 @@ const styles = StyleSheet.create({
   viewer: { flex: 1 },
   pageStage: { flex: 1, margin: 10, overflow: "hidden", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: "#FFFFFF" },
   pageStageTablet: { marginHorizontal: 22, marginVertical: 14 },
+  pageLayer: { ...StyleSheet.absoluteFillObject },
   pageImage: { width: "100%", height: "100%" },
+  zoomChip: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: "rgba(251,253,252,0.94)" },
+  zoomChipText: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "800" },
   pageLoader: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "rgba(251,253,252,0.92)" },
   pageLoadingText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   pageControls: { minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20, paddingHorizontal: 16, paddingBottom: 8 },

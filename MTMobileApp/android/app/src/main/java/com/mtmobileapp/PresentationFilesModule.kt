@@ -57,9 +57,12 @@ class PresentationFilesModule(
           PdfRenderer(descriptor).use { renderer ->
             require(pageIndex in 0 until renderer.pageCount) { "PDF page is out of range" }
             renderer.openPage(pageIndex).use { page ->
-              val maxWidth = requestedWidth.coerceIn(320, 1_600)
+              // The page is rendered above screen resolution because the viewer
+              // lets the agent pinch into it; at 1_600 px a zoomed price table
+              // turned to mush. The ceiling still bounds one ARGB bitmap.
+              val maxWidth = requestedWidth.coerceIn(320, 2_600)
               val widthScale = maxWidth.toDouble() / page.width.toDouble()
-              val heightScale = 2_400.0 / page.height.toDouble()
+              val heightScale = 3_600.0 / page.height.toDouble()
               val scale = min(widthScale, heightScale)
               val bitmapWidth = (page.width * scale).roundToInt().coerceAtLeast(1)
               val bitmapHeight = (page.height * scale).roundToInt().coerceAtLeast(1)
