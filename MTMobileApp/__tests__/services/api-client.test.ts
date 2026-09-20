@@ -997,3 +997,61 @@ describe("ApiClient — fullLogout", () => {
     expect(opts.method ?? "GET").toBe("GET")
   })
 })
+
+describe("ApiClient — a server that does not answer with JSON", () => {
+  beforeEach(() => {
+    resetClient()
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "valid-token"
+  })
+
+  /**
+   * A field agent submitting a new doctor met "JSON Parse error: Unexpected
+   * end of input": the request was rejected by a row-level security policy,
+   * Next answered 500 with an empty body, and the client fed that to
+   * JSON.parse. The transport must name the failure instead.
+   */
+  it("reports an empty 500 body as a server failure, not a parse error", async () => {
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 500,
+      ok: false,
+      text: async () => "",
+      json: async () => { throw new SyntaxError("Unexpected end of input") },
+    })
+    await expect(client.request("/mobile/route-field/contact-create-requests", { method: "POST" }))
+      .rejects.toMatchObject({ code: "SERVER_INVALID_RESPONSE", status: 500 })
+  })
+
+  it("reports an HTML error page as a server failure", async () => {
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 404,
+      ok: false,
+      text: async () => "<!DOCTYPE html><html><body>404</body></html>",
+      json: async () => { throw new SyntaxError("Unexpected token <") },
+    })
+    await expect(client.request("/mobile/route-field/contacts"))
+      .rejects.toMatchObject({ code: "SERVER_INVALID_RESPONSE", status: 404 })
+  })
+
+  it("still returns a normal JSON body read through text()", async () => {
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 201,
+      ok: true,
+      text: async () => JSON.stringify({ success: true, data: { id: "req-1" } }),
+      json: async () => ({ success: true, data: { id: "req-1" } }),
+    })
+    await expect(client.request("/mobile/route-field/contact-create-requests", { method: "POST" }))
+      .resolves.toEqual({ success: true, data: { id: "req-1" } })
+  })
+
+  it("keeps the server's own error code when the body is JSON", async () => {
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({
+      status: 409,
+      ok: false,
+      text: async () => JSON.stringify({ error: "Idempotency key was reused", code: "MTM_CONTACT_CREATE_IDEMPOTENCY_MISMATCH" }),
+      json: async () => ({ error: "Idempotency key was reused", code: "MTM_CONTACT_CREATE_IDEMPOTENCY_MISMATCH" }),
+    })
+    await expect(client.request("/mobile/route-field/contact-create-requests", { method: "POST" }))
+      .rejects.toMatchObject({ code: "MTM_CONTACT_CREATE_IDEMPOTENCY_MISMATCH", status: 409 })
+  })
+})
