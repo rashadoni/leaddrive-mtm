@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { api } from "../services/api"
+import { registerPushToken, unregisterPushToken } from "../services/push-registration"
 import { kpiScopeKey, useKpiStore } from "./kpi"
 import { useBootstrapStore } from "./bootstrap"
 import { clearOfflineScope, setOfflineScope } from "../services/offline-scope"
@@ -62,6 +63,9 @@ export const useAuthStore = create<AuthState>((set) => ({
         kpiScopeKey(result.data.agent?.organizationId, result.data.agent?.id),
       )
       set({ isLoggedIn: true, agent: result.data.agent })
+      // Tell the server where to deliver a push. Best effort on purpose: a
+      // phone without Play services still signs in and works.
+      void registerPushToken()
     } else {
       throw new Error(result.error || "Login failed")
     }
@@ -70,6 +74,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     useKpiStore.getState().clearScope()
     useBootstrapStore.getState().clear()
+    // Before the token goes: the server must forget this address while the
+    // session can still prove who owned it.
+    await unregisterPushToken()
     await api.logout()
     clearOfflineScope()
     useSyncStatusStore.getState().clear()
@@ -94,6 +101,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   switchServer: async () => {
     useKpiStore.getState().clearScope()
     useBootstrapStore.getState().clear()
+    await unregisterPushToken()
     await api.fullLogout()
     clearOfflineScope()
     useSyncStatusStore.getState().clear()

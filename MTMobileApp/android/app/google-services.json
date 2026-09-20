@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "887681841081",
+    "project_id": "leaddrive-mtm",
+    "storage_bucket": "leaddrive-mtm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:887681841081:android:f38dc48f689871972a2868",
+        "android_client_info": {
+          "package_name": "com.mtmobileapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTDOD5qlIfJQnnW_A6xaE7l5k3rB2f8rw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

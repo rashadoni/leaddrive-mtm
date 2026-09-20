@@ -27,6 +27,14 @@
       android:supportsRtl="true">
       <!-- The library starts this service with the location FGS type. Declare
            that type in the app manifest, as Android 14+ requires. -->
+      <service
+        android:name=".FieldPushService"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+      </service>
+
       <receiver
         android:name=".FieldNotificationReceiver"
         android:exported="false">

@@ -842,6 +842,26 @@ class ApiClient {
   }
 
   /** The agent's own doctor requests, newest first. */
+  /** Where a push can be delivered: one row per installation, server-side. */
+  async registerDeviceToken(data: {
+    token: string
+    platform?: "android" | "ios"
+    deviceId?: string | null
+    appVersion?: string | null
+  }) {
+    return this.request("/mobile/route-field/device-tokens", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
+  async unregisterDeviceToken(token: string) {
+    return this.request("/mobile/route-field/device-tokens", {
+      method: "DELETE",
+      body: JSON.stringify({ token }),
+    }, 20_000, 2)
+  }
+
   async getDoctorCreateRequests(limit = 20, signal?: AbortSignal) {
     return this.request(`/mobile/route-field/contact-create-requests?limit=${encodeURIComponent(String(limit))}`, { signal }, 20_000, 2)
   }
