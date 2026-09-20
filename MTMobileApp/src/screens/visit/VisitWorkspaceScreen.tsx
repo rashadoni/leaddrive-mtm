@@ -60,14 +60,14 @@ const COPY = {
     contact: "Контакт",
     noAddress: "Адрес не указан",
     noContact: "Контакт не выбран",
-    noResultTitle: "Результат ещё не заполнен",
-    noResultBody: "Для активного визита результат появится после завершения.",
+    pendingLine: "Пока не заполнено: {{items}}",
+    pendingResult: "результат",
+    pendingTasks: "задачи",
     requirementsProgress: (done: number, total: number) => `Выполнено ${done} из ${total}`,
     complete: "Выполнено",
     waived: "Пропущено с разрешением",
     remaining: "Не выполнено",
     tasksCount: (count: number) => `Задач: ${count}`,
-    noTasks: "К этому визиту задачи не привязаны.",
     presentations: "Презентации продуктов",
     presentationsHint: "Откройте утверждённый файл прямо во время визита.",
     noProducts: "Для вас пока не назначены презентации.",
@@ -109,14 +109,14 @@ const COPY = {
     contact: "Kontakt",
     noAddress: "Ünvan göstərilməyib",
     noContact: "Kontakt seçilməyib",
-    noResultTitle: "Nəticə hələ yazılmayıb",
-    noResultBody: "Aktiv ziyarətin nəticəsi tamamlandıqdan sonra görünəcək.",
+    pendingLine: "Hələ doldurulmayıb: {{items}}",
+    pendingResult: "nəticə",
+    pendingTasks: "tapşırıqlar",
     requirementsProgress: (done: number, total: number) => `${total} addımdan ${done}-i tamamlanıb`,
     complete: "Tamamlanıb",
     waived: "İcazə ilə keçilib",
     remaining: "Tamamlanmayıb",
     tasksCount: (count: number) => `Tapşırıq: ${count}`,
-    noTasks: "Bu ziyarətə tapşırıq bağlanmayıb.",
     presentations: "Məhsul təqdimatları",
     presentationsHint: "Təsdiqlənmiş faylı ziyarət zamanı açın.",
     noProducts: "Sizin üçün hələ təqdimat təyin edilməyib.",
@@ -158,14 +158,14 @@ const COPY = {
     contact: "Contact",
     noAddress: "No address provided",
     noContact: "No contact selected",
-    noResultTitle: "No result has been recorded yet",
-    noResultBody: "An active visit will show its result after it is completed.",
+    pendingLine: "Not filled in yet: {{items}}",
+    pendingResult: "result",
+    pendingTasks: "tasks",
     requirementsProgress: (done: number, total: number) => `${done} of ${total} completed`,
     complete: "Completed",
     waived: "Skipped with approval",
     remaining: "Not completed",
     tasksCount: (count: number) => `${count} task${count === 1 ? "" : "s"}`,
-    noTasks: "No tasks are linked to this visit.",
     presentations: "Product presentations",
     presentationsHint: "Open the approved file while you are with the customer.",
     noProducts: "No presentations are assigned to you yet.",
@@ -335,6 +335,12 @@ export default function VisitWorkspaceScreen() {
     )) ?? [],
     [data],
   )
+  const hasResult = Boolean(data?.outcome || data?.resultNotes || data?.notes)
+  const hasTaskContent = (data?.tasks.length ?? 0) > 0 || taskRequirements.length > 0
+  const pendingParts = [
+    hasResult ? null : copy.pendingResult,
+    hasTaskContent ? null : copy.pendingTasks,
+  ].filter((part): part is string => Boolean(part))
   const visibleSection = data?.status === "CHECKED_IN" ? section : "summary"
   const title = data?.customer.name || name || copy.eyebrow
   const statusVisual = visitStatusVisual(data?.status ?? "")
@@ -359,10 +365,15 @@ export default function VisitWorkspaceScreen() {
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{visibleSection === "summary" ? copy.eyebrow : copy.activeEyebrow}</Text>
-            <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
-            <Text style={styles.headerSubtitle}>
-              {visibleSection === "presentations" ? copy.presentationSubtitle : visibleSection === "tasks" ? copy.tasksSubtitle : copy.subtitle}
-            </Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+            {/* The summary's own subtitle explained the screen in four lines of
+                green — a quarter of the phone before the first fact. The
+                presentation and task views keep theirs: those say what to do. */}
+            {visibleSection === "presentations" || visibleSection === "tasks" ? (
+              <Text style={styles.headerSubtitle} numberOfLines={2}>
+                {visibleSection === "presentations" ? copy.presentationSubtitle : copy.tasksSubtitle}
+              </Text>
+            ) : null}
           </View>
           {data ? (
             <View style={[styles.headerStatus, { backgroundColor: statusVisual.background }]}>
@@ -531,7 +542,7 @@ export default function VisitWorkspaceScreen() {
 
             {visibleSection === "tasks" || visibleSection === "summary" ? <View style={[styles.columns, tablet && visibleSection === "summary" && styles.columnsTablet]}>
               <View style={styles.column}>
-                {visibleSection === "summary" ? <SectionCard icon="flag-outline" title={t("visitWorkspace.sectionResult")}>
+                {visibleSection === "summary" && hasResult ? <SectionCard icon="flag-outline" title={t("visitWorkspace.sectionResult")}>
                   {data.outcome || data.resultNotes || data.notes ? (
                     <>
                       {data.outcome ? (
@@ -549,12 +560,10 @@ export default function VisitWorkspaceScreen() {
                         />
                       ) : null}
                     </>
-                  ) : (
-                    <EmptyBlock icon="create-outline" title={copy.noResultTitle} body={copy.noResultBody} />
-                  )}
+                  ) : null}
                 </SectionCard> : null}
 
-                <SectionCard
+                {hasTaskContent ? <SectionCard
                   icon="checkbox-outline"
                   title={t("visitWorkspace.sectionTasks")}
                   badge={copy.tasksCount(data.tasks.length)}
@@ -585,9 +594,7 @@ export default function VisitWorkspaceScreen() {
                         <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} />
                       </Pressable>
                     )
-                  }) : taskRequirements.length === 0 ? (
-                    <EmptyBlock icon="list-outline" title={copy.noTasks} />
-                  ) : null}
+                  }) : null}
                   {taskRequirements.length > 0 ? (
                     <View style={styles.requiredActionsGroup}>
                       {taskRequirements.map((requirement) => {
@@ -606,7 +613,18 @@ export default function VisitWorkspaceScreen() {
                       })}
                     </View>
                   ) : null}
-                </SectionCard>
+                </SectionCard> : null}
+
+                {/*
+                  An active visit cannot have a result yet, and a visit with no
+                  tasks has nothing to show: two cards used to say so in full
+                  paragraphs. One muted line carries the same fact.
+                */}
+                {visibleSection === "summary" && pendingParts.length > 0 ? (
+                  <Text style={styles.pendingLine}>
+                    {copy.pendingLine.replace("{{items}}", pendingParts.join(", "))}
+                  </Text>
+                ) : null}
               </View>
             </View> : null}
           </View>
@@ -730,13 +748,13 @@ function EmptyBlock({ icon, title, body }: { icon: string; title: string; body?:
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
+  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center" },
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
   backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
   headerCopy: { flex: 1, minWidth: 0 },
   eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "900", letterSpacing: 0.7 },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 26, lineHeight: 32, fontWeight: "900", marginTop: 2 },
+  headerTitle: { color: fieldTheme.color.onColor, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: 2 },
   headerSubtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 19, marginTop: fieldTheme.space.xs, maxWidth: 720 },
   headerStatus: { minHeight: 38, maxWidth: 150, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.md },
   headerStatusText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: "900", textAlign: "center" },
@@ -751,7 +769,7 @@ const styles = StyleSheet.create({
   noticeBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   noticeButton: { minHeight: 44, minWidth: 116, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md },
   noticeButtonText: { color: fieldTheme.color.amber, fontSize: 12, fontWeight: "900" },
-  overviewCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
+  overviewCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.lg },
   timeNotice: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: "#E8D69F", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
   timeNoticeOvertime: { borderColor: "#E9B3AE", backgroundColor: fieldTheme.color.dangerSoft },
   timeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 13, lineHeight: 19, fontWeight: "900" },
@@ -767,10 +785,15 @@ const styles = StyleSheet.create({
   infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800" },
   infoValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "800", marginTop: 2 },
   infoSecondary: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
-  stat: { minWidth: 150, flex: 1, flexBasis: 180, minHeight: 98, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, padding: fieldTheme.space.md },
-  statLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", marginTop: fieldTheme.space.sm },
-  statValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 2 },
+  // Four facts used to be four blue blocks 98 dp tall: at 180 dp of basis only
+  // one fitted a phone row, so arrival, departure, duration and photos became
+  // a column four screens long. Three to a row, neutral like the card they
+  // sit in.
+  statGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
+  stat: { minWidth: 96, flexGrow: 1, flexBasis: "30%", minHeight: 62, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
+  statLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", marginTop: 4 },
+  statValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
+  pendingLine: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
   columns: { gap: fieldTheme.space.lg },
   columnsTablet: { flexDirection: "row", alignItems: "flex-start" },
   column: { flex: 1, gap: fieldTheme.space.lg, minWidth: 0 },
