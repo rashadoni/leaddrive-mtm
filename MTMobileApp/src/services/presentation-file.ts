@@ -31,6 +31,7 @@ export interface RenderedPdfPage {
 interface PresentationFilesNativeModule {
   renderPdfPage(filePath: string, pageIndex: number, requestedWidth: number): Promise<RenderedPdfPage>
   openExternal(filePath: string, mimeType: string): Promise<boolean>
+  setImmersive?(enabled: boolean): Promise<boolean>
 }
 
 function normalizedMimeType(value: string): string {
@@ -124,6 +125,19 @@ export async function renderPdfPage(filePath: string, pageIndex: number, request
 export async function openExternalPresentation(filePath: string, mimeType: string): Promise<void> {
   const opened = await presentationFilesModule().openExternal(filePath, normalizedMimeType(mimeType))
   if (!opened) throw new Error("PRESENTATION_EXTERNAL_VIEWER_UNAVAILABLE")
+}
+
+/**
+ * Hide the system bars while a slide is on screen. Best effort by design: an
+ * older build without the native method, or a screen that is no longer the
+ * current activity, must never break the presentation itself.
+ */
+export async function setPresentationImmersive(enabled: boolean): Promise<void> {
+  try {
+    const native = presentationFilesModule()
+    if (typeof native.setImmersive !== "function") return
+    await native.setImmersive(enabled)
+  } catch {}
 }
 
 export async function cleanupPresentationFiles(filePath: string | null, renderedUris: Iterable<string>): Promise<void> {
