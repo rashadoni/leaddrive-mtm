@@ -1363,7 +1363,7 @@ function VisitActionPanel({
               ]}
             >
               <Icon name="easel-outline" size={21} color={fieldTheme.color.primary} />
-              <Text style={styles.secondaryButtonText}>{copy.openWorkspace}</Text>
+              <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.openWorkspace}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -1378,7 +1378,7 @@ function VisitActionPanel({
               ]}
             >
               <Icon name="camera-outline" size={21} color={fieldTheme.color.primary} />
-              <Text style={styles.secondaryButtonText}>{copy.addPhoto}</Text>
+              <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.addPhoto}</Text>
             </Pressable>
             {signature.visible && !signature.signed && !activeVisit.pendingCheckOut ? (
               <Pressable
@@ -1395,7 +1395,7 @@ function VisitActionPanel({
                 ]}
               >
                 <Icon name="create-outline" size={21} color={fieldTheme.color.primary} />
-                <Text style={styles.secondaryButtonText}>{signature.required ? translate("signature.buttonRequired") : translate("signature.title")}</Text>
+                <Text style={styles.secondaryButtonText} numberOfLines={1}>{signature.required ? translate("signature.buttonRequired") : translate("signature.title")}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -1963,9 +1963,12 @@ const styles = StyleSheet.create({
   addressText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
   pendingNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
   pendingText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "700" },
-  secondaryActionRow: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
-  secondaryButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md },
-  secondaryButtonText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
+  // Three actions side by side left about 110 dp each, and «Задачи и
+  // презентации» broke mid-word into «презентац / ии». One under another:
+  // full width, icon first, label on one line.
+  secondaryActionRow: { gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
+  secondaryButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.lg },
+  secondaryButtonText: { flex: 1, color: fieldTheme.color.primary, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   historyContent: { paddingVertical: fieldTheme.space.lg },
   historyHeading: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
   historyTitle: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 27, fontWeight: "900", marginTop: 2 },
