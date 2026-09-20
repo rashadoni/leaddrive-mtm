@@ -2,6 +2,12 @@ import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
 import { i18n } from "../i18n/index.android"
+import {
+  classifyUploadFailure,
+  flushQueue,
+  queuePoint,
+  type QueuedPoint,
+} from "./location-outbox"
 
 export let lastKnownPosition: {
   latitude: number
@@ -57,6 +63,32 @@ async function backgroundTask(taskData: { delay?: number } | undefined) {
   }
 }
 
+/**
+ * Send one point, and keep it if the network refused to carry it.
+ *
+ * A dropped coordinate is a hole in the day that nobody can fill in
+ * afterwards: the agent was somewhere, the phone knew where, and the record
+ * says nothing. Android suspending the network while the phone lies still is
+ * ordinary, so the point waits instead of dying. `recordedAt` and
+ * `clientLocationId` travel with it — the server keeps the capture time and
+ * refuses a duplicate.
+ */
+async function sendOrQueue(point: QueuedPoint): Promise<void> {
+  try {
+    await api.sendLocation(point)
+  } catch (error) {
+    const verdict = classifyUploadFailure(error as { message?: string; status?: number })
+    if (verdict === "stop") {
+      stopTracking().catch(() => {})
+      return
+    }
+    if (verdict === "retry") await queuePoint(point)
+    return
+  }
+  // The line is up right now: this is the moment to carry what is waiting.
+  await flushQueue((queued) => api.sendLocation(queued)).catch(() => {})
+}
+
 function uploadPosition(position: {
   coords: {
     latitude: number
@@ -78,7 +110,7 @@ function uploadPosition(position: {
   }
   const recordedAt = new Date(capturedAt).toISOString()
   const clientLocationId = `gps-${Math.trunc(capturedAt)}-${latitude.toFixed(5)}-${longitude.toFixed(5)}`
-  return api.sendLocation({
+  return sendOrQueue({
     latitude,
     longitude,
     accuracy: accuracy || undefined,
