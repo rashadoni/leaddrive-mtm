@@ -226,30 +226,26 @@ export default function TodayScreen() {
     return "empty"
   }, [kpiError, loading, route, routeError, taskRemaining])
 
+  const routeSummaryText = useMemo(() => {
+    if (!route) return ""
+    if (route.totalPoints === 0) return t("todayV2.routeNoStopsBody")
+    if (route.remainingPoints === 0) return t("todayV2.routeCompleteBody")
+    return t("todayV2.routeRemaining", { count: route.remainingPoints })
+  }, [route, t])
+
   const nextCopy = useMemo(() => {
     if (nextKind === "route") {
       const routeCanStart = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
       const canStartRoute = workdayActive && routeCanStart
       const routeNeedsWorkday = routeCanStart && !workdayActive
-      const nextName = route?.nextPoint?.customer?.name
-      const nextAddress = route?.nextPoint?.customer?.address
-      const remaining = route?.remainingPoints ?? 0
       const body = routeNeedsWorkday
         ? t("todayV2.dayStartHint")
-        : nextAddress
-        ? nextAddress
-        : route?.totalPoints === 0
-          ? t("todayV2.routeNoStopsBody")
-          : remaining === 0
-          ? t("todayV2.routeCompleteBody")
-          : t("todayV2.routeRemaining", { count: remaining })
+        : routeSummaryText
       return {
-        eyebrow: nextName ? t("todayV2.nextStop") : t("todayV2.routeReady"),
-        title: nextName ?? t("todayV2.routeTitle"),
+        eyebrow: t("todayV2.routeReady"),
+        title: t("todayV2.routeTitle"),
         body,
-        supporting: nextName && remaining > 0
-          ? t("todayV2.routeRemaining", { count: remaining })
-          : null,
+        supporting: null,
         button: routeNeedsWorkday
           ? (workdayStarting ? t("todayV2.dayStarting") : t("todayV2.startDay"))
           : canStartRoute
@@ -311,7 +307,7 @@ export default function TodayScreen() {
       startRoute: false,
       startWorkday: false,
     }
-  }, [nextKind, route, routeSource, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
+  }, [nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
 
   const open = (destination: Destination) => navigation.navigate(destination)
   const startRoute = async () => {
@@ -488,7 +484,7 @@ export default function TodayScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ disabled: workdayBusy || !workdayHydrated }}
                   disabled={workdayBusy || !workdayHydrated}
-                  onPress={() => { void toggleWorkdayBreak() }}
+                  onPress={() => { toggleWorkdayBreak().catch(() => {}) }}
                   style={({ pressed }) => [
                     styles.workdayButton,
                     !twoPane && styles.workdayButtonPhone,
@@ -590,48 +586,74 @@ export default function TodayScreen() {
                   nextKind === "unknown" && styles.nextPanelUnknown,
                 ]}
               >
-                <View style={[styles.nextIcon, nextDark && styles.nextIconDark]}>
-                  {nextKind === "loading"
-                    ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
-                    : <Icon
-                        name={nextCopy.icon}
-                        size={22}
-                        color={nextDark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
-                      />}
-                </View>
-                <Text style={[styles.nextEyebrow, nextDark && styles.nextTextOnDark]}>
-                  {nextCopy.eyebrow}
-                </Text>
-                <Text style={[styles.nextTitle, nextDark && styles.nextTextOnDark]}>
-                  {nextCopy.title}
-                </Text>
-                <Text style={[styles.nextBody, nextDark && styles.nextBodyOnDark]}>
-                  {nextCopy.body}
-                </Text>
-                {nextCopy.supporting ? (
-                  <Text style={[styles.nextSupporting, nextDark && styles.nextBodyOnDark]}>
-                    {nextCopy.supporting}
-                  </Text>
-                ) : null}
                 {nextKind === "route" && route && route.points.length > 0 ? (
-                  <View style={styles.routeClients}>
-                    {route.points.map((point, index) => {
-                      const done = point.status === "VISITED"
-                      return (
-                        <View key={point.id} style={styles.routeClientRow}>
-                          <View style={[styles.routeClientNumber, done && styles.routeClientNumberDone]}>
-                            {done
-                              ? <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
-                              : <Text style={styles.routeClientNumberText}>{index + 1}</Text>}
+                  <>
+                    <View style={styles.routeSummaryHeader}>
+                      <View style={[styles.nextIcon, styles.routeSummaryIcon, styles.nextIconDark]}>
+                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.onColor} />
+                      </View>
+                      <View style={styles.routeSummaryCopy}>
+                        <Text style={styles.routeSummaryTitle}>{t("todayV2.routeTitle")}</Text>
+                        <Text style={styles.routeSummaryMeta}>{routeSummaryText}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.routeClients}>
+                      {route.points.map((point, index) => {
+                        const done = point.status === "VISITED"
+                        const isNext = point.id === route.nextPoint?.id
+                        return (
+                          <View
+                            key={point.id}
+                            style={[
+                              styles.routeClientRow,
+                              index < route.points.length - 1 && styles.routeClientRowDivider,
+                            ]}
+                          >
+                            <View style={[styles.routeClientNumber, done && styles.routeClientNumberDone]}>
+                              {done
+                                ? <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
+                                : <Text style={styles.routeClientNumberText}>{index + 1}</Text>}
+                            </View>
+                            <Text style={[styles.routeClientName, done && styles.routeClientNameDone]} numberOfLines={1}>
+                              {point.customer?.name || t("todayV2.routeTitle")}
+                            </Text>
+                            {isNext ? (
+                              <View style={styles.routeClientNextBadge}>
+                                <Text style={styles.routeClientNextText}>{t("todayV2.nextStopShort")}</Text>
+                              </View>
+                            ) : null}
                           </View>
-                          <Text style={[styles.routeClientName, done && styles.routeClientNameDone]} numberOfLines={1}>
-                            {point.customer?.name || t("todayV2.routeTitle")}
-                          </Text>
-                        </View>
-                      )
-                    })}
-                  </View>
-                ) : null}
+                        )
+                      })}
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={[styles.nextIcon, nextDark && styles.nextIconDark]}>
+                      {nextKind === "loading"
+                        ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
+                        : <Icon
+                            name={nextCopy.icon}
+                            size={22}
+                            color={nextDark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
+                          />}
+                    </View>
+                    <Text style={[styles.nextEyebrow, nextDark && styles.nextTextOnDark]}>
+                      {nextCopy.eyebrow}
+                    </Text>
+                    <Text style={[styles.nextTitle, nextDark && styles.nextTextOnDark]}>
+                      {nextCopy.title}
+                    </Text>
+                    <Text style={[styles.nextBody, nextDark && styles.nextBodyOnDark]}>
+                      {nextCopy.body}
+                    </Text>
+                    {nextCopy.supporting ? (
+                      <Text style={[styles.nextSupporting, nextDark && styles.nextBodyOnDark]}>
+                        {nextCopy.supporting}
+                      </Text>
+                    ) : null}
+                  </>
+                )}
                 {routeSource === "cached" && nextKind === "route" ? (
                   <View style={styles.cachedBadge}>
                     <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
@@ -986,13 +1008,21 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "700",
   },
-  routeClients: { alignSelf: "stretch", gap: fieldTheme.space.xs, marginTop: fieldTheme.space.md },
-  routeClientRow: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(248,252,250,0.12)", paddingHorizontal: fieldTheme.space.sm },
+  routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  routeSummaryIcon: { width: 36, height: 36, marginBottom: 0 },
+  routeSummaryCopy: { flex: 1, minWidth: 0 },
+  routeSummaryTitle: { color: fieldTheme.color.onColor, fontSize: 16, lineHeight: 21, fontWeight: "900" },
+  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.onColor, fontSize: 12, lineHeight: 17, fontWeight: "700", opacity: 0.82 },
+  routeClients: { alignSelf: "stretch", marginTop: fieldTheme.space.sm },
+  routeClientRow: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs },
+  routeClientRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(248,252,250,0.24)" },
   routeClientNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.18)" },
   routeClientNumberDone: { backgroundColor: fieldTheme.color.success },
   routeClientNumberText: { color: fieldTheme.color.onColor, fontSize: 11, fontWeight: "900" },
-  routeClientName: { flex: 1, color: fieldTheme.color.onColor, fontSize: 13, lineHeight: 18, fontWeight: "800" },
+  routeClientName: { flex: 1, color: fieldTheme.color.onColor, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   routeClientNameDone: { opacity: 0.7, textDecorationLine: "line-through" },
+  routeClientNextBadge: { minHeight: 24, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.onColor },
+  routeClientNextText: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900" },
   nextTextOnDark: {
     color: fieldTheme.color.onColor,
   },
