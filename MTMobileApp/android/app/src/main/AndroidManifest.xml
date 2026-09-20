@@ -27,6 +27,14 @@
       android:supportsRtl="true">
       <!-- The library starts this service with the location FGS type. Declare
            that type in the app manifest, as Android 14+ requires. -->
+      <receiver
+        android:name=".FieldNotificationReceiver"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="com.mtmobileapp.LOCAL_NOTIFICATION" />
+        </intent-filter>
+      </receiver>
+
       <service
         android:name="com.asterinet.react.bgactions.RNBackgroundActionsTask"
         android:foregroundServiceType="location" />
