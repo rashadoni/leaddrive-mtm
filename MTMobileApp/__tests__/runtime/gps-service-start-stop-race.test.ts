@@ -25,6 +25,11 @@ jest.mock("@react-native-community/geolocation", () => ({
 }))
 jest.mock("../../src/services/api", () => ({ api: { sendLocation: jest.fn(async () => ({})) } }))
 jest.mock("../../src/i18n/index.android", () => ({ i18n: { t: (key: string) => key } }))
+// The tracking service now keeps unsent coordinates in storage; this suite
+// is about the start/stop race and only needs the module to load.
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock")
+)
 
 import { startTracking, stopTracking } from "../../src/services/location.android"
 
