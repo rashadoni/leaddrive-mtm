@@ -841,6 +841,11 @@ class ApiClient {
     return this.request(`/mobile/route-field/contacts${qs ? `?${qs}` : ""}`, { signal }, 20_000, 2)
   }
 
+  /** The agent's own doctor requests, newest first. */
+  async getDoctorCreateRequests(limit = 20, signal?: AbortSignal) {
+    return this.request(`/mobile/route-field/contact-create-requests?limit=${encodeURIComponent(String(limit))}`, { signal }, 20_000, 2)
+  }
+
   async submitDoctorCreateRequest(data: {
     idempotencyKey: string
     displayName: string
