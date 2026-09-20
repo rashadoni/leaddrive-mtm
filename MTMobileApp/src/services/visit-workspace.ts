@@ -16,6 +16,10 @@ export interface VisitTaskItem {
   id: string
   title: string
   status: string
+  description?: string
+  priority?: string
+  dueDate?: string
+  result?: string
 }
 
 export interface VisitPresentationSession {
@@ -113,7 +117,15 @@ export function toVisitWorkspace(raw: any): VisitWorkspace {
         }
       : undefined,
     requirements: mappedRequirements,
-    tasks: tasks.map((t) => ({ id: String(t?.id ?? ""), title: str(t?.title) ?? "", status: str(t?.status) ?? "" })),
+    tasks: tasks.map((t) => ({
+      id: String(t?.id ?? ""),
+      title: str(t?.title) ?? "",
+      status: str(t?.status) ?? "",
+      description: str(t?.description),
+      priority: str(t?.priority),
+      dueDate: str(t?.dueDate),
+      result: str(t?.result),
+    })),
     presentationSessions: presentationSessions.map((session) => ({
       id: String(session?.id ?? ""),
       productId: String(session?.productId ?? ""),

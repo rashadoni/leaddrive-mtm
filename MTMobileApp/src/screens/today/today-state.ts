@@ -24,6 +24,7 @@ export interface TodayRouteSummary {
   visitedPoints: number
   remainingPoints: number
   nextPoint: TodayRoutePoint | null
+  points: TodayRoutePoint[]
 }
 
 export type TodayRoutePrimaryAction = "start" | "open"
@@ -149,6 +150,7 @@ export function selectTodayRoute(
     visitedPoints,
     remainingPoints: Math.max(totalPoints - visitedPoints, 0),
     nextPoint: points.find((point) => point.status !== "VISITED") ?? null,
+    points,
   }
 }
 
