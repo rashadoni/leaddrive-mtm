@@ -28,10 +28,20 @@ class ApiClient {
   private token: string | null = null
   private agentId: string | null = null
   /**
+   * A 401 from an optional feature endpoint is not proof that the whole
+   * session was revoked. Keep one token-bound bootstrap probe in flight so a
+   * burst of failing dashboard requests cannot fan out into several logout
+   * decisions.
+   */
+  private sessionValidation: {
+    token: string
+    promise: Promise<"valid" | "revoked" | "unknown">
+  } | null = null
+  /**
    * Registered by App.tsx after api.init() to avoid a circular import
-   * (api.ts must not import the store). When a mid-session 401 arrives
-   * the interceptor calls this callback AFTER clearing the local token,
-   * so the store can flip isLoggedIn → false and surface the revoked UX.
+   * (api.ts must not import the store). The callback runs only after the
+   * authoritative bootstrap endpoint confirms that the current token was
+   * revoked, so an optional endpoint cannot falsely end the whole session.
    */
   private _onUnauthorized: ((reason?: string) => void) | null = null
 
@@ -267,6 +277,65 @@ class ApiClient {
     return base
   }
 
+  /**
+   * Check the server's authoritative mobile admission endpoint without going
+   * through request() again (which would recurse on another 401). Only an
+   * explicit bootstrap 401 proves that the current token was revoked. A
+   * network/5xx failure leaves the local session intact and lets the original
+   * endpoint fail in isolation.
+   */
+  private async probeSession(token: string): Promise<"valid" | "revoked" | "unknown"> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "x-field-apk-version": ROUTE_FIELD_PROFILE.apkVersion,
+    }
+    try {
+      headers["x-field-device-id"] = await getFieldDeviceId()
+    } catch {}
+
+    try {
+      const res = await fetch(`${this.baseUrl}/mobile/bootstrap`, { headers })
+      if (res.status === 401) return "revoked"
+      if (res.ok) return "valid"
+      return "unknown"
+    } catch {
+      return "unknown"
+    }
+  }
+
+  private async validateSession(token: string): Promise<"valid" | "revoked" | "unknown"> {
+    if (this.sessionValidation?.token === token) return this.sessionValidation.promise
+
+    const promise = this.probeSession(token)
+    this.sessionValidation = { token, promise }
+    try {
+      return await promise
+    } finally {
+      if (this.sessionValidation?.promise === promise) this.sessionValidation = null
+    }
+  }
+
+  /**
+   * Revoke only when the rejected request belongs to the current token and
+   * bootstrap itself confirms that token is no longer admitted. Bootstrap is
+   * already authoritative, so its own 401 does not need a second probe.
+   */
+  private async handleUnauthorized(path: string, requestToken: string | null, apiVersion: 1 | 2): Promise<void> {
+    if (!requestToken || this.token !== requestToken || path.startsWith("/mobile/auth")) return
+
+    const normalizedPath = path.split("?", 1)[0]
+    const result = apiVersion === 1 && normalizedPath === "/mobile/bootstrap"
+      ? "revoked"
+      : await this.validateSession(requestToken)
+
+    // A new login may have replaced the token while the validation request was
+    // in flight. Never let the old response erase the new session.
+    if (result !== "revoked" || this.token !== requestToken) return
+    await this.logout()
+    this._onUnauthorized?.(REVOKED_REASON)
+  }
+
   private async request(path: string, options: RequestInit = {}, timeoutMs = 20_000, apiVersion: 1 | 2 = 1) {
     if (!this.baseUrl) throw new Error("Server not configured")
 
@@ -307,20 +376,11 @@ class ApiClient {
 
     try {
       const res = await fetch(url, { ...options, headers, signal: controller.signal })
-      const data = await res.json()
-
       if (res.status === 401) {
-        // Revoke only the exact session that received this 401. A login request
-        // has no requestToken, and an old in-flight request can finish after a
-        // fresh login has already replaced this.token. Neither response may
-        // clear that newer session or show a false "access revoked" banner.
-        const rejectsCurrentSession = !!requestToken && this.token === requestToken
-        if (rejectsCurrentSession) {
-          await this.logout()
-          this._onUnauthorized?.(REVOKED_REASON)
-        }
+        await this.handleUnauthorized(path, requestToken, apiVersion)
         throw new Error("SESSION_EXPIRED")
       }
+      const data = await res.json()
 
       if (!res.ok) {
         // Surface the server's machine-readable error code (e.g. the 422
@@ -798,11 +858,11 @@ class ApiClient {
   }
 
   async getMobileMessages(signal?: AbortSignal) {
-    return this.request("/mobile/messages?limit=50", { signal }, 20_000, 2)
+    return this.request("/mobile/messages?limit=50", { signal })
   }
 
   async getMobileMessageThread(threadId: string, signal?: AbortSignal) {
-    return this.request(`/mobile/messages/${encodeURIComponent(threadId)}?limit=100`, { signal }, 20_000, 2)
+    return this.request(`/mobile/messages/${encodeURIComponent(threadId)}?limit=100`, { signal })
   }
 
   async startPresentationSession(data: {
@@ -870,6 +930,7 @@ class ApiClient {
     longitude?: number
   }) {
     if (!this.baseUrl) throw new Error("Server not configured")
+    const requestToken = this.token
 
     const formData = new FormData()
     formData.append("file", {
@@ -883,11 +944,10 @@ class ApiClient {
     if (data.latitude !== undefined) formData.append("latitude", String(data.latitude))
     if (data.longitude !== undefined) formData.append("longitude", String(data.longitude))
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
+    const headers: Record<string, string> = {}
+    if (requestToken) {
+      headers.Authorization = `Bearer ${requestToken}`
       // Do NOT set Content-Type — fetch sets multipart boundary automatically
-    }
-    if (this.token) {
       headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
@@ -901,14 +961,7 @@ class ApiClient {
     })
 
     if (res.status === 401) {
-      // Same token-gate as request(): uploadPhoto always runs mid-session
-      // (token required for the Authorization header above), so hadToken
-      // is always true here — but we guard consistently for correctness.
-      const hadToken = !!this.token
-      await this.logout()
-      if (hadToken) {
-        this._onUnauthorized?.(REVOKED_REASON)
-      }
+      await this.handleUnauthorized("/photos", requestToken, 1)
       throw new Error("SESSION_EXPIRED")
     }
 

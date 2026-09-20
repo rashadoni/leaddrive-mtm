@@ -51,9 +51,11 @@ const client = api as any
 function resetClient() {
   client.token = null
   client.agentId = null
+  client.sessionValidation = null
   client._agentRole = null
   client._agentName = null
   client._agentCode = null
+  client._onUnauthorized = null
   client.baseUrl = ""
 }
 
@@ -409,6 +411,107 @@ describe("ApiClient — request error handling", () => {
     expect(handler).toHaveBeenCalledWith("REVOKED")
   })
 
+  it("keeps the session when an optional endpoint returns 401 but bootstrap remains valid", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "active-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({
+        status: 401,
+        ok: false,
+        json: async () => ({ error: "Unauthorized" }),
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+      })
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    await expect(client.request("/mobile/messages?limit=50")).rejects.toThrow("SESSION_EXPIRED")
+    expect(fetchMock.mock.calls[1][0]).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/bootstrap")
+    expect(client.token).toBe("active-jwt")
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it("revokes after an optional endpoint 401 only when bootstrap also returns 401", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "revoked-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    ;(global.fetch as jest.Mock) = jest.fn()
+      .mockResolvedValueOnce({ status: 401, ok: false })
+      .mockResolvedValueOnce({ status: 401, ok: false })
+
+    await expect(client.request("/routes")).rejects.toThrow("SESSION_EXPIRED")
+    expect(client.token).toBeNull()
+    expect(handler).toHaveBeenCalledTimes(1)
+    expect(handler).toHaveBeenCalledWith("REVOKED")
+  })
+
+  it("treats bootstrap's own 401 as authoritative without probing twice", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "revoked-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    const fetchMock = jest.fn().mockResolvedValue({ status: 401, ok: false })
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    await expect(client.request("/mobile/bootstrap")).rejects.toThrow("SESSION_EXPIRED")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(client.token).toBeNull()
+    expect(handler).toHaveBeenCalledTimes(1)
+  })
+
+  it("uses one bootstrap validation for simultaneous endpoint 401 responses", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "active-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    let resolveBootstrap!: (response: unknown) => void
+    const fetchMock = jest.fn((url: string) => {
+      if (url.endsWith("/mobile/bootstrap")) {
+        return new Promise((resolve) => { resolveBootstrap = resolve })
+      }
+      return Promise.resolve({ status: 401, ok: false })
+    })
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    const requests = [client.request("/routes"), client.request("/mobile/kpi?period=day")]
+    for (let attempt = 0; attempt < 10 && !resolveBootstrap; attempt += 1) await Promise.resolve()
+    expect(resolveBootstrap).toBeDefined()
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/mobile/bootstrap"))).toHaveLength(1)
+    resolveBootstrap({ status: 200, ok: true })
+
+    await Promise.all(requests.map((request) => expect(request).rejects.toThrow("SESSION_EXPIRED")))
+    expect(client.token).toBe("active-jwt")
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it("does not erase a new login when an old endpoint's bootstrap validation finishes late", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "old-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    let resolveBootstrap!: (response: unknown) => void
+    const fetchMock = jest.fn((url: string) => {
+      if (url.endsWith("/mobile/bootstrap")) {
+        return new Promise((resolve) => { resolveBootstrap = resolve })
+      }
+      return Promise.resolve({ status: 401, ok: false })
+    })
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    const oldRequest = client.request("/routes")
+    for (let attempt = 0; attempt < 10 && !resolveBootstrap; attempt += 1) await Promise.resolve()
+    client.token = "new-jwt"
+    resolveBootstrap({ status: 401, ok: false })
+
+    await expect(oldRequest).rejects.toThrow("SESSION_EXPIRED")
+    expect(client.token).toBe("new-jwt")
+    expect(handler).not.toHaveBeenCalled()
+  })
+
   it("late 401 from an older session does not erase a newer login", async () => {
     client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
     client.token = "old-jwt"
@@ -512,9 +615,45 @@ describe("ApiClient — request error handling", () => {
     ;(global.fetch as jest.Mock) = mockFetch
     await client.request("/ping")
     const [, opts] = mockFetch.mock.calls[0]
-    expect(opts.headers["Authorization"]).toBe("Bearer bearer-abc")
+    expect(opts.headers.Authorization).toBe("Bearer bearer-abc")
     expect(opts.headers["x-field-device-id"]).toBe("rf-test-0000001-0000002-0000003")
     expect(opts.headers["x-field-apk-version"]).toBe("3.3.0+44")
+  })
+
+  it("uses the deployed v1 API for mobile message lists and threads", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "valid-token"
+    const fetchMock = jest.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => ({ success: true, data: {} }),
+    })
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    await api.getMobileMessages()
+    await api.getMobileMessageThread("thread / 1")
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/messages?limit=50")
+    expect(fetchMock.mock.calls[1][0]).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/messages/thread%20%2F%201?limit=100")
+  })
+
+  it("does not revoke a valid session when a queued photo endpoint alone returns 401", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "active-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({ status: 401, ok: false })
+      .mockResolvedValueOnce({ status: 200, ok: true })
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    await expect(api.uploadPhoto({ filePath: "/tmp/evidence.jpg" })).rejects.toThrow("SESSION_EXPIRED")
+
+    expect(fetchMock.mock.calls[0][0]).toBe("https://app.leaddrivecrm.org/api/v1/mtm/photos")
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe("Bearer active-jwt")
+    expect(fetchMock.mock.calls[1][0]).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/bootstrap")
+    expect(client.token).toBe("active-jwt")
+    expect(handler).not.toHaveBeenCalled()
   })
 })
 
