@@ -18,7 +18,7 @@ import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
-type MoreRoute = "Messages" | "Visits" | "GpsHistory" | "Profile"
+type MoreRoute = "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
@@ -71,7 +71,20 @@ export default function MoreScreen() {
     : i18n.language.toLowerCase().startsWith("en")
       ? { title: "Team messages", body: "Read manager announcements and direct messages" }
       : { title: "Сообщения команды", body: "Объявления менеджера и личные сообщения" }
+  const notificationsCopy = i18n.language.toLowerCase().startsWith("az")
+    ? { title: "Bildirişlər", body: "Mesajlar, sorğu qərarları və müddət xatırlatmaları" }
+    : i18n.language.toLowerCase().startsWith("en")
+      ? { title: "Notifications", body: "Messages, request decisions and deadline reminders" }
+      : { title: "Уведомления", body: "Сообщения, решения по заявкам и напоминания о сроках" }
   const actions: MoreAction[] = [
+    {
+      route: "Notifications",
+      icon: "notifications-outline",
+      title: notificationsCopy.title,
+      body: notificationsCopy.body,
+      iconColor: fieldTheme.color.blue,
+      iconBackground: fieldTheme.color.blueSoft,
+    },
     {
       route: "Messages",
       icon: "chatbubble-ellipses-outline",
@@ -85,6 +98,9 @@ export default function MoreScreen() {
 
   const open = (route: MoreRoute) => {
     switch (route) {
+      case "Notifications":
+        navigation.navigate("Notifications")
+        break
       case "Messages":
         navigation.navigate("Messages")
         break
