@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useFocusEffect, useNavigation } from "@react-navigation/native"
+import { useNavigation } from "@react-navigation/native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
@@ -19,6 +19,7 @@ import { runMobileSync } from "../../services/sync-engine"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 
 type Message = {
   id: string
@@ -40,10 +41,12 @@ type Thread = {
 }
 
 const COPY = {
-  ru: { title: "Сообщения команды", back: "Назад", empty: "Новых сообщений пока нет", failed: "Не удалось загрузить сообщения", retry: "Повторить", unread: "Новое", acknowledge: "Подтвердить", acknowledged: "Подтверждено", loading: "Загружаем сообщения…" },
-  az: { title: "Komanda mesajları", back: "Geri", empty: "Hələ yeni mesaj yoxdur", failed: "Mesajları yükləmək alınmadı", retry: "Yenidən", unread: "Yeni", acknowledge: "Təsdiqlə", acknowledged: "Təsdiqlənib", loading: "Mesajlar yüklənir…" },
-  en: { title: "Team messages", back: "Back", empty: "There are no messages yet", failed: "Messages could not be loaded", retry: "Retry", unread: "New", acknowledge: "Acknowledge", acknowledged: "Acknowledged", loading: "Loading messages…" },
+  ru: { title: "Сообщения команды", back: "Назад", empty: "Новых сообщений пока нет", failed: "Не удалось загрузить сообщения", retry: "Повторить", unread: "Новое", unreadCount: (count: number) => `Непрочитано: ${count}`, acknowledge: "Подтвердить", acknowledged: "Подтверждено", loading: "Загружаем сообщения…" },
+  az: { title: "Komanda mesajları", back: "Geri", empty: "Hələ yeni mesaj yoxdur", failed: "Mesajları yükləmək alınmadı", retry: "Yenidən", unread: "Yeni", unreadCount: (count: number) => `Oxunmayıb: ${count}`, acknowledge: "Təsdiqlə", acknowledged: "Təsdiqlənib", loading: "Mesajlar yüklənir…" },
+  en: { title: "Team messages", back: "Back", empty: "There are no messages yet", failed: "Messages could not be loaded", retry: "Retry", unread: "New", unreadCount: (count: number) => `Unread: ${count}`, acknowledge: "Acknowledge", acknowledged: "Acknowledged", loading: "Loading messages…" },
 } as const
+
+const TEAM_MESSAGES_REFRESH_INTERVAL_MS = 30_000
 
 function language(value: string): keyof typeof COPY {
   if (value.toLowerCase().startsWith("az")) return "az"
@@ -64,6 +67,7 @@ export default function TeamMessagesScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
+  const [unreadCount, setUnreadCount] = useState<number | null>(null)
   const [busyMessageId, setBusyMessageId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -71,6 +75,9 @@ export default function TeamMessagesScreen() {
       const response = await api.getMobileMessages()
       if (!response.success) throw new Error("MESSAGES_LOAD_FAILED")
       setThreads(Array.isArray(response.data?.threads) ? response.data.threads : [])
+      setUnreadCount(Number.isInteger(response.data?.unread) && response.data.unread >= 0
+        ? response.data.unread
+        : null)
       setError(false)
     } catch (loadError: unknown) {
       if (!(loadError instanceof Error && loadError.message === "SESSION_EXPIRED")) setError(true)
@@ -80,9 +87,7 @@ export default function TeamMessagesScreen() {
     }
   }, [])
 
-  useFocusEffect(useCallback(() => {
-    void load()
-  }, [load]))
+  useAutoRefresh(useCallback(() => { load().catch(() => {}) }, [load]), TEAM_MESSAGES_REFRESH_INTERVAL_MS)
 
   const receipt = async (thread: Thread, type: "READ" | "ACKNOWLEDGED") => {
     const message = thread.lastMessage
@@ -108,7 +113,7 @@ export default function TeamMessagesScreen() {
 
   const openThread = (thread: Thread) => {
     setExpanded((current) => current === thread.id ? null : thread.id)
-    if (thread.unread) void receipt(thread, "READ")
+    if (thread.unread) receipt(thread, "READ").catch(() => {})
   }
 
   return (
@@ -118,9 +123,12 @@ export default function TeamMessagesScreen() {
           <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
         </Pressable>
         <Text style={styles.title}>{copy.title}</Text>
+        {unreadCount !== null && unreadCount > 0 ? (
+          <Text accessibilityRole="text" style={styles.unreadCount}>{copy.unreadCount(unreadCount)}</Text>
+        ) : null}
       </View>
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load() }} colors={[fieldTheme.color.primary]} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load().catch(() => {}) }} colors={[fieldTheme.color.primary]} />}
         contentContainerStyle={[styles.content, tablet && styles.contentTablet, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xxl) }]}
       >
         {loading ? (
@@ -129,7 +137,7 @@ export default function TeamMessagesScreen() {
           <View style={styles.state}>
             <Icon name="cloud-offline-outline" size={34} color={fieldTheme.color.amber} />
             <Text style={styles.stateText}>{copy.failed}</Text>
-            <Pressable accessibilityRole="button" onPress={() => { setLoading(true); void load() }} style={styles.retry}><Text style={styles.retryText}>{copy.retry}</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => { setLoading(true); load().catch(() => {}) }} style={styles.retry}><Text style={styles.retryText}>{copy.retry}</Text></Pressable>
           </View>
         ) : threads.length === 0 ? (
           <View style={styles.state}><Icon name="chatbubbles-outline" size={36} color={fieldTheme.color.primary} /><Text style={styles.stateText}>{copy.empty}</Text></View>
@@ -159,7 +167,7 @@ export default function TeamMessagesScreen() {
                     <Pressable
                       accessibilityRole="button"
                       disabled={!thread.needsAcknowledgement || busyMessageId === message.id}
-                      onPress={() => void receipt(thread, "ACKNOWLEDGED")}
+                      onPress={() => { receipt(thread, "ACKNOWLEDGED").catch(() => {}) }}
                       style={({ pressed }) => [styles.ackButton, !thread.needsAcknowledgement && styles.ackButtonDone, pressed && styles.pressed]}
                     >
                       {busyMessageId === message.id
@@ -183,6 +191,7 @@ const styles = StyleSheet.create({
   header: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.surfaceStrong },
   title: { flex: 1, color: fieldTheme.color.ink, fontSize: 21, lineHeight: 27, fontWeight: "900" },
+  unreadCount: { overflow: "hidden", borderRadius: 999, backgroundColor: fieldTheme.color.primarySoft, color: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs, fontSize: 11, lineHeight: 16, fontWeight: "900" },
   content: { width: "100%", maxWidth: 820, alignSelf: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.lg },
   contentTablet: { padding: fieldTheme.space.xl },
   state: { minHeight: 260, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md },
