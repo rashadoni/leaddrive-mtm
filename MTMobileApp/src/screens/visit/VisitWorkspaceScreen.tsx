@@ -27,6 +27,11 @@ import {
   type VisitWorkspace,
 } from "../../services/visit-workspace"
 import {
+  visitRoadmap,
+  visitRoadmapProgress,
+  type VisitRoadmapStep,
+} from "../../services/visit-roadmap"
+import {
   toPresentationCatalog,
   visitTimeStatus,
   type PresentationCatalog,
@@ -56,6 +61,21 @@ const COPY = {
     errorBody: "Проверьте интернет и попробуйте снова.",
     retry: "Попробовать снова",
     overview: "Коротко о визите",
+    roadmap: "Как прошёл визит",
+    roadmapProgress: (done: number, total: number) => `${done} из ${total} шагов`,
+    stepCheckIn: "Приход",
+    stepPresentation: "Презентация",
+    stepPhoto: "Фото",
+    stepSignature: "Подпись клиента",
+    stepTasks: "Задачи",
+    stepResult: "Результат",
+    stepCheckOut: "Уход",
+    stepOpen: "визит ещё идёт",
+    stepNotRequired: "не требовалось",
+    stepRequired: "обязательный шаг",
+    stepPhotos: (count: number) => `${count} фото`,
+    stepPresentations: (count: number) => `${count} показ`,
+    stepTaskCount: (done: number, total: number) => `${done} из ${total}`,
     address: "Адрес",
     contact: "Контакт",
     noAddress: "Адрес не указан",
@@ -105,6 +125,21 @@ const COPY = {
     errorBody: "İnterneti yoxlayın və yenidən cəhd edin.",
     retry: "Yenidən cəhd et",
     overview: "Ziyarət haqqında qısa məlumat",
+    roadmap: "Ziyarət necə keçdi",
+    roadmapProgress: (done: number, total: number) => `${total} addımdan ${done}`,
+    stepCheckIn: "Gəliş",
+    stepPresentation: "Təqdimat",
+    stepPhoto: "Foto",
+    stepSignature: "Müştərinin imzası",
+    stepTasks: "Tapşırıqlar",
+    stepResult: "Nəticə",
+    stepCheckOut: "Gediş",
+    stepOpen: "ziyarət davam edir",
+    stepNotRequired: "tələb olunmurdu",
+    stepRequired: "məcburi addım",
+    stepPhotos: (count: number) => `${count} foto`,
+    stepPresentations: (count: number) => `${count} baxış`,
+    stepTaskCount: (done: number, total: number) => `${total}-dən ${done}`,
     address: "Ünvan",
     contact: "Kontakt",
     noAddress: "Ünvan göstərilməyib",
@@ -154,6 +189,21 @@ const COPY = {
     errorBody: "Check your connection and try again.",
     retry: "Try again",
     overview: "Visit at a glance",
+    roadmap: "How the visit went",
+    roadmapProgress: (done: number, total: number) => `${done} of ${total} steps`,
+    stepCheckIn: "Arrival",
+    stepPresentation: "Presentation",
+    stepPhoto: "Photo",
+    stepSignature: "Customer signature",
+    stepTasks: "Tasks",
+    stepResult: "Result",
+    stepCheckOut: "Departure",
+    stepOpen: "visit still open",
+    stepNotRequired: "not required",
+    stepRequired: "required step",
+    stepPhotos: (count: number) => `${count} photos`,
+    stepPresentations: (count: number) => `${count} openings`,
+    stepTaskCount: (done: number, total: number) => `${done} of ${total}`,
     address: "Address",
     contact: "Contact",
     noAddress: "No address provided",
@@ -335,6 +385,24 @@ export default function VisitWorkspaceScreen() {
     )) ?? [],
     [data],
   )
+  const roadmap = data
+    ? visitRoadmap(data, {
+      checkIn: copy.stepCheckIn,
+      presentation: copy.stepPresentation,
+      photo: copy.stepPhoto,
+      signature: copy.stepSignature,
+      tasks: copy.stepTasks,
+      result: copy.stepResult,
+      checkOut: copy.stepCheckOut,
+      visitOpen: copy.stepOpen,
+      notRequired: copy.stepNotRequired,
+      required: copy.stepRequired,
+      photoCount: copy.stepPhotos,
+      presentationCount: copy.stepPresentations,
+      taskCount: copy.stepTaskCount,
+    }, formatTime)
+    : []
+  const roadmapProgress = visitRoadmapProgress(roadmap)
   const hasResult = Boolean(data?.outcome || data?.resultNotes || data?.notes)
   const hasTaskContent = (data?.tasks.length ?? 0) > 0 || taskRequirements.length > 0
   // Built by pushing, not filtered: COPY is `as const`, so a type predicate
@@ -464,14 +532,29 @@ export default function VisitWorkspaceScreen() {
                 />
               ) : null}
               <View style={styles.statGrid}>
-                <Stat icon="log-in-outline" label={t("visitWorkspace.fieldCheckIn")} value={formatTime(data.checkInAt)} />
-                <Stat icon="log-out-outline" label={t("visitWorkspace.fieldCheckOut")} value={formatTime(data.checkOutAt)} />
                 <Stat
                   icon="time-outline"
                   label={t("visitWorkspace.fieldDuration")}
                   value={data.duration != null ? t("visitWorkspace.minutesTemplate", { count: data.duration }) : "—"}
                 />
                 <Stat icon="images-outline" label={t("visitWorkspace.actionPhoto")} value={String(data.photosCount)} />
+              </View>
+
+              {/*
+                The road of the visit. Arrival, what happened at the customer,
+                departure — green where there is evidence, red where the
+                policy asked for a step and nothing was recorded, pale where
+                this visit never asked for it. Reading four cards to learn
+                whether the agent did everything is what this replaces.
+              */}
+              <View style={styles.roadmapHeader}>
+                <Text style={styles.roadmapTitle}>{copy.roadmap}</Text>
+                <Text style={styles.roadmapProgress}>{copy.roadmapProgress(roadmapProgress.done, roadmapProgress.total)}</Text>
+              </View>
+              <View style={styles.roadmap}>
+                {roadmap.map((step, index) => (
+                  <RoadmapStep key={step.key} step={step} last={index === roadmap.length - 1} />
+                ))}
               </View>
             </View> : null}
 
@@ -735,6 +818,33 @@ function Stat({ icon, label, value }: { icon: string; label: string; value: stri
   )
 }
 
+const ROADMAP_STATE = {
+  done: { color: fieldTheme.color.success, background: fieldTheme.color.successSoft, icon: "checkmark" },
+  missing: { color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft, icon: "close" },
+  skipped: { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong, icon: "remove" },
+} as const
+
+function RoadmapStep({ step, last }: { step: VisitRoadmapStep; last: boolean }) {
+  const visual = ROADMAP_STATE[step.state]
+  return (
+    <View style={styles.roadmapRow} accessibilityLabel={`${step.title}: ${step.detail ?? ""}`}>
+      <View style={styles.roadmapRail}>
+        <View style={[styles.roadmapDot, { backgroundColor: visual.background, borderColor: visual.color }]}>
+          <Icon name={visual.icon} size={15} color={visual.color} />
+        </View>
+        {last ? null : <View style={styles.roadmapLine} />}
+      </View>
+      <View style={styles.roadmapCopy}>
+        <Text style={[styles.roadmapStepTitle, step.state === "skipped" && styles.roadmapStepTitleMuted]} numberOfLines={1}>
+          {step.title}
+        </Text>
+        {step.detail ? <Text style={styles.roadmapStepDetail} numberOfLines={1}>{step.detail}</Text> : null}
+      </View>
+      <Icon name={step.icon} size={17} color={fieldTheme.color.inkMuted} />
+    </View>
+  )
+}
+
 function EmptyBlock({ icon, title, body }: { icon: string; title: string; body?: string }) {
   return (
     <View style={styles.emptyBlock}>
@@ -791,10 +901,22 @@ const styles = StyleSheet.create({
   // a column four screens long. Three to a row, neutral like the card they
   // sit in.
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
-  stat: { minWidth: 96, flexGrow: 1, flexBasis: "30%", minHeight: 62, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
+  stat: { minWidth: 96, flexGrow: 1, flexBasis: "45%", minHeight: 62, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   statLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", marginTop: 4 },
   statValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
   pendingLine: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
+  roadmapHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
+  roadmapTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  roadmapProgress: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800" },
+  roadmap: { marginTop: fieldTheme.space.sm },
+  roadmapRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, minHeight: 44 },
+  roadmapRail: { width: 28, alignItems: "center" },
+  roadmapDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  roadmapLine: { flex: 1, width: 2, minHeight: 14, backgroundColor: fieldTheme.color.border, marginVertical: 2 },
+  roadmapCopy: { flex: 1, minWidth: 0, paddingBottom: fieldTheme.space.sm },
+  roadmapStepTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  roadmapStepTitleMuted: { color: fieldTheme.color.inkMuted, fontWeight: "700" },
+  roadmapStepDetail: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, marginTop: 1 },
   columns: { gap: fieldTheme.space.lg },
   columnsTablet: { flexDirection: "row", alignItems: "flex-start" },
   column: { flex: 1, gap: fieldTheme.space.lg, minWidth: 0 },
