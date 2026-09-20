@@ -337,10 +337,11 @@ export default function VisitWorkspaceScreen() {
   )
   const hasResult = Boolean(data?.outcome || data?.resultNotes || data?.notes)
   const hasTaskContent = (data?.tasks.length ?? 0) > 0 || taskRequirements.length > 0
-  const pendingParts = [
-    hasResult ? null : copy.pendingResult,
-    hasTaskContent ? null : copy.pendingTasks,
-  ].filter((part): part is string => Boolean(part))
+  // Built by pushing, not filtered: COPY is `as const`, so a type predicate
+  // narrowing to `string` is wider than the literal union the array holds.
+  const pendingParts: string[] = []
+  if (!hasResult) pendingParts.push(copy.pendingResult)
+  if (!hasTaskContent) pendingParts.push(copy.pendingTasks)
   const visibleSection = data?.status === "CHECKED_IN" ? section : "summary"
   const title = data?.customer.name || name || copy.eyebrow
   const statusVisual = visitStatusVisual(data?.status ?? "")
