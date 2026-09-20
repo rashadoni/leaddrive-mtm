@@ -409,6 +409,54 @@ describe("ApiClient — request error handling", () => {
     expect(handler).toHaveBeenCalledWith("REVOKED")
   })
 
+  it("late 401 from an older session does not erase a newer login", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "old-jwt"
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    let resolveFetch!: (response: unknown) => void
+    ;(global.fetch as jest.Mock) = jest.fn().mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const oldRequest = client.request("/mobile/bootstrap")
+    await Promise.resolve()
+    client.token = "new-jwt"
+    resolveFetch({
+      status: 401,
+      ok: false,
+      json: async () => ({ error: "Unauthorized" }),
+    })
+
+    await expect(oldRequest).rejects.toThrow("SESSION_EXPIRED")
+    expect(client.token).toBe("new-jwt")
+    expect(handler).not.toHaveBeenCalled()
+  })
+
+  it("late login 401 does not erase a session established by another login", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = null
+    const handler = jest.fn()
+    client._onUnauthorized = handler
+    let resolveFetch!: (response: unknown) => void
+    ;(global.fetch as jest.Mock) = jest.fn().mockReturnValue(new Promise((resolve) => {
+      resolveFetch = resolve
+    }))
+
+    const rejectedLogin = client.request("/mobile/auth", { method: "POST" })
+    await Promise.resolve()
+    client.token = "new-jwt"
+    resolveFetch({
+      status: 401,
+      ok: false,
+      json: async () => ({ error: "Invalid credentials" }),
+    })
+
+    await expect(rejectedLogin).rejects.toThrow("SESSION_EXPIRED")
+    expect(client.token).toBe("new-jwt")
+    expect(handler).not.toHaveBeenCalled()
+  })
+
   it("throws the server error message on non-ok response", async () => {
     client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
     ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({

@@ -271,13 +271,17 @@ class ApiClient {
     if (!this.baseUrl) throw new Error("Server not configured")
 
     const url = `${this.baseForApiVersion(apiVersion)}${path}`
+    // Bind the response to the session that actually issued this request.
+    // Reading `this.token` only after fetch resolves lets a late 401 from an
+    // older request erase a newer login that completed in the meantime.
+    const requestToken = this.token
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     }
 
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`
+    if (requestToken) {
+      headers.Authorization = `Bearer ${requestToken}`
       // Device identity is deliberately opaque and installation-scoped; it is
       // never derived from the logged-in agent. If AsyncStorage is temporarily
       // unavailable, keep v1 compatible by omitting only the cohort header.
@@ -306,14 +310,13 @@ class ApiClient {
       const data = await res.json()
 
       if (res.status === 401) {
-        // Gate the revoked-banner callback on a token being present:
-        // a mid-session revocation ALWAYS has a token; the login request
-        // does not (token is set only AFTER login succeeds). So login-401
-        // (wrong password / agent-not-found) stays as a normal credentials
-        // error and never surfaces the "access revoked" banner.
-        const hadToken = !!this.token
-        await this.logout()
-        if (hadToken) {
+        // Revoke only the exact session that received this 401. A login request
+        // has no requestToken, and an old in-flight request can finish after a
+        // fresh login has already replaced this.token. Neither response may
+        // clear that newer session or show a false "access revoked" banner.
+        const rejectsCurrentSession = !!requestToken && this.token === requestToken
+        if (rejectsCurrentSession) {
+          await this.logout()
           this._onUnauthorized?.(REVOKED_REASON)
         }
         throw new Error("SESSION_EXPIRED")
