@@ -139,9 +139,17 @@ describe("notifications screen wiring", () => {
     expect(navigator).toContain('<MoreStack.Screen name="Notifications" component={NotificationsScreen} />')
   })
 
+  /**
+   * The old wording said push was off, full stop — true when nothing could
+   * send, a lie the day the server could. The claim now follows the phone's
+   * own last registration, and the one state that used to be invisible —
+   * address registered, server with no key — has words of its own.
+   */
   it("never claims a push it cannot send", () => {
     expect(screen).toContain("pushNote")
-    expect(screen).toContain("Пуш-уведомления от сервера пока не включены")
+    expect(screen).toContain("Адрес есть, но сервер пока не отправляет push.")
+    expect(screen).toContain("Google не выдал этому телефону адрес")
+    expect(screen).toContain("{pushLine}")
   })
 
   it("survives a source that fails instead of emptying the list", () => {
