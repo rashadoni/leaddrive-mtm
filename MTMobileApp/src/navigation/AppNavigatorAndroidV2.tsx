@@ -33,6 +33,7 @@ import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
 import TeamMessagesScreen from "../screens/more/TeamMessagesScreen"
+import NotificationsScreen from "../screens/more/NotificationsScreen"
 import TodayScreen from "../screens/today/TodayScreen"
 import RouteSelfPlanningWorkspace from "../screens/route/RouteSelfPlanningWorkspace.android"
 import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.android"
@@ -64,6 +65,7 @@ export type RootStackParamList = {
 
 export type MoreStackParamList = {
   MoreHome: undefined
+  Notifications: undefined
   Messages: undefined
   Visits: undefined
   GpsHistory: undefined
@@ -113,6 +115,7 @@ function MoreStackNavigator() {
   return (
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
       <MoreStack.Screen name="MoreHome" component={MoreScreen} />
+      <MoreStack.Screen name="Notifications" component={NotificationsScreen} />
       <MoreStack.Screen name="Messages" component={TeamMessagesScreen} />
       <MoreStack.Screen name="Visits" component={VisitScreen} />
       <MoreStack.Screen name="GpsHistory" component={GpsHistoryScreen} />
