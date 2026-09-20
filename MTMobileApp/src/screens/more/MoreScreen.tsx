@@ -18,13 +18,15 @@ import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
-type MoreRoute = "Visits" | "GpsHistory" | "Profile"
+type MoreRoute = "Messages" | "Visits" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
   icon: string
-  titleKey: string
-  bodyKey: string
+  titleKey?: string
+  bodyKey?: string
+  title?: string
+  body?: string
   iconColor: string
   iconBackground: string
 }
@@ -57,17 +59,35 @@ const COMMON_ACTIONS: MoreAction[] = [
 ]
 
 export default function MoreScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<MoreStackParamList>>()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
   const tablet = isTabletWidth(width)
-  const actions = COMMON_ACTIONS
+  const messagesCopy = i18n.language.toLowerCase().startsWith("az")
+    ? { title: "Komanda mesajları", body: "Menecerin elanlarını və şəxsi mesajlarını oxuyun" }
+    : i18n.language.toLowerCase().startsWith("en")
+      ? { title: "Team messages", body: "Read manager announcements and direct messages" }
+      : { title: "Сообщения команды", body: "Объявления менеджера и личные сообщения" }
+  const actions: MoreAction[] = [
+    {
+      route: "Messages",
+      icon: "chatbubble-ellipses-outline",
+      title: messagesCopy.title,
+      body: messagesCopy.body,
+      iconColor: fieldTheme.color.primaryStrong,
+      iconBackground: fieldTheme.color.primarySoft,
+    },
+    ...COMMON_ACTIONS,
+  ]
 
   const open = (route: MoreRoute) => {
     switch (route) {
+      case "Messages":
+        navigation.navigate("Messages")
+        break
       case "Visits":
         navigation.navigate("Visits")
         break
@@ -99,8 +119,8 @@ export default function MoreScreen() {
         </View>
         <View style={styles.actionGrid}>
           {actions.map((action) => {
-            const title = t(action.titleKey)
-            const body = t(action.bodyKey)
+            const title = action.title ?? t(action.titleKey!)
+            const body = action.body ?? t(action.bodyKey!)
             return (
               <Pressable
                 key={action.route}

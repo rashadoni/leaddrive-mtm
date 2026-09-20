@@ -37,7 +37,6 @@ import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { checkInRadiusMeters, FALLBACK_CHECK_IN_RADIUS_METERS } from "../../lib/check-in-radius"
-import { useHintsStore } from "../../store/hints"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
@@ -62,6 +61,7 @@ import {
   type RouteLoadIssue,
 } from "./route-screen-state"
 import { hasUsableCoordinates, IMPLAUSIBLE_DISTANCE_METERS } from "../visit/visit-checkin-model"
+import { toVisitWorkspace, type VisitWorkspace } from "../../services/visit-workspace"
 
 interface RoutePoint {
   id: string
@@ -115,7 +115,12 @@ const ROUTE_COPY = {
     waitingForSync: "Ожидает отправки",
     photos: "Фото: {{count}}",
     visitTimer: "Визит идёт {{minutes}} мин",
-    openWorkspace: "Задачи и презентации",
+    visitActions: "Что сделать во время визита",
+    presentations: "Презентация",
+    visitTasks: "Задачи визита",
+    done: "Готово",
+    requiredRemaining: "Обязательных действий осталось: {{count}}",
+    remainingStops: "Остальные точки",
     visitWarning: "До 30 минут осталось не более 5 минут.",
     visitOvertime: "Прошло 30 минут. Завершите визит, если работа закончена.",
     recommended: "Рекомендуем идти по порядку. Следующая: {{name}}.",
@@ -196,7 +201,12 @@ const ROUTE_COPY = {
     waitingForSync: "Göndərilmə gözlənilir",
     photos: "Foto: {{count}}",
     visitTimer: "Ziyarət {{minutes}} dəqiqədir davam edir",
-    openWorkspace: "Tapşırıqlar və təqdimatlar",
+    visitActions: "Ziyarət zamanı nə etmək lazımdır",
+    presentations: "Təqdimat",
+    visitTasks: "Ziyarət tapşırıqları",
+    done: "Hazırdır",
+    requiredRemaining: "Mütləq hərəkət qalıb: {{count}}",
+    remainingStops: "Qalan nöqtələr",
     visitWarning: "30 dəqiqəyə 5 dəqiqədən az qalıb.",
     visitOvertime: "30 dəqiqə keçib. İş bitibsə, ziyarəti tamamlayın.",
     recommended: "Ardıcıllıqla getmək məsləhətdir. Növbəti: {{name}}.",
@@ -277,7 +287,12 @@ const ROUTE_COPY = {
     waitingForSync: "Waiting to send",
     photos: "Photos: {{count}}",
     visitTimer: "Visit active for {{minutes}} min",
-    openWorkspace: "Tasks & presentations",
+    visitActions: "What to do during this visit",
+    presentations: "Presentation",
+    visitTasks: "Visit tasks",
+    done: "Done",
+    requiredRemaining: "Required actions left: {{count}}",
+    remainingStops: "Remaining stops",
     visitWarning: "The 30-minute mark is less than 5 minutes away.",
     visitOvertime: "30 minutes have passed. Finish the visit if the work is done.",
     recommended: "Following the planned order is recommended. Next: {{name}}.",
@@ -454,6 +469,41 @@ function ActionButton({
       <Text style={[styles.actionButtonText, tone === "secondary" && styles.actionButtonTextSecondary]}>
         {label}
       </Text>
+    </Pressable>
+  )
+}
+
+function VisitActionButton({
+  label,
+  detail,
+  icon,
+  done = false,
+  onPress,
+  disabled = false,
+}: {
+  label: string
+  detail?: string
+  icon: string
+  done?: boolean
+  onPress: () => void
+  disabled?: boolean
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[label, detail].filter(Boolean).join(". ")}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.visitAction, done && styles.visitActionDone, disabled && styles.buttonDisabled, pressed && !disabled && styles.buttonPressed]}
+    >
+      <View style={[styles.visitActionIcon, done && styles.visitActionIconDone]}>
+        <Icon name={done ? "checkmark" : icon} size={20} color={done ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
+      </View>
+      <View style={styles.visitActionCopy}>
+        <Text style={[styles.visitActionLabel, done && styles.visitActionLabelDone]}>{label}</Text>
+        {detail ? <Text style={styles.visitActionDetail}>{detail}</Text> : null}
+      </View>
+      <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
     </Pressable>
   )
 }
@@ -728,30 +778,6 @@ function StopRow({
   )
 }
 
-function InlineHint({ text, dismissLabel }: { text: string; dismissLabel: string }) {
-  const enabled = useHintsStore((state) => state.enabled)
-  const dismissed = useHintsStore((state) => state.dismissed)
-  const hydrated = useHintsStore((state) => state.hydrated)
-  const dismiss = useHintsStore((state) => state.dismiss)
-  const id = "route.pullRefresh"
-  if (!hydrated || !enabled || dismissed.includes(id)) return null
-  return (
-    <View style={styles.hint}>
-      <Icon name="information-circle-outline" size={22} color={fieldTheme.color.blue} />
-      <Text style={styles.hintText}>{text}</Text>
-      <Pressable
-        onPress={() => dismiss(id)}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel={dismissLabel}
-        style={styles.hintClose}
-      >
-        <Icon name="close" size={20} color={fieldTheme.color.inkMuted} />
-      </Pressable>
-    </View>
-  )
-}
-
 /** «Planı dəyiş» next to the stop list of today's own published route. */
 function ChangePlanButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
@@ -769,19 +795,6 @@ function ChangePlanButton({ label, onPress }: { label: string; onPress: () => vo
   )
 }
 
-function OwnRoutePlanningCard({ copy, onPress }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; onPress: () => void }) {
-  return (
-    <View style={styles.ownRouteCard}>
-      <View style={styles.cardHeading}>
-        <Icon name="calendar-outline" size={23} color={fieldTheme.color.primaryStrong} />
-        <Text style={styles.cardTitle}>{copy.planOwnRouteTitle}</Text>
-      </View>
-      <Text style={styles.cardBody}>{copy.planOwnRouteBody}</Text>
-      <ActionButton label={copy.planOwnRoute} icon="add-circle-outline" onPress={onPress} tone="secondary" />
-    </View>
-  )
-}
-
 function PointActionPanel({
   point,
   nextPoint,
@@ -794,7 +807,9 @@ function PointActionPanel({
   onNavigate,
   onCheckIn,
   onPhoto,
-  onOpenWorkspace,
+  workspace,
+  onOpenPresentations,
+  onOpenTasks,
   onCheckOut,
   signature,
   onSignature,
@@ -810,14 +825,31 @@ function PointActionPanel({
   onNavigate: (point: RoutePoint) => void
   onCheckIn: (point: RoutePoint) => void
   onPhoto: () => void
-  onOpenWorkspace: () => void
+  workspace: VisitWorkspace | null
+  onOpenPresentations: () => void
+  onOpenTasks: () => void
   onCheckOut: () => void
   signature: { visible: boolean; required: boolean; signed: boolean }
   onSignature: () => void
 }) {
   if (activeVisit) {
     const pending = activeVisit.pendingCheckOut
-    const photoFirst = photoCount === 0
+    const required = workspace?.requirements.filter((requirement) => (
+      requirement.mode === "REQUIRED"
+      && requirement.actionKey !== "CHECKLIST"
+      && requirement.actionKey !== "NEXT_ACTION"
+    )) ?? []
+    const requiredRemaining = required.filter((requirement) => !requirement.done && !requirement.waived)
+    const requiredKeys = new Set(required.map((requirement) => requirement.actionKey))
+    const presentationDone = Boolean(workspace?.presentationSessions.length) || required.find((requirement) => requirement.actionKey === "PRESENTATION")?.done === true
+    const taskCount = workspace?.tasks.length ?? 0
+    const taskDone = workspace?.tasks.filter((task) => task.status === "COMPLETED").length ?? 0
+    const taskRequirements = required.filter((requirement) => !["PRESENTATION", "PHOTO", "SIGNATURE"].includes(requirement.actionKey))
+    const taskRequirementsDone = taskRequirements.filter((requirement) => requirement.done || requirement.waived).length
+    const taskStepTotal = taskCount + taskRequirements.length
+    const taskStepDone = taskDone + taskRequirementsDone
+    const showPhoto = workspace === null || requiredKeys.has("PHOTO") || photoCount > 0
+    const showSignature = signature.visible && (signature.required || signature.signed)
     return (
       <View style={styles.actionPanel}>
         <View style={styles.actionEyebrowRow}>
@@ -850,35 +882,52 @@ function PointActionPanel({
             </Text>
           </View>
         ) : null}
+        <Text style={styles.visitActionsTitle}>{copy.visitActions}</Text>
         {pending ? (
           <ActionButton label={copy.waitingForSync} icon="cloud-upload-outline" onPress={() => {}} disabled />
-        ) : photoFirst ? (
-          <>
-            <ActionButton label={copy.openWorkspace} icon="easel-outline" onPress={onOpenWorkspace} tone="secondary" />
-            <ActionButton label={copy.takePhoto} icon="camera" onPress={onPhoto} disabled={mutating} />
-            <ActionButton label={copy.finishVisit} icon="checkmark-circle-outline" onPress={onCheckOut} disabled={mutating} tone="secondary" />
-          </>
         ) : (
           <>
-            <ActionButton label={copy.openWorkspace} icon="easel-outline" onPress={onOpenWorkspace} tone="secondary" />
+            <VisitActionButton label={copy.presentations} icon="easel-outline" done={presentationDone} onPress={onOpenPresentations} />
+            {taskStepTotal > 0 ? (
+              <VisitActionButton
+                label={copy.visitTasks}
+                detail={`${taskStepDone} / ${taskStepTotal}`}
+                icon="checkbox-outline"
+                done={taskStepTotal > 0 && taskStepDone === taskStepTotal}
+                onPress={onOpenTasks}
+              />
+            ) : null}
+            {showPhoto ? (
+              <VisitActionButton
+                label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
+                detail={photoCount > 0 ? copy.done : undefined}
+                icon="camera-outline"
+                done={photoCount > 0}
+                onPress={onPhoto}
+                disabled={mutating}
+              />
+            ) : null}
+            {showSignature ? (
+              <VisitActionButton
+                label={signature.required ? copy.takeSignatureRequired : copy.takeSignature}
+                detail={signature.signed ? copy.done : undefined}
+                icon="create-outline"
+                done={signature.signed}
+                onPress={onSignature}
+                disabled={mutating}
+              />
+            ) : null}
+            {requiredRemaining.length > 0 ? (
+              <Text style={styles.requiredRemaining}>{renderTemplate(copy.requiredRemaining, { count: requiredRemaining.length })}</Text>
+            ) : null}
             <ActionButton
               label={mutating ? copy.finishingVisit : copy.finishVisit}
               icon={mutating ? "hourglass-outline" : "checkmark-circle"}
               onPress={onCheckOut}
-              disabled={mutating}
+              disabled={mutating || requiredRemaining.length > 0}
             />
-            <ActionButton label={copy.takeAnotherPhoto} icon="camera-outline" onPress={onPhoto} disabled={mutating} tone="secondary" />
           </>
         )}
-        {!pending && signature.visible && !signature.signed ? (
-          <ActionButton
-            label={signature.required ? copy.takeSignatureRequired : copy.takeSignature}
-            icon="create-outline"
-            onPress={onSignature}
-            disabled={mutating}
-            tone="secondary"
-          />
-        ) : null}
       </View>
     )
   }
@@ -990,6 +1039,7 @@ export default function RouteScreen() {
   const [phonePanelVisible, setPhonePanelVisible] = useState(false)
   const [navigationStartedFor, setNavigationStartedFor] = useState<string | null>(null)
   const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
+  const [activeWorkspace, setActiveWorkspace] = useState<VisitWorkspace | null>(null)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
   const [cameraVisible, setCameraVisible] = useState(false)
@@ -1027,6 +1077,25 @@ export default function RouteScreen() {
       } catch {}
     }
   }, [])
+
+  const fetchActiveWorkspace = useCallback(async (visitId?: string) => {
+    if (!visitId) {
+      setActiveWorkspace(null)
+      return
+    }
+    try {
+      const response = await api.getVisitWorkspace(visitId)
+      if (response.success && response.data?.visit) setActiveWorkspace(toVisitWorkspace(response.data.visit))
+    } catch {
+      // The active visit card remains usable offline; the server will still
+      // enforce any required evidence when checkout is attempted.
+    }
+  }, [])
+
+  useEffect(() => {
+    setActiveWorkspace(null)
+    void fetchActiveWorkspace(activeVisit?.id)
+  }, [activeVisit?.id, fetchActiveWorkspace])
 
   useEffect(() => {
     if (!activeVisit) {
@@ -1145,7 +1214,8 @@ export default function RouteScreen() {
     useCallback(() => {
       fetchRoute()
       fetchActiveVisit().catch(() => {}).then(() => setActiveVisitKnown(true))
-    }, [fetchRoute, fetchActiveVisit]),
+      fetchActiveWorkspace(activeVisit?.id).catch(() => {})
+    }, [activeVisit?.id, fetchRoute, fetchActiveVisit, fetchActiveWorkspace]),
   )
 
   // The action panel waits for the workday store (see routeActionPanelState).
@@ -1159,6 +1229,12 @@ export default function RouteScreen() {
   const sortedPoints = useMemo(
     () => route?.points ? [...route.points].sort((left, right) => left.orderIndex - right.orderIndex) : [],
     [route?.points],
+  )
+  const displayedPoints = useMemo(
+    () => activeVisit?.routePointId
+      ? sortedPoints.filter((point) => point.id !== activeVisit.routePointId)
+      : sortedPoints,
+    [activeVisit?.routePointId, sortedPoints],
   )
   const totalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0
   const visitedPoints = sortedPoints.length > 0
@@ -1197,6 +1273,7 @@ export default function RouteScreen() {
     setRefreshing(true)
     fetchRoute()
     fetchActiveVisit()
+    fetchActiveWorkspace(activeVisit?.id)
   }
 
   const handlePointPress = (point: RoutePoint) => {
@@ -1592,7 +1669,9 @@ export default function RouteScreen() {
       onNavigate={handleNavigate}
       onCheckIn={handleCheckIn}
       onPhoto={() => setCameraVisible(true)}
-      onOpenWorkspace={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisit.customer?.name })}
+      workspace={activeWorkspace}
+      onOpenPresentations={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisit.customer?.name, section: "presentations" })}
+      onOpenTasks={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisit.customer?.name, section: "tasks" })}
       onCheckOut={handleCheckOut}
       signature={signature}
       onSignature={signature.openPad}
@@ -1691,24 +1770,24 @@ export default function RouteScreen() {
           {header}
           <View style={styles.tabletTop}>
             <ConnectionBanner mode={presentation.banner} copy={copy} />
-            {route ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
-            {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
+            {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
+            {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
           </View>
           <View style={styles.tabletBody}>
             <View style={styles.tabletListPane}>
               <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
-                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+                <Text style={styles.sectionTitle}>{activeVisit ? copy.remainingStops : t("route.pointsSection")}</Text>
                 <View style={styles.sectionHeadingEnd}>
-                  {changePlanAction}
-                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
+                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
                 </View>
               </View>
+              {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
               <View style={styles.tabletListContent}>
-                {sortedPoints.length === 0 ? emptyState : sortedPoints.map((item, index) => (
+                {displayedPoints.length === 0 ? emptyState : displayedPoints.map((item) => (
                   <StopRow
                     key={item.id}
                     point={item}
-                    index={index}
+                    index={item.orderIndex}
                     selected={focusPoint?.id === item.id}
                     recommended={nextPoint?.id === item.id}
                     onPress={() => handlePointPress(item)}
@@ -1726,10 +1805,6 @@ export default function RouteScreen() {
                   <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
                 </View>
               ) : actionPanel}
-              {canPlanOwnRoutes && route ? (
-                <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
-              ) : null}
-              {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
             </View>
           </View>
         </ScrollView>
@@ -1750,7 +1825,7 @@ export default function RouteScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={sortedPoints}
+        data={displayedPoints}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.phoneContent, { paddingBottom: tabBarPadding }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
@@ -1759,8 +1834,8 @@ export default function RouteScreen() {
             {header}
             <View style={styles.phoneMain}>
               <ConnectionBanner mode={presentation.banner} copy={copy} />
-              {route ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
-              {route ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : emptyState}
+              {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
+              {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : !route ? emptyState : null}
               {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
                 <View style={styles.completeCard}>
                   <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
@@ -1768,23 +1843,25 @@ export default function RouteScreen() {
                   <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
                 </View>
               ) : route ? actionPanel : null}
-              {sortedPoints.length > 0 ? (
-                <View style={styles.sectionHeading}>
-                  <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                  <View style={styles.sectionHeadingEnd}>
-                    {changePlanAction}
-                    <Text style={styles.sectionCount}>{t("route.stopsCount", { count: totalPoints })}</Text>
+              {displayedPoints.length > 0 ? (
+                <>
+                  <View style={styles.sectionHeading}>
+                    <Text style={styles.sectionTitle}>{activeVisit ? copy.remainingStops : t("route.pointsSection")}</Text>
+                    <View style={styles.sectionHeadingEnd}>
+                      <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
+                    </View>
                   </View>
-                </View>
+                  {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
+                </>
               ) : null}
             </View>
           </>
         }
-        renderItem={({ item, index }) => (
+        renderItem={({ item }) => (
           <View style={styles.phoneRowWrap}>
             <StopRow
               point={item}
-              index={index}
+              index={item.orderIndex}
               selected={focusPoint?.id === item.id}
               recommended={nextPoint?.id === item.id}
               onPress={() => handlePointPress(item)}
@@ -1793,16 +1870,7 @@ export default function RouteScreen() {
             />
           </View>
         )}
-        ListFooterComponent={
-          <View style={styles.phoneFooter}>
-            {canPlanOwnRoutes && route ? (
-              <OwnRoutePlanningCard copy={copy} onPress={() => navigation.navigate("PlanningBuilder")} />
-            ) : null}
-            {/* Both sentences are about a route: the list to pull and its green
-                panel. Without one, the hint offered the refresh B9 took away. */}
-            {route ? <InlineHint text={copy.hint} dismissLabel={copy.dismissHint} /> : null}
-          </View>
-        }
+        ListFooterComponent={<View style={styles.phoneFooter} />}
       />
 
       <Modal visible={phonePanelVisible} transparent animationType="slide" onRequestClose={() => setPhonePanelVisible(false)}>
@@ -1991,6 +2059,16 @@ const styles = StyleSheet.create({
   visitTimeNoticeOvertime: { backgroundColor: fieldTheme.color.dangerSoft },
   visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
   visitTimeNoticeTextOvertime: { color: fieldTheme.color.danger },
+  visitActionsTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "900", marginTop: fieldTheme.space.xs },
+  visitAction: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
+  visitActionDone: { borderColor: "#A9D9CA", backgroundColor: fieldTheme.color.successSoft },
+  visitActionIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  visitActionIconDone: { backgroundColor: fieldTheme.color.success },
+  visitActionCopy: { flex: 1, minWidth: 0 },
+  visitActionLabel: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  visitActionLabelDone: { color: fieldTheme.color.success },
+  visitActionDetail: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  requiredRemaining: { color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
   detailFacts: { gap: fieldTheme.space.sm },
   detailFact: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   detailFactText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "600" },
@@ -2021,6 +2099,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
   sectionCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   sectionHeadingEnd: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, flexShrink: 1 },
+  planActionRow: { alignItems: "flex-start", marginBottom: fieldTheme.space.md },
   changePlanButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
   changePlanText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   stopRow: {

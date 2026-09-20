@@ -28,6 +28,10 @@ describe("today-state", () => {
       visitedPoints: 1,
       remainingPoints: 2,
       nextPoint: { id: "p2", customer: { name: "Clinic B" } },
+      points: [
+        { id: "p1", orderIndex: 1, status: "VISITED", customer: { name: "Clinic A" } },
+        { id: "p2", orderIndex: 2, status: "PLANNED", customer: { name: "Clinic B" } },
+      ],
     })
   })
 

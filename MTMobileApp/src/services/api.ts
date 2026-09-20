@@ -794,6 +794,14 @@ class ApiClient {
     return this.request("/mobile/products", { signal })
   }
 
+  async getMobileMessages(signal?: AbortSignal) {
+    return this.request("/mobile/messages?limit=50", { signal }, 20_000, 2)
+  }
+
+  async getMobileMessageThread(threadId: string, signal?: AbortSignal) {
+    return this.request(`/mobile/messages/${encodeURIComponent(threadId)}?limit=100`, { signal }, 20_000, 2)
+  }
+
   async startPresentationSession(data: {
     clientSessionId: string
     visitId: string

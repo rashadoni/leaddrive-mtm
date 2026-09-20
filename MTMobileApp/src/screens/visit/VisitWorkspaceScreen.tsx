@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useNavigation, useRoute } from "@react-navigation/native"
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native"
 import type { RouteProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -44,6 +44,9 @@ const COPY = {
   ru: {
     eyebrow: "Итог визита",
     subtitle: "Здесь видно, когда прошёл визит, какой результат сохранён и что было выполнено.",
+    activeEyebrow: "Текущий визит",
+    presentationSubtitle: "Выберите презентацию продукта и покажите её клиенту.",
+    tasksSubtitle: "Выполните назначенные задачи. Галочка появится после сохранения результата.",
     back: "Назад",
     loadingTitle: "Загружаем итог визита",
     loadingBody: "Проверяем время, результат и обязательные действия.",
@@ -90,6 +93,9 @@ const COPY = {
   az: {
     eyebrow: "Ziyarətin yekunu",
     subtitle: "Ziyarətin vaxtını, saxlanmış nəticəni və tamamlanan addımları burada görün.",
+    activeEyebrow: "Cari ziyarət",
+    presentationSubtitle: "Məhsul təqdimatını seçin və müştəriyə göstərin.",
+    tasksSubtitle: "Təyin olunmuş tapşırıqları tamamlayın. Nəticə saxlananda işarə görünəcək.",
     back: "Geri",
     loadingTitle: "Ziyarətin yekunu yüklənir",
     loadingBody: "Vaxt, nəticə və tələb olunan addımlar yoxlanılır.",
@@ -136,6 +142,9 @@ const COPY = {
   en: {
     eyebrow: "Visit summary",
     subtitle: "See when the visit happened, what result was saved and which steps were completed.",
+    activeEyebrow: "Current visit",
+    presentationSubtitle: "Choose a product presentation and show it to the customer.",
+    tasksSubtitle: "Complete assigned tasks. A check appears after the result is saved.",
     back: "Back",
     loadingTitle: "Loading the visit summary",
     loadingBody: "Checking timing, results and required actions.",
@@ -264,7 +273,7 @@ export default function VisitWorkspaceScreen() {
   const short = isShortWindow(height)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const copy = COPY[languageFor(i18n.language)]
-  const { visitId, name } = route.params
+  const { visitId, name, section = "summary" } = route.params
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
 
   const [data, setData] = useState<VisitWorkspace | null>(null)
@@ -292,9 +301,9 @@ export default function VisitWorkspaceScreen() {
     }
   }, [visitId])
 
-  useEffect(() => {
-    fetchWorkspace()
-  }, [fetchWorkspace])
+  useFocusEffect(useCallback(() => {
+    void fetchWorkspace()
+  }, [fetchWorkspace]))
 
   useEffect(() => {
     if (data?.status !== "CHECKED_IN") return
@@ -319,10 +328,14 @@ export default function VisitWorkspaceScreen() {
     })
   }
 
-  const completedRequirements = useMemo(
-    () => data?.requirements.filter((requirement) => requirement.done || requirement.waived).length ?? 0,
+  const taskRequirements = useMemo(
+    () => data?.requirements.filter((requirement) => (
+      requirement.mode === "REQUIRED"
+      && ["STOCK_CHECK", "VISIT_NOTE", "FEEDBACK"].includes(requirement.actionKey)
+    )) ?? [],
     [data],
   )
+  const visibleSection = data?.status === "CHECKED_IN" ? section : "summary"
   const title = data?.customer.name || name || copy.eyebrow
   const statusVisual = visitStatusVisual(data?.status ?? "")
   const timeStatus = visitTimeStatus(data?.checkInAt, clock)
@@ -345,9 +358,11 @@ export default function VisitWorkspaceScreen() {
             <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
           </Pressable>
           <View style={styles.headerCopy}>
-            <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
+            <Text style={styles.eyebrow}>{visibleSection === "summary" ? copy.eyebrow : copy.activeEyebrow}</Text>
             <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
-            <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
+            <Text style={styles.headerSubtitle}>
+              {visibleSection === "presentations" ? copy.presentationSubtitle : visibleSection === "tasks" ? copy.tasksSubtitle : copy.subtitle}
+            </Text>
           </View>
           {data ? (
             <View style={[styles.headerStatus, { backgroundColor: statusVisual.background }]}>
@@ -413,7 +428,7 @@ export default function VisitWorkspaceScreen() {
               />
             ) : null}
 
-            <View style={styles.overviewCard}>
+            {visibleSection === "summary" ? <View style={styles.overviewCard}>
               <View style={styles.sectionHeadingRow}>
                 <View style={[styles.sectionIcon, { backgroundColor: fieldTheme.color.primarySoft }]}>
                   <Icon name="briefcase-outline" size={22} color={fieldTheme.color.primaryStrong} />
@@ -446,7 +461,7 @@ export default function VisitWorkspaceScreen() {
                 />
                 <Stat icon="images-outline" label={t("visitWorkspace.actionPhoto")} value={String(data.photosCount)} />
               </View>
-            </View>
+            </View> : null}
 
             {data.status === "CHECKED_IN" && timeStatus !== "normal" ? (
               <View style={[styles.timeNotice, timeStatus === "overtime" && styles.timeNoticeOvertime]} accessibilityLiveRegion="polite">
@@ -461,7 +476,7 @@ export default function VisitWorkspaceScreen() {
               </View>
             ) : null}
 
-            <SectionCard
+            {visibleSection === "presentations" || visibleSection === "summary" ? <SectionCard
               icon="easel-outline"
               title={copy.presentations}
               badge={data.presentationSessions.length ? `${copy.opened}: ${data.presentationSessions.length}` : undefined}
@@ -512,11 +527,11 @@ export default function VisitWorkspaceScreen() {
                   })}
                 </View>
               ) : <EmptyBlock icon="easel-outline" title={copy.noProducts} />}
-            </SectionCard>
+            </SectionCard> : null}
 
-            <View style={[styles.columns, tablet && styles.columnsTablet]}>
+            {visibleSection === "tasks" || visibleSection === "summary" ? <View style={[styles.columns, tablet && visibleSection === "summary" && styles.columnsTablet]}>
               <View style={styles.column}>
-                <SectionCard icon="flag-outline" title={t("visitWorkspace.sectionResult")}>
+                {visibleSection === "summary" ? <SectionCard icon="flag-outline" title={t("visitWorkspace.sectionResult")}>
                   {data.outcome || data.resultNotes || data.notes ? (
                     <>
                       {data.outcome ? (
@@ -537,7 +552,7 @@ export default function VisitWorkspaceScreen() {
                   ) : (
                     <EmptyBlock icon="create-outline" title={copy.noResultTitle} body={copy.noResultBody} />
                   )}
-                </SectionCard>
+                </SectionCard> : null}
 
                 <SectionCard
                   icon="checkbox-outline"
@@ -547,7 +562,13 @@ export default function VisitWorkspaceScreen() {
                   {data.tasks.length > 0 ? data.tasks.map((task) => {
                     const done = task.status === "COMPLETED"
                     return (
-                      <View key={task.id} style={styles.taskRow}>
+                      <Pressable
+                        key={task.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={task.title}
+                        onPress={() => navigation.navigate("TaskDetail", { task })}
+                        style={({ pressed }) => [styles.taskRow, pressed && styles.pressed]}
+                      >
                         <View style={[styles.rowIcon, { backgroundColor: done ? fieldTheme.color.successSoft : fieldTheme.color.blueSoft }]}>
                           <Icon
                             name={done ? "checkmark" : "hourglass-outline"}
@@ -561,60 +582,33 @@ export default function VisitWorkspaceScreen() {
                             {codeLabel(task.status, copy.taskStatus)}
                           </Text>
                         </View>
-                      </View>
+                        <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} />
+                      </Pressable>
                     )
-                  }) : (
+                  }) : taskRequirements.length === 0 ? (
                     <EmptyBlock icon="list-outline" title={copy.noTasks} />
-                  )}
-                </SectionCard>
-              </View>
-
-              <View style={styles.column}>
-                <SectionCard
-                  icon="shield-checkmark-outline"
-                  title={t("visitWorkspace.sectionRequirements")}
-                  badge={copy.requirementsProgress(completedRequirements, data.requirements.length)}
-                >
-                  {data.requirements.length > 0 ? (
-                    <>
-                      <View style={styles.progressTrack}>
-                        <View
-                          style={[
-                            styles.progressFill,
-                            {
-                              width: `${Math.round((completedRequirements / data.requirements.length) * 100)}%`,
-                            },
-                          ]}
-                        />
-                      </View>
-                      <View style={styles.requirementList}>
-                        {data.requirements.map((requirement) => {
-                          const visual = requirementVisual(requirement, copy)
-                          return (
-                            <View key={requirement.actionKey} style={styles.requirementRow}>
-                              <View style={[styles.rowIcon, { backgroundColor: visual.background }]}>
-                                <Icon name={visual.icon} size={20} color={visual.color} />
-                              </View>
-                              <View style={styles.requirementCopy}>
-                                <Text style={styles.requirementTitle}>{actionLabel(t, requirement.actionKey)}</Text>
-                                <Text style={[styles.requirementStatus, { color: visual.color }]}>{visual.label}</Text>
-                              </View>
-                              <Text style={styles.requirementMode}>
-                                {requirement.mode === "REQUIRED"
-                                  ? t("visitWorkspace.reqRequired")
-                                  : t("visitWorkspace.reqOptional")}
-                              </Text>
+                  ) : null}
+                  {taskRequirements.length > 0 ? (
+                    <View style={styles.requiredActionsGroup}>
+                      {taskRequirements.map((requirement) => {
+                        const visual = requirementVisual(requirement, copy)
+                        return (
+                          <View key={requirement.actionKey} style={styles.requirementRow}>
+                            <View style={[styles.rowIcon, { backgroundColor: visual.background }]}>
+                              <Icon name={visual.icon} size={20} color={visual.color} />
                             </View>
-                          )
-                        })}
-                      </View>
-                    </>
-                  ) : (
-                    <EmptyBlock icon="shield-checkmark-outline" title={t("visitWorkspace.noRequirements")} />
-                  )}
+                            <View style={styles.requirementCopy}>
+                              <Text style={styles.requirementTitle}>{actionLabel(t, requirement.actionKey)}</Text>
+                              <Text style={[styles.requirementStatus, { color: visual.color }]}>{visual.label}</Text>
+                            </View>
+                          </View>
+                        )
+                      })}
+                    </View>
+                  ) : null}
                 </SectionCard>
               </View>
-            </View>
+            </View> : null}
           </View>
         </ScrollView>
       ) : short ? header : null}
@@ -805,6 +799,7 @@ const styles = StyleSheet.create({
   requirementMode: { maxWidth: 88, color: fieldTheme.color.inkMuted, fontSize: 9, lineHeight: 13, fontWeight: "900", textAlign: "right" },
   taskRow: { minHeight: 66, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
   taskTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
+  requiredActionsGroup: { marginTop: fieldTheme.space.lg, paddingTop: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   smallPill: { minHeight: 28, maxWidth: 100, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
   smallPillText: { fontSize: 9, lineHeight: 12, fontWeight: "900", textAlign: "center" },
   emptyBlock: { minHeight: 112, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.lg },

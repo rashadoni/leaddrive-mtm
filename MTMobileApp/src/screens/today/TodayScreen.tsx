@@ -41,11 +41,13 @@ type TodayNavigationParams = {
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
+  More: { screen: "Messages" }
 }
 
-type Destination = keyof TodayNavigationParams
+type Destination = Exclude<keyof TodayNavigationParams, "More">
 type NextKind = "route" | "tasks" | "empty" | "unknown" | "loading"
 type DataSource = "live" | "cached" | "unknown"
+type TeamMessageSummary = { id: string; title: string; lastMessage?: { body?: string | null } | null }
 
 export default function TodayScreen() {
   const { t, i18n } = useTranslation()
@@ -76,6 +78,7 @@ export default function TodayScreen() {
   const [workdayError, setWorkdayError] = useState(false)
   const [endDayConfirm, setEndDayConfirm] = useState(false)
   const [notice, setNotice] = useState<{ title: string; body: string; icon: string } | null>(null)
+  const [unreadMessage, setUnreadMessage] = useState<TeamMessageSummary | null>(null)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
   const currentWorkday = activeWorkday?.key === currentWorkdayKey ? activeWorkday : null
   const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
@@ -121,7 +124,14 @@ export default function TodayScreen() {
       }
     })()
 
-    await Promise.all([routeRequest, fetchKpi("today")])
+    const messagesRequest = api.getMobileMessages()
+      .then((response) => {
+        const threads = Array.isArray(response.data?.threads) ? response.data.threads : []
+        setUnreadMessage(threads.find((thread: { unread?: boolean }) => thread.unread) ?? null)
+      })
+      .catch(() => {})
+
+    await Promise.all([routeRequest, fetchKpi("today"), messagesRequest])
 
     const latestKpi = useKpiStore.getState()
     if (latestKpi.error && agent) {
@@ -538,6 +548,22 @@ export default function TodayScreen() {
           </View>
 
           <View style={[styles.primaryColumn, twoPane && styles.secondaryColumnTablet]}>
+            {unreadMessage ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={unreadMessage.title}
+                onPress={() => navigation.navigate("More", { screen: "Messages" })}
+                style={({ pressed }) => [styles.messageBanner, pressed && styles.pressed]}
+              >
+                <View style={styles.messageBannerIcon}><Icon name="megaphone-outline" size={20} color={fieldTheme.color.onColor} /></View>
+                <View style={styles.messageBannerCopy}>
+                  <Text style={styles.messageBannerLabel}>{i18n.language.toLowerCase().startsWith("az") ? "Yeni mesaj" : i18n.language.toLowerCase().startsWith("en") ? "New message" : "Новое сообщение"}</Text>
+                  <Text style={styles.messageBannerTitle} numberOfLines={1}>{unreadMessage.title}</Text>
+                  {unreadMessage.lastMessage?.body ? <Text style={styles.messageBannerBody} numberOfLines={2}>{unreadMessage.lastMessage.body}</Text> : null}
+                </View>
+                <Icon name="chevron-forward" size={20} color={fieldTheme.color.primaryStrong} />
+              </Pressable>
+            ) : null}
             {nextKind === "empty" ? (
               <Pressable
                 accessibilityRole="button"
@@ -586,6 +612,25 @@ export default function TodayScreen() {
                   <Text style={[styles.nextSupporting, nextDark && styles.nextBodyOnDark]}>
                     {nextCopy.supporting}
                   </Text>
+                ) : null}
+                {nextKind === "route" && route && route.points.length > 0 ? (
+                  <View style={styles.routeClients}>
+                    {route.points.map((point, index) => {
+                      const done = point.status === "VISITED"
+                      return (
+                        <View key={point.id} style={styles.routeClientRow}>
+                          <View style={[styles.routeClientNumber, done && styles.routeClientNumberDone]}>
+                            {done
+                              ? <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
+                              : <Text style={styles.routeClientNumberText}>{index + 1}</Text>}
+                          </View>
+                          <Text style={[styles.routeClientName, done && styles.routeClientNameDone]} numberOfLines={1}>
+                            {point.customer?.name || t("todayV2.routeTitle")}
+                          </Text>
+                        </View>
+                      )
+                    })}
+                  </View>
                 ) : null}
                 {routeSource === "cached" && nextKind === "route" ? (
                   <View style={styles.cachedBadge}>
@@ -858,6 +903,12 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.border,
     backgroundColor: fieldTheme.color.surface,
   },
+  messageBanner: { minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md, borderWidth: 1, borderColor: "#A9D9CA", borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft },
+  messageBannerIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: fieldTheme.color.primary },
+  messageBannerCopy: { flex: 1, minWidth: 0 },
+  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.5 },
+  messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
+  messageBannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   nextPanelRoute: {
     borderColor: fieldTheme.color.primaryStrong,
     backgroundColor: fieldTheme.color.primaryStrong,
@@ -935,6 +986,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "700",
   },
+  routeClients: { alignSelf: "stretch", gap: fieldTheme.space.xs, marginTop: fieldTheme.space.md },
+  routeClientRow: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(248,252,250,0.12)", paddingHorizontal: fieldTheme.space.sm },
+  routeClientNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.18)" },
+  routeClientNumberDone: { backgroundColor: fieldTheme.color.success },
+  routeClientNumberText: { color: fieldTheme.color.onColor, fontSize: 11, fontWeight: "900" },
+  routeClientName: { flex: 1, color: fieldTheme.color.onColor, fontSize: 13, lineHeight: 18, fontWeight: "800" },
+  routeClientNameDone: { opacity: 0.7, textDecorationLine: "line-through" },
   nextTextOnDark: {
     color: fieldTheme.color.onColor,
   },

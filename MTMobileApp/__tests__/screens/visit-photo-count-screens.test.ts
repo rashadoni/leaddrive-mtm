@@ -37,8 +37,9 @@ describe("«Foto: N» on an active visit survives a restart", () => {
     expect(body.indexOf("photos.recordQueued(activeVisit.id, queuedPhoto.id)")).toBeGreaterThan(queued)
   })
 
-  it("the route panel still picks the main button from that count", () => {
-    expect(route).toContain("const photoFirst = photoCount === 0")
+  it("the route checklist marks the photo step from that count", () => {
+    expect(route).toContain('const showPhoto = workspace === null || requiredKeys.has("PHOTO") || photoCount > 0')
+    expect(route).toContain("done={photoCount > 0}")
     expect(route).toContain("photoCount={photos.count}")
   })
 

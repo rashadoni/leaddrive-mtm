@@ -33,7 +33,7 @@ export type RootStackParamList = {
   Server: undefined
   OrganizationDetail: { id: string; name?: string }
   ContactDetail: { id: string; name?: string }
-  VisitWorkspace: { visitId: string; name?: string }
+  VisitWorkspace: { visitId: string; name?: string; section?: "presentations" | "tasks" | "summary" }
   PresentationViewer: { visitId: string; product: MobileProductPresentation }
   DoctorCreateRequest: undefined
   TaskDetail: { task: RawTask }

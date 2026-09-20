@@ -10,11 +10,8 @@ const route = fs.readFileSync(path.resolve(__dirname, "../../src/screens/route/R
 const visits = fs.readFileSync(path.resolve(__dirname, "../../src/screens/visit/VisitScreen.tsx"), "utf8")
 
 describe("B9 leftovers", () => {
-  it("shows the route hint only with a route", () => {
-    // «Yeniləmək üçün siyahını aşağı çəkin. Yaşıl kart…» — a list to pull and a
-    // green panel that do not exist on the empty screen.
-    expect(route.match(/<InlineHint text=\{copy\.hint\}/g)).toHaveLength(2)
-    expect(route.match(/\{route \? <InlineHint text=\{copy\.hint\}/g)).toHaveLength(2)
+  it("does not append another instruction under an already actionable route", () => {
+    expect(route).not.toContain("InlineHint")
   })
 
   it("does not send Visits back to Route with a card", () => {
