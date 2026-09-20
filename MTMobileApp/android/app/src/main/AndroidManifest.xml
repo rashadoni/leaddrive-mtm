@@ -30,6 +30,15 @@
       <service
         android:name="com.asterinet.react.bgactions.RNBackgroundActionsTask"
         android:foregroundServiceType="location" />
+      <provider
+        android:name=".PresentationFileProvider"
+        android:authorities="${applicationId}.presentation-files"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/presentation_file_paths" />
+      </provider>
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

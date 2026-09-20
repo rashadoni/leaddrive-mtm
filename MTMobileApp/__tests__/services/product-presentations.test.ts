@@ -20,6 +20,7 @@ describe("product presentation catalog", () => {
           fileName: "product-a.pdf",
           mimeType: "application/pdf",
           sizeBytes: 2048,
+          checksumSha256: "a".repeat(64),
         },
       }],
     })).toEqual({
@@ -40,6 +41,7 @@ describe("product presentation catalog", () => {
           fileName: "product-a.pdf",
           mimeType: "application/pdf",
           sizeBytes: 2048,
+          checksumSha256: "a".repeat(64),
         },
       }],
     })
