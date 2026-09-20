@@ -17,6 +17,7 @@ export interface MobileProductPresentation {
     fileName: string
     mimeType: string
     sizeBytes: number
+    checksumSha256?: string
   }
 }
 
@@ -63,6 +64,7 @@ export function toPresentationCatalog(raw: any): PresentationCatalog {
           fileName,
           mimeType,
           sizeBytes: Number(product?.document?.sizeBytes) || 0,
+          checksumSha256: text(product?.document?.checksumSha256),
         },
       }]
     }),
