@@ -722,6 +722,10 @@ function StopRow({
   onPress,
   language,
   copy,
+  first = false,
+  last = false,
+  roadAbove = false,
+  roadBelow = false,
 }: {
   point: RoutePoint
   index: number
@@ -730,6 +734,11 @@ function StopRow({
   onPress: () => void
   language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
+  /** The road: a filled segment means the stop on that side is behind the agent. */
+  first?: boolean
+  last?: boolean
+  roadAbove?: boolean
+  roadBelow?: boolean
 }) {
   const status = pointStatus(point, copy)
   return (
@@ -739,12 +748,21 @@ function StopRow({
       accessibilityLabel={`${renderTemplate(copy.stopNumber, { number: index + 1 })}. ${point.customer.name}. ${status.label}`}
       style={({ pressed }) => [styles.stopRow, selected && styles.stopRowSelected, pressed && styles.stopRowPressed]}
     >
-      <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, point.status === "VISITED" && styles.stopNumberDone]}>
-        {point.status === "VISITED" ? (
-          <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />
-        ) : (
-          <Text style={[styles.stopNumberText, recommended && styles.stopNumberTextRecommended]}>{index + 1}</Text>
-        )}
+      {/*
+        The stops are a road, not a list: the line above a stop is filled once
+        the agent is past it, so the route colours in from top to bottom as
+        the day goes.
+      */}
+      <View style={styles.stopRail}>
+        <View style={[styles.stopRailLine, first && styles.stopRailLineHidden, roadAbove && styles.stopRailLineDone]} />
+        <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, point.status === "VISITED" && styles.stopNumberDone]}>
+          {point.status === "VISITED" ? (
+            <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />
+          ) : (
+            <Text style={[styles.stopNumberText, recommended && styles.stopNumberTextRecommended]}>{index + 1}</Text>
+          )}
+        </View>
+        <View style={[styles.stopRailLine, last && styles.stopRailLineHidden, roadBelow && styles.stopRailLineDone]} />
       </View>
       <View style={styles.stopCopy}>
         <View style={styles.stopTitleRow}>
@@ -1813,7 +1831,7 @@ export default function RouteScreen() {
               </View>
               {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
               <View style={styles.tabletListContent}>
-                {displayedPoints.length === 0 ? emptyState : displayedPoints.map((item) => (
+                {displayedPoints.length === 0 ? emptyState : displayedPoints.map((item, position) => (
                   <StopRow
                     key={item.id}
                     point={item}
@@ -1823,6 +1841,10 @@ export default function RouteScreen() {
                     onPress={() => handlePointPress(item)}
                     language={i18n.language}
                     copy={copy}
+                    first={position === 0}
+                    last={position === displayedPoints.length - 1}
+                    roadAbove={position > 0 && displayedPoints[position - 1].status === "VISITED"}
+                    roadBelow={item.status === "VISITED"}
                   />
                 ))}
               </View>
@@ -1887,7 +1909,7 @@ export default function RouteScreen() {
             </View>
           </>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index: position }) => (
           <View style={styles.phoneRowWrap}>
             <StopRow
               point={item}
@@ -1897,6 +1919,10 @@ export default function RouteScreen() {
               onPress={() => handlePointPress(item)}
               language={i18n.language}
               copy={copy}
+              first={position === 0}
+              last={position === displayedPoints.length - 1}
+              roadAbove={position > 0 && displayedPoints[position - 1].status === "VISITED"}
+              roadBelow={item.status === "VISITED"}
             />
           </View>
         )}
@@ -2146,6 +2172,10 @@ const styles = StyleSheet.create({
   },
   stopRowSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
   stopRowPressed: { opacity: 0.78 },
+  stopRail: { alignItems: "center", alignSelf: "stretch" },
+  stopRailLine: { flex: 1, width: 2, minHeight: 6, backgroundColor: fieldTheme.color.border },
+  stopRailLineDone: { backgroundColor: fieldTheme.color.success },
+  stopRailLineHidden: { backgroundColor: "transparent" },
   stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
   stopNumberRecommended: { backgroundColor: fieldTheme.color.primaryStrong },
   stopNumberDone: { backgroundColor: fieldTheme.color.success },

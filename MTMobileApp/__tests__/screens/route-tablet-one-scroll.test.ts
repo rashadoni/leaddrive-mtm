@@ -14,7 +14,10 @@ describe("route screen on a tablet scrolls as one page", () => {
   it("has one scroll container and no list scrolling inside a pane", () => {
     expect(tablet.match(/<ScrollView\b/g)).toHaveLength(1)
     expect(tablet).not.toContain("<FlatList")
-    expect(tablet).toContain("displayedPoints.map((item) => (")
+    // The tablet pane still maps the stops itself; the second parameter is
+    // the stop's position, which the road line needs to know whether the
+    // segment above it is already behind the agent.
+    expect(tablet).toContain("displayedPoints.map((item, position) => (")
   })
 
   it("keeps pull to refresh on the page", () => {
