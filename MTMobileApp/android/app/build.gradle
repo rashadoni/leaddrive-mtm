@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
 /**
@@ -137,6 +138,12 @@ dependencies {
 
     // Force latest play-services-location for Android 16 compatibility
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // Cloud Messaging only: the BoM pins one set of versions, and nothing
+    // else from Firebase is pulled in. Analytics is deliberately absent —
+    // the app sends no usage data to Google.
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+    implementation("com.google.firebase:firebase-messaging")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

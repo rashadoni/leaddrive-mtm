@@ -8,6 +8,7 @@ import { useAuthStore } from './src/store/auth'
 import { useHintsStore } from './src/store/hints'
 import { startTracking, stopTracking } from './src/services/location'
 import { api } from './src/services/api'
+import { registerPushToken } from './src/services/push-registration'
 import { initI18n } from './src/i18n'
 import { initSentry } from './src/services/sentry'
 import { version as APP_VERSION } from './package.json'
@@ -60,6 +61,13 @@ function AppContent() {
       useAuthStore.getState().handleRevoked(reason ?? "REVOKED")
     })
   }, [])
+
+  // A restored session also needs an address for push: the token may have
+  // rotated while the app was closed, and login is not the only way in.
+  useEffect(() => {
+    if (!isLoggedIn) return
+    void registerPushToken()
+  }, [isLoggedIn])
 
   // Start GPS tracking + online ping when logged in
   useEffect(() => {
