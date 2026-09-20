@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
   messageBanner: { minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md, borderWidth: 1, borderColor: "#A9D9CA", borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft },
   messageBannerIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: fieldTheme.color.primary },
   messageBannerCopy: { flex: 1, minWidth: 0 },
-  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 0.5 },
+  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.5 },
   messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
   messageBannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   nextPanelRoute: {

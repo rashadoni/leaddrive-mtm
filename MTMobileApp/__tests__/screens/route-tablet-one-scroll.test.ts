@@ -14,7 +14,7 @@ describe("route screen on a tablet scrolls as one page", () => {
   it("has one scroll container and no list scrolling inside a pane", () => {
     expect(tablet.match(/<ScrollView\b/g)).toHaveLength(1)
     expect(tablet).not.toContain("<FlatList")
-    expect(tablet).toContain("sortedPoints.map((item, index) => (")
+    expect(tablet).toContain("displayedPoints.map((item) => (")
   })
 
   it("keeps pull to refresh on the page", () => {

@@ -22,8 +22,8 @@ const locales = ["ru", "en", "az"].map((locale) => ({
 describe("B9: the route screen without a route", () => {
   it("draws no stepper when there are no steps", () => {
     // Both layouts: the phone list header and the tablet top strip.
-    expect((source.match(/\{route \? <JourneySteps/g) ?? [])).toHaveLength(2)
-    expect(source).not.toMatch(/(?<!\{route \? )<JourneySteps activeStep/)
+    expect((source.match(/\{route && !activeVisit \? <JourneySteps/g) ?? [])).toHaveLength(2)
+    expect(source).not.toMatch(/(?<!\{route && !activeVisit \? )<JourneySteps activeStep/)
   })
 
   it("offers one way to refresh, not a button and a sentence about a gesture", () => {
@@ -57,10 +57,9 @@ describe("B9: the route screen without a route", () => {
     expect(blank).toEqual([])
   })
 
-  it("turns the empty state's only primary action into route planning", () => {
-    expect(source).toContain("OwnRoutePlanningCard")
-    expect(source).toContain("copy.planOwnRoute")
+  it("turns the empty state's only primary action into route planning without a duplicate card", () => {
+    expect(source).not.toContain("OwnRoutePlanningCard")
     expect(source).toContain("label={emptyError ? copy.retry : canPlanOwnRoutes ? copy.planOwnRoute : copy.refresh}")
-    expect(source.match(/\{canPlanOwnRoutes && route \? \(/g)).toHaveLength(2)
+    expect(source.match(/label=\{emptyError \? copy\.retry : canPlanOwnRoutes \? copy\.planOwnRoute : copy\.refresh\}/g)).toHaveLength(1)
   })
 })
