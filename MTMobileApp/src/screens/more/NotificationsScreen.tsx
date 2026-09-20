@@ -27,6 +27,7 @@ import {
   type NotificationPreferences,
 } from "../../services/notification-center"
 import { toDoctorCreateRequestItem } from "../../services/doctor-create-requests"
+import { lastPushStatus, registerPushToken, type PushStatus } from "../../services/push-registration"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -49,7 +50,16 @@ const COPY = {
     kindVisit: "Длинные визиты",
     kindWorkday: "Рабочий день",
     unread: "Новое",
-    pushNote: "Приложение показывает это, когда вы его открываете. Пуш-уведомления от сервера пока не включены.",
+    pushNote: "Список выше приложение показывает, когда вы его открываете.",
+    pushTitle: "Push с сервера",
+    pushRegistered: "Адрес этого телефона у сервера есть — push придёт.",
+    pushRegisteredOff: "Адрес есть, но сервер пока не отправляет push.",
+    pushNoAddress: "Google не выдал этому телефону адрес: push не придёт.",
+    pushRefused: "Сервер не принял адрес этого телефона.",
+    pushUnsupported: "На этом устройстве push не поддерживается.",
+    pushUnknown: "Ещё не проверялось.",
+    pushCheck: "Проверить",
+    pushChecking: "Проверяем…",
     messageFrom: (name: string) => (name ? `Сообщение от ${name}` : "Сообщение команды"),
     requestApproved: (name: string) => `${name}: заявка одобрена`,
     requestRejected: (name: string) => `${name}: заявка отклонена`,
@@ -74,7 +84,16 @@ const COPY = {
     kindVisit: "Uzun ziyarətlər",
     kindWorkday: "İş günü",
     unread: "Yeni",
-    pushNote: "Tətbiq bunu siz onu açanda göstərir. Serverdən push bildirişləri hələ qoşulmayıb.",
+    pushNote: "Yuxarıdakı siyahını tətbiq siz onu açanda göstərir.",
+    pushTitle: "Serverdən push",
+    pushRegistered: "Bu telefonun ünvanı serverdədir — push gələcək.",
+    pushRegisteredOff: "Ünvan var, amma server hələ push göndərmir.",
+    pushNoAddress: "Google bu telefona ünvan vermədi: push gəlməyəcək.",
+    pushRefused: "Server bu telefonun ünvanını qəbul etmədi.",
+    pushUnsupported: "Bu cihazda push dəstəklənmir.",
+    pushUnknown: "Hələ yoxlanılmayıb.",
+    pushCheck: "Yoxla",
+    pushChecking: "Yoxlanılır…",
     messageFrom: (name: string) => (name ? `${name} mesaj göndərdi` : "Komanda mesajı"),
     requestApproved: (name: string) => `${name}: sorğu təsdiqləndi`,
     requestRejected: (name: string) => `${name}: sorğu rədd edildi`,
@@ -99,7 +118,16 @@ const COPY = {
     kindVisit: "Long visits",
     kindWorkday: "Workday",
     unread: "New",
-    pushNote: "The app shows these when you open it. Server push notifications are not enabled yet.",
+    pushNote: "The app shows the list above when you open it.",
+    pushTitle: "Push from the server",
+    pushRegistered: "The server has this phone's address — push will arrive.",
+    pushRegisteredOff: "The address is there, but the server does not send push yet.",
+    pushNoAddress: "Google gave this phone no address: push will not arrive.",
+    pushRefused: "The server would not take this phone's address.",
+    pushUnsupported: "Push is not supported on this device.",
+    pushUnknown: "Not checked yet.",
+    pushCheck: "Check",
+    pushChecking: "Checking…",
     messageFrom: (name: string) => (name ? `Message from ${name}` : "Team message"),
     requestApproved: (name: string) => `${name}: request approved`,
     requestRejected: (name: string) => `${name}: request declined`,
@@ -147,6 +175,8 @@ export default function NotificationsScreen() {
   const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES)
   const [refreshing, setRefreshing] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [push, setPush] = useState<PushStatus | null>(null)
+  const [pushChecking, setPushChecking] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -158,8 +188,31 @@ export default function NotificationsScreen() {
         if (storedRead) setReadIds(JSON.parse(storedRead))
         if (storedPreferences) setPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...JSON.parse(storedPreferences) })
       } catch {}
+      setPush(await lastPushStatus())
     })()
   }, [])
+
+  /**
+   * Asking again, from the agent's side. The registration itself runs on
+   * every start; this button exists because the answer matters to a person
+   * standing in a clinic wondering why the phone stays silent.
+   */
+  const checkPush = useCallback(async () => {
+    setPushChecking(true)
+    try {
+      setPush(await registerPushToken())
+    } finally {
+      setPushChecking(false)
+    }
+  }, [])
+
+  const pushLine = useMemo(() => {
+    if (!push) return copy.pushUnknown
+    if (push.state === "registered") return push.serverSends === false ? copy.pushRegisteredOff : copy.pushRegistered
+    if (push.state === "noAddress") return copy.pushNoAddress
+    if (push.state === "serverRefused") return copy.pushRefused
+    return copy.pushUnsupported
+  }, [copy, push])
 
   /**
    * Everything here is read from what the app already has. A source that
@@ -331,6 +384,26 @@ export default function NotificationsScreen() {
             {/* Said plainly, because an agent who thinks the phone will buzz
                 will stop opening the app to check. */}
             <Text style={styles.pushNote}>{copy.pushNote}</Text>
+            <View style={styles.pushRow}>
+              <View style={styles.pushText}>
+                <Text style={styles.pushTitle}>{copy.pushTitle}</Text>
+                <Text
+                  style={[styles.pushState, push && push.state !== "registered" ? styles.pushStateBad : null]}
+                >
+                  {pushLine}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={checkPush}
+                disabled={pushChecking}
+                style={[styles.pushButton, { minHeight: touchTarget }]}
+              >
+                <Text style={styles.pushButtonText} numberOfLines={1}>
+                  {pushChecking ? copy.pushChecking : copy.pushCheck}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
 
@@ -388,6 +461,13 @@ const styles = StyleSheet.create({
   settingsRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   settingsLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   pushNote: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: fieldTheme.space.xs, marginBottom: fieldTheme.space.xs },
+  pushRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingTop: fieldTheme.space.sm, marginBottom: fieldTheme.space.xs },
+  pushText: { flex: 1, gap: 2 },
+  pushTitle: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  pushState: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  pushStateBad: { color: fieldTheme.color.danger },
+  pushButton: { justifyContent: "center", paddingHorizontal: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.pill },
+  pushButtonText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
   emptyCard: { alignItems: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
