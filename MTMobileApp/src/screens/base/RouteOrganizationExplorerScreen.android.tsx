@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+import { useFocusEffect, useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
@@ -156,6 +156,24 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
   useEffect(() => {
     void loadRows(debouncedSearch)
   }, [debouncedSearch, loadRows])
+
+  /**
+   * The screen keeps its rows while the agent is elsewhere in the app, so a
+   * client unassigned in the office stayed in this list until the app
+   * rebuilt the screen — pulling to refresh on Today did not touch it. Ask
+   * the server again whenever the list comes back into view; the first mount
+   * is already covered above, so a fresh open does not fetch twice.
+   */
+  const focusedOnce = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedOnce.current) {
+        focusedOnce.current = true
+        return
+      }
+      void loadRows(debouncedSearch)
+    }, [debouncedSearch, loadRows]),
+  )
 
   useEffect(() => () => {
     requestId.current += 1
