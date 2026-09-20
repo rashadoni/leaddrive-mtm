@@ -152,9 +152,35 @@ class FieldNotificationReceiver : BroadcastReceiver() {
   companion object {
     const val DEFAULT_CHANNEL = "field-reminders"
 
+    /**
+     * Creating the channel before posting into it.
+     *
+     * On Android 8 and up `notify` into a channel that does not exist does
+     * nothing at all — no error, no entry, nothing to see from the phone or
+     * from the server, which already counted the push as delivered. The
+     * channel used to be created by the Route screen, so a push that arrived
+     * before an agent ever opened that tab, or after the system had dropped
+     * the process, vanished. It is cheap to create: the call is a no-op when
+     * the channel is already there, and it never overwrites what the agent
+     * changed in Android settings.
+     */
+    fun ensureChannel(context: Context, channelId: String) {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+      val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      if (manager.getNotificationChannel(channelId) != null) return
+      manager.createNotificationChannel(
+        NotificationChannel(
+          channelId,
+          context.getString(R.string.field_notifications_channel_name),
+          NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply { description = context.getString(R.string.field_notifications_channel_description) },
+      )
+    }
+
     fun post(context: Context, id: String, title: String, body: String, channelId: String) {
       val manager = NotificationManagerCompat.from(context)
       if (!manager.areNotificationsEnabled()) return
+      ensureChannel(context, channelId)
       val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
       val contentIntent = launch?.let {
         PendingIntent.getActivity(
