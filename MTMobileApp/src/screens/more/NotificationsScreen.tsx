@@ -140,7 +140,7 @@ export default function NotificationsScreen() {
   const { width } = useWindowDimensions()
   const tablet = isTabletWidth(width)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
-  const workday = useWorkdayStore((state) => state.active)
+  const workday = useWorkdayStore((state) => state.activeWorkday)
 
   const [items, setItems] = useState<NotificationItem[]>([])
   const [readIds, setReadIds] = useState<string[]>([])
