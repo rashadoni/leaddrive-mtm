@@ -9,6 +9,9 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -103,6 +106,40 @@ class PresentationFilesModule(
         }
       } catch (error: Throwable) {
         promise.reject("PRESENTATION_PDF_RENDER_FAILED", error.message, error)
+      }
+    }
+  }
+
+  /**
+   * Hide or restore the system bars while a presentation is shown.
+   *
+   * A slide is 16:9 and a phone screen is not: with the status bar, the
+   * navigation bar and the app header in place, a doctor was shown the
+   * proposal in a third of the screen. Swiping from an edge brings the bars
+   * back temporarily, which is what BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE is
+   * for — the agent never gets stuck without navigation.
+   */
+  @ReactMethod
+  fun setImmersive(enabled: Boolean, promise: Promise) {
+    UiThreadUtil.runOnUiThread {
+      try {
+        val activity = reactContext.currentActivity
+        if (activity == null) {
+          promise.resolve(false)
+          return@runOnUiThread
+        }
+        val window = activity.window
+        WindowCompat.setDecorFitsSystemWindows(window, !enabled)
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        if (enabled) {
+          controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+          controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+          controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+        promise.resolve(true)
+      } catch (error: Throwable) {
+        promise.reject("PRESENTATION_IMMERSIVE_FAILED", error.message, error)
       }
     }
   }

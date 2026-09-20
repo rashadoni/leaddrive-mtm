@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from "@react-navigation/native"
 import type { RouteProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import Icon from "react-native-vector-icons/Ionicons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
@@ -27,11 +28,13 @@ import {
   openExternalPresentation,
   presentationFormat,
   renderPdfPage,
+  setPresentationImmersive,
   type RenderedPdfPage,
 } from "../../services/presentation-file"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import {
+  PRESENTATION_DOUBLE_TAP_MS,
   clampPan,
   clampZoomScale,
   fittedPageBox,
@@ -66,6 +69,8 @@ const COPY = {
     externalOpen: "Открыть PowerPoint",
     externalOpened: "Файл передан внешнему приложению. Просмотр страниц не подтверждён.",
     zoomHint: "Увеличить",
+    fullScreen: "Во весь экран",
+    showChrome: "Показать панели",
     zoomReset: "Вся страница",
   },
   az: {
@@ -86,6 +91,8 @@ const COPY = {
     externalOpen: "PowerPoint-i aç",
     externalOpened: "Fayl xarici tətbiqə ötürüldü. Səhifələrə baxış təsdiqlənməyib.",
     zoomHint: "Böyüt",
+    fullScreen: "Tam ekran",
+    showChrome: "Panelləri göstər",
     zoomReset: "Bütün səhifə",
   },
   en: {
@@ -106,6 +113,8 @@ const COPY = {
     externalOpen: "Open PowerPoint",
     externalOpened: "The file was handed to another app. Page viewing is not verified.",
     zoomHint: "Zoom in",
+    fullScreen: "Full screen",
+    showChrome: "Show panels",
     zoomReset: "Fit page",
   },
 } as const
@@ -178,6 +187,14 @@ export default function PresentationViewerScreen() {
   const [viewer, setViewer] = useState<ViewerState>({ kind: "starting" })
   const [evidenceState, setEvidenceState] = useState<EvidenceState>("idle")
   const [zoomedIn, setZoomedIn] = useState(false)
+  // The panels (header, evidence banner, page controls) cost about a third of
+  // a phone screen, which is exactly the third a 16:9 slide needed. One tap
+  // puts them away; the page then owns the whole display, system bars
+  // included.
+  const [chromeVisible, setChromeVisible] = useState(true)
+  const [pageBox, setPageBox] = useState<ZoomSize>({ width: 0, height: 0 })
+  const insets = useSafeAreaInsets()
+  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // The page is one Animated layer: gestures write these values directly, so a
   // pinch does not re-render the screen (and does not interrupt the evidence
@@ -210,10 +227,29 @@ export default function PresentationViewerScreen() {
   }, [applyTransform])
 
   const measureFit = useCallback(() => {
-    fittedSize.current = fittedPageBox(stageSize.current, pageSize.current)
-    const bounded = clampPan(transform.current, fittedSize.current, stageSize.current, transform.current.scale)
+    const fitted = fittedPageBox(stageSize.current, pageSize.current)
+    fittedSize.current = fitted
+    setPageBox((current) => (
+      Math.abs(current.width - fitted.width) < 0.5 && Math.abs(current.height - fitted.height) < 0.5
+        ? current
+        : fitted
+    ))
+    const bounded = clampPan(transform.current, fitted, stageSize.current, transform.current.scale)
     applyTransform({ scale: transform.current.scale, x: bounded.x, y: bounded.y })
   }, [applyTransform])
+
+  const toggleChrome = useCallback(() => {
+    setChromeVisible((visible) => {
+      ignore(setPresentationImmersive(visible))
+      return !visible
+    })
+  }, [])
+
+  // Leaving the viewer must never leave the phone without its system bars.
+  useEffect(() => () => {
+    if (singleTapTimer.current) clearTimeout(singleTapTimer.current)
+    ignore(setPresentationImmersive(false))
+  }, [])
 
   const onStageLayout = useCallback((event: LayoutChangeEvent) => {
     const { width: stageWidth, height: stageHeight } = event.nativeEvent.layout
@@ -268,6 +304,12 @@ export default function PresentationViewerScreen() {
       if (isDoubleTap(lastTapAt.current, now)) {
         lastTapAt.current = null
         gesture.current.mode = "none"
+        // The pending single tap belonged to this double tap: panels must not
+        // disappear on the way to zooming in.
+        if (singleTapTimer.current) {
+          clearTimeout(singleTapTimer.current)
+          singleTapTimer.current = null
+        }
         zoomTo(nextDoubleTapScale(transform.current.scale), stagePoint(touches[0]))
         return
       }
@@ -316,13 +358,24 @@ export default function PresentationViewerScreen() {
       )
       applyTransform({ scale: transform.current.scale, x: moved.x, y: moved.y })
     },
-    onPanResponderRelease: () => {
+    onPanResponderRelease: (_event, state) => {
+      const tapped = gesture.current.mode !== "pinch"
+        && Math.abs(state.dx) < 6
+        && Math.abs(state.dy) < 6
       gesture.current = { mode: "none", distance: 0, scale: transform.current.scale, x: transform.current.x, y: transform.current.y, dxBase: 0, dyBase: 0 }
+      if (!tapped) return
+      // Wait out the double-tap window before acting on a single tap, so one
+      // gesture never both hides the panels and zooms.
+      if (singleTapTimer.current) clearTimeout(singleTapTimer.current)
+      singleTapTimer.current = setTimeout(() => {
+        singleTapTimer.current = null
+        toggleChrome()
+      }, PRESENTATION_DOUBLE_TAP_MS + 40)
     },
     onPanResponderTerminate: () => {
       gesture.current = { mode: "none", distance: 0, scale: transform.current.scale, x: transform.current.x, y: transform.current.y, dxBase: 0, dyBase: 0 }
     },
-  }), [applyTransform, stagePoint, zoomTo])
+  }), [applyTransform, stagePoint, toggleChrome, zoomTo])
 
   const activeDurationSeconds = useCallback((now: number) => (
     activeSeconds.current
@@ -541,8 +594,9 @@ export default function PresentationViewerScreen() {
   const evidenceBackground = evidenceState === "failed" ? fieldTheme.color.dangerSoft : fieldTheme.color.successSoft
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, tablet && styles.headerTablet]}>
+    <View style={[styles.container, !chromeVisible && styles.containerImmersive]}>
+      {chromeVisible ? (
+      <View style={[styles.header, tablet && styles.headerTablet, { paddingTop: 8 + insets.top, paddingLeft: 14 + insets.left, paddingRight: 14 + insets.right }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={copy.close} onPress={() => navigation.goBack()} style={styles.closeButton}>
           <Icon name="close" size={24} color={fieldTheme.color.ink} />
         </Pressable>
@@ -554,8 +608,9 @@ export default function PresentationViewerScreen() {
           </Text>
         </View>
       </View>
+      ) : null}
 
-      {viewer.kind === "pdf" ? (
+      {viewer.kind === "pdf" && chromeVisible ? (
         <View style={[styles.evidenceBanner, { backgroundColor: evidenceBackground }]}>
           <Icon
             name={evidenceState === "failed" ? "alert-circle-outline" : evidenceState === "recorded" ? "shield-checkmark-outline" : "time-outline"}
@@ -598,7 +653,11 @@ export default function PresentationViewerScreen() {
         <View style={styles.viewer}>
           <View
             ref={stageRef}
-            style={[styles.pageStage, tablet && styles.pageStageTablet]}
+            style={[
+              styles.pageStage,
+              tablet && styles.pageStageTablet,
+              !chromeVisible && styles.pageStageImmersive,
+            ]}
             onLayout={onStageLayout}
             {...panResponder.panHandlers}
           >
@@ -608,16 +667,34 @@ export default function PresentationViewerScreen() {
                 { transform: [{ translateX: zoomX }, { translateY: zoomY }, { scale: zoomScale }] },
               ]}
             >
-              <Image
-                accessibilityLabel={`${copy.page} ${viewer.pageIndex + 1} / ${viewer.rendered.pageCount}`}
-                source={{ uri: viewer.rendered.uri }}
-                resizeMode="contain"
-                style={styles.pageImage}
-                onLoad={() => markPageDisplayed(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
-                onError={() => setViewer({ kind: "failed" })}
-              />
+              {/*
+                The white sheet is the page itself, not the stage around it: a
+                16:9 slide inside a portrait card used to sit in a field of
+                white with no edge to tell page from padding.
+              */}
+              <View style={[styles.paper, pageBox.width > 0 ? { width: pageBox.width, height: pageBox.height } : styles.paperFill]}>
+                <Image
+                  accessibilityLabel={`${copy.page} ${viewer.pageIndex + 1} / ${viewer.rendered.pageCount}`}
+                  source={{ uri: viewer.rendered.uri }}
+                  resizeMode="contain"
+                  style={styles.pageImage}
+                  onLoad={() => markPageDisplayed(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
+                  onError={() => setViewer({ kind: "failed" })}
+                />
+              </View>
             </Animated.View>
             {viewer.imageLoaded ? (
+              <View style={[styles.chipRow, { right: 10 + insets.right, bottom: 10 + (chromeVisible ? 0 : insets.bottom) }]} pointerEvents="box-none">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={chromeVisible ? copy.fullScreen : copy.showChrome}
+                onPress={toggleChrome}
+                style={({ pressed }) => [styles.zoomChip, pressed && styles.pressed]}
+                testID="presentation-chrome-chip"
+              >
+                <Icon name={chromeVisible ? "scan-outline" : "chevron-collapse-outline"} size={16} color={fieldTheme.color.ink} />
+                <Text style={styles.zoomChipText}>{chromeVisible ? copy.fullScreen : copy.showChrome}</Text>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={zoomedIn ? copy.zoomReset : copy.zoomHint}
@@ -634,6 +711,7 @@ export default function PresentationViewerScreen() {
                 <Icon name={zoomedIn ? "contract-outline" : "expand-outline"} size={16} color={fieldTheme.color.ink} />
                 <Text style={styles.zoomChipText}>{zoomedIn ? copy.zoomReset : copy.zoomHint}</Text>
               </Pressable>
+              </View>
             ) : null}
             {!viewer.imageLoaded ? (
               <View style={styles.pageLoader}>
@@ -642,7 +720,8 @@ export default function PresentationViewerScreen() {
               </View>
             ) : null}
           </View>
-          <View style={[styles.pageControls, tablet && styles.pageControlsTablet]}>
+          {chromeVisible ? (
+          <View style={[styles.pageControls, tablet && styles.pageControlsTablet, { paddingBottom: (tablet ? 14 : 8) + insets.bottom, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.previous}
@@ -663,14 +742,19 @@ export default function PresentationViewerScreen() {
               <Icon name="chevron-forward" size={24} color={fieldTheme.color.ink} />
             </Pressable>
           </View>
+          ) : null}
         </View>
       )}
     </View>
   )
 }
 
+/** Dark enough that a white page reads as a sheet, not as more chrome. */
+const STAGE_BACKDROP = "#111A1F"
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  containerImmersive: { backgroundColor: STAGE_BACKDROP },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   headerTablet: { paddingHorizontal: 22 },
   closeButton: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
@@ -682,11 +766,16 @@ const styles = StyleSheet.create({
   evidenceText: { fontSize: 12, lineHeight: 16, fontWeight: "800" },
   truthText: { marginTop: 1, color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15 },
   viewer: { flex: 1 },
-  pageStage: { flex: 1, margin: 10, overflow: "hidden", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: "#FFFFFF" },
+  // The stage is the dark table the page lies on; the page is the sheet.
+  pageStage: { flex: 1, margin: 10, overflow: "hidden", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: STAGE_BACKDROP },
   pageStageTablet: { marginHorizontal: 22, marginVertical: 14 },
-  pageLayer: { ...StyleSheet.absoluteFillObject },
+  pageStageImmersive: { margin: 0, borderRadius: 0, borderWidth: 0 },
+  pageLayer: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  paper: { overflow: "hidden", backgroundColor: "#FFFFFF" },
+  paperFill: { width: "100%", height: "100%" },
   pageImage: { width: "100%", height: "100%" },
-  zoomChip: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: "rgba(251,253,252,0.94)" },
+  chipRow: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 8 },
+  zoomChip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: "rgba(251,253,252,0.94)" },
   zoomChipText: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "800" },
   pageLoader: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "rgba(251,253,252,0.92)" },
   pageLoadingText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },

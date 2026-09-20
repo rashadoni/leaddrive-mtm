@@ -136,3 +136,46 @@ describe("presentation viewer wiring", () => {
     expect(nativeSource).toContain("3_600.0 / page.height.toDouble()")
   })
 })
+
+describe("presentation viewer — the slide gets the whole screen", () => {
+  const screenSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/screens/visit/PresentationViewerScreen.tsx"),
+    "utf8",
+  )
+  const nativeSource = fs.readFileSync(
+    path.resolve(__dirname, "../../android/app/src/main/java/com/mtmobileapp/PresentationFilesModule.kt"),
+    "utf8",
+  )
+  const serviceSource = fs.readFileSync(
+    path.resolve(__dirname, "../../src/services/presentation-file.ts"),
+    "utf8",
+  )
+
+  it("puts the panels away on a single tap and keeps the double tap for zoom", () => {
+    expect(screenSource).toContain("setChromeVisible")
+    expect(screenSource).toContain("PRESENTATION_DOUBLE_TAP_MS + 40")
+    expect(screenSource).toContain("if (singleTapTimer.current) clearTimeout(singleTapTimer.current)")
+  })
+
+  it("hides the system bars through the native bridge and always restores them", () => {
+    expect(nativeSource).toContain("fun setImmersive")
+    expect(nativeSource).toContain("BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE")
+    expect(serviceSource).toContain("export async function setPresentationImmersive")
+    // Leaving the screen restores them even if the toggle never ran.
+    expect(screenSource).toContain("ignore(setPresentationImmersive(false))")
+  })
+
+  it("keeps the page clear of the status and navigation bars", () => {
+    expect(screenSource).toContain("useSafeAreaInsets")
+    expect(screenSource).toContain("insets.top")
+    expect(screenSource).toContain("insets.bottom")
+    expect(screenSource).toContain("insets.left")
+    expect(screenSource).toContain("insets.right")
+  })
+
+  it("draws the white sheet at the size of the page, on a dark stage", () => {
+    expect(screenSource).toContain("STAGE_BACKDROP")
+    expect(screenSource).toContain("pageBox.width > 0 ?")
+    expect(screenSource).toMatch(/paper: \{[^}]*backgroundColor: "#FFFFFF"/)
+  })
+})
