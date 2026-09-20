@@ -18,6 +18,14 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { toRouteContactListItem, type RouteContactListItem } from "../../services/route-contact-list"
+import {
+  DOCTOR_REQUEST_COPY,
+  doctorRequestLanguage,
+  doctorRequestTone,
+  toDoctorCreateRequestItem,
+  visibleDoctorRequests,
+  type DoctorCreateRequestItem,
+} from "../../services/doctor-create-requests"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -57,6 +65,13 @@ const COPY = {
     filterLabel: "Client category",
     all: "All",
   },
+} as const
+
+const REQUEST_TONE = {
+  waiting: { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong },
+  attention: { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft },
+  done: { color: fieldTheme.color.success, background: fieldTheme.color.successSoft },
+  refused: { color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft },
 } as const
 
 const TYPE_KEY: Record<string, string> = {
@@ -107,6 +122,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
   const [loadingMore, setLoadingMore] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  const [requests, setRequests] = useState<DoctorCreateRequestItem[]>([])
   const requestId = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
@@ -159,16 +175,40 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
     }
   }, [typeFilter])
 
+  /**
+   * The agent's own requests, read beside the list itself. A failure here is
+   * silent on purpose: not knowing the status of a request must never stop
+   * the screen that shows the clients.
+   */
+  const loadRequests = useCallback(async () => {
+    try {
+      const response = await api.getDoctorCreateRequests(20)
+      const raw: unknown[] = Array.isArray(response?.data?.requests) ? response.data.requests : []
+      const mapped = raw
+        .map(toDoctorCreateRequestItem)
+        .filter((item): item is DoctorCreateRequestItem => item !== null)
+      setRequests(mapped)
+    } catch {
+      setRequests([])
+    }
+  }, [])
+
   useEffect(() => {
     void loadRows(debouncedSearch)
   }, [debouncedSearch, loadRows])
 
+  useEffect(() => {
+    void loadRequests()
+  }, [loadRequests])
+
   /**
    * The screen keeps its rows while the agent is elsewhere in the app, so a
    * client unassigned in the office stayed in this list until the app
-   * rebuilt the screen — pulling to refresh on Today did not touch it. Ask
-   * the server again whenever the list comes back into view; the first mount
-   * is already covered above, so a fresh open does not fetch twice.
+   * rebuilt the screen — pulling to refresh on Today did not touch it. The
+   * same visit brings back the status of the agent's own requests: a manager
+   * approving a doctor while the agent walks to the next clinic is news worth
+   * having on return. The first mount is already covered above, so a fresh
+   * open does not fetch twice.
    */
   const focusedOnce = useRef(false)
   useFocusEffect(
@@ -177,8 +217,9 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         focusedOnce.current = true
         return
       }
+      void loadRequests()
       void loadRows(debouncedSearch)
-    }, [debouncedSearch, loadRows]),
+    }, [debouncedSearch, loadRequests, loadRows]),
   )
 
   useEffect(() => () => {
@@ -188,6 +229,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
 
   const refresh = () => {
     setRefreshing(true)
+    void loadRequests()
     void loadRows(debouncedSearch)
   }
 
@@ -195,6 +237,9 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
     if (loading || loadingMore || !nextPage) return
     void loadRows(debouncedSearch, nextPage, true)
   }
+
+  const requestCopy = DOCTOR_REQUEST_COPY[doctorRequestLanguage(i18n.language)]
+  const shownRequests = visibleDoctorRequests(requests)
 
   const topArea = (
     <View style={styles.topArea}>
@@ -210,6 +255,34 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         <Icon name="person-add-outline" size={20} color={fieldTheme.color.onColor} />
         <Text style={styles.addDoctorText}>{copy.addDoctor}</Text>
       </Pressable>
+      {shownRequests.length > 0 ? (
+        <View style={styles.requestsCard}>
+          <Text style={styles.requestsTitle}>{requestCopy.title}</Text>
+          {shownRequests.map((item) => {
+            const tone = doctorRequestTone(item.status)
+            const visual = REQUEST_TONE[tone]
+            return (
+              <View key={item.id} style={styles.requestRow}>
+                <View style={[styles.requestDot, { backgroundColor: visual.color }]} />
+                <View style={styles.requestCopy}>
+                  <Text style={styles.requestName} numberOfLines={1}>{item.displayName}</Text>
+                  <Text style={styles.requestMeta} numberOfLines={1}>
+                    {[item.clinicName, item.specialtyName].filter(Boolean).join(" · ")}
+                  </Text>
+                  {item.decisionComment ? (
+                    <Text style={styles.requestComment} numberOfLines={2}>{item.decisionComment}</Text>
+                  ) : null}
+                </View>
+                <View style={[styles.requestPill, { backgroundColor: visual.background }]}>
+                  <Text style={[styles.requestPillText, { color: visual.color }]} numberOfLines={2}>
+                    {requestCopy[item.status]}
+                  </Text>
+                </View>
+              </View>
+            )
+          })}
+        </View>
+      ) : null}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -319,6 +392,16 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   topArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, gap: fieldTheme.space.md },
+  requestsCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, gap: fieldTheme.space.xs },
+  requestsTitle: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "900", letterSpacing: 0.4 },
+  requestRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs },
+  requestDot: { width: 8, height: 8, borderRadius: 4 },
+  requestCopy: { flex: 1, minWidth: 0 },
+  requestName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  requestMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16 },
+  requestComment: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontStyle: "italic", marginTop: 2 },
+  requestPill: { maxWidth: 132, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm, paddingVertical: 3 },
+  requestPillText: { fontSize: 11, lineHeight: 15, fontWeight: "900", textAlign: "center" },
   addDoctorButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.lg, backgroundColor: fieldTheme.color.primary },
   addDoctorText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "800" },
   filters: { gap: fieldTheme.space.sm, paddingRight: fieldTheme.space.lg },
