@@ -15,6 +15,10 @@ const pushService = fs.readFileSync(
   "utf8",
 )
 const appGradle = fs.readFileSync(path.resolve(__dirname, "../../android/app/build.gradle"), "utf8")
+const notifications = fs.readFileSync(
+  path.resolve(__dirname, "../../android/app/src/main/java/com/mtmobileapp/FieldNotificationsModule.kt"),
+  "utf8",
+)
 const rootGradle = fs.readFileSync(path.resolve(__dirname, "../../android/build.gradle"), "utf8")
 const googleServices = JSON.parse(
   fs.readFileSync(path.resolve(__dirname, "../../android/app/google-services.json"), "utf8"),
@@ -56,6 +60,33 @@ describe("what a push may say and where it goes", () => {
   it("keeps a token that arrived while the app was closed", () => {
     expect(pushService).toContain("KEY_PENDING_TOKEN")
     expect(service).toContain("native.consumePendingToken()")
+  })
+})
+
+/**
+ * A push Google accepted and the phone threw away is the worst failure in
+ * this chain: the server counts it as delivered, the agent never sees it, and
+ * nothing anywhere disagrees. On Android 8+ that is what `notify` into a
+ * missing channel does — silently nothing.
+ */
+describe("a delivered push actually reaches the screen", () => {
+  it("creates the channel before posting into it", () => {
+    const post = notifications.slice(notifications.indexOf("fun post(context: Context"))
+    expect(post.slice(0, 400)).toContain("ensureChannel(context, channelId)")
+    expect(notifications).toContain("fun ensureChannel(context: Context, channelId: String)")
+  })
+
+  /**
+   * The channel used to appear only when the Route screen mounted, so a push
+   * that arrived before an agent opened that tab had nowhere to land.
+   */
+  it("does not depend on a screen having been opened first", () => {
+    expect(notifications).toContain("manager.getNotificationChannel(channelId) != null")
+  })
+
+  it("names the channel for the system tray of a push drawn without us", () => {
+    expect(manifest).toContain("com.google.firebase.messaging.default_notification_channel_id")
+    expect(manifest).toContain('android:value="field-reminders"')
   })
 })
 

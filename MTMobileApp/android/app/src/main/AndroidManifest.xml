@@ -35,6 +35,14 @@
         </intent-filter>
       </service>
 
+      <!-- A push that arrives while the app is not running is drawn by the
+           system, not by our code, and Android 8+ needs a channel for it.
+           Without this line it lands in a "Miscellaneous" channel the agent
+           never chose — or, on stricter builds, nowhere at all. -->
+      <meta-data
+        android:name="com.google.firebase.messaging.default_notification_channel_id"
+        android:value="field-reminders" />
+
       <receiver
         android:name=".FieldNotificationReceiver"
         android:exported="false">
