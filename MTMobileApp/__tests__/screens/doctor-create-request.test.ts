@@ -24,3 +24,10 @@ describe("mobile new doctor request", () => {
     expect(api).toContain("}, 20_000, 2)")
   })
 })
+
+describe("new doctor request — what the agent is told when it fails", () => {
+  it("never prints a machine code where a person reads it", () => {
+    expect(screen).toContain("/^[A-Z][A-Z0-9_]*$/.test(message)")
+    expect(screen).toContain("technical ? copy.failed : message")
+  })
+})

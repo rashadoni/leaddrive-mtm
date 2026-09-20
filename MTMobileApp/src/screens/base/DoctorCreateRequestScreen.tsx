@@ -123,7 +123,12 @@ export default function DoctorCreateRequestScreen() {
       })
       navigation.goBack()
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : copy.failed)
+      // Transport failures carry machine codes (SESSION_EXPIRED,
+      // SERVER_INVALID_RESPONSE_500). Shown as they are, the agent reads a
+      // stack-trace word where they need "try again or call the manager".
+      const message = submitError instanceof Error ? submitError.message.trim() : ""
+      const technical = !message || /^[A-Z][A-Z0-9_]*$/.test(message)
+      setError(technical ? copy.failed : message)
     } finally {
       setSaving(false)
     }

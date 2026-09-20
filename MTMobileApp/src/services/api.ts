@@ -24,6 +24,37 @@ const STORAGE_KEY_CREDENTIALS = "@mtm_saved_login"
 // reported as missing before the handshake completes.
 const SERVER_DISCOVERY_TIMEOUT_MS = 30_000
 
+/**
+ * Symbol for "the server did not answer with JSON". Distinguishable from a
+ * legitimate `null` body, and never confused with a parsed value.
+ */
+export const NOT_JSON = Symbol("NOT_JSON")
+
+async function readJsonBody(res: Response): Promise<any> {
+  // `text()` first: it is the only way to tell an empty body apart from a
+  // JSON `null`, and it keeps an HTML error page out of the parser. Some
+  // Response-like objects expose `json()` alone, so that path stays.
+  if (typeof res.text === "function") {
+    let text: string
+    try {
+      text = await res.text()
+    } catch {
+      return NOT_JSON
+    }
+    if (!text.trim()) return NOT_JSON
+    try {
+      return JSON.parse(text)
+    } catch {
+      return NOT_JSON
+    }
+  }
+  try {
+    return await res.json()
+  } catch {
+    return NOT_JSON
+  }
+}
+
 class ApiClient {
   private token: string | null = null
   private agentId: string | null = null
@@ -380,7 +411,19 @@ class ApiClient {
         await this.handleUnauthorized(path, requestToken, apiVersion)
         throw new Error("SESSION_EXPIRED")
       }
-      const data = await res.json()
+      // A server fault does not always arrive as JSON: Next answers an
+      // unhandled route error with 500 and an empty body, and a wrong path
+      // with an HTML page. Parsing those as JSON showed the agent
+      // "JSON Parse error: Unexpected end of input" instead of a failure they
+      // could act on — that is how an RLS-blocked new-doctor request looked
+      // in the field.
+      const data = await readJsonBody(res)
+      if (data === NOT_JSON) {
+        const err = new Error(`SERVER_INVALID_RESPONSE_${res.status}`) as RetryableSyncError
+        err.code = "SERVER_INVALID_RESPONSE"
+        err.status = res.status
+        throw err
+      }
 
       if (!res.ok) {
         // Surface the server's machine-readable error code (e.g. the 422
