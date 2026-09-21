@@ -110,10 +110,6 @@ const ROUTE_COPY = {
     nextStop: "Следующая точка",
     selectedStop: "Выбранная точка",
     activeVisit: "Сейчас идёт визит",
-    batterySleepTitle: "Телефон усыпляет приложение",
-    batterySleepBody: "Пока телефон лежит без движения, Android обрывает запись маршрута. Точки не теряются, но приезжают с задержкой.",
-    batterySleepAction: "Разрешить работать",
-    batterySleepLater: "Позже",
     reminderChannel: "Напоминания о визитах",
     reminderChannelHint: "Напоминание, если визит идёт дольше обычного.",
     routeComplete: "Маршрут выполнен",
@@ -202,10 +198,6 @@ const ROUTE_COPY = {
     nextStop: "Növbəti nöqtə",
     selectedStop: "Seçilmiş nöqtə",
     activeVisit: "Ziyarət davam edir",
-    batterySleepTitle: "Telefon tətbiqi yuxuya verir",
-    batterySleepBody: "Telefon hərəkətsiz qalanda Android marşrutun yazılmasını kəsir. Nöqtələr itmir, amma gecikmə ilə gəlir.",
-    batterySleepAction: "İşləməyə icazə ver",
-    batterySleepLater: "Sonra",
     reminderChannel: "Ziyarət xatırlatmaları",
     reminderChannelHint: "Ziyarət adi haldan uzun sürərsə xatırladır.",
     routeComplete: "Marşrut tamamlandı",
@@ -294,10 +286,6 @@ const ROUTE_COPY = {
     nextStop: "Next stop",
     selectedStop: "Selected stop",
     activeVisit: "Visit in progress",
-    batterySleepTitle: "The phone puts the app to sleep",
-    batterySleepBody: "While the phone lies still, Android cuts off route recording. Points are not lost, but they arrive late.",
-    batterySleepAction: "Let it keep working",
-    batterySleepLater: "Later",
     reminderChannel: "Visit reminders",
     reminderChannelHint: "A reminder when a visit runs longer than usual.",
     routeComplete: "Route complete",
@@ -655,36 +643,6 @@ function JourneySteps({
           {renderTemplate(copy.currentStep, { step: activeStep, label: labels[activeStep - 1] })}
         </Text>
       )}
-    </View>
-  )
-}
-
-/**
- * Shown only while a workday is open and the phone still sleeps. Two plain
- * choices and no third state: the agent either lets the app keep working or
- * puts it off, and either answer is remembered for a week.
- */
-function BatterySleepCard({
-  copy,
-  onAllow,
-  onLater,
-}: {
-  copy: (typeof ROUTE_COPY)[RouteLanguage]
-  onAllow: () => void
-  onLater: () => void
-}) {
-  return (
-    <View style={styles.batteryCard} accessibilityLiveRegion="polite">
-      <Text style={styles.batteryTitle}>{copy.batterySleepTitle}</Text>
-      <Text style={styles.batteryBody}>{copy.batterySleepBody}</Text>
-      <View style={styles.batteryActions}>
-        <Pressable accessibilityRole="button" onPress={onAllow} style={styles.batteryPrimary}>
-          <Text style={styles.batteryPrimaryText} numberOfLines={1}>{copy.batterySleepAction}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={onLater} style={styles.batterySecondary}>
-          <Text style={styles.batterySecondaryText} numberOfLines={1}>{copy.batterySleepLater}</Text>
-        </Pressable>
-      </View>
     </View>
   )
 }
@@ -1180,35 +1138,21 @@ export default function RouteScreen() {
   // alarms, and closing the visit takes them away. The phone knows when the
   // visit started — none of this needs the server or a push service.
   /**
-   * One card, at the one moment it makes sense: the workday is open, so the
-   * agent can see what "the phone stops recording the route" refers to. Asked
-   * at most once a week, and never again after it is granted.
+   * Letting the app keep working while the phone rests.
+   *
+   * Android suspends a stationary app's network, and the day's route stops
+   * being recorded until something wakes it. The outbox keeps those
+   * coordinates, so nothing is lost — they simply arrive up to half an hour
+   * late, which is enough to make the live map say an agent has stopped.
+   *
+   * The owner removed the card that explained this: an agent does not need a
+   * lecture about Doze. The system dialog is asked for once, silently, at the
+   * moment the workday starts — beside the permissions the app already asks
+   * for there — and never again for a week if it is declined.
    */
-  const [askBattery, setAskBattery] = useState(false)
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      // The screen's own rule: hydrated, confirmed by the server, not paused.
-      if (!workdayActive) { if (!cancelled) setAskBattery(false); return }
-      const [exempt, lastAskedAt] = await Promise.all([batterySleepExempt(), lastBatteryPromptAt()])
-      if (cancelled) return
-      setAskBattery(shouldAskBatterySleepExemption({
-        exempt,
-        workdayActive,
-        lastAskedAt,
-        now: Date.now(),
-      }))
-    })()
-    return () => { cancelled = true }
-  }, [workdayActive])
-
-  const dismissBatteryCard = useCallback(async () => {
-    setAskBattery(false)
-    await rememberBatteryPrompt()
-  }, [])
-
-  const openBatteryDialog = useCallback(async () => {
-    setAskBattery(false)
+  const askBatteryExemptionOnce = useCallback(async () => {
+    const [exempt, lastAskedAt] = await Promise.all([batterySleepExempt(), lastBatteryPromptAt()])
+    if (!shouldAskBatterySleepExemption({ exempt, workdayActive: true, lastAskedAt, now: Date.now() })) return
     await rememberBatteryPrompt()
     await askBatterySleepExemption()
   }, [])
@@ -1481,6 +1425,8 @@ export default function RouteScreen() {
       await startWorkday(currentWorkdayKey)
       await refreshRouteFieldSession()
       await fetchRoute()
+      // Asked here and nowhere else: the agent has just said "I am working".
+      await askBatteryExemptionOnce().catch(() => {})
     } catch {
       notify({ tone: "error", title: t("common.error"), message: copy.workdayStartFailed })
     } finally {
@@ -1904,13 +1850,6 @@ export default function RouteScreen() {
           {header}
           <View style={styles.tabletTop}>
             <ConnectionBanner mode={presentation.banner} copy={copy} />
-            {askBattery ? (
-              <BatterySleepCard
-                copy={copy}
-                onAllow={() => { void openBatteryDialog() }}
-                onLater={() => { void dismissBatteryCard() }}
-              />
-            ) : null}
             {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
             {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
           </View>
@@ -1979,13 +1918,6 @@ export default function RouteScreen() {
             {header}
             <View style={styles.phoneMain}>
               <ConnectionBanner mode={presentation.banner} copy={copy} />
-            {askBattery ? (
-              <BatterySleepCard
-                copy={copy}
-                onAllow={() => { void openBatteryDialog() }}
-                onLater={() => { void dismissBatteryCard() }}
-              />
-            ) : null}
               {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
               {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : !route ? emptyState : null}
               {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
@@ -2102,36 +2034,6 @@ const styles = StyleSheet.create({
   headerSubtitle: { color: "#CFE5DD", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
   agentName: { color: "#AFCFC4", fontSize: 12, fontWeight: "700", marginTop: fieldTheme.space.sm },
 
-  batteryCard: {
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.surface,
-    padding: fieldTheme.space.md,
-    gap: fieldTheme.space.xs,
-  },
-  batteryTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
-  batteryBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
-  batteryActions: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
-  batteryPrimary: {
-    flex: 1,
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.primary,
-  },
-  batteryPrimaryText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
-  batterySecondary: {
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.pill,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-  },
-  batterySecondaryText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800" },
   connectionBanner: {
     flexDirection: "row",
     alignItems: "flex-start",

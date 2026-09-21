@@ -49,6 +49,30 @@ describe("when the app may ask to stay awake", () => {
   })
 })
 
+/**
+ * The owner removed the explanatory card on 2026-09-21: an agent in a clinic
+ * does not need a lecture about Android power management. The ask now happens
+ * once, silently, where the agent has just said "I am working".
+ */
+describe("where the ask lives", () => {
+  const screen = require("fs").readFileSync(
+    require("path").resolve(__dirname, "../../src/screens/route/RouteScreen.tsx"),
+    "utf8",
+  )
+
+  it("has no card and no copy explaining Doze to the agent", () => {
+    expect(screen).not.toContain("BatterySleepCard")
+    expect(screen).not.toContain("batterySleepTitle")
+    expect(screen).not.toContain("batteryCard:")
+  })
+
+  it("asks once, right after the workday starts", () => {
+    const handler = screen.slice(screen.indexOf("const handleStartWorkday"), screen.indexOf("const handleStartWorkday") + 700)
+    expect(handler).toContain("await askBatteryExemptionOnce()")
+    expect(screen).toContain("shouldAskBatterySleepExemption({ exempt, workdayActive: true, lastAskedAt, now: Date.now() })")
+  })
+})
+
 describe("remembering the answer", () => {
   it("keeps the moment it asked", async () => {
     expect(await lastBatteryPromptAt()).toBeNull()
