@@ -6,6 +6,7 @@ import {
   type MobileCapability,
   type RouteFieldAccess,
   isTransportFailure,
+  NOT_CONFIGURED,
 } from "../services/bootstrap"
 
 interface BootstrapState {
@@ -22,6 +23,26 @@ interface BootstrapState {
   clear: () => void
 }
 
+/**
+ * One bootstrap request, and a second one after re-reading the stored server.
+ *
+ * `api.init()` fills `baseUrl` from AsyncStorage at start-up. A screen that
+ * asks before that finished — or after a cold start where the API client was
+ * rebuilt — gets `Server not configured` thrown inside the app, with no
+ * request made and nothing for a retry loop to recover from. Re-reading the
+ * server costs two storage reads and turns a permanent dead end into one
+ * retry that actually dials.
+ */
+async function bootstrapWithStoredServer() {
+  try {
+    return await api.getBootstrap()
+  } catch (error) {
+    if ((error as { message?: string })?.message !== NOT_CONFIGURED) throw error
+    await api.init()
+    return await api.getBootstrap()
+  }
+}
+
 export const useBootstrapStore = create<BootstrapState>((set) => ({
   data: null,
   capabilities: [],
@@ -31,7 +52,7 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
   fetchBootstrap: async () => {
     set({ loading: true })
     try {
-      const res = await api.getBootstrap()
+      const res = await bootstrapWithStoredServer()
       if (res?.success && res.data) {
         const data = toBootstrap(res.data)
         set({

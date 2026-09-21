@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
@@ -21,6 +21,16 @@ function copyKey(access: BlockedAccess): "checking" | "disabled" | "unavailable"
 const OFFLINE_RETRY_SECONDS = 15
 
 /**
+ * A single attempt may not hang for ever. Without this, one unresolved
+ * promise froze the retry loop: the screen kept saying "the app keeps
+ * checking" while nothing was being checked (21 September, owner's phone).
+ */
+const ATTEMPT_TIMEOUT_MS = 12_000
+
+/** After a minute of failures the way out is offered again, quietly. */
+const ATTEMPTS_BEFORE_ESCAPE = 4
+
+/**
  * Route Field is a separately admitted product shell. This screen is rendered
  * before field tabs for an HRM-only tenant, a revoked route entitlement, or a
  * malformed/unreachable capability manifest; it never falls back to a role.
@@ -30,9 +40,34 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
   const insets = useSafeAreaInsets()
   const logout = useAuthStore((state) => state.logout)
   const [refreshing, setRefreshing] = useState(false)
+  const [attempts, setAttempts] = useState(0)
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null)
+  // A ref, not the state flag: a stuck attempt must not be able to wedge the
+  // loop shut, and the loop must not depend on a re-render to unwedge it.
+  const attemptRunning = useRef(false)
   const key = copyKey(access)
   const checking = access === "pending" || refreshing
   const offline = access === "offline"
+
+
+  const refresh = useCallback(async () => {
+    if (attemptRunning.current) return
+    attemptRunning.current = true
+    setRefreshing(true)
+    try {
+      // Whichever finishes first: the answer, or the deadline. A request the
+      // platform never settles must not cost the next attempt.
+      await Promise.race([
+        useBootstrapStore.getState().fetchBootstrap(),
+        new Promise((resolve) => setTimeout(resolve, ATTEMPT_TIMEOUT_MS)),
+      ])
+    } finally {
+      attemptRunning.current = false
+      setRefreshing(false)
+      setAttempts((value) => value + 1)
+      setLastAttemptAt(Date.now())
+    }
+  }, [])
 
   /**
    * While the server is unreachable the screen retries on its own. The agent
@@ -41,20 +76,10 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
    */
   useEffect(() => {
     if (!offline) return
+    void refresh()
     const timer = setInterval(() => { refresh().catch(() => {}) }, OFFLINE_RETRY_SECONDS * 1_000)
     return () => clearInterval(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offline])
-
-  const refresh = async () => {
-    if (refreshing) return
-    setRefreshing(true)
-    try {
-      await useBootstrapStore.getState().fetchBootstrap()
-    } finally {
-      setRefreshing(false)
-    }
-  }
+  }, [offline, refresh])
 
   return (
     <View style={[styles.root, { paddingTop: Math.max(insets.top, fieldTheme.space.xl) }]}>
@@ -70,6 +95,14 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
         </View>
         <Text style={styles.title}>{t(`routeFieldAccess.${key}Title`)}</Text>
         <Text style={styles.body}>{t(`routeFieldAccess.${key}Body`)}</Text>
+        {/* "It keeps checking" is a claim; this is the evidence for it. */}
+        {offline && lastAttemptAt !== null ? (
+          <Text style={styles.attempt}>
+            {t("routeFieldAccess.offlineLastAttempt", {
+              time: new Date(lastAttemptAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+            })}
+          </Text>
+        ) : null}
         {access !== "pending" ? (
           <Pressable
             accessibilityRole="button"
@@ -84,7 +117,7 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
         {/* No sign-out while the server is merely unreachable: signing out
             mid-shift is the one action that actually loses the session, and
             it fixes nothing that a returning network will not fix. */}
-        {offline ? null : <Pressable
+        {offline && attempts < ATTEMPTS_BEFORE_ESCAPE ? null : <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("routeFieldAccess.signOut")}
           onPress={() => logout().catch(() => {})}
@@ -130,6 +163,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
+  attempt: { color: fieldTheme.color.inkMuted, fontSize: 12, textAlign: "center" },
   body: {
     color: fieldTheme.color.inkMuted,
     fontSize: 15,

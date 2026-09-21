@@ -44,8 +44,15 @@ describe("what the blocked screen does about it", () => {
     expect(resources).toContain('offlineTitle: "Server cavab vermir"')
   })
 
-  it("does not offer signing out as a cure for an unreachable server", () => {
-    expect(screen).toContain("{offline ? null : <Pressable")
+  /**
+   * Sign-out is not a cure for a silent server — but a screen with no way off
+   * it is worse. 21 September: the retry loop wedged shut and the agent would
+   * have been stuck with nothing to press. The button is therefore hidden
+   * while the retries are still young and returns after a minute of failures.
+   */
+  it("hides signing out while retrying, and gives it back after a minute", () => {
+    expect(screen).toContain("{offline && attempts < ATTEMPTS_BEFORE_ESCAPE ? null : <Pressable")
+    expect(screen).toContain("const ATTEMPTS_BEFORE_ESCAPE = 4")
   })
 
   it("retries on its own rather than waiting for a tap", () => {
@@ -62,5 +69,50 @@ describe("the gate itself does not open", () => {
   it("never treats offline as access", () => {
     const service = fs.readFileSync(path.resolve(__dirname, "../../src/services/bootstrap.ts"), "utf8")
     expect(service).toContain('return access === "enabled" || access === "legacy"')
+  })
+})
+
+/**
+ * 21 September, owner's phone: the screen retried every fifteen seconds for
+ * two minutes and the production server logged **zero** requests. Every
+ * attempt died inside the app — `api.init()` had not filled `baseUrl`, so the
+ * client threw `Server not configured` before dialling. "The app keeps
+ * checking" was literally true and completely useless, and with the sign-out
+ * button removed the agent had no way off the screen at all.
+ */
+describe("a retry that actually dials", () => {
+  const store = fs.readFileSync(path.resolve(__dirname, "../../src/store/bootstrap.ts"), "utf8")
+  const service = fs.readFileSync(path.resolve(__dirname, "../../src/services/bootstrap.ts"), "utf8")
+
+  it("does not call a client failure a silent server", () => {
+    expect(isTransportFailure({ message: "Server not configured" })).toBe(false)
+    expect(service).toContain('export const NOT_CONFIGURED = "Server not configured"')
+  })
+
+  it("re-reads the stored server once before giving up", () => {
+    expect(store).toContain("async function bootstrapWithStoredServer()")
+    expect(store).toContain("await api.init()")
+    expect(store).toContain("const res = await bootstrapWithStoredServer()")
+  })
+
+  it("cannot be wedged shut by one attempt that never settles", () => {
+    expect(screen).toContain("const attemptRunning = useRef(false)")
+    expect(screen).toContain("const ATTEMPT_TIMEOUT_MS = 12_000")
+    expect(screen).toContain("new Promise((resolve) => setTimeout(resolve, ATTEMPT_TIMEOUT_MS))")
+    expect(screen).not.toContain("if (refreshing) return")
+  })
+
+  it("tries at once rather than waiting out the first interval", () => {
+    expect(screen).toContain("void refresh()\n    const timer = setInterval")
+  })
+
+  it("shows when it last tried, so the claim can be checked", () => {
+    expect(screen).toContain('t("routeFieldAccess.offlineLastAttempt"')
+  })
+
+  /** Never trapped: after a minute of failures the way out returns, quietly. */
+  it("gives the way out back after a minute of failures", () => {
+    expect(screen).toContain("const ATTEMPTS_BEFORE_ESCAPE = 4")
+    expect(screen).toContain("{offline && attempts < ATTEMPTS_BEFORE_ESCAPE ? null : <Pressable")
   })
 })
