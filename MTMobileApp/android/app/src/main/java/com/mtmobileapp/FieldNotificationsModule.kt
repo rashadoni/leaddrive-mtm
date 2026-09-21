@@ -7,6 +7,9 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -75,6 +78,63 @@ class FieldNotificationsModule(
       promise.resolve(true)
     } catch (error: Throwable) {
       promise.reject("NOTIFICATION_CHANNEL_FAILED", error.message, error)
+    }
+  }
+
+  /**
+   * Whether Android has stopped putting this app to sleep.
+   *
+   * A sleeping app is the field day's blind spot: the phone lies still on a
+   * counter, the system suspends its network, and the route stops being
+   * recorded until something wakes it. The queue now keeps those coordinates,
+   * but they arrive twenty minutes late — the exemption is what makes them
+   * arrive at once.
+   */
+  @ReactMethod
+  fun isIgnoringBatteryOptimizations(promise: Promise) {
+    try {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        promise.resolve(true)
+        return
+      }
+      val power = reactContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+      promise.resolve(power.isIgnoringBatteryOptimizations(reactContext.packageName))
+    } catch (error: Throwable) {
+      // Unknown is treated as "already fine": a broken read must not nag an
+      // agent about a setting we cannot even see.
+      promise.resolve(true)
+    }
+  }
+
+  /**
+   * Opens the system dialog. The decision is the agent's — the app asks once
+   * per shift at most and never pretends the answer was yes.
+   */
+  @ReactMethod
+  fun requestIgnoreBatteryOptimizations(promise: Promise) {
+    try {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        promise.resolve(false)
+        return
+      }
+      val activity = reactContext.currentActivity
+      val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+        data = Uri.parse("package:" + reactContext.packageName)
+        if (activity == null) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      (activity ?: reactContext).startActivity(intent)
+      promise.resolve(true)
+    } catch (error: Throwable) {
+      // Some builds hide the dialog. Fall back to the settings list rather
+      // than leaving a button that does nothing.
+      try {
+        val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        reactContext.startActivity(fallback)
+        promise.resolve(true)
+      } catch (ignored: Throwable) {
+        promise.resolve(false)
+      }
     }
   }
 

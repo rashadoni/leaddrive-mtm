@@ -13,6 +13,11 @@
     <!-- Android 13+ hides the GPS service notification without it. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- HeadlessJsTaskService acquires a wake lock for the background action. -->
+    <!-- Android suspends network for a stationary phone with the screen off.
+         For a field app that is the working day: the agent stands in a clinic,
+         the route stops being recorded, and the office sees a hole it cannot
+         explain. The exemption is requested from the agent, never assumed. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.CAMERA" />
 

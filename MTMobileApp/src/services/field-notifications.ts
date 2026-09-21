@@ -22,6 +22,8 @@ interface FieldNotificationsNativeModule {
   notifyNow(id: string, title: string, body: string, channelId: string): Promise<boolean>
   scheduleAt(id: string, triggerAtMs: number, title: string, body: string, channelId: string): Promise<boolean>
   cancel(id: string): Promise<boolean>
+  isIgnoringBatteryOptimizations(): Promise<boolean>
+  requestIgnoreBatteryOptimizations(): Promise<boolean>
 }
 
 function nativeModule(): FieldNotificationsNativeModule | null {
@@ -97,4 +99,37 @@ export async function notifyNow(input: { id: string; title: string; body: string
   try {
     await native.notifyNow(input.id, input.title, input.body, FIELD_REMINDER_CHANNEL)
   } catch {}
+}
+
+/**
+ * Whether Android has stopped putting this app to sleep.
+ *
+ * On a stationary phone with the screen off the system suspends the app's
+ * network, and the day's route stops being recorded until something wakes it.
+ * The outbox keeps those coordinates, so nothing is lost — but they arrive
+ * twenty minutes late, and a manager watching the live map sees an agent who
+ * has apparently stopped moving.
+ *
+ * Unknown counts as fine: a reading we cannot trust must not turn into a
+ * banner an agent sees every morning.
+ */
+export async function batterySleepExempt(): Promise<boolean> {
+  const native = nativeModule()
+  if (!native?.isIgnoringBatteryOptimizations) return true
+  try {
+    return await native.isIgnoringBatteryOptimizations()
+  } catch {
+    return true
+  }
+}
+
+/** Opens the system dialog. The answer is the agent's, and it is not assumed. */
+export async function askBatterySleepExemption(): Promise<boolean> {
+  const native = nativeModule()
+  if (!native?.requestIgnoreBatteryOptimizations) return false
+  try {
+    return await native.requestIgnoreBatteryOptimizations()
+  } catch {
+    return false
+  }
 }
