@@ -49,17 +49,6 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
   const checking = access === "pending" || refreshing
   const offline = access === "offline"
 
-  /**
-   * While the server is unreachable the screen retries on its own. The agent
-   * is standing in front of a customer; nursing an app back to life is not
-   * their job, and the old screen only moved when tapped.
-   */
-  useEffect(() => {
-    if (!offline) return
-    void refresh()
-    const timer = setInterval(() => { refresh().catch(() => {}) }, OFFLINE_RETRY_SECONDS * 1_000)
-    return () => clearInterval(timer)
-  }, [offline, refresh])
 
   const refresh = useCallback(async () => {
     if (attemptRunning.current) return
@@ -79,6 +68,18 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
       setLastAttemptAt(Date.now())
     }
   }, [])
+
+  /**
+   * While the server is unreachable the screen retries on its own. The agent
+   * is standing in front of a customer; nursing an app back to life is not
+   * their job, and the old screen only moved when tapped.
+   */
+  useEffect(() => {
+    if (!offline) return
+    void refresh()
+    const timer = setInterval(() => { refresh().catch(() => {}) }, OFFLINE_RETRY_SECONDS * 1_000)
+    return () => clearInterval(timer)
+  }, [offline, refresh])
 
   return (
     <View style={[styles.root, { paddingTop: Math.max(insets.top, fieldTheme.space.xl) }]}>
