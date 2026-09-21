@@ -241,12 +241,26 @@ describe("bootstrap store", () => {
     expect(useBootstrapStore.getState().loading).toBe(false)
   })
 
+  /**
+   * The door stays shut, and the reason is now recorded: `offline` means
+   * nobody answered, not that the tenant lost the module. The screen behind
+   * this state stops accusing the account and stops offering a sign-out.
+   */
   it("leaves capabilities empty and Route Field closed on a network failure", async () => {
     ;(api.getBootstrap as jest.Mock).mockRejectedValue(new Error("Network request failed"))
     await useBootstrapStore.getState().fetchBootstrap()
     expect(useBootstrapStore.getState().capabilities).toEqual([])
-    expect(useBootstrapStore.getState().routeFieldAccess).toBe("unavailable")
+    expect(useBootstrapStore.getState().routeFieldAccess).toBe("offline")
+    expect(hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)).toBe(false)
     expect(useBootstrapStore.getState().loading).toBe(false)
+  })
+
+  it("keeps an answered-but-unusable bootstrap as unavailable", async () => {
+    ;(api.getBootstrap as jest.Mock).mockRejectedValue(
+      Object.assign(new Error("Forbidden"), { status: 403 }),
+    )
+    await useBootstrapStore.getState().fetchBootstrap()
+    expect(useBootstrapStore.getState().routeFieldAccess).toBe("unavailable")
   })
 
   it("clear resets the store", async () => {

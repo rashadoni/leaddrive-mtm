@@ -5,6 +5,7 @@ import {
   type BootstrapData,
   type MobileCapability,
   type RouteFieldAccess,
+  isTransportFailure,
 } from "../services/bootstrap"
 
 interface BootstrapState {
@@ -48,9 +49,11 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
         set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable" })
         return "unavailable"
       }
-    } catch {
-      set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable" })
-      return "unavailable"
+    } catch (error) {
+      // A request that never got an answer says nothing about entitlement.
+      const access = isTransportFailure(error as { status?: number; message?: string }) ? "offline" : "unavailable"
+      set({ data: null, capabilities: [], loading: false, routeFieldAccess: access })
+      return access
     }
   },
 
