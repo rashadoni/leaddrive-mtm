@@ -29,7 +29,23 @@ export type NavGroup = "field" | "team" | "none"
  * predates the additive manifest but explicitly exposed the old routes module
  * and field capability together.
  */
-export type RouteFieldAccess = "pending" | "enabled" | "legacy" | "disabled" | "unavailable"
+/**
+ * `offline` and `unavailable` are both closed doors, and they are not the
+ * same door. `unavailable` means the server answered and the answer could not
+ * be trusted; `offline` means nobody answered at all — no signal, a restart
+ * mid-deploy, a proxy returning 502. Telling an agent in a clinic that their
+ * access "could not be confirmed" when the truth is that the server is down
+ * invites them to sign out mid-shift looking for a fix, and signing out is
+ * the one thing that actually loses work.
+ */
+export type RouteFieldAccess = "pending" | "enabled" | "legacy" | "disabled" | "unavailable" | "offline"
+
+/** No answer, as opposed to an answer that cannot be trusted. */
+export function isTransportFailure(error: { status?: number; message?: string } | null | undefined): boolean {
+  if (!error) return true
+  if (error.message === "SESSION_EXPIRED") return false
+  return typeof error.status !== "number" || error.status >= 500
+}
 
 export interface RouteFieldCapabilityManifest {
   version: 1

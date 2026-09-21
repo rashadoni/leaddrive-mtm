@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
@@ -10,11 +10,15 @@ import { fieldTheme } from "../../theme/fieldTheme"
 
 type BlockedAccess = Exclude<RouteFieldAccess, "enabled" | "legacy">
 
-function copyKey(access: BlockedAccess): "checking" | "disabled" | "unavailable" {
+function copyKey(access: BlockedAccess): "checking" | "disabled" | "unavailable" | "offline" {
   if (access === "pending") return "checking"
   if (access === "disabled") return "disabled"
+  if (access === "offline") return "offline"
   return "unavailable"
 }
+
+/** Seconds between automatic retries while the server is simply not there. */
+const OFFLINE_RETRY_SECONDS = 15
 
 /**
  * Route Field is a separately admitted product shell. This screen is rendered
@@ -28,6 +32,19 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
   const [refreshing, setRefreshing] = useState(false)
   const key = copyKey(access)
   const checking = access === "pending" || refreshing
+  const offline = access === "offline"
+
+  /**
+   * While the server is unreachable the screen retries on its own. The agent
+   * is standing in front of a customer; nursing an app back to life is not
+   * their job, and the old screen only moved when tapped.
+   */
+  useEffect(() => {
+    if (!offline) return
+    const timer = setInterval(() => { refresh().catch(() => {}) }, OFFLINE_RETRY_SECONDS * 1_000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offline])
 
   const refresh = async () => {
     if (refreshing) return
@@ -64,14 +81,17 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
             <Text style={styles.buttonText}>{t("routeFieldAccess.refresh")}</Text>
           </Pressable>
         ) : null}
-        <Pressable
+        {/* No sign-out while the server is merely unreachable: signing out
+            mid-shift is the one action that actually loses the session, and
+            it fixes nothing that a returning network will not fix. */}
+        {offline ? null : <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("routeFieldAccess.signOut")}
           onPress={() => logout().catch(() => {})}
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryButtonText}>{t("routeFieldAccess.signOut")}</Text>
-        </Pressable>
+        </Pressable>}
       </View>
     </View>
   )
