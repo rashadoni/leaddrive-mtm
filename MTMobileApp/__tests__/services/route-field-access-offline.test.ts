@@ -44,8 +44,15 @@ describe("what the blocked screen does about it", () => {
     expect(resources).toContain('offlineTitle: "Server cavab vermir"')
   })
 
-  it("does not offer signing out as a cure for an unreachable server", () => {
-    expect(screen).toContain("{offline ? null : <Pressable")
+  /**
+   * Sign-out is not a cure for a silent server — but a screen with no way off
+   * it is worse. 21 September: the retry loop wedged shut and the agent would
+   * have been stuck with nothing to press. The button is therefore hidden
+   * while the retries are still young and returns after a minute of failures.
+   */
+  it("hides signing out while retrying, and gives it back after a minute", () => {
+    expect(screen).toContain("{offline && attempts < ATTEMPTS_BEFORE_ESCAPE ? null : <Pressable")
+    expect(screen).toContain("const ATTEMPTS_BEFORE_ESCAPE = 4")
   })
 
   it("retries on its own rather than waiting for a tap", () => {
