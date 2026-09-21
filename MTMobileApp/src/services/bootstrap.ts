@@ -40,10 +40,21 @@ export type NavGroup = "field" | "team" | "none"
  */
 export type RouteFieldAccess = "pending" | "enabled" | "legacy" | "disabled" | "unavailable" | "offline"
 
+/**
+ * The client refuses before it dials: `baseUrl` is empty because `api.init()`
+ * has not read the stored server yet. 21 September, on the owner's phone: the
+ * gate screen retried every fifteen seconds for two minutes and the server
+ * saw **zero** requests, because every attempt died here — inside the app,
+ * instantly. "The app keeps checking" was true and useless.
+ */
+export const NOT_CONFIGURED = "Server not configured"
+
 /** No answer, as opposed to an answer that cannot be trusted. */
 export function isTransportFailure(error: { status?: number; message?: string } | null | undefined): boolean {
   if (!error) return true
   if (error.message === "SESSION_EXPIRED") return false
+  // Nothing left the phone, so nothing can be said about the server.
+  if (error.message === NOT_CONFIGURED) return false
   return typeof error.status !== "number" || error.status >= 500
 }
 
