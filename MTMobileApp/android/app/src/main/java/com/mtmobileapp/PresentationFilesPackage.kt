@@ -7,7 +7,12 @@ import com.facebook.react.uimanager.ViewManager
 
 class PresentationFilesPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> =
-    listOf(PresentationFilesModule(reactContext), FieldNotificationsModule(reactContext), FieldPushModule(reactContext))
+    listOf(
+      PresentationFilesModule(reactContext),
+      FieldNotificationsModule(reactContext),
+      FieldPushModule(reactContext),
+      FieldLocationModule(reactContext),
+    )
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
     emptyList()
