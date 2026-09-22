@@ -1,3 +1,4 @@
+import { NativeEventEmitter, NativeModules } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
@@ -60,12 +61,12 @@ const backgroundOptions = {
  * native too, and sends the fix or, failing that, the network reading.
  */
 async function backgroundTask(_taskData: { delay?: number } | undefined) {
-  startWatching()
+  startPositionUpdates()
   // The foreground service lives exactly as long as this promise.
   await new Promise<void>((resolve) => {
     releaseBackgroundTask = resolve
   })
-  stopWatching()
+  stopPositionUpdates()
 }
 
 /** Minimum spacing between sent points, measured on the readings' clock. */
@@ -117,6 +118,12 @@ function onHeartbeat(reading: Reading) {
   // A late settle of an abandoned heartbeat must not release the current one.
   const generation = ++heartbeatGeneration
   const release = () => { if (generation === heartbeatGeneration) heartbeatBusy = false }
+  // A fused reading is already the OS's best fix; asking for another one
+  // would only add a second request per heartbeat.
+  if ((reading.coords.accuracy ?? Infinity) <= MAX_ACCURACY && fieldLocationSubscription) {
+    sendReading(reading).finally(release)
+    return
+  }
   const fallback = () => {
     const accuracy = reading.coords.accuracy ?? Infinity
     return accuracy <= MAX_NETWORK_ACCURACY ? sendReading(reading) : Promise.resolve()
@@ -129,6 +136,76 @@ function onHeartbeat(reading: Reading) {
     () => { fallback().finally(release) },
     { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 },
   )
+}
+
+/**
+ * The owner's drive, 2026-09-22: fifteen minutes and six kilometres between
+ * two points. JS asked for a fix on its own clock and a backgrounded app's
+ * clock stops, and the community module watches one system provider at a
+ * time — indoors the network one, so a car produced rare 100–200 m points.
+ * The fused provider (FieldLocationModule) samples in the OS and pushes to
+ * JS; this file then only decides what to upload.
+ */
+type FieldLocationModule = {
+  start: () => Promise<boolean>
+  stop: () => Promise<boolean>
+}
+
+const fieldLocation = (NativeModules as { FieldLocation?: FieldLocationModule }).FieldLocation ?? null
+let fieldLocationSubscription: { remove: () => void } | null = null
+
+function startNativeStream(): boolean {
+  if (!fieldLocation || fieldLocationSubscription) return Boolean(fieldLocationSubscription)
+  const emitter = new NativeEventEmitter(NativeModules.FieldLocation)
+  fieldLocationSubscription = emitter.addListener("FieldLocationUpdate", (event: {
+    latitude: number
+    longitude: number
+    accuracy: number | null
+    speed: number | null
+    heading: number | null
+    altitude: number | null
+    timestamp: number
+  }) => {
+    onHeartbeat({
+      coords: {
+        latitude: event.latitude,
+        longitude: event.longitude,
+        accuracy: event.accuracy ?? null,
+        speed: event.speed ?? null,
+        heading: event.heading ?? null,
+        altitude: event.altitude ?? null,
+      },
+      timestamp: event.timestamp,
+    })
+  })
+  fieldLocation.start().then((started) => {
+    if (!started) {
+      // No permission yet: fall back to the JS watch, which asks for none.
+      stopNativeStream()
+      startWatching()
+    }
+  }).catch(() => {
+    stopNativeStream()
+    startWatching()
+  })
+  return true
+}
+
+function stopNativeStream() {
+  fieldLocationSubscription?.remove()
+  fieldLocationSubscription = null
+  fieldLocation?.stop().catch(() => {})
+}
+
+/** The fused stream when the build has it, else the one-provider JS watch. */
+function startPositionUpdates() {
+  if (startNativeStream()) return
+  startWatching()
+}
+
+function stopPositionUpdates() {
+  stopNativeStream()
+  stopWatching()
 }
 
 function startWatching() {
@@ -258,7 +335,7 @@ export function startTracking(): Promise<void> {
 function startForegroundTracking() {
   if (foregroundWatching) return
   foregroundWatching = true
-  startWatching()
+  startPositionUpdates()
 }
 
 export function stopTracking(): Promise<void> {
@@ -279,6 +356,6 @@ export function stopTracking(): Promise<void> {
     }
 
     if (foregroundWatching) foregroundWatching = false
-    stopWatching()
+    stopPositionUpdates()
   })
 }
