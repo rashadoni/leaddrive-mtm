@@ -18,8 +18,6 @@ export let lastKnownPosition: {
 
 const SEND_INTERVAL = 30_000
 const MAX_ACCURACY = 50
-const RETRY_DELAY = 5_000
-const MAX_RETRIES = 3
 
 // Android can keep the native service alive slightly longer than the React
 // screen lifecycle. Explicitly binding every coordinate to the local workday
@@ -45,22 +43,90 @@ const backgroundOptions = {
   },
 }
 
-async function backgroundTask(taskData: { delay?: number } | undefined) {
-  const delay = taskData?.delay || SEND_INTERVAL
+/**
+ * 2026-09-22, Galaxy S23 of the owner, two days of driving and not one point:
+ * the tracking notification said data was being sent, and nothing was. The
+ * old loop was «ask for a fix, then `await sleep(30 s)`». `sleep` is a JS
+ * timer, and React Native stops JS timers of a backgrounded app once the
+ * screen goes dark — the service and its notification lived on, the loop
+ * never woke. Measured on the phone: requests every 30–40 s with the screen
+ * on, one more after it went off, then silence until the app was opened.
+ *
+ * Nothing here waits on a JS timer any more. A native subscription to the
+ * network provider (Wi-Fi and cells, available indoors) delivers readings as
+ * Android events, which a backgrounded app does receive. Each reading is the
+ * heartbeat: when 30 s have passed since the last sent point — by the
+ * readings' own clock — it asks once for a precise GPS fix, whose timeout is
+ * native too, and sends the fix or, failing that, the network reading.
+ */
+async function backgroundTask(_taskData: { delay?: number } | undefined) {
+  startWatching()
+  // The foreground service lives exactly as long as this promise.
+  await new Promise<void>((resolve) => {
+    releaseBackgroundTask = resolve
+  })
+  stopWatching()
+}
 
+/** Minimum spacing between sent points, measured on the readings' clock. */
+export const SEND_GAP_MS = SEND_INTERVAL
+/** A reading coarser than this is not a position a manager can use. */
+export const MAX_NETWORK_ACCURACY = 200
+
+let watchId: number | null = null
+let lastSentAt = 0
+let heartbeatBusy = false
+let releaseBackgroundTask: (() => void) | null = null
+
+/** Whether a reading taken at `timestamp` is due to become a point. */
+export function isHeartbeatDue(timestamp: number, lastSent: number): boolean {
+  return timestamp - lastSent >= SEND_GAP_MS
+}
+
+type Reading = Parameters<typeof uploadPosition>[0]
+
+function sendReading(position: Reading) {
+  lastSentAt = Number.isFinite(position.timestamp) ? position.timestamp : Date.now()
+  return uploadPosition(position).catch((error) => {
+    if (error?.message === "SESSION_EXPIRED") stopTracking().catch(() => {})
+  })
+}
+
+function onHeartbeat(reading: Reading) {
+  const at = Number.isFinite(reading.timestamp) ? reading.timestamp : Date.now()
+  if (heartbeatBusy || !isHeartbeatDue(at, lastSentAt)) return
+  heartbeatBusy = true
+  const fallback = () => {
+    const accuracy = reading.coords.accuracy ?? Infinity
+    return accuracy <= MAX_NETWORK_ACCURACY ? sendReading(reading) : Promise.resolve()
+  }
+  Geolocation.getCurrentPosition(
+    (fix) => {
+      const precise = (fix.coords.accuracy ?? Infinity) <= MAX_ACCURACY
+      ;(precise ? sendReading(fix) : fallback()).finally(() => { heartbeatBusy = false })
+    },
+    () => { fallback().finally(() => { heartbeatBusy = false }) },
+    { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 },
+  )
+}
+
+function startWatching() {
+  if (watchId !== null) return
   Geolocation.setRNConfiguration({
     skipPermissionRequests: true,
     locationProvider: "android",
   })
+  watchId = Geolocation.watchPosition(
+    onHeartbeat,
+    (error) => console.warn("[GPS-BG] watch error:", error),
+    { enableHighAccuracy: false, distanceFilter: 0, interval: 10_000, fastestInterval: 5_000, maximumAge: 30_000 },
+  )
+}
 
-  while (BackgroundService.isRunning()) {
-    try {
-      await pollAndSendAsync()
-    } catch (error) {
-      console.warn("[GPS-BG] poll failed:", error)
-    }
-    await sleep(delay)
-  }
+function stopWatching() {
+  if (watchId !== null) Geolocation.clearWatch(watchId)
+  watchId = null
+  heartbeatBusy = false
 }
 
 /**
@@ -123,53 +189,11 @@ function uploadPosition(position: {
   })
 }
 
-function pollAndSendAsync(retryCount = 0): Promise<void> {
-  return new Promise((resolve) => {
-    Geolocation.getCurrentPosition(
-      (position) => {
-        const { accuracy } = position.coords
-
-        if (accuracy && accuracy > MAX_ACCURACY && retryCount < MAX_RETRIES) {
-          setTimeout(() => {
-            pollAndSendAsync(retryCount + 1).then(resolve)
-          }, RETRY_DELAY)
-          return
-        }
-
-        uploadPosition(position)
-          .catch((error) => {
-            if (error?.message === "SESSION_EXPIRED") stopTracking().catch(() => {})
-          })
-          .finally(resolve)
-      },
-      () => {
-        if (retryCount !== 0) {
-          resolve()
-          return
-        }
-
-        Geolocation.getCurrentPosition(
-          (position) => {
-            uploadPosition(position)
-              .catch((error) => {
-                if (error?.message === "SESSION_EXPIRED") stopTracking().catch(() => {})
-              })
-              .finally(resolve)
-          },
-          () => resolve(),
-          { enableHighAccuracy: false, timeout: 15_000, maximumAge: 60_000 }
-        )
-      },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 30_000 }
-    )
-  })
-}
-
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
-let foregroundIntervalId: ReturnType<typeof setInterval> | null = null
+let foregroundWatching = false
 
 // Android kills the whole app when a foreground service is stopped before it
 // has posted its notification (ForegroundServiceDidNotStartInTimeException).
@@ -211,11 +235,9 @@ export function startTracking(): Promise<void> {
 }
 
 function startForegroundTracking() {
-  if (foregroundIntervalId !== null) return
-  pollAndSendAsync().catch(() => {})
-  foregroundIntervalId = setInterval(() => {
-    pollAndSendAsync().catch(() => {})
-  }, SEND_INTERVAL)
+  if (foregroundWatching) return
+  foregroundWatching = true
+  startWatching()
 }
 
 export function stopTracking(): Promise<void> {
@@ -224,6 +246,8 @@ export function stopTracking(): Promise<void> {
       const wait = serviceStartedAt + MIN_SERVICE_RUN_BEFORE_STOP_MS - Date.now()
       if (wait > 0) await sleep(wait)
     }
+    releaseBackgroundTask?.()
+    releaseBackgroundTask = null
     if (BackgroundService.isRunning()) {
       try {
         await BackgroundService.stop()
@@ -233,9 +257,7 @@ export function stopTracking(): Promise<void> {
       }
     }
 
-    if (foregroundIntervalId !== null) {
-      clearInterval(foregroundIntervalId)
-      foregroundIntervalId = null
-    }
+    if (foregroundWatching) foregroundWatching = false
+    stopWatching()
   })
 }
