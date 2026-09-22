@@ -10,20 +10,20 @@ import path from "path"
 type Listener = (event: Record<string, unknown>) => void
 
 const mockSent: Array<{ latitude: number }> = []
-let mockListener: Listener | null = null
-const mockStart = jest.fn(async () => true)
-const mockStop = jest.fn(async () => true)
 let mockRunning = false
 
+// The factory runs before this file's consts exist, so the mocks live inside it.
 jest.mock("react-native", () => ({
-  NativeModules: { FieldLocation: { start: mockStart, stop: mockStop } },
+  NativeModules: { FieldLocation: { start: jest.fn(async () => true), stop: jest.fn(async () => true) } },
   NativeEventEmitter: class {
-    addListener(_event: string, listener: Listener) {
-      mockListener = listener
-      return { remove: () => { mockListener = null } }
+    addListener(_event: string, listener: (event: Record<string, unknown>) => void) {
+      mockNativeListener.current = listener
+      return { remove: () => { mockNativeListener.current = null } }
     }
   },
 }))
+/** Shared by the factory above and the test body; `mock*` survives hoisting. */
+const mockNativeListener: { current: Listener | null } = { current: null }
 jest.mock("react-native-background-actions", () => ({
   __esModule: true,
   default: {
@@ -45,7 +45,12 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 )
 
 import Geolocation from "@react-native-community/geolocation"
+import { NativeModules } from "react-native"
 import { startTracking, stopTracking } from "../../src/services/location.android"
+
+const { start: mockStart, stop: mockStop } = (NativeModules as unknown as {
+  FieldLocation: { start: jest.Mock; stop: jest.Mock }
+}).FieldLocation
 
 const flush = () => new Promise((resolve) => setImmediate(resolve))
 const t0 = Date.parse("2026-09-22T17:30:00.000Z")
@@ -56,7 +61,7 @@ describe("positions from the fused provider", () => {
   beforeEach(() => {
     mockSent.length = 0
     mockRunning = false
-    mockListener = null
+    mockNativeListener.current = null
     mockStart.mockClear()
     mockStop.mockClear()
   })
@@ -65,21 +70,21 @@ describe("positions from the fused provider", () => {
     await startTracking()
     await flush()
     expect(mockStart).toHaveBeenCalled()
-    expect(mockListener).not.toBeNull()
+    expect(mockNativeListener.current).not.toBeNull()
     expect(Geolocation.watchPosition).not.toHaveBeenCalled()
 
     // A precise fused reading is uploaded as is — no second request per point.
-    mockListener!(fix(40.41, t0, 9))
+    mockNativeListener.current!(fix(40.41, t0, 9))
     await flush(); await flush()
     expect(mockSent.map((point) => point.latitude)).toEqual([40.41])
     expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
 
     // Bursts while driving do not become a point every five seconds.
-    mockListener!(fix(40.42, t0 + 5_000, 8))
+    mockNativeListener.current!(fix(40.42, t0 + 5_000, 8))
     await flush()
     expect(mockSent).toHaveLength(1)
 
-    mockListener!(fix(40.43, t0 + 31_000, 8))
+    mockNativeListener.current!(fix(40.43, t0 + 31_000, 8))
     await flush(); await flush()
     expect(mockSent.map((point) => point.latitude)).toEqual([40.41, 40.43])
 
@@ -87,7 +92,7 @@ describe("positions from the fused provider", () => {
     await new Promise((resolve) => setTimeout(resolve, 3_100))
     await stopping
     expect(mockStop).toHaveBeenCalled()
-    expect(mockListener).toBeNull()
+    expect(mockNativeListener.current).toBeNull()
   }, 10_000)
 
   it("keeps the JS watch as the fallback and registers the native module", () => {
