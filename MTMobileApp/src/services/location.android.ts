@@ -76,7 +76,23 @@ export const MAX_NETWORK_ACCURACY = 200
 let watchId: number | null = null
 let lastSentAt = 0
 let heartbeatBusy = false
+let heartbeatStartedAt = 0
+let heartbeatGeneration = 0
 let releaseBackgroundTask: (() => void) | null = null
+
+/**
+ * 2026-09-22, 16:04: the first build without the sleep loop sent four points
+ * with the screen dark, then nothing. An upload's own 20 s timeout is a JS
+ * timer too; with the network held by Android the request never settled, the
+ * heartbeat stayed busy, and every later reading was skipped. A heartbeat busy
+ * for longer than this — on the readings' clock — is abandoned.
+ */
+export const HEARTBEAT_STUCK_MS = 90_000
+
+/** Whether a busy heartbeat started at `startedAt` is stuck at reading time `at`. */
+export function isHeartbeatStuck(at: number, startedAt: number): boolean {
+  return at - startedAt >= HEARTBEAT_STUCK_MS
+}
 
 /** Whether a reading taken at `timestamp` is due to become a point. */
 export function isHeartbeatDue(timestamp: number, lastSent: number): boolean {
@@ -94,8 +110,13 @@ function sendReading(position: Reading) {
 
 function onHeartbeat(reading: Reading) {
   const at = Number.isFinite(reading.timestamp) ? reading.timestamp : Date.now()
+  if (heartbeatBusy && isHeartbeatStuck(at, heartbeatStartedAt)) heartbeatBusy = false
   if (heartbeatBusy || !isHeartbeatDue(at, lastSentAt)) return
   heartbeatBusy = true
+  heartbeatStartedAt = at
+  // A late settle of an abandoned heartbeat must not release the current one.
+  const generation = ++heartbeatGeneration
+  const release = () => { if (generation === heartbeatGeneration) heartbeatBusy = false }
   const fallback = () => {
     const accuracy = reading.coords.accuracy ?? Infinity
     return accuracy <= MAX_NETWORK_ACCURACY ? sendReading(reading) : Promise.resolve()
@@ -103,9 +124,9 @@ function onHeartbeat(reading: Reading) {
   Geolocation.getCurrentPosition(
     (fix) => {
       const precise = (fix.coords.accuracy ?? Infinity) <= MAX_ACCURACY
-      ;(precise ? sendReading(fix) : fallback()).finally(() => { heartbeatBusy = false })
+      ;(precise ? sendReading(fix) : fallback()).finally(release)
     },
-    () => { fallback().finally(() => { heartbeatBusy = false }) },
+    () => { fallback().finally(release) },
     { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 },
   )
 }
