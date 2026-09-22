@@ -41,7 +41,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 )
 
 import Geolocation from "@react-native-community/geolocation"
-import { isHeartbeatDue, SEND_GAP_MS, startTracking, stopTracking } from "../../src/services/location.android"
+import { HEARTBEAT_STUCK_MS, isHeartbeatDue, isHeartbeatStuck, SEND_GAP_MS, startTracking, stopTracking } from "../../src/services/location.android"
 
 function reading(latitude: number, timestamp: number, accuracy: number): Reading {
   return { coords: { latitude, longitude: 49.8, accuracy, speed: null, heading: null, altitude: null }, timestamp }
@@ -63,6 +63,12 @@ describe("GPS tracking without JS timers", () => {
     expect(task).not.toMatch(/sleep\(|setTimeout|setInterval/)
     expect(source).not.toContain("pollAndSendAsync")
     expect(source).toContain("Geolocation.watchPosition(")
+  })
+
+  it("abandons a heartbeat busy for 90 s on the readings' clock", () => {
+    expect(HEARTBEAT_STUCK_MS).toBe(90_000)
+    expect(isHeartbeatStuck(1_089_999, 1_000_000)).toBe(false)
+    expect(isHeartbeatStuck(1_090_000, 1_000_000)).toBe(true)
   })
 
   it("is due every 30 s by the readings' own clock", () => {
@@ -98,6 +104,19 @@ describe("GPS tracking without JS timers", () => {
     mockWatch!(reading(40.43, t0 + 62_000, 900))
     await flush(); await flush()
     expect(mockSent).toHaveLength(2)
+
+    // 16:04 on the phone: an upload that never settles (its JS timeout is
+    // frozen with the screen dark) must not silence every later heartbeat.
+    const api = jest.requireMock("../../src/services/api").api as { sendLocation: jest.Mock }
+    api.sendLocation.mockImplementationOnce(() => new Promise(() => {}))
+    mockFix = (success) => success(reading(40.6, t0 + 93_000, 9))
+    mockWatch!(reading(40.44, t0 + 93_000, 30))
+    await flush(); await flush()
+    expect(mockSent).toHaveLength(2)
+    mockFix = (success) => success(reading(40.7, t0 + 190_000, 9))
+    mockWatch!(reading(40.45, t0 + 190_000, 30))
+    await flush(); await flush()
+    expect(mockSent.map((point) => point.latitude)).toEqual([40.5, 40.42, 40.7])
 
     const stopping = stopTracking()
     await new Promise((resolve) => setTimeout(resolve, 3_100))
