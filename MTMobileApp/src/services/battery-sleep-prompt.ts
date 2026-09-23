@@ -17,8 +17,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export const BATTERY_PROMPT_KEY = "@mtm_battery_prompt_v1"
 
-/** A refusal is respected for a week, not for ever: phones change hands. */
-export const ASK_AGAIN_AFTER_DAYS = 7
+/**
+ * Owner 2026-09-23: «does every new person have to do this by hand? can it
+ * not be automatic?». Android grants this exemption only on a person's own
+ * tap (silently only on company-owned phones under MDM), so the app asks —
+ * at once on the first run, then once a day while a day is open, until it is
+ * granted. A week of silence was how the phone of the owner himself ended up
+ * asleep for two days.
+ */
+export const ASK_AGAIN_AFTER_DAYS = 1
 
 export function shouldAskBatterySleepExemption(input: {
   exempt: boolean
@@ -27,8 +34,10 @@ export function shouldAskBatterySleepExemption(input: {
   now: number
 }): boolean {
   if (input.exempt) return false
-  if (!input.workdayActive) return false
+  // The first ask does not wait for a workday: a new agent sets the phone up
+  // once, at the start, not in the middle of their first route.
   if (input.lastAskedAt == null) return true
+  if (!input.workdayActive) return false
   const elapsedDays = (input.now - input.lastAskedAt) / (24 * 60 * 60 * 1_000)
   // A clock that jumped backwards must not turn into a prompt every morning.
   if (elapsedDays < 0) return false
