@@ -176,6 +176,9 @@ const ROUTE_COPY = {
     workdayStarting: "Начинаем рабочий день…",
     workdaySyncing: "Синхронизируем рабочий день…",
     workdayStartFailed: "Не удалось начать рабочий день. Проверьте подключение и повторите.",
+    batterySleepTitle: "Телефон может засыпать",
+    batterySleepBody: "Тогда маршрут запишется с пропусками. Разрешите приложению работать без ограничений батареи — это одно касание.",
+    batterySleepAction: "Разрешить",
     workdayPausedTitle: "Рабочий день приостановлен",
     workdayPausedBody: "Маршрут и рабочий GPS заблокированы. Возобновите рабочий день в HRM, прежде чем начинать маршрут.",
     routeStartRequiredTitle: "Маршрут ждёт запуска",
@@ -264,6 +267,9 @@ const ROUTE_COPY = {
     workdayStarting: "İş günü başladılır…",
     workdaySyncing: "İş günü sinxronlaşdırılır…",
     workdayStartFailed: "İş gününü başlatmaq alınmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
+    batterySleepTitle: "Telefon yuxuya gedə bilər",
+    batterySleepBody: "Onda marşrut boşluqlarla yazılacaq. Tətbiqə batareya məhdudiyyətsiz işləməyə icazə verin — bir toxunuş.",
+    batterySleepAction: "İcazə ver",
     workdayPausedTitle: "İş günü dayandırılıb",
     workdayPausedBody: "Marşrut və iş GPS-i bloklanıb. Marşruta başlamazdan əvvəl HRM-də iş gününü davam etdirin.",
     routeStartRequiredTitle: "Marşrutun başlanması gözlənilir",
@@ -352,6 +358,9 @@ const ROUTE_COPY = {
     workdayStarting: "Starting workday…",
     workdaySyncing: "Syncing workday…",
     workdayStartFailed: "We could not start the workday. Check your connection and try again.",
+    batterySleepTitle: "The phone may fall asleep",
+    batterySleepBody: "The route would then be recorded with gaps. Let the app run without battery limits — one tap.",
+    batterySleepAction: "Allow",
     workdayPausedTitle: "Workday is paused",
     workdayPausedBody: "Route work and GPS are blocked. Resume the workday in HRM before starting the route.",
     routeStartRequiredTitle: "Route is waiting to start",
@@ -643,6 +652,35 @@ function JourneySteps({
           {renderTemplate(copy.currentStep, { step: activeStep, label: labels[activeStep - 1] })}
         </Text>
       )}
+    </View>
+  )
+}
+
+/**
+ * Owner 2026-09-23: the exemption cannot be granted for the agent, so the
+ * screen says plainly what is at stake and keeps the one tap in reach —
+ * instead of a dialog that was dismissed once and gone for a week.
+ */
+function BatterySleepNotice({
+  visible,
+  copy,
+  onFix,
+}: {
+  visible: boolean
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+  onFix: () => void
+}) {
+  if (!visible) return null
+  return (
+    <View style={[styles.connectionBanner, styles.connectionBannerSlow]} accessibilityLiveRegion="polite">
+      <Icon name="battery-charging-outline" size={22} color={fieldTheme.color.amber} />
+      <View style={styles.connectionCopy}>
+        <Text style={styles.connectionTitle}>{copy.batterySleepTitle}</Text>
+        <Text style={styles.connectionBody}>{copy.batterySleepBody}</Text>
+      </View>
+      <Pressable accessibilityRole="button" onPress={onFix} style={styles.actionButton}>
+        <Text style={styles.actionButtonText}>{copy.batterySleepAction}</Text>
+      </Pressable>
     </View>
   )
 }
@@ -1150,12 +1188,26 @@ export default function RouteScreen() {
    * moment the workday starts — beside the permissions the app already asks
    * for there — and never again for a week if it is declined.
    */
-  const askBatteryExemptionOnce = useCallback(async () => {
-    const [exempt, lastAskedAt] = await Promise.all([batterySleepExempt(), lastBatteryPromptAt()])
-    if (!shouldAskBatterySleepExemption({ exempt, workdayActive: true, lastAskedAt, now: Date.now() })) return
+  const [batteryExempt, setBatteryExempt] = useState(true)
+
+  const refreshBatteryExempt = useCallback(async () => {
+    const exempt = await batterySleepExempt().catch(() => true)
+    setBatteryExempt(exempt)
+    return exempt
+  }, [])
+
+  const askBatteryExemptionOnce = useCallback(async (workdayActive: boolean) => {
+    const [exempt, lastAskedAt] = await Promise.all([refreshBatteryExempt(), lastBatteryPromptAt()])
+    if (!shouldAskBatterySleepExemption({ exempt, workdayActive, lastAskedAt, now: Date.now() })) return
     await rememberBatteryPrompt()
     await askBatterySleepExemption()
-  }, [])
+    await refreshBatteryExempt()
+  }, [refreshBatteryExempt])
+
+  // Setting the phone up happens once, on the first screen the agent sees.
+  useEffect(() => {
+    void askBatteryExemptionOnce(false)
+  }, [askBatteryExemptionOnce])
 
   const remindedVisitId = useRef<string | null>(null)
   useEffect(() => {
@@ -1426,7 +1478,7 @@ export default function RouteScreen() {
       await refreshRouteFieldSession()
       await fetchRoute()
       // Asked here and nowhere else: the agent has just said "I am working".
-      await askBatteryExemptionOnce().catch(() => {})
+      await askBatteryExemptionOnce(true).catch(() => {})
     } catch {
       notify({ tone: "error", title: t("common.error"), message: copy.workdayStartFailed })
     } finally {
@@ -1850,6 +1902,11 @@ export default function RouteScreen() {
           {header}
           <View style={styles.tabletTop}>
             <ConnectionBanner mode={presentation.banner} copy={copy} />
+            <BatterySleepNotice
+              visible={!batteryExempt}
+              copy={copy}
+              onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
+            />
             {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
             {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
           </View>
@@ -1918,6 +1975,11 @@ export default function RouteScreen() {
             {header}
             <View style={styles.phoneMain}>
               <ConnectionBanner mode={presentation.banner} copy={copy} />
+              <BatterySleepNotice
+                visible={!batteryExempt}
+                copy={copy}
+                onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
+              />
               {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
               {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : !route ? emptyState : null}
               {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
