@@ -23,18 +23,30 @@ describe("when the app may ask to stay awake", () => {
     expect(shouldAskBatterySleepExemption({ exempt: false, workdayActive: true, lastAskedAt: null, now })).toBe(true)
   })
 
-  /** Out of context the dialog is dismissed, and dismissed answers are final. */
-  it("stays quiet before the day starts", () => {
-    expect(shouldAskBatterySleepExemption({ exempt: false, workdayActive: false, lastAskedAt: null, now })).toBe(false)
+  /**
+   * Owner 2026-09-23: «does every new person have to do this by hand?». The
+   * first ask is the setup moment — the first run, before any route.
+   */
+  it("asks on the very first run, before a day is open", () => {
+    expect(shouldAskBatterySleepExemption({ exempt: false, workdayActive: false, lastAskedAt: null, now })).toBe(true)
+  })
+
+  it("does not repeat outside a workday once it has asked", () => {
+    expect(shouldAskBatterySleepExemption({ exempt: false, workdayActive: false, lastAskedAt: now - 5 * DAY, now })).toBe(false)
   })
 
   it("never asks again once the exemption is granted", () => {
     expect(shouldAskBatterySleepExemption({ exempt: true, workdayActive: true, lastAskedAt: null, now })).toBe(false)
   })
 
-  it("respects a refusal for a week and then asks once more", () => {
+  /**
+   * A week of silence is how the owner's own phone slept for two days
+   * (2026-09-22). A refusal now holds for one day, not seven.
+   */
+  it("asks again the next day while the phone still sleeps", () => {
+    expect(ASK_AGAIN_AFTER_DAYS).toBe(1)
     expect(shouldAskBatterySleepExemption({
-      exempt: false, workdayActive: true, lastAskedAt: now - DAY, now,
+      exempt: false, workdayActive: true, lastAskedAt: now - DAY / 2, now,
     })).toBe(false)
     expect(shouldAskBatterySleepExemption({
       exempt: false, workdayActive: true, lastAskedAt: now - ASK_AGAIN_AFTER_DAYS * DAY, now,
@@ -51,8 +63,9 @@ describe("when the app may ask to stay awake", () => {
 
 /**
  * The owner removed the explanatory card on 2026-09-21: an agent in a clinic
- * does not need a lecture about Android power management. The ask now happens
- * once, silently, where the agent has just said "I am working".
+ * does not need a lecture about Android power management. What stays is one
+ * line with the tap that fixes it, shown only while the phone may still sleep
+ * (owner 2026-09-23).
  */
 describe("where the ask lives", () => {
   const screen = require("fs").readFileSync(
@@ -60,16 +73,21 @@ describe("where the ask lives", () => {
     "utf8",
   )
 
-  it("has no card and no copy explaining Doze to the agent", () => {
+  it("has no explanatory card, only the line with the tap", () => {
     expect(screen).not.toContain("BatterySleepCard")
-    expect(screen).not.toContain("batterySleepTitle")
     expect(screen).not.toContain("batteryCard:")
+    expect(screen).toContain("function BatterySleepNotice(")
+    expect(screen).toContain("visible={!batteryExempt}")
+    for (const key of ["batterySleepTitle", "batterySleepBody", "batterySleepAction"]) {
+      expect(screen.match(new RegExp(`${key}: "`, "g"))).toHaveLength(3)
+    }
   })
 
-  it("asks once, right after the workday starts", () => {
+  it("asks on the first screen and again when the workday starts", () => {
+    expect(screen).toContain("void askBatteryExemptionOnce(false)")
     const handler = screen.slice(screen.indexOf("const handleStartWorkday"), screen.indexOf("const handleStartWorkday") + 700)
-    expect(handler).toContain("await askBatteryExemptionOnce()")
-    expect(screen).toContain("shouldAskBatterySleepExemption({ exempt, workdayActive: true, lastAskedAt, now: Date.now() })")
+    expect(handler).toContain("await askBatteryExemptionOnce(true)")
+    expect(screen).toContain("shouldAskBatterySleepExemption({ exempt, workdayActive, lastAskedAt, now: Date.now() })")
   })
 })
 
