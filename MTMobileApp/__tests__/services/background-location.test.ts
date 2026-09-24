@@ -38,7 +38,7 @@ describe("«Allow all the time» for the route", () => {
     expect(screen).toContain("<BackgroundLocationNotice")
     expect(screen).toContain("askBackgroundLocation().then(() => refreshBackgroundLocation())")
     expect(screen).toContain('AppState.addEventListener("change"')
-    for (const words of [/свёрнуто или экран выключен/, /bağlı olanda və ya ekran sönəndə/, /minimised, or the screen is off/]) {
+    for (const words of [/свёрнуто или экран выключен/, /bağlı olanda və ya ekran sönəndə/, /even when it is minimised or the screen is off/]) {
       expect(screen).toMatch(words)
     }
     expect(screen.match(/backgroundLocationBody:/g)).toHaveLength(3)
