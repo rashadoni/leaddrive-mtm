@@ -102,9 +102,20 @@ export function isHeartbeatDue(timestamp: number, lastSent: number): boolean {
 
 type Reading = Parameters<typeof uploadPosition>[0]
 
+/**
+ * Hand a point to the upload and return at once.
+ *
+ * 2026-09-24, the owner's S23: minimised, a point every 93–96 s; the server
+ * log showed each POST arriving 2–5 s after its fix. The upload was done — the
+ * promise was not: React Native's fetch (whatwg-fetch 3.6) resolves through
+ * `setTimeout(0)`, and a backgrounded app's JS timers stand still, so every
+ * upload "hung" until HEARTBEAT_STUCK_MS gave up on it. The heartbeat no longer
+ * waits for an upload to settle; spacing comes from `lastSentAt`, and the
+ * server refuses a repeated `clientLocationId`.
+ */
 function sendReading(position: Reading) {
   lastSentAt = Number.isFinite(position.timestamp) ? position.timestamp : Date.now()
-  return uploadPosition(position).catch((error) => {
+  void uploadPosition(position).catch((error) => {
     if (error?.message === "SESSION_EXPIRED") stopTracking().catch(() => {})
   })
 }
@@ -121,19 +132,24 @@ function onHeartbeat(reading: Reading) {
   // A fused reading is already the OS's best fix; asking for another one
   // would only add a second request per heartbeat.
   if ((reading.coords.accuracy ?? Infinity) <= MAX_ACCURACY && fieldLocationSubscription) {
-    sendReading(reading).finally(release)
+    sendReading(reading)
+    release()
     return
   }
   const fallback = () => {
     const accuracy = reading.coords.accuracy ?? Infinity
-    return accuracy <= MAX_NETWORK_ACCURACY ? sendReading(reading) : Promise.resolve()
+    if (accuracy <= MAX_NETWORK_ACCURACY) sendReading(reading)
   }
+  // The heartbeat is busy only while a fix is being taken (a native timeout),
+  // never while an upload is in flight.
   Geolocation.getCurrentPosition(
     (fix) => {
       const precise = (fix.coords.accuracy ?? Infinity) <= MAX_ACCURACY
-      ;(precise ? sendReading(fix) : fallback()).finally(release)
+      if (precise) sendReading(fix)
+      else fallback()
+      release()
     },
-    () => { fallback().finally(release) },
+    () => { fallback(); release() },
     { enableHighAccuracy: true, timeout: 15_000, maximumAge: 10_000 },
   )
 }

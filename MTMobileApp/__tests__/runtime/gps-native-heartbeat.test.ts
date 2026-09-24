@@ -105,16 +105,17 @@ describe("GPS tracking without JS timers", () => {
     await flush(); await flush()
     expect(mockSent).toHaveLength(2)
 
-    // 16:04 on the phone: an upload that never settles (its JS timeout is
-    // frozen with the screen dark) must not silence every later heartbeat.
+    // 2026-09-24 on the phone: minimised, fetch resolves on a frozen JS timer,
+    // so an upload that reached the server never settles. The next point must
+    // still go 30 s later — not after the 90 s stuck limit (it was 93–96 s).
     const api = jest.requireMock("../../src/services/api").api as { sendLocation: jest.Mock }
     api.sendLocation.mockImplementationOnce(() => new Promise(() => {}))
     mockFix = (success) => success(reading(40.6, t0 + 93_000, 9))
     mockWatch!(reading(40.44, t0 + 93_000, 30))
     await flush(); await flush()
     expect(mockSent).toHaveLength(2)
-    mockFix = (success) => success(reading(40.7, t0 + 190_000, 9))
-    mockWatch!(reading(40.45, t0 + 190_000, 30))
+    mockFix = (success) => success(reading(40.7, t0 + 123_000, 9))
+    mockWatch!(reading(40.45, t0 + 123_000, 30))
     await flush(); await flush()
     expect(mockSent.map((point) => point.latitude)).toEqual([40.5, 40.42, 40.7])
 
