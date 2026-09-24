@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
-  AppState,
   FlatList,
   Linking,
   Modal,
@@ -30,7 +29,6 @@ import {
   rememberBatteryPrompt,
   shouldAskBatterySleepExemption,
 } from "../../services/battery-sleep-prompt"
-import { askBackgroundLocation, backgroundLocationMissing } from "../../services/background-location"
 import { cancelVisitOverrunReminders, scheduleVisitOverrunReminders } from "../../services/visit-overrun-reminder"
 import i18next from "i18next"
 import Icon from "react-native-vector-icons/Ionicons"
@@ -181,9 +179,6 @@ const ROUTE_COPY = {
     batterySleepTitle: "Телефон может засыпать",
     batterySleepBody: "Тогда маршрут запишется с пропусками. Разрешите приложению работать без ограничений батареи — это одно касание.",
     batterySleepAction: "Разрешить",
-    backgroundLocationTitle: "Маршрут пишется с пропусками",
-    backgroundLocationBody: "Во время рабочего дня приложение записывает, где вы, даже когда оно свёрнуто или экран выключен, — чтобы руководитель видел маршрут. Сейчас доступ только при открытом приложении. Нажмите «Разрешить» и выберите «Разрешать всегда».",
-    backgroundLocationAction: "Разрешить",
     workdayPausedTitle: "Рабочий день приостановлен",
     workdayPausedBody: "Маршрут и рабочий GPS заблокированы. Возобновите рабочий день в HRM, прежде чем начинать маршрут.",
     routeStartRequiredTitle: "Маршрут ждёт запуска",
@@ -275,9 +270,6 @@ const ROUTE_COPY = {
     batterySleepTitle: "Telefon yuxuya gedə bilər",
     batterySleepBody: "Onda marşrut boşluqlarla yazılacaq. Tətbiqə batareya məhdudiyyətsiz işləməyə icazə verin — bir toxunuş.",
     batterySleepAction: "İcazə ver",
-    backgroundLocationTitle: "Marşrut boşluqlarla yazılır",
-    backgroundLocationBody: "İş günü ərzində tətbiq harada olduğunuzu qeyd edir, hətta bağlı olanda və ya ekran sönəndə də — rəhbər marşrutu görsün deyə. İndi icazə yalnız tətbiq açıq olanda var. «İcazə ver» düyməsini basın və «Həmişə icazə ver» seçin.",
-    backgroundLocationAction: "İcazə ver",
     workdayPausedTitle: "İş günü dayandırılıb",
     workdayPausedBody: "Marşrut və iş GPS-i bloklanıb. Marşruta başlamazdan əvvəl HRM-də iş gününü davam etdirin.",
     routeStartRequiredTitle: "Marşrutun başlanması gözlənilir",
@@ -369,9 +361,6 @@ const ROUTE_COPY = {
     batterySleepTitle: "The phone may fall asleep",
     batterySleepBody: "The route would then be recorded with gaps. Let the app run without battery limits — one tap.",
     batterySleepAction: "Allow",
-    backgroundLocationTitle: "The route is recorded with gaps",
-    backgroundLocationBody: "During the workday the app records where you are, even when it is minimised or the screen is off, so your manager can see the route. Right now it has access only while open. Tap «Allow» and choose «Allow all the time».",
-    backgroundLocationAction: "Allow",
     workdayPausedTitle: "Workday is paused",
     workdayPausedBody: "Route work and GPS are blocked. Resume the workday in HRM before starting the route.",
     routeStartRequiredTitle: "Route is waiting to start",
@@ -691,35 +680,6 @@ function BatterySleepNotice({
       </View>
       <Pressable accessibilityRole="button" onPress={onFix} style={styles.actionButton}>
         <Text style={styles.actionButtonText}>{copy.batterySleepAction}</Text>
-      </Pressable>
-    </View>
-  )
-}
-
-/**
- * 2026-09-24: minimised, the app got a fix about once in 90 s because it held
- * location only «while in use». This card is also the disclosure Google Play
- * requires before background location is requested: what, when and why.
- */
-function BackgroundLocationNotice({
-  visible,
-  copy,
-  onFix,
-}: {
-  visible: boolean
-  copy: (typeof ROUTE_COPY)[RouteLanguage]
-  onFix: () => void
-}) {
-  if (!visible) return null
-  return (
-    <View style={[styles.connectionBanner, styles.connectionBannerSlow]} accessibilityLiveRegion="polite">
-      <Icon name="location-outline" size={22} color={fieldTheme.color.amber} />
-      <View style={styles.connectionCopy}>
-        <Text style={styles.connectionTitle}>{copy.backgroundLocationTitle}</Text>
-        <Text style={styles.connectionBody}>{copy.backgroundLocationBody}</Text>
-      </View>
-      <Pressable accessibilityRole="button" onPress={onFix} style={styles.actionButton}>
-        <Text style={styles.actionButtonText}>{copy.backgroundLocationAction}</Text>
       </Pressable>
     </View>
   )
@@ -1248,20 +1208,6 @@ export default function RouteScreen() {
   useEffect(() => {
     void askBatteryExemptionOnce(false)
   }, [askBatteryExemptionOnce])
-
-  // «Allow all the time» is chosen in the system settings; re-read it when the
-  // agent comes back to the app, so the card disappears on its own.
-  const [backgroundLocationNeeded, setBackgroundLocationNeeded] = useState(false)
-  const refreshBackgroundLocation = useCallback(async () => {
-    setBackgroundLocationNeeded(await backgroundLocationMissing())
-  }, [])
-  useEffect(() => {
-    void refreshBackgroundLocation()
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void refreshBackgroundLocation()
-    })
-    return () => subscription.remove()
-  }, [refreshBackgroundLocation])
 
   const remindedVisitId = useRef<string | null>(null)
   useEffect(() => {
@@ -1961,11 +1907,6 @@ export default function RouteScreen() {
               copy={copy}
               onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
             />
-            <BackgroundLocationNotice
-              visible={backgroundLocationNeeded}
-              copy={copy}
-              onFix={() => { void askBackgroundLocation().then(() => refreshBackgroundLocation()) }}
-            />
             {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
             {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
           </View>
@@ -2038,11 +1979,6 @@ export default function RouteScreen() {
                 visible={!batteryExempt}
                 copy={copy}
                 onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
-              />
-              <BackgroundLocationNotice
-                visible={backgroundLocationNeeded}
-                copy={copy}
-                onFix={() => { void askBackgroundLocation().then(() => refreshBackgroundLocation()) }}
               />
               {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
               {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : !route ? emptyState : null}
