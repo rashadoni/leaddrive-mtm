@@ -39,8 +39,14 @@ class FieldLocationModule(
 
   override fun getName(): String = "FieldLocation"
 
-  /** How often the OS should deliver a position while tracking a shift. */
-  private val intervalMs = 20_000L
+  /**
+   * How often the OS should deliver a position while tracking a shift.
+   *
+   * Half the 30 s send gap: 2026-09-26 the owner's phone sent a point every
+   * 42 s with 20 s readings — 20 s is not due, 40 s is. Two 15 s readings make
+   * one 30 s point.
+   */
+  private val intervalMs = 15_000L
 
   /** Bursts are welcome: a moving phone gets a fresher fix, the JS throttles uploads. */
   private val fastestIntervalMs = 5_000L

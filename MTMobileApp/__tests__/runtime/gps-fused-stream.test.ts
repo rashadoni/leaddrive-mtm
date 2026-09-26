@@ -104,6 +104,8 @@ describe("positions from the fused provider", () => {
     const module = fs.readFileSync(path.resolve(__dirname, "../../android/app/src/main/java/com/mtmobileapp/FieldLocationModule.kt"), "utf8")
     expect(module).toContain("Priority.PRIORITY_HIGH_ACCURACY")
     expect(module).toContain("setMinUpdateDistanceMeters(0f)")
+    // Half the send gap, so two readings make one 30 s point (not 20 s → 40 s).
+    expect(module).toContain("private val intervalMs = 15_000L")
     // No permission of its own: the module answers false and JS falls back.
     expect(module).toContain("if (!hasPermission()) {")
   })

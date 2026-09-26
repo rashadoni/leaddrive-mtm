@@ -41,7 +41,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 )
 
 import Geolocation from "@react-native-community/geolocation"
-import { HEARTBEAT_STUCK_MS, isHeartbeatDue, isHeartbeatStuck, SEND_GAP_MS, startTracking, stopTracking } from "../../src/services/location.android"
+import { HEARTBEAT_JITTER_MS, HEARTBEAT_STUCK_MS, isHeartbeatDue, isHeartbeatStuck, SEND_GAP_MS, startTracking, stopTracking } from "../../src/services/location.android"
 
 function reading(latitude: number, timestamp: number, accuracy: number): Reading {
   return { coords: { latitude, longitude: 49.8, accuracy, speed: null, heading: null, altitude: null }, timestamp }
@@ -71,11 +71,31 @@ describe("GPS tracking without JS timers", () => {
     expect(isHeartbeatStuck(1_090_000, 1_000_000)).toBe(true)
   })
 
-  it("is due every 30 s by the readings' own clock", () => {
+  it("is due every 30 s by the readings' own clock, with room for a reading that comes a little early", () => {
     expect(SEND_GAP_MS).toBe(30_000)
+    expect(HEARTBEAT_JITTER_MS).toBe(3_000)
     expect(isHeartbeatDue(1_000_000, 0)).toBe(true)
-    expect(isHeartbeatDue(1_029_999, 1_000_000)).toBe(false)
-    expect(isHeartbeatDue(1_030_000, 1_000_000)).toBe(true)
+    expect(isHeartbeatDue(1_026_999, 1_000_000)).toBe(false)
+    expect(isHeartbeatDue(1_029_800, 1_000_000)).toBe(true)
+  })
+
+  // 2026-09-26, the owner's phone: 20 s fused readings, a point every 42 s.
+  it.each([
+    [15_000, 30_000],
+    [10_000, 30_000], // the JS watch fallback
+  ])("turns readings every %i ms, jittered by 300 ms, into a point every %i ms", (step, gap) => {
+    let lastSent = -Infinity
+    const sent: number[] = []
+    for (let index = 0; index <= 40; index += 1) {
+      const at = index * step + (index % 2 === 0 ? 0 : -300)
+      if (isHeartbeatDue(at, lastSent)) {
+        sent.push(at)
+        lastSent = at
+      }
+    }
+    const gaps = sent.slice(1).map((at, index) => at - sent[index])
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(gap + 1_000)
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(gap - 1_000)
   })
 
   it("sends a precise GPS fix on the heartbeat, else the network reading, and nothing in between", async () => {

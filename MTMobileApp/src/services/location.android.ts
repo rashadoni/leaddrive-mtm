@@ -95,9 +95,16 @@ export function isHeartbeatStuck(at: number, startedAt: number): boolean {
   return at - startedAt >= HEARTBEAT_STUCK_MS
 }
 
+/**
+ * Readings do not arrive on the dot: two 15 s fused readings can be 29.8 s
+ * apart, and a strict 30 s gap would then wait for the third — 45 s. Measured
+ * 2026-09-26 on the owner's phone: 20 s readings gave a point every 42 s.
+ */
+export const HEARTBEAT_JITTER_MS = 3_000
+
 /** Whether a reading taken at `timestamp` is due to become a point. */
 export function isHeartbeatDue(timestamp: number, lastSent: number): boolean {
-  return timestamp - lastSent >= SEND_GAP_MS
+  return timestamp - lastSent >= SEND_GAP_MS - HEARTBEAT_JITTER_MS
 }
 
 type Reading = Parameters<typeof uploadPosition>[0]
