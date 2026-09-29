@@ -873,7 +873,9 @@
   },
   "location": {
     "taskTitle": "LeadDrive — iş günü",
-    "taskDesc": "İş günü ərzində yeriniz qeydə alınır"
+    "taskDesc": "İş günü ərzində yeriniz qeydə alınır",
+    "stoppedTitle": "Marşrut yazılmır",
+    "stoppedBody": "Telefon yenidən başladıqdan və ya tətbiq yeniləndikdən sonra marşrutun yazılması dayandı. LeadDrive-ı açın — iş günü hələ açıqdır."
   },
   "dashboard": {
     "title": "Dashboard",

@@ -10,6 +10,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -115,6 +116,30 @@ class FieldLocationModule(
   fun stop(promise: Promise) {
     callback?.let(client::removeLocationUpdates)
     callback = null
+    promise.resolve(true)
+  }
+
+  /**
+   * Tracking of an open workday started: what the service shows, and what the
+   * agent reads if it cannot come back by itself after a restart
+   * (FieldTrackingResume).
+   */
+  @ReactMethod
+  fun rememberTracking(texts: ReadableMap, promise: Promise) {
+    FieldTrackingResume.remember(
+      reactContext,
+      texts.getString("title") ?: "LeadDrive",
+      texts.getString("desc") ?: "",
+      texts.getString("stoppedTitle") ?: "LeadDrive",
+      texts.getString("stoppedBody") ?: "",
+    )
+    promise.resolve(true)
+  }
+
+  /** The workday ended, paused or the agent signed out: nothing to bring back. */
+  @ReactMethod
+  fun forgetTracking(promise: Promise) {
+    FieldTrackingResume.forget(reactContext)
     promise.resolve(true)
   }
 

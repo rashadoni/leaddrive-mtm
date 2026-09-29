@@ -172,6 +172,8 @@ function onHeartbeat(reading: Reading) {
 type FieldLocationModule = {
   start: () => Promise<boolean>
   stop: () => Promise<boolean>
+  rememberTracking?: (texts: { title: string; desc: string; stoppedTitle: string; stoppedBody: string }) => Promise<boolean>
+  forgetTracking?: () => Promise<boolean>
 }
 
 const fieldLocation = (NativeModules as { FieldLocation?: FieldLocationModule }).FieldLocation ?? null
@@ -333,9 +335,41 @@ function inTrackingQueue(step: () => Promise<void>): Promise<void> {
   return run
 }
 
+/**
+ * 2026-09-29, the owner's S23: off on 27.09 at 17:30, on again on 28.09 at
+ * 19:43, and two days without a point with the workday open — nothing started
+ * the app again. What tracking needs to come back by itself after a restart or
+ * an update is left with the native side (FieldTrackingResume.kt): the service
+ * texts, and what the agent reads when it cannot come back without the app.
+ */
+function rememberTrackingResume() {
+  fieldLocation?.rememberTracking?.({
+    title: i18n.t("location.taskTitle"),
+    desc: i18n.t("location.taskDesc"),
+    stoppedTitle: i18n.t("location.stoppedTitle"),
+    stoppedBody: i18n.t("location.stoppedBody"),
+  }).catch(() => {})
+}
+
+/** The workday ended, paused or the session is gone: a restart brings nothing back. */
+export function forgetTrackingResume() {
+  fieldLocation?.forgetTracking?.().catch(() => {})
+}
+
+/**
+ * The tracking loop, run by the task the native side starts after a restart
+ * (src/services/tracking-resume.ts) — the same loop the library runs.
+ */
+export function runTrackingUntilStopped(): Promise<void> {
+  return backgroundTask(undefined)
+}
+
 export function startTracking(): Promise<void> {
   return inTrackingQueue(async () => {
-    if (BackgroundService.isRunning()) return
+    rememberTrackingResume()
+    // Also running when the native side brought tracking back after a restart:
+    // then the library does not know about the service, the loop does.
+    if (BackgroundService.isRunning() || releaseBackgroundTask) return
 
     try {
       Geolocation.setRNConfiguration({

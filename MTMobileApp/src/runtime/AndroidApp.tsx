@@ -18,7 +18,7 @@ import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
 import { useWorkdayStore, workdayKey } from "../store/workday"
 import { useSyncStatusStore } from "../store/sync-status"
-import { setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
+import { forgetTrackingResume, setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
 import { initI18n } from "../i18n/index.android"
@@ -38,6 +38,7 @@ initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${ROUTE_FIELD_PROFILE.apkVersio
 
 function AppContent() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
+  const authLoading = useAuthStore((state) => state.isLoading)
   const agent = useAuthStore((state) => state.agent)
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
@@ -137,8 +138,17 @@ function AppContent() {
     let cancelled = false
 
     if (!mayTrack || !activeWorkdayId) {
+      // Until the session and the workday are read, «not tracking» only means
+      // «not known yet» — and tracking that came back by itself after a
+      // restart (FieldTrackingResume.kt) must not be stopped for it.
+      if (authLoading || !workdayHydrated) {
+        return () => {
+          cancelled = true
+        }
+      }
       setTrackingWorkdayId(null)
       stopTracking().catch(() => {})
+      forgetTrackingResume()
       return () => {
         cancelled = true
         setTrackingWorkdayId(null)
@@ -176,7 +186,7 @@ function AppContent() {
     return () => {
       cancelled = true
     }
-  }, [activeWorkdayId, foregroundEpoch, mayTrack, requestForegroundLocation, requestTrackingNotification])
+  }, [activeWorkdayId, authLoading, foregroundEpoch, mayTrack, requestForegroundLocation, requestTrackingNotification, workdayHydrated])
 
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {

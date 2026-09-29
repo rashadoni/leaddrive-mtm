@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
+  AppState,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -35,6 +36,7 @@ import {
   type TodayRouteSummary,
 } from "./today-state"
 import { submitRouteCommand } from "../../services/route-command-journal"
+import { askBackgroundLocation, backgroundLocationMissing } from "../../services/background-location"
 
 type TodayNavigationParams = {
   Route: undefined
@@ -84,6 +86,21 @@ export default function TodayScreen() {
   const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
   const workdayActive = workdayHydrated && currentWorkday?.syncState === "CONFIRMED" && !workdayPaused
   const workdayOpen = workdayActive || workdayPaused
+
+  // «Allow all the time» is what lets tracking come back by itself after the
+  // phone restarts (owner 2026-09-29). It is chosen in the system settings;
+  // re-read it when the agent returns, so the card goes away on its own.
+  const [backgroundLocationNeeded, setBackgroundLocationNeeded] = useState(false)
+  const refreshBackgroundLocation = useCallback(async () => {
+    setBackgroundLocationNeeded(await backgroundLocationMissing())
+  }, [])
+  useEffect(() => {
+    void refreshBackgroundLocation()
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refreshBackgroundLocation()
+    })
+    return () => subscription.remove()
+  }, [refreshBackgroundLocation])
   const workdayStarting = currentWorkday?.syncState === "START_PENDING"
   const workdayEnding = currentWorkday?.syncState === "FINISH_PENDING"
   const todayKey = localDateKey()
@@ -539,6 +556,24 @@ export default function TodayScreen() {
               <View style={styles.cachedBadge}>
                 <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
                 <Text style={styles.cachedBadgeText}>{t("todayV2.offlineRefresh")}</Text>
+              </View>
+            ) : null}
+            {/* Also the disclosure Google Play requires before background
+                location is asked for: what is recorded, when and why. */}
+            {workdayActive && backgroundLocationNeeded ? (
+              <View style={styles.alwaysNotice} accessibilityLiveRegion="polite">
+                <Icon name="location-outline" size={22} color={fieldTheme.color.amber} />
+                <View style={styles.alwaysNoticeCopy}>
+                  <Text style={styles.alwaysNoticeTitle}>{t("todayV2.backgroundLocationTitle")}</Text>
+                  <Text style={styles.alwaysNoticeBody}>{t("todayV2.backgroundLocationBody")}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => { void askBackgroundLocation().then(() => refreshBackgroundLocation()) }}
+                    style={({ pressed }) => [styles.alwaysNoticeAction, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.alwaysNoticeActionText}>{t("todayV2.backgroundLocationAction")}</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : null}
           </View>
@@ -1044,6 +1079,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
   },
+  alwaysNotice: {
+    marginTop: fieldTheme.space.md,
+    padding: fieldTheme.space.md,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.md,
+    borderWidth: 1,
+    borderColor: "#E7CB8A",
+    borderRadius: fieldTheme.radius.lg,
+    backgroundColor: fieldTheme.color.amberSoft,
+  },
+  alwaysNoticeCopy: { flex: 1, minWidth: 0 },
+  alwaysNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  alwaysNoticeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
+  alwaysNoticeAction: {
+    alignSelf: "flex-start",
+    minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet,
+    marginTop: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.lg,
+    justifyContent: "center",
+    borderRadius: fieldTheme.radius.pill,
+    backgroundColor: fieldTheme.color.primaryStrong,
+  },
+  alwaysNoticeActionText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   nextButton: {
     minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet,
     marginTop: "auto",
