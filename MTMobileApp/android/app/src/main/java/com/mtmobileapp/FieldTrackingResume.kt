@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.asterinet.react.bgactions.RNBackgroundActionsTask
 
@@ -39,10 +40,12 @@ object FieldTrackingResume {
   private const val KEY_STOPPED_TITLE = "stoppedTitle"
   private const val KEY_STOPPED_BODY = "stoppedBody"
   private const val REMINDER_CHANNEL = "field-reminders"
+  private const val STOPPED_NOTICE = "field-tracking-stopped"
 
   private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
   fun remember(context: Context, title: String, desc: String, stoppedTitle: String, stoppedBody: String) {
+    clearStoppedNotice(context)
     prefs(context).edit()
       .putBoolean(KEY_WANTED, true)
       .putString(KEY_TITLE, title)
@@ -59,14 +62,26 @@ object FieldTrackingResume {
   fun resume(context: Context) {
     val prefs = prefs(context)
     if (!prefs.getBoolean(KEY_WANTED, false)) return
-    if (mayTrackInBackground(context) && startTrackingService(context)) return
+    if (mayTrackInBackground(context) && startTrackingService(context)) {
+      clearStoppedNotice(context)
+      return
+    }
     FieldNotificationReceiver.post(
       context,
-      "field-tracking-stopped",
+      STOPPED_NOTICE,
       prefs.getString(KEY_STOPPED_TITLE, null) ?: return,
       prefs.getString(KEY_STOPPED_BODY, null) ?: return,
       REMINDER_CHANNEL,
     )
+  }
+
+  /**
+   * «The route is not being recorded» must not outlive the stop: tried on the
+   * owner's phone 2026-09-29, the notice stayed after recording came back.
+   * FieldNotificationReceiver.post numbers a notice by its id's hash.
+   */
+  private fun clearStoppedNotice(context: Context) {
+    NotificationManagerCompat.from(context).cancel(STOPPED_NOTICE.hashCode())
   }
 
   private fun granted(context: Context, permission: String) =

@@ -116,8 +116,10 @@ describe("the pieces that have to agree", () => {
     expect(resume).toContain("Intent(context, RNBackgroundActionsTask::class.java)")
     expect(resume).toContain('putStringArrayList("foregroundServiceType", arrayListOf("location"))')
     expect(read("index.js")).toContain("AppRegistry.registerHeadlessTask('FieldResumeTracking', () => require('./src/services/tracking-resume').resumeTrackingTask)")
-    // Without «all the time» Android refuses the start: the agent is told instead.
-    expect(resume).toContain("if (mayTrackInBackground(context) && startTrackingService(context)) return")
+    // Without «all the time» Android refuses the start: the agent is told instead,
+    // and the notice goes away once recording is back.
+    expect(resume).toContain("if (mayTrackInBackground(context) && startTrackingService(context)) {\n      clearStoppedNotice(context)")
+    expect(resume).toContain("fun remember(context: Context, title: String, desc: String, stoppedTitle: String, stoppedBody: String) {\n    clearStoppedNotice(context)")
   })
 
   it("does not stop tracking the restart brought back before the app knows the session and the day", () => {
