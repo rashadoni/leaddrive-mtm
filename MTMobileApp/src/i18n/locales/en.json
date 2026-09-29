@@ -873,7 +873,9 @@
   },
   "location": {
     "taskTitle": "LeadDrive — workday",
-    "taskDesc": "Your location is recorded during the workday"
+    "taskDesc": "Your location is recorded during the workday",
+    "stoppedTitle": "Your route is not being recorded",
+    "stoppedBody": "Recording stopped after the phone restarted or the app was updated. Open LeadDrive — your workday is still open."
   },
   "dashboard": {
     "title": "Dashboard",

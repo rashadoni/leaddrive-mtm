@@ -3,6 +3,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- «Allow all the time»: without it Android does not let the tracking
+         service start again after a restart or an update (FieldTrackingResume). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!--
       targetSdk 36: a location foreground service needs both the generic and
       location-specific declarations. The dependency contributes the service,
@@ -53,6 +57,18 @@
         android:exported="false">
         <intent-filter>
           <action android:name="com.mtmobileapp.LOCAL_NOTIFICATION" />
+        </intent-filter>
+      </receiver>
+
+      <!-- An open workday keeps being recorded after the phone restarts or the
+           app is updated (FieldTrackingResume). Both broadcasts are protected:
+           only the system can send them. -->
+      <receiver
+        android:name=".FieldTrackingResumeReceiver"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.intent.action.BOOT_COMPLETED" />
+          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
         </intent-filter>
       </receiver>
 
