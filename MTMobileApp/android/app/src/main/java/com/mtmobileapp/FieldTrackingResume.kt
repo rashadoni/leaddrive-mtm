@@ -60,7 +60,7 @@ object FieldTrackingResume {
     val prefs = prefs(context)
     if (!prefs.getBoolean(KEY_WANTED, false)) return
     if (mayTrackInBackground(context) && startTrackingService(context)) return
-    FieldNotificationsModule.post(
+    FieldNotificationReceiver.post(
       context,
       "field-tracking-stopped",
       prefs.getString(KEY_STOPPED_TITLE, null) ?: return,
