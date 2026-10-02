@@ -33,6 +33,8 @@ export interface RouteOrganizationDetail {
   city?: string
   district?: string
   phone?: string
+  /** Whom to ask for at the organization. Read-only for the agent. */
+  contactPerson?: string
   contacts: RouteOrganizationContact[]
   visits: RouteOrganizationVisit[]
 }
@@ -58,6 +60,7 @@ export function toRouteOrganizationDetail(raw: any): RouteOrganizationDetail {
     city: text(raw?.city),
     district: text(raw?.district),
     phone: text(raw?.phone),
+    contactPerson: text(raw?.contactPerson),
     contacts: contacts.map((contact: any): RouteOrganizationContact => {
       return {
         id: String(contact?.id ?? ""),
