@@ -49,6 +49,7 @@ const COPY = {
     noContacts: "Активных контактов для этой точки пока нет.",
     noVisits: "Ваших завершённых или начатых визитов пока нет.",
     address: "Адрес",
+    contactPerson: "Контактное лицо",
     phone: "Телефон",
     code: "Код",
     category: "Категория",
@@ -76,6 +77,7 @@ const COPY = {
     noContacts: "Bu nöqtə üçün hələ aktiv kontakt yoxdur.",
     noVisits: "Hələ tamamlanmış və ya başlamış ziyarətiniz yoxdur.",
     address: "Ünvan",
+    contactPerson: "Əlaqə şəxsi",
     phone: "Telefon",
     code: "Kod",
     category: "Kateqoriya",
@@ -103,6 +105,7 @@ const COPY = {
     noContacts: "There are no active contacts for this location yet.",
     noVisits: "You have no completed or started visits here yet.",
     address: "Address",
+    contactPerson: "Contact person",
     phone: "Phone",
     code: "Code",
     category: "Category",
@@ -320,6 +323,7 @@ export default function RouteOrganizationDetailScreen() {
 
       <Section title={copy.essentials}>
         <DataRow icon="location-outline" label={copy.address} value={address ?? copy.unknown} />
+        <DataRow icon="person-outline" label={copy.contactPerson} value={detail.contactPerson ?? copy.unknown} />
         <DataRow icon="call-outline" label={copy.phone} value={detail.phone ?? copy.unknown} />
         {detail.code ? <DataRow icon="barcode-outline" label={copy.code} value={detail.code} /> : null}
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
