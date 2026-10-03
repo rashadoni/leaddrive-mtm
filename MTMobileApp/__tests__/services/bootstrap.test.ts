@@ -331,3 +331,21 @@ describe("bootstrap policies — pharmacy promotions", () => {
     expect(toBootstrap({ policies: { pharmacyPromotionsEnabled: null } }).policies.pharmacyPromotionsEnabled).toBe(true)
   })
 })
+
+describe("bootstrap policies — client classes", () => {
+  const classes = (raw: unknown) => toBootstrap(raw).policies.contactClasses
+
+  it("keeps the organization's classes in the order the web card offers them", () => {
+    expect(classes({ policies: { contactClasses: ["A", "B", "C", "VIP"] } })).toEqual(["A", "B", "C", "VIP"])
+    expect(classes({ policies: { contactClasses: ["VIP", "B", "A"] } })).toEqual(["A", "B", "VIP"])
+  })
+
+  it("has no list when an older server omits it or sends junk, so the app keeps A–D", () => {
+    expect(classes({ capabilities: [] })).toBeUndefined()
+    expect(classes({ policies: {} })).toBeUndefined()
+    expect(classes({ policies: { contactClasses: null } })).toBeUndefined()
+    expect(classes({ policies: { contactClasses: "A,B,C,VIP" } })).toBeUndefined()
+    expect(classes({ policies: { contactClasses: [] } })).toBeUndefined()
+    expect(classes({ policies: { contactClasses: ["S", 7] } })).toBeUndefined()
+  })
+})

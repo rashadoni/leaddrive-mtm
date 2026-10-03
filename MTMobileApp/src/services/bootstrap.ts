@@ -1,4 +1,5 @@
 import { ROUTE_FIELD_PROFILE, type RouteFieldStream } from "../runtime/route-field-profile"
+import { parseContactClasses, type ContactClass } from "../lib/contact-classes"
 
 /**
  * Pure mapping + capability helpers for the mobile bootstrap contract
@@ -111,6 +112,12 @@ export interface BootstrapPolicies {
   pharmacyPromotionsEnabled?: boolean
   /** The organization's check-in zone in meters; read through `checkInRadiusMeters()`. */
   checkInGeofenceRadiusMeters?: number | null
+  /**
+   * The classes the organization grades clients with (A, B, C, VIP…). Absent
+   * on a server that does not send them yet; read it only through the helpers
+   * in `lib/contact-classes`, which fall back to A–D.
+   */
+  contactClasses?: ContactClass[]
 }
 
 export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
@@ -403,6 +410,9 @@ export function toBootstrap(raw: any): BootstrapData {
       checkInGeofenceRadiusMeters: typeof record(raw?.policies)?.checkInGeofenceRadiusMeters === "number"
         ? record(raw?.policies)?.checkInGeofenceRadiusMeters as number
         : null,
+      // Known classes only; anything else (older server, junk) stays
+      // undefined and the app keeps offering A–D.
+      contactClasses: parseContactClasses(record(raw?.policies)?.contactClasses),
     },
     routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday

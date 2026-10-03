@@ -12,6 +12,8 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { ContactDetail } from "../services/contact-detail"
+import { CONTACT_CLASS_DEFAULTS, contactClassOptions } from "../lib/contact-classes"
+import { useBootstrapStore } from "../store/bootstrap"
 
 export type ContactEditFields = Record<string, string | null>
 
@@ -45,7 +47,8 @@ const TEXT_FIELDS = [
 const GROUPS = [
   { key: "type", label: "contacts.fieldType", values: ["DOCTOR", "PHARMACIST", "OTHER"] },
   { key: "gender", label: "contacts.fieldGender", values: ["FEMALE", "MALE", "OTHER", "UNSPECIFIED"] },
-  { key: "category", label: "contacts.fieldCategory", values: ["A", "B", "C", "D"] },
+  // Placeholder only: the form offers the organization's own classes, see `classOptions`.
+  { key: "category", label: "contacts.fieldCategory", values: CONTACT_CLASS_DEFAULTS },
   { key: "status", label: "contacts.fieldStatus", values: ["ACTIVE", "INACTIVE", "PROSPECT", "DUPLICATE", "MERGED"] },
   { key: "verificationStatus", label: "contacts.fieldVerification", values: ["UNVERIFIED", "VERIFIED", "REJECTED"] },
   { key: "consentStatus", label: "contacts.fieldConsent", values: ["UNKNOWN", "GRANTED", "REVOKED"] },
@@ -81,6 +84,9 @@ export default function ContactEditModal({
   const [values, setValues] = useState<Record<string, string>>(() => initial(detail))
   const [reason, setReason] = useState("")
   const [error, setError] = useState("")
+  // The organization's classes (A, B, C, VIP…) plus the one this client has.
+  const policies = useBootstrapStore((state) => state.data?.policies)
+  const classOptions = useMemo(() => contactClassOptions(policies, detail.category), [policies, detail.category])
 
   useEffect(() => {
     if (visible) {
@@ -129,7 +135,7 @@ export default function ContactEditModal({
           </View>
 
           {GROUPS.slice(0, 4).map((group) => (
-            <ChoiceGroup key={group.key} label={t(group.label)} values={group.values} selected={values[group.key]} onSelect={(value) => setValues((state) => ({ ...state, [group.key]: value }))} />
+            <ChoiceGroup key={group.key} label={t(group.label)} values={group.key === "category" ? classOptions : group.values} selected={values[group.key]} onSelect={(value) => setValues((state) => ({ ...state, [group.key]: value }))} />
           ))}
 
           <Text style={styles.sectionTitle}>{t("contacts.sectionCommunication")}</Text>
