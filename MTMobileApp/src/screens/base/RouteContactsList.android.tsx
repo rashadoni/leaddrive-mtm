@@ -30,6 +30,7 @@ import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
+import { contactClassColors } from "../../lib/contact-classes"
 
 type Language = "ru" | "az" | "en"
 type ContactTypeFilter = "ALL" | "DOCTOR" | "PHARMACIST" | "OTHER"
@@ -84,13 +85,6 @@ function languageFor(value: string): Language {
   if (value.toLowerCase().startsWith("az")) return "az"
   if (value.toLowerCase().startsWith("en")) return "en"
   return "ru"
-}
-
-function categoryColors(category?: string): { strong: string; soft: string } {
-  if (category === "A") return { strong: fieldTheme.color.success, soft: fieldTheme.color.successSoft }
-  if (category === "B") return { strong: fieldTheme.color.blue, soft: fieldTheme.color.blueSoft }
-  if (category === "C") return { strong: fieldTheme.color.amber, soft: fieldTheme.color.amberSoft }
-  return { strong: fieldTheme.color.inkMuted, soft: fieldTheme.color.surfaceStrong }
 }
 
 function mergeUnique(current: RouteContactListItem[], next: RouteContactListItem[]) {
@@ -358,7 +352,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
           </View>
         }
         renderItem={({ item }) => {
-          const category = categoryColors(item.category)
+          const category = contactClassColors(item.category)
           const typeLabel = item.type ? t(TYPE_KEY[item.type] ?? "contacts.typeOther") : t("contacts.typeOther")
           return (
             <Pressable

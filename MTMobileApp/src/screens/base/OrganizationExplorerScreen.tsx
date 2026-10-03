@@ -24,6 +24,8 @@ import { notify } from "../../services/app-feedback"
 import { AppNoticeLayer } from "../../components/AppFeedbackHost"
 import { readOfflineOrganizations } from "../../services/offline-reads"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
+import { contactClassColors, organizationClassFilterOptions } from "../../lib/contact-classes"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { useSyncStatusStore } from "../../store/sync-status"
 import {
   ORGANIZATION_COLUMNS,
@@ -59,6 +61,7 @@ function todayKey(): string {
 }
 
 function categoryColor(category?: string): string {
+  if (category === "VIP") return contactClassColors("VIP").strong
   if (category === "A") return "#16a34a"
   if (category === "B") return "#2563eb"
   if (category === "C") return "#d97706"
@@ -503,6 +506,9 @@ function Sheet({ visible, onClose, children, tablet = false }: { visible: boolea
 
 function FilterSheet({ visible, tablet, filters, facets, onChange, onClose, t }: any) {
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  // A to D as before, plus what the organization enabled (VIP).
+  const policies = useBootstrapStore((state) => state.data?.policies)
+  const classOptions = useMemo(() => organizationClassFilterOptions(policies), [policies])
   const set = (key: keyof OrganizationFilters, value?: string) => onChange((current: OrganizationFilters) => ({ ...current, [key]: current[key] === value ? undefined : value }))
   const assignmentLabels = { ASSIGNED: t("organizations.assigned"), UNASSIGNED: t("organizations.unassigned") }
   const typeLabels = {
@@ -521,7 +527,7 @@ function FilterSheet({ visible, tablet, filters, facets, onChange, onClose, t }:
       <Text style={styles.filterGroupTitle}>{t("organizations.mainFilters")}</Text>
       <FilterRow label={t("organizations.assignmentState")} values={["ASSIGNED", "UNASSIGNED"]} labels={assignmentLabels} selected={filters.assignmentState} onSelect={(value) => set("assignmentState", value)} />
       <FilterRow label={t("organizations.objectType")} values={["PHARMACY", "CLINIC", "STORE", "OTHER"]} labels={typeLabels} selected={filters.objectType} onSelect={(value) => set("objectType", value)} />
-      <FilterRow label={t("organizations.category")} values={["A", "B", "C", "D"]} selected={filters.category} onSelect={(value) => set("category", value)} />
+      <FilterRow label={t("organizations.category")} values={classOptions} selected={filters.category} onSelect={(value) => set("category", value)} />
       <FilterRow label={t("organizations.region")} values={facets.region} selected={filters.region} onSelect={(value) => set("region", value)} />
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedOpen }} style={styles.advancedToggle} onPress={() => setAdvancedOpen((current) => !current)}>
         <View style={styles.advancedToggleIcon}><Icon name="options" size={18} color="#0f766e" /></View>

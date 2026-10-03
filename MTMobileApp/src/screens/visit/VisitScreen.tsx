@@ -334,6 +334,8 @@ function distanceTone(meters: number, radius: number): { color: string; backgrou
 
 function categoryTone(category?: string): { color: string; background: string } {
   switch (category) {
+    case "VIP":
+      return { color: fieldTheme.color.violet, background: fieldTheme.color.violetSoft }
     case "A":
       return { color: fieldTheme.color.primaryStrong, background: fieldTheme.color.primarySoft }
     case "B":

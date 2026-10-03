@@ -26,20 +26,12 @@ import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
+import { contactClassColors } from "../../lib/contact-classes"
 
 const TYPE_KEY: Record<string, string> = {
   DOCTOR: "contacts.typeDoctor",
   PHARMACIST: "contacts.typePharmacist",
   OTHER: "contacts.typeOther",
-}
-
-function categoryColors(category?: string): { strong: string; soft: string } {
-  switch (category) {
-    case "A": return { strong: fieldTheme.color.success, soft: fieldTheme.color.successSoft }
-    case "B": return { strong: fieldTheme.color.blue, soft: fieldTheme.color.blueSoft }
-    case "C": return { strong: fieldTheme.color.amber, soft: fieldTheme.color.amberSoft }
-    default: return { strong: fieldTheme.color.inkMuted, soft: fieldTheme.color.surfaceStrong }
-  }
 }
 
 export default function ContactsList() {
@@ -223,7 +215,7 @@ export default function ContactsList() {
           </View>
         }
         renderItem={({ item }) => {
-          const category = categoryColors(item.category)
+          const category = contactClassColors(item.category)
           const typeLabel = item.type ? t(TYPE_KEY[item.type] ?? "contacts.typeOther") : t("contacts.typeOther")
           return (
             <Pressable

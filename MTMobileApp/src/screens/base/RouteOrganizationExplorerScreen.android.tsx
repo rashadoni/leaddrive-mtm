@@ -22,6 +22,7 @@ import {
 } from "../../services/route-organization-list"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
+import { contactClassColors } from "../../lib/contact-classes"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -63,13 +64,6 @@ function languageFor(value: string): Language {
   if (value.toLowerCase().startsWith("az")) return "az"
   if (value.toLowerCase().startsWith("en")) return "en"
   return "ru"
-}
-
-function categoryTone(category?: string): { color: string; backgroundColor: string } {
-  if (category === "A") return { color: fieldTheme.color.success, backgroundColor: fieldTheme.color.successSoft }
-  if (category === "B") return { color: fieldTheme.color.blue, backgroundColor: fieldTheme.color.blueSoft }
-  if (category === "C") return { color: fieldTheme.color.amber, backgroundColor: fieldTheme.color.amberSoft }
-  return { color: fieldTheme.color.inkMuted, backgroundColor: fieldTheme.color.surfaceStrong }
 }
 
 function mergeUnique(current: RouteOrganizationListItem[], next: RouteOrganizationListItem[]) {
@@ -253,7 +247,7 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
           </View>
         }
         renderItem={({ item }) => {
-          const tone = categoryTone(item.category)
+          const tone = contactClassColors(item.category)
           const typeLabel = item.objectType ? t(TYPE_LABEL[item.objectType] ?? "organizations.objectOther") : t("organizations.objectOther")
           return (
             <Pressable
@@ -269,7 +263,7 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
                   <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
                   <Text style={styles.cardType} numberOfLines={1}>{typeLabel}{item.code ? ` · ${item.code}` : ""}</Text>
                 </View>
-                {item.category ? <View style={[styles.category, { backgroundColor: tone.backgroundColor }]}><Text style={[styles.categoryText, { color: tone.color }]}>{item.category}</Text></View> : null}
+                {item.category ? <View style={[styles.category, { backgroundColor: tone.soft }]}><Text style={[styles.categoryText, { color: tone.strong }]}>{item.category}</Text></View> : null}
               </View>
               {item.address ? <View style={styles.detailRow}><Icon name="location-outline" size={16} color={fieldTheme.color.inkMuted} /><Text style={styles.detailText} numberOfLines={1}>{item.address}</Text></View> : null}
               {item.phone ? <View style={styles.detailRow}><Icon name="call-outline" size={16} color={fieldTheme.color.inkMuted} /><Text style={styles.detailText} numberOfLines={1}>{item.phone}</Text></View> : null}
