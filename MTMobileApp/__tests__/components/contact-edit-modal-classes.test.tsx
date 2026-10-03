@@ -50,6 +50,10 @@ function isSelected(node: Node): boolean {
   return Array.isArray(node.props.style) && Boolean(node.props.style[1])
 }
 
+// Forms left mounted would re-render on the next test's store change, outside
+// act() and after the environment is gone.
+const mounted: TestRenderer.ReactTestRenderer[] = []
+
 function open(category: string | null, onSubmit = jest.fn()) {
   const detail = toContactDetail({ id: "c1", firstName: "Test", lastName: "Doctor", displayName: "Test Doctor", category })
   let tree!: TestRenderer.ReactTestRenderer
@@ -58,6 +62,7 @@ function open(category: string | null, onSubmit = jest.fn()) {
       <ContactEditModal visible detail={detail} agentRequest={false} busy={false} onCancel={() => {}} onSubmit={onSubmit} />,
     )
   })
+  mounted.push(tree)
   return { tree, onSubmit }
 }
 
@@ -66,6 +71,7 @@ function serverSends(policies: Record<string, unknown> | undefined) {
 }
 
 afterEach(() => {
+  act(() => { mounted.splice(0).forEach((tree) => tree.unmount()) })
   useBootstrapStore.getState().clear()
 })
 
