@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Linking,
@@ -10,19 +10,33 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native"
+import { useFocusEffect, useNavigation, useRoute, type RouteProp } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { toRouteContactDetail, type RouteContactDetail } from "../../services/route-contact-detail"
+import {
+  canProposeRouteContactChange,
+  routeContactChangeTone,
+  toRouteContactChangeOffer,
+  type RouteContactChangeOffer,
+  type RouteContactChangeTone,
+} from "../../services/route-contact-change"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 type Language = "ru" | "az" | "en"
 type DetailRow = { icon: string; label: string; value: string | undefined }
+
+/** The agent's last change request: waiting, approved or declined. */
+const REQUEST_TONE: Record<RouteContactChangeTone, { color: string; title: "requestPending" | "requestApproved" | "requestDeclined" }> = {
+  pending: { color: fieldTheme.color.amber, title: "requestPending" },
+  approved: { color: fieldTheme.color.success, title: "requestApproved" },
+  declined: { color: fieldTheme.color.danger, title: "requestDeclined" },
+}
 
 const COPY = {
   ru: {
@@ -46,6 +60,13 @@ const COPY = {
     jobTitle: "Должность",
     primary: "Основное",
     unknown: "Не указано",
+    change: "Изменение данных",
+    propose: "Предложить изменение",
+    proposeHint: "Руководитель проверит и одобрит. До этого данные клиента не меняются.",
+    requestPending: "Ваша заявка у руководителя",
+    requestApproved: "Ваша заявка одобрена",
+    requestDeclined: "Ваша заявка отклонена",
+    managerAnswer: "Ответ руководителя",
     routeOnly: "Это приложение показывает только маршрутные данные. Управление персоналом и коммерческие операции доступны в отдельных продуктах.",
   },
   az: {
@@ -69,6 +90,13 @@ const COPY = {
     jobTitle: "Vəzifə",
     primary: "Əsas",
     unknown: "Göstərilməyib",
+    change: "Məlumatların dəyişdirilməsi",
+    propose: "Dəyişiklik təklif et",
+    proposeHint: "Rəhbər yoxlayıb təsdiqləyəcək. Ona qədər müştərinin məlumatları dəyişmir.",
+    requestPending: "Sorğunuz rəhbərdədir",
+    requestApproved: "Sorğunuz təsdiqləndi",
+    requestDeclined: "Sorğunuz rədd edildi",
+    managerAnswer: "Rəhbərin cavabı",
     routeOnly: "Bu tətbiq yalnız marşrut məlumatlarını göstərir. HRM və kommersiya əməliyyatları ayrı məhsullarda mövcuddur.",
   },
   en: {
@@ -92,6 +120,13 @@ const COPY = {
     jobTitle: "Job title",
     primary: "Primary",
     unknown: "Not provided",
+    change: "Changing the data",
+    propose: "Propose a change",
+    proposeHint: "A manager reviews and approves. Until then the client's data does not change.",
+    requestPending: "Your request is with the manager",
+    requestApproved: "Your request was approved",
+    requestDeclined: "Your request was declined",
+    managerAnswer: "Manager's answer",
     routeOnly: "This app shows route information only. Workforce and commercial operations live in separate products.",
   },
 } as const
@@ -137,6 +172,8 @@ export default function RouteContactDetailScreen() {
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const { id, name } = route.params
   const [detail, setDetail] = useState<RouteContactDetail | null>(null)
+  // What the agent may propose to change, and what became of their last request.
+  const [offer, setOffer] = useState<RouteContactChangeOffer | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -147,6 +184,7 @@ export default function RouteContactDetailScreen() {
       const response = await api.getRouteContactDetail(id)
       if (!response?.success || !response.data?.contact) throw new Error("CONTACT_NOT_FOUND")
       setDetail(toRouteContactDetail(response.data.contact))
+      setOffer(toRouteContactChangeOffer(response.data.changeRequest))
       setFailed(false)
     } catch (error: any) {
       if (error?.message === "SESSION_EXPIRED") return
@@ -163,7 +201,21 @@ export default function RouteContactDetailScreen() {
 
   useEffect(() => { void load() }, [load])
 
+  // Back from "propose a change": show the request that was just sent.
+  const focusedOnce = useRef(false)
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedOnce.current) {
+        focusedOnce.current = true
+        return
+      }
+      void load(true)
+    }, [load]),
+  )
+
   const phone = detail ? firstPhone(detail) : undefined
+  const requestTone = routeContactChangeTone(offer?.latest?.status)
+  const canPropose = !!offer && canProposeRouteContactChange(offer, detail)
   const details = useMemo<Array<[string, string, string]>>(() => {
     if (!detail) return []
     const rows: DetailRow[] = [
@@ -218,6 +270,34 @@ export default function RouteContactDetailScreen() {
           <Section title={copy.profile}>
             {details.length > 0 ? details.map(([icon, label, value]) => <ContactRow key={label} icon={icon} label={label} value={value} />) : <Empty label={copy.unknown} />}
           </Section>
+
+          {offer && (canPropose || requestTone) ? (
+            <Section title={copy.change}>
+              {offer.latest && requestTone ? (
+                <View style={styles.requestRow}>
+                  <View style={[styles.requestDot, { backgroundColor: REQUEST_TONE[requestTone].color }]} />
+                  <View style={styles.rowCopy}>
+                    <Text style={styles.requestTitle}>{copy[REQUEST_TONE[requestTone].title]}</Text>
+                    {offer.latest.reason ? <Text style={styles.requestMeta}>{offer.latest.reason}</Text> : null}
+                    {offer.latest.decisionComment ? <Text style={styles.requestAnswer}>{copy.managerAnswer}: {offer.latest.decisionComment}</Text> : null}
+                  </View>
+                </View>
+              ) : null}
+              {canPropose ? (
+                <View style={styles.proposeBlock}>
+                  <Pressable
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.proposeButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+                    onPress={() => navigation.navigate("ContactChangeRequest", { id, name: detail.name })}
+                  >
+                    <Icon name="create-outline" size={20} color={fieldTheme.color.onColor} />
+                    <Text style={styles.proposeText}>{copy.propose}</Text>
+                  </Pressable>
+                  <Text style={styles.proposeHint}>{copy.proposeHint}</Text>
+                </View>
+              ) : null}
+            </Section>
+          ) : null}
 
           <Section title={copy.contacts}>
             {phone ? <ActionRow icon="call-outline" label={copy.phone} value={phone} touchTarget={touchTarget} onPress={() => void Linking.openURL(`tel:${phone}`).catch(() => {})} /> : null}
@@ -300,5 +380,14 @@ const styles = StyleSheet.create({
   workplaceMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   phoneLink: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 18, fontWeight: "900", marginTop: 5 },
   empty: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, padding: fieldTheme.space.md },
+  requestRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
+  requestDot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
+  requestTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  requestMeta: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 3 },
+  requestAnswer: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 5 },
+  proposeBlock: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
+  proposeButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  proposeText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
+  proposeHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   pressed: { opacity: 0.72 },
 })

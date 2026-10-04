@@ -18,6 +18,10 @@ export interface RouteContactWorkplace {
 export interface RouteContactDetail {
   id: string
   name: string
+  /** Name parts and the version stamp: only the "propose a change" form uses them. */
+  firstName?: string
+  lastName?: string
+  updatedAt?: string
   specialty?: string
   type?: string
   category?: string
@@ -36,6 +40,9 @@ export function toRouteContactDetail(raw: any): RouteContactDetail {
   return {
     id: String(raw?.id ?? ""),
     name: optionalString(raw?.name) ?? "",
+    firstName: optionalString(raw?.firstName),
+    lastName: optionalString(raw?.lastName),
+    updatedAt: optionalString(raw?.updatedAt),
     specialty: optionalString(raw?.specialty),
     type: optionalString(raw?.type),
     category: optionalString(raw?.category),
