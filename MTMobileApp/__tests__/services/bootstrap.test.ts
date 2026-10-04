@@ -349,3 +349,20 @@ describe("bootstrap policies — client classes", () => {
     expect(classes({ policies: { contactClasses: ["S", 7] } })).toBeUndefined()
   })
 })
+
+describe("bootstrap policies — what an agent may do", () => {
+  const permissions = (raw: unknown) => toBootstrap(raw).policies.agentPermissions
+
+  it("keeps the organization's switches as booleans", () => {
+    expect(permissions({ policies: { agentPermissions: { contactCreateRequest: false, taskSelfCreate: true } } }))
+      .toEqual({ contactCreateRequest: false, taskSelfCreate: true })
+  })
+
+  it("has no map when an older server omits it or sends junk, so nothing is hidden", () => {
+    expect(permissions({ capabilities: [] })).toBeUndefined()
+    expect(permissions({ policies: {} })).toBeUndefined()
+    expect(permissions({ policies: { agentPermissions: null } })).toBeUndefined()
+    expect(permissions({ policies: { agentPermissions: ["contactCreateRequest"] } })).toBeUndefined()
+    expect(permissions({ policies: { agentPermissions: { contactCreateRequest: "false" } } })).toBeUndefined()
+  })
+})

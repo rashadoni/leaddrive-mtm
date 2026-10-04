@@ -1,5 +1,6 @@
 import { ROUTE_FIELD_PROFILE, type RouteFieldStream } from "../runtime/route-field-profile"
 import { parseContactClasses, type ContactClass } from "../lib/contact-classes"
+import { parseAgentPermissions } from "../lib/agent-permissions"
 
 /**
  * Pure mapping + capability helpers for the mobile bootstrap contract
@@ -118,6 +119,12 @@ export interface BootstrapPolicies {
    * in `lib/contact-classes`, which fall back to A–D.
    */
   contactClasses?: ContactClass[]
+  /**
+   * The organization's switches for what an agent may do, one boolean per
+   * function. Absent on a server that does not send them yet; read it only
+   * through `agentMay()`, which hides nothing without an explicit `false`.
+   */
+  agentPermissions?: Record<string, boolean>
 }
 
 export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
@@ -413,6 +420,8 @@ export function toBootstrap(raw: any): BootstrapData {
       // Known classes only; anything else (older server, junk) stays
       // undefined and the app keeps offering A–D.
       contactClasses: parseContactClasses(record(raw?.policies)?.contactClasses),
+      // Boolean answers only; anything else stays undefined and hides nothing.
+      agentPermissions: parseAgentPermissions(record(raw?.policies)?.agentPermissions),
     },
     routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday

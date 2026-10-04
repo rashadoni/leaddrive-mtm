@@ -31,6 +31,8 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
 import { contactClassColors } from "../../lib/contact-classes"
+import { agentMay } from "../../lib/agent-permissions"
+import { useBootstrapStore } from "../../store/bootstrap"
 
 type Language = "ru" | "az" | "en"
 type ContactTypeFilter = "ALL" | "DOCTOR" | "PHARMACIST" | "OTHER"
@@ -107,6 +109,9 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
   const { width } = useWindowDimensions()
   const tablet = isTabletWidth(width)
   const tabBarPadding = useTabBarPadding()
+  // The organization can switch the request for a new client off. Then there
+  // is no button; requests already sent stay listed with their outcome.
+  const canRequestDoctor = useBootstrapStore((state) => agentMay(state.data?.policies, "contactCreateRequest"))
   const [rows, setRows] = useState<RouteContactListItem[]>([])
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<ContactTypeFilter>("ALL")
@@ -241,14 +246,16 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         <Icon name="shield-checkmark-outline" size={19} color={fieldTheme.color.primaryStrong} />
         <Text style={styles.scopeText}>{copy.scope}</Text>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => navigation.navigate("DoctorCreateRequest")}
-        style={({ pressed }) => [styles.addDoctorButton, pressed && styles.pressed]}
-      >
-        <Icon name="person-add-outline" size={20} color={fieldTheme.color.onColor} />
-        <Text style={styles.addDoctorText}>{copy.addDoctor}</Text>
-      </Pressable>
+      {canRequestDoctor ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate("DoctorCreateRequest")}
+          style={({ pressed }) => [styles.addDoctorButton, pressed && styles.pressed]}
+        >
+          <Icon name="person-add-outline" size={20} color={fieldTheme.color.onColor} />
+          <Text style={styles.addDoctorText}>{copy.addDoctor}</Text>
+        </Pressable>
+      ) : null}
       {shownRequests.length > 0 ? (
         <View style={styles.requestsCard}>
           <Text style={styles.requestsTitle}>{requestCopy.title}</Text>

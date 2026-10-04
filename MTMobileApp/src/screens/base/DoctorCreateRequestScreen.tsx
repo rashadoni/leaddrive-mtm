@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { ask } from "../../services/app-feedback"
+import { isAgentPermissionDisabled } from "../../lib/agent-permissions"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
@@ -35,6 +36,7 @@ const COPY = {
     successBody: "Менеджер проверит возможные дубли и подтвердит добавление врача.",
     duplicate: "Найдены возможные дубли: {{count}}. Менеджер увидит их при проверке.",
     failed: "Не удалось отправить заявку.",
+    disabled: "Ваша организация отключила заявки на новых врачей. Обратитесь к руководителю.",
     back: "Назад",
   },
   az: {
@@ -43,7 +45,8 @@ const COPY = {
     name: "Ad və soyad *", specialty: "İxtisas", phone: "Telefon", clinic: "Klinika *", address: "Ünvan", notes: "Qeydlər",
     submit: "Menecerə göndər", required: "Həkimin adını və klinikanı göstərin.", success: "Sorğu göndərildi",
     successBody: "Menecer mümkün dubları yoxlayacaq və həkimin əlavə edilməsini təsdiqləyəcək.",
-    duplicate: "Mümkün dubl tapıldı: {{count}}. Menecer onları yoxlama zamanı görəcək.", failed: "Sorğunu göndərmək alınmadı.", back: "Geri",
+    duplicate: "Mümkün dubl tapıldı: {{count}}. Menecer onları yoxlama zamanı görəcək.", failed: "Sorğunu göndərmək alınmadı.",
+    disabled: "Təşkilatınız yeni həkim sorğularını söndürüb. Rəhbərinizə müraciət edin.", back: "Geri",
   },
   en: {
     title: "New doctor",
@@ -51,7 +54,8 @@ const COPY = {
     name: "Full name *", specialty: "Specialty", phone: "Phone", clinic: "Clinic *", address: "Address", notes: "Notes",
     submit: "Send to manager", required: "Enter the doctor's name and clinic.", success: "Request sent",
     successBody: "The manager will review possible duplicates and approve the new doctor.",
-    duplicate: "Possible duplicates found: {{count}}. The manager will see them during review.", failed: "The request could not be sent.", back: "Back",
+    duplicate: "Possible duplicates found: {{count}}. The manager will see them during review.", failed: "The request could not be sent.",
+    disabled: "Your organization has switched off requests for new doctors. Ask your manager.", back: "Back",
   },
 } as const
 
@@ -128,7 +132,10 @@ export default function DoctorCreateRequestScreen() {
       // stack-trace word where they need "try again or call the manager".
       const message = submitError instanceof Error ? submitError.message.trim() : ""
       const technical = !message || /^[A-Z][A-Z0-9_]*$/.test(message)
-      setError(technical ? copy.failed : message)
+      // The organization switched the request off after this screen opened
+      // (or this build is older than the switch): say that, in the agent's
+      // language, instead of the server's English sentence.
+      setError(isAgentPermissionDisabled(submitError) ? copy.disabled : technical ? copy.failed : message)
     } finally {
       setSaving(false)
     }
