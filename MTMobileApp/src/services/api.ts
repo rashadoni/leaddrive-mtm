@@ -827,6 +827,23 @@ class ApiClient {
     return this.request(`/mobile/route-field/contacts/${encodeURIComponent(id)}`, { signal }, 20_000, 2)
   }
 
+  /**
+   * The agent asks a manager to change a client. Nothing on the client
+   * changes until the manager approves. Mobile-only v2 door: it takes only
+   * what the Route Field card shows.
+   */
+  async submitRouteContactChangeRequest(id: string, data: {
+    idempotencyKey: string
+    reason: string
+    expectedContactUpdatedAt: string
+    changes: { category?: string; specialtyName?: string; firstName?: string; lastName?: string }
+  }) {
+    return this.request(`/mobile/route-field/contacts/${encodeURIComponent(id)}/change-requests`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
   /** Mobile-only v2 catalog; its opaque page token is server-issued. */
   async getRouteContacts(
     params?: { search?: string; page?: string; limit?: number; type?: "DOCTOR" | "PHARMACIST" | "OTHER" },

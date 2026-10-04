@@ -29,6 +29,7 @@ import RouteContactDetailScreen from "../screens/base/RouteContactDetailScreen.a
 import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import PresentationViewerScreen from "../screens/visit/PresentationViewerScreen"
 import DoctorCreateRequestScreen from "../screens/base/DoctorCreateRequestScreen"
+import RouteContactChangeRequestScreen from "../screens/base/RouteContactChangeRequestScreen.android"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
@@ -51,6 +52,7 @@ export type RootStackParamList = {
   VisitWorkspace: { visitId: string; name?: string; section?: "presentations" | "tasks" | "summary" }
   PresentationViewer: { visitId: string; product: MobileProductPresentation }
   DoctorCreateRequest: undefined
+  ContactChangeRequest: { id: string; name?: string }
   TaskDetail: { task: RawTask }
   Visits: undefined
   Base: undefined
@@ -77,6 +79,7 @@ export type ClientsStackParamList = {
   OrganizationDetail: { id: string; name?: string }
   ContactDetail: { id: string; name?: string }
   DoctorCreateRequest: undefined
+  ContactChangeRequest: { id: string; name?: string }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -131,6 +134,7 @@ function ClientsStackNavigator() {
       <ClientsStack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
       <ClientsStack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
       <ClientsStack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
+      <ClientsStack.Screen name="ContactChangeRequest" component={RouteContactChangeRequestScreen} />
     </ClientsStack.Navigator>
   )
 }
@@ -301,6 +305,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
                 <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
                 <Stack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
+                <Stack.Screen name="ContactChangeRequest" component={RouteContactChangeRequestScreen} />
                 <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
                 <Stack.Screen name="Visits" component={VisitScreen} />
                 <Stack.Screen name="Base" component={RouteBaseScreen} />
