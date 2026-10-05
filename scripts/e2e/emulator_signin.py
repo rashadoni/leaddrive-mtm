@@ -353,10 +353,15 @@ def main(apk):
         record(bool(by_id(found, test_id)), f"Sign-in form has «{test_id}»")
 
     # B20 of the field audit: both fields and the button without scrolling.
-    height = int(re.search(r"(\d+)x(\d+)", shell("wm size")).group(2))
+    # `wm size` prints the physical size first and the override after it; the
+    # screen the app lays out on is the last one. The system's navigation bar
+    # takes the bottom of it.
+    height = int(re.findall(r"(\d+)x(\d+)", shell("wm size"))[-1][1])
+    bar = by_id(found, "navigationBarBackground")
+    fold = bar["box"][1] if bar else height
     submit = by_id(found, "login-submit")
     if submit:
-        record(submit["box"][3] <= height, "The sign-in button is above the fold", f"bottom edge {submit['box'][3]} of {height} px")
+        record(submit["box"][3] <= fold, "The sign-in button is above the fold", f"bottom edge {submit['box'][3]}, screen ends at {fold} of {height} px")
         tap(submit)
         wait_for("Signing in with nothing typed is refused in words", lambda seen: has_text(seen, sign_in["validationMissing"]), 30, "06-sign-in-empty")
 
