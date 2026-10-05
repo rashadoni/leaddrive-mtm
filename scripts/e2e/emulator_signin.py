@@ -225,10 +225,13 @@ def finish():
     alive = shell(f"pidof {PKG}", check=False).strip()
     focus = re.search(r"mCurrentFocus=.*", shell("dumpsys window", check=False))
     record(not crashed, "The app did not crash", crash_line() if crashed else "the crash log does not name it")
-    ours = [title for title in not_responding if APP_LABEL in title]
-    others = sorted({title for title in not_responding if APP_LABEL not in title})
+    # The system's dialogs are switched off on this emulator (see main), so the
+    # activity manager's own log line is the witness.
+    frozen = re.findall(r"ANR in (\S+)", adb("logcat", "-d", check=False))
+    ours = [name for name in frozen if name.startswith(PKG)] + [title for title in not_responding if APP_LABEL in title]
+    others = sorted({name for name in frozen if not name.startswith(PKG)})
     record(not ours, "Android never reported the app as not responding",
-           (f"{len(ours)} time(s)" if ours else "no such dialog about the app") + (f"; emulator's own: {', '.join(others)}" if others else ""))
+           (f"{len(ours)} time(s)" if ours else "no ANR of the app in the log") + (f"; the emulator's own: {', '.join(others)}" if others else ""))
     record(bool(alive) and bool(focus) and PKG in focus.group(0), "The app is still running in the foreground", (focus.group(0) if focus else "no focused window")[:120])
 
     failed = [row for row in results if not row[0]]
@@ -248,6 +251,13 @@ def finish():
 def main(apk):
     os.makedirs(OUT, exist_ok=True)
     server, sign_in = words("server"), words("auth")
+
+    # A hosted emulator renders in software, and its launcher freezes often
+    # enough for Android to keep «Pixel Launcher isn't responding» on top of
+    # whatever is in front (third run: 35 dialogs in five minutes, none about
+    # the app). The device is disposable: switch the dialogs off and read
+    # freezes from the log instead.
+    shell("settings put global hide_error_dialogs 1", check=False)
 
     android = shell("getprop ro.build.version.release").strip()
     abis = shell("getprop ro.product.cpu.abilist").strip()

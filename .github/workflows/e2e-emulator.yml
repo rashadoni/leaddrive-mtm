@@ -103,7 +103,10 @@ jobs:
           api-level: 34
           target: google_apis
           arch: x86_64
-          profile: pixel_6
+          # A 720x1280 phone: the screen agents' cheaper handsets have, and
+          # under a third of the pixels a software-rendered emulator has to
+          # draw for a Pixel 6 (whose launcher froze on a hosted runner).
+          profile: Galaxy Nexus
           cores: 3
           ram-size: 4096M
           disable-animations: true
