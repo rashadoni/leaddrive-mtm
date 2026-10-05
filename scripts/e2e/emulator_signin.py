@@ -37,7 +37,9 @@ EXPECTED_VERSION = os.environ.get("E2E_EXPECTED_VERSION", "")
 REF = os.environ.get("E2E_REF", "")
 LOCALE_FILE = "MTMobileApp/src/i18n/locales/en.json"
 
+APP_LABEL = "LeadDrive"
 results = []  # (ok, what, detail)
+not_responding = []  # titles of the system's «isn't responding» dialogs that were dismissed
 
 
 def adb(*args, timeout=180, check=True):
@@ -54,7 +56,7 @@ def shell(command, **kwargs):
 
 def nodes():
     """Visible UI nodes. uiautomator refuses while the window is not idle, so ask again."""
-    for _ in range(6):
+    for _ in range(10):
         raw = shell("uiautomator dump /sdcard/e2e-ui.xml >/dev/null 2>&1; cat /sdcard/e2e-ui.xml; rm -f /sdcard/e2e-ui.xml", check=False)
         if "<hierarchy" in raw:
             found = []
@@ -64,6 +66,20 @@ def nodes():
                 if box:
                     attrs["box"] = tuple(int(part) for part in box.groups())
                     found.append(attrs)
+            # A hosted emulator is slow right after boot, and Android puts «Pixel
+            # Launcher isn't responding» over whatever is in front. uiautomator
+            # then describes the dialog, not the app (second run, 2026-10-05:
+            # the app was up in 2.7 s and five minutes were spent looking at
+            # the dialog). Press «Wait» and look again — and keep the title:
+            # the same dialog about OUR app is a finding, not noise.
+            wait_button = by_id(found, "aerr_wait")
+            if wait_button:
+                title = next((n.get("text", "") for n in found if n.get("resource-id", "").endswith("alertTitle")), "?")
+                not_responding.append(title)
+                print(f"dismissed: {title}", flush=True)
+                tap(wait_button)
+                time.sleep(4)
+                continue
             return found, raw
         time.sleep(1.5)
     return [], ""
@@ -209,6 +225,10 @@ def finish():
     alive = shell(f"pidof {PKG}", check=False).strip()
     focus = re.search(r"mCurrentFocus=.*", shell("dumpsys window", check=False))
     record(not crashed, "The app did not crash", crash_line() if crashed else "the crash log does not name it")
+    ours = [title for title in not_responding if APP_LABEL in title]
+    others = sorted({title for title in not_responding if APP_LABEL not in title})
+    record(not ours, "Android never reported the app as not responding",
+           (f"{len(ours)} time(s)" if ours else "no such dialog about the app") + (f"; emulator's own: {', '.join(others)}" if others else ""))
     record(bool(alive) and bool(focus) and PKG in focus.group(0), "The app is still running in the foreground", (focus.group(0) if focus else "no focused window")[:120])
 
     failed = [row for row in results if not row[0]]
@@ -250,6 +270,9 @@ def main(apk):
         if not ok:
             return finish()
 
+    # Let the freshly booted system finish its own start-up before timing ours.
+    time.sleep(20)
+    nodes()
     adb("logcat", "-c", check=False)
     started = time.time()
     shell(f"monkey -p {PKG} -c android.intent.category.LAUNCHER 1")
