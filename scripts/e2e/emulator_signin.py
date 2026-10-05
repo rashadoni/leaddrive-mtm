@@ -58,6 +58,7 @@ private = False  # True from the moment the account's company is typed: see the 
 APP_LABEL = "LeadDrive"
 results = []  # (ok, what, detail)
 not_responding = []  # titles of the system's «isn't responding» dialogs that were dismissed
+asked_by_system = []  # packages of Android's own prompts that were declined: the walk only reads
 
 
 def adb(*args, timeout=180, check=True):
@@ -94,8 +95,15 @@ def nodes():
             # Android's own permission prompt (notifications, on first sign-in):
             # the walk only reads, so decline and look again.
             deny = by_id(found, "permission_deny_button")
+            # …and the Settings dialog «Let app always run in background?» that
+            # the Route tab raises for tracking (first signed-in run: it took
+            # the focus and every tab after it was «not on screen»).
+            packages = {n.get("package", "") for n in found}
+            if not deny and PKG not in packages and packages & {"com.android.settings", "com.google.android.permissioncontroller", "com.android.permissioncontroller"}:
+                deny = by_id(found, "button2")
             if deny:
-                print("declined a system permission prompt", flush=True)
+                asked_by_system.append(next(iter(packages - {""}), "?"))
+                print(f"declined a system prompt ({asked_by_system[-1]})", flush=True)
                 tap(deny)
                 time.sleep(2)
                 continue
