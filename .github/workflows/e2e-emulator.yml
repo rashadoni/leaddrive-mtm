@@ -5,8 +5,8 @@ name: E2E on emulator
 # refusals, against the production server (owner, 2026-10-05: «на эмуляторе
 # проверь, сделай тест E2E»). jest and tsc never install anything; the device
 # checklist needs the owner's phone on a cable. This is the part a machine can
-# do alone. It never types a password: what comes after sign-in needs a field
-# account the owner has not provided for tests.
+# do alone. With the field account from the secrets it then signs in, opens
+# every tab and the profile, and signs out — reading only.
 #
 # Not a required check: it tests a build that already exists, so it cannot
 # gate the pull request that produced it. It runs after every build of main,
@@ -100,6 +100,12 @@ jobs:
           E2E_EXPECTED_VERSION: ${{ steps.build.outputs.version }}
           E2E_REF: ${{ steps.build.outputs.sha }}
           E2E_SCREEN: 720x1600@320
+          # A field account for what comes after sign-in. The script keeps
+          # nothing it reads from the screen once these are in use: this
+          # repository's logs and artifacts are public.
+          E2E_AGENT_COMPANY: ${{ secrets.E2E_COMPANY }}
+          E2E_AGENT_EMAIL: ${{ secrets.E2E_AGENT_EMAIL }}
+          E2E_AGENT_PASSWORD: ${{ secrets.E2E_AGENT_PASSWORD }}
         with:
           api-level: 34
           target: google_apis

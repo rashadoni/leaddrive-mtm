@@ -8,8 +8,15 @@ is the part of that acceptance a machine can do alone: take the APK an agent
 downloads, install it on a device that has never seen the app, and walk the way
 in — company step, sign-in form, their refusals — against the production server.
 
-It never types a password. What comes after sign-in needs a field account, and
-that stays with a person until the owner provides one for tests.
+With a field account in the repository's secrets it goes on: signs in, opens
+every tab, the profile, and signs out. It reads and never writes — no workday is
+started, nothing is submitted — because the account lives in a real company.
+
+THIS REPOSITORY IS PUBLIC, and so are its run logs, summaries and artifacts.
+From the moment the account's company is typed, nothing read from the screen is
+kept or printed: no screenshot, no UI dump, no device log. A failed check names
+only the app's own words (those found in its dictionaries) and test ids; the
+company, the email and the password are replaced wherever they would appear.
 
 Every check is read from the device (`uiautomator dump`, `dumpsys`, the crash
 log), not from a screenshot. Screenshots are kept as evidence only.
@@ -20,11 +27,15 @@ Usage: emulator_signin.py <apk>
   E2E_REF               commit the APK was built from: its en.json names the texts
   E2E_COMPANY           company to connect to (default app)
   E2E_SCREEN            logical screen to test on, e.g. 720x1600@320 (a budget handset)
+  E2E_AGENT_COMPANY, E2E_AGENT_EMAIL, E2E_AGENT_PASSWORD
+                        a field account, from secrets; without all three the
+                        walk stops at the sign-in form
 """
 import html
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -37,6 +48,12 @@ COMPANY = os.environ.get("E2E_COMPANY", "app")
 EXPECTED_VERSION = os.environ.get("E2E_EXPECTED_VERSION", "")
 REF = os.environ.get("E2E_REF", "")
 LOCALE_FILE = "MTMobileApp/src/i18n/locales/en.json"
+RESOURCES_FILE = "MTMobileApp/src/i18n/mobile-resources.ts"
+AGENT_COMPANY = os.environ.get("E2E_AGENT_COMPANY", "")
+AGENT_EMAIL = os.environ.get("E2E_AGENT_EMAIL", "")
+AGENT_PASSWORD = os.environ.get("E2E_AGENT_PASSWORD", "")
+SECRETS = [value for value in (AGENT_PASSWORD, AGENT_EMAIL, AGENT_COMPANY) if value]
+private = False  # True from the moment the account's company is typed: see the note on top
 
 APP_LABEL = "LeadDrive"
 results = []  # (ok, what, detail)
@@ -47,7 +64,8 @@ def adb(*args, timeout=180, check=True):
     done = subprocess.run(["adb", *args], capture_output=True, timeout=timeout)
     text = (done.stdout + done.stderr).decode("utf-8", "replace")
     if check and done.returncode != 0:
-        raise RuntimeError(f"adb {' '.join(args)} -> {done.returncode}: {text.strip()[:400]}")
+        # The command line may carry what was typed into a field.
+        raise RuntimeError(redact(f"adb {' '.join(args)} -> {done.returncode}: {text.strip()[:400]}"))
     return text
 
 
@@ -73,6 +91,14 @@ def nodes():
             # the app was up in 2.7 s and five minutes were spent looking at
             # the dialog). Press «Wait» and look again — and keep the title:
             # the same dialog about OUR app is a finding, not noise.
+            # Android's own permission prompt (notifications, on first sign-in):
+            # the walk only reads, so decline and look again.
+            deny = by_id(found, "permission_deny_button")
+            if deny:
+                print("declined a system permission prompt", flush=True)
+                tap(deny)
+                time.sleep(2)
+                continue
             wait_button = by_id(found, "aerr_wait")
             if wait_button:
                 title = next((n.get("text", "") for n in found if n.get("resource-id", "").endswith("alertTitle")), "?")
@@ -94,7 +120,35 @@ def has_text(found, text):
     return any(text in n.get("text", "") or text in n.get("content-desc", "") for n in found)
 
 
+def redact(text):
+    for value in SECRETS:
+        text = text.replace(value, "•••")
+    return text
+
+
+def app_words():
+    """Every text the app itself can show: its dictionaries, all three languages."""
+    def flatten(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                yield from flatten(value)
+        elif isinstance(node, str):
+            yield node
+    known = set(flatten(json.loads(source_of(LOCALE_FILE))))
+    known.update(re.findall(r'"((?:[^"\\]|\\.)*)"', source_of(RESOURCES_FILE)))
+    return known
+
+
+def own_words(found):
+    """What is on screen, safe to print: the app's words stay, everything else is «…»."""
+    known = app_words()
+    seen = [n.get("text", "") for n in found if n.get("text")]
+    return "; ".join(text if text in known else "…" for text in seen)[:400]
+
+
 def evidence(name):
+    if private:
+        return
     os.makedirs(OUT, exist_ok=True)
     png = subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True, timeout=60).stdout
     with open(f"{OUT}/{name}.png", "wb") as file:
@@ -116,8 +170,9 @@ def crash_line():
         return ""
     lines = log.splitlines()
     at = next(index for index, line in enumerate(lines) if PKG in line)
-    reason = lines[at + 1] if at + 1 < len(lines) else lines[at]
-    return reason.split("AndroidRuntime:", 1)[-1].strip()[:200]
+    reason = (lines[at + 1] if at + 1 < len(lines) else lines[at]).split("AndroidRuntime:", 1)[-1].strip()
+    # Once the account is in use, name the exception and leave its message out.
+    return redact(reason.split(":", 1)[0] if private else reason)[:200]
 
 
 def unpack_handset_code(apk, device_abis):
@@ -161,6 +216,7 @@ def unpack_handset_code(apk, device_abis):
 
 
 def record(ok, what, detail=""):
+    what, detail = redact(what), redact(detail)
     results.append((ok, what, detail))
     print(("PASS  " if ok else "FAIL  ") + what + (f" — {detail}" if detail else ""), flush=True)
 
@@ -183,7 +239,7 @@ def wait_for(what, check, timeout, name):
             raise SystemExit(finish())
         time.sleep(2)
     evidence(name)
-    seen = "; ".join(sorted({n.get("text", "") for n in found if n.get("text")}))[:300]
+    seen = own_words(found) if private else "; ".join(sorted({n.get("text", "") for n in found if n.get("text")}))[:300]
     record(False, what, f"not seen in {timeout} s; on screen: {seen or 'nothing readable'}")
     raise SystemExit(finish())
 
@@ -209,20 +265,173 @@ def clear_field(node, length):
     shell("input keyevent 123 " + " ".join(["67"] * (length + 2)))
 
 
+def source_of(path):
+    """A file of the app as it was in the build under test."""
+    source = subprocess.run(["git", "show", f"{REF}:{path}"], capture_output=True, text=True).stdout if REF else ""
+    return source or open(path, encoding="utf-8").read()
+
+
 def words(section):
-    source = subprocess.run(["git", "show", f"{REF}:{LOCALE_FILE}"], capture_output=True, text=True).stdout if REF else ""
-    if not source:
-        source = open(LOCALE_FILE, encoding="utf-8").read()
-    return json.loads(source)[section]
+    return json.loads(source_of(LOCALE_FILE))[section]
+
+
+def tab_captions():
+    """English captions of the bottom tabs; they live in mobile-resources.ts, not in en.json."""
+    for block in re.findall(r"navV2:\s*\{([^}]*)\}", source_of(RESOURCES_FILE)):
+        pairs = dict(re.findall(r'(\w+):\s*"([^"]*)"', block))
+        if pairs.get("home") == "Home":
+            return pairs
+    raise RuntimeError("no English navV2 block in mobile-resources.ts")
+
+
+def type_text(value):
+    # `input text` reads %s as a space; the device shell needs the rest quoted.
+    shell("input text " + shlex.quote(value.replace(" ", "%s")))
+
+
+def tap_text(found, text):
+    """Tap the lowest node carrying exactly this text (a tab caption sits under any same-named title)."""
+    matches = [n for n in found if n.get("text") == text or n.get("content-desc") == text]
+    if not matches:
+        return False
+    tap(max(matches, key=lambda n: n["box"][1]))
+    return True
+
+
+KEY_LIKE = re.compile(r"^([a-z][A-Za-z0-9]*)(\.[A-Za-z0-9_]+)+$")
+RAW_MARKERS = ("undefined", "[object Object]", "NaN", "TypeError")
+
+
+def namespaces():
+    """First words of the app's dictionary keys: «visit», «navV2», … A domain or a file name starts with none of them."""
+    found = set(json.loads(source_of(LOCALE_FILE)).keys())
+    found.update(re.findall(r"^\s{4}(\w+):\s*\{", source_of(RESOURCES_FILE), re.MULTILINE))
+    return found
+
+
+def screen_faults(found):
+    """Things a person should never read: a dictionary key, or a raw value."""
+    faults = []
+    known = namespaces()
+    for n in found:
+        text = n.get("text", "")
+        key = KEY_LIKE.match(text)
+        if key and key.group(1) in known:
+            faults.append(f"key «{text}»")
+        for marker in RAW_MARKERS:
+            if re.search(rf"(?<![\w]){re.escape(marker)}(?![\w])", text):
+                faults.append(f"raw «{marker}»")
+    return sorted(set(faults))
+
+
+def signed_in_walk(server, sign_in):
+    """Sign in with the field account, open every tab and the profile, sign out. Reads only."""
+    global private
+    if not (AGENT_COMPANY and AGENT_EMAIL and AGENT_PASSWORD):
+        print("No field account in the secrets: the walk ends at the sign-in form.", flush=True)
+        return
+    profile, tabs = words("profile"), tab_captions()
+    private = True
+    print("Signing in with the field account. Nothing read from the screen is kept from here on.", flush=True)
+
+    found, _ = nodes()
+    tap(by_id(found, "tenant-input"))
+    type_text(AGENT_COMPANY)
+    hide_keyboard()
+    found, _ = nodes()
+    tap(by_id(found, "tenant-continue"))
+    found = wait_for("The account's company opens the sign-in form", lambda seen: by_id(seen, "login-email") and "form shown", 120, "")
+    tap(by_id(found, "login-email"))
+    type_text(AGENT_EMAIL)
+    hide_keyboard()
+    found, _ = nodes()
+    tap(by_id(found, "login-password"))
+    type_text(AGENT_PASSWORD)
+    hide_keyboard()
+    found, _ = nodes()
+    tap(by_id(found, "login-submit"))
+
+    pressed = time.time()
+    expected = [tabs["today"], tabs["calendar"], tabs["route"], tabs["tasks"], tabs["more"]]
+    outcome, found = None, []
+    while outcome is None and time.time() - pressed < 150:
+        found, _ = nodes()
+        if all(has_text(found, caption) for caption in expected):
+            outcome = "in"
+        elif has_text(found, sign_in["invalidCredentialsHelp"]):
+            outcome = "refused"
+        elif crash_line():
+            outcome = "crashed"
+        else:
+            time.sleep(2)
+    what = "The field account signs in and the tabs appear"
+    if outcome != "in":
+        reason = {"refused": "the server refused the email and password kept in the secrets",
+                  "crashed": f"the app crashed: {crash_line()}"}.get(outcome, f"no tabs in 150 s; on screen: {own_words(found) or 'nothing readable'}")
+        record(False, what, reason)
+        return
+    record(True, what, f"{time.time() - pressed:.0f} s after the button")
+
+    clients = tabs["clients"] if has_text(found, tabs["clients"]) else tabs["places"]
+    record(has_text(found, clients), "All six tabs are there", ", ".join([tabs["today"], tabs["calendar"], tabs["route"], clients, tabs["tasks"], tabs["more"]]))
+
+    for caption in (tabs["calendar"], tabs["route"], clients, tabs["tasks"], tabs["more"], tabs["today"]):
+        found, _ = nodes()
+        if not tap_text(found, caption):
+            record(False, f"«{caption}» opens", "its caption is not on screen")
+            continue
+        time.sleep(5)
+        found, _ = nodes()
+        crashed = crash_line()
+        faults = screen_faults(found)
+        texts = sum(1 for n in found if n.get("text"))
+        record(not crashed and not faults and texts >= 3, f"«{caption}» opens and shows words, not keys or raw values",
+               f"crashed: {crashed}" if crashed else "; ".join(faults) if faults else f"{texts} texts on screen")
+        if crashed:
+            return
+
+    found, _ = nodes()
+    tap_text(found, tabs["more"])
+    found = wait_for("«More» lists the profile", lambda seen: by_id(seen, "more-action-Profile") and "entry found", 30, "")
+    tap(by_id(found, "more-action-Profile"))
+    version = f"v{EXPECTED_VERSION}" if EXPECTED_VERSION else "Route & Field v"
+
+    def scrolled_to(text):
+        for _ in range(6):
+            seen, _ = nodes()
+            if has_text(seen, text):
+                return seen
+            shell("input swipe 360 1100 360 500 300")
+            time.sleep(1.5)
+        return None
+
+    seen = scrolled_to(profile["logout"])
+    record(bool(seen), "The profile opens and offers to log out")
+    if not seen:
+        return
+    below, _ = nodes()
+    shell("input swipe 360 1100 360 400 300")
+    time.sleep(1.5)
+    bottom, _ = nodes()
+    record(has_text(below, version) or has_text(bottom, version), "The profile names the version of this build", version)
+
+    seen = scrolled_to(profile["logout"])
+    if seen and tap_text(seen, profile["logout"]):
+        found = wait_for("Logging out asks to confirm", lambda again: has_text(again, profile["logoutMessage"]) and "confirmation shown", 30, "")
+        tap_text(found, profile["logoutConfirm"])
+        wait_for("After logging out the app is back at the way in", lambda again: (by_id(again, "login-email") or by_id(again, "tenant-input")) and "signed out", 60, "")
+
 
 
 def finish():
     crash = adb("logcat", "-b", "crash", "-d", check=False)
-    with open(f"{OUT}/crash.log", "w", encoding="utf-8") as file:
-        file.write(crash)
     crashed = PKG in crash
-    with open(f"{OUT}/logcat.log", "w", encoding="utf-8") as file:
-        file.write(adb("logcat", "-d", check=False))
+    with open(f"{OUT}/crash.log", "w", encoding="utf-8") as file:
+        # Stack frames only once the account was used: an exception message may quote data.
+        file.write("\n".join(line for line in crash.splitlines() if "\tat " in line or "at com." in line) if private else crash)
+    if not private:
+        with open(f"{OUT}/logcat.log", "w", encoding="utf-8") as file:
+            file.write(adb("logcat", "-d", check=False))
     alive = shell(f"pidof {PKG}", check=False).strip()
     focus = re.search(r"mCurrentFocus=.*", shell("dumpsys window", check=False))
     record(not crashed, "The app did not crash", crash_line() if crashed else "the crash log does not name it")
@@ -372,6 +581,7 @@ def main(apk):
     if switch:
         tap(switch)
         wait_for("Changing the company returns to the company step", lambda seen: by_id(seen, "tenant-input") and "back on step 1", 60, "07-company-again")
+        signed_in_walk(server, sign_in)
     return finish()
 
 
