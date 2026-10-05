@@ -19,6 +19,7 @@ Usage: emulator_signin.py <apk>
   E2E_EXPECTED_VERSION  versionName the APK must carry, e.g. 3.3.0
   E2E_REF               commit the APK was built from: its en.json names the texts
   E2E_COMPANY           company to connect to (default app)
+  E2E_SCREEN            logical screen to test on, e.g. 720x1600@320 (a budget handset)
 """
 import html
 import json
@@ -259,6 +260,16 @@ def main(apk):
     # freezes from the log instead.
     shell("settings put global hide_error_dialogs 1", check=False)
 
+    # The audit's «above the fold» rule (B20) was measured on a flagship. Agents
+    # carry cheaper phones; measure on the screen one of those has.
+    screen = os.environ.get("E2E_SCREEN", "")
+    if screen:
+        size, _, density = screen.partition("@")
+        shell(f"wm size {size}")
+        if density:
+            shell(f"wm density {density}")
+        time.sleep(8)
+
     android = shell("getprop ro.build.version.release").strip()
     abis = shell("getprop ro.product.cpu.abilist").strip()
     print(f"device: Android {android}, ABIs {abis}", flush=True)
@@ -287,7 +298,7 @@ def main(apk):
     started = time.time()
     shell(f"monkey -p {PKG} -c android.intent.category.LAUNCHER 1")
     found = wait_for("First launch opens the company step", lambda seen: by_id(seen, "tenant-input") and f"{time.time() - started:.0f} s after the tap", 300, "01-company-step")
-    for key in ("stepProgress", "companyTitle", "connectButton"):
+    for key in ("stepProgress", "companyTitle"):
         record(has_text(found, server[key]), f"Company step says «{server[key]}»")
 
     # An empty company is refused in words, without a request.
@@ -301,7 +312,27 @@ def main(apk):
     shell(f"input text {unknown}")
     shell("input keyevent 66")
     refusals = (server["serverNotFoundHelp"], server["couldNotConnectHelp"])
-    wait_for("An unknown company is refused, not accepted", lambda seen: next((text for text in refusals if has_text(seen, text)), None), 120, "03-company-unknown")
+    outcome, deadline = None, time.time() + 120
+    while outcome is None and time.time() < deadline:
+        seen, _ = nodes()
+        outcome = next((text for text in refusals if has_text(seen, text)), None) or ("accepted" if by_id(seen, "login-email") else None)
+        if outcome is None:
+            time.sleep(2)
+    evidence("03-company-unknown")
+    what = "A company that does not exist is refused"
+    if outcome == "accepted":
+        # Fourth run, 2026-10-05: the server's ping answers «success» under any
+        # *.leaddrivecrm.org name, so a misspelt company reaches the sign-in
+        # form and the agent is later told to check the password.
+        record(False, what, f"«{unknown}» was accepted: the sign-in form opened for {unknown}.leaddrivecrm.org")
+        seen, _ = nodes()
+        tap(by_id(seen, "switch-tenant"))
+        wait_for("…and the form lets the agent go back to choose again", lambda again: by_id(again, "tenant-input") and "back on step 1", 60, "03b-company-again")
+    elif outcome:
+        record(True, what, outcome)
+    else:
+        record(False, what, "neither a refusal nor the sign-in form in 120 s")
+        return finish()
 
     # A real company, through the button this time.
     found, _ = nodes()
@@ -309,6 +340,7 @@ def main(apk):
     shell(f"input text {COMPANY}")
     hide_keyboard()
     found = wait_for("The connect button is on screen with the keyboard closed", lambda seen: by_id(seen, "tenant-continue") and "found", 30, "04-company-typed")
+    record(has_text(found, server["connectButton"]), f"The button says «{server['connectButton']}»")
     tap(by_id(found, "tenant-continue"))
     connected = time.time()
     found = wait_for("A real company leads to the sign-in form", lambda seen: by_id(seen, "login-email") and f"{time.time() - connected:.0f} s to answer", 120, "05-sign-in-form")

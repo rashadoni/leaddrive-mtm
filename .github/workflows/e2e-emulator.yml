@@ -99,13 +99,15 @@ jobs:
           E2E_OUT: e2e-out
           E2E_EXPECTED_VERSION: ${{ steps.build.outputs.version }}
           E2E_REF: ${{ steps.build.outputs.sha }}
+          E2E_SCREEN: 720x1600@320
         with:
           api-level: 34
           target: google_apis
           arch: x86_64
-          # A 720x1280 phone: the screen agents' cheaper handsets have, and
-          # under a third of the pixels a software-rendered emulator has to
-          # draw for a Pixel 6 (whose launcher froze on a hosted runner).
+          # A 720-pixel-wide device: under a third of the pixels a
+          # software-rendered emulator has to draw for a Pixel 6 (whose
+          # launcher froze on a hosted runner). E2E_SCREEN then gives it the
+          # 720x1600 screen of a budget handset.
           profile: Galaxy Nexus
           cores: 3
           ram-size: 4096M
