@@ -26,7 +26,9 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
+import zipfile
 
 PKG = "com.mtmobileapp"
 OUT = os.environ.get("E2E_OUT", "e2e-out")
@@ -90,6 +92,57 @@ def evidence(name):
                 file.write(f"{n['box']} id={n.get('resource-id', '')} {label}\n")
 
 
+def crash_line():
+    """First line of the app's own crash, or "" while it has not crashed."""
+    log = adb("logcat", "-b", "crash", "-d", check=False)
+    if PKG not in log:
+        return ""
+    lines = log.splitlines()
+    at = next(index for index, line in enumerate(lines) if PKG in line)
+    reason = lines[at + 1] if at + 1 < len(lines) else lines[at]
+    return reason.split("AndroidRuntime:", 1)[-1].strip()[:200]
+
+
+def unpack_handset_code(apk, device_abis):
+    """Let a handset APK start on an Intel emulator, without touching the APK.
+
+    The release carries ARM code only, stored inside the APK. The emulator
+    translates arm64, and Android installs the app as arm64 — but React Native's
+    loader then looks inside the APK under the DEVICE's first ABI (x86_64),
+    finds nothing and the app dies in MainApplication.onCreate with «couldn't
+    find DSO to load: libreactnative.so» (first run of this script, 2026-10-05).
+    A handset never takes that path: its first ABI is the APK's.
+
+    The loader looks in the app's own library directory first. Unpacking the
+    APK's arm64 libraries there is what Android itself does for an app built
+    with extractNativeLibs; the installed APK stays byte for byte the published one.
+    """
+    with zipfile.ZipFile(apk) as archive:
+        packed = {name.split("/")[1] for name in archive.namelist() if name.startswith("lib/") and name.endswith(".so")}
+        first = device_abis.split(",")[0]
+        if first in packed:
+            return None
+        if "arm64-v8a" not in packed or "arm64-v8a" not in device_abis:
+            return f"APK has {sorted(packed)}, device runs {device_abis}: nothing in common"
+        with tempfile.TemporaryDirectory() as folder:
+            names = [name for name in archive.namelist() if name.startswith("lib/arm64-v8a/") and name.endswith(".so")]
+            for name in names:
+                with open(os.path.join(folder, os.path.basename(name)), "wb") as file:
+                    file.write(archive.read(name))
+            adb("root", check=False)
+            adb("wait-for-device")
+            time.sleep(2)
+            base = shell(f"pm path {PKG}").strip().splitlines()[0].replace("package:", "")
+            target = os.path.dirname(base) + "/lib/arm64"
+            shell("rm -rf /data/local/tmp/e2e-libs")
+            adb("push", folder, "/data/local/tmp/e2e-libs", timeout=600)
+            shell(f"mkdir -p {target} && cp /data/local/tmp/e2e-libs/*.so {target}/ && chown -R system:system {os.path.dirname(target)} "
+                  f"&& chmod 755 {os.path.dirname(target)} {target} && chmod 644 {target}/*.so && restorecon -R {os.path.dirname(target)} && rm -rf /data/local/tmp/e2e-libs")
+            count = shell(f"ls {target} | wc -l").strip()
+            shell(f"am force-stop {PKG}")
+            return f"{count} of {len(names)} arm64 libraries unpacked next to the unchanged APK"
+
+
 def record(ok, what, detail=""):
     results.append((ok, what, detail))
     print(("PASS  " if ok else "FAIL  ") + what + (f" — {detail}" if detail else ""), flush=True)
@@ -106,6 +159,11 @@ def wait_for(what, check, timeout, name):
             evidence(name)
             record(True, what, detail if isinstance(detail, str) else f"{time.time() - started:.0f} s")
             return found
+        crashed = crash_line()
+        if crashed:
+            evidence(name)
+            record(False, what, f"the app crashed: {crashed}")
+            raise SystemExit(finish())
         time.sleep(2)
     evidence(name)
     seen = "; ".join(sorted({n.get("text", "") for n in found if n.get("text")}))[:300]
@@ -145,12 +203,12 @@ def finish():
     crash = adb("logcat", "-b", "crash", "-d", check=False)
     with open(f"{OUT}/crash.log", "w", encoding="utf-8") as file:
         file.write(crash)
+    crashed = PKG in crash
     with open(f"{OUT}/logcat.log", "w", encoding="utf-8") as file:
         file.write(adb("logcat", "-d", check=False))
     alive = shell(f"pidof {PKG}", check=False).strip()
     focus = re.search(r"mCurrentFocus=.*", shell("dumpsys window", check=False))
-    crashed = PKG in crash
-    record(not crashed, "The app did not crash", "crash log names the app" if crashed else "crash log is empty of it")
+    record(not crashed, "The app did not crash", crash_line() if crashed else "the crash log does not name it")
     record(bool(alive) and bool(focus) and PKG in focus.group(0), "The app is still running in the foreground", (focus.group(0) if focus else "no focused window")[:120])
 
     failed = [row for row in results if not row[0]]
@@ -184,6 +242,13 @@ def main(apk):
     version = (re.search(r"versionName=(\S+)", package) or [None, "?"])[1]
     abi = (re.search(r"primaryCpuAbi=(\S+)", package) or [None, "?"])[1]
     record(not EXPECTED_VERSION or version == EXPECTED_VERSION, "It is the version the release says", f"versionName {version}, runs as {abi}")
+
+    unpacked = unpack_handset_code(apk, abis)
+    if unpacked:
+        ok = "unpacked" in unpacked
+        record(ok, "Handset (ARM) code made loadable on this Intel emulator", unpacked)
+        if not ok:
+            return finish()
 
     adb("logcat", "-c", check=False)
     started = time.time()

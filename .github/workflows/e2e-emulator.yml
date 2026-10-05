@@ -89,8 +89,10 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       # The release APK carries ARM code only (x86 was cut for build time). A
-      # Google APIs x86_64 image translates arm64, so the handset APK itself
-      # runs here — not a second build made for the emulator.
+      # Google APIs x86_64 image translates arm64 and allows `adb root`, so the
+      # handset APK itself runs here — not a second build made for the
+      # emulator. What the script has to do for that, and why, is in
+      # `unpack_handset_code`.
       - name: Install and walk the way in
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
