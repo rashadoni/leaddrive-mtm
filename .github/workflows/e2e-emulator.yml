@@ -1,0 +1,116 @@
+name: E2E on emulator
+
+# Installs a PUBLISHED build — the very APK an agent downloads — on a clean
+# Android emulator and walks the way in: company step, sign-in form, their
+# refusals, against the production server (owner, 2026-10-05: «на эмуляторе
+# проверь, сделай тест E2E»). jest and tsc never install anything; the device
+# checklist needs the owner's phone on a cable. This is the part a machine can
+# do alone. It never types a password: what comes after sign-in needs a field
+# account the owner has not provided for tests.
+#
+# Not a required check: it tests a build that already exists, so it cannot
+# gate the pull request that produced it. It runs after every build of main,
+# and by hand for any release tag.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release to test, e.g. v3.3.0-build382. Empty = newest build of main.
+        type: string
+        required: false
+  workflow_run:
+    workflows: ["Build Android APK"]
+    types: [completed]
+    branches: [main]
+  push:
+    branches: ["claude/e2e-emulator**"]
+    paths:
+      - ".github/workflows/e2e-emulator.yml"
+      - "scripts/e2e/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-emulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sign-in:
+    name: published APK on a clean emulator
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pick the build and verify its checksum
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if [ -z "$tag" ]; then
+            # Branch builds are published as releases too, and they can carry
+            # code that was later dropped. Only a build of main is what agents get.
+            for candidate in $(gh release list --limit 40 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName'); do
+              if gh release view "$candidate" --json body --jq .body | grep -q '(branch main)'; then
+                tag="$candidate"
+                break
+              fi
+            done
+          fi
+          test -n "$tag" || { echo "::error::no release built from main was found"; exit 1; }
+          mkdir apk
+          gh release download "$tag" --dir apk --pattern '*.apk' --pattern '*.apk.sha256'
+          (cd apk && sha256sum -c ./*.apk.sha256)
+          apk=$(ls apk/*.apk)
+          sha=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
+          version=$(printf '%s' "$tag" | sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+)-build[0-9]+$/\1/')
+          {
+            echo "tag=$tag"
+            echo "apk=$apk"
+            echo "sha=$sha"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+          echo "### Build under test: \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "APK \`$(basename "$apk")\`, SHA-256 \`$(cut -d ' ' -f 1 apk/*.apk.sha256)\`, built from \`$sha\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "Native code: $(unzip -Z1 "$apk" 'lib/*' | cut -d/ -f2 | sort -u | tr '\n' ' ')" >> "$GITHUB_STEP_SUMMARY"
+
+      # Hosted Linux runners have KVM; without this rule the runner user may not open it.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The release APK carries ARM code only (x86 was cut for build time). A
+      # Google APIs x86_64 image translates arm64, so the handset APK itself
+      # runs here — not a second build made for the emulator.
+      - name: Install and walk the way in
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          E2E_OUT: e2e-out
+          E2E_EXPECTED_VERSION: ${{ steps.build.outputs.version }}
+          E2E_REF: ${{ steps.build.outputs.sha }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 3
+          ram-size: 4096M
+          disable-animations: true
+          script: python3 scripts/e2e/emulator_signin.py "${{ steps.build.outputs.apk }}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-emulator-${{ steps.build.outputs.tag || 'no-build' }}
+          path: e2e-out
+          retention-days: 14
+          if-no-files-found: warn
