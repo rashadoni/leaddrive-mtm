@@ -67,6 +67,7 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
   routeActionPanelState,
+  routeAwaitsApproval,
   routeScreenPresentation,
   type RouteBannerMode,
   type RouteDataOrigin,
@@ -149,6 +150,9 @@ const ROUTE_COPY = {
     planOwnRouteTitle: "Хотите составить свой маршрут?",
     planOwnRouteBody: "Выберите день, добавьте своих клиентов и сохраните план. Редактировать его можете только вы.",
     planOwnRoute: "Составить мой маршрут",
+    awaitingApprovalTitle: "Маршрут ждёт утверждения",
+    awaitingApprovalBody: "Маршрут на сегодня сохранён, но ещё не утверждён. Он появится здесь, как только менеджер его утвердит.",
+    changeDraftRoute: "Изменить маршрут",
     refresh: "Обновить маршрут",
     loading: "Получаем маршрут и ваши визиты…",
     offlineTitle: "Нет связи — работаем офлайн",
@@ -240,6 +244,9 @@ const ROUTE_COPY = {
     planOwnRouteTitle: "Öz marşrutunuzu qurmaq istəyirsiniz?",
     planOwnRouteBody: "Günü seçin, öz müştərilərinizi əlavə edin və planı yadda saxlayın. Onu yalnız siz redaktə edə bilərsiniz.",
     planOwnRoute: "Mənim marşrutumu qur",
+    awaitingApprovalTitle: "Marşrut təsdiq gözləyir",
+    awaitingApprovalBody: "Bugünkü marşrut yadda saxlanılıb, amma hələ təsdiqlənməyib. Menecer təsdiqləyən kimi burada görünəcək.",
+    changeDraftRoute: "Marşrutu dəyiş",
     refresh: "Marşrutu yenilə",
     loading: "Marşrut və ziyarətlər yüklənir…",
     offlineTitle: "Bağlantı yoxdur — oflayn işləyirik",
@@ -331,6 +338,9 @@ const ROUTE_COPY = {
     planOwnRouteTitle: "Want to create your own route?",
     planOwnRouteBody: "Choose a day, add your customers and save the plan. Only you can edit it.",
     planOwnRoute: "Create my route",
+    awaitingApprovalTitle: "Route is waiting for approval",
+    awaitingApprovalBody: "Today's route is saved but not approved yet. It will appear here as soon as your manager approves it.",
+    changeDraftRoute: "Change route",
     refresh: "Refresh route",
     loading: "Loading your route and visits…",
     offlineTitle: "No connection — working offline",
@@ -1130,6 +1140,9 @@ export default function RouteScreen() {
   // A failed read with no saved copy leaves it false: the route is unknown
   // then, not absent, and the panel must not ask to start it.
   const [routeKnownAbsent, setRouteKnownAbsent] = useState(false)
+  // Today's route exists on the server as a draft: saved, waiting for the
+  // manager (routeAwaitsApproval). Set by the same read as routeKnownAbsent.
+  const [awaitingApproval, setAwaitingApproval] = useState(false)
 
   const fetchActiveVisit = useCallback(async () => {
     try {
@@ -1260,8 +1273,10 @@ export default function RouteScreen() {
           setRoute(null)
           setRouteOrigin("none")
           setRouteKnownAbsent(true)
+          setAwaitingApproval(routeAwaitsApproval(response.data.routes, today))
           return
         }
+        setAwaitingApproval(false)
         if (routeData.id) {
           const coordsRequest = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
             Geolocation.getCurrentPosition(
@@ -1314,6 +1329,7 @@ export default function RouteScreen() {
         setRoute(null)
         setRouteOrigin("none")
         setRouteKnownAbsent(true)
+        setAwaitingApproval(false)
       }
     } catch (error: any) {
       if (error.message === "ABORTED" || error.message === "SESSION_EXPIRED") return
@@ -1393,6 +1409,7 @@ export default function RouteScreen() {
     hasRoute: Boolean(route),
     routeOrigin,
     issue: loadIssue,
+    awaitingApproval,
   })
 
   useEffect(() => {
@@ -1857,7 +1874,7 @@ export default function RouteScreen() {
         emptyMode === "slow-unavailable" && styles.emptyIconSlow,
       ]}>
         <Icon
-          name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : "calendar-outline"}
+          name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : emptyMode === "awaiting-approval" ? "time-outline" : "calendar-outline"}
           size={30}
           color={emptyMode === "offline-unavailable" ? fieldTheme.color.coral : emptyMode === "slow-unavailable" ? fieldTheme.color.amber : fieldTheme.color.primary}
         />
@@ -1867,18 +1884,22 @@ export default function RouteScreen() {
           ? copy.offlineUnavailableTitle
           : emptyMode === "slow-unavailable"
             ? copy.slowTitle
-            : t("route.noRouteTitle")}
+            : emptyMode === "awaiting-approval"
+              ? copy.awaitingApprovalTitle
+              : t("route.noRouteTitle")}
       </Text>
       <Text style={styles.emptyBody}>
         {emptyMode === "offline-unavailable"
           ? copy.offlineUnavailableBody
           : emptyMode === "slow-unavailable"
             ? copy.slowUnavailableBody
-            : t("route.noRouteHint")}
+            : emptyMode === "awaiting-approval"
+              ? copy.awaitingApprovalBody
+              : t("route.noRouteHint")}
       </Text>
       <ActionButton
-        label={emptyError ? copy.retry : canPlanOwnRoutes ? copy.planOwnRoute : copy.refresh}
-        icon={emptyError || !canPlanOwnRoutes ? "refresh" : "add-circle-outline"}
+        label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
+        icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
         onPress={() => {
           if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder")
           else { setLoading(true); fetchRoute() }

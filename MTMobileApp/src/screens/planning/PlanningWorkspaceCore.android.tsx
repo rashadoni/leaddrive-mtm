@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { selfPlanLeavesAfterSave, selfPlanSaveOutcome, selfPlannerNextStep } from "./self-plan-outcome"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
@@ -192,6 +193,10 @@ const SELF_PLANNER_COPY = {
     saveRoute: "Сохранить маршрут",
     savingRoute: "Сохраняем маршрут…",
     savedRoute: "Маршрут сохранён",
+    savedPublishedBody: "Он уже во вкладке «Маршрут».",
+    sentRoute: "Маршрут отправлен менеджеру",
+    sentRouteBody: "Он появится во вкладке «Маршрут», когда менеджер его утвердит.",
+    done: "Готово",
     searchPlaceholder: "Имя, организация, специальность или адрес…",
     scopeNote: "Показываются только точки, подтверждённые для вас на выбранную дату. При сохранении сервер проверит их ещё раз.",
   },
@@ -208,6 +213,10 @@ const SELF_PLANNER_COPY = {
     saveRoute: "Marşrutu yadda saxla",
     savingRoute: "Marşrut saxlanılır…",
     savedRoute: "Marşrut yadda saxlanıldı",
+    savedPublishedBody: "O artıq «Marşrut» bölməsindədir.",
+    sentRoute: "Marşrut menecerə göndərildi",
+    sentRouteBody: "Menecer təsdiqlədikdən sonra «Marşrut» bölməsində görünəcək.",
+    done: "Hazırdır",
     searchPlaceholder: "Ad, təşkilat, ixtisas və ya ünvan…",
     scopeNote: "Yalnız seçilmiş tarix üçün sizə təsdiqlənmiş nöqtələr göstərilir. Saxlayarkən server onları yenidən yoxlayacaq.",
   },
@@ -224,6 +233,10 @@ const SELF_PLANNER_COPY = {
     saveRoute: "Save route",
     savingRoute: "Saving route…",
     savedRoute: "Route saved",
+    savedPublishedBody: "It is already on the Route tab.",
+    sentRoute: "Route sent to your manager",
+    sentRouteBody: "It will appear on the Route tab once your manager approves it.",
+    done: "Done",
     searchPlaceholder: "Name, organization, specialty, or address…",
     scopeNote: "Only stops confirmed for you on the selected date are shown. The server validates them again when you save.",
   },
@@ -354,7 +367,7 @@ export default function PlanningWorkspaceCore({
   const [canPublish, setCanPublish] = useState(false)
   const [saveMode, setSaveMode] = useState<SaveMode>("draft")
   const [saving, setSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string } | null>(null)
+  const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string; body?: string } | null>(null)
   // The result is shown at the top of the scroll, and the save button is at
   // the bottom. On the phone the manager saw only the dock's «Saxlanacaq
   // qaralama yoxdur.» — which reads as a failure — while «1 qaralama
@@ -819,6 +832,8 @@ export default function PlanningWorkspaceCore({
     const isCurrent = () => operationId === saveRequest.current && operationContext === contextVersion.current
     setSaving(true)
     setSaveMessage(null)
+    // Set when the agent's own save left nothing to do on this screen.
+    let leaveAfterSave = false
     try {
       // Fresh reads close the common stale-create/stale-update window. The
       // server's expectedVersion/dedupe checks remain authoritative for the
@@ -910,14 +925,33 @@ export default function PlanningWorkspaceCore({
             : `${draftSummary}${t("managerShell.planPublished", { count: published })}`,
         })
       } else {
-        setSaveMessage({
-          tone: "success",
-          text: selfPlanning
-            ? selfCopy.savedRoute
-            : t(operationMode === "publish" ? "managerShell.planPublished" : "managerShell.planDraftSaved", {
-                count: operationMode === "publish" ? published : savedCount,
-              }),
+        // «Saved» is two different days for an agent: a route he can start, or
+        // one a manager still has to approve (self-plan-outcome.ts).
+        const selfOutcome = selfPlanSaveOutcome({
+          mode: operationMode,
+          savedStopCounts: savedWrites.map((item) => item.write.points.length),
+          published,
         })
+        const selfSaveTitle = selfOutcome !== "sent-for-approval" ? selfCopy.savedRoute : selfCopy.sentRoute
+        const selfSaveBody = selfOutcome === "sent-for-approval"
+          ? selfCopy.sentRouteBody
+          : selfOutcome === "published" ? selfCopy.savedPublishedBody : undefined
+        if (selfPlanning && selfPlanLeavesAfterSave({ outcome: selfOutcome, canClose: Boolean(onClose) })) {
+          // The route is live or with the manager: say so over whatever screen
+          // comes next and go back to it — that is where the next step is.
+          notify({ tone: "success", title: selfSaveTitle, message: selfSaveBody })
+          leaveAfterSave = true
+        } else {
+          setSaveMessage({
+            tone: "success",
+            text: selfPlanning
+              ? selfSaveTitle
+              : t(operationMode === "publish" ? "managerShell.planPublished" : "managerShell.planDraftSaved", {
+                  count: operationMode === "publish" ? published : savedCount,
+                }),
+            ...(selfPlanning && selfSaveBody ? { body: selfSaveBody } : {}),
+          })
+        }
       }
     } catch (error: any) {
       if (!isCurrent()) return
@@ -928,21 +962,25 @@ export default function PlanningWorkspaceCore({
       })
     } finally {
       if (isCurrent()) {
-        await loadPlan(operationAgentId, operationDates, true)
-        if (isCurrent() && retryDates.size > 0) {
-          // A failed day remains exactly as the manager composed it. Fresh
-          // server routes underneath provide the next expectedVersion while
-          // the unsaved cells remain visible and retryable.
-          setAssignments((current) => [
-            ...current.filter((target) => !retryDates.has(target.date)),
-            ...operationAssignments.filter((target) => retryDates.has(target.date)),
-          ])
-          setDirtyDates(new Set(retryDates))
+        // A planner that is about to close has no plan left to refresh.
+        if (!leaveAfterSave) {
+          await loadPlan(operationAgentId, operationDates, true)
+          if (isCurrent() && retryDates.size > 0) {
+            // A failed day remains exactly as the manager composed it. Fresh
+            // server routes underneath provide the next expectedVersion while
+            // the unsaved cells remain visible and retryable.
+            setAssignments((current) => [
+              ...current.filter((target) => !retryDates.has(target.date)),
+              ...operationAssignments.filter((target) => retryDates.has(target.date)),
+            ])
+            setDirtyDates(new Set(retryDates))
+          }
         }
         if (isCurrent()) setSaving(false)
       }
       savingRef.current = false
     }
+    if (leaveAfterSave) onClose?.()
   }
 
   const confirmAndSave = async () => {
@@ -1208,8 +1246,24 @@ export default function PlanningWorkspaceCore({
     onPress: () => { void publishPublishedEdit() },
   }
 
+  // After a save that went through, the agent's one button leads out of the
+  // planner instead of standing disabled with nothing to press.
+  const selfNextStep = selfPlannerNextStep({
+    savedShown: saveMessage?.tone === "success",
+    canSave,
+    saving,
+    canClose: Boolean(onClose),
+  })
   const footerAction = selfPlanning
-    ? {
+    ? selfNextStep === "done"
+      ? {
+          icon: "checkmark-done",
+          label: selfCopy.done,
+          hint: undefined,
+          disabled: false,
+          onPress: () => { onClose?.() },
+        }
+      : {
         icon: "checkmark",
         label: saving ? selfCopy.savingRoute : selfCopy.saveRoute,
         hint: !canSave && !saving && !saveMessage
@@ -1305,7 +1359,7 @@ export default function PlanningWorkspaceCore({
             onAction={!saving ? () => { if (agentId) void loadPlan(agentId, dates, true) } : undefined}
           />
         ) : null}
-        {saveMessage ? <Notice tone={saveMessage.tone} icon={saveMessage.tone === "success" ? "checkmark-circle" : "alert-circle"} title={saveMessage.text} /> : null}
+        {saveMessage ? <Notice tone={saveMessage.tone} icon={saveMessage.tone === "success" ? "checkmark-circle" : "alert-circle"} title={saveMessage.text} body={saveMessage.body} /> : null}
 
         {step === 1 ? (
           <View style={styles.stepBody}>
