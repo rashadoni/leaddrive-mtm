@@ -40,6 +40,28 @@ export function selfPlanSaveOutcome({
 }
 
 /**
+ * Whether the planner closes itself after a save.
+ *
+ * The owner, the same day, about the screen that stayed on the list of doctors
+ * after «saved»: «что дальше происходит — так же останется?». It must not. A
+ * route that is live or on its way to the manager leaves nothing to do in the
+ * planner: the next step — start the route, or wait for it — is on the screen
+ * the agent came from, so the planner says what happened and goes back there.
+ * An emptied day is the exception: nothing was sent anywhere, and the agent is
+ * most likely about to pick other stops.
+ */
+export function selfPlanLeavesAfterSave({
+  outcome,
+  canClose,
+}: {
+  outcome: SelfPlanSaveOutcome
+  /** The planner was opened from somewhere it can go back to. */
+  canClose: boolean
+}): boolean {
+  return canClose && outcome !== "saved"
+}
+
+/**
  * The one button under the planner. While there is something to save it saves;
  * once a save went through and nothing is left, it closes the planner instead
  * of standing there disabled. Any further change brings «save» back, because a

@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { selfPlanSaveOutcome, selfPlannerNextStep } from "./self-plan-outcome"
+import { selfPlanLeavesAfterSave, selfPlanSaveOutcome, selfPlannerNextStep } from "./self-plan-outcome"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
@@ -832,6 +832,8 @@ export default function PlanningWorkspaceCore({
     const isCurrent = () => operationId === saveRequest.current && operationContext === contextVersion.current
     setSaving(true)
     setSaveMessage(null)
+    // Set when the agent's own save left nothing to do on this screen.
+    let leaveAfterSave = false
     try {
       // Fresh reads close the common stale-create/stale-update window. The
       // server's expectedVersion/dedupe checks remain authoritative for the
@@ -934,15 +936,22 @@ export default function PlanningWorkspaceCore({
         const selfSaveBody = selfOutcome === "sent-for-approval"
           ? selfCopy.sentRouteBody
           : selfOutcome === "published" ? selfCopy.savedPublishedBody : undefined
-        setSaveMessage({
-          tone: "success",
-          text: selfPlanning
-            ? selfSaveTitle
-            : t(operationMode === "publish" ? "managerShell.planPublished" : "managerShell.planDraftSaved", {
-                count: operationMode === "publish" ? published : savedCount,
-              }),
-          ...(selfPlanning && selfSaveBody ? { body: selfSaveBody } : {}),
-        })
+        if (selfPlanning && selfPlanLeavesAfterSave({ outcome: selfOutcome, canClose: Boolean(onClose) })) {
+          // The route is live or with the manager: say so over whatever screen
+          // comes next and go back to it — that is where the next step is.
+          notify({ tone: "success", title: selfSaveTitle, message: selfSaveBody })
+          leaveAfterSave = true
+        } else {
+          setSaveMessage({
+            tone: "success",
+            text: selfPlanning
+              ? selfSaveTitle
+              : t(operationMode === "publish" ? "managerShell.planPublished" : "managerShell.planDraftSaved", {
+                  count: operationMode === "publish" ? published : savedCount,
+                }),
+            ...(selfPlanning && selfSaveBody ? { body: selfSaveBody } : {}),
+          })
+        }
       }
     } catch (error: any) {
       if (!isCurrent()) return
@@ -953,21 +962,25 @@ export default function PlanningWorkspaceCore({
       })
     } finally {
       if (isCurrent()) {
-        await loadPlan(operationAgentId, operationDates, true)
-        if (isCurrent() && retryDates.size > 0) {
-          // A failed day remains exactly as the manager composed it. Fresh
-          // server routes underneath provide the next expectedVersion while
-          // the unsaved cells remain visible and retryable.
-          setAssignments((current) => [
-            ...current.filter((target) => !retryDates.has(target.date)),
-            ...operationAssignments.filter((target) => retryDates.has(target.date)),
-          ])
-          setDirtyDates(new Set(retryDates))
+        // A planner that is about to close has no plan left to refresh.
+        if (!leaveAfterSave) {
+          await loadPlan(operationAgentId, operationDates, true)
+          if (isCurrent() && retryDates.size > 0) {
+            // A failed day remains exactly as the manager composed it. Fresh
+            // server routes underneath provide the next expectedVersion while
+            // the unsaved cells remain visible and retryable.
+            setAssignments((current) => [
+              ...current.filter((target) => !retryDates.has(target.date)),
+              ...operationAssignments.filter((target) => retryDates.has(target.date)),
+            ])
+            setDirtyDates(new Set(retryDates))
+          }
         }
         if (isCurrent()) setSaving(false)
       }
       savingRef.current = false
     }
+    if (leaveAfterSave) onClose?.()
   }
 
   const confirmAndSave = async () => {

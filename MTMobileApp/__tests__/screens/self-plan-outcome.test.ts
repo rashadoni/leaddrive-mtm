@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { selfPlanSaveOutcome, selfPlannerNextStep } from "../../src/screens/planning/self-plan-outcome"
+import { selfPlanLeavesAfterSave, selfPlanSaveOutcome, selfPlannerNextStep } from "../../src/screens/planning/self-plan-outcome"
 
 /**
  * Tablet in the field, 2026-10-06. An agent whose routes a manager approves
@@ -32,6 +32,32 @@ describe("self planner: what a save amounted to", () => {
     expect(selfPlanSaveOutcome({ mode: "draft", savedStopCounts: [0], published: 0 })).toBe("saved")
     expect(selfPlanSaveOutcome({ mode: "publish", savedStopCounts: [0], published: 0 })).toBe("saved")
     expect(selfPlanSaveOutcome({ mode: "draft", savedStopCounts: [], published: 0 })).toBe("saved")
+  })
+})
+
+describe("self planner: where the agent is after a save", () => {
+  it("goes back to the screen he came from once the route is live or with the manager", () => {
+    expect((["published", "sent-for-approval"] as const).map((outcome) => selfPlanLeavesAfterSave({ outcome, canClose: true })))
+      .toEqual([true, true])
+  })
+
+  it("stays when he emptied the day: nothing went anywhere, and he is about to pick other stops", () => {
+    expect(selfPlanLeavesAfterSave({ outcome: "saved", canClose: true })).toBe(false)
+  })
+
+  it("stays where there is nothing to go back to", () => {
+    expect((["published", "sent-for-approval", "saved"] as const).filter((outcome) => selfPlanLeavesAfterSave({ outcome, canClose: false })))
+      .toEqual([])
+  })
+
+  it("says what happened over the next screen, skips the refresh of a planner that is closing, and closes last", () => {
+    const save = core.slice(core.indexOf("const save = async () => {"), core.indexOf("const confirmAndSave = async () => {"))
+    expect(save).toContain('notify({ tone: "success", title: selfSaveTitle, message: selfSaveBody })')
+    expect(save).toContain("if (!leaveAfterSave) {\n          await loadPlan(operationAgentId, operationDates, true)")
+    // After `finally`: the saving flag is down before the screen goes away.
+    expect(save.trimEnd().endsWith("savingRef.current = false\n    }\n    if (leaveAfterSave) onClose?.()\n  }")).toBe(true)
+    // A partial or failed save never leaves: only the success branch sets it.
+    expect((save.match(/leaveAfterSave = true/g) ?? []).length).toBe(1)
   })
 })
 
