@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { selfPlanSaveOutcome, selfPlannerNextStep } from "./self-plan-outcome"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
@@ -192,6 +193,10 @@ const SELF_PLANNER_COPY = {
     saveRoute: "Сохранить маршрут",
     savingRoute: "Сохраняем маршрут…",
     savedRoute: "Маршрут сохранён",
+    savedPublishedBody: "Он уже во вкладке «Маршрут».",
+    sentRoute: "Маршрут отправлен менеджеру",
+    sentRouteBody: "Он появится во вкладке «Маршрут», когда менеджер его утвердит.",
+    done: "Готово",
     searchPlaceholder: "Имя, организация, специальность или адрес…",
     scopeNote: "Показываются только точки, подтверждённые для вас на выбранную дату. При сохранении сервер проверит их ещё раз.",
   },
@@ -208,6 +213,10 @@ const SELF_PLANNER_COPY = {
     saveRoute: "Marşrutu yadda saxla",
     savingRoute: "Marşrut saxlanılır…",
     savedRoute: "Marşrut yadda saxlanıldı",
+    savedPublishedBody: "O artıq «Marşrut» bölməsindədir.",
+    sentRoute: "Marşrut menecerə göndərildi",
+    sentRouteBody: "Menecer təsdiqlədikdən sonra «Marşrut» bölməsində görünəcək.",
+    done: "Hazırdır",
     searchPlaceholder: "Ad, təşkilat, ixtisas və ya ünvan…",
     scopeNote: "Yalnız seçilmiş tarix üçün sizə təsdiqlənmiş nöqtələr göstərilir. Saxlayarkən server onları yenidən yoxlayacaq.",
   },
@@ -224,6 +233,10 @@ const SELF_PLANNER_COPY = {
     saveRoute: "Save route",
     savingRoute: "Saving route…",
     savedRoute: "Route saved",
+    savedPublishedBody: "It is already on the Route tab.",
+    sentRoute: "Route sent to your manager",
+    sentRouteBody: "It will appear on the Route tab once your manager approves it.",
+    done: "Done",
     searchPlaceholder: "Name, organization, specialty, or address…",
     scopeNote: "Only stops confirmed for you on the selected date are shown. The server validates them again when you save.",
   },
@@ -354,7 +367,7 @@ export default function PlanningWorkspaceCore({
   const [canPublish, setCanPublish] = useState(false)
   const [saveMode, setSaveMode] = useState<SaveMode>("draft")
   const [saving, setSaving] = useState(false)
-  const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string } | null>(null)
+  const [saveMessage, setSaveMessage] = useState<{ tone: "success" | "danger" | "warning"; text: string; body?: string } | null>(null)
   // The result is shown at the top of the scroll, and the save button is at
   // the bottom. On the phone the manager saw only the dock's «Saxlanacaq
   // qaralama yoxdur.» — which reads as a failure — while «1 qaralama
@@ -910,13 +923,25 @@ export default function PlanningWorkspaceCore({
             : `${draftSummary}${t("managerShell.planPublished", { count: published })}`,
         })
       } else {
+        // «Saved» is two different days for an agent: a route he can start, or
+        // one a manager still has to approve (self-plan-outcome.ts).
+        const selfOutcome = selfPlanSaveOutcome({
+          mode: operationMode,
+          savedStopCounts: savedWrites.map((item) => item.write.points.length),
+          published,
+        })
+        const selfSaveTitle = selfOutcome !== "sent-for-approval" ? selfCopy.savedRoute : selfCopy.sentRoute
+        const selfSaveBody = selfOutcome === "sent-for-approval"
+          ? selfCopy.sentRouteBody
+          : selfOutcome === "published" ? selfCopy.savedPublishedBody : undefined
         setSaveMessage({
           tone: "success",
           text: selfPlanning
-            ? selfCopy.savedRoute
+            ? selfSaveTitle
             : t(operationMode === "publish" ? "managerShell.planPublished" : "managerShell.planDraftSaved", {
                 count: operationMode === "publish" ? published : savedCount,
               }),
+          ...(selfPlanning && selfSaveBody ? { body: selfSaveBody } : {}),
         })
       }
     } catch (error: any) {
@@ -1208,8 +1233,24 @@ export default function PlanningWorkspaceCore({
     onPress: () => { void publishPublishedEdit() },
   }
 
+  // After a save that went through, the agent's one button leads out of the
+  // planner instead of standing disabled with nothing to press.
+  const selfNextStep = selfPlannerNextStep({
+    savedShown: saveMessage?.tone === "success",
+    canSave,
+    saving,
+    canClose: Boolean(onClose),
+  })
   const footerAction = selfPlanning
-    ? {
+    ? selfNextStep === "done"
+      ? {
+          icon: "checkmark-done",
+          label: selfCopy.done,
+          hint: undefined,
+          disabled: false,
+          onPress: () => { onClose?.() },
+        }
+      : {
         icon: "checkmark",
         label: saving ? selfCopy.savingRoute : selfCopy.saveRoute,
         hint: !canSave && !saving && !saveMessage
@@ -1305,7 +1346,7 @@ export default function PlanningWorkspaceCore({
             onAction={!saving ? () => { if (agentId) void loadPlan(agentId, dates, true) } : undefined}
           />
         ) : null}
-        {saveMessage ? <Notice tone={saveMessage.tone} icon={saveMessage.tone === "success" ? "checkmark-circle" : "alert-circle"} title={saveMessage.text} /> : null}
+        {saveMessage ? <Notice tone={saveMessage.tone} icon={saveMessage.tone === "success" ? "checkmark-circle" : "alert-circle"} title={saveMessage.text} body={saveMessage.body} /> : null}
 
         {step === 1 ? (
           <View style={styles.stepBody}>

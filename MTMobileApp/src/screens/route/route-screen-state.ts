@@ -2,7 +2,7 @@ export type RouteDataOrigin = "none" | "live" | "cache"
 export type RouteLoadIssue = "none" | "offline" | "timeout"
 
 export type RouteBannerMode = "cached" | "offline-retained" | "slow-retained" | null
-export type RouteEmptyMode = "loading" | "offline-unavailable" | "slow-unavailable" | "no-route" | null
+export type RouteEmptyMode = "loading" | "offline-unavailable" | "slow-unavailable" | "awaiting-approval" | "no-route" | null
 
 export interface RouteScreenPresentation {
   banner: RouteBannerMode
@@ -20,16 +20,20 @@ export function routeScreenPresentation({
   hasRoute,
   routeOrigin,
   issue,
+  awaitingApproval = false,
 }: {
   loading: boolean
   hasRoute: boolean
   routeOrigin: RouteDataOrigin
   issue: RouteLoadIssue
+  /** Today has a route that is saved but not approved yet (see below). */
+  awaitingApproval?: boolean
 }): RouteScreenPresentation {
   if (!hasRoute) {
     if (loading) return { banner: null, empty: "loading" }
     if (issue === "offline") return { banner: null, empty: "offline-unavailable" }
     if (issue === "timeout") return { banner: null, empty: "slow-unavailable" }
+    if (awaitingApproval) return { banner: null, empty: "awaiting-approval" }
     return { banner: null, empty: "no-route" }
   }
 
@@ -37,6 +41,35 @@ export function routeScreenPresentation({
   if (issue === "offline") return { banner: "offline-retained", empty: null }
   if (issue === "timeout") return { banner: "slow-retained", empty: null }
   return { banner: null, empty: null }
+}
+
+/**
+ * Whether today has a route the server holds as a draft with stops in it.
+ *
+ * Tablet in the field, 2026-10-06: an agent who may not publish his own routes
+ * built today's route, read «Marşrut yadda saxlanıldı», went back — and the
+ * Route tab still said «Bu gün marşrut yoxdur» and offered to build a route
+ * again. The route was on the server all along, as a draft waiting for the
+ * manager; the same read that fills this tab had returned it, and the tab
+ * dropped it for not being PLANNED. A saved route that is not approved yet is
+ * not «no route», and the screen must say which of the two it is.
+ *
+ * A draft with no stops is not a route anyone is waiting on: the agent took
+ * everything out again. The server sends `date` as an ISO string; only its
+ * calendar day is compared, as everywhere else on this screen.
+ */
+export function routeAwaitsApproval(routes: unknown, today: string): boolean {
+  if (!Array.isArray(routes)) return false
+  return routes.some((candidate) => {
+    if (!candidate || typeof candidate !== "object") return false
+    const route = candidate as { status?: unknown; date?: unknown; totalPoints?: unknown; points?: unknown }
+    if (route.status !== "DRAFT") return false
+    if (typeof route.date !== "string" || route.date.slice(0, 10) !== today) return false
+    const stops = Array.isArray(route.points)
+      ? route.points.length
+      : typeof route.totalPoints === "number" ? route.totalPoints : 0
+    return stops > 0
+  })
 }
 
 export type RouteActionPanelState =

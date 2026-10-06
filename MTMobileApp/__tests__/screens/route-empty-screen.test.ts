@@ -59,7 +59,9 @@ describe("B9: the route screen without a route", () => {
 
   it("turns the empty state's only primary action into route planning without a duplicate card", () => {
     expect(source).not.toContain("OwnRoutePlanningCard")
-    expect(source).toContain("label={emptyError ? copy.retry : canPlanOwnRoutes ? copy.planOwnRoute : copy.refresh}")
-    expect(source.match(/label=\{emptyError \? copy\.retry : canPlanOwnRoutes \? copy\.planOwnRoute : copy\.refresh\}/g)).toHaveLength(1)
+    // A route saved but not approved yet changes the wording of that one
+    // action (route-awaiting-approval.test.ts); it is still the only one.
+    expect(source).toContain('label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}')
+    expect(source.match(/label=\{emptyError \? copy\.retry : canPlanOwnRoutes \? /g)).toHaveLength(1)
   })
 })
