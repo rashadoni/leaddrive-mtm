@@ -72,6 +72,56 @@ export function routeAwaitsApproval(routes: unknown, today: string): boolean {
   })
 }
 
+/** One stop of a route that waits for approval, as the Route tab lists it. */
+export interface AwaitingRouteStop {
+  key: string
+  /** Who is visited: the doctor if the stop names one, otherwise the organization. */
+  name: string
+  /** Where: the organization when the stop names a doctor, and the address. */
+  place: string
+}
+
+/**
+ * The stops of today's route that waits for approval, in the agent's order.
+ *
+ * 2026-10-07, the owner's phone: the Route tab said «waits for approval» and
+ * showed nothing of the route itself; the planner had just closed, so the
+ * clients the agent picked and their order were nowhere on the phone — «всё ты
+ * удалил, ничего не осталось». The same read that says a route is waiting
+ * carries its stops; an empty list here only means the read came without them.
+ */
+export function awaitingRouteStops(routes: unknown, today: string): AwaitingRouteStop[] {
+  if (!Array.isArray(routes)) return []
+  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "")
+  for (const candidate of routes) {
+    if (!candidate || typeof candidate !== "object") continue
+    const route = candidate as { status?: unknown; date?: unknown; points?: unknown }
+    if (route.status !== "DRAFT" || typeof route.date !== "string" || route.date.slice(0, 10) !== today) continue
+    if (!Array.isArray(route.points) || route.points.length === 0) continue
+    return route.points
+      .filter((point): point is Record<string, unknown> => Boolean(point) && typeof point === "object")
+      .map((point, index) => {
+        const customer = (point.customer && typeof point.customer === "object" ? point.customer : {}) as Record<string, unknown>
+        const contact = (point.contact && typeof point.contact === "object" ? point.contact : {}) as Record<string, unknown>
+        const person = text(contact.displayName)
+        const organization = text(customer.name)
+        const address = [text(customer.address), text(customer.city)].filter(Boolean).join(", ")
+        return {
+          order: typeof point.orderIndex === "number" && Number.isFinite(point.orderIndex) ? point.orderIndex : index,
+          stop: {
+            key: text(point.id) || `stop-${index}`,
+            name: person || organization,
+            place: [person ? organization : "", address].filter(Boolean).join(" · "),
+          },
+        }
+      })
+      .filter((item) => item.stop.name)
+      .sort((left, right) => left.order - right.order)
+      .map((item) => item.stop)
+  }
+  return []
+}
+
 export type RouteActionPanelState =
   | "loading"
   | "visit"

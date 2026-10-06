@@ -174,6 +174,7 @@ type FieldLocationModule = {
   stop: () => Promise<boolean>
   rememberTracking?: (texts: { title: string; desc: string; stoppedTitle: string; stoppedBody: string }) => Promise<boolean>
   forgetTracking?: () => Promise<boolean>
+  stopTrackingService?: () => Promise<boolean>
 }
 
 const fieldLocation = (NativeModules as { FieldLocation?: FieldLocationModule }).FieldLocation ?? null
@@ -328,6 +329,8 @@ let foregroundWatching = false
 const MIN_SERVICE_RUN_BEFORE_STOP_MS = 3_000
 let trackingQueue: Promise<void> = Promise.resolve()
 let serviceStartedAt = 0
+/** When this JS runtime came up. A service the phone started by itself is older. */
+const runtimeStartedAt = Date.now()
 
 function inTrackingQueue(step: () => Promise<void>): Promise<void> {
   const run = trackingQueue.then(step, step)
@@ -410,6 +413,20 @@ export function stopTracking(): Promise<void> {
         // The foreground fallback is stopped below even if the native service
         // already ended or Android rejected the stop call.
       }
+    }
+
+    // 2026-10-07, the owner's phone: the day was finished, no point reached
+    // the server after that — and «LeadDrive — iş günü · yeriniz qeydə alınır»
+    // stayed in the shade. The library stops only the service it believes it
+    // started in this run of the app; one it does not know about — started by
+    // the phone after a restart or an update, or in an earlier life of the
+    // process — is left standing with its notification. Asked by its class,
+    // the service ends whoever started it. Still inside the queue, and never
+    // within the first seconds of a service's life (see above).
+    if (fieldLocation?.stopTrackingService) {
+      const wait = Math.max(serviceStartedAt, runtimeStartedAt) + MIN_SERVICE_RUN_BEFORE_STOP_MS - Date.now()
+      if (wait > 0) await sleep(wait)
+      await fieldLocation.stopTrackingService().catch(() => false)
     }
 
     if (foregroundWatching) foregroundWatching = false

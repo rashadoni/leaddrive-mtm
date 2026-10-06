@@ -1,6 +1,7 @@
 package com.mtmobileapp
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
@@ -13,6 +14,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.asterinet.react.bgactions.RNBackgroundActionsTask
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -141,6 +143,25 @@ class FieldLocationModule(
   fun forgetTracking(promise: Promise) {
     FieldTrackingResume.forget(reactContext)
     promise.resolve(true)
+  }
+
+  /**
+   * Ends the tracking service whoever started it.
+   *
+   * react-native-background-actions stops only the service it started through
+   * its own module in this run of the app. The owner's phone, 2026-10-07: the
+   * workday was finished, nothing was sent any more, and the service's «your
+   * location is being recorded» notification stayed. A notification that says
+   * so after the day has ended is a statement the app must never make.
+   * Stopping a service that is not running does nothing.
+   */
+  @ReactMethod
+  fun stopTrackingService(promise: Promise) {
+    try {
+      promise.resolve(reactContext.stopService(Intent(reactContext, RNBackgroundActionsTask::class.java)))
+    } catch (_: Exception) {
+      promise.resolve(false)
+    }
   }
 
   /** Required by NativeEventEmitter; the stream itself needs no bookkeeping. */

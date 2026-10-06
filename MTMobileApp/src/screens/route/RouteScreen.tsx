@@ -66,8 +66,10 @@ import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
+  awaitingRouteStops,
   routeActionPanelState,
   routeAwaitsApproval,
+  type AwaitingRouteStop,
   routeScreenPresentation,
   type RouteBannerMode,
   type RouteDataOrigin,
@@ -1143,6 +1145,8 @@ export default function RouteScreen() {
   // Today's route exists on the server as a draft: saved, waiting for the
   // manager (routeAwaitsApproval). Set by the same read as routeKnownAbsent.
   const [awaitingApproval, setAwaitingApproval] = useState(false)
+  // …and its stops in the agent's order, so the plan stays on the phone.
+  const [awaitingStops, setAwaitingStops] = useState<AwaitingRouteStop[]>([])
 
   const fetchActiveVisit = useCallback(async () => {
     try {
@@ -1274,9 +1278,11 @@ export default function RouteScreen() {
           setRouteOrigin("none")
           setRouteKnownAbsent(true)
           setAwaitingApproval(routeAwaitsApproval(response.data.routes, today))
+          setAwaitingStops(awaitingRouteStops(response.data.routes, today))
           return
         }
         setAwaitingApproval(false)
+        setAwaitingStops([])
         if (routeData.id) {
           const coordsRequest = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
             Geolocation.getCurrentPosition(
@@ -1330,6 +1336,7 @@ export default function RouteScreen() {
         setRouteOrigin("none")
         setRouteKnownAbsent(true)
         setAwaitingApproval(false)
+        setAwaitingStops([])
       }
     } catch (error: any) {
       if (error.message === "ABORTED" || error.message === "SESSION_EXPIRED") return
@@ -1897,6 +1904,21 @@ export default function RouteScreen() {
               ? copy.awaitingApprovalBody
               : t("route.noRouteHint")}
       </Text>
+      {emptyMode === "awaiting-approval" && awaitingStops.length > 0 ? (
+        <View style={styles.awaitingStops}>
+          {awaitingStops.map((stop, index) => (
+            <View key={stop.key} style={[styles.awaitingStopRow, index > 0 && styles.awaitingStopRowDivider]}>
+              <View style={styles.awaitingStopNumber}>
+                <Text style={styles.awaitingStopNumberText}>{index + 1}</Text>
+              </View>
+              <View style={styles.awaitingStopCopy}>
+                <Text style={styles.awaitingStopName} numberOfLines={1}>{stop.name}</Text>
+                {stop.place ? <Text style={styles.awaitingStopPlace} numberOfLines={2}>{stop.place}</Text> : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
       <ActionButton
         label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
         icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
@@ -2318,6 +2340,14 @@ const styles = StyleSheet.create({
   emptyIconSlow: { backgroundColor: fieldTheme.color.amberSoft },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
+  awaitingStops: { alignSelf: "stretch", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas, paddingHorizontal: fieldTheme.space.md },
+  awaitingStopRow: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm },
+  awaitingStopRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
+  awaitingStopNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  awaitingStopNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  awaitingStopCopy: { flex: 1, gap: 2 },
+  awaitingStopName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  awaitingStopPlace: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
 
   ownRouteCard: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, marginTop: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: "#A9D9CA" },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },

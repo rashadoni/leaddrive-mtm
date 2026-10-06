@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { routeAwaitsApproval, routeScreenPresentation } from "../../src/screens/route/route-screen-state"
+import { awaitingRouteStops, routeAwaitsApproval, routeScreenPresentation } from "../../src/screens/route/route-screen-state"
 
 /**
  * Tablet in the field, 2026-10-06. The Route tab read «Bu gün marşrut yoxdur»
@@ -97,5 +97,51 @@ describe("route tab: the screen is wired to it", () => {
     expect(source).toContain('? copy.awaitingApprovalTitle')
     expect(source).toContain('? copy.awaitingApprovalBody')
     expect(source).toContain('(emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute)')
+  })
+})
+
+
+/**
+ * 2026-10-07, the owner's phone: the tab said «waits for approval» and showed
+ * nothing of the route — and the planner had just closed, so the clients the
+ * agent picked and their order were nowhere: «всё ты удалил, ничего не осталось».
+ */
+describe("route tab: the waiting route's clients stay on the phone", () => {
+  const stop = (id: string, orderIndex: number, customer: Record<string, unknown>, contact?: Record<string, unknown>) =>
+    ({ id, orderIndex, status: "PENDING", customer, contact: contact ?? null })
+  const route = serverRoute({ totalPoints: 3, points: [
+    stop("p-3", 2, { name: "Third Pharmacy", address: "Street 3", city: "Baku" }),
+    stop("p-1", 0, { name: "First Clinic", address: "Street 1", city: "Baku" }, { displayName: "Dr. One", specialtyName: "Therapist" }),
+    stop("p-2", 1, { name: "Second Clinic", address: "", city: "" }),
+  ] })
+
+  it("lists them in the agent's order: the doctor with the clinic, an organization with its address", () => {
+    expect(awaitingRouteStops([route], TODAY)).toEqual([
+      { key: "p-1", name: "Dr. One", place: "First Clinic · Street 1, Baku" },
+      { key: "p-2", name: "Second Clinic", place: "" },
+      { key: "p-3", name: "Third Pharmacy", place: "Street 3, Baku" },
+    ])
+  })
+
+  it("lists nothing for another day, an approved route, or a read without the stops", () => {
+    expect([
+      awaitingRouteStops([{ ...route, date: "2026-10-07T00:00:00.000Z" }], TODAY),
+      awaitingRouteStops([{ ...route, status: "PLANNED" }], TODAY),
+      awaitingRouteStops([{ ...route, points: undefined }], TODAY),
+      awaitingRouteStops("routes", TODAY),
+    ]).toEqual([[], [], [], []])
+  })
+
+  it("drops a stop with no name rather than drawing an empty row", () => {
+    const nameless = serverRoute({ points: [stop("p-1", 0, { name: "  " }), stop("p-2", 1, { name: "Named Clinic" })] })
+    expect(awaitingRouteStops([nameless], TODAY).map((item) => item.name)).toEqual(["Named Clinic"])
+  })
+
+  it("is drawn under the words, from the same read, and cleared with them", () => {
+    const absent = source.slice(source.indexOf("if (!routeData) {"), source.indexOf("if (routeData.id) {"))
+    expect(absent).toContain("setAwaitingStops(awaitingRouteStops(response.data.routes, today))")
+    expect((source.match(/setAwaitingStops\(\[\]\)/g) ?? []).length).toBe(2)
+    expect(source).toContain('{emptyMode === "awaiting-approval" && awaitingStops.length > 0 ? (')
+    expect(source).toContain("{awaitingStops.map((stop, index) => (")
   })
 })
