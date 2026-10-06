@@ -122,7 +122,36 @@ export function selectTodayRoute(
       return leftRank - rightRank
     })
 
-  const source = candidates[0]
+  return summarizeRoute(candidates[0])
+}
+
+/**
+ * Today's route that is saved but not approved yet: a draft with stops in it.
+ *
+ * 2026-10-07, the owner's phone: an agent whose routes a manager approves
+ * built a route, started his day, and Today showed none of it — «всё ты
+ * удалил, ничего не осталось». The server had sent the draft with every stop
+ * in order; `selectTodayRoute` drops it, rightly, because it cannot be started.
+ * It can still be shown: who he planned to visit, in what order, and that it
+ * waits for the manager. An approved or running route always wins — this is
+ * asked only when `selectTodayRoute` found none.
+ */
+export function selectTodayAwaitingRoute(
+  routes: unknown,
+  today: string = localDateKey(),
+): TodayRouteSummary | null {
+  if (!Array.isArray(routes)) return null
+  for (const value of routes) {
+    const route = object(value)
+    if (!route || routeDateKey(route.date) !== today || string(route.status) !== "DRAFT") continue
+    const summary = summarizeRoute(route)
+    // A draft the agent emptied is not a route anyone is waiting on.
+    if (summary && summary.points.length > 0) return summary
+  }
+  return null
+}
+
+function summarizeRoute(source: Record<string, unknown> | undefined): TodayRouteSummary | null {
   const id = string(source?.id)
   const date = routeDateKey(source?.date)
   if (!source || !id || !date) return null

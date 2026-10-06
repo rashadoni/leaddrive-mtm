@@ -31,6 +31,7 @@ import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutB
 import {
   cachedRouteAsTodaySummary,
   localDateKey,
+  selectTodayAwaitingRoute,
   selectTodayRoute,
   todayRoutePrimaryAction,
   type TodayRouteSummary,
@@ -47,7 +48,7 @@ type TodayNavigationParams = {
 }
 
 type Destination = Exclude<keyof TodayNavigationParams, "More">
-type NextKind = "route" | "tasks" | "empty" | "unknown" | "loading"
+type NextKind = "route" | "awaiting" | "tasks" | "empty" | "unknown" | "loading"
 type DataSource = "live" | "cached" | "unknown"
 type TeamMessageSummary = { id: string; title: string; lastMessage?: { body?: string | null } | null }
 
@@ -70,6 +71,9 @@ export default function TodayScreen() {
   const finishedWorkday = useWorkdayStore((state) => state.finishedWorkday)
   const online = useSyncStatusStore((state) => state.online)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
+  // Today's route that is saved but not approved yet (selectTodayAwaitingRoute):
+  // shown with its stops, never started from here.
+  const [awaitingRoute, setAwaitingRoute] = useState<TodayRouteSummary | null>(null)
   const [routeLoading, setRouteLoading] = useState(true)
   const [routeError, setRouteError] = useState(false)
   const [routeSource, setRouteSource] = useState<DataSource>("unknown")
@@ -117,7 +121,9 @@ export default function TodayScreen() {
         const response = await api.getRoutes(todayKey)
         if (!response?.success) throw new Error("ROUTE_UNAVAILABLE")
         const routes = Array.isArray(response.data?.routes) ? response.data.routes : []
-        setRoute(selectTodayRoute(routes, todayKey))
+        const activeRoute = selectTodayRoute(routes, todayKey)
+        setRoute(activeRoute)
+        setAwaitingRoute(activeRoute ? null : selectTodayAwaitingRoute(routes, todayKey))
         setRouteSource("live")
         setRouteError(false)
       } catch (error: unknown) {
@@ -236,12 +242,13 @@ export default function TodayScreen() {
 
   const nextKind: NextKind = useMemo(() => {
     if (route) return "route"
+    if (awaitingRoute) return "awaiting"
     if (loading) return "loading"
     if (routeError) return "unknown"
     if (taskRemaining != null && taskRemaining > 0) return "tasks"
     if (kpiError) return "unknown"
     return "empty"
-  }, [kpiError, loading, route, routeError, taskRemaining])
+  }, [awaitingRoute, kpiError, loading, route, routeError, taskRemaining])
 
   const routeSummaryText = useMemo(() => {
     if (!route) return ""
@@ -272,6 +279,19 @@ export default function TodayScreen() {
         destination: canStartRoute || routeNeedsWorkday ? null : "Route" as Destination,
         startRoute: canStartRoute,
         startWorkday: routeNeedsWorkday,
+      }
+    }
+    if (nextKind === "awaiting") {
+      return {
+        eyebrow: t("todayV2.routeAwaitingTitle"),
+        title: t("todayV2.routeTitle"),
+        body: t("todayV2.routeAwaitingBody", { count: awaitingRoute?.points.length ?? 0 }),
+        supporting: null,
+        button: t("todayV2.openRoute"),
+        icon: "time-outline",
+        destination: "Route" as Destination,
+        startRoute: false,
+        startWorkday: false,
       }
     }
     if (nextKind === "tasks") {
@@ -324,7 +344,7 @@ export default function TodayScreen() {
       startRoute: false,
       startWorkday: false,
     }
-  }, [nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
+  }, [awaitingRoute, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
 
   const open = (destination: Destination) => navigation.navigate(destination)
   const startRoute = async () => {
@@ -376,7 +396,7 @@ export default function TodayScreen() {
     day: "numeric",
     month: "long",
   })
-  const nextDark = nextKind === "route" || nextKind === "tasks"
+  const nextDark = nextKind === "route" || nextKind === "awaiting" || nextKind === "tasks"
   const startedAt = workdayActive && currentWorkday?.startedAt
     ? new Date(currentWorkday.startedAt).toLocaleTimeString(i18n.language, {
         hour: "2-digit",
@@ -616,7 +636,7 @@ export default function TodayScreen() {
                 accessibilityLiveRegion="polite"
                 style={[
                   styles.nextPanel,
-                  nextKind === "route" && styles.nextPanelRoute,
+                  (nextKind === "route" || nextKind === "awaiting") && styles.nextPanelRoute,
                   nextKind === "tasks" && styles.nextPanelTasks,
                   nextKind === "unknown" && styles.nextPanelUnknown,
                 ]}
@@ -660,6 +680,38 @@ export default function TodayScreen() {
                           </View>
                         )
                       })}
+                    </View>
+                  </>
+                ) : nextKind === "awaiting" && awaitingRoute ? (
+                  <>
+                    <View style={styles.routeSummaryHeader}>
+                      <View style={[styles.nextIcon, styles.routeSummaryIcon, styles.nextIconDark]}>
+                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.onColor} />
+                      </View>
+                      <View style={styles.routeSummaryCopy}>
+                        <Text style={styles.routeSummaryTitle}>{nextCopy.eyebrow}</Text>
+                        <Text style={styles.routeSummaryMeta}>{nextCopy.body}</Text>
+                      </View>
+                    </View>
+                    {/* The same list a running route gets, without what an
+                        unapproved one cannot have: nothing is done, nothing is next. */}
+                    <View style={styles.routeClients}>
+                      {awaitingRoute.points.map((point, index) => (
+                        <View
+                          key={point.id}
+                          style={[
+                            styles.routeClientRow,
+                            index < awaitingRoute.points.length - 1 && styles.routeClientRowDivider,
+                          ]}
+                        >
+                          <View style={styles.routeClientNumber}>
+                            <Text style={styles.routeClientNumberText}>{index + 1}</Text>
+                          </View>
+                          <Text style={styles.routeClientName} numberOfLines={1}>
+                            {point.customer?.name || t("todayV2.routeTitle")}
+                          </Text>
+                        </View>
+                      ))}
                     </View>
                   </>
                 ) : (
