@@ -398,12 +398,17 @@ def client_card_walk(clients_caption, captions):
     if seen and has_text(seen, card["propose"]):
         record(True, f"The card offers «{card['propose']}»")
         tap_text(seen, card["propose"])
-        found = wait_for("…and it opens the form", lambda page: by_id(page, "contact-change-first-name") and "form shown", 60, "")
+        # The form opens on its classes and a long list of specialties; the
+        # name fields and the button are below them (first run with clients:
+        # the form was open and the walk looked for a field off the screen).
+        wait_for("…and it opens the form", lambda page: has_text(page, form["hint"]) and "form shown", 60, "")
         hide_keyboard()
         found, _ = nodes()
-        first, last = by_id(found, "contact-change-first-name"), by_id(found, "contact-change-last-name")
+        record(bool(by_id(found, "contact-change-classes")), "The form offers the client classes")
+        named = scroll_until(lambda page: by_id(page, "contact-change-first-name") and by_id(page, "contact-change-last-name"), swipes=16)
+        first, last = (by_id(named, "contact-change-first-name"), by_id(named, "contact-change-last-name")) if named else (None, None)
         record(bool(first and first.get("text") and last and last.get("text")), "The form starts from the client's current name")
-        seen = scroll_until(lambda page: by_id(page, "contact-change-submit"))
+        seen = scroll_until(lambda page: by_id(page, "contact-change-submit"), swipes=16)
         record(bool(seen), f"The form has «{form['submit']}»")
         if seen:
             # Nothing was changed, so the app refuses before asking the server:
