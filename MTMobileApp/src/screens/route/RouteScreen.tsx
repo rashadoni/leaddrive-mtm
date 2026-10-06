@@ -67,10 +67,12 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
   awaitingRouteStops,
+  nearestPendingStopId,
   routeActionPanelState,
   routeAwaitsApproval,
   type AwaitingRouteStop,
   routeScreenPresentation,
+  routeStopState,
   type RouteBannerMode,
   type RouteDataOrigin,
   type RouteLoadIssue,
@@ -137,13 +139,14 @@ const ROUTE_COPY = {
     visitTasks: "Задачи визита",
     done: "Готово",
     requiredRemaining: "Обязательных действий осталось: {{count}}",
-    remainingStops: "Остальные точки",
     visitWarning: "До 30 минут осталось не более 5 минут.",
     visitOvertime: "Прошло 30 минут. Завершите визит, если работа закончена.",
     recommended: "Рекомендуем идти по порядку. Следующая: {{name}}.",
     visited: "Посещено",
     skipped: "Пропущено",
     planned: "В плане",
+    visiting: "Идёт визит",
+    nearest: "Ближайшая",
     stopNumber: "Точка {{number}}",
     distanceAway: "До точки {{distance}}",
     noAddress: "Адрес не указан. Можно начать визит, когда вы на месте.",
@@ -231,13 +234,14 @@ const ROUTE_COPY = {
     visitTasks: "Ziyarət tapşırıqları",
     done: "Hazırdır",
     requiredRemaining: "Mütləq hərəkət qalıb: {{count}}",
-    remainingStops: "Qalan nöqtələr",
     visitWarning: "30 dəqiqəyə 5 dəqiqədən az qalıb.",
     visitOvertime: "30 dəqiqə keçib. İş bitibsə, ziyarəti tamamlayın.",
     recommended: "Ardıcıllıqla getmək məsləhətdir. Növbəti: {{name}}.",
     visited: "Ziyarət edilib",
     skipped: "Buraxılıb",
     planned: "Plandadır",
+    visiting: "Ziyarət davam edir",
+    nearest: "Ən yaxın",
     stopNumber: "Nöqtə {{number}}",
     distanceAway: "Nöqtəyə {{distance}}",
     noAddress: "Ünvan göstərilməyib. Məkanda olduqda ziyarətə başlaya bilərsiniz.",
@@ -325,13 +329,14 @@ const ROUTE_COPY = {
     visitTasks: "Visit tasks",
     done: "Done",
     requiredRemaining: "Required actions left: {{count}}",
-    remainingStops: "Remaining stops",
     visitWarning: "The 30-minute mark is less than 5 minutes away.",
     visitOvertime: "30 minutes have passed. Finish the visit if the work is done.",
     recommended: "Following the planned order is recommended. Next: {{name}}.",
     visited: "Visited",
     skipped: "Skipped",
     planned: "Planned",
+    visiting: "Visit in progress",
+    nearest: "Nearest",
     stopNumber: "Stop {{number}}",
     distanceAway: "{{distance}} away",
     noAddress: "No address is saved. You can start the visit when you are there.",
@@ -467,9 +472,11 @@ function renderTemplate(template: string, values: Record<string, string | number
   )
 }
 
-function pointStatus(point: RoutePoint, copy: (typeof ROUTE_COPY)[RouteLanguage]) {
-  if (point.status === "VISITED") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success }
-  if (point.status === "SKIPPED") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger }
+function pointStatus(point: RoutePoint, copy: (typeof ROUTE_COPY)[RouteLanguage], visitingPointId?: string | null) {
+  const state = routeStopState(point, visitingPointId)
+  if (state === "visiting") return { label: copy.visiting, icon: "radio-button-on" as const, color: fieldTheme.color.amber }
+  if (state === "visited") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success }
+  if (state === "skipped") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger }
   return { label: copy.planned, icon: "ellipse-outline" as const, color: fieldTheme.color.inkMuted }
 }
 
@@ -786,11 +793,17 @@ function StopRow({
   last = false,
   roadAbove = false,
   roadBelow = false,
+  visiting = false,
+  nearest = false,
 }: {
   point: RoutePoint
   index: number
   selected: boolean
   recommended: boolean
+  /** The agent's open visit is at this stop. */
+  visiting?: boolean
+  /** Of the stops still ahead, this one is the closest to the agent. */
+  nearest?: boolean
   onPress: () => void
   language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
@@ -800,7 +813,7 @@ function StopRow({
   roadAbove?: boolean
   roadBelow?: boolean
 }) {
-  const status = pointStatus(point, copy)
+  const status = pointStatus(point, copy, visiting ? point.id : null)
   return (
     <Pressable
       onPress={onPress}
@@ -815,11 +828,11 @@ function StopRow({
       */}
       <View style={styles.stopRail}>
         <View style={[styles.stopRailLine, first && styles.stopRailLineHidden, roadAbove && styles.stopRailLineDone]} />
-        <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, point.status === "VISITED" && styles.stopNumberDone]}>
+        <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, visiting && styles.stopNumberVisiting, point.status === "VISITED" && styles.stopNumberDone]}>
           {point.status === "VISITED" ? (
             <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />
           ) : (
-            <Text style={[styles.stopNumberText, recommended && styles.stopNumberTextRecommended]}>{index + 1}</Text>
+            <Text style={[styles.stopNumberText, (recommended || visiting) && styles.stopNumberTextRecommended]}>{index + 1}</Text>
           )}
         </View>
         <View style={[styles.stopRailLine, last && styles.stopRailLineHidden, roadBelow && styles.stopRailLineDone]} />
@@ -850,6 +863,11 @@ function StopRow({
               <Text style={[styles.metaText, { color: distanceColor(point.distanceMeters, pointCheckInRadius(point)) }]}>
                 {formatDistance(point.distanceMeters)}
               </Text>
+              {nearest ? (
+                <View style={styles.nearestBadge}>
+                  <Text style={styles.nearestBadgeText}>{copy.nearest}</Text>
+                </View>
+              ) : null}
             </View>
           ) : !hasUsableCoordinates(point.customer) && point.status !== "VISITED" ? (
             <View style={styles.metaItem}>
@@ -1383,11 +1401,13 @@ export default function RouteScreen() {
     () => route?.points ? [...route.points].sort((left, right) => left.orderIndex - right.orderIndex) : [],
     [route?.points],
   )
-  const displayedPoints = useMemo(
-    () => activeVisit?.routePointId
-      ? sortedPoints.filter((point) => point.id !== activeVisit.routePointId)
-      : sortedPoints,
-    [activeVisit?.routePointId, sortedPoints],
+  // Every stop, the one being visited included (routeStopState): the list is
+  // the agent's whole day in order, not «what is left besides this visit».
+  const displayedPoints = sortedPoints
+  const visitingPointId = activeVisit?.routePointId ?? null
+  const nearestPointId = useMemo(
+    () => nearestPendingStopId(sortedPoints, visitingPointId),
+    [sortedPoints, visitingPointId],
   )
   const totalPoints = sortedPoints.length > 0 ? sortedPoints.length : route?.totalPoints ?? 0
   const visitedPoints = sortedPoints.length > 0
@@ -1956,7 +1976,7 @@ export default function RouteScreen() {
           <View style={styles.tabletBody}>
             <View style={styles.tabletListPane}>
               <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
-                <Text style={styles.sectionTitle}>{activeVisit ? copy.remainingStops : t("route.pointsSection")}</Text>
+                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
                 <View style={styles.sectionHeadingEnd}>
                   <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
                 </View>
@@ -1977,6 +1997,8 @@ export default function RouteScreen() {
                     last={position === displayedPoints.length - 1}
                     roadAbove={position > 0 && displayedPoints[position - 1].status === "VISITED"}
                     roadBelow={item.status === "VISITED"}
+                    visiting={visitingPointId === item.id}
+                    nearest={nearestPointId === item.id}
                   />
                 ))}
               </View>
@@ -2035,7 +2057,7 @@ export default function RouteScreen() {
               {displayedPoints.length > 0 ? (
                 <>
                   <View style={styles.sectionHeading}>
-                    <Text style={styles.sectionTitle}>{activeVisit ? copy.remainingStops : t("route.pointsSection")}</Text>
+                    <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
                     <View style={styles.sectionHeadingEnd}>
                       <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
                     </View>
@@ -2060,6 +2082,8 @@ export default function RouteScreen() {
               last={position === displayedPoints.length - 1}
               roadAbove={position > 0 && displayedPoints[position - 1].status === "VISITED"}
               roadBelow={item.status === "VISITED"}
+              visiting={visitingPointId === item.id}
+              nearest={nearestPointId === item.id}
             />
           </View>
         )}
@@ -2316,6 +2340,9 @@ const styles = StyleSheet.create({
   stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
   stopNumberRecommended: { backgroundColor: fieldTheme.color.primaryStrong },
   stopNumberDone: { backgroundColor: fieldTheme.color.success },
+  stopNumberVisiting: { backgroundColor: fieldTheme.color.amber },
+  nearestBadge: { marginLeft: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  nearestBadgeText: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900" },
   stopNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
   stopNumberTextRecommended: { color: fieldTheme.color.onColor },
   stopCopy: { flex: 1, minWidth: 0 },

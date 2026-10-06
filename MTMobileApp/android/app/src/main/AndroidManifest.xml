@@ -91,6 +91,15 @@
         android:launchMode="singleTask"
         android:windowSoftInputMode="adjustResize"
         android:exported="true">
+        <!-- A tablet in its «PC mode» opens every app as a floating window, and
+             the field app came up small in a corner (owner's photo,
+             2026-10-06). This is the size the app asks for in that mode: the
+             whole screen. It changes nothing on a phone or a tablet in its
+             normal mode, and the agent can still resize the window. -->
+        <layout
+          android:defaultWidth="100%"
+          android:defaultHeight="100%"
+          android:gravity="center" />
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

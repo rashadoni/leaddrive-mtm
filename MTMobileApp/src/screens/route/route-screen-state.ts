@@ -122,6 +122,47 @@ export function awaitingRouteStops(routes: unknown, today: string): AwaitingRout
   return []
 }
 
+/** Where a stop stands in the agent's day, as its row says it. */
+export type RouteStopState = "visited" | "skipped" | "visiting" | "planned"
+
+/**
+ * Owner, 2026-10-07, about the route on the phone: «не показывает, в каком
+ * клиенте уже был, закончил визит, в каком продолжает, в каком ещё не был».
+ * The first and the last were on the screen; the stop being visited was not —
+ * the list dropped it for the length of the visit, so the sequence had a hole
+ * exactly where the agent stood. An open visit outranks what the server last
+ * said about the stop: the check-in may not have reached it yet.
+ */
+export function routeStopState(
+  point: { id: string; status?: string | null },
+  visitingPointId: string | null | undefined,
+): RouteStopState {
+  if (visitingPointId && point.id === visitingPointId) return "visiting"
+  if (point.status === "VISITED") return "visited"
+  if (point.status === "SKIPPED") return "skipped"
+  return "planned"
+}
+
+/**
+ * The stop still ahead that is closest to the agent — «какой ближе».
+ *
+ * Only where it tells him something: at least two stops ahead have a known
+ * distance. With one, «nearest» is the only choice; with none, a guess.
+ */
+export function nearestPendingStopId(
+  points: ReadonlyArray<{ id: string; status?: string | null; distanceMeters?: number | null }>,
+  visitingPointId: string | null | undefined,
+): string | null {
+  const ahead = points.filter((point) => (
+    routeStopState(point, visitingPointId) === "planned"
+    && typeof point.distanceMeters === "number" && Number.isFinite(point.distanceMeters) && point.distanceMeters >= 0
+  ))
+  if (ahead.length < 2) return null
+  return ahead.reduce((nearest, point) => (
+    (point.distanceMeters as number) < (nearest.distanceMeters as number) ? point : nearest
+  )).id
+}
+
 export type RouteActionPanelState =
   | "loading"
   | "visit"
