@@ -9,8 +9,9 @@ downloads, install it on a device that has never seen the app, and walk the way
 in — company step, sign-in form, their refusals — against the production server.
 
 With a field account in the repository's secrets it goes on: signs in, opens
-every tab, the profile, and signs out. It reads and never writes — no workday is
-started, nothing is submitted — because the account lives in a real company.
+every tab, a client's card and the «propose a change» form, the profile, and
+signs out. It reads and never writes — no workday is started, nothing is
+submitted — because the account lives in a real company.
 
 THIS REPOSITORY IS PUBLIC, and so are its run logs, summaries and artifacts.
 From the moment the account's company is typed, nothing read from the screen is
@@ -31,6 +32,7 @@ Usage: emulator_signin.py <apk>
                         a field account, from secrets; without all three the
                         walk stops at the sign-in form
 """
+import functools
 import html
 import json
 import os
@@ -49,6 +51,9 @@ EXPECTED_VERSION = os.environ.get("E2E_EXPECTED_VERSION", "")
 REF = os.environ.get("E2E_REF", "")
 LOCALE_FILE = "MTMobileApp/src/i18n/locales/en.json"
 RESOURCES_FILE = "MTMobileApp/src/i18n/mobile-resources.ts"
+SCREENS_DIR = "MTMobileApp/src/screens"
+CLIENT_CARD = "MTMobileApp/src/screens/base/RouteContactDetailScreen.android.tsx"
+CHANGE_FORM = "MTMobileApp/src/screens/base/RouteContactChangeRequestScreen.android.tsx"
 AGENT_COMPANY = os.environ.get("E2E_AGENT_COMPANY", "")
 AGENT_EMAIL = os.environ.get("E2E_AGENT_EMAIL", "")
 AGENT_PASSWORD = os.environ.get("E2E_AGENT_PASSWORD", "")
@@ -134,8 +139,16 @@ def redact(text):
     return text
 
 
+@functools.lru_cache(maxsize=None)
+def source_of(path):
+    """A file of the app as it was in the build under test."""
+    source = subprocess.run(["git", "show", f"{REF}:{path}"], capture_output=True, text=True).stdout if REF else ""
+    return source or open(path, encoding="utf-8").read()
+
+
+@functools.lru_cache(maxsize=None)
 def app_words():
-    """Every text the app itself can show: its dictionaries, all three languages."""
+    """Every text the app itself can show: its dictionaries, and the words its screens carry inline."""
     def flatten(node):
         if isinstance(node, dict):
             for value in node.values():
@@ -143,8 +156,25 @@ def app_words():
         elif isinstance(node, str):
             yield node
     known = set(flatten(json.loads(source_of(LOCALE_FILE))))
-    known.update(re.findall(r'"((?:[^"\\]|\\.)*)"', source_of(RESOURCES_FILE)))
-    return known
+    literal = r'"((?:[^"\\]|\\.)*)"'
+    known.update(re.findall(literal, source_of(RESOURCES_FILE)))
+    listing = subprocess.run(["git", "ls-tree", "-r", "--name-only", REF or "HEAD", SCREENS_DIR], capture_output=True, text=True).stdout
+    for path in listing.split():
+        if path.endswith((".ts", ".tsx")):
+            known.update(re.findall(literal, source_of(path)))
+    return frozenset(known)
+
+
+def screen_copy(path):
+    """English words a screen keeps inline (`const COPY = { ru: …, az: …, en: … }`), by key."""
+    source = source_of(path)
+    opening = re.search(r"\ben:\s*\{", source[source.index("const COPY"):])
+    start = source.index("const COPY") + opening.end()
+    depth, end = 1, start
+    while depth:
+        depth += {"{": 1, "}": -1}.get(source[end], 0)
+        end += 1
+    return dict(re.findall(r'(\w+):\s*"((?:[^"\\]|\\.)*)"', source[start:end - 1]))
 
 
 def own_words(found):
@@ -273,12 +303,6 @@ def clear_field(node, length):
     shell("input keyevent 123 " + " ".join(["67"] * (length + 2)))
 
 
-def source_of(path):
-    """A file of the app as it was in the build under test."""
-    source = subprocess.run(["git", "show", f"{REF}:{path}"], capture_output=True, text=True).stdout if REF else ""
-    return source or open(path, encoding="utf-8").read()
-
-
 def words(section):
     return json.loads(source_of(LOCALE_FILE))[section]
 
@@ -330,6 +354,75 @@ def screen_faults(found):
             if re.search(rf"(?<![\w]){re.escape(marker)}(?![\w])", text):
                 faults.append(f"raw «{marker}»")
     return sorted(set(faults))
+
+
+def scroll_until(check, swipes=6):
+    """Swipe the page up until `check(nodes)` holds; the nodes then, or None."""
+    for _ in range(swipes):
+        seen, _ = nodes()
+        if check(seen):
+            return seen
+        shell("input swipe 360 1100 360 500 300")
+        time.sleep(1.5)
+    return None
+
+
+def client_rows(found, captions):
+    """Clients in the list. A row is announced as «name. specialty» — the only pressable thing here that is not the app's own words."""
+    search = by_id(found, "route-contacts-search")
+    top = search["box"][3] if search else 0
+    known = app_words()
+    return [n for n in found
+            if n.get("clickable") == "true" and ". " in n.get("content-desc", "") and n["box"][1] >= top
+            and n["content-desc"] not in known and not n["content-desc"].startswith(tuple(captions))]
+
+
+def client_card_walk(clients_caption, captions):
+    """One client's card and the «propose a change» form, as far as they go without sending anything."""
+    card, form = screen_copy(CLIENT_CARD), screen_copy(CHANGE_FORM)
+    found, _ = nodes()
+    tap_text(found, clients_caption)
+    found = wait_for("The client list has its search field", lambda seen: by_id(seen, "route-contacts-search") and "shown", 30, "")
+    time.sleep(3)
+    found, _ = nodes()
+    rows = client_rows(found, captions)
+    record(len(rows) > 0, "The list shows the clients attached to the account", f"{len(rows)} on screen")
+    if not rows:
+        return
+    tap(rows[0])
+    found = wait_for("A client's card opens", lambda seen: has_text(seen, card["profile"]) and "essentials shown", 60, "")
+    faults = screen_faults(found)
+    record(not faults, "The card shows words, not keys or raw values", "; ".join(faults) if faults else "clean")
+
+    seen = scroll_until(lambda page: has_text(page, card["propose"]) or has_text(page, card["requestPending"]))
+    if seen and has_text(seen, card["propose"]):
+        record(True, f"The card offers «{card['propose']}»")
+        tap_text(seen, card["propose"])
+        found = wait_for("…and it opens the form", lambda page: by_id(page, "contact-change-first-name") and "form shown", 60, "")
+        hide_keyboard()
+        found, _ = nodes()
+        first, last = by_id(found, "contact-change-first-name"), by_id(found, "contact-change-last-name")
+        record(bool(first and first.get("text") and last and last.get("text")), "The form starts from the client's current name")
+        seen = scroll_until(lambda page: by_id(page, "contact-change-submit"))
+        record(bool(seen), f"The form has «{form['submit']}»")
+        if seen:
+            # Nothing was changed, so the app refuses before asking the server:
+            # the check comes first in the handler, and no request is made.
+            tap(by_id(seen, "contact-change-submit"))
+            wait_for("Sending with nothing changed is refused in words", lambda page: has_text(page, form["nothing"]) and "refused, nothing sent", 30, "")
+        shell("input keyevent 4")
+        time.sleep(2)
+    elif seen:
+        record(True, "The card says a request is already with the manager", "no second request can be proposed")
+    else:
+        record(False, f"The card offers «{card['propose']}»", "neither the button nor a pending request is on the card")
+    # Back from the card to the list.
+    for _ in range(3):
+        found, _ = nodes()
+        if by_id(found, "route-contacts-search"):
+            break
+        shell("input keyevent 4")
+        time.sleep(2)
 
 
 def signed_in_walk(server, sign_in):
@@ -398,6 +491,11 @@ def signed_in_walk(server, sign_in):
         if crashed:
             return
 
+    if clients == tabs["clients"]:
+        client_card_walk(clients, list(tabs.values()))
+        if crash_line():
+            return
+
     found, _ = nodes()
     tap_text(found, tabs["more"])
     found = wait_for("«More» lists the profile", lambda seen: by_id(seen, "more-action-Profile") and "entry found", 30, "")
@@ -405,13 +503,7 @@ def signed_in_walk(server, sign_in):
     version = f"v{EXPECTED_VERSION}" if EXPECTED_VERSION else "Route & Field v"
 
     def scrolled_to(text):
-        for _ in range(6):
-            seen, _ = nodes()
-            if has_text(seen, text):
-                return seen
-            shell("input swipe 360 1100 360 500 300")
-            time.sleep(1.5)
-        return None
+        return scroll_until(lambda page: has_text(page, text))
 
     seen = scrolled_to(profile["logout"])
     record(bool(seen), "The profile opens and offers to log out")
