@@ -144,15 +144,19 @@ describe("camera screen on a phone on its side", () => {
   })
 })
 
-describe("a photo leaves the camera only after «Fotonu saxla»", () => {
-  it("reports a photo from exactly one place, the preview's confirm button", () => {
+describe("a photo leaves the camera only after the agent confirms it on the preview", () => {
+  it("reports a photo from the preview's two confirm buttons and from nowhere else", () => {
     // Investigated 2026-09-14: «Bağla» on the preview seemed to leave the visit
-    // counter up. Only handleUsePhoto calls onPhotoTaken; Close, back and
-    // Retake drop the preview. The counter moves only in the screens' upload.
+    // counter up. Only the preview's confirm handlers call onPhotoTaken:
+    // «Fotonu saxla», and since 2026-10-07 «Saxla və daha birini çək», which
+    // keeps the camera open for the next photo. Close, back and Retake drop
+    // the preview. The counter moves only in the screens' upload.
     const calls = code.match(/onPhotoTaken\(/g) ?? []
-    expect(calls).toHaveLength(1)
-    const usePhoto = code.slice(code.indexOf("const handleUsePhoto = () => {"), code.indexOf("const handleAllow"))
+    expect(calls).toHaveLength(2)
+    const usePhoto = code.slice(code.indexOf("const handleUsePhoto = () => {"), code.indexOf("const handleUseAndContinue"))
     expect(usePhoto).toContain("onPhotoTaken(previewPath)")
+    const useAndContinue = code.slice(code.indexOf("const handleUseAndContinue = () => {"), code.indexOf("const handleAllow"))
+    expect(useAndContinue).toContain("onPhotoTaken(previewPath)")
     const capture = code.slice(code.indexOf("const handleCapture = async () => {"), code.indexOf("const handleRetake"))
     expect(capture).not.toContain("onPhotoTaken")
   })
@@ -195,6 +199,40 @@ describe("a failed shot is said on the camera screen, not in a system dialog", (
     expect(code.indexOf("ref={camera}")).toBeGreaterThan(code.indexOf("{previewPath ? ("))
     expect(viewfinder).toContain("{captureFailed ? (")
     expect(code.match(/\{captureFailed \? \(/g)).toHaveLength(1)
+  })
+
+  /**
+   * Owner, 7 October 2026: «нужно, чтоб фото делал без звука — слишком сильный
+   * звук». Photos are taken at a client's, next to people.
+   */
+  it("takes the photo without the shutter click", () => {
+    expect(source).toContain("camera.current.takePhoto({ flash, enableShutterSound: false })")
+    expect(source).not.toContain("enableShutterSound: true")
+  })
+
+  /**
+   * The same evening: «и нет функций дополнительных фоток». The camera closed
+   * after every photo, and the way back was a checklist row with a tick.
+   */
+  it("can save a photo and stay open for the next one", () => {
+    const more = source.slice(source.indexOf("const handleUseAndContinue = () => {"), source.indexOf("const handleAllow"))
+    expect(more).toContain("onPhotoTaken(previewPath)")
+    expect(more).toContain("setPreviewPath(null)")
+    expect(more).not.toContain("onClose()")
+    expect(source).toContain("onPress={handleUseAndContinue}")
+    expect(source).toContain('{t("photoCapture.useAndContinue")}')
+    // «Save photo» still closes: one photo is the common case.
+    const one = source.slice(source.indexOf("const handleUsePhoto = () => {"), source.indexOf("const handleUseAndContinue"))
+    expect(one).toContain("onClose()")
+  })
+
+  it("names that button in all three languages", () => {
+    for (const locale of ["ru", "en", "az"]) {
+      const strings = JSON.parse(fs.readFileSync(path.resolve(__dirname, `../../src/i18n/locales/${locale}.json`), "utf8"))
+      expect(typeof strings.photoCapture.useAndContinue).toBe("string")
+      expect(strings.photoCapture.useAndContinue.length).toBeGreaterThan(5)
+      expect(strings.photoCapture.useAndContinue).not.toBe(strings.photoCapture.usePhoto)
+    }
   })
 
   it("keeps the message clear of the insets and above the shutter", () => {

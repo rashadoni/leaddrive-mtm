@@ -1007,6 +1007,7 @@
     "preview": "Снятое фото",
     "retake": "Переснять",
     "usePhoto": "Сохранить фото",
+    "useAndContinue": "Сохранить и снять ещё",
     "captureFailedTitle": "Фото не сделано",
     "captureFailedBody": "Закройте камеру, откройте снова и снимите ещё раз."
   },
