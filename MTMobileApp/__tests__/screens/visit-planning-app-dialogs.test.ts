@@ -106,14 +106,15 @@ describe("visit screen", () => {
 
   it("forces an out-of-zone check-in only when «Check in anyway» is the answer", () => {
     const perform = between(visit, "const performCheckIn = async", "const handleCheckOut")
-    const tooFar = between(perform, "if (!api.canForceCheckIn) {", "forceCheckIn = true")
-    // Without the right to force, the agent is told and nothing is asked.
+    const tooFar = between(perform, "if (!api.canForceCheckIn && !outsideAllowed) {", "forceCheckIn = api.canForceCheckIn")
+    // Without the right to force — and unless the organization lets agents
+    // check in away from the client — the agent is told and nothing is asked.
     expect(tooFar.indexOf("return")).toBeLessThan(tooFar.indexOf("const proceed = await ask({"))
     const choice = between(tooFar, "const proceed = await ask({", "if (!proceed) {")
     expect(choice).toContain('{ text: copy.cancel, value: false, style: "cancel" }')
     expect(choice).toContain('{ text: t("visit.checkInAnyway"), value: true, style: "destructive" }')
     expect(choice).toContain("dismissValue: false")
-    const refused = between(perform, "if (!proceed) {", "forceCheckIn = true")
+    const refused = between(perform, "if (!proceed) {", "forceCheckIn = api.canForceCheckIn")
     expect(refused).toContain('setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name, maxMeters: radius })')
     expect(refused).toContain("return")
     // The visit is queued after the answer, never beside it.

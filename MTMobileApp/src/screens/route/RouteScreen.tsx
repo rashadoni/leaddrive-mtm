@@ -48,6 +48,7 @@ import {
 import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
 import { checkInRadiusMeters, FALLBACK_CHECK_IN_RADIUS_METERS } from "../../lib/check-in-radius"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useSyncStatusStore } from "../../store/sync-status"
@@ -1769,6 +1770,11 @@ export default function RouteScreen() {
       let forceCheckIn = false
       if (coords && measuredDistance != null && measuredDistance > pointCheckInRadius(point)) {
         const canOverride = api.canForceCheckIn
+        // The organization may let its agents check in while not at the
+        // client: the visit is recorded as outside the zone and a manager
+        // reviews it. That is the organization's rule, not an override — the
+        // check-in goes without `force`, which the server refuses to an agent.
+        const outsideAllowed = !canOverride && agentMayCheckInOutsideZone(useBootstrapStore.getState().data?.policies)
         let proceed = false
         if (canOverride) {
           proceed = await ask({
@@ -1778,6 +1784,17 @@ export default function RouteScreen() {
             buttons: [
               { text: t("common.cancel"), value: false, style: "cancel" },
               { text: t("route.tryAnyway"), value: true },
+            ],
+            dismissValue: false,
+          })
+        } else if (outsideAllowed) {
+          proceed = await ask({
+            title: t("visit.tooFarTitle"),
+            message: t("visit.outsideZoneAllowedBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: pointCheckInRadius(point) }),
+            tone: "warning",
+            buttons: [
+              { text: t("common.cancel"), value: false, style: "cancel" },
+              { text: t("visit.checkInAnyway"), value: true },
             ],
             dismissValue: false,
           })
@@ -1801,7 +1818,7 @@ export default function RouteScreen() {
           setMutating(false)
           return
         }
-        forceCheckIn = true
+        forceCheckIn = canOverride
       }
 
       const { visit } = await queueVisitCheckIn({

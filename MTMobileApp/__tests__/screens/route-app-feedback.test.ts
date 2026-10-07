@@ -62,8 +62,9 @@ describe("route screen speaks through the app's own feedback layer", () => {
   })
 
   it("keeps every choice inside what the sheet can draw, with localized copy", () => {
-    // noCoordinates, locationUnavailable, tooFar x2, signature required, signature save failed.
-    expect(askCalls).toHaveLength(6)
+    // noCoordinates, locationUnavailable, tooFar x3 (override, allowed by the
+    // organization, refused), signature required, signature save failed.
+    expect(askCalls).toHaveLength(7)
     for (const call of askCalls) {
       const buttons = call.match(/\{ text: /g) ?? []
       expect(buttons.length).toBeGreaterThanOrEqual(1)
@@ -94,16 +95,24 @@ describe("route screen speaks through the app's own feedback layer", () => {
   })
 
   it("checks in out of zone only on «try anyway», and only for those allowed to", () => {
-    const tooFar = between("const canOverride = api.canForceCheckIn", "forceCheckIn = true", checkIn)
+    const tooFar = between("const canOverride = api.canForceCheckIn", "forceCheckIn = canOverride", checkIn)
     expect(tooFar).toContain("let proceed = false")
-    const override = between("if (canOverride) {", "} else {", tooFar)
+    const override = between("if (canOverride) {", "} else if (outsideAllowed) {", tooFar)
     expect(override).toContain("proceed = await ask({")
     expect(override).toContain('{ text: t("common.cancel"), value: false, style: "cancel" }')
     expect(override).toContain('{ text: t("route.tryAnyway"), value: true }')
     expect(override).toContain("dismissValue: false")
 
+    // Where the organization lets agents check in away from the client, the
+    // agent is asked — and it is his «check in anyway», not an override.
+    const allowed = between("} else if (outsideAllowed) {", "} else {", tooFar)
+    expect(allowed).toContain("proceed = await ask({")
+    expect(allowed).toContain('{ text: t("common.cancel"), value: false, style: "cancel" }')
+    expect(allowed).toContain('{ text: t("visit.checkInAnyway"), value: true }')
+    expect(allowed).toContain("dismissValue: false")
+
     // Without the right, no answer sets proceed; «Yolu aç» opens the route.
-    const supervisor = between("} else {", "if (!proceed) {", tooFar)
+    const supervisor = between("} else {", "if (!proceed) {", tooFar.slice(tooFar.indexOf("} else if (outsideAllowed) {") + 1))
     expect(supervisor).not.toContain("proceed =")
     expect(supervisor).toContain('const pick = await ask<"ok" | "maps">({')
     expect(supervisor).toContain('{ text: t("common.ok"), value: "ok", style: "cancel" }')

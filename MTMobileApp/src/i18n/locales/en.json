@@ -149,6 +149,7 @@
     "checkInButton": "Check In",
     "tooFarTitle": "Too Far Away",
     "tooFarBody": "You are {{distance}} from {{name}}.\nYou need to be within {{max}}m to check in.",
+    "outsideZoneAllowedBody": "You are {{distance}} from {{name}} (allowed {{max}} m).\nYou can still check in, but the visit is recorded as outside the zone and your manager will see the distance.",
     "tooFarAskSupervisor": "You are {{distance}} from {{name}} (within {{max}} m needed). Move closer; if the pin is wrong, tell your manager.",
     "checkInAnyway": "Check In Anyway",
     "checkedInTitle": "Checked In",

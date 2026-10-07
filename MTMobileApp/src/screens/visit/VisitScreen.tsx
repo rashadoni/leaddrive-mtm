@@ -50,6 +50,7 @@ import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
 import { checkInRadiusMeters } from "../../lib/check-in-radius"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
@@ -847,7 +848,11 @@ export default function VisitScreen() {
         // The organization's zone, as the server enforces it (lib/check-in-radius.ts).
         const radius = checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies)
         if (distance > radius) {
-          if (!api.canForceCheckIn) {
+          // The organization may let its agents check in while not at the
+          // client (recorded as outside the zone, reviewed by a manager). Then
+          // the agent is asked, not refused — and no `force` is sent.
+          const outsideAllowed = !api.canForceCheckIn && agentMayCheckInOutsideZone(useBootstrapStore.getState().data?.policies)
+          if (!api.canForceCheckIn && !outsideAllowed) {
             setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name, maxMeters: radius })
             notify({
               tone: "error",
@@ -864,7 +869,7 @@ export default function VisitScreen() {
           // false; only «Check in anyway» forces the visit (red, as before).
           const proceed = await ask({
             title: t("visit.tooFarTitle"),
-            message: t("visit.tooFarBody", {
+            message: t(outsideAllowed ? "visit.outsideZoneAllowedBody" : "visit.tooFarBody", {
               distance: formatDistance(distance),
               name: customer.name,
               max: radius,
@@ -880,7 +885,7 @@ export default function VisitScreen() {
             setCheckInIssue({ kind: "too-far", distanceMeters: distance, name: customer.name, maxMeters: radius })
             return
           }
-          forceCheckIn = true
+          forceCheckIn = api.canForceCheckIn
         }
       }
 

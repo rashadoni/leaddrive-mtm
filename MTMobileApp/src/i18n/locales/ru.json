@@ -149,6 +149,7 @@
     "checkInButton": "Зайти",
     "tooFarTitle": "Слишком далеко",
     "tooFarBody": "Вы в {{distance}} от {{name}}.\nДля чек-ина нужно быть ближе {{max}}м.",
+    "outsideZoneAllowedBody": "Вы в {{distance}} от {{name}} (допустимо {{max}} м).\nОтметить визит можно, но он будет записан как «вне зоны», и руководитель увидит расстояние.",
     "tooFarAskSupervisor": "Вы в {{distance}} от {{name}} (не дальше {{max}} м). Подойдите ближе; если точка стоит не там, скажите руководителю.",
     "checkInAnyway": "Зайти всё равно",
     "checkedInTitle": "Чек-ин выполнен",
