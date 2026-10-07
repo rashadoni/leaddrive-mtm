@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { selfPlanLeavesAfterSave, selfPlanSaveOutcome, selfPlannerNextStep } from "./self-plan-outcome"
+import { selfPlanLeavesAfterPublishedEdit, selfPlanLeavesAfterSave, selfPlanSaveOutcome, selfPlannerNextStep } from "./self-plan-outcome"
 import { useHintsStore } from "../../store/hints"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
@@ -1179,6 +1179,7 @@ export default function PlanningWorkspaceCore({
     const operationAgentId = agentId
     const operationDates = [...dates]
     const stops = editStops
+    let leaveAfterEdit = false
     savingRef.current = true
     setSaving(true)
     try {
@@ -1189,7 +1190,13 @@ export default function PlanningWorkspaceCore({
       })
       exitPublishedEdit()
       notify({ tone: "success", title: t("managerShell.planEditUpdated"), message: t("managerShell.planEditUpdatedBody") })
-      await loadPlan(operationAgentId, operationDates, true)
+      if (selfPlanLeavesAfterPublishedEdit({ selfPlanning, canClose: Boolean(onClose) })) {
+        // The agent's route is changed: the notice says so over the screen he
+        // came from, and the planner — with nothing left to press — closes.
+        leaveAfterEdit = true
+      } else {
+        await loadPlan(operationAgentId, operationDates, true)
+      }
     } catch (error: unknown) {
       const outcome = publishedRouteEditErrorOutcome(error)
       if (outcome.code === "SESSION_EXPIRED") return
@@ -1229,6 +1236,7 @@ export default function PlanningWorkspaceCore({
       setSaving(false)
       savingRef.current = false
     }
+    if (leaveAfterEdit) onClose?.()
   }
 
   // While a published day is open, the dock publishes that change instead.

@@ -1,6 +1,11 @@
 import fs from "fs"
 import path from "path"
-import { selfPlanLeavesAfterSave, selfPlanSaveOutcome, selfPlannerNextStep } from "../../src/screens/planning/self-plan-outcome"
+import {
+  selfPlanLeavesAfterPublishedEdit,
+  selfPlanLeavesAfterSave,
+  selfPlanSaveOutcome,
+  selfPlannerNextStep,
+} from "../../src/screens/planning/self-plan-outcome"
 
 /**
  * Tablet in the field, 2026-10-06. An agent whose routes a manager approves
@@ -106,5 +111,46 @@ describe("self planner: the screen uses both", () => {
     expect(counts).toEqual([3, 3, 3, 3])
     const words = keys.flatMap((key) => core.match(new RegExp(`^    ${key}: "[^"]+",$`, "gm")) ?? [])
     expect(words.filter((line) => /чернов|qaralama|draft/i.test(line))).toEqual([])
+  })
+})
+
+/**
+ * 7 October 2026, owner's phone. «Planı dəyiş» on the Route tab, one client
+ * added to today's published route, the change sent. The server took it at
+ * once. The planner stayed: the day's clients greyed out, «Saxlanacaq qaralama
+ * yoxdur» under them and a disabled «Marşrutu yadda saxla» — «нажал изменить
+ * маршрут, добавил клиента и так осталось».
+ */
+describe("after a change to a published route", () => {
+  it("the agent's planner goes back to where he came from", () => {
+    expect(selfPlanLeavesAfterPublishedEdit({ selfPlanning: true, canClose: true })).toBe(true)
+  })
+
+  it("a manager's planner stays, and so does one with nowhere to go back to", () => {
+    expect(selfPlanLeavesAfterPublishedEdit({ selfPlanning: false, canClose: true })).toBe(false)
+    expect(selfPlanLeavesAfterPublishedEdit({ selfPlanning: true, canClose: false })).toBe(false)
+  })
+
+  const publish = core.slice(core.indexOf("const publishPublishedEdit = async"), core.indexOf("const editAction = {"))
+
+  it("says the plan is updated, and only then closes", () => {
+    const updated = publish.indexOf("await publishedEditSource.updatePublished({")
+    const notice = publish.indexOf('notify({ tone: "success", title: t("managerShell.planEditUpdated")')
+    const decided = publish.indexOf("if (selfPlanLeavesAfterPublishedEdit({ selfPlanning, canClose: Boolean(onClose) })) {")
+    const closed = publish.indexOf("if (leaveAfterEdit) onClose?.()")
+    expect([updated > -1, notice > updated, decided > notice, closed > decided]).toEqual([true, true, true, true])
+  })
+
+  it("closes after the saving state is cleared, never from inside a failed attempt", () => {
+    const cleared = publish.indexOf("savingRef.current = false\n    }\n    if (leaveAfterEdit) onClose?.()")
+    expect(cleared).toBeGreaterThan(-1)
+    const failure = publish.slice(publish.indexOf("} catch (error: unknown) {"), publish.indexOf("} finally {"))
+    expect(failure).not.toContain("leaveAfterEdit = true")
+    expect(failure).not.toContain("onClose")
+  })
+
+  it("does not reload a plan nobody will look at, but still does when it stays", () => {
+    const success = publish.slice(publish.indexOf("exitPublishedEdit()"), publish.indexOf("} catch (error: unknown) {"))
+    expect(success).toContain("leaveAfterEdit = true\n      } else {\n        await loadPlan(operationAgentId, operationDates, true)")
   })
 })

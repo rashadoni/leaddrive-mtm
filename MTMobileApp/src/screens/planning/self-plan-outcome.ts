@@ -82,3 +82,30 @@ export function selfPlannerNextStep({
 }): "save" | "done" {
   return savedShown && !canSave && !saving && canClose ? "done" : "save"
 }
+
+/**
+ * Whether the planner closes after a change to a published route went through.
+ *
+ * 7 October 2026, owner's phone: «Planı dəyiş» on the Route tab, one more
+ * client added, the change sent. The server took it; the planner stayed where
+ * it was, with the day's clients greyed out, «Saxlanacaq qaralama yoxdur» and
+ * a disabled «Marşrutu yadda saxla» — «и так осталось». The first save of a
+ * route had been taught to lead on the day before; changing a published one
+ * had not.
+ *
+ * The agent came here from his route to change it. Once it is changed there is
+ * nothing left for him in the planner, so it says so and goes back. A manager's
+ * planner, and one with nowhere to go back to, stays: more days are waiting.
+ */
+export function selfPlanLeavesAfterPublishedEdit({
+  selfPlanning,
+  canClose,
+}: {
+  /** The agent's own planner, as opposed to the manager's. */
+  selfPlanning: boolean
+  /** The planner was opened from somewhere it can go back to. */
+  canClose: boolean
+}): boolean {
+  return selfPlanning && canClose
+}
+
