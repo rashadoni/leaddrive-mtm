@@ -149,6 +149,7 @@
     "checkInButton": "Giriş",
     "tooFarTitle": "Çox uzaqsınız",
     "tooFarBody": "{{name}} ünvanından {{distance}} uzaqlıqdasınız.\nGiriş üçün {{max}}m-dən yaxın olmalısınız.",
+    "outsideZoneAllowedBody": "{{name}} nöqtəsindən {{distance}} uzaqlıqdasınız (icazə verilən {{max}} m).\nGəlişi qeyd edə bilərsiniz, amma ziyarət «zonadan kənar» kimi yazılacaq və rəhbər məsafəni görəcək.",
     "tooFarAskSupervisor": "{{name}} ünvanından {{distance}} uzaqdasınız (ən çox {{max}} m). Yaxınlaşın; nöqtə səhv yerdədirsə, rəhbərinizə deyin.",
     "checkInAnyway": "Yenə də giriş et",
     "checkedInTitle": "Giriş edildi",

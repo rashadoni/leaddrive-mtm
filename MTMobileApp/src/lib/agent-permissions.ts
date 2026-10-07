@@ -16,6 +16,7 @@ export type AgentPermissionId =
   | "customerCreateRequest"
   | "taskSelfCreate"
   | "taskSelfRecurring"
+  | "checkInOutsideZone"
 
 /** The refusal code of a function the organization switched off. */
 export const AGENT_PERMISSION_DISABLED_CODE = "MTM_AGENT_PERMISSION_DISABLED"
@@ -40,6 +41,20 @@ export function parseAgentPermissions(raw: unknown): Record<string, boolean> | u
  */
 export function agentMay(policies: PermissionPolicies, id: AgentPermissionId): boolean {
   return policies?.agentPermissions?.[id] !== false
+}
+
+/**
+ * Whether the organization lets its agents check in while not at the client.
+ *
+ * The opposite kind of switch from the ones above: this function did not exist
+ * before it, and what it lifts is a refusal. So it takes an explicit `true` —
+ * a server that sends no map, or does not know the switch, keeps the client's
+ * zone the hard rule it always was (owner, 7 October 2026: «возможность
+ * отключения из настроек — если агент не на месте, но мог делать чек-ин, и
+ * потом проверить»).
+ */
+export function agentMayCheckInOutsideZone(policies: PermissionPolicies): boolean {
+  return policies?.agentPermissions?.checkInOutsideZone === true
 }
 
 /** True for the refusal of a switched-off function, whatever threw it. */

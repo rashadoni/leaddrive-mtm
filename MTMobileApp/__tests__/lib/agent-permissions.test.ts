@@ -3,6 +3,7 @@ import path from "path"
 import {
   AGENT_PERMISSION_DISABLED_CODE,
   agentMay,
+  agentMayCheckInOutsideZone,
   isAgentPermissionDisabled,
   parseAgentPermissions,
 } from "../../src/lib/agent-permissions"
@@ -94,5 +95,29 @@ describe("the request for a new doctor follows the organization's switch", () =>
     expect(form).toContain("setError(isAgentPermissionDisabled(submitError) ? copy.disabled : technical ? copy.failed : message)")
     // One sentence per language the screen speaks.
     expect(form.split('disabled: "').length - 1).toBe(3)
+  })
+})
+
+/**
+ * Owner, 7 October 2026: «нужна возможность отключения из настроек — если
+ * агент не на месте, но мог делать чек-ин, и потом проверить». This switch
+ * lifts a refusal, so unlike the others it opens only on an explicit yes.
+ */
+describe("agentMayCheckInOutsideZone", () => {
+  it("is on only when the organization said so", () => {
+    expect(agentMayCheckInOutsideZone({ agentPermissions: { checkInOutsideZone: true } })).toBe(true)
+  })
+
+  it("keeps the zone a hard rule for an explicit no, an older server and a missing map", () => {
+    expect(agentMayCheckInOutsideZone({ agentPermissions: { checkInOutsideZone: false } })).toBe(false)
+    expect(agentMayCheckInOutsideZone({ agentPermissions: { contactCreateRequest: true } })).toBe(false)
+    expect(agentMayCheckInOutsideZone({})).toBe(false)
+    expect(agentMayCheckInOutsideZone(null)).toBe(false)
+    expect(agentMayCheckInOutsideZone(undefined)).toBe(false)
+  })
+
+  it("is not the general rule, which shows a function unless told otherwise", () => {
+    expect(agentMay({}, "checkInOutsideZone")).toBe(true)
+    expect(agentMayCheckInOutsideZone({})).toBe(false)
   })
 })

@@ -22,7 +22,8 @@ describe("check-in zone", () => {
   it("route and visit screens block and explain with that zone, not a bare 100", () => {
     const route = read("route/RouteScreen.tsx")
     expect(route).toContain("measuredDistance > pointCheckInRadius(point))")
-    expect(route.match(/max: pointCheckInRadius\(point\) \}/g)).toHaveLength(2)
+    // Override, allowed by the organization, refused: each names the same zone.
+    expect(route.match(/max: pointCheckInRadius\(point\) \}/g)).toHaveLength(3)
     const visit = read("visit/VisitScreen.tsx")
     expect(visit).not.toContain("GEOFENCE_DEFAULT")
     expect(visit).toContain("if (distance > radius) {")
