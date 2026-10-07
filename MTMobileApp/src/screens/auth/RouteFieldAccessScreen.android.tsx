@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import type { RouteFieldAccess } from "../../services/bootstrap"
 import { useAuthStore } from "../../store/auth"
+import { redial } from "../../services/connection-health"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 
@@ -54,14 +55,26 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
     if (attemptRunning.current) return
     attemptRunning.current = true
     setRefreshing(true)
+    let deadline: ReturnType<typeof setTimeout> | undefined
     try {
       // Whichever finishes first: the answer, or the deadline. A request the
       // platform never settles must not cost the next attempt.
       await Promise.race([
         useBootstrapStore.getState().fetchBootstrap(),
-        new Promise((resolve) => setTimeout(resolve, ATTEMPT_TIMEOUT_MS)),
+        new Promise((resolve) => {
+          deadline = setTimeout(() => {
+            // This long with nothing at all for a request this small is a dead
+            // connection, not a slow one. Left alone, the next attempt went
+            // straight back into it — for twenty minutes on 7 October. Closing
+            // it makes the request still waiting, and every later one, dial again.
+            redial("access check got no answer")
+            resolve(undefined)
+          }, ATTEMPT_TIMEOUT_MS)
+        }),
       ])
     } finally {
+      // An attempt that was answered must not close anything twelve seconds later.
+      if (deadline) clearTimeout(deadline)
       attemptRunning.current = false
       setRefreshing(false)
       setAttempts((value) => value + 1)

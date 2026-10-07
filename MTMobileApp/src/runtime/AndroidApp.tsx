@@ -23,6 +23,7 @@ import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
+import { dropIdleConnections } from "../services/connection-health"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { dismissAllChoices } from "../services/app-feedback"
 import { fieldTheme } from "../theme/fieldTheme"
@@ -192,6 +193,9 @@ function AppContent() {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
         setForegroundEpoch((epoch) => epoch + 1)
+        // What the client kept from before the pause may have died meanwhile;
+        // the first request after the return must not be the one to find out.
+        dropIdleConnections("app returned to the screen")
         refreshAdmissionAndSync().catch(() => {})
       }
       appStateRef.current = nextState

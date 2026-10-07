@@ -12,6 +12,7 @@ class PresentationFilesPackage : ReactPackage {
       FieldNotificationsModule(reactContext),
       FieldPushModule(reactContext),
       FieldLocationModule(reactContext),
+      FieldNetworkModule(reactContext),
     )
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =
