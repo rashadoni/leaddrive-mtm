@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { setAgentContext, clearAgentContext } from "./sentry"
 import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 import { getFieldDeviceId } from "./field-device-id"
+import { noteAnswered, noteUnanswered } from "./connection-health"
 import type { MobileRouteCommandRequest } from "./route-command-journal"
 import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
 
@@ -23,6 +24,11 @@ const STORAGE_KEY_CREDENTIALS = "@mtm_saved_login"
 // software-accelerated emulators, where an otherwise healthy tenant can be
 // reported as missing before the handshake completes.
 const SERVER_DISCOVERY_TIMEOUT_MS = 30_000
+
+// The session check behind a 401 had no deadline of its own. The request that
+// asked for it waits on it, so on a connection that never answers that request
+// never ended either.
+const SESSION_PROBE_TIMEOUT_MS = 12_000
 
 /**
  * Symbol for "the server did not answer with JSON". Distinguishable from a
@@ -325,13 +331,17 @@ class ApiClient {
       headers["x-field-device-id"] = await getFieldDeviceId()
     } catch {}
 
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), SESSION_PROBE_TIMEOUT_MS)
     try {
-      const res = await fetch(`${this.baseUrl}/mobile/bootstrap`, { headers })
+      const res = await fetch(`${this.baseUrl}/mobile/bootstrap`, { headers, signal: controller.signal })
       if (res.status === 401) return "revoked"
       if (res.ok) return "valid"
       return "unknown"
     } catch {
       return "unknown"
+    } finally {
+      clearTimeout(timer)
     }
   }
 
@@ -407,6 +417,8 @@ class ApiClient {
 
     try {
       const res = await fetch(url, { ...options, headers, signal: controller.signal })
+      // Any answer, a refusal included, proves the connection carries traffic.
+      noteAnswered()
       if (res.status === 401) {
         await this.handleUnauthorized(path, requestToken, apiVersion)
         throw new Error("SESSION_EXPIRED")
@@ -449,7 +461,12 @@ class ApiClient {
 
       return data
     } catch (e: any) {
-      if (e.name === "AbortError") throw new Error(timedOut ? "REQUEST_TIMEOUT" : "ABORTED")
+      if (e.name === "AbortError") {
+        // The whole deadline passed in silence: the connection this request
+        // waited on must not be handed to the next one.
+        if (timedOut) noteUnanswered(`no answer in ${Math.round(timeoutMs / 1_000)} s`)
+        throw new Error(timedOut ? "REQUEST_TIMEOUT" : "ABORTED")
+      }
       throw e
     } finally {
       clearTimeout(timer)

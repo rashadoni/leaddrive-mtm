@@ -98,7 +98,8 @@ describe("a retry that actually dials", () => {
   it("cannot be wedged shut by one attempt that never settles", () => {
     expect(screen).toContain("const attemptRunning = useRef(false)")
     expect(screen).toContain("const ATTEMPT_TIMEOUT_MS = 12_000")
-    expect(screen).toContain("new Promise((resolve) => setTimeout(resolve, ATTEMPT_TIMEOUT_MS))")
+    expect(screen).toContain("await Promise.race([")
+    expect(screen).toContain("}, ATTEMPT_TIMEOUT_MS)")
     expect(screen).not.toContain("if (refreshing) return")
   })
 

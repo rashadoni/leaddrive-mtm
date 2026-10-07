@@ -22,6 +22,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    FieldHttp.install(this)
     loadReactNative(this)
   }
 }
