@@ -69,6 +69,7 @@ import {
   awaitingRouteStops,
   nearestPendingStopId,
   routeDockAction,
+  routeStopWho,
   routeActionPanelState,
   routeAwaitsApproval,
   type AwaitingRouteStop,
@@ -91,6 +92,8 @@ interface RoutePoint {
   /** The server's check-in zone for this stop (customer radius, else the organization's). */
   geofenceRadiusMeters?: number | null
   customer: { id: string; name: string; address?: string; latitude?: number; longitude?: number }
+  /** The doctor this stop is about, when the route was planned by doctors. */
+  contact?: { id?: string; displayName?: string | null; specialtyName?: string | null } | null
 }
 
 interface Route {
@@ -906,11 +909,12 @@ function StopRow({
   roadBelow?: boolean
 }) {
   const status = pointStatus(point, copy, visiting ? point.id : null)
+  const who = routeStopWho(point)
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${renderTemplate(copy.stopNumber, { number: index + 1 })}. ${point.customer.name}. ${status.label}`}
+      accessibilityLabel={`${renderTemplate(copy.stopNumber, { number: index + 1 })}. ${who.name}. ${status.label}`}
       style={({ pressed }) => [styles.stopRow, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, pressed && styles.stopRowPressed]}
     >
       {/*
@@ -932,7 +936,7 @@ function StopRow({
       <View style={styles.stopCopy}>
         <View style={styles.stopTitleRow}>
           <Text style={[styles.stopName, point.status === "VISITED" && styles.stopNameDone]} numberOfLines={2}>
-            {point.customer.name}
+            {who.name}
           </Text>
           {point.distanceMeters != null && point.status !== "VISITED" ? (
             <Text style={[styles.stopDistance, { color: distanceColor(point.distanceMeters, pointCheckInRadius(point)) }]}>
@@ -940,7 +944,7 @@ function StopRow({
             </Text>
           ) : null}
         </View>
-        {point.customer.address ? <Text style={styles.stopAddress} numberOfLines={2}>{point.customer.address}</Text> : null}
+        {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
         {/* Where this client stands today, in words and in colour: visited
             (with the time), visit in progress, or still planned. */}
         <View style={styles.stopMeta}>
@@ -1032,7 +1036,6 @@ function PointActionPanel({
       && requirement.actionKey !== "NEXT_ACTION"
     )) ?? []
     const requiredRemaining = required.filter((requirement) => !requirement.done && !requirement.waived)
-    const requiredKeys = new Set(required.map((requirement) => requirement.actionKey))
     const presentationDone = Boolean(workspace?.presentationSessions.length) || required.find((requirement) => requirement.actionKey === "PRESENTATION")?.done === true
     const taskCount = workspace?.tasks.length ?? 0
     const taskDone = workspace?.tasks.filter((task) => task.status === "COMPLETED").length ?? 0
@@ -1040,16 +1043,17 @@ function PointActionPanel({
     const taskRequirementsDone = taskRequirements.filter((requirement) => requirement.done || requirement.waived).length
     const taskStepTotal = taskCount + taskRequirements.length
     const taskStepDone = taskDone + taskRequirementsDone
-    const showPhoto = workspace === null || requiredKeys.has("PHOTO") || photoCount > 0
     const showSignature = signature.visible && (signature.required || signature.signed)
+    // The visit is to a doctor when its stop names one; the clinic is where.
+    const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
     return (
       <View style={styles.actionPanel}>
         <View style={styles.actionEyebrowRow}>
           <View style={styles.liveDot} />
           <Text style={styles.actionEyebrow}>{copy.activeVisit}</Text>
         </View>
-        <Text style={styles.actionTitle}>{activeVisit.customer?.name}</Text>
-        {activeVisit.customer?.address ? <Text style={styles.actionAddress}>{activeVisit.customer.address}</Text> : null}
+        <Text style={styles.actionTitle}>{who.name}</Text>
+        {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
         <View style={styles.visitFacts}>
           <View style={styles.factPill}>
             <Icon name="time-outline" size={17} color={fieldTheme.color.primaryStrong} />
@@ -1080,25 +1084,25 @@ function PointActionPanel({
         ) : (
           <>
             <VisitActionButton label={copy.presentations} icon="easel-outline" done={presentationDone} onPress={onOpenPresentations} />
-            {taskStepTotal > 0 ? (
-              <VisitActionButton
-                label={copy.visitTasks}
-                detail={`${taskStepDone} / ${taskStepTotal}`}
-                icon="checkbox-outline"
-                done={taskStepTotal > 0 && taskStepDone === taskStepTotal}
-                onPress={onOpenTasks}
-              />
-            ) : null}
-            {showPhoto ? (
-              <VisitActionButton
-                label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
-                detail={photoCount > 0 ? copy.done : undefined}
-                icon="camera-outline"
-                done={photoCount > 0}
-                onPress={onPhoto}
-                disabled={mutating}
-              />
-            ) : null}
+            {/* Tasks and the camera are always here. They used to appear only
+                when the visit had tasks or required a photo, and a visit with
+                neither looked as if the app could do neither (owner's phone,
+                7 October 2026). No tasks is said as a number: 0. */}
+            <VisitActionButton
+              label={copy.visitTasks}
+              detail={taskStepTotal > 0 ? `${taskStepDone} / ${taskStepTotal}` : "0"}
+              icon="checkbox-outline"
+              done={taskStepTotal > 0 && taskStepDone === taskStepTotal}
+              onPress={onOpenTasks}
+            />
+            <VisitActionButton
+              label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
+              detail={photoCount > 0 ? copy.done : undefined}
+              icon="camera-outline"
+              done={photoCount > 0}
+              onPress={onPhoto}
+              disabled={mutating}
+            />
             {showSignature ? (
               <VisitActionButton
                 label={signature.required ? copy.takeSignatureRequired : copy.takeSignature}
@@ -1136,14 +1140,16 @@ function PointActionPanel({
   const visited = point.status === "VISITED"
   const skipped = point.status === "SKIPPED"
   const isRecommended = nextPoint?.id === point.id
+  const who = routeStopWho(point)
   const hasDirections = Boolean(point.customer.address || hasUsableCoordinates(point.customer))
   const showDirections = !navigationStarted && hasDirections
 
   return (
     <View style={styles.actionPanel}>
       <Text style={styles.actionEyebrow}>{isRecommended ? copy.nextStop : copy.selectedStop}</Text>
-      <Text style={styles.actionTitle}>{point.customer.name}</Text>
-      {point.customer.address ? <Text style={styles.actionAddress}>{point.customer.address}</Text> : <Text style={styles.actionAddress}>{copy.noAddress}</Text>}
+      <Text style={styles.actionTitle}>{who.name}</Text>
+      {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
+      {point.customer.address ? null : <Text style={styles.actionAddress}>{copy.noAddress}</Text>}
       <View style={styles.detailFacts}>
         <View style={styles.detailFact}>
           <Icon name="list-outline" size={18} color={fieldTheme.color.inkMuted} />
@@ -1166,7 +1172,7 @@ function PointActionPanel({
       {!isRecommended && nextPoint && !visited && !skipped ? (
         <View style={styles.recommendation}>
           <Icon name="information-circle-outline" size={19} color={fieldTheme.color.amber} />
-          <Text style={styles.recommendationText}>{renderTemplate(copy.recommended, { name: nextPoint.customer.name })}</Text>
+          <Text style={styles.recommendationText}>{renderTemplate(copy.recommended, { name: routeStopWho(nextPoint).name })}</Text>
         </View>
       ) : null}
       {visited ? (
@@ -1510,6 +1516,7 @@ export default function RouteScreen() {
     ? sortedPoints.find((point) => point.id === selectedPointId) ?? null
     : null
   const focusPoint = activeRoutePoint ?? selectedPoint ?? nextPoint ?? sortedPoints[0] ?? null
+  const activeVisitWho = routeStopWho(activeRoutePoint ?? { customer: activeVisit?.customer })
   const currentStep = remaining === 0 && totalPoints > 0
     ? 5
     : activeVisit
@@ -1934,8 +1941,8 @@ export default function RouteScreen() {
       onCheckIn={handleCheckIn}
       onPhoto={() => setCameraVisible(true)}
       workspace={activeWorkspace}
-      onOpenPresentations={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisit.customer?.name, section: "presentations" })}
-      onOpenTasks={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisit.customer?.name, section: "tasks" })}
+      onOpenPresentations={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisitWho.name, section: "presentations" })}
+      onOpenTasks={() => activeVisit && navigation.navigate("VisitWorkspace", { visitId: activeVisit.id, name: activeVisitWho.name, section: "tasks" })}
       onCheckOut={handleCheckOut}
       signature={signature}
       onSignature={signature.openPad}
@@ -1985,9 +1992,9 @@ export default function RouteScreen() {
       : actionPanelState === "gate-paused"
         ? copy.workdayPausedTitle
         : actionPanelState === "visit"
-          ? [copy.visiting, activeVisit?.customer?.name].filter(Boolean).join(" · ")
+          ? [copy.visiting, activeVisitWho.name].filter(Boolean).join(" · ")
           : actionPanelState === "point" && nextPoint
-            ? nextPoint.customer.name
+            ? routeStopWho(nextPoint).name
             : null
   const phoneDock = !tablet && route && (dockAction || dockCaption || changePlanAction)
     ? <RouteDock caption={dockCaption} action={dockAction} secondary={changePlanAction} />
@@ -2150,7 +2157,7 @@ export default function RouteScreen() {
           onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
         />
         <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
-        <SignaturePadModal visible={signature.padVisible} customerName={activeVisit?.customer?.name} onCancel={signature.closePad} onSave={handleSignatureSave} />
+        <SignaturePadModal visible={signature.padVisible} customerName={activeVisitWho.name || undefined} onCancel={signature.closePad} onSave={handleSignatureSave} />
         <StatusBarBand />
       </View>
     )
@@ -2252,7 +2259,7 @@ export default function RouteScreen() {
         onSubmit={(text) => { setNotesVisible(false); performCheckOut(text) }}
       />
       <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
-      <SignaturePadModal visible={signature.padVisible} customerName={activeVisit?.customer?.name} onCancel={signature.closePad} onSave={handleSignatureSave} />
+      <SignaturePadModal visible={signature.padVisible} customerName={activeVisitWho.name || undefined} onCancel={signature.closePad} onSave={handleSignatureSave} />
       <StatusBarBand />
     </View>
   )

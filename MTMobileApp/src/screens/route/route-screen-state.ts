@@ -249,3 +249,37 @@ export function routeDockAction(state: RouteActionPanelState, hasNextStop: boole
   if (state === "point" && hasNextStop) return "next-stop"
   return null
 }
+
+export interface RouteStopWho {
+  /** Who is visited: the doctor if the stop names one, otherwise the organization. */
+  name: string
+  /** Where: the doctor's specialty and organization when the stop names one, and the address. */
+  place: string
+}
+
+/**
+ * Who a stop of the route is about, and where.
+ *
+ * 7 October 2026, owner's phone: he planned the day by doctors, and the route
+ * showed him only clinics — in the list, in the visit panel, on Today. «Тут
+ * нет названия врача, только название места». The server had been sending the
+ * doctor with every stop all along; the screens printed the organization and
+ * never looked at it.
+ */
+export function routeStopWho(point: {
+  customer?: { name?: string | null; address?: string | null } | null
+  contact?: { displayName?: string | null; specialtyName?: string | null } | null
+} | null | undefined): RouteStopWho {
+  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "")
+  const person = text(point?.contact?.displayName)
+  const organization = text(point?.customer?.name)
+  return {
+    name: person || organization,
+    place: [
+      person ? text(point?.contact?.specialtyName) : "",
+      person ? organization : "",
+      text(point?.customer?.address),
+    ].filter(Boolean).join(" · "),
+  }
+}
+
