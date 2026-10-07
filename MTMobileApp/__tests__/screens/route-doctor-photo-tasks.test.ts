@@ -102,8 +102,9 @@ describe("what a visit in progress always offers", () => {
     expect(visit).toContain("onPress={onOpenTasks}")
   })
 
-  it("the camera, whether or not a photo is required", () => {
-    expect(visit).not.toContain("showPhoto")
+  it("the camera, whether or not a photo is required — unless the organization hid it", () => {
+    expect(visit).toContain('const showPhoto = visitActionShown(workspace, "PHOTO") || photoCount > 0')
+    expect(visit).not.toContain('requiredKeys.has("PHOTO")')
     expect(visit).toContain("label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}")
     expect(visit).toContain("onPress={onPhoto}")
   })

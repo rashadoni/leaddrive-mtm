@@ -81,7 +81,7 @@ import {
   type RouteLoadIssue,
 } from "./route-screen-state"
 import { hasUsableCoordinates, IMPLAUSIBLE_DISTANCE_METERS } from "../visit/visit-checkin-model"
-import { toVisitWorkspace, type VisitWorkspace } from "../../services/visit-workspace"
+import { toVisitWorkspace, visitActionShown, type VisitWorkspace } from "../../services/visit-workspace"
 
 interface RoutePoint {
   id: string
@@ -1044,7 +1044,12 @@ function PointActionPanel({
     const taskRequirementsDone = taskRequirements.filter((requirement) => requirement.done || requirement.waived).length
     const taskStepTotal = taskCount + taskRequirements.length
     const taskStepDone = taskDone + taskRequirementsDone
-    const showSignature = signature.visible && (signature.required || signature.signed)
+    // The organization decides per action: required, optional or hidden
+    // (site → Settings → visit action policies). Optional is still on screen;
+    // only «hidden» takes an action away — and never one already done.
+    const showPresentation = visitActionShown(workspace, "PRESENTATION") || presentationDone
+    const showPhoto = visitActionShown(workspace, "PHOTO") || photoCount > 0
+    const showSignature = signature.visible || signature.signed
     // The visit is to a doctor when its stop names one; the clinic is where.
     const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
     return (
@@ -1084,11 +1089,13 @@ function PointActionPanel({
           <ActionButton label={copy.waitingForSync} icon="cloud-upload-outline" onPress={() => {}} disabled />
         ) : (
           <>
-            <VisitActionButton label={copy.presentations} icon="easel-outline" done={presentationDone} onPress={onOpenPresentations} />
-            {/* Tasks and the camera are always here. They used to appear only
-                when the visit had tasks or required a photo, and a visit with
-                neither looked as if the app could do neither (owner's phone,
-                7 October 2026). No tasks is said as a number: 0. */}
+            {showPresentation ? (
+              <VisitActionButton label={copy.presentations} icon="easel-outline" done={presentationDone} onPress={onOpenPresentations} />
+            ) : null}
+            {/* Tasks are always here, and no tasks is said as a number: 0.
+                The row used to appear only when the visit had tasks, and a
+                visit without any looked as if the app could not do them
+                (owner's phone, 7 October 2026). */}
             <VisitActionButton
               label={copy.visitTasks}
               detail={taskStepTotal > 0 ? `${taskStepDone} / ${taskStepTotal}` : "0"}
@@ -1099,13 +1106,15 @@ function PointActionPanel({
             {/* Stays a camera button however many photos there are: with a
                 tick and «done» it read as a finished step, not as the way to
                 add another photo. The number says how many are taken. */}
-            <VisitActionButton
-              label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
-              detail={photoCount > 0 ? renderTemplate(copy.photos, { count: photoCount }) : undefined}
-              icon="camera-outline"
-              onPress={onPhoto}
-              disabled={mutating}
-            />
+            {showPhoto ? (
+              <VisitActionButton
+                label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
+                detail={photoCount > 0 ? renderTemplate(copy.photos, { count: photoCount }) : undefined}
+                icon="camera-outline"
+                onPress={onPhoto}
+                disabled={mutating}
+              />
+            ) : null}
             {showSignature ? (
               <VisitActionButton
                 label={signature.required ? copy.takeSignatureRequired : copy.takeSignature}
