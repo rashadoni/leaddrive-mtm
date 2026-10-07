@@ -270,15 +270,16 @@ export default function TodayScreen() {
         title: t("todayV2.routeTitle"),
         body,
         supporting: null,
-        button: routeNeedsWorkday
-          ? (workdayStarting ? t("todayV2.dayStarting") : t("todayV2.startDay"))
-          : canStartRoute
+        // Before the day is started this card opens the route. It used to
+        // repeat «Günə başla» from the card right above it, and one screen
+        // carried the same button twice (owner's phone, 7 October 2026).
+        button: canStartRoute
           ? (startingRoute ? t("todayV2.startingRoute") : t("todayV2.startRoute"))
           : t("todayV2.openRoute"),
-        icon: canStartRoute ? "play" : routeNeedsWorkday ? "play-circle" : "navigate",
-        destination: canStartRoute || routeNeedsWorkday ? null : "Route" as Destination,
+        icon: canStartRoute ? "play" : "navigate",
+        destination: canStartRoute ? null : "Route" as Destination,
         startRoute: canStartRoute,
-        startWorkday: routeNeedsWorkday,
+        startWorkday: false,
       }
     }
     if (nextKind === "awaiting") {

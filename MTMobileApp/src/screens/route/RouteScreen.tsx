@@ -68,6 +68,7 @@ import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreak
 import {
   awaitingRouteStops,
   nearestPendingStopId,
+  routeDockAction,
   routeActionPanelState,
   routeAwaitsApproval,
   type AwaitingRouteStop,
@@ -111,7 +112,7 @@ const ROUTE_COPY = {
     title: "Маршрут на сегодня",
     subtitle: "Идите по точкам по порядку — приложение подскажет следующий шаг.",
     plannedRoute: "Плановый маршрут",
-    plannedRouteBody: "Точки, которые менеджер включил в план на сегодня.",
+    plannedRouteBody: "Точки, запланированные на сегодня.",
     nextStop: "Следующая точка",
     selectedStop: "Выбранная точка",
     activeVisit: "Сейчас идёт визит",
@@ -147,6 +148,9 @@ const ROUTE_COPY = {
     planned: "В плане",
     visiting: "Идёт визит",
     nearest: "Ближайшая",
+    pathProgress: "{{done}} из {{total}}",
+    dockOpenVisit: "Открыть визит",
+    dockNextStop: "Следующий клиент",
     stopNumber: "Точка {{number}}",
     distanceAway: "До точки {{distance}}",
     noAddress: "Адрес не указан. Можно начать визит, когда вы на месте.",
@@ -206,7 +210,7 @@ const ROUTE_COPY = {
     title: "Bugünkü marşrut",
     subtitle: "Nöqtələri ardıcıllıqla keçin — tətbiq növbəti addımı göstərəcək.",
     plannedRoute: "Planlı marşrut",
-    plannedRouteBody: "Menecerin bu gün üçün plana əlavə etdiyi nöqtələr.",
+    plannedRouteBody: "Bu gün üçün planlaşdırılmış nöqtələr.",
     nextStop: "Növbəti nöqtə",
     selectedStop: "Seçilmiş nöqtə",
     activeVisit: "Ziyarət davam edir",
@@ -242,6 +246,9 @@ const ROUTE_COPY = {
     planned: "Plandadır",
     visiting: "Ziyarət davam edir",
     nearest: "Ən yaxın",
+    pathProgress: "{{done}} / {{total}}",
+    dockOpenVisit: "Ziyarəti aç",
+    dockNextStop: "Növbəti müştəri",
     stopNumber: "Nöqtə {{number}}",
     distanceAway: "Nöqtəyə {{distance}}",
     noAddress: "Ünvan göstərilməyib. Məkanda olduqda ziyarətə başlaya bilərsiniz.",
@@ -301,7 +308,7 @@ const ROUTE_COPY = {
     title: "Today's route",
     subtitle: "Follow the stops in order — the app will show the next step.",
     plannedRoute: "Planned route",
-    plannedRouteBody: "Stops your manager included in today's plan.",
+    plannedRouteBody: "Stops planned for today.",
     nextStop: "Next stop",
     selectedStop: "Selected stop",
     activeVisit: "Visit in progress",
@@ -337,6 +344,9 @@ const ROUTE_COPY = {
     planned: "Planned",
     visiting: "Visit in progress",
     nearest: "Nearest",
+    pathProgress: "{{done}} of {{total}}",
+    dockOpenVisit: "Open visit",
+    dockNextStop: "Next client",
     stopNumber: "Stop {{number}}",
     distanceAway: "{{distance}} away",
     noAddress: "No address is saved. You can start the visit when you are there.",
@@ -474,10 +484,10 @@ function renderTemplate(template: string, values: Record<string, string | number
 
 function pointStatus(point: RoutePoint, copy: (typeof ROUTE_COPY)[RouteLanguage], visitingPointId?: string | null) {
   const state = routeStopState(point, visitingPointId)
-  if (state === "visiting") return { label: copy.visiting, icon: "radio-button-on" as const, color: fieldTheme.color.amber }
-  if (state === "visited") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success }
-  if (state === "skipped") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger }
-  return { label: copy.planned, icon: "ellipse-outline" as const, color: fieldTheme.color.inkMuted }
+  if (state === "visiting") return { label: copy.visiting, icon: "radio-button-on" as const, color: fieldTheme.color.amber, soft: fieldTheme.color.amberSoft }
+  if (state === "visited") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success, soft: fieldTheme.color.successSoft }
+  if (state === "skipped") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger, soft: fieldTheme.color.dangerSoft }
+  return { label: copy.planned, icon: "ellipse-outline" as const, color: fieldTheme.color.inkMuted, soft: fieldTheme.color.surfaceStrong }
 }
 
 function ActionButton({
@@ -581,11 +591,12 @@ function RouteExecutionGate({
       : copy.routeStartRequiredBody
   return (
     <View style={styles.actionPanel} accessibilityLiveRegion="polite">
+      {/* One title. It used to stand twice, once small and once large, one
+          line under the other (owner's phone, 7 October 2026). */}
       <View style={styles.actionEyebrowRow}>
-        <Icon name={workday || paused ? "briefcase-outline" : "play-circle-outline"} size={19} color={fieldTheme.color.amber} />
-        <Text style={styles.actionEyebrow}>{title}</Text>
+        <Icon name={workday || paused ? "briefcase-outline" : "play-circle-outline"} size={22} color={fieldTheme.color.amber} />
+        <Text style={[styles.actionTitle, styles.gateTitle]}>{title}</Text>
       </View>
-      <Text style={styles.actionTitle}>{title}</Text>
       <Text style={styles.actionAddress}>{body}</Text>
       {!paused ? (
         <ActionButton
@@ -781,6 +792,87 @@ function RouteSummary({
   )
 }
 
+/**
+ * What stands above the clients on a phone: the route, its date, how far it
+ * has got. Three lines instead of a stepper and two cards.
+ *
+ * 7 October 2026, owner's phone: the clients of the route were on the screen,
+ * but under five numbered steps, a summary card and a «start the workday»
+ * card — a full screen of scrolling before the first name. Asked three times
+ * for «the path by clients», he was looking at a page that did not show one.
+ */
+function RoutePathHead({
+  route,
+  done,
+  total,
+  language,
+  copy,
+}: {
+  route: Route
+  done: number
+  total: number
+  language: string
+  copy: (typeof ROUTE_COPY)[RouteLanguage]
+}) {
+  const completion = total > 0 ? Math.round((done / total) * 100) : 0
+  // The bar above already says «Bugünkü marşrut»; said again here it was the
+  // same words twice on one screen (owner's phone, build 396). A route with a
+  // name of its own keeps it; otherwise the line is the day.
+  const ownName = route.name && route.name !== copy.title ? route.name : null
+  const day = new Date(route.date)
+  return (
+    <View style={styles.pathHead}>
+      <View style={styles.pathHeadRow}>
+        <Text style={styles.pathHeadTitle} numberOfLines={1}>
+          {ownName ?? day.toLocaleDateString(language, { weekday: "long", day: "numeric", month: "long" })}
+        </Text>
+        {ownName ? (
+          <Text style={styles.pathHeadDate}>
+            {day.toLocaleDateString(language, { day: "numeric", month: "long" })}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.pathHeadRow} accessibilityLabel={renderTemplate(copy.progress, { done, total })}>
+        <View style={styles.pathHeadTrack}>
+          <View style={[styles.pathHeadFill, { width: `${completion}%` }]} />
+        </View>
+        <Text style={styles.pathHeadCount}>{renderTemplate(copy.pathProgress, { done, total })}</Text>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * The one thing to do next, kept at the bottom of a phone screen so the list
+ * of clients can have the top. The full panel — navigation, check-in, photos,
+ * signature — is the sheet this opens, as a tap on a client always did.
+ */
+function RouteDock({
+  caption,
+  action,
+  secondary,
+}: {
+  caption: string | null
+  action: { label: string; icon: string; onPress: () => void; disabled?: boolean } | null
+  secondary: React.ReactNode
+}) {
+  return (
+    <View style={styles.dock} testID="route-dock">
+      {caption ? <Text style={styles.dockCaption} numberOfLines={1}>{caption}</Text> : null}
+      {action || secondary ? (
+        <View style={styles.dockRow}>
+          {action ? (
+            <View style={styles.dockPrimary}>
+              <ActionButton label={action.label} icon={action.icon} onPress={action.onPress} disabled={action.disabled} />
+            </View>
+          ) : null}
+          {secondary}
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
 function StopRow({
   point,
   index,
@@ -819,7 +911,7 @@ function StopRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${renderTemplate(copy.stopNumber, { number: index + 1 })}. ${point.customer.name}. ${status.label}`}
-      style={({ pressed }) => [styles.stopRow, selected && styles.stopRowSelected, pressed && styles.stopRowPressed]}
+      style={({ pressed }) => [styles.stopRow, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, pressed && styles.stopRowPressed]}
     >
       {/*
         The stops are a road, not a list: the line above a stop is filled once
@@ -842,34 +934,30 @@ function StopRow({
           <Text style={[styles.stopName, point.status === "VISITED" && styles.stopNameDone]} numberOfLines={2}>
             {point.customer.name}
           </Text>
-          <View style={styles.stopStatus}>
-            <Icon name={status.icon} size={14} color={status.color} />
-            <Text style={[styles.stopStatusText, { color: status.color }]}>{status.label}</Text>
-          </View>
+          {point.distanceMeters != null && point.status !== "VISITED" ? (
+            <Text style={[styles.stopDistance, { color: distanceColor(point.distanceMeters, pointCheckInRadius(point)) }]}>
+              {formatDistance(point.distanceMeters)}
+            </Text>
+          ) : null}
         </View>
         {point.customer.address ? <Text style={styles.stopAddress} numberOfLines={2}>{point.customer.address}</Text> : null}
+        {/* Where this client stands today, in words and in colour: visited
+            (with the time), visit in progress, or still planned. */}
         <View style={styles.stopMeta}>
-          {point.visitedAt ? (
-            <View style={styles.metaItem}>
-              <Icon name="checkmark-circle-outline" size={15} color={fieldTheme.color.success} />
-              <Text style={[styles.metaText, { color: fieldTheme.color.success }]}>
-                {new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}
-              </Text>
+          <View style={[styles.stopStatus, { backgroundColor: status.soft }]}>
+            <Icon name={status.icon} size={14} color={status.color} />
+            <Text style={[styles.stopStatusText, { color: status.color }]}>
+              {point.visitedAt
+                ? `${status.label} · ${new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}`
+                : status.label}
+            </Text>
+          </View>
+          {nearest && point.status !== "VISITED" ? (
+            <View style={styles.nearestBadge}>
+              <Text style={styles.nearestBadgeText}>{copy.nearest}</Text>
             </View>
           ) : null}
-          {point.distanceMeters != null && point.status !== "VISITED" ? (
-            <View style={styles.metaItem}>
-              <Icon name="navigate-outline" size={15} color={distanceColor(point.distanceMeters, pointCheckInRadius(point))} />
-              <Text style={[styles.metaText, { color: distanceColor(point.distanceMeters, pointCheckInRadius(point)) }]}>
-                {formatDistance(point.distanceMeters)}
-              </Text>
-              {nearest ? (
-                <View style={styles.nearestBadge}>
-                  <Text style={styles.nearestBadgeText}>{copy.nearest}</Text>
-                </View>
-              ) : null}
-            </View>
-          ) : !hasUsableCoordinates(point.customer) && point.status !== "VISITED" ? (
+          {point.distanceMeters == null && !hasUsableCoordinates(point.customer) && point.status !== "VISITED" ? (
             <View style={styles.metaItem}>
               <Icon name="help-circle-outline" size={15} color={fieldTheme.color.inkMuted} />
               <Text style={styles.metaText}>{i18next.t("route.noCoordinates")}</Text>
@@ -1865,6 +1953,46 @@ export default function RouteScreen() {
     />
   )
 
+  // The phone keeps one action at the bottom of the screen instead of a card
+  // above the clients. It is the panel's own decision in one line: the same
+  // state, the same handlers, the same reasons for being disabled.
+  const gateBusy = workdayActive ? startingRoute : startingWorkday || workdayTransitionPending
+  const gateDisabled = workdayActive ? !routeStartReady : workdayTransitionPending
+  const dockKind = routeDockAction(actionPanelState, Boolean(nextPoint))
+  const dockAction = dockKind === "start-workday"
+    ? {
+        label: gateBusy ? copy.workdaySyncing : copy.startWorkday,
+        icon: gateBusy ? "hourglass-outline" : "play-circle",
+        onPress: () => { handleStartWorkday().catch(() => {}) },
+        disabled: gateBusy || gateDisabled,
+      }
+    : dockKind === "start-route"
+      ? {
+          label: gateBusy ? copy.routeStarting : copy.startRoute,
+          icon: gateBusy ? "hourglass-outline" : "play-circle",
+          onPress: () => { handleStartRoute().catch(() => {}) },
+          disabled: gateBusy || gateDisabled,
+        }
+      : dockKind === "open-visit"
+        ? { label: copy.dockOpenVisit, icon: "radio-button-on", onPress: () => setPhonePanelVisible(true) }
+        : dockKind === "next-stop" && nextPoint
+          ? { label: copy.dockNextStop, icon: "navigate", onPress: () => handlePointPress(nextPoint) }
+          : null
+  const dockCaption = actionPanelState === "gate-workday"
+    ? copy.workdayRequiredTitle
+    : actionPanelState === "gate-route"
+      ? copy.routeStartRequiredTitle
+      : actionPanelState === "gate-paused"
+        ? copy.workdayPausedTitle
+        : actionPanelState === "visit"
+          ? [copy.visiting, activeVisit?.customer?.name].filter(Boolean).join(" · ")
+          : actionPanelState === "point" && nextPoint
+            ? nextPoint.customer.name
+            : null
+  const phoneDock = !tablet && route && (dockAction || dockCaption || changePlanAction)
+    ? <RouteDock caption={dockCaption} action={dockAction} secondary={changePlanAction} />
+    : null
+
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>
       <View style={styles.headerIcon}>
@@ -2045,26 +2173,12 @@ export default function RouteScreen() {
                 copy={copy}
                 onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
               />
-              {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact /> : null}
-              {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : !route ? emptyState : null}
-              {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
-                <View style={styles.completeCard}>
-                  <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
-                  <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
-                  <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
-                </View>
-              ) : route ? actionPanel : null}
-              {displayedPoints.length > 0 ? (
-                <>
-                  <View style={styles.sectionHeading}>
-                    <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                    <View style={styles.sectionHeadingEnd}>
-                      <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
-                    </View>
-                  </View>
-                  {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
-                </>
-              ) : null}
+              {/* The clients come first. The stepper and the two cards that
+                  stood here pushed them a whole screen down; what those cards
+                  asked for is the dock under the list now. */}
+              {route
+                ? <RoutePathHead route={route} done={visitedPoints} total={totalPoints} language={i18n.language} copy={copy} />
+                : emptyState}
             </View>
           </>
         }
@@ -2087,8 +2201,19 @@ export default function RouteScreen() {
             />
           </View>
         )}
-        ListFooterComponent={<View style={styles.phoneFooter} />}
+        ListFooterComponent={
+          <View style={styles.phoneFooter}>
+            {route && remaining === 0 && totalPoints > 0 && !activeVisit ? (
+              <View style={styles.completeCard}>
+                <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
+                <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
+                <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
+              </View>
+            ) : route && actionPanelState === "finished" ? actionPanel : null}
+          </View>
+        }
       />
+      {phoneDock}
 
       <Modal visible={phonePanelVisible} transparent animationType="slide" onRequestClose={() => setPhonePanelVisible(false)}>
         {/* Insets of this window, not the app's: the sheet is not translucent,
@@ -2139,6 +2264,27 @@ const styles = StyleSheet.create({
   phoneMain: { paddingHorizontal: fieldTheme.space.lg },
   phoneRowWrap: { paddingHorizontal: fieldTheme.space.lg },
   phoneFooter: { paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
+
+  pathHead: { gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg, marginBottom: fieldTheme.space.sm },
+  pathHeadRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  pathHeadTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 20, fontWeight: "900" },
+  pathHeadDate: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "700" },
+  pathHeadTrack: { flex: 1, height: 8, borderRadius: 4, overflow: "hidden", backgroundColor: fieldTheme.color.surfaceStrong },
+  pathHeadFill: { height: 8, borderRadius: 4, backgroundColor: fieldTheme.color.success },
+  pathHeadCount: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  gateTitle: { flex: 1 },
+  dock: {
+    gap: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.lg,
+    paddingTop: fieldTheme.space.md,
+    paddingBottom: fieldTheme.space.md,
+    backgroundColor: fieldTheme.color.surface,
+    borderTopWidth: 1,
+    borderTopColor: fieldTheme.color.border,
+  },
+  dockCaption: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "700" },
+  dockRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  dockPrimary: { flex: 1 },
 
   header: {
     backgroundColor: fieldTheme.color.primaryStrong,
@@ -2319,42 +2465,45 @@ const styles = StyleSheet.create({
   planActionRow: { alignItems: "flex-start", marginBottom: fieldTheme.space.md },
   changePlanButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
   changePlanText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
+  // One road, not a stack of cards: a row has no margin and no padding above
+  // or below, so the line of one stop meets the line of the next. As separate
+  // cards the road was a grey stub inside each of them.
   stopRow: {
-    minHeight: 86,
+    minHeight: 88,
     flexDirection: "row",
     alignItems: "center",
     gap: fieldTheme.space.md,
-    backgroundColor: fieldTheme.color.surface,
     borderRadius: fieldTheme.radius.md,
     borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    padding: fieldTheme.space.md,
-    marginBottom: fieldTheme.space.sm,
+    borderColor: "transparent",
+    paddingHorizontal: fieldTheme.space.md,
   },
   stopRowSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
+  stopRowVisiting: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
   stopRowPressed: { opacity: 0.78 },
   stopRail: { alignItems: "center", alignSelf: "stretch" },
-  stopRailLine: { flex: 1, width: 2, minHeight: 6, backgroundColor: fieldTheme.color.border },
+  stopRailLine: { flex: 1, width: 3, minHeight: 12, backgroundColor: fieldTheme.color.border },
   stopRailLineDone: { backgroundColor: fieldTheme.color.success },
   stopRailLineHidden: { backgroundColor: "transparent" },
-  stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
-  stopNumberRecommended: { backgroundColor: fieldTheme.color.primaryStrong },
-  stopNumberDone: { backgroundColor: fieldTheme.color.success },
-  stopNumberVisiting: { backgroundColor: fieldTheme.color.amber },
-  nearestBadge: { marginLeft: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
-  nearestBadgeText: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900" },
+  stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface, borderWidth: 2, borderColor: fieldTheme.color.border },
+  stopNumberRecommended: { backgroundColor: fieldTheme.color.primaryStrong, borderColor: fieldTheme.color.primaryStrong },
+  stopNumberDone: { backgroundColor: fieldTheme.color.success, borderColor: fieldTheme.color.success },
+  stopNumberVisiting: { backgroundColor: fieldTheme.color.amber, borderColor: fieldTheme.color.amber },
+  nearestBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.blueSoft },
+  nearestBadgeText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "900" },
   stopNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
   stopNumberTextRecommended: { color: fieldTheme.color.onColor },
-  stopCopy: { flex: 1, minWidth: 0 },
-  // In a narrow list (a phone on its side) the name keeps its words and the
-  // status moves under it, instead of "ADV-Sto…" beside the status.
-  stopTitleRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, alignItems: "center" },
-  stopName: { flexGrow: 1, flexShrink: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  stopCopy: { flex: 1, minWidth: 0, paddingVertical: fieldTheme.space.md },
+  // The name has the line to itself with the distance at its end; the status
+  // stands under the address, where a narrow list never squeezed the name.
+  stopTitleRow: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "flex-start" },
+  stopName: { flexGrow: 1, flexShrink: 1, color: fieldTheme.color.ink, fontSize: 16, fontWeight: "800" },
   stopNameDone: { color: fieldTheme.color.inkMuted },
-  stopStatus: { flexDirection: "row", alignItems: "center", gap: 3 },
-  stopStatusText: { fontSize: 10, fontWeight: "800" },
-  stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 3 },
-  stopMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: fieldTheme.space.sm },
+  stopDistance: { fontSize: 13, fontWeight: "800", marginTop: 2 },
+  stopStatus: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: fieldTheme.radius.pill },
+  stopStatusText: { fontSize: 12, fontWeight: "800" },
+  stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: 2 },
+  stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
 

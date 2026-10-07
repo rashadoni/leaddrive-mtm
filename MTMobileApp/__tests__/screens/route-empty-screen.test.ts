@@ -21,8 +21,9 @@ const locales = ["ru", "en", "az"].map((locale) => ({
 
 describe("B9: the route screen without a route", () => {
   it("draws no stepper when there are no steps", () => {
-    // Both layouts: the phone list header and the tablet top strip.
-    expect((source.match(/\{route && !activeVisit \? <JourneySteps/g) ?? [])).toHaveLength(2)
+    // The tablet top strip is the only place left that draws it: on a phone
+    // the clients of the route stand where the stepper was.
+    expect((source.match(/\{route && !activeVisit \? <JourneySteps/g) ?? [])).toHaveLength(1)
     expect(source).not.toMatch(/(?<!\{route && !activeVisit \? )<JourneySteps activeStep/)
   })
 
