@@ -51,6 +51,13 @@ describe("the phone screen puts the clients first", () => {
     }
   })
 
+  it("does not say the screen's title a second time under the bar that already says it", () => {
+    const head = source.slice(source.indexOf("function RoutePathHead("), source.indexOf("function RouteDock("))
+    expect(head).toContain("const ownName = route.name && route.name !== copy.title ? route.name : null")
+    expect(head).not.toContain("route.name || copy.title")
+    expect(head).toContain('{ownName ?? day.toLocaleDateString(language, { weekday: "long", day: "numeric", month: "long" })}')
+  })
+
   it("keeps the action under the list, outside what scrolls", () => {
     expect(phone.indexOf("      />\n      {phoneDock}")).toBeGreaterThan(-1)
     expect(source).toContain("? <RouteDock caption={dockCaption} action={dockAction} secondary={changePlanAction} />")

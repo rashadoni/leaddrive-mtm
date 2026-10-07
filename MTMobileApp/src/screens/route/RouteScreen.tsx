@@ -815,13 +815,22 @@ function RoutePathHead({
   copy: (typeof ROUTE_COPY)[RouteLanguage]
 }) {
   const completion = total > 0 ? Math.round((done / total) * 100) : 0
+  // The bar above already says «Bugünkü marşrut»; said again here it was the
+  // same words twice on one screen (owner's phone, build 396). A route with a
+  // name of its own keeps it; otherwise the line is the day.
+  const ownName = route.name && route.name !== copy.title ? route.name : null
+  const day = new Date(route.date)
   return (
     <View style={styles.pathHead}>
       <View style={styles.pathHeadRow}>
-        <Text style={styles.pathHeadTitle} numberOfLines={1}>{route.name || copy.title}</Text>
-        <Text style={styles.pathHeadDate}>
-          {new Date(route.date).toLocaleDateString(language, { day: "numeric", month: "long" })}
+        <Text style={styles.pathHeadTitle} numberOfLines={1}>
+          {ownName ?? day.toLocaleDateString(language, { weekday: "long", day: "numeric", month: "long" })}
         </Text>
+        {ownName ? (
+          <Text style={styles.pathHeadDate}>
+            {day.toLocaleDateString(language, { day: "numeric", month: "long" })}
+          </Text>
+        ) : null}
       </View>
       <View style={styles.pathHeadRow} accessibilityLabel={renderTemplate(copy.progress, { done, total })}>
         <View style={styles.pathHeadTrack}>
