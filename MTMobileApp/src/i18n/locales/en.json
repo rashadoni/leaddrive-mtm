@@ -1007,6 +1007,7 @@
     "preview": "Captured photo",
     "retake": "Retake",
     "usePhoto": "Save photo",
+    "useAndContinue": "Save and take another",
     "captureFailedTitle": "Photo not taken",
     "captureFailedBody": "Close the camera, open it again and take the photo once more."
   },

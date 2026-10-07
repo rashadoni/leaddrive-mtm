@@ -1007,6 +1007,7 @@
     "preview": "Çəkilmiş foto",
     "retake": "Yenidən çək",
     "usePhoto": "Fotonu saxla",
+    "useAndContinue": "Saxla və daha birini çək",
     "captureFailedTitle": "Foto çəkilmədi",
     "captureFailedBody": "Kameranı bağlayıb yenidən açın və bir daha çəkin."
   },

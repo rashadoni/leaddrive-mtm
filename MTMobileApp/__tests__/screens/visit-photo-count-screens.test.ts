@@ -41,7 +41,9 @@ describe("«Foto: N» on an active visit survives a restart", () => {
     // The camera is always among a visit's actions now, required or not.
     expect(route).not.toContain("showPhoto")
     expect(route).toContain("label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}")
-    expect(route).toContain("done={photoCount > 0}")
+    // The row stays a camera button and says how many photos there are.
+    expect(route).toContain("detail={photoCount > 0 ? renderTemplate(copy.photos, { count: photoCount }) : undefined}")
+    expect(route).not.toContain("done={photoCount > 0}")
     expect(route).toContain("photoCount={photos.count}")
   })
 

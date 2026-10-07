@@ -116,7 +116,11 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
       // Fetch GPS in parallel with the shutter so the preview shows the
       // watermark with no perceptible extra delay.
       const [photo, currentLocation] = await Promise.all([
-        camera.current.takePhoto({ flash, enableShutterSound: true }),
+        // No shutter click: the agent photographs a shelf or a document in a
+        // doctor's office or a pharmacy hall, and the click was loud enough
+        // to turn heads (owner, 7 October 2026). The preview that follows is
+        // the confirmation that the photo was taken.
+        camera.current.takePhoto({ flash, enableShutterSound: false }),
         watermark?.getLocation() ?? Promise.resolve(null),
       ])
 
@@ -162,13 +166,24 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
     setPreviewPath(null)
   }
 
-  // The only place a photo leaves this screen: the agent pressed «Fotonu
-  // saxla» on the preview. «Bağla», the back button and «Yenidən çək» drop it.
+  // A photo leaves this screen only from the preview: «Fotonu saxla» hands it
+  // over and closes, «Saxla və daha birini çək» hands it over and stays.
+  // «Bağla», the back button and «Yenidən çək» drop it.
   const handleUsePhoto = () => {
     if (previewPath) {
       onPhotoTaken(previewPath)
       setPreviewPath(null)
       onClose()
+    }
+  }
+
+  // Several photos in one go. The camera used to close after every single
+  // photo, and the way back in was a checklist row that read as already done:
+  // «нет функций дополнительных фоток» (owner, 7 October 2026).
+  const handleUseAndContinue = () => {
+    if (previewPath) {
+      onPhotoTaken(previewPath)
+      setPreviewPath(null)
     }
   }
 
@@ -257,6 +272,15 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
           <View style={[styles.topBar, topBarPosition]}>{closeButton}</View>
 
           <View style={[styles.previewBar, { bottom: insets.bottom + fieldTheme.space.lg, left: insets.left + fieldTheme.space.lg, right: insets.right + fieldTheme.space.lg }]}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleUseAndContinue}
+              testID="photo-save-and-continue"
+              style={({ pressed }) => [styles.secondaryButton, styles.previewMoreButton, pressed && styles.pressed]}
+            >
+              <Icon name="camera-outline" size={21} color={fieldTheme.color.primary} />
+              <Text style={styles.secondaryText}>{t("photoCapture.useAndContinue")}</Text>
+            </Pressable>
             <View style={styles.previewActions}>
               <Pressable
                 accessibilityRole="button"
@@ -463,6 +487,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
   },
+  previewMoreButton: { width: "100%", maxWidth: 560, marginBottom: fieldTheme.space.md },
   previewActions: {
     width: "100%",
     maxWidth: 560,

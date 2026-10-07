@@ -1095,11 +1095,13 @@ function PointActionPanel({
               done={taskStepTotal > 0 && taskStepDone === taskStepTotal}
               onPress={onOpenTasks}
             />
+            {/* Stays a camera button however many photos there are: with a
+                tick and «done» it read as a finished step, not as the way to
+                add another photo. The number says how many are taken. */}
             <VisitActionButton
               label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
-              detail={photoCount > 0 ? copy.done : undefined}
+              detail={photoCount > 0 ? renderTemplate(copy.photos, { count: photoCount }) : undefined}
               icon="camera-outline"
-              done={photoCount > 0}
               onPress={onPhoto}
               disabled={mutating}
             />
