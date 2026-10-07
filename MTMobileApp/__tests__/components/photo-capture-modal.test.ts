@@ -144,15 +144,19 @@ describe("camera screen on a phone on its side", () => {
   })
 })
 
-describe("a photo leaves the camera only after «Fotonu saxla»", () => {
-  it("reports a photo from exactly one place, the preview's confirm button", () => {
+describe("a photo leaves the camera only after the agent confirms it on the preview", () => {
+  it("reports a photo from the preview's two confirm buttons and from nowhere else", () => {
     // Investigated 2026-09-14: «Bağla» on the preview seemed to leave the visit
-    // counter up. Only handleUsePhoto calls onPhotoTaken; Close, back and
-    // Retake drop the preview. The counter moves only in the screens' upload.
+    // counter up. Only the preview's confirm handlers call onPhotoTaken:
+    // «Fotonu saxla», and since 2026-10-07 «Saxla və daha birini çək», which
+    // keeps the camera open for the next photo. Close, back and Retake drop
+    // the preview. The counter moves only in the screens' upload.
     const calls = code.match(/onPhotoTaken\(/g) ?? []
-    expect(calls).toHaveLength(1)
-    const usePhoto = code.slice(code.indexOf("const handleUsePhoto = () => {"), code.indexOf("const handleAllow"))
+    expect(calls).toHaveLength(2)
+    const usePhoto = code.slice(code.indexOf("const handleUsePhoto = () => {"), code.indexOf("const handleUseAndContinue"))
     expect(usePhoto).toContain("onPhotoTaken(previewPath)")
+    const useAndContinue = code.slice(code.indexOf("const handleUseAndContinue = () => {"), code.indexOf("const handleAllow"))
+    expect(useAndContinue).toContain("onPhotoTaken(previewPath)")
     const capture = code.slice(code.indexOf("const handleCapture = async () => {"), code.indexOf("const handleRetake"))
     expect(capture).not.toContain("onPhotoTaken")
   })
