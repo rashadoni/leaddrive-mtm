@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { routeActionPanelState } from "../../src/screens/route/route-screen-state"
+import { routeActionPanelState, routeDockAction } from "../../src/screens/route/route-screen-state"
 
 /**
  * Galaxy S23, 2026-09-14. Right after opening the Route tab the action panel
@@ -161,11 +161,15 @@ describe("route action panel: no instruction before the facts are read", () => {
     expect(source).toContain("fetchActiveVisit().catch(() => {}).then(() => setActiveVisitKnown(true))")
     expect(source).toContain("if (!workdayHydrated) useWorkdayStore.getState().hydrate().catch(() => {})")
 
-    // The phone list header and the tablet action pane both draw actionPanel.
+    // The tablet action pane draws actionPanel. The phone draws it in the
+    // sheet a tap opens, and the action it keeps under the list is read off
+    // the same state — so while that is "loading" it offers nothing either.
     const tablet = source.slice(source.indexOf("  if (tablet) {"), source.indexOf("<NotesModal", source.indexOf("  if (tablet) {")))
     expect(tablet).toContain(") : actionPanel}")
     const phone = source.slice(source.indexOf("<FlatList", source.indexOf("  if (tablet) {") + 1))
-    expect(phone).toContain(") : route ? actionPanel : null}")
+    expect(phone).toContain("<ScrollView contentContainerStyle={styles.sheetContent}>{actionPanel}</ScrollView>")
+    expect(source).toContain("const dockKind = routeDockAction(actionPanelState, Boolean(nextPoint))")
+    expect(routeDockAction("loading", true)).toBeNull()
   })
 })
 

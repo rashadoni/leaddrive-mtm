@@ -231,3 +231,21 @@ export function routeActionPanelState({
   if (workdayActive) return hasRoute || routeKnownAbsent ? "gate-route" : "route-unknown"
   return "gate-workday"
 }
+
+export type RouteDockAction = "start-workday" | "start-route" | "open-visit" | "next-stop" | null
+
+/**
+ * The one action a phone keeps at the bottom of the Route screen.
+ *
+ * The clients of the route have the top of the screen; what used to be a card
+ * above them is this. It is read off the panel's own state, so it can never
+ * offer what the panel would not: while that state is still "loading" there
+ * is no button at all, and a paused workday has none either.
+ */
+export function routeDockAction(state: RouteActionPanelState, hasNextStop: boolean): RouteDockAction {
+  if (state === "gate-workday") return "start-workday"
+  if (state === "gate-route") return "start-route"
+  if (state === "visit") return "open-visit"
+  if (state === "point" && hasNextStop) return "next-stop"
+  return null
+}
