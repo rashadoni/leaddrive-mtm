@@ -38,8 +38,8 @@ describe("«Foto: N» on an active visit survives a restart", () => {
   })
 
   it("the route checklist marks the photo step from that count", () => {
-    // The camera is always among a visit's actions now, required or not.
-    expect(route).not.toContain("showPhoto")
+    // The camera is among a visit's actions unless the organization hid it.
+    expect(route).toContain('const showPhoto = visitActionShown(workspace, "PHOTO") || photoCount > 0')
     expect(route).toContain("label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}")
     // The row stays a camera button and says how many photos there are.
     expect(route).toContain("detail={photoCount > 0 ? renderTemplate(copy.photos, { count: photoCount }) : undefined}")

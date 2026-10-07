@@ -145,3 +145,28 @@ export function toVisitWorkspace(raw: any): VisitWorkspace {
     photosCount: photos.length,
   }
 }
+
+/**
+ * Whether the organization's visit rules leave an action on the agent's screen.
+ *
+ * The site has had the three states for every action of a visit all along —
+ * «Обязательно», «Необязательно», «Скрыто» (Settings → visit action policies)
+ * — and promises that an optional action «is visible to the agent». The visit
+ * panel did not keep that promise: it drew the photo and the signature only
+ * when they were required, and the presentation always. Owner, 7 October 2026:
+ * «раньше была возможность брать подпись, её тут также нету… надо, чтоб эти
+ * функции я мог включать и отключать для видимости и выбирать, обязательно
+ * или нет».
+ *
+ * The mapper above already drops hidden requirements, so an action is shown
+ * when its requirement is still in the list. No list yet (offline, or before
+ * the check-in has synced) hides nothing — the same rule the signature uses.
+ */
+export function visitActionShown(
+  workspace: Pick<VisitWorkspace, "requirements"> | null | undefined,
+  actionKey: string,
+): boolean {
+  if (!workspace || workspace.requirements.length === 0) return true
+  return workspace.requirements.some((requirement) => requirement.actionKey === actionKey && requirement.mode !== "HIDDEN")
+}
+
