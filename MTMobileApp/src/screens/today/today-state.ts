@@ -12,6 +12,11 @@ export interface TodayRoutePoint {
     name?: string
     address?: string
   }
+  /** The doctor this stop is about, when the route was planned by doctors. */
+  contact?: {
+    displayName?: string
+    specialtyName?: string
+  }
 }
 
 export interface TodayRouteSummary {
@@ -76,12 +81,21 @@ function normalizePoint(value: unknown): TodayRoutePoint | null {
       }
     : undefined
 
+  const contactSource = object(source.contact)
+  const contact = contactSource && string(contactSource.displayName)
+    ? {
+        displayName: string(contactSource.displayName),
+        specialtyName: string(contactSource.specialtyName),
+      }
+    : undefined
+
   return {
     id,
     orderIndex: finiteNumber(source.orderIndex) ?? 0,
     status: string(source.status) ?? "",
     plannedTime: string(source.plannedTime),
     customer,
+    ...(contact ? { contact } : {}),
   }
 }
 

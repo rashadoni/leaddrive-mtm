@@ -671,7 +671,7 @@ export default function TodayScreen() {
                                 : <Text style={styles.routeClientNumberText}>{index + 1}</Text>}
                             </View>
                             <Text style={[styles.routeClientName, done && styles.routeClientNameDone]} numberOfLines={1}>
-                              {point.customer?.name || t("todayV2.routeTitle")}
+                              {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
                             </Text>
                             {isNext ? (
                               <View style={styles.routeClientNextBadge}>
@@ -709,7 +709,7 @@ export default function TodayScreen() {
                             <Text style={styles.routeClientNumberText}>{index + 1}</Text>
                           </View>
                           <Text style={styles.routeClientName} numberOfLines={1}>
-                            {point.customer?.name || t("todayV2.routeTitle")}
+                            {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
                           </Text>
                         </View>
                       ))}
