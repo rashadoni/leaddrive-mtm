@@ -1091,6 +1091,9 @@ export default function VisitScreen() {
     onSignature: signature.openPad,
     onRetry: retry,
     checkInIssue,
+    // «Клиент здесь»: offered under a refusal for the distance or a missing pin — null where the organization switched it off.
+    fixLocationLabel: selectedCustomer && mayFixLocation() ? t("visit.customerIsHere") : null,
+    onFixLocation: () => { if (selectedCustomer) openLocationFix(selectedCustomer) },
   }
 
   const history = (
@@ -1297,11 +1300,16 @@ function VisitActionPanel({
   onCheckOut,
   onRetry,
   checkInIssue,
+  fixLocationLabel,
+  onFixLocation,
   signature,
   onSignature,
 }: {
   copy: Copy
   checkInIssue: CheckInIssue | null
+  /** The words of «Клиент здесь», or null when it is not offered. */
+  fixLocationLabel: string | null
+  onFixLocation: () => void
   activeVisit: Visit | null
   elapsedMin: number
   photoCount: number
@@ -1547,15 +1555,15 @@ function VisitActionPanel({
               <Text style={styles.issueTitle}>{checkInIssueText(checkInIssue, copy).title}</Text>
               <Text style={styles.issueBody}>{checkInIssueText(checkInIssue, copy).body}</Text>
               {/* Too far from the pin, or no pin at all: it may be the pin that is wrong. */}
-              {(checkInIssue.kind === "too-far" || checkInIssue.kind === "no-coordinates") && selectedCustomer && mayFixLocation() ? (
+              {(checkInIssue.kind === "too-far" || checkInIssue.kind === "no-coordinates") && fixLocationLabel ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => openLocationFix(selectedCustomer)}
+                  onPress={onFixLocation}
                   testID="visit-customer-is-here"
                   style={({ pressed }) => [styles.issueAction, pressed && styles.pressed]}
                 >
                   <Icon name="pin" size={17} color={fieldTheme.color.onColor} />
-                  <Text style={styles.issueActionText}>{t("visit.customerIsHere")}</Text>
+                  <Text style={styles.issueActionText}>{fixLocationLabel}</Text>
                 </Pressable>
               ) : null}
             </View>

@@ -37,7 +37,10 @@ describe("«Клиент здесь» is reachable", () => {
   })
 
   it("is offered where a check-in was refused for the distance or for a missing pin", () => {
-    expect(visit).toContain('(checkInIssue.kind === "too-far" || checkInIssue.kind === "no-coordinates") && selectedCustomer && mayFixLocation()')
+    expect(visit).toContain('(checkInIssue.kind === "too-far" || checkInIssue.kind === "no-coordinates") && fixLocationLabel ? (')
+    // Null where the organization switched the request off: the button is then not drawn.
+    expect(visit).toContain('fixLocationLabel: selectedCustomer && mayFixLocation() ? t("visit.customerIsHere") : null,')
+    expect(visit).toContain("onFixLocation: () => { if (selectedCustomer) openLocationFix(selectedCustomer) },")
     expect(visit).toContain('confirmText: t("visit.customerIsHere")')
     expect(visit).toContain("onConfirm: () => openLocationFix(customer)")
     // Without the permission the older way stays: tell the manager.
