@@ -36,7 +36,8 @@ describe("«Клиент здесь» is reachable", () => {
     expect(card).toContain("(!pin && !detail.pinReported)")
     // The card comes back from the map already saying «на проверке».
     expect(card).toContain('navigation.addListener("focus", () => {')
-    expect(card).toContain("setLocationRequest(toLocationFixRequest(response.data.locationRequest))")
+    expect(card).toContain("const request = toLocationFixRequest(response.data.locationRequest)")
+    expect(card).toContain("setLocationRequest(request)")
   })
 
   it("is offered where a check-in was refused for the distance or for a missing pin", () => {
