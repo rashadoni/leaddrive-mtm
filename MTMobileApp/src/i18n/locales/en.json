@@ -168,6 +168,8 @@
     "noCoordinatesBody": "{{name}} has no coordinates in the CRM, so the visit cannot start. Tell your manager: they add the coordinates on the organization card.",
     "noCoordinatesPill": "No coordinates",
     "reportToManager": "Tell my manager",
+    "customerIsHere": "Customer is here — show on the map",
+    "noCoordinatesFixBody": "{{name}} has no coordinates in the CRM, so the visit cannot start. If you are at the customer, show on the map where it is: your manager confirms it and the pin appears.",
     "reportToManagerMessage": "Stop {{name}} ({{address}}) has no coordinates in LeadDrive. Please add them on the organization card; otherwise the visit cannot start.",
     "checkInAcceptedTitle": "Visit started",
     "checkInAcceptedBody": "The server confirmed the visit at {{name}}.",

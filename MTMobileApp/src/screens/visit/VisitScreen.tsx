@@ -50,7 +50,7 @@ import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
+import { agentMay, agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
 import { checkInRadiusMeters } from "../../lib/check-in-radius"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
@@ -679,7 +679,26 @@ export default function VisitScreen() {
     }).catch(() => {})
   }
 
+  /** «Клиент здесь»: the agent shows on a map where the customer really is; a manager accepts it. */
+  const openLocationFix = (customer: Customer) => {
+    navigation.navigate("OrganizationLocationFix", {
+      id: customer.id,
+      name: customer.name,
+      ...(hasUsableCoordinates(customer) ? { latitude: customer.latitude, longitude: customer.longitude } : {}),
+    })
+  }
+  const mayFixLocation = () => agentMay(useBootstrapStore.getState().data?.policies, "customerLocationRequest")
+
   const showNoCoordinates = (customer: Customer) => {
+    // Standing at the door, the agent can say where the customer is himself —
+    // quicker than a message to a manager, and with the place attached.
+    if (mayFixLocation()) {
+      showOutcomeSheet(t("visit.noCoordinatesTitle"), t("visit.noCoordinatesFixBody", { name: customer.name }), {
+        confirmText: t("visit.customerIsHere"),
+        onConfirm: () => openLocationFix(customer),
+      })
+      return
+    }
     showOutcomeSheet(t("visit.noCoordinatesTitle"), t("visit.noCoordinatesBody", { name: customer.name }), {
       confirmText: t("visit.reportToManager"),
       onConfirm: () => reportMissingCoordinates(customer),
@@ -1527,6 +1546,18 @@ function VisitActionPanel({
             <View style={styles.issueCopy}>
               <Text style={styles.issueTitle}>{checkInIssueText(checkInIssue, copy).title}</Text>
               <Text style={styles.issueBody}>{checkInIssueText(checkInIssue, copy).body}</Text>
+              {/* Too far from the pin, or no pin at all: it may be the pin that is wrong. */}
+              {(checkInIssue.kind === "too-far" || checkInIssue.kind === "no-coordinates") && selectedCustomer && mayFixLocation() ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => openLocationFix(selectedCustomer)}
+                  testID="visit-customer-is-here"
+                  style={({ pressed }) => [styles.issueAction, pressed && styles.pressed]}
+                >
+                  <Icon name="pin" size={17} color={fieldTheme.color.onColor} />
+                  <Text style={styles.issueActionText}>{t("visit.customerIsHere")}</Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
         )}
@@ -1945,6 +1976,8 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.dangerSoft,
   },
   issueCopy: { flex: 1, gap: 2 },
+  issueAction: { alignSelf: "flex-start", minHeight: 44, flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8, paddingHorizontal: 14, borderRadius: 12, backgroundColor: fieldTheme.color.primary },
+  issueActionText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
   issueTitle: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "700", lineHeight: 19 },
   issueBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18 },
   primaryButton: {

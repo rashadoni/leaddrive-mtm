@@ -861,6 +861,30 @@ class ApiClient {
     }, 20_000, 2)
   }
 
+  /**
+   * «Клиент здесь»: from the spot, the agent asks a manager to move an
+   * organization's pin to where it really is. Nothing about the organization
+   * changes until the manager accepts.
+   */
+  async submitOrganizationLocationRequest(id: string, data: {
+    idempotencyKey: string
+    proposed: { latitude: number; longitude: number }
+    agent: { latitude: number; longitude: number; accuracyMeters: number; fixAgeSeconds: number; isMock?: boolean }
+    comment?: string
+  }) {
+    return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/location-request`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
+  /** The agent takes his own waiting request about this organization back. */
+  async cancelOrganizationLocationRequest(id: string) {
+    return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/location-request`, {
+      method: "DELETE",
+    }, 20_000, 2)
+  }
+
   /** Mobile-only v2 catalog; its opaque page token is server-issued. */
   async getRouteContacts(
     params?: { search?: string; page?: string; limit?: number; type?: "DOCTOR" | "PHARMACIST" | "OTHER" },

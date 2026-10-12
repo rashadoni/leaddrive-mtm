@@ -30,6 +30,7 @@ import VisitWorkspaceScreen from "../screens/visit/VisitWorkspaceScreen"
 import PresentationViewerScreen from "../screens/visit/PresentationViewerScreen"
 import DoctorCreateRequestScreen from "../screens/base/DoctorCreateRequestScreen"
 import RouteContactChangeRequestScreen from "../screens/base/RouteContactChangeRequestScreen.android"
+import RouteOrganizationLocationFixScreen from "../screens/base/RouteOrganizationLocationFixScreen.android"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
@@ -53,6 +54,8 @@ export type RootStackParamList = {
   PresentationViewer: { visitId: string; product: MobileProductPresentation }
   DoctorCreateRequest: undefined
   ContactChangeRequest: { id: string; name?: string }
+  /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
+  OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
   TaskDetail: { task: RawTask }
   Visits: undefined
   Base: undefined
@@ -80,6 +83,8 @@ export type ClientsStackParamList = {
   ContactDetail: { id: string; name?: string }
   DoctorCreateRequest: undefined
   ContactChangeRequest: { id: string; name?: string }
+  /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
+  OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -135,6 +140,7 @@ function ClientsStackNavigator() {
       <ClientsStack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
       <ClientsStack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
       <ClientsStack.Screen name="ContactChangeRequest" component={RouteContactChangeRequestScreen} />
+      <ClientsStack.Screen name="OrganizationLocationFix" component={RouteOrganizationLocationFixScreen} />
     </ClientsStack.Navigator>
   )
 }
@@ -306,6 +312,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
                 <Stack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
                 <Stack.Screen name="ContactChangeRequest" component={RouteContactChangeRequestScreen} />
+                <Stack.Screen name="OrganizationLocationFix" component={RouteOrganizationLocationFixScreen} />
                 <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
                 <Stack.Screen name="Visits" component={VisitScreen} />
                 <Stack.Screen name="Base" component={RouteBaseScreen} />

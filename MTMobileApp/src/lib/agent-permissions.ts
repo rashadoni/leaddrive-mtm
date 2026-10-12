@@ -14,6 +14,7 @@ export type AgentPermissionId =
   | "contactCreateRequest"
   | "contactChangeRequest"
   | "customerCreateRequest"
+  | "customerLocationRequest"
   | "taskSelfCreate"
   | "taskSelfRecurring"
   | "checkInOutsideZone"

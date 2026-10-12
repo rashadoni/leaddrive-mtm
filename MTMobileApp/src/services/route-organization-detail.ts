@@ -35,6 +35,15 @@ export interface RouteOrganizationDetail {
   phone?: string
   /** Whom to ask for at the organization. Read-only for the agent. */
   contactPerson?: string
+  /** Where the organization's pin stands. Both or neither; 0,0 is «none». */
+  latitude?: number
+  longitude?: number
+  /**
+   * The server said something about the pin — a place, or that there is none.
+   * A server that predates «Клиент здесь» says nothing, and «no pin» must not
+   * be read into its silence.
+   */
+  pinReported: boolean
   contacts: RouteOrganizationContact[]
   visits: RouteOrganizationVisit[]
 }
@@ -43,6 +52,16 @@ function text(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined
   const normalized = String(value).trim()
   return normalized.length > 0 ? normalized : undefined
+}
+
+function coordinates(raw: any): { latitude?: number; longitude?: number } {
+  const latitude = raw?.latitude
+  const longitude = raw?.longitude
+  if (typeof latitude !== "number" || typeof longitude !== "number") return {}
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return {}
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return {}
+  if (latitude === 0 && longitude === 0) return {}
+  return { latitude, longitude }
 }
 
 export function toRouteOrganizationDetail(raw: any): RouteOrganizationDetail {
@@ -61,6 +80,8 @@ export function toRouteOrganizationDetail(raw: any): RouteOrganizationDetail {
     district: text(raw?.district),
     phone: text(raw?.phone),
     contactPerson: text(raw?.contactPerson),
+    ...coordinates(raw),
+    pinReported: !!raw && typeof raw === "object" && "latitude" in raw && "longitude" in raw,
     contacts: contacts.map((contact: any): RouteOrganizationContact => {
       return {
         id: String(contact?.id ?? ""),
