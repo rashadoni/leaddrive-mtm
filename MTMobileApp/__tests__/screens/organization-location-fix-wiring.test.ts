@@ -11,6 +11,9 @@ const card = read("src/screens/base/RouteOrganizationDetailScreen.android.tsx")
 const screen = read("src/screens/base/RouteOrganizationLocationFixScreen.android.tsx")
 const visit = read("src/screens/visit/VisitScreen.tsx")
 const api = read("src/services/api.ts")
+const route = read("src/screens/route/RouteScreen.tsx")
+const runtime = read("src/runtime/AndroidApp.tsx")
+const store = read("src/store/location-fixes.ts")
 
 /**
  * «Клиент здесь» is several pieces that only work together: a screen that is
@@ -111,5 +114,57 @@ describe("the map of «Клиент здесь»", () => {
   it("starts without a pin on file for a customer that has none", () => {
     const first = buildLocationFixMapDocument({ center: agent, agent, current: null }, labels)
     expect(first).toContain('"current":null')
+  })
+})
+
+/**
+ * While the request waits (owner, 12 October 2026: «пускать, но показывать
+ * руководителю такой визит с пометкой "адрес на проверке"»). The server lets
+ * the reporter in from the place he reported; these are the joints that keep
+ * the app from stopping him before the server is asked — and from letting
+ * anybody else lean on his request.
+ */
+describe("a visit from the reported place, while the request waits", () => {
+  it("remembers the place when the request goes out, and what the server says about it afterwards", () => {
+    expect(screen).toContain("useLocationFixStore.getState().remember(id, pin)")
+    // The card is told by the server whether this agent's request still waits.
+    expect(card).toContain('if (request?.mine && request.status === "SUBMITTED" && request.proposed) useLocationFixStore.getState().remember(id, request.proposed)')
+    expect(card).toContain("else useLocationFixStore.getState().forget(id)")
+    expect(card).toContain("useLocationFixStore.getState().forget(detail.id)")
+  })
+
+  it("keeps the memory across restarts, and to the agent it belongs to", () => {
+    expect(runtime).toContain("useLocationFixStore.getState().hydrate().catch(() => {})")
+    expect(store).toContain("const agentId = useAuthStore.getState().agent?.id")
+    expect(store).toContain("waitingLocationFixOf(useLocationFixStore.getState().fixes, useAuthStore.getState().agent?.id, customerId, Date.now())")
+  })
+
+  it("does not stop him on the visit screen: at the reported place he is measured against it", () => {
+    const flow = visit.slice(visit.indexOf("const performCheckIn"), visit.indexOf("const { visit, operation } = await queueVisitCheckIn({"))
+    expect(flow).toContain("const waitingFix = waitingLocationFixFor(customer.id)")
+    expect(flow).toContain("if (!hasUsableCoordinates(customer) && !waitingFix) {")
+    expect(flow).toContain("const leaning = locationFixCoversCheckIn(waitingFix, coords, checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies))")
+    // Not at the reported place, and the customer has no pin: refused as it always was.
+    expect(flow).toContain("if (!leaning && !hasUsableCoordinates(customer)) {")
+    expect(flow).toContain("customer: leaning && waitingFix ? { ...customer, latitude: waitingFix.latitude, longitude: waitingFix.longitude } : customer,")
+  })
+
+  it("does not stop him on the route screen either", () => {
+    const flow = route.slice(route.indexOf("const handleCheckIn = async (point: RoutePoint) => {"), route.indexOf("let forceCheckIn = false", route.indexOf("const handleCheckIn = async (point: RoutePoint) => {")))
+    expect(flow).toContain("const waitingFix = waitingLocationFixFor(point.customer.id)")
+    expect(flow).toContain("if (!hasUsableCoordinates(point.customer) && !waitingFix) {")
+    expect(flow).toContain("const leaning = locationFixCoversCheckIn(waitingFix, coords, pointCheckInRadius(point))")
+    expect(flow).toContain("const customerCoordinates = leaning && waitingFix")
+  })
+
+  it("forgets the place when the server refuses a check-in there: the request waits no longer", () => {
+    const outcomes = visit.slice(visit.indexOf("const explainCheckInOutcome"), visit.indexOf('case "active_visit":'))
+    expect(outcomes.match(/useLocationFixStore\.getState\(\)\.forget\(customer\.id\)/g)).toHaveLength(2)
+  })
+
+  it("sends no «force» because of it: the server decides, and marks the visit for a manager", () => {
+    const flow = visit.slice(visit.indexOf("const leaning = "), visit.indexOf("const { visit, operation } = await queueVisitCheckIn({"))
+    expect(flow).not.toMatch(/forceCheckIn = true/)
+    expect(flow).not.toMatch(/leaning[^\n]*forceCheckIn/)
   })
 })

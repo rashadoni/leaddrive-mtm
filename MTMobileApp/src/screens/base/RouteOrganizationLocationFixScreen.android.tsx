@@ -19,6 +19,7 @@ import { ask } from "../../services/app-feedback"
 import { readLocationFix } from "../../services/location-fix"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { useLocationFixStore } from "../../store/location-fixes"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildLocationFixMapDocument } from "./organization-location-fix-map"
@@ -64,7 +65,7 @@ const COPY = {
     send: "Отправить на исправление",
     sending: "Отправляем…",
     sent: "Запрос отправлен руководителю",
-    sentBody: "Как только он подтвердит новое место, вам придёт уведомление, а точка клиента переедет у всех.",
+    sentBody: "Как только он подтвердит новое место, вам придёт уведомление, а точка клиента переедет у всех. Визит можно начинать прямо здесь — руководитель увидит его с пометкой «адрес на проверке».",
     units: { m: "м", km: "км" },
     problems: {
       noFix: "Ждём, пока телефон определит, где вы.",
@@ -110,7 +111,7 @@ const COPY = {
     send: "Düzəliş üçün göndər",
     sending: "Göndərilir…",
     sent: "Sorğu rəhbərə göndərildi",
-    sentBody: "Rəhbər yeni yeri təsdiqləyən kimi sizə bildiriş gələcək və müştərinin nöqtəsi hamıda dəyişəcək.",
+    sentBody: "Rəhbər yeni yeri təsdiqləyən kimi sizə bildiriş gələcək və müştərinin nöqtəsi hamıda dəyişəcək. Vizitə elə buradan başlaya bilərsiniz — rəhbər onu «ünvan yoxlanılır» qeydi ilə görəcək.",
     units: { m: "m", km: "km" },
     problems: {
       noFix: "Telefonun yerinizi müəyyən etməsini gözləyirik.",
@@ -156,7 +157,7 @@ const COPY = {
     send: "Send for correction",
     sending: "Sending…",
     sent: "The request went to your manager",
-    sentBody: "As soon as the new place is confirmed you will be notified, and the customer's pin will move for everyone.",
+    sentBody: "As soon as the new place is confirmed you will be notified, and the customer's pin will move for everyone. You can start the visit right here — your manager will see it marked «address under review».",
     units: { m: "m", km: "km" },
     problems: {
       noFix: "Waiting for the phone to find where you are.",
@@ -303,6 +304,8 @@ export default function RouteOrganizationLocationFixScreen() {
     try {
       const response = await api.submitOrganizationLocationRequest(id, locationFixPayload(idempotencyKey.current, pin, fix, comment, Date.now()))
       if (!response?.success) throw new Error("LOCATION_REQUEST_NOT_STORED")
+      // He may start the visit from here while a manager decides: the check-in is measured against this place.
+      useLocationFixStore.getState().remember(id, pin)
       await ask({
         title: copy.sent,
         message: copy.sentBody,

@@ -51,6 +51,8 @@ import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { agentMay, agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
+import { useLocationFixStore, waitingLocationFixFor } from "../../store/location-fixes"
+import { locationFixCoversCheckIn } from "../base/organization-location-fix-model"
 import { checkInRadiusMeters } from "../../lib/check-in-radius"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
@@ -722,6 +724,8 @@ export default function VisitScreen() {
         })
         return
       case "too_far":
+        // The server did not let him in from the place he reported: his request waits no longer.
+        useLocationFixStore.getState().forget(customer.id)
         showOutcomeSheet(t("visit.tooFarTitle"), t("visit.checkInRejectedTooFar", {
           name: customer.name,
           distance: formatCheckInDistance(outcome.distanceMeters),
@@ -729,6 +733,7 @@ export default function VisitScreen() {
         }))
         return
       case "no_coordinates":
+        useLocationFixStore.getState().forget(customer.id)
         showNoCoordinates(customer)
         return
       case "active_visit":
@@ -814,8 +819,12 @@ export default function VisitScreen() {
         notify({ tone: "warning", title: copy.issuePausedTitle, message: copy.issuePausedBody })
         return
       }
+      // «Клиент здесь», while the request waits: the place this agent reported
+      // for this customer. From there the server lets him in (and marks the
+      // visit for a manager); the app must not stop him first.
+      const waitingFix = waitingLocationFixFor(customer.id)
       // Owner decision: no coordinates on the client card means no check-in, with an explanation.
-      if (!hasUsableCoordinates(customer)) {
+      if (!hasUsableCoordinates(customer) && !waitingFix) {
         setCheckInIssue({ kind: "no-coordinates" })
         // The same sheet the server's NO_COORDINATES answer opens. It carries
         // the "tell the manager" action, which a toast cannot: the owner's
@@ -849,8 +858,15 @@ export default function VisitScreen() {
         return
       }
 
+      // Standing at the place he reported, he is measured against it; anywhere else, against the pin as always.
+      const leaning = locationFixCoversCheckIn(waitingFix, coords, checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies))
+      if (!leaning && !hasUsableCoordinates(customer)) {
+        setCheckInIssue({ kind: "no-coordinates" })
+        showNoCoordinates(customer)
+        return
+      }
       const precondition = resolveCheckInPrecondition({
-        customer,
+        customer: leaning && waitingFix ? { ...customer, latitude: waitingFix.latitude, longitude: waitingFix.longitude } : customer,
         position: coords,
         positionFailure: located.failure,
         workdayPaused,
