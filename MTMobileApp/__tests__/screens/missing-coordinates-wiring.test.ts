@@ -22,7 +22,9 @@ describe("a customer card with no coordinates", () => {
     // server's answer opened the sheet, the action was unreachable.
     const branch = visitSource.slice(visitSource.indexOf("const performCheckIn"))
     const guard = branch.slice(0, branch.indexOf("const located"))
-    expect(guard).toContain("if (!hasUsableCoordinates(customer))")
+    // …unless this agent's own «Клиент здесь» request about the customer waits:
+    // the server lets him in from the place he reported.
+    expect(guard).toContain("if (!hasUsableCoordinates(customer) && !waitingFix) {")
     expect(guard).toContain("showNoCoordinates(customer)")
     expect(guard).toContain('setCheckInIssue({ kind: "no-coordinates" })')
   })

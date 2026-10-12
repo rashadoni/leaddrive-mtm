@@ -16,6 +16,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary"
 import AppFeedbackHost from "../components/AppFeedbackHost"
 import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
+import { useLocationFixStore } from "../store/location-fixes"
 import { useWorkdayStore, workdayKey } from "../store/workday"
 import { useSyncStatusStore } from "../store/sync-status"
 import { forgetTrackingResume, setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
@@ -228,6 +229,8 @@ export default function AndroidApp() {
   useEffect(() => {
     useHintsStore.getState().hydrate().catch(() => {})
     useWorkdayStore.getState().hydrate().catch(() => {})
+    // «Клиент здесь»: the places waiting for a manager, remembered across restarts.
+    useLocationFixStore.getState().hydrate().catch(() => {})
     initI18n()
       .then(() => setI18nReady(true))
       .catch(() => setI18nReady(true))

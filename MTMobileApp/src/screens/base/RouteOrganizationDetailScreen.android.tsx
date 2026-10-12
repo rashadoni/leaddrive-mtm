@@ -36,6 +36,7 @@ import {
   type LocationFixRequest,
 } from "./organization-location-fix-model"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { useLocationFixStore } from "../../store/location-fixes"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { statusLabel } from "../../lib/status-labels"
@@ -79,7 +80,7 @@ const COPY = {
     fixNoPinBody: "Без неё нельзя начать визит. Если вы у клиента — покажите, где он.",
     fixNoPinButton: "Клиент здесь — поставить точку",
     fixWaitingTitle: "Адрес на проверке у руководителя",
-    fixWaitingMine: "Вы сообщили, что точка стоит не там. Как только руководитель решит, придёт уведомление.",
+    fixWaitingMine: "Вы сообщили, что точка стоит не там. Как только руководитель решит, придёт уведомление. Визит можно начинать с того места, которое вы указали.",
     fixWaitingOther: "Коллега уже сообщил, что точка стоит не там. Ждём решения руководителя.",
     fixCancel: "Отменить запрос",
     fixCancelAsk: "Отменить запрос на исправление адреса?",
@@ -125,7 +126,7 @@ const COPY = {
     fixNoPinBody: "Onsuz vizitə başlamaq olmur. Müştərinin yanındasınızsa, harada olduğunu göstərin.",
     fixNoPinButton: "Müştəri buradadır — nöqtə qoy",
     fixWaitingTitle: "Ünvan rəhbərin yoxlamasındadır",
-    fixWaitingMine: "Nöqtənin yerində olmadığını bildirmisiniz. Rəhbər qərar verən kimi bildiriş gələcək.",
+    fixWaitingMine: "Nöqtənin yerində olmadığını bildirmisiniz. Rəhbər qərar verən kimi bildiriş gələcək. Vizitə göstərdiyiniz yerdən başlaya bilərsiniz.",
     fixWaitingOther: "Həmkarınız artıq nöqtənin yerində olmadığını bildirib. Rəhbərin qərarı gözlənilir.",
     fixCancel: "Sorğunu ləğv et",
     fixCancelAsk: "Ünvan düzəlişi sorğusu ləğv edilsin?",
@@ -171,7 +172,7 @@ const COPY = {
     fixNoPinBody: "A visit cannot start without it. If you are at the customer, show where it is.",
     fixNoPinButton: "Customer is here — set the pin",
     fixWaitingTitle: "The address is with your manager",
-    fixWaitingMine: "You reported that the pin is in the wrong place. You will be notified as soon as the manager decides.",
+    fixWaitingMine: "You reported that the pin is in the wrong place. You will be notified as soon as the manager decides. You can start the visit from the place you showed.",
     fixWaitingOther: "A colleague has already reported that the pin is in the wrong place. Waiting for the manager.",
     fixCancel: "Withdraw the request",
     fixCancelAsk: "Withdraw the address correction request?",
@@ -301,7 +302,12 @@ export default function RouteOrganizationDetailScreen() {
       if (!response?.success || !response.data?.organization) throw new Error("ROUTE_ORGANIZATION_NOT_AVAILABLE")
       if (signal?.aborted) return
       setDetail(toRouteOrganizationDetail(response.data.organization))
-      setLocationRequest(toLocationFixRequest(response.data.locationRequest))
+      const request = toLocationFixRequest(response.data.locationRequest)
+      setLocationRequest(request)
+      // The server's word on whether this agent's request still waits: the
+      // check-in is measured against the reported place only while it does.
+      if (request?.mine && request.status === "SUBMITTED" && request.proposed) useLocationFixStore.getState().remember(id, request.proposed)
+      else useLocationFixStore.getState().forget(id)
     } catch (error: any) {
       if (signal?.aborted || error?.message === "ABORTED" || error?.message === "SESSION_EXPIRED") return
       setFailed(true)
@@ -404,6 +410,7 @@ export default function RouteOrganizationDetailScreen() {
     try {
       await api.cancelOrganizationLocationRequest(detail.id)
       setLocationRequest(null)
+      useLocationFixStore.getState().forget(detail.id)
     } catch (error: any) {
       if (error?.message !== "SESSION_EXPIRED") setCancelFailed(true)
     } finally {

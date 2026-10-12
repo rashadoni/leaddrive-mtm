@@ -6,14 +6,18 @@ import {
   LOCATION_FIX_OFFER_FROM_METERS,
   LOCATION_FIX_OFFER_TO_METERS,
   formatLocationFixDistance,
+  WAITING_LOCATION_FIX_MAX_AGE_MS,
   locationFixAgeSeconds,
+  locationFixCoversCheckIn,
   locationFixDistanceMeters,
   locationFixFailure,
   locationFixOffer,
   locationFixPayload,
   locationFixProblem,
+  readWaitingLocationFixes,
   toLocationFixRequest,
   usablePoint,
+  waitingLocationFixOf,
 } from "../../src/screens/base/organization-location-fix-model"
 
 /**
@@ -189,5 +193,64 @@ describe("a distance as a person says it", () => {
   })
   it("measures the way the server does", () => {
     expect(Math.round(locationFixDistanceMeters(PIN, DOOR))).toBe(1_200)
+  })
+})
+
+/**
+ * While the request waits. The owner, 12 October 2026: «пускать, но показывать
+ * руководителю такой визит с пометкой "адрес на проверке"». The server lets the
+ * agent who reported a place start his visit there; the app must not stop him
+ * first with its own «слишком далеко» or «нет координат».
+ */
+describe("the places this phone knows to be waiting for a manager", () => {
+  const stored = {
+    c1: { ...DOOR, agentId: "a1", savedAt: NOW - 60_000 },
+    c2: { ...DOOR, agentId: "a2", savedAt: NOW - 60_000 },
+  }
+
+  it("are read back as they were kept", () => {
+    expect(readWaitingLocationFixes(stored, NOW)).toEqual(stored)
+  })
+
+  it("drop what is not a place, has no owner, is too old, or claims to be from the future", () => {
+    expect(readWaitingLocationFixes({
+      junk: "x",
+      nowhere: { latitude: 0, longitude: 0, agentId: "a1", savedAt: NOW },
+      ownerless: { ...DOOR, savedAt: NOW },
+      undated: { ...DOOR, agentId: "a1" },
+      old: { ...DOOR, agentId: "a1", savedAt: NOW - WAITING_LOCATION_FIX_MAX_AGE_MS - 1 },
+      future: { ...DOOR, agentId: "a1", savedAt: NOW + 10 * 60_000 },
+      kept: { ...DOOR, agentId: "a1", savedAt: NOW - 1_000 },
+    }, NOW)).toEqual({ kept: { ...DOOR, agentId: "a1", savedAt: NOW - 1_000 } })
+    for (const junk of [null, undefined, "x", [], 5]) expect(readWaitingLocationFixes(junk, NOW)).toEqual({})
+  })
+
+  it("belong to the agent who reported them: a second agent on the same phone inherits nothing", () => {
+    expect(waitingLocationFixOf(stored, "a1", "c1", NOW)).toEqual(DOOR)
+    expect(waitingLocationFixOf(stored, "a2", "c1", NOW)).toBeNull()
+    expect(waitingLocationFixOf(stored, null, "c1", NOW)).toBeNull()
+    expect(waitingLocationFixOf(stored, "a1", "c3", NOW)).toBeNull()
+  })
+
+  it("are not assumed to wait for ever", () => {
+    expect(waitingLocationFixOf(stored, "a1", "c1", NOW + WAITING_LOCATION_FIX_MAX_AGE_MS)).toBeNull()
+  })
+})
+
+describe("a check-in from the place the agent reported", () => {
+  it("is measured against that place when he stands there — within the customer's zone", () => {
+    expect(locationFixCoversCheckIn(DOOR, DOOR, 100)).toBe(true)
+    expect(locationFixCoversCheckIn(DOOR, { latitude: north(DOOR.latitude, 90), longitude: 49.85 }, 100)).toBe(true)
+  })
+
+  it("is a door, not a district: a few streets away it is measured against the pin as always", () => {
+    expect(locationFixCoversCheckIn(DOOR, { latitude: north(DOOR.latitude, 400), longitude: 49.85 }, 100)).toBe(false)
+    // At the old pin he is 1.2 km from the place he reported.
+    expect(locationFixCoversCheckIn(DOOR, PIN, 100)).toBe(false)
+  })
+
+  it("covers nothing without a reported place or without a position", () => {
+    expect(locationFixCoversCheckIn(null, DOOR, 100)).toBe(false)
+    expect(locationFixCoversCheckIn(DOOR, null, 100)).toBe(false)
   })
 })

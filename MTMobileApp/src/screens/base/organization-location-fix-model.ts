@@ -199,3 +199,69 @@ export function formatLocationFixDistance(meters: number, locale: string, units:
   const km = Math.round(meters / 100) / 10
   return `${km.toLocaleString(locale, { maximumFractionDigits: 1 })} ${units.km}`
 }
+
+/**
+ * «Клиент здесь», while the request waits. The server lets the agent who sent
+ * a request start his visit from the place the request names (leaddrive-v2
+ * `waitingLocationRequestCovers`); a manager sees such a visit marked «адрес на
+ * проверке». The app must not stop him first: its own «слишком далеко» and
+ * «нет координат» are measured against the pin he has just reported as wrong.
+ *
+ * So the app remembers the place of each request it knows to be waiting — one
+ * per customer, for the agent who sent it — and measures a check-in against
+ * that place when the agent stands there. It is a memory, not a permission:
+ * the server decides, and a check-in it refuses takes the memory away.
+ */
+export interface WaitingLocationFix extends LocationFixPoint {
+  agentId: string
+  /** The phone's clock when the place was remembered, ms. */
+  savedAt: number
+}
+
+/** A request left unanswered for this long is no longer assumed to be waiting. */
+export const WAITING_LOCATION_FIX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+/** What survives a reading of the stored map: well-formed, not too old. */
+export function readWaitingLocationFixes(raw: unknown, nowMs: number): Record<string, WaitingLocationFix> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {}
+  const kept: Record<string, WaitingLocationFix> = {}
+  for (const [customerId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!customerId || !value || typeof value !== "object") continue
+    const row = value as Record<string, unknown>
+    const point = usablePoint(row)
+    const agentId = typeof row.agentId === "string" ? row.agentId : ""
+    const savedAt = typeof row.savedAt === "number" && Number.isFinite(row.savedAt) ? row.savedAt : NaN
+    if (!point || !agentId || Number.isNaN(savedAt)) continue
+    if (nowMs - savedAt > WAITING_LOCATION_FIX_MAX_AGE_MS || savedAt - nowMs > 60_000) continue
+    kept[customerId] = { ...point, agentId, savedAt }
+  }
+  return kept
+}
+
+/** The place this agent reported for this customer, if his request is still thought to be waiting. */
+export function waitingLocationFixOf(
+  fixes: Record<string, WaitingLocationFix>,
+  agentId: string | null | undefined,
+  customerId: string,
+  nowMs: number,
+): LocationFixPoint | null {
+  const fix = fixes[customerId]
+  if (!fix || !agentId || fix.agentId !== agentId) return null
+  if (nowMs - fix.savedAt > WAITING_LOCATION_FIX_MAX_AGE_MS) return null
+  return { latitude: fix.latitude, longitude: fix.longitude }
+}
+
+/**
+ * Is this check-in made from the place the agent reported? Within the
+ * customer's own zone around it — a door, not a district — as the server
+ * measures it.
+ */
+export function locationFixCoversCheckIn(
+  waiting: LocationFixPoint | null,
+  position: LocationFixPoint | null,
+  radiusMeters: number,
+): boolean {
+  if (!waiting || !position) return false
+  return locationFixDistanceMeters(position, waiting) <= radiusMeters
+}
+

@@ -76,7 +76,8 @@ describe("route screen speaks through the app's own feedback layer", () => {
   })
 
   it("refuses a check-in without coordinates and shares only on «report»", () => {
-    const guard = between("if (!hasUsableCoordinates(point.customer)) {", "setMutating(true)", checkIn)
+    // Not for the agent whose own «Клиент здесь» request about this customer waits: the server lets him in from the place he reported.
+    const guard = between("if (!hasUsableCoordinates(point.customer) && !waitingFix) {", "setMutating(true)", checkIn)
     expect(guard).toContain("const report = await ask({")
     expect(guard).toContain('{ text: t("common.cancel"), value: false, style: "cancel" }')
     expect(guard).toContain('{ text: t("visit.reportToManager"), value: true }')

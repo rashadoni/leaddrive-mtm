@@ -49,6 +49,8 @@ import { runMobileSync } from "../../services/sync-engine"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
+import { waitingLocationFixFor } from "../../store/location-fixes"
+import { locationFixCoversCheckIn } from "../base/organization-location-fix-model"
 import { checkInRadiusMeters, FALLBACK_CHECK_IN_RADIUS_METERS } from "../../lib/check-in-radius"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useSyncStatusStore } from "../../store/sync-status"
@@ -1712,7 +1714,11 @@ export default function RouteScreen() {
 
   const handleCheckIn = async (point: RoutePoint) => {
     if (mutating) return
-    if (!hasUsableCoordinates(point.customer)) {
+    // «Клиент здесь», while the request waits: the place this agent reported
+    // for this customer. From there the server lets him in (and marks the
+    // visit for a manager); the app must not stop him first.
+    const waitingFix = waitingLocationFixFor(point.customer.id)
+    if (!hasUsableCoordinates(point.customer) && !waitingFix) {
       // Owner decision 2 (audit 2026-09-05): no coordinates, no check-in. The
       // server would answer NO_COORDINATES; say it here, before GPS.
       const report = await ask({
@@ -1767,7 +1773,11 @@ export default function RouteScreen() {
       }
 
       // 0°,0° or non-finite stored coordinates count as "no coordinates" (field audit 2026-09-05).
-      const customerCoordinates = { latitude: point.customer.latitude, longitude: point.customer.longitude }
+      // Standing at the place he reported, he is measured against it; anywhere else, against the pin as always.
+      const leaning = locationFixCoversCheckIn(waitingFix, coords, pointCheckInRadius(point))
+      const customerCoordinates = leaning && waitingFix
+        ? { latitude: waitingFix.latitude, longitude: waitingFix.longitude }
+        : { latitude: point.customer.latitude, longitude: point.customer.longitude }
       const measuredDistance = coords && hasUsableCoordinates(customerCoordinates)
         ? Math.round(haversineDistance(
             coords.latitude,
