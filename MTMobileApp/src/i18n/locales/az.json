@@ -168,6 +168,8 @@
     "noCoordinatesBody": "{{name}} üçün CRM-də koordinatlar qeyd olunmayıb, ona görə də ziyarətə başlamaq mümkün deyil. Rəhbərə bildirin: o, koordinatları təşkilat kartında əlavə edəcək.",
     "noCoordinatesPill": "Koordinatlar qeyd olunmayıb",
     "reportToManager": "Rəhbərə bildir",
+    "customerIsHere": "Müştəri buradadır — xəritədə göstər",
+    "noCoordinatesFixBody": "{{name}} üçün CRM-də koordinatlar qeyd olunmayıb, ona görə də ziyarətə başlamaq mümkün deyil. Müştərinin yanındasınızsa, onun yerini xəritədə göstərin: rəhbər təsdiqləyəcək və nöqtə yaranacaq.",
     "reportToManagerMessage": "«{{name}}» nöqtəsinin ({{address}}) LeadDrive-da koordinatları qeyd olunmayıb. Zəhmət olmasa, onları təşkilat kartında əlavə edin, əks halda ziyarətə başlamaq mümkün deyil.",
     "checkInAcceptedTitle": "Ziyarət başladı",
     "checkInAcceptedBody": "Server {{name}} üzrə ziyarəti təsdiqlədi.",

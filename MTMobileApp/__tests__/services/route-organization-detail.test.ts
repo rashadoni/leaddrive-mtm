@@ -52,6 +52,39 @@ describe("Route Field organization detail projection", () => {
         checkInAt: "2026-08-29T10:00:00.000Z",
         outcome: "SUCCESSFUL",
       }],
+      // This server said nothing about the organization's pin.
+      pinReported: false,
+    })
+  })
+
+  // «Клиент здесь» (owner, 12 October 2026): the card measures how far the
+  // agent is from the pin, and shows the pin on the correction map.
+  describe("the organization's pin", () => {
+    it("is carried when the server sends one", () => {
+      expect(toRouteOrganizationDetail({ id: "org-1", name: "N", latitude: 40.4093, longitude: 49.8671 }))
+        .toMatchObject({ latitude: 40.4093, longitude: 49.8671, pinReported: true })
+    })
+
+    it("is «none» — said by the server — for null, and never 0,0 or half a pair", () => {
+      for (const raw of [
+        { latitude: null, longitude: null },
+        { latitude: 0, longitude: 0 },
+        { latitude: 40.4, longitude: null },
+        { latitude: "40.4", longitude: "49.8" },
+        { latitude: 140, longitude: 49.8 },
+      ]) {
+        const detail = toRouteOrganizationDetail({ id: "org-1", name: "N", ...raw })
+        expect(detail.latitude).toBeUndefined()
+        expect(detail.longitude).toBeUndefined()
+        expect(detail.pinReported).toBe(true)
+      }
+    })
+
+    // «No pin» must not be read into the silence of a server that predates the fields.
+    it("is not reported at all by an older server", () => {
+      const detail = toRouteOrganizationDetail({ id: "org-1", name: "N" })
+      expect(detail.pinReported).toBe(false)
+      expect(detail.latitude).toBeUndefined()
     })
   })
 

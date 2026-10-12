@@ -24,6 +24,17 @@ import {
 } from "../../services/route-organization-detail"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
+import { agentMay } from "../../lib/agent-permissions"
+import { ask } from "../../services/app-feedback"
+import { readRoughLocation } from "../../services/location-fix"
+import {
+  formatLocationFixDistance,
+  locationFixOffer,
+  toLocationFixRequest,
+  usablePoint,
+  type LocationFixPoint,
+  type LocationFixRequest,
+} from "./organization-location-fix-model"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -60,6 +71,24 @@ const COPY = {
     showAll: (count: number) => `Показать все (${count})`,
     showLess: "Показать меньше",
     unknown: "Не указано",
+    fixAsk: "Адрес неверный?",
+    fixFarTitle: (distance: string) => `Точка клиента в ${distance} отсюда`,
+    fixFarBody: "Если вы уже у клиента — значит, точка в базе стоит не там. Покажите, где он на самом деле.",
+    fixFarButton: "Клиент здесь — исправить адрес",
+    fixNoPinTitle: "У клиента нет точки на карте",
+    fixNoPinBody: "Без неё нельзя начать визит. Если вы у клиента — покажите, где он.",
+    fixNoPinButton: "Клиент здесь — поставить точку",
+    fixWaitingTitle: "Адрес на проверке у руководителя",
+    fixWaitingMine: "Вы сообщили, что точка стоит не там. Как только руководитель решит, придёт уведомление.",
+    fixWaitingOther: "Коллега уже сообщил, что точка стоит не там. Ждём решения руководителя.",
+    fixCancel: "Отменить запрос",
+    fixCancelAsk: "Отменить запрос на исправление адреса?",
+    fixCancelYes: "Отменить запрос",
+    fixCancelNo: "Оставить",
+    fixCancelFailed: "Не удалось отменить запрос. Попробуйте ещё раз.",
+    fixApproved: "Точку исправили по вашему запросу.",
+    fixRejected: "Руководитель оставил точку на месте.",
+    fixUnits: { m: "м", km: "км" },
   },
   az: {
     back: "Geri",
@@ -88,6 +117,24 @@ const COPY = {
     showAll: (count: number) => `Hamısını göstər (${count})`,
     showLess: "Daha az göstər",
     unknown: "Göstərilməyib",
+    fixAsk: "Ünvan səhvdir?",
+    fixFarTitle: (distance: string) => `Müştərinin nöqtəsi buradan ${distance} aralıdır`,
+    fixFarBody: "Əgər artıq müştərinin yanındasınızsa, deməli bazadakı nöqtə yerində deyil. Onun əslində harada olduğunu göstərin.",
+    fixFarButton: "Müştəri buradadır — ünvanı düzəlt",
+    fixNoPinTitle: "Müştərinin xəritədə nöqtəsi yoxdur",
+    fixNoPinBody: "Onsuz vizitə başlamaq olmur. Müştərinin yanındasınızsa, harada olduğunu göstərin.",
+    fixNoPinButton: "Müştəri buradadır — nöqtə qoy",
+    fixWaitingTitle: "Ünvan rəhbərin yoxlamasındadır",
+    fixWaitingMine: "Nöqtənin yerində olmadığını bildirmisiniz. Rəhbər qərar verən kimi bildiriş gələcək.",
+    fixWaitingOther: "Həmkarınız artıq nöqtənin yerində olmadığını bildirib. Rəhbərin qərarı gözlənilir.",
+    fixCancel: "Sorğunu ləğv et",
+    fixCancelAsk: "Ünvan düzəlişi sorğusu ləğv edilsin?",
+    fixCancelYes: "Sorğunu ləğv et",
+    fixCancelNo: "Saxla",
+    fixCancelFailed: "Sorğunu ləğv etmək alınmadı. Yenidən cəhd edin.",
+    fixApproved: "Nöqtə sizin sorğunuzla düzəldildi.",
+    fixRejected: "Rəhbər nöqtəni yerində saxladı.",
+    fixUnits: { m: "m", km: "km" },
   },
   en: {
     back: "Back",
@@ -116,6 +163,24 @@ const COPY = {
     showAll: (count: number) => `Show all (${count})`,
     showLess: "Show less",
     unknown: "Not provided",
+    fixAsk: "Wrong address?",
+    fixFarTitle: (distance: string) => `The customer's pin is ${distance} from here`,
+    fixFarBody: "If you are already at the customer, the pin on file is in the wrong place. Show where the customer really is.",
+    fixFarButton: "Customer is here — correct the address",
+    fixNoPinTitle: "The customer has no pin on the map",
+    fixNoPinBody: "A visit cannot start without it. If you are at the customer, show where it is.",
+    fixNoPinButton: "Customer is here — set the pin",
+    fixWaitingTitle: "The address is with your manager",
+    fixWaitingMine: "You reported that the pin is in the wrong place. You will be notified as soon as the manager decides.",
+    fixWaitingOther: "A colleague has already reported that the pin is in the wrong place. Waiting for the manager.",
+    fixCancel: "Withdraw the request",
+    fixCancelAsk: "Withdraw the address correction request?",
+    fixCancelYes: "Withdraw the request",
+    fixCancelNo: "Keep it",
+    fixCancelFailed: "Could not withdraw the request. Try again.",
+    fixApproved: "The pin was corrected at your request.",
+    fixRejected: "The manager left the pin where it was.",
+    fixUnits: { m: "m", km: "km" },
   },
 } as const
 
@@ -222,6 +287,12 @@ export default function RouteOrganizationDetailScreen() {
   const [failed, setFailed] = useState(false)
   const [contactsExpanded, setContactsExpanded] = useState(false)
   const [visitsExpanded, setVisitsExpanded] = useState(false)
+  // «Клиент здесь»: the organization may switch the request off; only an explicit «no» hides it.
+  const mayFixLocation = useBootstrapStore((state) => agentMay(state.data?.policies, "customerLocationRequest"))
+  const [locationRequest, setLocationRequest] = useState<LocationFixRequest | null>(null)
+  const [position, setPosition] = useState<LocationFixPoint | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelFailed, setCancelFailed] = useState(false)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setFailed(false)
@@ -230,6 +301,7 @@ export default function RouteOrganizationDetailScreen() {
       if (!response?.success || !response.data?.organization) throw new Error("ROUTE_ORGANIZATION_NOT_AVAILABLE")
       if (signal?.aborted) return
       setDetail(toRouteOrganizationDetail(response.data.organization))
+      setLocationRequest(toLocationFixRequest(response.data.locationRequest))
     } catch (error: any) {
       if (signal?.aborted || error?.message === "ABORTED" || error?.message === "SESSION_EXPIRED") return
       setFailed(true)
@@ -250,6 +322,23 @@ export default function RouteOrganizationDetailScreen() {
     void load(controller.signal)
     return () => controller.abort()
   }, [load])
+
+  // Back from «Где клиент на самом деле?»: the card says «на проверке» without being pulled.
+  useEffect(() => navigation.addListener("focus", () => {
+    if (detail) void load()
+  }), [detail, load, navigation])
+
+  // Roughly where the phone is — only to notice a pin that is evidently in the wrong place.
+  const pinKnown = !!detail && detail.latitude != null
+  const waiting = locationRequest?.status === "SUBMITTED"
+  useEffect(() => {
+    if (!mayFixLocation || !pinKnown || waiting) return
+    let alive = true
+    void readRoughLocation().then((reading) => {
+      if (alive && reading) setPosition({ latitude: reading.latitude, longitude: reading.longitude })
+    })
+    return () => { alive = false }
+  }, [mayFixLocation, pinKnown, waiting])
 
   const retry = () => {
     if (detail) setRefreshing(true)
@@ -283,6 +372,44 @@ export default function RouteOrganizationDetailScreen() {
   }
   const openDirections = () => {
     if (address) void openExternal(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)
+  }
+  const pin = detail ? usablePoint(detail) : null
+  // «No pin» is read only from a server that says so; an older one says nothing about pins at all.
+  const offer = !detail || !mayFixLocation || waiting || (!pin && !detail.pinReported)
+    ? { kind: "none" as const }
+    : locationFixOffer(pin, position)
+  const openLocationFix = () => {
+    if (!detail) return
+    navigation.navigate("OrganizationLocationFix", {
+      id: detail.id,
+      name: detail.name,
+      ...(pin ? { latitude: pin.latitude, longitude: pin.longitude } : {}),
+    })
+  }
+  const cancelLocationRequest = async () => {
+    if (!detail || cancelling) return
+    const confirmed = await ask({
+      title: copy.fixCancelAsk,
+      message: "",
+      tone: "warning",
+      buttons: [
+        { text: copy.fixCancelNo, value: false, style: "cancel" },
+        { text: copy.fixCancelYes, value: true },
+      ],
+      dismissValue: false,
+    })
+    if (!confirmed) return
+    setCancelling(true)
+    setCancelFailed(false)
+    try {
+      await api.cancelOrganizationLocationRequest(detail.id)
+      setLocationRequest(null)
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setCancelFailed(true)
+    } finally {
+      setCancelling(false)
+      void load()
+    }
   }
   const addToRoute = () => {
     if (!detail) return
@@ -328,9 +455,60 @@ export default function RouteOrganizationDetailScreen() {
         {detail.code ? <DataRow icon="barcode-outline" label={copy.code} value={detail.code} /> : null}
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
         {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={statusLabel(t, "customer", detail.status)} /> : null}
+        {waiting ? (
+          <View style={styles.fixWaiting} accessibilityLiveRegion="polite" testID="location-fix-waiting">
+            <View style={styles.fixHeading}>
+              <Icon name="time-outline" size={19} color={fieldTheme.color.amber} />
+              <Text style={styles.fixWaitingTitle}>{copy.fixWaitingTitle}</Text>
+            </View>
+            <Text style={styles.fixBody}>{locationRequest?.mine ? copy.fixWaitingMine : copy.fixWaitingOther}</Text>
+            {locationRequest?.mine ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void cancelLocationRequest()}
+                disabled={cancelling}
+                testID="location-fix-cancel"
+                style={({ pressed }) => [styles.fixGhostButton, { minHeight: touchTarget }, cancelling && styles.disabled, pressed && styles.pressed]}
+              >
+                {cancelling ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} /> : null}
+                <Text style={styles.fixGhostText}>{copy.fixCancel}</Text>
+              </Pressable>
+            ) : null}
+            {cancelFailed ? <Text style={styles.fixError}>{copy.fixCancelFailed}</Text> : null}
+          </View>
+        ) : offer.kind !== "none" ? (
+          <View style={styles.fixOffer} accessibilityLiveRegion="polite" testID="location-fix-offer">
+            <View style={styles.fixHeading}>
+              <Icon name="location" size={19} color={fieldTheme.color.amber} />
+              <Text style={styles.fixWaitingTitle}>
+                {offer.kind === "no-pin"
+                  ? copy.fixNoPinTitle
+                  : copy.fixFarTitle(formatLocationFixDistance(offer.distanceMeters, i18n.language, copy.fixUnits))}
+              </Text>
+            </View>
+            <Text style={styles.fixBody}>{offer.kind === "no-pin" ? copy.fixNoPinBody : copy.fixFarBody}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={openLocationFix}
+              testID="location-fix-open"
+              style={({ pressed }) => [styles.fixButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+            >
+              <Icon name="pin" size={18} color={fieldTheme.color.onColor} />
+              <Text style={styles.actionText}>{offer.kind === "no-pin" ? copy.fixNoPinButton : copy.fixFarButton}</Text>
+            </Pressable>
+          </View>
+        ) : locationRequest?.mine && locationRequest.status !== "SUBMITTED" ? (
+          <View style={locationRequest.status === "APPROVED" ? styles.fixAnswerGood : styles.fixAnswer} testID="location-fix-answer">
+            <Text style={styles.fixBody}>
+              {locationRequest.status === "APPROVED" ? copy.fixApproved : copy.fixRejected}
+              {locationRequest.status === "REJECTED" && locationRequest.decisionComment ? ` «${locationRequest.decisionComment}»` : ""}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.actions}>
           {mayPlanOwnRoutes ? <Pressable accessibilityRole="button" onPress={addToRoute} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="calendar-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{t("contacts.addToRoute")}</Text></Pressable> : null}
           {address ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
+          {mayFixLocation && !waiting && offer.kind === "none" && (pin || detail.pinReported) ? <Pressable accessibilityRole="button" onPress={openLocationFix} testID="location-fix-ask" style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="pin-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.fixAsk}</Text></Pressable> : null}
           {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.call}</Text></Pressable> : null}
         </View>
       </Section>
@@ -423,6 +601,18 @@ const styles = StyleSheet.create({
   dataLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", letterSpacing: 0.35 },
   dataValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
+  fixOffer: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#ECD9A6", backgroundColor: fieldTheme.color.amberSoft },
+  fixWaiting: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#ECD9A6", backgroundColor: fieldTheme.color.amberSoft },
+  fixHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  fixWaitingTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  fixBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19 },
+  fixButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
+  fixGhostButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  fixGhostText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
+  fixError: { color: fieldTheme.color.danger, fontSize: 13, lineHeight: 18 },
+  fixAnswer: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
+  fixAnswerGood: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  disabled: { opacity: 0.5 },
   actionButton: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   actionText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
   routeActionButton: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
