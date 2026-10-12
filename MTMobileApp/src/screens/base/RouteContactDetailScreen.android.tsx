@@ -51,6 +51,8 @@ const COPY = {
     workplace: "Места работы",
     contacts: "Связаться",
     noWorkplace: "Места работы не указаны.",
+    openWorkplace: "Открыть организацию",
+    openWorkplaceHint: "адрес, точка на карте, визиты",
     noContacts: "Контактные данные не указаны.",
     phone: "Позвонить",
     specialty: "Специальность",
@@ -81,6 +83,8 @@ const COPY = {
     workplace: "İş yerləri",
     contacts: "Əlaqə saxla",
     noWorkplace: "İş yeri göstərilməyib.",
+    openWorkplace: "Məkanı aç",
+    openWorkplaceHint: "ünvan, xəritədəki nöqtə, vizitlər",
     noContacts: "Əlaqə məlumatı göstərilməyib.",
     phone: "Zəng et",
     specialty: "İxtisas",
@@ -111,6 +115,8 @@ const COPY = {
     workplace: "Workplaces",
     contacts: "Contact",
     noWorkplace: "No workplace is provided.",
+    openWorkplace: "Open the place",
+    openWorkplaceHint: "address, pin on the map, visits",
     noContacts: "No contact details are provided.",
     phone: "Call",
     specialty: "Specialty",
@@ -305,20 +311,42 @@ export default function RouteContactDetailScreen() {
           </Section>
 
           <Section title={copy.workplace}>
-            {detail.workplaces.length > 0 ? detail.workplaces.map((workplace) => (
-              <View key={workplace.id} style={styles.workplace}>
-                <View style={styles.workplaceIcon}><Icon name="business-outline" size={20} color={fieldTheme.color.primaryStrong} /></View>
-                <View style={styles.workplaceCopy}>
-                  <View style={styles.workplaceTitleRow}>
-                    <Text style={styles.workplaceTitle}>{workplace.name || copy.unknown}</Text>
-                    {workplace.isPrimary ? <Text style={styles.primaryPill}>{copy.primary}</Text> : null}
+            {detail.workplaces.length > 0 ? detail.workplaces.map((workplace) => {
+              // The organization's own card: its address, its pin («Адрес неверный?») and the visits there.
+              const openOrganization = workplace.customerId
+                ? () => navigation.navigate("OrganizationDetail", { id: workplace.customerId as string, name: workplace.name || undefined })
+                : null
+              return (
+                <View key={workplace.id} style={styles.workplace}>
+                  <View style={styles.workplaceIcon}><Icon name="business-outline" size={20} color={fieldTheme.color.primaryStrong} /></View>
+                  <View style={styles.workplaceCopy}>
+                    <View style={styles.workplaceTitleRow}>
+                      <Text style={styles.workplaceTitle}>{workplace.name || copy.unknown}</Text>
+                      {workplace.isPrimary ? <Text style={styles.primaryPill}>{copy.primary}</Text> : null}
+                    </View>
+                    {workplace.jobTitle ? <Text style={styles.workplaceMeta}>{copy.jobTitle}: {workplace.jobTitle}</Text> : null}
+                    {workplaceAddress(workplace) ? <Text style={styles.workplaceMeta}>{workplaceAddress(workplace)}</Text> : null}
+                    {workplace.phone ? <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`tel:${workplace.phone}`).catch(() => {})}><Text style={styles.phoneLink}>{workplace.phone}</Text></Pressable> : null}
+                    {openOrganization ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityHint={copy.openWorkplaceHint}
+                        onPress={openOrganization}
+                        testID={`contact-workplace-open-${workplace.id}`}
+                        style={({ pressed }) => [styles.workplaceOpen, { minHeight: touchTarget }, pressed && styles.pressed]}
+                      >
+                        <Icon name="pin-outline" size={18} color={fieldTheme.color.primaryStrong} />
+                        <View style={styles.workplaceOpenCopy}>
+                          <Text style={styles.workplaceOpenText}>{copy.openWorkplace}</Text>
+                          <Text style={styles.workplaceOpenHint}>{copy.openWorkplaceHint}</Text>
+                        </View>
+                        <Icon name="chevron-forward" size={18} color={fieldTheme.color.primaryStrong} />
+                      </Pressable>
+                    ) : null}
                   </View>
-                  {workplace.jobTitle ? <Text style={styles.workplaceMeta}>{copy.jobTitle}: {workplace.jobTitle}</Text> : null}
-                  {workplaceAddress(workplace) ? <Text style={styles.workplaceMeta}>{workplaceAddress(workplace)}</Text> : null}
-                  {workplace.phone ? <Pressable accessibilityRole="button" onPress={() => void Linking.openURL(`tel:${workplace.phone}`).catch(() => {})}><Text style={styles.phoneLink}>{workplace.phone}</Text></Pressable> : null}
                 </View>
-              </View>
-            )) : <Empty label={copy.noWorkplace} />}
+              )
+            }) : <Empty label={copy.noWorkplace} />}
           </Section>
         </ScrollView>
       )}
@@ -379,6 +407,10 @@ const styles = StyleSheet.create({
   primaryPill: { color: fieldTheme.color.primaryStrong, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" },
   workplaceMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   phoneLink: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 18, fontWeight: "900", marginTop: 5 },
+  workplaceOpen: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  workplaceOpenCopy: { flex: 1, minWidth: 0, paddingVertical: 6 },
+  workplaceOpenText: { color: fieldTheme.color.primaryStrong, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  workplaceOpenHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16 },
   empty: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, padding: fieldTheme.space.md },
   requestRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
   requestDot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },

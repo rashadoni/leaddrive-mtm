@@ -7,6 +7,12 @@
 
 export interface RouteContactWorkplace {
   id: string
+  /**
+   * The organization this workplace is, when the server names it: the card of
+   * that organization opens by this id. A server that does not say leaves the
+   * workplace a line of text, as it was.
+   */
+  customerId?: string
   name: string
   city?: string
   address?: string
@@ -49,6 +55,7 @@ export function toRouteContactDetail(raw: any): RouteContactDetail {
     status: optionalString(raw?.status),
     workplaces: workplaces.map((workplace: any): RouteContactWorkplace => ({
       id: String(workplace?.id ?? ""),
+      customerId: optionalString(workplace?.customerId),
       name: optionalString(workplace?.name) ?? "",
       city: optionalString(workplace?.city),
       address: optionalString(workplace?.address),
