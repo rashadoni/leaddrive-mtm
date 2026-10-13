@@ -1,0 +1,69 @@
+{
+  "sourceCommit": "2893d21f2def3db91d3b86ae2bdc1e972078150d",
+  "ciRun": "https://github.com/rashadoni/leaddrive-mtm/actions/runs/38379716668",
+  "buildRun": "https://github.com/rashadoni/leaddrive-mtm/actions/runs/38379716666",
+  "source": "Fictional React Native host trees saved by actual component tests in GitHub CI",
+  "limitation": "HTML layout preview, not a native device or emulator screenshot; ScrollView contentContainerStyle was not included by the source serializer. Native permission prompts, OEM background behavior and exact platform spacing are NOT RUN.",
+  "trees": [
+    {
+      "name": "office-return-ru.json",
+      "sha256": "be0cdcc3cd8bc82b88c8a9bfe2ae6882be51b5dc6dc3afea6d1fdd09d902b03e"
+    },
+    {
+      "name": "mark-outside-ru.json",
+      "sha256": "7ee115c06b1f0c397fd5d2f7fcbf029adef572bca5b2afffb6b51dddbed73b27"
+    },
+    {
+      "name": "mark-mock-ru.json",
+      "sha256": "2a6f3543b7740a6777b7f5840938fdd5f2f3e50ba319f6fabe61064dc417f0bc"
+    },
+    {
+      "name": "location-off-ru.json",
+      "sha256": "f44b48d008db8497f6362fa9d51faa62feef35407fa3fd6e992af07217e4200a"
+    },
+    {
+      "name": "location-consent-ru.json",
+      "sha256": "db1fd2c4fb3bbac5895c3ef2ae4f6aa7bdd8fa9cede37d6cb2e59e98f23a26ee"
+    },
+    {
+      "name": "office-return-az.json",
+      "sha256": "4213062e358a78a697e039641753a3b2a4e3e149c9eb5d1aee3c964fe8ac111a"
+    },
+    {
+      "name": "mark-outside-az.json",
+      "sha256": "20fc549d7509c5e56929ac9150e825c4d6fd992c6f6033980f0ea5de49b2b015"
+    },
+    {
+      "name": "mark-mock-az.json",
+      "sha256": "691794a1fd518d05299fb74c52dd30556c780682b43be07d5393fed3bdd2ed9f"
+    },
+    {
+      "name": "location-off-az.json",
+      "sha256": "22702b2e5498b99ff8cdba5e384aa44ad5be0860e2519457d89c3e1b467c260c"
+    },
+    {
+      "name": "location-consent-az.json",
+      "sha256": "902ce8746edb8604ee7742d3d5317524bdcaea1dfd9b9fff9db497b00b7cbceb"
+    },
+    {
+      "name": "office-return-en.json",
+      "sha256": "34775c88b83ddc584073fa3a05d9043189c3f62f29b949ab313534dee035f5cb"
+    },
+    {
+      "name": "mark-outside-en.json",
+      "sha256": "e1c0f8f6778ab69171d62f2e6b2e9ba58815f4d900d0db69fde4ed66ed612b0e"
+    },
+    {
+      "name": "mark-mock-en.json",
+      "sha256": "185df1c1195b04b7f679094a80cb9b72210bfeec6c775a920fdb7eb195a7f6b6"
+    },
+    {
+      "name": "location-off-en.json",
+      "sha256": "1d9718e6f73db916b32ccbe8dc765a4c2bc05bd680a38f91f6eefd2609450703"
+    },
+    {
+      "name": "location-consent-en.json",
+      "sha256": "25208fb952e5744951e80efe2d4745e0b64f0b32490ff50b8d156d967cfc72e9"
+    }
+  ]
+}
