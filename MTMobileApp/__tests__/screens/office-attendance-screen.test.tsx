@@ -46,9 +46,17 @@ function capture(tree: TestRenderer.ReactTestRenderer, name: string) {
   const directory = process.env.MTM_ATTENDANCE_RENDER_DIR
   if (!directory) return
   mkdirSync(directory, { recursive: true })
-  writeFileSync(join(directory, `${name}.json`), JSON.stringify(tree.toJSON(), null, 2))
+  writeFileSync(join(directory, `${name}.json`), JSON.stringify(renderedTree(tree.toJSON()), null, 2))
 }
-const text = (tree: TestRenderer.ReactTestRenderer) => JSON.stringify(tree.toJSON())
+// Keep actual host nodes/styles. React elements passed as props (refreshControl)
+// contain owner/context cycles and are not a serialized display subtree.
+function renderedTree(value: TestRenderer.ReactTestRendererJSON | TestRenderer.ReactTestRendererJSON[] | string | null): unknown {
+  if (value === null || typeof value === "string") return value
+  if (Array.isArray(value)) return value.map(renderedTree)
+  const props = Object.fromEntries(Object.entries(value.props).filter(([key]) => ["style", "testID", "disabled", "accessibilityRole", "accessibilityLabel"].includes(key)))
+  return { type: value.type, props, children: value.children?.map(renderedTree) ?? null }
+}
+const text = (tree: TestRenderer.ReactTestRenderer) => JSON.stringify(renderedTree(tree.toJSON()))
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree,id).props.onPress() }); await settle() }
 beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
 beforeEach(() => { jest.clearAllMocks(); mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
