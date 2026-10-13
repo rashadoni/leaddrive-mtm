@@ -1,0 +1,56 @@
+[
+  {
+    "language": "ru",
+    "width": 1440,
+    "height": 1645,
+    "overflow": false,
+    "minControl": 48,
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13"
+  },
+  {
+    "language": "ru",
+    "width": 390,
+    "height": 2337,
+    "overflow": false,
+    "minControl": 48,
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13"
+  },
+  {
+    "language": "az",
+    "width": 1440,
+    "height": 1603,
+    "overflow": false,
+    "minControl": 48,
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13"
+  },
+  {
+    "language": "az",
+    "width": 390,
+    "height": 2138,
+    "overflow": false,
+    "minControl": 48,
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13"
+  },
+  {
+    "language": "en",
+    "width": 1440,
+    "height": 1623,
+    "overflow": false,
+    "minControl": 48,
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13"
+  },
+  {
+    "language": "en",
+    "width": 390,
+    "height": 2201,
+    "overflow": false,
+    "minControl": 48,
+    "startDate": "2026-10-12",
+    "endDate": "2026-10-13"
+  }
+]

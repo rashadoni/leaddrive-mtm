@@ -253,3 +253,17 @@
 - Current result: implementation and regressions prepared. Last action: path-scoped source review. Stopping point: coordinated narrow checks before checkpoint/PR; next mandatory CI Jest/semantic tsc/signed Android and actual render inspection. Heavy gates and physical-device testing NOT RUN locally per host contract.
 
 - Coordinated narrow verification after availableRAM13973MiB/disk237GiB/memoryPSI0: syntax-only parse8 touched TS/TSX PASS, attendanceRequests72-key RU/AZ/EN parity PASS, release-profile3.8.1+50 PASS, git diff --check PASS. No semantic/Jest/native pass is implied; those gates run in GitHub CI. Current result: ready for scoped checkpoint and PR; next exact-head mandatory CI and fictional actual component preview.
+
+- Product checkpoint c9db3c8 published as PR https://github.com/rashadoni/leaddrive-mtm/pull/124 against authoritative main15dcf94. Required CI38404385370 and signed Android38404385345 are queued, not passed. Desktop attach was attempted but returned no result within the bounded wait; coordinator asked to attach from its side. Next: exact-head CI results and fictional actual component previews; no merge before gates.
+
+### 2026-10-13 — PR124 exact-head CI and fictional form preview
+
+- Exact product c9db3c8e6570fe36136473a34648a6015990600d: CI38404385370 SUCCESS, scope/tests PASS;218 suites1800 tests PASS,1 existing todo, semantic TypeScript PASS. Signed Android38404385345 still building at this entry, not yet passed. No product fix was needed.
+- Downloaded three actual fictional CI component trees, preserved SHA256, prepared six RU/AZ/EN1440/390 HTML previews. All fit the viewport with controls>=48px; inspected RU1440/EN390. These are RN-tree→HTML layout previews, not native-device screenshots or full E2E. Date12→13 and clocks22→06 remain visible; no real personal data/GPS. One Chromium under coordinator slot, availableRAM14117MiB/disk237GiB/PSI0.
+- Coordinator successfully attached PR124. Evidence/docs stay local until the release record, avoiding an unnecessary rerun of the verified product head. Current result: required CI passed, native signing/build pending. Last action: inspect fictional form previews. Stopping point: wait for exact Android gate; next normal merge without admin only after all required gates pass, then signed main release and checksum. Physical phone/emulator NOT RUN; emulator secrets untouched.
+
+### 2026-10-13 — PR124 merged after all exact-head gates
+
+- Android38404385345 on product c9db3c8 SUCCESS, including release APK/AAB, package/version and release-signature verification. Immediately before merge, GitHub reported CLEAN and required scope/tests plus build-apk SUCCESS on exactly c9db3c8. Normal merge without admin at13:48:23UTC produced main8d4bfbd43c2e3997460d3f93f2ba1885f6a6e8e5. Authoritative attendance/main fetched and fast-forwarded locally.
+- Main signed-release workflow38407988225 is running; its APK publication is not yet claimed. Root showed the RU HTML preview with the native-evidence limitation. Server overnight support remains in combined CRM PR747; until its deployment an old server can reject a next-date correction. Existing mobile400/422 handling retains the request as conflict and explicit retry keeps the exact UUID/body.
+- Evidence-only checkpoint is local, intentionally not pushed into the already verified feature branch. Next: await signed main APK publication, verify asset/checksum and give root the exact release metadata. GPS OFF/empty email defaults remain unchanged; no emulator secrets read or edited.
