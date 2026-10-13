@@ -90,7 +90,7 @@ describe("mobile sync engine", () => {
     await AsyncStorage.clear()
     useSyncStatusStore.getState().clear()
     mockedAuth.mockReturnValue({
-      agent: { id: "agent-1", organizationId: "org-1" },
+      agent: { id: "agent-1", organizationId: "org-1", role: "AGENT" },
     })
     mockedBootstrap.mockReturnValue({ routeFieldAccess: "enabled" })
     mockedOperations.mockResolvedValue([])

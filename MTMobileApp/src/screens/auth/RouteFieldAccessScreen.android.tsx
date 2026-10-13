@@ -36,7 +36,7 @@ const ATTEMPTS_BEFORE_ESCAPE = 4
  * before field tabs for an HRM-only tenant, a revoked route entitlement, or a
  * malformed/unreachable capability manifest; it never falls back to a role.
  */
-export default function RouteFieldAccessScreen({ access }: { access: BlockedAccess }) {
+export default function RouteFieldAccessScreen({ access, attendance = false }: { access: BlockedAccess; attendance?: boolean }) {
   const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const logout = useAuthStore((state) => state.logout)
@@ -106,8 +106,8 @@ export default function RouteFieldAccessScreen({ access }: { access: BlockedAcce
             ? <ActivityIndicator color={fieldTheme.color.primaryStrong} />
             : <Icon name="lock-closed" size={30} color={fieldTheme.color.primaryStrong} />}
         </View>
-        <Text style={styles.title}>{t(`routeFieldAccess.${key}Title`)}</Text>
-        <Text style={styles.body}>{t(`routeFieldAccess.${key}Body`)}</Text>
+        <Text style={styles.title}>{t(attendance && !offline && !checking ? "officeAttendance.workday" : `routeFieldAccess.${key}Title`)}</Text>
+        <Text style={styles.body}>{t(attendance && !offline && !checking ? "officeAttendance.unavailable" : `routeFieldAccess.${key}Body`)}</Text>
         {/* "It keeps checking" is a claim; this is the evidence for it. */}
         {offline && lastAttemptAt !== null ? (
           <Text style={styles.attempt}>

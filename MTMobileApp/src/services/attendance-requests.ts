@@ -1,10 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { api } from "./api"
 import { getOfflineScope, offlineScopeKey } from "./offline-scope"
-import { hasRouteFieldAccess } from "./bootstrap"
+import { mayUseOwnAttendanceRequests } from "./attendance-access"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
-import { agentMayAttendanceRequests } from "../lib/agent-permissions"
 import { allOutboxOperations, enqueueOutboxOperation, persistAttendanceDocuments, removeUnqueuedAttendanceDocuments, type OutboxOperation, type OutboxPushResult } from "./outbox"
 import { attendanceUuid, validAttendanceInput, type AttendanceDocument, type AttendanceInput, type AttendanceQuota, type AttendanceRequest } from "./attendance-contract"
 
@@ -43,8 +42,8 @@ export function attendanceScope(): string {
   const agent = useAuthStore.getState().agent
   const bootstrap = useBootstrapStore.getState()
   const scope = getOfflineScope()
-  if (!scope || scope !== offlineScopeKey(agent?.organizationId, agent?.id) || agent?.role !== "AGENT"
-    || !hasRouteFieldAccess(bootstrap.routeFieldAccess) || !agentMayAttendanceRequests(bootstrap.data?.policies)) {
+  if (!scope || scope !== offlineScopeKey(agent?.organizationId, agent?.id)
+    || !mayUseOwnAttendanceRequests(bootstrap.data, agent, bootstrap.routeFieldAccess)) {
     throw Object.assign(new Error("ATTENDANCE_ACCESS_UNAVAILABLE"), { code: "MTM_ATTENDANCE_DISABLED", status: 403 })
   }
   return scope
@@ -243,20 +242,23 @@ async function sendAttendanceOperation(item: OutboxOperation): Promise<OutboxPus
   }
 }
 /** Same durable outbox, feature-specific transport; never exposes attendance to legacy sync. */
-export async function pushAttendanceAndLegacy(operations: OutboxOperation[]) {
+export async function pushAttendanceAndLegacy(operations: OutboxOperation[], guard?: () => void) {
+  guard?.()
   const attendance = operations.filter(item => item.entity === "attendanceRequests")
   const legacy = operations.filter(item => item.entity !== "attendanceRequests")
-  if (attendance.length === 0) return api.syncPush(legacy)
+  if (attendance.length === 0) return guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)
   const scope = getOfflineScope()
   const results: OutboxPushResult[] = []
   if (legacy.length) {
-    try { results.push(...((await api.syncPush(legacy))?.results ?? [])) } catch { /* Keep those operations pending. */ }
+    try { results.push(...((await (guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)))?.results ?? [])); guard?.() } catch { /* Keep those operations pending. */ }
   }
   for (const item of attendance) {
+    guard?.()
     if (scope !== getOfflineScope()) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     // Withdrawing a feature pauses its queue. It never silently destroys evidence.
     try { attendanceGuard(item.scopeKey) } catch { continue }
     results.push(await sendAttendanceOperation(item))
+    guard?.()
   }
   return { results }
 }

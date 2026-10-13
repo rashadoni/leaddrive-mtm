@@ -1,5 +1,7 @@
 import { create } from "zustand"
 import { api } from "../services/api"
+import { getOfflineScope } from "../services/offline-scope"
+let bootstrapGeneration = 0
 import {
   toBootstrap,
   type BootstrapData,
@@ -50,9 +52,12 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
   loading: false,
 
   fetchBootstrap: async () => {
+    const generation = ++bootstrapGeneration, scope = getOfflineScope()
+    const current = () => generation === bootstrapGeneration && scope === getOfflineScope()
     set({ loading: true })
     try {
       const res = await bootstrapWithStoredServer()
+      if (!current()) return "unavailable"
       if (res?.success && res.data) {
         const data = toBootstrap(res.data)
         set({
@@ -72,6 +77,7 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
         return "unavailable"
       }
     } catch (error) {
+      if (!current()) return "unavailable"
       // A request that never got an answer says nothing about entitlement.
       const access = isTransportFailure(error as { status?: number; message?: string }) ? "offline" : "unavailable"
       set({ data: null, capabilities: [], loading: false, routeFieldAccess: access })
@@ -79,5 +85,5 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
     }
   },
 
-  clear: () => set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false }),
+  clear: () => { bootstrapGeneration += 1; set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false }) },
 }))

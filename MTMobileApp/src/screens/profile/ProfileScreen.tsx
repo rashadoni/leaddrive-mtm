@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
+import { guardOfficeAttendance, officeAttendanceScope } from "../../services/attendance-session-guard"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
@@ -57,6 +58,8 @@ export default function ProfileScreen() {
   const { agent, logout, switchServer, serverDomain } = useAuthStore()
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
+  const office = agent?.role !== "AGENT"
+  const loadEpoch = useRef(0)
   const [, setProfile] = useState<any>(null)
   const [alerts, setAlerts] = useState<MtmAlert[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,12 +88,18 @@ export default function ProfileScreen() {
   }, [alerts])
 
   const load = useCallback(async (manual = false) => {
+    const ticket = ++loadEpoch.current
     if (manual) setRefreshing(true)
+    if (office) setAlerts([])
     try {
+      const scope = office ? officeAttendanceScope() : null
+      const guard = scope ? () => guardOfficeAttendance(scope) : undefined
       const [profileResult, alertsResult] = await Promise.all([
-        api.getProfile().catch(() => null),
-        api.getAlerts({ resolved: false }).catch(() => null),
+        (guard ? api.getProfile(guard) : api.getProfile()).catch(() => null),
+        office ? Promise.resolve(null) : api.getAlerts({ resolved: false }).catch(() => null),
       ])
+      if (ticket !== loadEpoch.current) return
+      guard?.()
       const profileLoaded = profileResult?.success === true
       const alertsLoaded = alertsResult?.success === true
       if (profileLoaded) setProfile(profileResult.data)
@@ -103,14 +112,13 @@ export default function ProfileScreen() {
       }
       setLoadError(!profileLoaded && !alertsLoaded)
     } catch (error: any) {
-      if (error?.message !== "SESSION_EXPIRED") setLoadError(true)
+      if (ticket === loadEpoch.current) { setAlerts([]); setProfile(null); if (error?.message !== "SESSION_EXPIRED") setLoadError(true) }
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (ticket === loadEpoch.current) { setLoading(false); setRefreshing(false) }
     }
-  }, [])
+  }, [office, agent?.id, agent?.organizationId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { void load(); return () => { loadEpoch.current += 1 } }, [load])
 
   const onPickLocale = async (locale: SupportedLocale) => {
     await setLocale(locale)
@@ -267,7 +275,7 @@ export default function ProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("profile.back")}
-              onPress={() => navigation.goBack()}
+              onPress={() => office ? navigation.navigate("OwnWorkday" as never) : navigation.goBack()}
               style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
             >
               <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />

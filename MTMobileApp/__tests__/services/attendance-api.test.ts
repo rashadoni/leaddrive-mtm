@@ -58,3 +58,19 @@ it("does not return an old account's response after its scope changes", async ()
   ;(global.fetch as jest.Mock).mockImplementation(async () => { valid = false; return { status: 200, ok: true, json: async () => ({ success: true, data: { private: "old account" } }) } })
   await expect(api.getAttendanceRequests(undefined, () => { if (!valid) throw new Error("scope changed") })).rejects.toThrow("scope changed")
 })
+it("uses only v1 own inbox GET/PATCH and guards the workday sync transport", async () => {
+  const guard = jest.fn()
+  await api.getOwnAttendanceNotifications(guard)
+  await api.markOwnAttendanceNotifications(["own-notice"], guard)
+  await api.syncPush([{ operationId: "owned", entity: "workdays", op: "create", data: { action: "PAUSE" }, clientTimestamp: 1 }], guard)
+  const calls = (global.fetch as jest.Mock).mock.calls
+  expect(calls.map(call => call[0])).toEqual(["https://fictional.invalid/api/v1/mtm/mobile/notifications", "https://fictional.invalid/api/v1/mtm/mobile/notifications", "https://fictional.invalid/api/v1/mtm/mobile/sync/push"])
+  expect(calls[1][1].method).toBe("PATCH"); expect(JSON.parse(calls[1][1].body)).toEqual({ ids: ["own-notice"], isRead: true })
+  expect(guard).toHaveBeenCalled()
+})
+it("does not send a workday after its admission changes during device identity lookup", async () => {
+  let valid = true
+  ;(getFieldDeviceId as jest.Mock).mockImplementation(async () => { valid = false; return "rf-device" })
+  await expect(api.syncPush([], () => { if (!valid) throw new Error("withdrawn") })).rejects.toThrow("withdrawn")
+  expect(global.fetch).not.toHaveBeenCalled()
+})
