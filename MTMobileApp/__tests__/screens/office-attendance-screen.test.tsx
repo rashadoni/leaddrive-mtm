@@ -134,3 +134,13 @@ it.each(['locked','notToday'])('explains office return refusal %s and removes th
   const tree = await render(AttendanceWorkdayScreen); await press(tree,'office-workday-return')
   expect(node(tree,'office-workday-return')).toBeUndefined(); expect(text(tree)).toContain(outcome === 'locked' ? ru.officeAttendance.returnLocked : ru.officeAttendance.returnNotToday)
 })
+
+it.each([
+  ['MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED', 'installationBody'],
+  ['MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED', 'appBody'],
+] as const)('explains installation return refusal %s', async (code, copyKey) => {
+  completedToday(); (returnToClosedWorkday as jest.Mock).mockRejectedValueOnce({code})
+  const tree = await render(AttendanceWorkdayScreen); await press(tree, 'office-workday-return')
+  expect(text(tree)).toContain(ru.attendanceLocation[copyKey])
+  expect(text(tree)).not.toContain(ru.officeAttendance.failed)
+})

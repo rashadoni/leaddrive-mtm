@@ -31,6 +31,7 @@ export default function AttendanceWorkdayScreen() {
   const hydrated = useWorkdayStore(state => state.hydrated)
   const [operations, setOperations] = useState<OutboxOperation[]>([])
   const [busy, setBusy] = useState(false), [refreshing, setRefreshing] = useState(false), [error, setError] = useState(false)
+  const [installationRefusal, setInstallationRefusal] = useState<'installation' | 'app' | null>(null)
   const [returnRefusal, setReturnRefusal] = useState<{ key: string; workdayId: string; reason: 'notToday' | 'locked' } | null>(null)
   const recovery = useAttendanceMarkRecovery()
   const installation = useAttendanceInstallation()
@@ -62,7 +63,7 @@ export default function AttendanceWorkdayScreen() {
   async function change(action: "start" | "end" | "pause" | "resume") {
     if (busyRef.current || !allowed || !hydrated || pending || conflict || completed || recovery.operation || (installation.blocked && (action === 'start' || action === 'end'))) return
     const scope = officeAttendanceScope()
-    busyRef.current = true; setBusy(true); setError(false)
+    busyRef.current = true; setBusy(true); setError(false); setInstallationRefusal(null)
     try {
       if (action === "end") {
         const confirmed = await ask({ title: t("officeAttendance.finishTitle"), message: t("officeAttendance.finishBody"), buttons: [{ text: t("officeAttendance.keepOpen"), value: false, style: "cancel" }, { text: t("officeAttendance.finish"), value: true }], dismissValue: false })
@@ -82,12 +83,16 @@ export default function AttendanceWorkdayScreen() {
     if (busyRef.current || !allowed || !hydrated || !returnable || pending || !bootstrap?.workday?.id) return
     const scope = officeAttendanceScope(), workdayId = bootstrap.workday.id
     const guard = () => { guardOfficeAttendance(scope); if (!mounted.current) throw new Error('ATTENDANCE_SCREEN_CLOSED') }
-    busyRef.current = true; setBusy(true); setError(false)
+    busyRef.current = true; setBusy(true); setError(false); setInstallationRefusal(null)
     try {
       const outcome = await returnToClosedWorkday(scope, workdayId, guard); guard()
       if (outcome === 'notToday' || outcome === 'locked') setReturnRefusal({ key: scope, workdayId, reason: outcome })
       await refreshAttendanceSession(); guard(); await loadQueue()
-    } catch { if (mounted.current) { setError(true); await installation.reload() } }
+    } catch (failure) { if (mounted.current) {
+      const code = (failure as {code?: string})?.code
+      setInstallationRefusal(code === 'MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED' ? 'installation' : code === 'MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED' ? 'app' : null)
+      setError(true); await installation.reload()
+    } }
     finally { busyRef.current = false; if (mounted.current) setBusy(false) }
   }
   function time(value?: string) {
@@ -107,7 +112,7 @@ export default function AttendanceWorkdayScreen() {
           {paused && <Text style={styles.muted}>{t("officeAttendance.pausedAt", { time: time(current?.pausedAt) })}</Text>}
           {pending && <Text testID="office-workday-pending" style={styles.notice}>{t("officeAttendance.pendingHint")}</Text>}
           {conflict && <Text testID="office-workday-conflict" style={styles.error}>{t("officeAttendance.conflict")}</Text>}
-          {error && <Text accessibilityRole="alert" style={styles.error}>{t("officeAttendance.failed")}</Text>}
+          {error && <Text accessibilityRole="alert" style={styles.error}>{t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "officeAttendance.failed")}</Text>}
           {returnable && <Text style={styles.muted}>{t('officeAttendance.returnHint')}</Text>}
           {refused && <Text accessibilityRole="alert" style={styles.error}>{t(refused === 'locked' ? 'officeAttendance.returnLocked' : 'officeAttendance.returnNotToday')}</Text>}
           {busy && <ActivityIndicator color={fieldTheme.color.primary} />}

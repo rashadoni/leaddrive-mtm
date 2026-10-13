@@ -90,6 +90,7 @@ export default function TodayScreen() {
   const [startingRoute, setStartingRoute] = useState(false)
   const [workdayBusy, setWorkdayBusy] = useState(false)
   const [workdayError, setWorkdayError] = useState(false)
+  const [installationRefusal, setInstallationRefusal] = useState<'installation' | 'app' | null>(null)
   const recovery = useAttendanceMarkRecovery()
   const installation = useAttendanceInstallation()
   // The server's "no" about one particular day, kept with that day's id so it
@@ -211,6 +212,7 @@ export default function TodayScreen() {
     if (workdayBusy || !workdayHydrated) return
     setWorkdayBusy(true)
     setWorkdayError(false)
+    setInstallationRefusal(null)
     try {
       if (workdayOpen) {
         await endWorkday(currentWorkdayKey)
@@ -233,6 +235,7 @@ export default function TodayScreen() {
     if (workdayBusy || !workdayHydrated || !workdayOpen) return
     setWorkdayBusy(true)
     setWorkdayError(false)
+    setInstallationRefusal(null)
     try {
       if (workdayPaused) {
         await resumeWorkday(currentWorkdayKey)
@@ -253,13 +256,16 @@ export default function TodayScreen() {
     if (workdayBusy || !workdayHydrated || !workdayReturnable || !workdayId) return
     setWorkdayBusy(true)
     setWorkdayError(false)
+    setInstallationRefusal(null)
     try {
       const outcome = await returnToClosedWorkday(currentWorkdayKey, workdayId)
       if (outcome === "notToday" || outcome === "locked") setReturnRefusal({ workdayId, reason: outcome })
       // "alreadyOpen" needs no words: the refresh below shows the day running.
       await refreshRouteFieldSession()
       await refresh()
-    } catch {
+    } catch (failure) {
+      const code = (failure as {code?: string})?.code
+      setInstallationRefusal(code === 'MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED' ? 'installation' : code === 'MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED' ? 'app' : null)
       setWorkdayError(true)
       await installation.reload()
     } finally {
@@ -560,7 +566,7 @@ export default function TodayScreen() {
                     {t(workdayReturnRefused === "locked" ? "todayV2.returnLocked" : "todayV2.returnNotToday")}
                   </Text>
                 ) : null}
-                {workdayError ? <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text> : null}
+                {workdayError ? <Text style={styles.inlineError}>{t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError")}</Text> : null}
               </View>
               {/*
                 One row on a phone. Stacked, the two buttons took 48 dp each plus

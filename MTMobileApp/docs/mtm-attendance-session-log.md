@@ -185,3 +185,8 @@
 
 - Normal merge includes parent PR1211fd1eb2 background route fix, preserving both service tests and journal additions. New installation GET/POST also corrected to API v1; existing new regression asserts both exact v1 URLs. Parameter four is apiVersion, not a retry count. No product data/request sent.
 - First4.5 CI still pending at this correction. New exact head must pass required Jest/tsc/APK before merge; prior source-only checks are not runtime verification. Next: CI failure review and fictional component evidence capture, then coordinator review.
+
+### 2026-10-13 — installation refusal while returning to work
+
+- Office and Today now explain the two installation refusals from workday return using the existing localized approval/app guidance; refresh still re-reads the latest own installation status. No automatic new return or replacement of an unknown workday event. Added both office return error regressions; CI remains the runtime/type/native gate.
+- Independent server4.5 read-only review found no blocking RLS/scope/locking/idempotency issue; UUID API/DB version mismatch reported and coordinator corrected it. QR4.7 research sent to coordinator, no4.7 product code started. Its public rotating code must support multiple employees; the retired Workforce globally single-use nonce ledger cannot be reused directly. Current1211fd1eb2/1228d73c40 jobs queued; obsolete122 APK canceled. Next: current CI findings and actual4.5 component evidence.
