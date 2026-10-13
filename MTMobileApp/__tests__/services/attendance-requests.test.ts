@@ -9,7 +9,7 @@ import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
 import { setOfflineScope } from "../../src/services/offline-scope"
 import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, retryOutboxConflict } from "../../src/services/outbox"
-import { cachedAttendanceRequests, keepAttendanceDocument, loadAttendanceRequests, pushAttendanceAndLegacy, queueAttendanceCancellation, queueAttendanceRequest } from "../../src/services/attendance-requests"
+import { cachedAttendanceRequests, discardAttendanceDraftDocuments, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, pushAttendanceAndLegacy, queueAttendanceCancellation, queueAttendanceRequest } from "../../src/services/attendance-requests"
 import { attendanceUuid, validAttendanceInput, type AttendanceInput, type AttendanceRequest } from "../../src/services/attendance-contract"
 import { agentMayAttendanceRequests } from "../../src/lib/agent-permissions"
 
@@ -147,4 +147,106 @@ it.each([401, 403, 404])("clears private read cache after an authoritative %s", 
   expect(JSON.stringify(await cachedAttendanceRequests(scope))).not.toContain("extra")
   await expect(loadAttendanceRequests(scope)).rejects.toEqual({ status })
   expect((await cachedAttendanceRequests(scope)).items).toEqual([])
+})
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
+it("a late older read cannot overwrite the newer decision in persistent cache", async () => {
+  const row = record(input()), older = deferred<unknown>()
+  ;(api.getAttendanceRequests as jest.Mock).mockReturnValueOnce(older.promise).mockResolvedValueOnce({ success: true, data: { items: [{ ...row, status: "APPROVED", version: "2026-10-13T09:00:00Z" }], nextCursor: null } })
+  const oldRead = loadAttendanceRequests(scope)
+  const rejectedOld = expect(oldRead).rejects.toThrow("ATTENDANCE_READ_SUPERSEDED")
+  await loadAttendanceRequests(scope)
+  older.resolve({ success: true, data: { items: [row], nextCursor: null } })
+  await rejectedOld
+  expect((await cachedAttendanceRequests(scope)).items[0].status).toBe("APPROVED")
+})
+it("a quota refusal clears private cache and fences a list already in flight", async () => {
+  const older = deferred<unknown>()
+  ;(api.getAttendanceRequests as jest.Mock).mockReturnValueOnce(older.promise)
+  const oldRead = loadAttendanceRequests(scope)
+  const rejectedOld = expect(oldRead).rejects.toThrow("ATTENDANCE_READ_SUPERSEDED")
+  ;(api.getAttendanceQuota as jest.Mock).mockRejectedValueOnce({ status: 403 })
+  await expect(loadAttendanceQuota(scope, "2026-10")).rejects.toEqual({ status: 403 })
+  older.resolve({ success: true, data: { items: [record(input())], nextCursor: null } })
+  await rejectedOld
+  expect((await cachedAttendanceRequests(scope)).items).toEqual([])
+  expect(await AsyncStorage.getItem(`@mtm_attendance_requests_v1:${scope}`)).toBeNull()
+})
+it("a list that started before acceptance cannot erase the accepted request", async () => {
+  const older = deferred<unknown>(), value = input()
+  ;(api.getAttendanceRequests as jest.Mock).mockReturnValueOnce(older.promise)
+  const oldRead = loadAttendanceRequests(scope)
+  const rejectedOld = expect(oldRead).rejects.toThrow("ATTENDANCE_READ_SUPERSEDED")
+  await queueAttendanceRequest(scope, value, [])
+  await flushOutbox(pushAttendanceAndLegacy)
+  older.resolve({ success: true, data: { items: [], nextCursor: null } })
+  await rejectedOld
+  expect((await cachedAttendanceRequests(scope)).items[0].clientRequestId).toBe(value.clientRequestId)
+})
+it("deletes abandoned private drafts but retains another account's queued evidence", async () => {
+  const fs = require("react-native-fs").default
+  const queued = await keepAttendanceDocument(scope, "/camera/queued.jpg")
+  const abandoned = await keepAttendanceDocument(scope, "/camera/abandoned.jpg")
+  await queueAttendanceRequest(scope, input(), [queued])
+  setOfflineScope("other-org", "other-agent")
+  await discardAttendanceDraftDocuments([queued, abandoned])
+  expect(fs.unlink).toHaveBeenCalledTimes(1)
+  expect(fs.unlink).toHaveBeenCalledWith(abandoned.path)
+})
+it.each(["{broken", "{}", "[null]"])("does not infer that private evidence is disposable from unreadable outbox %s", async raw => {
+  const fs = require("react-native-fs").default
+  const document = await keepAttendanceDocument(scope, "/camera/photo.jpg")
+  await AsyncStorage.setItem("@mtm_sync_outbox_v1", raw)
+  await expect(discardAttendanceDraftDocuments([document])).rejects.toThrow()
+  expect(fs.unlink).not.toHaveBeenCalled()
+})
+it("cannot replace a previously queued document under the same request UUID", async () => {
+  const value = input()
+  const first = await keepAttendanceDocument(scope, "/camera/first.jpg")
+  const replacement = await keepAttendanceDocument(scope, "/camera/replacement.jpg")
+  await queueAttendanceRequest(scope, value, [first])
+  await expect(queueAttendanceRequest(scope, value, [replacement])).rejects.toThrow("ATTENDANCE_ALREADY_QUEUED")
+  expect((await allOutboxOperations())[0].attendanceDocuments).toEqual([first])
+})
+it("reads an HR record snapshot without retaining recording identities or opening a ninth submission kind", async () => {
+  const row = record(input(), "APPROVED")
+  const dayKind = { code: "X1", names: { az: "Xüsusi gün", ru: "Особый день", en: "Special day" } }
+  ;(api.getAttendanceRequests as jest.Mock).mockResolvedValueOnce({ success: true, data: { items: [{ ...row, details: { ...row.details, kind: "HR_RECORD", dayKind: { ...dayKind, serverOnly: "private catalogue metadata" }, recording: { userId: "private-reviewer", operationId: "private-operation" } } }], nextCursor: null } })
+  const result = await loadAttendanceRequests(scope)
+  expect(result.items[0].details).toMatchObject({ kind: "HR_RECORD", dayKind })
+  const cache = await cachedAttendanceRequests(scope)
+  expect(cache.items[0].details.dayKind).toEqual(dayKind)
+  expect(JSON.stringify(cache)).not.toMatch(/private-|recording|serverOnly|catalogue metadata/)
+  expect(validAttendanceInput({ ...input(), kind: "HR_RECORD" } as unknown as AttendanceInput)).toBe(false)
+  await expect(queueAttendanceCancellation(scope, { ...cache.items[0], status: "PENDING" })).rejects.toThrow("ATTENDANCE_ALREADY_DECIDED")
+})
+it("does not repopulate revoked private cache with an already-in-flight create response", async () => {
+  const value = input(), response = deferred<unknown>(), started = deferred<void>()
+  ;(api.submitAttendanceRequest as jest.Mock).mockImplementationOnce(() => { started.resolve(); return response.promise })
+  await queueAttendanceRequest(scope, value, [])
+  const sending = pushAttendanceAndLegacy(await allOutboxOperations())
+  await started.promise
+  ;(api.getAttendanceQuota as jest.Mock).mockRejectedValueOnce({ status: 403 })
+  await expect(loadAttendanceQuota(scope, "2026-10")).rejects.toEqual({ status: 403 })
+  response.resolve({ success: true, data: { request: record(value) } })
+  expect((await sending).results[0].status).toBe("deferred")
+  expect((await cachedAttendanceRequests(scope)).items).toEqual([])
+  expect(await allOutboxOperations()).toHaveLength(1)
+})
+it("retains private evidence when storage persisted the queue but lost its acknowledgement", async () => {
+  const fs = require("react-native-fs").default
+  const document = await keepAttendanceDocument(scope, "/camera/photo.jpg")
+  const persist = (AsyncStorage.setItem as jest.Mock).getMockImplementation()!
+  ;(AsyncStorage.setItem as jest.Mock).mockImplementationOnce(async (...args: unknown[]) => {
+    await persist(...args)
+    throw new Error("lost storage acknowledgement")
+  })
+  await expect(queueAttendanceRequest(scope, input(), [document])).rejects.toThrow("lost storage acknowledgement")
+  await discardAttendanceDraftDocuments([document])
+  expect(fs.unlink).not.toHaveBeenCalled()
+  expect((await allOutboxOperations())[0].attendanceDocuments).toEqual([document])
 })

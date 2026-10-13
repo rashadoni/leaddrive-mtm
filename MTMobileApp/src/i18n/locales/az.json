@@ -1018,6 +1018,7 @@
     "dismissNotice": "Bağlamaq üçün toxunun"
   },
   "attendanceRequests": {
+    "hrRecord": "HR qeydi",
     "title": "Müraciətlərim",
     "menuBody": "Məzuniyyət, işdə olmama, vaxt düzəlişi və rəhbərin qərarları",
     "intro": "Müraciət göndərin və rəhbərin cavabını izləyin.",

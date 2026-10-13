@@ -10,7 +10,7 @@ import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
 import { hasRouteFieldAccess } from "../../services/bootstrap"
 import { getOfflineScope } from "../../services/offline-scope"
 import { ATTENDANCE_KINDS, attendanceDate, attendanceErrorKey, attendanceNeedsHours, attendanceUuid, validAttendanceInput, type AttendanceDocument, type AttendanceInput, type AttendanceKind, type AttendanceQuota, type AttendanceRequest } from "../../services/attendance-contract"
-import { attendanceAccessDenied, attendanceGuard, attendanceQueued, attendanceScope, cachedAttendanceRequests, clearAttendanceCache, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest, removeAttendanceDocument } from "../../services/attendance-requests"
+import { attendanceAccessDenied, attendanceGuard, attendanceQueued, attendanceScope, cachedAttendanceRequests, clearAttendanceCache, discardAttendanceDraftDocuments, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from "../../services/attendance-requests"
 import { retryOutboxConflict, type OutboxOperation } from "../../services/outbox"
 import { runMobileSync } from "../../services/sync-engine"
 import { ask } from "../../services/app-feedback"
@@ -55,8 +55,23 @@ export default function AttendanceRequestsScreen() {
   const epoch = useRef(0)
   const busyRef = useRef(false)
   const draftScope = useRef<string | null>(null)
+  const draftDocuments = useRef<AttendanceDocument[]>([])
+  const pendingDraftWrite = useRef<Promise<unknown> | null>(null)
+  const lifecycle = useRef(0)
+  const mounted = useRef(true)
+  const releaseDraft = useCallback(() => {
+    const abandoned = draftDocuments.current
+    draftDocuments.current = []
+    if (!abandoned.length) return
+    // A pending/ambiguous durable write may already own the files. Wait for it,
+    // then inspect all account queues under their storage lock before deleting.
+    void Promise.resolve(pendingDraftWrite.current).catch(() => {}).then(() => discardAttendanceDraftDocuments(abandoned)).catch(() => {})
+  }, [])
   const month = attendanceDate(draft.startDate) ? draft.startDate.slice(0, 7) : today(bootstrap?.timezone ?? null).slice(0, 7)
-  const clear = useCallback(() => { setItems([]); setQueued([]); setQuota(null); setNextCursor(null); setUpdatedAt(null); setDocuments([]); setEditing(false); setCamera(false) }, [])
+  const clear = useCallback(() => {
+    lifecycle.current += 1; releaseDraft(); busyRef.current = false
+    setBusy(false); setLoading(false); setItems([]); setQueued([]); setQuota(null); setNextCursor(null); setUpdatedAt(null); setDocuments([]); setEditing(false); setCamera(false)
+  }, [releaseDraft])
   const load = useCallback(async (more = false) => {
     if (!allowed || denied) return
     let scope: string
@@ -68,7 +83,9 @@ export default function AttendanceRequestsScreen() {
       const cache = await cachedAttendanceRequests(scope)
       if (!current()) return
       if (!more) { setItems(cache.items); setUpdatedAt(cache.updatedAt); setNextCursor(cache.nextCursor) }
-      setQueued(await attendanceQueued(scope))
+      const pending = await attendanceQueued(scope)
+      if (!current()) return
+      setQueued(pending)
       const [list, limits] = await Promise.allSettled([
         loadAttendanceRequests(scope, more ? nextCursor ?? undefined : undefined), loadAttendanceQuota(scope, month),
       ])
@@ -79,7 +96,8 @@ export default function AttendanceRequestsScreen() {
         setItems(list.value.items); setNextCursor(list.value.nextCursor); setUpdatedAt(list.value.updatedAt); setOffline(false)
       } else setOffline(true)
       setQuota(limits.status === "fulfilled" ? limits.value : null)
-      setQueued(await attendanceQueued(scope))
+      const refreshedQueue = await attendanceQueued(scope)
+      if (current()) setQueued(refreshedQueue)
     } catch (error) {
       if (!current()) return
       if (attendanceAccessDenied(error)) { clear(); setDenied(true) } else setOffline(true)
@@ -88,43 +106,49 @@ export default function AttendanceRequestsScreen() {
   const loadRef = useRef(load); loadRef.current = load
   useAutoRefresh(() => { void loadRef.current() })
   useEffect(() => {
-    epoch.current += 1
+    mounted.current = true; epoch.current += 1
     clear(); setDenied(false); setErrorKey(null); setNoticeKey(null); setLoading(false)
     if (!allowed) {
       const scope = getOfflineScope()
       if (scope) void clearAttendanceCache(scope).catch(() => {})
     } else { draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); void loadRef.current() }
-    return () => { epoch.current += 1 }
-  }, [agent?.id, agent?.organizationId, allowed, clear, bootstrap?.timezone])
+    return () => { mounted.current = false; lifecycle.current += 1; epoch.current += 1; releaseDraft() }
+  }, [agent?.id, agent?.organizationId, allowed, clear, releaseDraft, bootstrap?.timezone])
   useEffect(() => { setQuota(null); void loadRef.current() }, [month])
   const change = (patch: Partial<AttendanceInput>) => { setDraft(value => ({ ...value, ...patch })); setErrorKey(null) }
   const changeKind = (kind: AttendanceKind) => change({ kind, ...(attendanceNeedsHours(kind) ? { unit: "HOURS", endDate: draft.startDate, startTime: draft.startTime ?? "09:00", endTime: draft.endTime ?? "18:00" } : {}) })
-  const enter = () => { draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); setDocuments([]); setEditing(true); setErrorKey(null); setNoticeKey(null) }
+  const enter = () => { lifecycle.current += 1; releaseDraft(); draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); setDocuments([]); setEditing(true); setErrorKey(null); setNoticeKey(null) }
   const closeDraft = async () => {
     if (busyRef.current) return
-    for (const document of documents) await removeAttendanceDocument(document)
-    setDocuments([]); setEditing(false); setErrorKey(null)
+    lifecycle.current += 1; releaseDraft()
+    setDocuments([]); setEditing(false); setCamera(false); setErrorKey(null)
   }
   const act = async (operation: (scope: string) => Promise<unknown>, submitted = false) => {
-    if (busyRef.current) return
+    if (!mounted.current || busyRef.current) return
     let scope: string
     try { scope = attendanceScope() } catch { setDenied(true); clear(); return }
+    const ticket = lifecycle.current
+    const current = () => mounted.current && lifecycle.current === ticket && getOfflineScope() === scope
     busyRef.current = true; setBusy(true); setErrorKey(null); setNoticeKey(null)
     try {
       await operation(scope)
+      if (!current()) return
       attendanceGuard(scope)
-      if (submitted) { setDocuments([]); setEditing(false) }
+      if (submitted) { draftDocuments.current = []; setDocuments([]); setEditing(false) }
       if (submitted) setNoticeKey("attendanceRequests.queuedNotice")
-      setQueued(await attendanceQueued(scope))
+      const pending = await attendanceQueued(scope)
+      if (!current()) return
+      setQueued(pending)
       // The durable write is complete. A missing answer here cannot lose it.
       await runMobileSync()
+      if (!current()) return
       attendanceGuard(scope)
       await loadRef.current()
     } catch (error) {
-      if (getOfflineScope() !== scope) return
+      if (!current()) return
       if (attendanceAccessDenied(error)) { clear(); setDenied(true) }
       else setErrorKey(attendanceErrorKey(error))
-    } finally { busyRef.current = false; setBusy(false) }
+    } finally { if (current()) { busyRef.current = false; setBusy(false) } }
   }
   const submit = () => {
     const input = { ...draft, reason: draft.reason.trim(), attachmentIds: [] }
@@ -132,25 +156,41 @@ export default function AttendanceRequestsScreen() {
     const owner = draftScope.current
     void act(scope => {
       if (owner !== scope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
-      return queueAttendanceRequest(scope, input, documents)
+      const writing = queueAttendanceRequest(scope, input, documents)
+      pendingDraftWrite.current = writing
+      return writing.finally(() => { if (pendingDraftWrite.current === writing) pendingDraftWrite.current = null })
     }, true)
   }
   const cancel = async (request: AttendanceRequest) => {
-    const owner = getOfflineScope()
+    const owner = getOfflineScope(), ticket = lifecycle.current
     const confirmed = await ask({ title: t("attendanceRequests.cancelTitle"), message: t("attendanceRequests.cancelBody"), tone: "warning", dismissValue: false,
       buttons: [{ text: t("attendanceRequests.keep"), value: false, style: "cancel" }, { text: t("attendanceRequests.cancel"), value: true, style: "destructive" }] })
-    if (confirmed && getOfflineScope() === owner) await act(scope => queueAttendanceCancellation(scope, request))
+    if (confirmed && mounted.current && lifecycle.current === ticket && getOfflineScope() === owner) await act(scope => queueAttendanceCancellation(scope, request))
   }
   const capture = async (path: string) => {
     if (busyRef.current || documents.length >= 3) return
     let scope: string
     try { scope = attendanceScope(); if (scope !== draftScope.current) return } catch { return }
+    const ticket = lifecycle.current
+    const current = () => mounted.current && lifecycle.current === ticket && getOfflineScope() === scope
+    let captured: AttendanceDocument | undefined
     busyRef.current = true; setBusy(true)
     try {
-      const document = await keepAttendanceDocument(scope, path)
-      attendanceGuard(scope); setDocuments(value => [...value, document])
-    } catch { if (getOfflineScope() === scope) setErrorKey("attendanceRequests.documentFailed") }
-    finally { busyRef.current = false; setBusy(false) }
+      captured = await keepAttendanceDocument(scope, path)
+      if (!current()) { await discardAttendanceDraftDocuments([captured]); return }
+      attendanceGuard(scope)
+      draftDocuments.current = [...draftDocuments.current, captured]
+      setDocuments(draftDocuments.current)
+    } catch {
+      if (captured) await discardAttendanceDraftDocuments([captured]).catch(() => {})
+      if (current()) setErrorKey("attendanceRequests.documentFailed")
+    } finally { if (current()) { busyRef.current = false; setBusy(false) } }
+  }
+  const removePhoto = (document: AttendanceDocument) => {
+    if (busyRef.current) return
+    draftDocuments.current = draftDocuments.current.filter(row => row.clientAttachmentId !== document.clientAttachmentId)
+    setDocuments(draftDocuments.current)
+    void discardAttendanceDraftDocuments([document]).catch(() => {})
   }
   const button = (label: string, onPress: () => void, testID: string, primary = false, disabled = false) => (
     <Pressable key={testID} testID={testID} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled}
@@ -168,6 +208,13 @@ export default function AttendanceRequestsScreen() {
     </View>
   )
   const clock = (date: string) => new Date(date).toLocaleString(i18n.language)
+  const requestName = (request: AttendanceRequest) => {
+    if (request.details.kind !== "HR_RECORD") return t(`attendanceRequests.kinds.${request.details.kind}`)
+    const language = i18n.language.split(/[-_]/)[0]
+    const locale = language === "az" || language === "en" ? language : "ru"
+    const snapshot = request.details.dayKind
+    return snapshot ? `${snapshot.code} · ${snapshot.names[locale]}` : t("attendanceRequests.hrRecord")
+  }
   const pendingCreates = queued.filter(operation => operation.op === "create" && !items.some(item => item.clientRequestId === operation.data.clientRequestId))
   return (
     <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.scroll, { paddingTop: headerTop, paddingBottom: bottom }]}>
@@ -208,7 +255,7 @@ export default function AttendanceRequestsScreen() {
             <Text style={styles.caption}>{t("attendanceRequests.documentsHint")}</Text>
             {documents.map((document, index) => <View key={document.clientAttachmentId} style={styles.document}>
               <Image source={{ uri: `file://${document.path}` }} style={styles.thumbnail} accessibilityLabel={t("attendanceRequests.document", { count: index + 1 })} />
-              {button(t("attendanceRequests.removeDocument", { count: index + 1 }), () => { void removeAttendanceDocument(document); setDocuments(value => value.filter(row => row.clientAttachmentId !== document.clientAttachmentId)) }, `attendance-remove-${index}`, false, busy)}
+              {button(t("attendanceRequests.removeDocument", { count: index + 1 }), () => removePhoto(document), `attendance-remove-${index}`, false, busy)}
             </View>)}
             <View style={styles.actions}>
               {button(t("attendanceRequests.photo"), () => setCamera(true), "attendance-photo", false, busy || documents.length >= 3)}
@@ -228,7 +275,8 @@ export default function AttendanceRequestsScreen() {
             {items.map(request => {
               const cancellation = queued.find(operation => operation.op === "update" && operation.data.id === request.id)
               return <View key={request.id} style={styles.item} testID={`attendance-request-${request.id}`}>
-                <View style={styles.itemHeading}><Text style={styles.subtitle}>{t(`attendanceRequests.kinds.${request.details.kind}`)}</Text><Text style={styles.status}>{t(`attendanceRequests.statuses.${request.status}`)}</Text></View>
+                <View style={styles.itemHeading}><Text style={styles.subtitle}>{requestName(request)}</Text><Text style={styles.status}>{t(`attendanceRequests.statuses.${request.status}`)}</Text></View>
+                {request.details.kind === "HR_RECORD" && <Text style={styles.caption}>{t("attendanceRequests.hrRecord")}</Text>}
                 <Text style={styles.body}>{request.startDate} — {request.endDate}{request.details.unit === "HOURS" ? ` · ${request.details.startTime}–${request.details.endTime}` : ""}</Text>
                 <Text style={styles.body}>{request.reason}</Text>
                 <Text style={styles.caption}>{t("attendanceRequests.submitted", { date: clock(request.submittedAt) })}</Text>
@@ -237,7 +285,7 @@ export default function AttendanceRequestsScreen() {
                 {request.decidedAt && <Text style={styles.caption}>{t("attendanceRequests.decided", { date: clock(request.decidedAt) })}</Text>}
                 {request.cancelledAt && <Text style={styles.caption}>{t("attendanceRequests.cancelled", { date: clock(request.cancelledAt) })}</Text>}
                 {cancellation && <Text style={cancellation.status === "conflict" ? styles.error : styles.notice}>{t(cancellation.status === "conflict" ? attendanceErrorKey(cancellation.conflict?.error) : "attendanceRequests.cancelQueued")}</Text>}
-                {request.status === "PENDING" && !cancellation && button(t("attendanceRequests.cancel"), () => { void cancel(request) }, `attendance-cancel-${request.id}`, false, busy)}
+                {request.details.kind !== "HR_RECORD" && request.status === "PENDING" && !cancellation && button(t("attendanceRequests.cancel"), () => { void cancel(request) }, `attendance-cancel-${request.id}`, false, busy)}
                 {cancellation?.status === "conflict" && button(t("attendanceRequests.retry"), () => { void act(async scope => { attendanceGuard(scope); await retryOutboxConflict(cancellation.operationId) }) }, `attendance-retry-${cancellation.operationId}`, false, busy)}
               </View>
             })}

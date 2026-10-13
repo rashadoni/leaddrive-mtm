@@ -5,13 +5,39 @@ import { hasRouteFieldAccess } from "./bootstrap"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { agentMayAttendanceRequests } from "../lib/agent-permissions"
-import { allOutboxOperations, enqueueOutboxOperation, persistAttendanceDocuments, type OutboxOperation, type OutboxPushResult } from "./outbox"
+import { allOutboxOperations, enqueueOutboxOperation, persistAttendanceDocuments, removeUnqueuedAttendanceDocuments, type OutboxOperation, type OutboxPushResult } from "./outbox"
 import { attendanceUuid, validAttendanceInput, type AttendanceDocument, type AttendanceInput, type AttendanceQuota, type AttendanceRequest } from "./attendance-contract"
 
 const cacheKey = (scope: string) => `@mtm_attendance_requests_v1:${scope}`
 type Cached = { items: AttendanceRequest[]; nextCursor: string | null; updatedAt: string | null }
 const emptyCache = (): Cached => ({ items: [], nextCursor: null, updatedAt: null })
-const filesystem = async () => (await import("react-native-fs")).default
+// Load native FS only when needed, using Metro/Jest's shared CommonJS loader.
+const filesystem = async (): Promise<typeof import("react-native-fs")> => {
+  const loaded = require("react-native-fs")
+  return loaded.default ?? loaded
+}
+
+// Screen epochs protect React state; these fences also protect persisted data.
+// Clearing on a refusal must win over every read already in flight.
+const readGeneration = new Map<string, number>()
+const clearGeneration = new Map<string, number>()
+let cacheQueue: Promise<void> = Promise.resolve()
+function nextRead(scope: string) {
+  const next = (readGeneration.get(scope) ?? 0) + 1
+  readGeneration.set(scope, next)
+  return next
+}
+function cacheMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = cacheQueue.then(operation)
+  cacheQueue = result.then(() => undefined, () => undefined)
+  return result
+}
+function cacheGuard(scope: string, clearedAt: number, read?: number) {
+  attendanceGuard(scope)
+  if ((clearGeneration.get(scope) ?? 0) !== clearedAt || (read !== undefined && readGeneration.get(scope) !== read)) {
+    throw new Error("ATTENDANCE_READ_SUPERSEDED")
+  }
+}
 
 export function attendanceScope(): string {
   const agent = useAuthStore.getState().agent
@@ -30,7 +56,11 @@ export function attendanceAccessDenied(error: unknown): boolean {
   return [401, 403, 404].includes((error as { status?: number })?.status ?? 0)
     || (error as Error)?.message === "SESSION_EXPIRED"
 }
-export async function clearAttendanceCache(scope: string) { await AsyncStorage.removeItem(cacheKey(scope)) }
+export async function clearAttendanceCache(scope: string) {
+  clearGeneration.set(scope, (clearGeneration.get(scope) ?? 0) + 1)
+  nextRead(scope)
+  await cacheMutation(() => AsyncStorage.removeItem(cacheKey(scope)))
+}
 async function handleFailure(scope: string, error: unknown) {
   if (attendanceAccessDenied(error)) await clearAttendanceCache(scope)
   throw error
@@ -42,13 +72,18 @@ function requestDto(value: AttendanceRequest): AttendanceRequest {
   // ledger snapshots, employee directory, GPS or any extra future server fields.
   const { id, clientRequestId, status, startDate, endDate, reason, submittedAt, decisionNote, decidedAt, cancelledAt, version } = value
   const { kind, unit, startTime, endTime, timezone, attachmentIds } = value.details
+  const snapshot = value.details.dayKind
+  const dayKind = snapshot && typeof snapshot.code === "string" && snapshot.names
+    && typeof snapshot.names.az === "string" && typeof snapshot.names.ru === "string" && typeof snapshot.names.en === "string"
+    ? { code: snapshot.code, names: { az: snapshot.names.az, ru: snapshot.names.ru, en: snapshot.names.en } } : undefined
   return { id, clientRequestId, status, startDate, endDate, reason, submittedAt, decisionNote, decidedAt, cancelledAt, version,
-    details: { kind, unit, startTime, endTime, timezone, attachmentIds } }
+    details: { kind, unit, startTime, endTime, timezone, attachmentIds, ...(dayKind ? { dayKind } : {}) } }
 }
 export async function cachedAttendanceRequests(scope: string): Promise<Cached> {
   attendanceGuard(scope)
+  const clearedAt = clearGeneration.get(scope) ?? 0
   const raw = await AsyncStorage.getItem(cacheKey(scope))
-  attendanceGuard(scope)
+  cacheGuard(scope, clearedAt)
   if (!raw) return emptyCache()
   try {
     const parsed = JSON.parse(raw)
@@ -56,19 +91,24 @@ export async function cachedAttendanceRequests(scope: string): Promise<Cached> {
   } catch { return emptyCache() }
 }
 export async function loadAttendanceRequests(scope: string, cursor?: string): Promise<Cached> {
+  const read = nextRead(scope), clearedAt = clearGeneration.get(scope) ?? 0
+  const guard = () => cacheGuard(scope, clearedAt, read)
   try {
-    attendanceGuard(scope)
-    const response = await api.getAttendanceRequests(cursor, () => attendanceGuard(scope))
-    attendanceGuard(scope)
+    guard()
+    const response = await api.getAttendanceRequests(cursor, guard)
+    guard()
     if (response?.success !== true || !Array.isArray(response.data?.items)) throw new Error("ATTENDANCE_RESPONSE_INVALID")
-    const old = cursor ? await cachedAttendanceRequests(scope) : emptyCache()
     const loaded: AttendanceRequest[] = response.data.items.map(requestDto)
-    const items = [...new Map<string, AttendanceRequest>([...old.items, ...loaded].map(row => [row.id, row])).values()]
-    const next = { items, nextCursor: response.data.nextCursor ?? null, updatedAt: new Date().toISOString() }
-    attendanceGuard(scope)
-    await AsyncStorage.setItem(cacheKey(scope), JSON.stringify(next))
-    attendanceGuard(scope)
-    return next
+    return await cacheMutation(async () => {
+      guard()
+      const old = cursor ? await cachedAttendanceRequests(scope) : emptyCache()
+      guard()
+      const items = [...new Map<string, AttendanceRequest>([...old.items, ...loaded].map(row => [row.id, row])).values()]
+      const next = { items, nextCursor: response.data.nextCursor ?? null, updatedAt: new Date().toISOString() }
+      await AsyncStorage.setItem(cacheKey(scope), JSON.stringify(next))
+      guard()
+      return next
+    })
   } catch (error) { return handleFailure(scope, error) }
 }
 export async function loadAttendanceQuota(scope: string, month: string): Promise<AttendanceQuota> {
@@ -102,6 +142,10 @@ export async function removeAttendanceDocument(document: AttendanceDocument) {
     await fs.unlink(document.path).catch(() => {})
   }
 }
+/** Draft cleanup preserves files already handed to any account's durable queue. */
+export async function discardAttendanceDraftDocuments(documents: AttendanceDocument[]) {
+  await removeUnqueuedAttendanceDocuments(documents, removeAttendanceDocument)
+}
 export async function queueAttendanceRequest(scope: string, input: AttendanceInput, documents: AttendanceDocument[]) {
   attendanceGuard(scope)
   if (!validAttendanceInput(input) || documents.length > 3 || documents.some(document => document.scopeKey !== scope) || input.attachmentIds.length !== 0) throw new Error("ATTENDANCE_INPUT_INVALID")
@@ -110,13 +154,14 @@ export async function queueAttendanceRequest(scope: string, input: AttendanceInp
   if (existing) {
     const original = { ...existing.data, attachmentIds: [] }
     if (JSON.stringify(original) !== JSON.stringify({ ...input, reason: input.reason.trim() })) throw new Error("ATTENDANCE_ALREADY_QUEUED")
+    if (JSON.stringify((existing.attendanceDocuments ?? []).map(document => document.clientAttachmentId)) !== JSON.stringify(documents.map(document => document.clientAttachmentId))) throw new Error("ATTENDANCE_ALREADY_QUEUED")
     return existing
   }
   return enqueueOutboxOperation({ entity: "attendanceRequests", op: "create", data: { ...input, reason: input.reason.trim() }, attendanceDocuments: documents }, scope)
 }
 export async function queueAttendanceCancellation(scope: string, request: AttendanceRequest) {
   attendanceGuard(scope)
-  if (request.status !== "PENDING") throw new Error("ATTENDANCE_ALREADY_DECIDED")
+  if (request.status !== "PENDING" || request.details.kind === "HR_RECORD") throw new Error("ATTENDANCE_ALREADY_DECIDED")
   const ownerCache = await cachedAttendanceRequests(scope)
   attendanceGuard(scope)
   if (!ownerCache.items.some(item => item.id === request.id && item.clientRequestId === request.clientRequestId)) throw new Error("ATTENDANCE_SCOPE_CHANGED")
@@ -133,7 +178,8 @@ export async function attendanceQueued(scope: string) {
 }
 async function sendAttendanceOperation(item: OutboxOperation): Promise<OutboxPushResult> {
   const scope = item.scopeKey
-  const guard = () => attendanceGuard(scope)
+  const clearedAt = clearGeneration.get(scope) ?? 0
+  const guard = () => cacheGuard(scope, clearedAt)
   try {
     guard()
     let response
@@ -166,9 +212,18 @@ async function sendAttendanceOperation(item: OutboxOperation): Promise<OutboxPus
     }
     if (response?.success !== true) throw new Error("ATTENDANCE_RESPONSE_INVALID")
     const row = requestDto(response.data.request)
-    const old = await cachedAttendanceRequests(scope)
-    guard()
-    await AsyncStorage.setItem(cacheKey(scope), JSON.stringify({ ...old, items: [row, ...old.items.filter(value => value.id !== row.id)], updatedAt: new Date().toISOString() }))
+    // A request completed after older list reads began. Those responses can
+    // no longer erase this accepted row or roll a decision back to PENDING.
+    nextRead(scope)
+    await cacheMutation(async () => {
+      cacheGuard(scope, clearedAt)
+      const old = await cachedAttendanceRequests(scope)
+      cacheGuard(scope, clearedAt)
+      const previous = old.items.find(value => value.id === row.id)
+      const latest = previous && previous.version > row.version ? previous : row
+      await AsyncStorage.setItem(cacheKey(scope), JSON.stringify({ ...old, items: [latest, ...old.items.filter(value => value.id !== row.id)], updatedAt: new Date().toISOString() }))
+      cacheGuard(scope, clearedAt)
+    })
     guard()
     // Every id was persisted before POST. Losing the final acknowledgement
     // still retries exactly that input, even after these local copies go away.

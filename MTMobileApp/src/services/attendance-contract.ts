@@ -6,11 +6,12 @@ export type AttendanceInput = {
   startDate: string; endDate: string; startTime?: string; endTime?: string
   reason: string; attachmentIds: string[]
 }
+export type AttendanceDayKindSnapshot = { code: string; names: Record<"az" | "ru" | "en", string> }
 export type AttendanceRequest = {
   id: string; clientRequestId: string; status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
   startDate: string; endDate: string; reason: string; submittedAt: string
   decisionNote: string | null; decidedAt: string | null; cancelledAt: string | null; version: string
-  details: { kind: AttendanceKind; unit: "DAYS" | "HOURS"; startTime: string | null; endTime: string | null; timezone: string; attachmentIds: string[] }
+  details: { kind: AttendanceKind | "HR_RECORD"; dayKind?: AttendanceDayKindSnapshot; unit: "DAYS" | "HOURS"; startTime: string | null; endTime: string | null; timezone: string; attachmentIds: string[] }
 }
 export type AttendanceQuota = {
   month: string; limits: { version: string | null; monthlyMinutes: number; monthlyRequests: number }

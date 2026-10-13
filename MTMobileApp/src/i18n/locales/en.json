@@ -1018,6 +1018,7 @@
     "dismissNotice": "Tap to close"
   },
   "attendanceRequests": {
+    "hrRecord": "HR record",
     "title": "My requests",
     "menuBody": "Leave, absence, time corrections and manager decisions",
     "intro": "Submit a request and follow your manager’s response.",

@@ -21,7 +21,7 @@ jest.mock("../../src/services/attendance-requests", () => ({
   attendanceScope: () => "fictional-org:fictional-agent", attendanceGuard: jest.fn(),
   attendanceAccessDenied: (error: { status?: number }) => [401, 403, 404].includes(error?.status ?? 0),
   cachedAttendanceRequests: jest.fn(), clearAttendanceCache: jest.fn().mockResolvedValue(undefined), loadAttendanceRequests: jest.fn(), loadAttendanceQuota: jest.fn(),
-  attendanceQueued: jest.fn(), queueAttendanceRequest: jest.fn(), queueAttendanceCancellation: jest.fn(), keepAttendanceDocument: jest.fn(), removeAttendanceDocument: jest.fn().mockResolvedValue(undefined),
+  attendanceQueued: jest.fn(), queueAttendanceRequest: jest.fn(), queueAttendanceCancellation: jest.fn(), keepAttendanceDocument: jest.fn(), discardAttendanceDraftDocuments: jest.fn().mockResolvedValue(undefined),
 }))
 jest.mock("../../src/services/outbox", () => ({ retryOutboxConflict: jest.fn().mockResolvedValue("new-operation") }))
 jest.mock("../../src/services/sync-engine", () => ({ runMobileSync: jest.fn().mockResolvedValue({ success: true }) }))
@@ -29,7 +29,7 @@ import * as service from "../../src/services/attendance-requests"
 import { setOfflineScope } from "../../src/services/offline-scope"
 import AttendanceRequestsScreen from "../../src/screens/attendance/AttendanceRequestsScreen"
 import PhotoCaptureModal from "../../src/components/PhotoCaptureModal"
-import type { AttendanceRequest } from "../../src/services/attendance-contract"
+import type { AttendanceDocument, AttendanceRequest } from "../../src/services/attendance-contract"
 const locale = i18next.createInstance()
 const row: AttendanceRequest = { id: "own-request", clientRequestId: "c01be938-a8bb-41e1-b08b-d1ea2394d0b3", status: "PENDING", startDate: "2026-10-14", endDate: "2026-10-14", reason: "Fictional appointment", submittedAt: "2026-10-13T08:00:00Z", decidedAt: null, decisionNote: null, cancelledAt: null, version: "2026-10-13T08:00:00Z", details: { kind: "HOURLY_ABSENCE", unit: "HOURS", startTime: "10:00", endTime: "12:00", timezone: "Asia/Baku", attachmentIds: [] } }
 const data = (items: AttendanceRequest[] = [row]) => ({ items, nextCursor: null, updatedAt: "2026-10-13T08:00:00Z" })
@@ -57,7 +57,7 @@ beforeEach(() => {
   ;(service.queueAttendanceCancellation as jest.Mock).mockResolvedValue({ operationId: "cancel-queued" })
   mockAsk.mockResolvedValue(true)
 })
-afterEach(() => { act(() => { roots.splice(0).forEach(tree => tree.unmount()) }) })
+afterEach(async () => { act(() => { roots.splice(0).forEach(tree => tree.unmount()) }); await settle() })
 it.each(["ru", "az", "en"])("renders actual %s request status, manager reply, monthly allowance and form labels", async language => {
   ;(service.loadAttendanceRequests as jest.Mock).mockResolvedValue(data([{ ...row, status: "REJECTED", decisionNote: "Fictional reviewer response", decidedAt: "2026-10-13T09:00:00Z" }]))
   const tree = await open(language)
@@ -129,4 +129,85 @@ it("does not pass watermark or GPS context to document capture", async () => {
   const calls = (PhotoCaptureModal as jest.Mock).mock.calls
   expect(calls[calls.length - 1][0].visible).toBe(true)
   expect(calls[calls.length - 1][0].watermark).toBeUndefined()
+})
+
+const document: AttendanceDocument = { clientAttachmentId: "ed6afaf3-c410-411c-aa90-8dc5b369c9db", path: "/private/attendance-documents/ed6afaf3-c410-411c-aa90-8dc5b369c9db.jpg", scopeKey: "fictional-org:fictional-agent" }
+async function capturePhoto(tree: TestRenderer.ReactTestRenderer) {
+  await press(tree, "attendance-photo")
+  const calls = (PhotoCaptureModal as jest.Mock).mock.calls
+  await act(async () => { calls[calls.length - 1][0].onPhotoTaken("/camera/photo.jpg") })
+  await settle()
+}
+it("releases an unsubmitted private photo on Back/unmount", async () => {
+  ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValueOnce(document)
+  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  expect(node(tree, "attendance-remove-0")).toBeDefined()
+  await press(tree, "attendance-back")
+  expect(mockGoBack).toHaveBeenCalled()
+  await act(async () => { tree.unmount() }); await settle()
+  expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
+})
+it("also releases a private photo whose capture finishes after leaving", async () => {
+  let finish!: (value: AttendanceDocument) => void
+  ;(service.keepAttendanceDocument as jest.Mock).mockReturnValueOnce(new Promise(done => { finish = done }))
+  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  await act(async () => { tree.unmount(); finish(document) }); await settle()
+  expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
+})
+it("waits for a pending durable write before checking whether its photos can be cleaned", async () => {
+  let finish!: (value: unknown) => void
+  ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValueOnce(document)
+  ;(service.queueAttendanceRequest as jest.Mock).mockReturnValueOnce(new Promise(done => { finish = done }))
+  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  await type(tree, "attendance-reason", "Fictional leave reason")
+  await press(tree, "attendance-submit")
+  await act(async () => { tree.unmount() }); await settle()
+  expect(service.queueAttendanceRequest).toHaveBeenCalled()
+  expect(service.discardAttendanceDraftDocuments).not.toHaveBeenCalled()
+  await act(async () => { finish({ operationId: "queued" }) }); await settle()
+  expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
+})
+it("releases only abandoned documents when a draft is closed or access is withdrawn", async () => {
+  ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValue(document)
+  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  await press(tree, "attendance-close-form")
+  expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
+  ;(service.discardAttendanceDraftDocuments as jest.Mock).mockClear()
+  await press(tree, "attendance-new"); await capturePhoto(tree)
+  mockBootstrap.data.policies.agentPermissions.attendanceRequests = false
+  await act(async () => { tree.update(<I18nextProvider i18n={locale}><AttendanceRequestsScreen /></I18nextProvider>) }); await settle()
+  expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
+  expect(node(tree, "attendance-unavailable")).toBeDefined()
+})
+it("hands confirmed queued photos to the outbox instead of releasing them on unmount", async () => {
+  ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValueOnce(document)
+  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  await type(tree, "attendance-reason", "Fictional leave reason")
+  await press(tree, "attendance-submit")
+  await act(async () => { tree.unmount() }); await settle()
+  expect(service.queueAttendanceRequest).toHaveBeenCalledWith(expect.any(String), expect.any(Object), [document])
+  expect(service.discardAttendanceDraftDocuments).not.toHaveBeenCalled()
+})
+it.each(["ru", "az", "en"])("shows a read-only HR history record from its frozen %s catalogue name", async language => {
+  const names = { az: "Xüsusi gün", ru: "Особый день", en: "Special day" }
+  const hrRow: AttendanceRequest = { ...row, status: "APPROVED", details: { ...row.details, kind: "HR_RECORD", dayKind: { code: "X1", names } } }
+  ;(service.loadAttendanceRequests as jest.Mock).mockResolvedValue(data([hrRow]))
+  const tree = await open(language)
+  const dictionary = { ru, az, en }[language as "ru" | "az" | "en"].attendanceRequests
+  expect(text(tree)).toContain(`X1 · ${names[language as keyof typeof names]}`)
+  expect(text(tree)).toContain(dictionary.hrRecord)
+  expect(text(tree)).not.toContain("attendanceRequests.kinds.HR_RECORD")
+  expect(node(tree, "attendance-cancel-own-request")).toBeUndefined()
+  await press(tree, "attendance-new")
+  expect(node(tree, "attendance-kind-HR_RECORD")).toBeUndefined()
+  const choices = tree.root.findAll(item => typeof item.props.testID === "string" && item.props.testID.startsWith("attendance-kind-"), { deep: false })
+  expect(choices).toHaveLength(8)
+})
+it("does not act on a cancellation confirmation returned after leaving the screen", async () => {
+  let confirm!: (value: boolean) => void
+  mockAsk.mockReturnValueOnce(new Promise(done => { confirm = done }))
+  const tree = await open()
+  await press(tree, "attendance-cancel-own-request")
+  await act(async () => { tree.unmount(); confirm(true) }); await settle()
+  expect(service.queueAttendanceCancellation).not.toHaveBeenCalled()
 })

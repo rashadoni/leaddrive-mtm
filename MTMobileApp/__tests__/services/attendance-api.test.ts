@@ -6,6 +6,10 @@ import { getFieldDeviceId } from "../../src/services/field-device-id"
 import { attendanceUuid, type AttendanceInput } from "../../src/services/attendance-contract"
 const client = api as unknown as { baseUrl: string; token: string | null }
 const originalFetch = global.fetch
+const originalFormData = global.FormData
+const NativeFormDataModule = require("react-native/Libraries/Network/FormData")
+const NativeFormData = NativeFormDataModule.default ?? NativeFormDataModule
+beforeAll(() => { global.FormData = NativeFormData })
 beforeEach(() => {
   jest.clearAllMocks()
   client.baseUrl = "https://fictional.invalid/api/v1/mtm"
@@ -13,7 +17,7 @@ beforeEach(() => {
   ;(getFieldDeviceId as jest.Mock).mockResolvedValue("rf-fictional-device")
   global.fetch = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true, data: {} }) })
 })
-afterAll(() => { global.fetch = originalFetch })
+afterAll(() => { global.fetch = originalFetch; global.FormData = originalFormData })
 it("uses ordinary authenticated own-list/quota/create/cancel API doors", async () => {
   const guard = jest.fn()
   const value: AttendanceInput = { clientRequestId: attendanceUuid(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: "2026-10-14", endDate: "2026-10-15", reason: "Fictional leave", attachmentIds: [] }
@@ -39,6 +43,7 @@ it("uploads private multipart bytes with no location or visit fields and lets na
   expect(options.headers["Content-Type"]).toBeUndefined()
   const parts = options.body.getParts()
   expect(parts.map((part: { fieldName: string }) => part.fieldName)).toEqual(["clientRequestId", "clientAttachmentId", "file"])
+  expect(parts[2]).toMatchObject({ uri: "file:///private/document.jpg", type: "image/jpeg" })
   expect(JSON.stringify(parts)).not.toMatch(/latitude|longitude|visitId|watermark/)
 })
 it("checks the scope again after asynchronous device-header lookup, before sending anything", async () => {

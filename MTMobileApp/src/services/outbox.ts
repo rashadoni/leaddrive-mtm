@@ -266,3 +266,29 @@ export async function persistAttendanceDocuments(operationId: string, scopeKey: 
     return item
   })
 }
+
+/** Cleanup cannot race an already-started durable outbox mutation or inspect only
+ * the newly active account. A queued photo still belongs to its original owner. */
+export async function removeUnqueuedAttendanceDocuments(
+  documents: NonNullable<OutboxOperation["attendanceDocuments"]>,
+  remove: (document: NonNullable<OutboxOperation["attendanceDocuments"]>[number]) => Promise<void>,
+) {
+  await serializeMutation(async () => {
+    // A malformed/unreadable queue is not proof that a private file is unused.
+    const raw = await AsyncStorage.getItem(STORAGE_KEY)
+    const parsed: unknown = raw === null ? [] : JSON.parse(raw)
+    if (!Array.isArray(parsed) || parsed.some(item => !item || typeof item.entity !== "string" || typeof item.scopeKey !== "string"
+      || (item.attendanceDocuments !== undefined && (!Array.isArray(item.attendanceDocuments)
+        || item.attendanceDocuments.some((document: unknown) => !document || typeof document !== "object"
+          || typeof (document as { path?: unknown }).path !== "string" || typeof (document as { clientAttachmentId?: unknown }).clientAttachmentId !== "string"))))) {
+      throw new Error("ATTENDANCE_OUTBOX_UNREADABLE")
+    }
+    const operations = parsed as OutboxOperation[]
+    for (const document of documents) {
+      const referenced = operations.some(item => item.entity === "attendanceRequests"
+        && item.scopeKey === document.scopeKey
+        && item.attendanceDocuments?.some(saved => saved.path === document.path && saved.clientAttachmentId === document.clientAttachmentId))
+      if (!referenced) await remove(document)
+    }
+  })
+}
