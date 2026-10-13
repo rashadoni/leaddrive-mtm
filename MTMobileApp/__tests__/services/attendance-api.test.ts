@@ -104,3 +104,21 @@ it("preserves the v1 background location route and sends the exact consent-bound
   expect(options.headers.Authorization).toBe("Bearer fictional-token")
   expect(guard).toHaveBeenCalled()
 })
+
+it('sends an installation request through the current guarded device header without a device body',async()=>{
+  const guard=jest.fn(),requestId=attendanceUuid()
+  await api.getAttendanceInstallation(guard); await api.requestAttendanceInstallation({requestId},guard)
+  const calls=(global.fetch as jest.Mock).mock.calls
+  expect(calls.map(call=>call[0])).toEqual(['https://fictional.invalid/api/v1/mtm/mobile/attendance/installation','https://fictional.invalid/api/v1/mtm/mobile/attendance/installation'])
+  expect(calls[1][1].headers['x-field-device-id']).toBe('rf-fictional-device');expect(JSON.parse(calls[1][1].body)).toEqual({requestId});expect(guard).toHaveBeenCalled()
+})
+it.each([false,true,'false',undefined])('copies only exact uncommitted duplicate receipt (%s)',async committed=>{
+  global.fetch=jest.fn().mockResolvedValue({status:409,ok:false,json:async()=>({error:'duplicate',code:'MTM_ATTENDANCE_INSTALLATION_ALREADY_REQUESTED',data:{committed,private:'must not escape'}})})
+  const result=await api.requestAttendanceInstallation({requestId:attendanceUuid()},()=>{}).catch(error=>error)
+  expect(result.committed).toBe(committed===false?false:undefined);expect(result.data).toBeUndefined();expect(result.private).toBeUndefined()
+})
+it('does not transform an idempotency mismatch into an uncommitted request',async()=>{
+  global.fetch=jest.fn().mockResolvedValue({status:409,ok:false,json:async()=>({code:'MTM_ATTENDANCE_INSTALLATION_IDEMPOTENCY_MISMATCH',data:{committed:false}})})
+  const result=await api.requestAttendanceInstallation({requestId:attendanceUuid()},()=>{}).catch(error=>error)
+  expect(result.committed).toBeUndefined()
+})

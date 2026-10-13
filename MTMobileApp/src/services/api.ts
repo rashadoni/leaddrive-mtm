@@ -448,6 +448,12 @@ class ApiClient {
         const err = new Error(data.error || `Request failed: ${res.status}`) as RetryableSyncError
         err.code = data.code
         err.status = res.status
+        // Only this explicit rejected installation request may release its
+        // durable local UUID. Do not forward arbitrary server error payloads.
+        if (path === '/mobile/attendance/installation' && options.method === 'POST' && res.status === 409
+          && data.code === 'MTM_ATTENDANCE_INSTALLATION_ALREADY_REQUESTED' && data.data?.committed === false) {
+          (err as RetryableSyncError & {committed?: false}).committed = false
+        }
         err.retryAfterMs = retryAfterMsFromHeader(res.headers?.get?.("Retry-After"))
         if (typeof data.recommendedPageSize === "number" && Number.isFinite(data.recommendedPageSize)) {
           err.recommendedPageSize = Math.max(1, Math.min(500, Math.floor(data.recommendedPageSize)))
@@ -614,6 +620,12 @@ class ApiClient {
   }
 
   // Attendance uses the existing authenticated transport and its own narrow API.
+  getAttendanceInstallation(guard: () => void) {
+    return this.request('/mobile/attendance/installation', {method:'GET'}, 20_000, 1, guard)
+  }
+  requestAttendanceInstallation(input: {requestId: string}, guard: () => void) {
+    return this.request('/mobile/attendance/installation', {method:'POST',body:JSON.stringify(input)}, 20_000, 1, guard)
+  }
   getAttendanceLocationConsent(guard: () => void) {
     return this.request("/mobile/attendance/location-consent", {}, 5_000, 1, guard)
   }

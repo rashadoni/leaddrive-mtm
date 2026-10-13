@@ -1,0 +1,142 @@
+{
+  "type": "View",
+  "props": {
+    "testID": "attendance-installation-card",
+    "style": {
+      "backgroundColor": "#FBFDFC",
+      "borderRadius": 20,
+      "borderWidth": 1,
+      "borderColor": "#D6E3DC",
+      "padding": 20,
+      "gap": 12
+    }
+  },
+  "children": [
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 20,
+          "fontWeight": "700",
+          "color": "#13231F"
+        }
+      },
+      "children": [
+        "App installation approval"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Your company requires a manager’s approval before marking attendance from a new app installation."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 16,
+          "fontWeight": "600",
+          "color": "#055342"
+        }
+      },
+      "children": [
+        "Awaiting a decision"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Fictional installation"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Requested Oct 13, 08:00 AM"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "This request does not need your location."
+      ]
+    },
+    {
+      "type": "View",
+      "props": {
+        "testID": "attendance-installation-refresh",
+        "accessibilityRole": "button",
+        "style": [
+          {
+            "minHeight": 50,
+            "padding": 14,
+            "alignItems": "center",
+            "justifyContent": "center",
+            "borderRadius": 12,
+            "borderWidth": 1,
+            "borderColor": "#D6E3DC"
+          },
+          false
+        ]
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 16,
+              "fontWeight": "600",
+              "color": "#055342",
+              "textAlign": "center"
+            }
+          },
+          "children": [
+            "Check decision"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "After approval, make a new attendance mark. You can request a correction for an earlier time."
+      ]
+    }
+  ]
+}

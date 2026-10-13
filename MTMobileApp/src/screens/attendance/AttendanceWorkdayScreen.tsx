@@ -1,3 +1,5 @@
+import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
+import { useAttendanceInstallation } from '../../hooks/useAttendanceInstallation'
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
 import AttendanceMarkRecoveryCard from '../../components/AttendanceMarkRecoveryCard'
 import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery'
@@ -29,8 +31,10 @@ export default function AttendanceWorkdayScreen() {
   const hydrated = useWorkdayStore(state => state.hydrated)
   const [operations, setOperations] = useState<OutboxOperation[]>([])
   const [busy, setBusy] = useState(false), [refreshing, setRefreshing] = useState(false), [error, setError] = useState(false)
+  const [installationRefusal, setInstallationRefusal] = useState<'installation' | 'app' | null>(null)
   const [returnRefusal, setReturnRefusal] = useState<{ key: string; workdayId: string; reason: 'notToday' | 'locked' } | null>(null)
   const recovery = useAttendanceMarkRecovery()
+  const installation = useAttendanceInstallation()
   const mounted = useRef(true), busyRef = useRef(false)
   const key = workdayKey(agent?.organizationId, agent?.id), allowed = hasOfficeAttendanceAccess(bootstrap, agent)
   const current = active?.key === key ? active : null
@@ -39,7 +43,7 @@ export default function AttendanceWorkdayScreen() {
     && (item.data.id === current.workdayId || item.data.workdayId === current.workdayId))
   const completed = !current && (bootstrap?.workday?.status === "COMPLETED" && bootstrap.workday.workDate?.slice(0, 10) === dateKey(bootstrap.timezone))
   const refused = returnRefusal?.key === key && returnRefusal.workdayId === bootstrap?.workday?.id ? returnRefusal.reason : null
-  const returnable = completed && canReturnToWorkday(bootstrap?.policies) && !refused
+  const returnable = !installation.blocked && completed && canReturnToWorkday(bootstrap?.policies) && !refused
   const open = current?.syncState === "CONFIRMED"
   const paused = open && current.paused
   const loadQueue = useCallback(async () => {
@@ -57,9 +61,9 @@ export default function AttendanceWorkdayScreen() {
   useAutoRefresh(() => { void refresh() })
   useEffect(() => { mounted.current = true; if (allowed) void loadQueue().catch(() => {}); else setOperations([]); return () => { mounted.current = false } }, [allowed, key, loadQueue])
   async function change(action: "start" | "end" | "pause" | "resume") {
-    if (busyRef.current || !allowed || !hydrated || pending || conflict || completed || recovery.operation) return
+    if (busyRef.current || !allowed || !hydrated || pending || conflict || completed || recovery.operation || (installation.blocked && (action === 'start' || action === 'end'))) return
     const scope = officeAttendanceScope()
-    busyRef.current = true; setBusy(true); setError(false)
+    busyRef.current = true; setBusy(true); setError(false); setInstallationRefusal(null)
     try {
       if (action === "end") {
         const confirmed = await ask({ title: t("officeAttendance.finishTitle"), message: t("officeAttendance.finishBody"), buttons: [{ text: t("officeAttendance.keepOpen"), value: false, style: "cancel" }, { text: t("officeAttendance.finish"), value: true }], dismissValue: false })
@@ -79,12 +83,16 @@ export default function AttendanceWorkdayScreen() {
     if (busyRef.current || !allowed || !hydrated || !returnable || pending || !bootstrap?.workday?.id) return
     const scope = officeAttendanceScope(), workdayId = bootstrap.workday.id
     const guard = () => { guardOfficeAttendance(scope); if (!mounted.current) throw new Error('ATTENDANCE_SCREEN_CLOSED') }
-    busyRef.current = true; setBusy(true); setError(false)
+    busyRef.current = true; setBusy(true); setError(false); setInstallationRefusal(null)
     try {
       const outcome = await returnToClosedWorkday(scope, workdayId, guard); guard()
       if (outcome === 'notToday' || outcome === 'locked') setReturnRefusal({ key: scope, workdayId, reason: outcome })
       await refreshAttendanceSession(); guard(); await loadQueue()
-    } catch { if (mounted.current) setError(true) }
+    } catch (failure) { if (mounted.current) {
+      const code = (failure as {code?: string})?.code
+      setInstallationRefusal(code === 'MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED' ? 'installation' : code === 'MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED' ? 'app' : null)
+      setError(true); await installation.reload()
+    } }
     finally { busyRef.current = false; if (mounted.current) setBusy(false) }
   }
   function time(value?: string) {
@@ -104,18 +112,19 @@ export default function AttendanceWorkdayScreen() {
           {paused && <Text style={styles.muted}>{t("officeAttendance.pausedAt", { time: time(current?.pausedAt) })}</Text>}
           {pending && <Text testID="office-workday-pending" style={styles.notice}>{t("officeAttendance.pendingHint")}</Text>}
           {conflict && <Text testID="office-workday-conflict" style={styles.error}>{t("officeAttendance.conflict")}</Text>}
-          {error && <Text accessibilityRole="alert" style={styles.error}>{t("officeAttendance.failed")}</Text>}
+          {error && <Text accessibilityRole="alert" style={styles.error}>{t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "officeAttendance.failed")}</Text>}
           {returnable && <Text style={styles.muted}>{t('officeAttendance.returnHint')}</Text>}
           {refused && <Text accessibilityRole="alert" style={styles.error}>{t(refused === 'locked' ? 'officeAttendance.returnLocked' : 'officeAttendance.returnNotToday')}</Text>}
           {busy && <ActivityIndicator color={fieldTheme.color.primary} />}
           <View style={styles.actions}>
             {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || pending || conflict} onPress={() => void change(paused ? "resume" : "pause")} style={[styles.button, styles.secondary, (busy || pending || conflict) && styles.disabled]}><Text style={styles.secondaryText}>{t(paused ? "officeAttendance.resume" : "officeAttendance.pause")}</Text></Pressable>}
-            {!completed && !recovery.operation && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} onPress={() => void change(open ? "end" : "start")} style={[styles.button, (busy || !hydrated || pending || conflict) && styles.disabled]}><Text style={styles.buttonText}>{t(open ? "officeAttendance.finish" : "officeAttendance.start")}</Text></Pressable>}
+            {!completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} onPress={() => void change(open ? "end" : "start")} style={[styles.button, (busy || !hydrated || pending || conflict) && styles.disabled]}><Text style={styles.buttonText}>{t(open ? "officeAttendance.finish" : "officeAttendance.start")}</Text></Pressable>}
             {returnable && <Pressable testID="office-workday-return" accessibilityRole="button" disabled={busy || !hydrated || pending} onPress={() => void returnToWork()} style={[styles.button, (busy || !hydrated || pending) && styles.disabled]}><Text style={styles.buttonText}>{t('officeAttendance.returnToWork')}</Text></Pressable>}
           </View>
           <Text style={styles.muted}>{t("officeAttendance.closeHint")}</Text>
         </View>
-        <AttendanceMarkRecoveryCard operation={recovery.operation} refresh={async () => { await refresh(); await recovery.reload() }} />
+        <AttendanceInstallationCard installation={installation} />
+        <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation} refresh={async () => { await refresh(); await recovery.reload() }} />
         <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>
         <AttendanceLocationConsentCard />
         {bootstrap?.policies.agentPermissions?.attendanceRequests === true && <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnRequests" as never)}><Text style={styles.secondaryText}>{t("attendanceRequests.title")}</Text></Pressable>}

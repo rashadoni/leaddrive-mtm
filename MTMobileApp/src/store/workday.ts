@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { create } from "zustand"
 import { allOutboxOperations, enqueueOutboxOperation, retryOutboxConflict, type OutboxOperation } from "../services/outbox"
-import { canReplaceAttendanceMark } from '../services/attendance-mark-recovery'
+import { attendanceMarkRejection, canReplaceAttendanceMark } from '../services/attendance-mark-recovery'
 import { isWorkdayOpen, type BootstrapWorkday } from "../services/bootstrap"
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
@@ -235,6 +235,11 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const workdayId = action === 'START' ? item.data.id : item.data.workdayId
     if (typeof workdayId !== 'string' || (action === 'START' && local?.key === key && (local.workdayId !== workdayId || local.syncState === 'CONFIRMED'))
       || (action === 'FINISH' && (local?.key !== key || local.workdayId !== workdayId))) throw new Error('ATTENDANCE_MARK_CHANGED')
+    const rejection = attendanceMarkRejection(item)
+    if (rejection === 'installation' || rejection === 'app') {
+      const { requireApprovedAttendanceInstallation } = require('../services/attendance-installation') as typeof import('../services/attendance-installation')
+      await requireApprovedAttendanceInstallation(key); guard()
+    }
     const occurredAt = new Date().toISOString()
     const attendanceMark = await captureAttendanceMark(key, occurredAt, action === 'FINISH' && local?.paused === true)
     guard()
