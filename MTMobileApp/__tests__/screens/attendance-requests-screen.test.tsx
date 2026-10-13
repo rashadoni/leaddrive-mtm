@@ -151,7 +151,9 @@ it("also releases a private photo whose capture finishes after leaving", async (
   let finish!: (value: AttendanceDocument) => void
   ;(service.keepAttendanceDocument as jest.Mock).mockReturnValueOnce(new Promise(done => { finish = done }))
   const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
-  await act(async () => { tree.unmount(); finish(document) }); await settle()
+  await act(async () => { tree.unmount() })
+  expect(tree.toJSON()).toBeNull()
+  await act(async () => { finish(document) }); await settle()
   expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
 })
 it("waits for a pending durable write before checking whether its photos can be cleaned", async () => {
@@ -208,6 +210,11 @@ it("does not act on a cancellation confirmation returned after leaving the scree
   mockAsk.mockReturnValueOnce(new Promise(done => { confirm = done }))
   const tree = await open()
   await press(tree, "attendance-cancel-own-request")
-  await act(async () => { tree.unmount(); confirm(true) }); await settle()
+  // Commit the unmount before resolving the external prompt. In one act batch,
+  // the promise can resolve while React has not yet run the unmount cleanup.
+  await act(async () => { tree.unmount() })
+  expect(tree.toJSON()).toBeNull()
+  expect(service.queueAttendanceCancellation).not.toHaveBeenCalled()
+  await act(async () => { confirm(true) }); await settle()
   expect(service.queueAttendanceCancellation).not.toHaveBeenCalled()
 })
