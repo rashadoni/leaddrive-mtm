@@ -115,7 +115,10 @@ export default function AttendanceRequestsScreen() {
   }, [agent?.id, agent?.organizationId, allowed, clear, releaseDraft, bootstrap?.timezone])
   useEffect(() => { setQuota(null); void loadRef.current() }, [month])
   const change = (patch: Partial<AttendanceInput>) => { setDraft(value => ({ ...value, ...patch })); setErrorKey(null) }
-  const changeKind = (kind: AttendanceKind) => change({ kind, ...(attendanceNeedsHours(kind) ? { unit: "HOURS", endDate: draft.startDate, startTime: draft.startTime ?? "09:00", endTime: draft.endTime ?? "18:00" } : {}) })
+  const changeKind = (kind: AttendanceKind) => {
+    if (kind === draft.kind) return
+    change({ kind, ...(attendanceNeedsHours(kind) ? { unit: "HOURS", endDate: draft.startDate, startTime: draft.startTime ?? "09:00", endTime: draft.endTime ?? "18:00" } : {}) })
+  }
   const enter = () => { lifecycle.current += 1; releaseDraft(); draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); setDocuments([]); setEditing(true); setErrorKey(null); setNoticeKey(null) }
   const closeDraft = async () => {
     if (busyRef.current) return
@@ -203,7 +206,7 @@ export default function AttendanceRequestsScreen() {
       <TextInput testID={`attendance-${key}`} accessibilityLabel={label} value={draft[key] ?? ""} placeholder={placeholder}
         placeholderTextColor={fieldTheme.color.inkMuted} editable={!busy} multiline={key === "reason"} maxLength={key === "reason" ? 1000 : key.includes("Date") ? 10 : 5}
         autoCapitalize="none" autoCorrect={false} style={[styles.input, key === "reason" && styles.reason]}
-        onChangeText={value => change({ [key]: value, ...(key === "startDate" && draft.unit === "HOURS" ? { endDate: value } : {}) })} />
+        onChangeText={value => change({ [key]: value, ...(key === "startDate" && draft.unit === "HOURS" && (draft.kind !== "TIME_CORRECTION" || draft.endDate === draft.startDate) ? { endDate: value } : {}) })} />
     </View>
   )
   const clock = (date: string) => new Date(date).toLocaleString(i18n.language)
@@ -247,7 +250,11 @@ export default function AttendanceRequestsScreen() {
             {!attendanceNeedsHours(draft.kind) && <View style={styles.actions}>{(["DAYS", "HOURS"] as const).map(unit => <Pressable key={unit} testID={`attendance-unit-${unit}`} accessibilityRole="button" accessibilityState={{ selected: draft.unit === unit, disabled: busy }} disabled={busy}
               style={[styles.choice, draft.unit === unit && styles.selected]} onPress={() => change({ unit, ...(unit === "HOURS" ? { endDate: draft.startDate, startTime: "09:00", endTime: "18:00" } : { startTime: undefined, endTime: undefined }) })}><Text style={styles.choiceText}>{t(`attendanceRequests.units.${unit}`)}</Text></Pressable>)}</View>}
             <Text style={styles.caption}>{t("attendanceRequests.dateHint")}</Text>
-            <View style={styles.fields}>{field("startDate", t("attendanceRequests.startDate"), "YYYY-MM-DD")}{draft.unit === "DAYS" && field("endDate", t("attendanceRequests.endDate"), "YYYY-MM-DD")}</View>
+            <View style={styles.fields}>
+              {field("startDate", t(draft.kind === "TIME_CORRECTION" ? "attendanceRequests.correctionStartDate" : "attendanceRequests.startDate"), "YYYY-MM-DD")}
+              {(draft.unit === "DAYS" || draft.kind === "TIME_CORRECTION") && field("endDate", t(draft.kind === "TIME_CORRECTION" ? "attendanceRequests.correctionEndDate" : "attendanceRequests.endDate"), "YYYY-MM-DD")}
+            </View>
+            {draft.kind === "TIME_CORRECTION" && <Text style={styles.caption}>{t("attendanceRequests.correctionDateHint")}</Text>}
             {draft.unit === "HOURS" && <><Text style={styles.caption}>{t("attendanceRequests.timezone", { timezone: bootstrap?.timezone ?? "—" })}</Text><View style={styles.fields}>{field("startTime", t("attendanceRequests.startTime"), "HH:mm")}{field("endTime", t("attendanceRequests.endTime"), "HH:mm")}</View></>}
             {field("reason", t("attendanceRequests.reason"))}
             <Text style={styles.label}>{t("attendanceRequests.documents")}</Text>

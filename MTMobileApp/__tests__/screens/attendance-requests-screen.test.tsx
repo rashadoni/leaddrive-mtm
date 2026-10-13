@@ -1,4 +1,6 @@
 import React from "react"
+import { mkdirSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
 import TestRenderer, { act } from "react-test-renderer"
 import i18next from "i18next"
 import { I18nextProvider } from "react-i18next"
@@ -45,6 +47,17 @@ function node(tree: TestRenderer.ReactTestRenderer, id: string) { return tree.ro
 function text(tree: TestRenderer.ReactTestRenderer) { return JSON.stringify(tree.toJSON()) }
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree, id).props.onPress() }); await settle() }
 async function type(tree: TestRenderer.ReactTestRenderer, id: string, value: string) { await act(async () => { node(tree, id).props.onChangeText(value) }); await settle() }
+function captureNightForm(tree: TestRenderer.ReactTestRenderer, language: string) {
+  const dir = process.env.MTM_ATTENDANCE_RENDER_DIR
+  if (!dir) return
+  const host = (value: TestRenderer.ReactTestRendererJSON | TestRenderer.ReactTestRendererJSON[] | string | null): unknown => {
+    if (value === null || typeof value === "string") return value
+    if (Array.isArray(value)) return value.map(host)
+    return { type: value.type, props: Object.fromEntries(Object.entries(value.props).filter(([key]) => ["style", "contentContainerStyle", "testID", "accessibilityRole", "accessibilityLabel", "disabled", "value", "placeholder", "multiline"].includes(key))), children: value.children?.map(host) ?? null }
+  }
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, `night-correction-${language}.json`), JSON.stringify(host(tree.toJSON()), null, 2))
+}
 beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
 beforeEach(() => {
   jest.clearAllMocks(); setOfflineScope("fictional-org", "fictional-agent")
@@ -83,6 +96,56 @@ it("submits a correction as an exact full pair and closes only after the durable
     clientRequestId: expect.stringMatching(/^[a-f0-9-]{36}$/), kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-12", endDate: "2026-10-12", startTime: "09:10", endTime: "18:00", reason: "Fictional missed finish", attachmentIds: [],
   }, [])
   expect(node(tree, "attendance-form")).toBeUndefined()
+})
+it.each(["ru", "az", "en"])("shows %s overnight dates and queues the exact full correction", async language => {
+  const tree = await open(language)
+  const dictionary = { ru, az, en }[language as "ru" | "az" | "en"].attendanceRequests
+  await press(tree, "attendance-new")
+  await press(tree, "attendance-kind-TIME_CORRECTION")
+  await type(tree, "attendance-startDate", "2026-10-12")
+  await type(tree, "attendance-endDate", "2026-10-13")
+  await type(tree, "attendance-startTime", "22:00")
+  await type(tree, "attendance-endTime", "06:00")
+  await type(tree, "attendance-reason", "Fictional overnight shift: missed finish")
+  expect(node(tree, "attendance-startDate").props.accessibilityLabel).toBe(dictionary.correctionStartDate)
+  expect(node(tree, "attendance-endDate").props.accessibilityLabel).toBe(dictionary.correctionEndDate)
+  expect(text(tree)).toContain(dictionary.correctionDateHint)
+  expect(text(tree)).not.toContain("attendanceRequests.")
+  captureNightForm(tree, language)
+  await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).toHaveBeenCalledWith("fictional-org:fictional-agent", {
+    clientRequestId: expect.stringMatching(/^[a-f0-9-]{36}$/), kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-12", endDate: "2026-10-13", startTime: "22:00", endTime: "06:00", reason: "Fictional overnight shift: missed finish", attachmentIds: [],
+  }, [])
+  expect(node(tree, "attendance-form")).toBeUndefined()
+})
+it("preserves the explicit end date while changing start date or reselecting correction", async () => {
+  const tree = await open(); await press(tree, "attendance-new"); await press(tree, "attendance-kind-TIME_CORRECTION")
+  await type(tree, "attendance-startDate", "2026-10-12")
+  await type(tree, "attendance-endDate", "2026-10-13")
+  await type(tree, "attendance-startDate", "2026-10-")
+  expect(node(tree, "attendance-endDate").props.value).toBe("2026-10-13")
+  await type(tree, "attendance-startDate", "2026-10-11")
+  await press(tree, "attendance-kind-TIME_CORRECTION")
+  expect(node(tree, "attendance-endDate").props.value).toBe("2026-10-13")
+  await type(tree, "attendance-startTime", "22:00"); await type(tree, "attendance-endTime", "06:00")
+  await type(tree, "attendance-reason", "Fictional correction")
+  await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+  expect(text(tree)).toContain(ru.attendanceRequests.invalid)
+  await type(tree, "attendance-startDate", "2026-10-12")
+  await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).toHaveBeenCalledTimes(1)
+})
+it.each(["HOURLY_ABSENCE", "OVERTIME"])("keeps %s within one day after leaving an overnight correction", async kind => {
+  const tree = await open(); await press(tree, "attendance-new"); await press(tree, "attendance-kind-TIME_CORRECTION")
+  await type(tree, "attendance-startDate", "2026-10-12"); await type(tree, "attendance-endDate", "2026-10-13")
+  await press(tree, `attendance-kind-${kind}`)
+  expect(node(tree, "attendance-endDate")).toBeUndefined()
+  expect(text(tree)).not.toContain(ru.attendanceRequests.correctionDateHint)
+  await type(tree, "attendance-startDate", "2026-10-14")
+  await type(tree, "attendance-startTime", "10:00"); await type(tree, "attendance-endTime", "11:00")
+  await type(tree, "attendance-reason", "Fictional hourly request"); await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).toHaveBeenCalledWith("fictional-org:fictional-agent", expect.objectContaining({ kind, startDate: "2026-10-14", endDate: "2026-10-14" }), [])
 })
 it("rejects invalid date/time/reason locally without queueing", async () => {
   const tree = await open(); await press(tree, "attendance-new")
