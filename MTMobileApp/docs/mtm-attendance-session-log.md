@@ -50,3 +50,21 @@
 - Build workflow38347249713 passed Run tests, confirming the committed-unmount correction and all prior behavior regressions. It then failed Run TypeScript check before Android compilation; required workflow38347249724 was still running when these diagnostics were read.
 - Six TypeScript diagnostics had three causes: React Native's constructor FormData was absent from the Node globalThis property type used by the test (3 lines); an inferred heterogeneous permission fixture array introduced optional undefined properties incompatible with Record<string,boolean> (1 line); the always-throwing async handleFailure inferred Promise<void> rather than Promise<never> (2 callers). Fixed with an explicit test-runtime FormData type, contextually typed permission cases, and the correct Promise<never> return annotation. Runtime behavior and assertions are unchanged.
 - These changes are limited to the two attendance service tests and the attendance service return type. No compiler setting, CI gate or existing authorization rule changed. Local mobile tests/types/build remain NOT RUN; the following CI run must validate them. Static diff-check PASS before the explicit-path checkpoint.
+
+### 2026-10-13 — PR118 exact-head validation completed
+
+- Exact code head f708bccc293eda2bbe96c1ddeb35694a2c105ff0 passed every PR check: required workflow38347531227 scope SUCCESS and tests SUCCESS (Jest plus TypeScript); Android workflow38347531188 build-apk SUCCESS after6m43s, including the same tests/types, signed release APK/AAB compilation and certificate/ABI verification. Artifact leaddrive-mtm-apk-v3.4.0 exists for the PR run. This is CI evidence, not a physical-device test or a final main release.
+- No local mobile install/Jest/tsc/build was run, no PR merge or final release was performed. The two narrow CI corrections are committed and pushed only on codex/mtm-attendance-requests via remote attendance.
+- Current result: PR118 is green on the validated code head. Last completed action: inspected exact-head CI status and artifact metadata. Stopping point: ready for the coordinator's review/main integration and device acceptance; next action is the coordinator's gated release sequence, not a local rebuild.
+
+### 2026-10-13 — normal main integration after exact-head green checks
+
+- Coordinator confirmed the owner's standing task authorization for normal merge/release after checks. PR118 merged without admin/bypass using --match-head-commit f708bccc293eda2bbe96c1ddeb35694a2c105ff0; resulting main b9328a8fd51b570dcd929743bcfa7b5d80b0043c, merged at2026-10-13T04:49:23Z.
+- Main signed Android workflow38348311873 targets that exact merge commit. At this entry it has repeated Jest and TypeScript successfully and is compiling the release APK/AAB. Final release/artifact verification remains pending; no physical phone validation claimed. This journal-only continuation is intentionally retained for the next mobile checkpoint, as directed by the coordinator, rather than modifying the already verified code head.
+
+### 2026-10-13 — verified main Android release available
+
+- Main workflow38348311873 completed SUCCESS for b9328a8fd51b570dcd929743bcfa7b5d80b0043c. Jest, TypeScript, signed APK/AAB compilation, package/version/release-signature/ABI verification, publication and workflow cleanup all completed successfully.
+- Published release: https://github.com/rashadoni/leaddrive-mtm/releases/tag/v3.4.0-build435 . Verified main APK: https://github.com/rashadoni/leaddrive-mtm/releases/download/v3.4.0-build435/leaddrive-mtm-v3.4.0.apk . GitHub asset SHA-256 a3a391711d477a632f28df696f082f74884feef0b9ba9cff87b5124a1036071b matches the exact-main release notes. AAB is also attached as leaddrive-mtm-v3.4.0-1435.aab.
+- Physical-phone installation and field acceptance remain NOT RUN because no device is attached. Feature admission still requires the explicit server permission; the legacy hrmRequests surface remains closed.
+- Current result: mobile2.5 released from verified main. Last completed action: checked final workflow conclusion and exact-main release asset metadata. Stopping point: release link ready for the owner, journal-only continuation retained in this worktree for the next authorized mobile checkpoint. Next action: coordinator continues the CRM roadmap and, when a phone is available, records device acceptance separately.
