@@ -59,3 +59,9 @@
 - Parent task's autonomous fix/test/delivery authorization applies to publishing this bounded PR. This supersedes the earlier subtask's no-push delegation limit for the coordinator only. Required `scope` and `tests` plus signed APK build must pass before merge/install; no server deploy target is invented for this Android repository.
 - Prepared patch release `3.8.2` consistently in package/lock, Android versionName, runtime profile and its existing version assertion. CI supplies the monotonic Android versionCode as `1000 + GITHUB_RUN_NUMBER`; signing and package identity are unchanged.
 - Local checks: version consistency and diff whitespace; pre-commit Gitleaks remains required. RN Jest/semantic TypeScript/native build remain NOT RUN locally and will run in GitHub. Next: publish PR, inspect exact CI/build, merge only after green gates, then verify the installed fix on the S23.
+
+## 2026-10-13 22:51 UTC — first CI result and version assertions
+
+- PR #126 opened at `ea459dfe94d647c86b0caa442257c2f55affbde3`. First hosted CI `38480428339` ran 220 suites: 219 passed, one failed; 1813 tests passed, three failed, one todo. All newly added connection/discovery tests passed.
+- Three failures were existing API transport assertions still expecting `3.8.1+50` after the patch-version bump. Updated those expectations to the prepared `3.8.2+50`; product transport logic is unchanged. Full hosted rerun remains required; no physical fix result claimed.
+- Timestamp clarification: the preceding release-preparation checkpoint was completed at approximately 22:50 UTC; its 22:51 label was an estimate.
