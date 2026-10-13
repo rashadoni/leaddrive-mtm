@@ -1,0 +1,1185 @@
+{
+  "type": "RCTScrollView",
+  "props": {
+    "style": {
+      "flex": 1,
+      "backgroundColor": "#F1F6F3"
+    },
+    "contentContainerStyle": [
+      {
+        "paddingHorizontal": 20
+      },
+      {
+        "paddingTop": 12,
+        "paddingBottom": 24
+      }
+    ]
+  },
+  "children": [
+    {
+      "type": "View",
+      "props": {},
+      "children": [
+        {
+          "type": "View",
+          "props": {
+            "style": {
+              "width": "100%",
+              "maxWidth": 900,
+              "alignSelf": "center",
+              "gap": 16
+            }
+          },
+          "children": [
+            {
+              "type": "View",
+              "props": {
+                "style": {
+                  "gap": 14,
+                  "alignItems": "flex-start"
+                }
+              },
+              "children": [
+                {
+                  "type": "View",
+                  "props": {
+                    "testID": "attendance-back",
+                    "accessibilityRole": "button",
+                    "style": [
+                      {
+                        "minHeight": 48,
+                        "paddingHorizontal": 18,
+                        "paddingVertical": 12,
+                        "borderWidth": 1,
+                        "borderColor": "#D6E3DC",
+                        "borderRadius": 12,
+                        "justifyContent": "center",
+                        "backgroundColor": "#FBFDFC"
+                      },
+                      false,
+                      false
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": [
+                          {
+                            "fontSize": 15,
+                            "fontWeight": "700",
+                            "color": "#055342"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        "Назад"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 30,
+                      "fontWeight": "800",
+                      "color": "#13231F"
+                    }
+                  },
+                  "children": [
+                    "Мои заявки"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Text",
+              "props": {
+                "style": {
+                  "fontSize": 16,
+                  "lineHeight": 23,
+                  "color": "#13231F"
+                }
+              },
+              "children": [
+                "Подайте заявку и следите за ответом руководителя."
+              ]
+            },
+            {
+              "type": "Text",
+              "props": {
+                "style": {
+                  "fontSize": 14,
+                  "lineHeight": 20,
+                  "color": "#5E7069"
+                }
+              },
+              "children": [
+                "Последнее подтверждение: 13.10.2026, 08:00:00"
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "style": {
+                  "flexDirection": "row",
+                  "flexWrap": "wrap",
+                  "gap": 10
+                }
+              },
+              "children": [
+                {
+                  "type": "View",
+                  "props": {
+                    "testID": "attendance-refresh",
+                    "accessibilityRole": "button",
+                    "style": [
+                      {
+                        "minHeight": 48,
+                        "paddingHorizontal": 18,
+                        "paddingVertical": 12,
+                        "borderWidth": 1,
+                        "borderColor": "#D6E3DC",
+                        "borderRadius": 12,
+                        "justifyContent": "center",
+                        "backgroundColor": "#FBFDFC"
+                      },
+                      false,
+                      false
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": [
+                          {
+                            "fontSize": 15,
+                            "fontWeight": "700",
+                            "color": "#055342"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        "Обновить"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "style": {
+                  "padding": 18,
+                  "gap": 8,
+                  "backgroundColor": "#D9F1E8",
+                  "borderRadius": 16
+                },
+                "testID": "attendance-quota"
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 19,
+                      "fontWeight": "700",
+                      "color": "#13231F",
+                      "flexShrink": 1
+                    }
+                  },
+                  "children": [
+                    "Лимиты на 2026-10"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 16,
+                      "lineHeight": 23,
+                      "color": "#13231F"
+                    }
+                  },
+                  "children": [
+                    "Осталось: 6 ч 0 мин · заявок: 2"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Общий лимит для отгулов на часы и почасовых отсутствий. Поданные и одобренные заявки резервируют лимит; очередь телефона ещё не учтена."
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "style": {
+                  "gap": 16,
+                  "padding": 20,
+                  "backgroundColor": "#FBFDFC",
+                  "borderRadius": 16,
+                  "borderWidth": 1,
+                  "borderColor": "#D6E3DC"
+                },
+                "testID": "attendance-form"
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 19,
+                      "fontWeight": "700",
+                      "color": "#13231F",
+                      "flexShrink": 1
+                    }
+                  },
+                  "children": [
+                    "Новая заявка"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "fontWeight": "700",
+                      "color": "#13231F"
+                    }
+                  },
+                  "children": [
+                    "Вид заявки"
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "gap": 8
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-ANNUAL_LEAVE",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Отпуск"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-SICK_LEAVE",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Больничный"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-TIME_OFF",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Отгул"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-HOURLY_ABSENCE",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Отпроситься на часы"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-BUSINESS_TRIP",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Командировка"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-REMOTE_WORK",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Удалённая работа"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-OVERTIME",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Переработка"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-kind-TIME_CORRECTION",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "padding": 12,
+                            "justifyContent": "center",
+                            "borderRadius": 10,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC"
+                          },
+                          {
+                            "backgroundColor": "#D9F1E8",
+                            "borderColor": "#08705A"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "color": "#13231F",
+                              "fontWeight": "600"
+                            }
+                          },
+                          "children": [
+                            "Исправить начало / уход"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#8B5A00",
+                      "fontSize": 15,
+                      "lineHeight": 22
+                    }
+                  },
+                  "children": [
+                    "Укажите правильные начало и окончание рабочего дня. Фактический журнал изменится только после одобрения; исходные отметки сохранятся."
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Дата: год-месяц-день, например 2026-10-13."
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "gap": 16
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "style": {
+                          "flexGrow": 1,
+                          "flexBasis": 180,
+                          "gap": 8
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "fontWeight": "700",
+                              "color": "#13231F"
+                            }
+                          },
+                          "children": [
+                            "Дата начала"
+                          ]
+                        },
+                        {
+                          "type": "TextInput",
+                          "props": {
+                            "testID": "attendance-startDate",
+                            "accessibilityLabel": "Дата начала",
+                            "value": "2026-10-12",
+                            "placeholder": "YYYY-MM-DD",
+                            "multiline": false,
+                            "style": [
+                              {
+                                "minHeight": 50,
+                                "borderWidth": 1,
+                                "borderColor": "#D6E3DC",
+                                "borderRadius": 10,
+                                "padding": 12,
+                                "fontSize": 17,
+                                "color": "#13231F",
+                                "backgroundColor": "#F1F6F3"
+                              },
+                              false
+                            ]
+                          },
+                          "children": null
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "style": {
+                          "flexGrow": 1,
+                          "flexBasis": 180,
+                          "gap": 8
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "fontWeight": "700",
+                              "color": "#13231F"
+                            }
+                          },
+                          "children": [
+                            "Дата окончания"
+                          ]
+                        },
+                        {
+                          "type": "TextInput",
+                          "props": {
+                            "testID": "attendance-endDate",
+                            "accessibilityLabel": "Дата окончания",
+                            "value": "2026-10-13",
+                            "placeholder": "YYYY-MM-DD",
+                            "multiline": false,
+                            "style": [
+                              {
+                                "minHeight": 50,
+                                "borderWidth": 1,
+                                "borderColor": "#D6E3DC",
+                                "borderRadius": 10,
+                                "padding": 12,
+                                "fontSize": 17,
+                                "color": "#13231F",
+                                "backgroundColor": "#F1F6F3"
+                              },
+                              false
+                            ]
+                          },
+                          "children": null
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Окончание — в день начала или на следующий день. Для ночной смены, например 22:00–06:00, выберите следующую дату. Период — не более 24 часов."
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Часы по времени организации: Asia/Baku. Формат 24 часа."
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "gap": 16
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "style": {
+                          "flexGrow": 1,
+                          "flexBasis": 180,
+                          "gap": 8
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "fontWeight": "700",
+                              "color": "#13231F"
+                            }
+                          },
+                          "children": [
+                            "Начало"
+                          ]
+                        },
+                        {
+                          "type": "TextInput",
+                          "props": {
+                            "testID": "attendance-startTime",
+                            "accessibilityLabel": "Начало",
+                            "value": "22:00",
+                            "placeholder": "HH:mm",
+                            "multiline": false,
+                            "style": [
+                              {
+                                "minHeight": 50,
+                                "borderWidth": 1,
+                                "borderColor": "#D6E3DC",
+                                "borderRadius": 10,
+                                "padding": 12,
+                                "fontSize": 17,
+                                "color": "#13231F",
+                                "backgroundColor": "#F1F6F3"
+                              },
+                              false
+                            ]
+                          },
+                          "children": null
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "style": {
+                          "flexGrow": 1,
+                          "flexBasis": 180,
+                          "gap": 8
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 15,
+                              "fontWeight": "700",
+                              "color": "#13231F"
+                            }
+                          },
+                          "children": [
+                            "Окончание"
+                          ]
+                        },
+                        {
+                          "type": "TextInput",
+                          "props": {
+                            "testID": "attendance-endTime",
+                            "accessibilityLabel": "Окончание",
+                            "value": "06:00",
+                            "placeholder": "HH:mm",
+                            "multiline": false,
+                            "style": [
+                              {
+                                "minHeight": 50,
+                                "borderWidth": 1,
+                                "borderColor": "#D6E3DC",
+                                "borderRadius": 10,
+                                "padding": 12,
+                                "fontSize": 17,
+                                "color": "#13231F",
+                                "backgroundColor": "#F1F6F3"
+                              },
+                              false
+                            ]
+                          },
+                          "children": null
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexGrow": 1,
+                      "flexBasis": 180,
+                      "gap": 8
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": {
+                          "fontSize": 15,
+                          "fontWeight": "700",
+                          "color": "#13231F"
+                        }
+                      },
+                      "children": [
+                        "Причина"
+                      ]
+                    },
+                    {
+                      "type": "TextInput",
+                      "props": {
+                        "testID": "attendance-reason",
+                        "accessibilityLabel": "Причина",
+                        "value": "Fictional overnight shift: missed finish",
+                        "multiline": true,
+                        "style": [
+                          {
+                            "minHeight": 50,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC",
+                            "borderRadius": 10,
+                            "padding": 12,
+                            "fontSize": 17,
+                            "color": "#13231F",
+                            "backgroundColor": "#F1F6F3"
+                          },
+                          {
+                            "minHeight": 100,
+                            "textAlignVertical": "top"
+                          }
+                        ]
+                      },
+                      "children": null
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "fontWeight": "700",
+                      "color": "#13231F"
+                    }
+                  },
+                  "children": [
+                    "Фото документов"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "До 3 фото, каждое до 5 МБ. Документы доступны вам и проверяющему; координаты не добавляются."
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "gap": 10
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-photo",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "paddingHorizontal": 18,
+                            "paddingVertical": 12,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC",
+                            "borderRadius": 12,
+                            "justifyContent": "center",
+                            "backgroundColor": "#FBFDFC"
+                          },
+                          false,
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": [
+                              {
+                                "fontSize": 15,
+                                "fontWeight": "700",
+                                "color": "#055342"
+                              },
+                              false
+                            ]
+                          },
+                          "children": [
+                            "Сфотографировать документ"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-submit",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "paddingHorizontal": 18,
+                            "paddingVertical": 12,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC",
+                            "borderRadius": 12,
+                            "justifyContent": "center",
+                            "backgroundColor": "#FBFDFC"
+                          },
+                          {
+                            "backgroundColor": "#08705A",
+                            "borderColor": "#08705A"
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": [
+                              {
+                                "fontSize": 15,
+                                "fontWeight": "700",
+                                "color": "#055342"
+                              },
+                              {
+                                "color": "#F8FCFA"
+                              }
+                            ]
+                          },
+                          "children": [
+                            "Подать заявку"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-close-form",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "paddingHorizontal": 18,
+                            "paddingVertical": 12,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC",
+                            "borderRadius": 12,
+                            "justifyContent": "center",
+                            "backgroundColor": "#FBFDFC"
+                          },
+                          false,
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": [
+                              {
+                                "fontSize": 15,
+                                "fontWeight": "700",
+                                "color": "#055342"
+                              },
+                              false
+                            ]
+                          },
+                          "children": [
+                            "Закрыть форму"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "testID": "attendance-list",
+                "style": {
+                  "gap": 0
+                }
+              },
+              "children": [
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "paddingVertical": 22,
+                      "borderBottomWidth": 1,
+                      "borderColor": "#D6E3DC",
+                      "gap": 10
+                    },
+                    "testID": "attendance-request-own-request"
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "style": {
+                          "flexDirection": "row",
+                          "flexWrap": "wrap",
+                          "gap": 10,
+                          "alignItems": "center",
+                          "justifyContent": "space-between"
+                        }
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "fontSize": 19,
+                              "fontWeight": "700",
+                              "color": "#13231F",
+                              "flexShrink": 1
+                            }
+                          },
+                          "children": [
+                            "Отпроситься на часы"
+                          ]
+                        },
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "color": "#055342",
+                              "fontSize": 14,
+                              "fontWeight": "700"
+                            }
+                          },
+                          "children": [
+                            "На рассмотрении"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": {
+                          "fontSize": 16,
+                          "lineHeight": 23,
+                          "color": "#13231F"
+                        }
+                      },
+                      "children": [
+                        "2026-10-14",
+                        " — ",
+                        "2026-10-14",
+                        " · 10:00–12:00"
+                      ]
+                    },
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": {
+                          "fontSize": 16,
+                          "lineHeight": 23,
+                          "color": "#13231F"
+                        }
+                      },
+                      "children": [
+                        "Fictional appointment"
+                      ]
+                    },
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": {
+                          "fontSize": 14,
+                          "lineHeight": 20,
+                          "color": "#5E7069"
+                        }
+                      },
+                      "children": [
+                        "Подана: 13.10.2026, 08:00:00"
+                      ]
+                    },
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "attendance-cancel-own-request",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 48,
+                            "paddingHorizontal": 18,
+                            "paddingVertical": 12,
+                            "borderWidth": 1,
+                            "borderColor": "#D6E3DC",
+                            "borderRadius": 12,
+                            "justifyContent": "center",
+                            "backgroundColor": "#FBFDFC"
+                          },
+                          false,
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": [
+                              {
+                                "fontSize": 15,
+                                "fontWeight": "700",
+                                "color": "#055342"
+                              },
+                              false
+                            ]
+                          },
+                          "children": [
+                            "Отменить заявку"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
