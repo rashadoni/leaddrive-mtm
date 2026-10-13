@@ -20,6 +20,7 @@ import { pullAndApplySync } from "../../src/services/sync-cache"
 import { syncRouteV2Routes } from "../../src/services/sync-v2-routes"
 import { queueAttendanceRequest, attendanceScope } from "../../src/services/attendance-requests"
 import { guardOfficeAttendance } from "../../src/services/attendance-session-guard"
+import { getFieldDeviceId } from "../../src/services/field-device-id"
 import { officeAgent, officeBootstrap } from "../../test-support/office-attendance"
 const scope = `${officeAgent.organizationId}:${officeAgent.id}`
 let data = officeBootstrap()
@@ -51,7 +52,12 @@ it("retains canonical START/PAUSE/RESUME/FINISH identities and never adds locati
   const events = (api.syncPush as jest.Mock).mock.calls.flatMap(call => call[0])
   expect(events.map(item => item.data.action)).toEqual(["START", "PAUSE", "RESUME", "FINISH"])
   expect(events.slice(1).every(item => item.data.workdayId === start.data.id)).toBe(true)
-  expect(JSON.stringify(events)).not.toMatch(/latitude|longitude|attendanceMark|installationId/)
+  expect(JSON.stringify(events)).not.toMatch(/latitude|longitude/)
+  const safeMark = { version: 1, installationId: await getFieldDeviceId(), locationState: "NO_CONSENT", consentRevisionId: null, location: null }
+  expect(events[0].data.attendanceMark).toEqual(safeMark)
+  expect(events[3].data.attendanceMark).toEqual(safeMark)
+  expect(events[1].data.attendanceMark).toBeUndefined()
+  expect(events[2].data.attendanceMark).toBeUndefined()
 })
 it("does not acknowledge or reschedule a late response after scope changes", async () => {
   await useWorkdayStore.getState().start(scope, () => guardOfficeAttendance(scope))

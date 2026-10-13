@@ -81,3 +81,18 @@
   Full RN/Jest, semantic typecheck and APK build remain NOT_RUN locally and
   must be rerun in hosted CI on the new checkpoint. No physical result or
   finished APK is claimed by these local checks.
+
+## Second hosted gate — canonical safe mark expectation
+
+- Follow-up hosted CI 38487095204 passed 219 of 220 suites / 1829 assertions.
+  The remaining assertion in office-attendance-sync combined a coordinate
+  prohibition with an old blanket prohibition on attendanceMark/installationId.
+  Real office admission now correctly emits the supported canonical mark.
+- Updated that assertion to require the exact START and FINISH mark using the
+  actual opaque installation ID, NO_CONSENT, null consent and null location.
+  PAUSE/RESUME must still omit the mark and every event must omit latitude and
+  longitude. This strengthens the explicit wire/privacy contract without any
+  further application change.
+- PASS: bounded changed-test syntax and diff checks. Jest/TypeScript/APK remain
+  hosted gates; no local full run performed. Next: coordinator review/push and
+  hosted CI, then physical office acceptance on the resulting exact APK.
