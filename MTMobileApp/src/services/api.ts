@@ -22,8 +22,12 @@ const STORAGE_KEY_CREDENTIALS = "@mtm_saved_login"
 // Server discovery includes a cold TLS handshake through the tenant proxy.
 // Ten seconds is too aggressive on entry-level Android devices and on
 // software-accelerated emulators, where an otherwise healthy tenant can be
-// reported as missing before the handshake completes.
+// reported as unreachable before the handshake completes.
 const SERVER_DISCOVERY_TIMEOUT_MS = 30_000
+
+export type ServerDiscoveryResult =
+  | { success: true; domain: string; name?: string }
+  | { success: false; domain: string; reason: "not_found" | "unreachable"; error: string }
 
 // The session check behind a 401 had no deadline of its own. The request that
 // asked for it waits on it, so on a connection that never answers that request
@@ -222,7 +226,7 @@ class ApiClient {
   /**
    * Ping a server to check if it exists and get company name.
    */
-  async pingServer(input: string): Promise<{ success: boolean; domain: string; name?: string; error?: string }> {
+  async pingServer(input: string): Promise<ServerDiscoveryResult> {
     const domain = this.resolveDomain(input.trim().toLowerCase())
     const url = `${this.protocol(domain)}://${domain}/api/v1/mtm/mobile/ping`
 
@@ -232,19 +236,24 @@ class ApiClient {
 
       try {
         const res = await fetch(url, { signal: controller.signal })
-        const data = await res.json()
-        if (data.success) {
-          return { success: true, domain, name: data.data?.name }
+        const data = await readJsonBody(res)
+        if (res.ok && data?.success === true) {
+          return { success: true, domain, name: typeof data.data?.name === "string" ? data.data.name : undefined }
         }
-        return { success: false, domain, error: "Invalid server response" }
+        // Only the discovery endpoint can establish that a company is absent.
+        // An offline phone, proxy error or malformed body says nothing about it.
+        if (res.status === 404 && data?.success === false && data.code === "MTM_COMPANY_NOT_FOUND") {
+          return { success: false, domain, reason: "not_found", error: "Company not found" }
+        }
+        return { success: false, domain, reason: "unreachable", error: "Invalid server response" }
       } finally {
         clearTimeout(timeout)
       }
     } catch (e: any) {
-      if (e.name === "AbortError") {
-        return { success: false, domain, error: "Connection timeout" }
+      if (e?.name === "AbortError") {
+        return { success: false, domain, reason: "unreachable", error: "Connection timeout" }
       }
-      return { success: false, domain, error: "Server not found" }
+      return { success: false, domain, reason: "unreachable", error: "Connection unavailable" }
     }
   }
 
