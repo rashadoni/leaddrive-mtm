@@ -199,8 +199,9 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
     const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
     const attendanceMark = await captureAttendanceMark(key, startedAt, false)
-    const { newAttendanceQr } = require('../services/attendance-qr') as typeof import('../services/attendance-qr')
-    const attendanceQr = attendanceMark ? newAttendanceQr(key, qrToken) : undefined
+    const attendanceQr = attendanceMark
+      ? (require('../services/attendance-qr') as typeof import('../services/attendance-qr')).newAttendanceQr(key, qrToken)
+      : undefined
     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
     if (!guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
@@ -218,8 +219,9 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const occurredAt = new Date().toISOString()
     const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
     const attendanceMark = await captureAttendanceMark(key, occurredAt, activeWorkday.paused === true)
-    const { newAttendanceQr } = require('../services/attendance-qr') as typeof import('../services/attendance-qr')
-    const attendanceQr = attendanceMark ? newAttendanceQr(key, activeWorkday.paused === true ? null : qrToken) : undefined
+    const attendanceQr = attendanceMark
+      ? (require('../services/attendance-qr') as typeof import('../services/attendance-qr')).newAttendanceQr(key, activeWorkday.paused === true ? null : qrToken)
+      : undefined
     // The server state machine uses FINISH (not END). Keeping the wire value
     // aligned means that pressing “End workday” actually closes the server
     // workday and stops live GPS, including after an offline retry.

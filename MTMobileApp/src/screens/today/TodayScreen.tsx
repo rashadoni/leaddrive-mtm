@@ -108,7 +108,6 @@ export default function TodayScreen() {
   const currentWorkday = activeWorkday?.key === currentWorkdayKey ? activeWorkday : null
   const qr = useAttendanceQr(currentWorkday?.workdayId ?? (finishedWorkday?.key===currentWorkdayKey?finishedWorkday.workdayId:undefined))
   const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
-  useEffect(()=>{if(workdayPaused || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,qr.available,currentWorkdayKey,scan])
   const workdayActive = workdayHydrated && currentWorkday?.syncState === "CONFIRMED" && !workdayPaused
   const workdayOpen = workdayActive || workdayPaused
 
@@ -142,6 +141,7 @@ export default function TodayScreen() {
     : null
   const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
   const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
+  useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
     let liveRouteFailed = false
@@ -872,7 +872,7 @@ export default function TodayScreen() {
           </View>
         </View>
       </ScrollView>
-      <AttendanceQrScanner visible={!!scan && scan.scope===currentWorkdayKey && qr.available && !workdayPaused} scope={currentWorkdayKey} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
+      <AttendanceQrScanner visible={!!scan && scan.scope===currentWorkdayKey && qr.available && !workdayPaused && !installation.blocked && !recovery.operation && !workdayStarting && !workdayEnding && !workdayFinishedToday} scope={currentWorkdayKey} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
         if(!scan || scan.scope!==currentWorkdayKey || (scan.action==='FINISH' && currentWorkday?.workdayId!==scan.workdayId) || (scan.action==='START' && currentWorkday))throw new Error('ATTENDANCE_QR_CHANGED')
         guardAttendanceQr(currentWorkdayKey);await syncWorkday(token);setScan(null)
       }}/>

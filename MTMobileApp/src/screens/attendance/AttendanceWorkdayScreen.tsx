@@ -52,7 +52,7 @@ export default function AttendanceWorkdayScreen() {
   const returnable = !installation.blocked && completed && canReturnToWorkday(bootstrap?.policies) && !refused
   const open = current?.syncState === "CONFIRMED"
   const paused = open && current.paused
-  useEffect(()=>{if(paused || !qr.available || (scan && scan.scope!==key))setScan(null)},[paused,qr.available,key,scan])
+  useEffect(()=>{if(paused || installation.blocked || recovery.operation || pending || conflict || !allowed || !qr.available || (scan && scan.scope!==key))setScan(null)},[paused,installation.blocked,recovery.operation,pending,conflict,allowed,qr.available,key,scan])
   const loadQueue = useCallback(async () => {
     const scope = officeAttendanceScope()
     const items = await allOutboxOperations(); guardOfficeAttendance(scope)
@@ -143,7 +143,7 @@ export default function AttendanceWorkdayScreen() {
         <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>
       </>}
     </ScrollView>
-    <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
+    <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused && !installation.blocked && !recovery.operation && !pending && !conflict} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
       if(!scan || scan.scope!==key || (scan.action==='FINISH' && current?.workdayId!==scan.workdayId) || (scan.action==='START' && current))throw new Error('ATTENDANCE_QR_CHANGED')
       guardAttendanceQr(key); await change(scan.action==='START'?'start':'end',token);setScan(null)
     }}/>

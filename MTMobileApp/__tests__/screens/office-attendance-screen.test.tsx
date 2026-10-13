@@ -15,6 +15,8 @@ const mockBootstrap = { data: officeBootstrap() }
 const mockWorkday: { activeWorkday: ActiveWorkday | null; finishedWorkday: null; hydrated: boolean } = { activeWorkday: null, finishedWorkday: null, hydrated: true }
 const mockRecovery = { operation: null, reload: jest.fn().mockResolvedValue(undefined) }
 const mockQr = {available:false,receipts:[],scope:'org-fixture:office-fixture',reload:jest.fn()}
+const mockInstallation={visible:false,blocked:false,own:null,pending:null,busy:false,failed:false,submit:jest.fn(),reload:jest.fn().mockResolvedValue(undefined)}
+jest.mock("../../src/hooks/useAttendanceInstallation",()=>({useAttendanceInstallation:()=>mockInstallation}))
 jest.mock("../../src/hooks/useAttendanceQr",()=>({useAttendanceQr:()=>mockQr}))
 jest.mock("../../src/services/attendance-qr",()=>({guardAttendanceQr:jest.fn()}))
 jest.mock("../../src/components/AttendanceQrScanner",()=>()=>null)
@@ -71,7 +73,7 @@ function renderedTree(value: TestRenderer.ReactTestRendererJSON | TestRenderer.R
 const text = (tree: TestRenderer.ReactTestRenderer) => JSON.stringify(renderedTree(tree.toJSON()))
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree,id).props.onPress() }); await settle() }
 beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
-beforeEach(() => { jest.clearAllMocks(); mockQr.available = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
+beforeEach(() => { jest.clearAllMocks(); mockQr.available = false; mockInstallation.blocked = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
 afterEach(async () => { await act(async () => { roots.splice(0).forEach(root => root.unmount()) }); await settle() })
 it.each(["ru","az","en"])("renders actual %s office day and sends the canonical start action", async language => {
   const tree = await render(AttendanceWorkdayScreen,language), copy = {ru,az,en}[language as "ru"|"az"|"en"].officeAttendance
@@ -197,4 +199,16 @@ it("does not offer QR for a completed day or revoked attendance",async()=>{
   await act(async()=>tree.update(<I18nextProvider i18n={locale}><AttendanceWorkdayScreen/></I18nextProvider>))
   expect(node(tree,'office-workday-qr')).toBeUndefined()
   expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+})
+
+it('closes the QR scanner when current installation approval becomes blocked',async()=>{
+  mockQr.available=true
+  const tree=await render(AttendanceWorkdayScreen)
+  await press(tree,'office-workday-qr')
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(true)
+  mockInstallation.blocked=true
+  await act(async()=>tree.update(<I18nextProvider i18n={locale}><AttendanceWorkdayScreen/></I18nextProvider>))
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
 })
