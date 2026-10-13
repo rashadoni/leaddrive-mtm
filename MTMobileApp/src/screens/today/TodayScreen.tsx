@@ -1,3 +1,7 @@
+import AttendanceQrScanner from '../../components/AttendanceQrScanner'
+import AttendanceQrReceipt from '../../components/AttendanceQrReceipt'
+import {useAttendanceQr} from '../../hooks/useAttendanceQr'
+import {guardAttendanceQr} from '../../services/attendance-qr'
 import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
 import { useAttendanceInstallation } from '../../hooks/useAttendanceInstallation'
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
@@ -93,6 +97,7 @@ export default function TodayScreen() {
   const [installationRefusal, setInstallationRefusal] = useState<'installation' | 'app' | null>(null)
   const recovery = useAttendanceMarkRecovery()
   const installation = useAttendanceInstallation()
+  const [scan,setScan] = useState<{scope:string;action:'START'|'FINISH';workdayId?:string}|null>(null)
   // The server's "no" about one particular day, kept with that day's id so it
   // never speaks for another.
   const [returnRefusal, setReturnRefusal] = useState<{ workdayId: string; reason: "notToday" | "locked" } | null>(null)
@@ -101,6 +106,7 @@ export default function TodayScreen() {
   const [unreadMessage, setUnreadMessage] = useState<TeamMessageSummary | null>(null)
   const currentWorkdayKey = workdayKey(agent?.organizationId, agent?.id)
   const currentWorkday = activeWorkday?.key === currentWorkdayKey ? activeWorkday : null
+  const qr = useAttendanceQr(currentWorkday?.workdayId ?? (finishedWorkday?.key===currentWorkdayKey?finishedWorkday.workdayId:undefined))
   const workdayPaused = currentWorkday?.syncState === "CONFIRMED" && currentWorkday.paused === true
   const workdayActive = workdayHydrated && currentWorkday?.syncState === "CONFIRMED" && !workdayPaused
   const workdayOpen = workdayActive || workdayPaused
@@ -135,6 +141,7 @@ export default function TodayScreen() {
     : null
   const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
   const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
+  useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
     let liveRouteFailed = false
@@ -208,16 +215,18 @@ export default function TodayScreen() {
     }
   }, [refresh, refreshing])
 
-  const syncWorkday = useCallback(async () => {
+  const syncWorkday = useCallback(async (qrToken?: string) => {
     if (workdayBusy || !workdayHydrated) return
     setWorkdayBusy(true)
     setWorkdayError(false)
     setInstallationRefusal(null)
     try {
       if (workdayOpen) {
-        await endWorkday(currentWorkdayKey)
+        if (qrToken !== undefined) await endWorkday(currentWorkdayKey, undefined, qrToken)
+        else await endWorkday(currentWorkdayKey)
       } else {
-        await startWorkday(currentWorkdayKey)
+        if (qrToken !== undefined) await startWorkday(currentWorkdayKey, undefined, qrToken)
+        else await startWorkday(currentWorkdayKey)
       }
       await refreshRouteFieldSession()
       await refresh()
@@ -610,22 +619,22 @@ export default function TodayScreen() {
                 style={({ pressed }) => [
                   styles.workdayButton,
                   !twoPane && styles.workdayButtonPhone,
-                  workdayOpen && styles.workdayButtonActive,
+                  (workdayOpen || qr.available) && styles.workdayButtonActive,
                   pressed && styles.pressed,
                   (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood) && styles.disabled,
                 ]}
               >
                 {workdayBusy || !workdayHydrated ? (
-                  <ActivityIndicator size="small" color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
+                  <ActivityIndicator size="small" color={workdayOpen || qr.available ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
                 ) : twoPane || !workdayOpen || workdayEnding ? (
                   <Icon
                     name={workdayOpen ? "stop-circle-outline" : workdayClosedForGood ? "checkmark-circle" : "play-circle"}
                     size={22}
-                    color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
+                    color={workdayOpen || qr.available ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />
                 ) : null}
-                <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                  {t(workdayOpen
+                <Text style={[styles.workdayButtonText, (workdayOpen || qr.available) && styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                  {t(qr.available && !workdayReturnable && !workdayFinishedToday ? (workdayOpen ? "attendanceQr.finishWithoutQr" : "attendanceQr.startWithoutQr") : workdayOpen
                     ? "todayV2.endDay"
                     : workdayEnding
                       ? "todayV2.endDayPendingButton"
@@ -638,6 +647,9 @@ export default function TodayScreen() {
               </Pressable>}
               </View>
             </View>
+            {qr.available && !workdayPaused && !workdayFinishedToday && !recovery.operation && !installation.blocked && <View style={{gap:12}}><Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t('attendanceQr.optional')}</Text><Pressable testID="today-workday-qr" accessibilityRole="button" disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding} style={[styles.workdayButton,{minHeight:52}]} onPress={()=>setScan({scope:currentWorkdayKey,action:workdayOpen?'FINISH':'START',workdayId:currentWorkday?.workdayId})}><Text style={styles.workdayButtonText}>{t(workdayOpen?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable></View>}
+            {qr.available && workdayPaused && <Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t("attendanceQr.breakPrivacy")}</Text>}
+            <AttendanceQrReceipt receipts={qr.receipts}/>
             <AttendanceInstallationCard installation={installation} />
             <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation} refresh={async () => { await refreshRouteFieldSession(); await refresh(); await recovery.reload() }} />
             <AttendanceLocationConsentCard />
@@ -860,6 +872,10 @@ export default function TodayScreen() {
           </View>
         </View>
       </ScrollView>
+      <AttendanceQrScanner visible={!!scan && scan.scope===currentWorkdayKey && qr.available && !workdayPaused && !installation.blocked && !recovery.operation && !workdayStarting && !workdayEnding && !workdayFinishedToday} scope={currentWorkdayKey} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
+        if(!scan || scan.scope!==currentWorkdayKey || (scan.action==='FINISH' && currentWorkday?.workdayId!==scan.workdayId) || (scan.action==='START' && currentWorkday))throw new Error('ATTENDANCE_QR_CHANGED')
+        guardAttendanceQr(currentWorkdayKey);await syncWorkday(token);setScan(null)
+      }}/>
       <ConfirmSheet
         visible={endDayConfirm}
         icon="🌙"

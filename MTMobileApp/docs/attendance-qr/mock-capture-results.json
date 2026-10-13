@@ -1,0 +1,72 @@
+[
+  {
+    "width": 1440,
+    "height": 955,
+    "overflow": false,
+    "targets": [
+      {
+        "height": 54,
+        "label": "Начать с QR филиала"
+      },
+      {
+        "height": 54,
+        "label": "Начать без QR"
+      },
+      {
+        "height": 54,
+        "label": "Отмена"
+      },
+      {
+        "height": 54,
+        "label": "Начать день"
+      },
+      {
+        "height": 54,
+        "label": "Сканировать заново"
+      },
+      {
+        "height": 54,
+        "label": "Отмена"
+      },
+      {
+        "height": 54,
+        "label": "Продолжить работу"
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 3037,
+    "overflow": false,
+    "targets": [
+      {
+        "height": 54,
+        "label": "Начать с QR филиала"
+      },
+      {
+        "height": 54,
+        "label": "Начать без QR"
+      },
+      {
+        "height": 54,
+        "label": "Отмена"
+      },
+      {
+        "height": 54,
+        "label": "Начать день"
+      },
+      {
+        "height": 54,
+        "label": "Сканировать заново"
+      },
+      {
+        "height": 54,
+        "label": "Отмена"
+      },
+      {
+        "height": 54,
+        "label": "Продолжить работу"
+      }
+    ]
+  }
+]
