@@ -1,0 +1,41 @@
+{
+  "source": "CI38388669588 exact6571e68 fictional actual RN components; HTML preview not device",
+  "results": [
+    {
+      "lang": "ru",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440
+    },
+    {
+      "lang": "ru",
+      "width": 390,
+      "scrollWidth": 390,
+      "viewport": 390
+    },
+    {
+      "lang": "az",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440
+    },
+    {
+      "lang": "az",
+      "width": 390,
+      "scrollWidth": 390,
+      "viewport": 390
+    },
+    {
+      "lang": "en",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440
+    },
+    {
+      "lang": "en",
+      "width": 390,
+      "scrollWidth": 390,
+      "viewport": 390
+    }
+  ]
+}

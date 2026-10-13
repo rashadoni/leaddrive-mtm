@@ -226,3 +226,11 @@
 - Coordinator independent review confirmed scoped receipt-before-ACK/raw-token boundary and noted an open scanner should close when installation approval becomes blocked. Both day screens now invalidate the modal on blocked installation, pending/conflict/recovery or completed state as applicable; added an actual office component regression. No automatic mark or new token is created.
 - CI38388251506 onbfe50e0 ran218 suites:216 passed,2 old-protocol workday suites failed (1774 tests passed,6 failed,1 todo). Root cause: unconditional dynamic import of QR service even when attendanceMark was absent loaded native auth/Sentry into the isolated legacy store path. Import now occurs only inside the opt-in evidence path; existing test assertions remain unchanged. New QR/scanner/receipt scenarios passed in that run. Semantic tsc/native were skipped by the failed Jest gate, not passed.
 - Independent read-only CRM QR review found no blocking scope, policy/revision lock, tenant HMAC, expiry, replay, RLS/event binding, break privacy or report projection issue. Runtime PostgreSQL scenarios remain coordinator CI responsibility. Next action: new exact-head CI, then actual fictional component evidence and remaining reviewer follow-ups.
+
+## 2026-10-13 — 4.7 QR final CI and actual component evidence
+
+- Root independently reviewed scanner invalidation and lazy legacy imports at6571e68; requested fix is complete, no remaining review blocker reported.
+- Exact product head6571e68afa52fff3e756044740c8deb54ee4222a: required CI38388669588 SUCCESS (218 suites,1781 tests PASS,1 existing TODO; semantic TypeScript PASS); signed Android APK/AAB38388669555 SUCCESS.
+- Downloaded CI host-component trees; rendered fictional RU/AZ/EN office/camera/confirmation at1440/390 into docs/attendance-qr/actual/components-*.png. All6 have no horizontal overflow. Inspected RU1440/EN390. These are HTML previews from actual React Native component trees, not device/emulator screenshots; camera scan and permissions on a physical phone remain NOT RUN.
+- Capture preflight: availableRAM15284MiB,disk239GiB,memory PSI0; one short Chromium run only. No full local Jest/tsc/native build.
+- Evidence-only checkpoint follows; wait for its fresh required CI before normal merge PR123. Then continue server5.1/5.2 reminders in its separate worktree.
