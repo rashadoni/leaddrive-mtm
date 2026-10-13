@@ -92,3 +92,15 @@ it("uses only guarded own consent API and preserves the exact revision and reque
   expect(calls.map(call => call[0])).toEqual(["https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent", "https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent"])
   expect(calls[1][1].body).toBe(JSON.stringify(input)); expect(calls[1][1].method).toBe("POST"); expect(guard).toHaveBeenCalled()
 })
+
+it("preserves the v1 background location route and sends the exact consent-bound body", async () => {
+  const guard = jest.fn()
+  const point = { latitude: 40.4, longitude: 49.8, workdayId: "wd-fictional", clientLocationId: "point-fictional", recordedAt: "2026-10-13T10:00:00.000Z", isMock: false, attendanceConsentId: "receipt-fictional" }
+  await api.sendLocation(point, guard)
+  const [url, options] = (global.fetch as jest.Mock).mock.calls[0]
+  expect(url).toBe("https://fictional.invalid/api/v1/mtm/mobile/location")
+  expect(options.method).toBe("POST")
+  expect(options.body).toBe(JSON.stringify(point))
+  expect(options.headers.Authorization).toBe("Bearer fictional-token")
+  expect(guard).toHaveBeenCalled()
+})
