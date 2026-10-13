@@ -33,7 +33,8 @@ beforeEach(async () => {
 })
 
 it("requires an explicit new permission; retained permissions and missing values cannot open attendance", () => {
-  for (const value of [undefined, null, {}, { agentPermissions: { hrmRequests: true } }, { agentPermissions: { attendanceRequests: false } }]) expect(agentMayAttendanceRequests(value)).toBe(false)
+  const missingOrDisabled: Parameters<typeof agentMayAttendanceRequests>[0][] = [undefined, null, {}, { agentPermissions: { hrmRequests: true } }, { agentPermissions: { attendanceRequests: false } }]
+  for (const value of missingOrDisabled) expect(agentMayAttendanceRequests(value)).toBe(false)
   expect(agentMayAttendanceRequests({ agentPermissions: { attendanceRequests: true } })).toBe(true)
 })
 it("validates full same-day correction clock pairs and real calendar dates", () => {

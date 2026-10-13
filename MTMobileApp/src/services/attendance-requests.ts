@@ -61,7 +61,7 @@ export async function clearAttendanceCache(scope: string) {
   nextRead(scope)
   await cacheMutation(() => AsyncStorage.removeItem(cacheKey(scope)))
 }
-async function handleFailure(scope: string, error: unknown) {
+async function handleFailure(scope: string, error: unknown): Promise<never> {
   if (attendanceAccessDenied(error)) await clearAttendanceCache(scope)
   throw error
 }

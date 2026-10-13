@@ -6,10 +6,11 @@ import { getFieldDeviceId } from "../../src/services/field-device-id"
 import { attendanceUuid, type AttendanceInput } from "../../src/services/attendance-contract"
 const client = api as unknown as { baseUrl: string; token: string | null }
 const originalFetch = global.fetch
-const originalFormData = global.FormData
+const nativeGlobals = globalThis as typeof globalThis & { FormData: typeof FormData }
+const originalFormData = nativeGlobals.FormData
 const NativeFormDataModule = require("react-native/Libraries/Network/FormData")
 const NativeFormData = NativeFormDataModule.default ?? NativeFormDataModule
-beforeAll(() => { global.FormData = NativeFormData })
+beforeAll(() => { nativeGlobals.FormData = NativeFormData })
 beforeEach(() => {
   jest.clearAllMocks()
   client.baseUrl = "https://fictional.invalid/api/v1/mtm"
@@ -17,7 +18,7 @@ beforeEach(() => {
   ;(getFieldDeviceId as jest.Mock).mockResolvedValue("rf-fictional-device")
   global.fetch = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true, data: {} }) })
 })
-afterAll(() => { global.fetch = originalFetch; global.FormData = originalFormData })
+afterAll(() => { global.fetch = originalFetch; nativeGlobals.FormData = originalFormData })
 it("uses ordinary authenticated own-list/quota/create/cancel API doors", async () => {
   const guard = jest.fn()
   const value: AttendanceInput = { clientRequestId: attendanceUuid(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: "2026-10-14", endDate: "2026-10-15", reason: "Fictional leave", attachmentIds: [] }
