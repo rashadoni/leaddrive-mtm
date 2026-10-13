@@ -247,11 +247,20 @@ export async function pushAttendanceAndLegacy(operations: OutboxOperation[], gua
   const attendance = operations.filter(item => item.entity === "attendanceRequests")
   const legacy = operations.filter(item => item.entity !== "attendanceRequests")
   const sendLegacy = async () => {
+    let response
     if (legacy.some(item => item.entity === "attendanceConsents" || (item.entity === "workdays" && item.data.attendanceMark))) {
       const { pushAttendanceLocationOperations } = require("./attendance-location") as typeof import('./attendance-location')
-      return pushAttendanceLocationOperations(legacy, guard)
+      response = await pushAttendanceLocationOperations(legacy, guard)
+    } else response = guard ? await api.syncPush(legacy, guard) : await api.syncPush(legacy)
+    guard?.()
+    if (response?.results?.some((result: import('./outbox').OutboxPushResult) => result.serverData?.attendanceQr !== undefined)) {
+      const scope = getOfflineScope()
+      if (!scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+      const { rememberAttendanceQrReceipts } = require('./attendance-qr') as typeof import('./attendance-qr')
+      await rememberAttendanceQrReceipts(scope, legacy, response.results, guard)
+      guard?.()
     }
-    return guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)
+    return response
   }
   if (attendance.length === 0) return sendLegacy()
   const scope = getOfflineScope()

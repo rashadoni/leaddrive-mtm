@@ -189,3 +189,27 @@ it.each(['MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED','MTM_ATTENDANCE_INSTALL
   await useWorkdayStore.getState().retryAttendanceMark(scope,first.operationId)
   const next=(await allOutboxOperations())[0];expect(next.operationId).not.toBe(first.operationId);expect(next.data).toMatchObject({id:first.data.id,occurredAt:later});expect(readAttendanceLocationFix).toHaveBeenCalledTimes(1)
 })
+
+it('binds QR only to a new endpoint operation and keeps it through location withdrawal', async () => {
+  data.policies.attendanceBranchQrVersion=1;data.policies.agentPermissions!.attendanceBranchQr=true
+  await useWorkdayStore.getState().start(scope,undefined,'fictional-qr-token')
+  const [first]=await allOutboxOperations();expect(first.data.attendanceQr).toEqual({version:1,token:'fictional-qr-token'})
+  await beginAttendanceConsent(scope,accepted,false)
+  const remaining=(await allOutboxOperations()).find(item=>item.operationId===first.operationId)!
+  expect(remaining.data.attendanceQr).toEqual(first.data.attendanceQr);expect(remaining.data.attendanceMark).toMatchObject({location:null})
+})
+it('never collects a QR for pause/resume or paused FINISH, including a stale supplied token',async()=>{
+  data.policies.attendanceBranchQrVersion=1;data.policies.agentPermissions!.attendanceBranchQr=true
+  useWorkdayStore.setState({activeWorkday:{key:scope,workdayId:'qr-workday',startedAt:timestamp,syncState:'CONFIRMED'}})
+  await useWorkdayStore.getState().pause(scope);await useWorkdayStore.getState().resume(scope);await useWorkdayStore.getState().pause(scope)
+  await useWorkdayStore.getState().end(scope,undefined,'fictional-stale-scan')
+  const rows=await allOutboxOperations();expect(rows.slice(0,3).every(item=>item.data.attendanceQr===undefined)).toBe(true)
+  expect(rows[3].data.attendanceQr).toEqual({version:1,token:null});expect(readAttendanceLocationFix).not.toHaveBeenCalled()
+})
+it('a definitely rejected fresh mark does not inherit the original scanned QR',async()=>{
+  data.policies.attendanceBranchQrVersion=1;data.policies.agentPermissions!.attendanceBranchQr=true
+  await useWorkdayStore.getState().start(scope,undefined,'fictional-old-scan')
+  const [first]=await allOutboxOperations();await markOutboxConflict(first.operationId,{operationId:first.operationId,status:'conflict',error:'MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED',serverData:{committed:false}})
+  await useWorkdayStore.getState().retryAttendanceMark(scope,first.operationId)
+  const [next]=await allOutboxOperations();expect(next.operationId).not.toBe(first.operationId);expect(next.data.attendanceQr).toEqual({version:1,token:null})
+})

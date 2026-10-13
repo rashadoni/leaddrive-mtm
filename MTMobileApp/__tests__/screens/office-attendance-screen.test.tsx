@@ -14,6 +14,11 @@ const mockAuth = { agent: officeAgent, logout: jest.fn(), switchServer: jest.fn(
 const mockBootstrap = { data: officeBootstrap() }
 const mockWorkday: { activeWorkday: ActiveWorkday | null; finishedWorkday: null; hydrated: boolean } = { activeWorkday: null, finishedWorkday: null, hydrated: true }
 const mockRecovery = { operation: null, reload: jest.fn().mockResolvedValue(undefined) }
+const mockQr = {available:false,receipts:[],scope:'org-fixture:office-fixture',reload:jest.fn()}
+jest.mock("../../src/hooks/useAttendanceQr",()=>({useAttendanceQr:()=>mockQr}))
+jest.mock("../../src/services/attendance-qr",()=>({guardAttendanceQr:jest.fn()}))
+jest.mock("../../src/components/AttendanceQrScanner",()=>()=>null)
+
 jest.mock("../../src/hooks/useAttendanceMarkRecovery", () => ({ useAttendanceMarkRecovery: () => mockRecovery }))
 jest.mock("../../src/services/workday-return", () => ({ canReturnToWorkday: (policies: {workdayReturn?: boolean}) => policies?.workdayReturn === true, returnToClosedWorkday: jest.fn().mockResolvedValue("returned") }))
 const mockAsk = jest.fn().mockResolvedValue(true)
@@ -34,6 +39,8 @@ jest.mock("../../src/store/hints", () => ({ useHintsStore: (selector: (value: un
 jest.mock("../../src/i18n", () => ({ getCurrentLocale: () => "ru", setLocale: jest.fn(), SUPPORTED_LOCALES: ["az", "ru", "en"] }))
 jest.mock("../../src/components/ConfirmSheet", () => () => null)
 jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
+import AttendanceQrScanner from "../../src/components/AttendanceQrScanner"
+import {guardAttendanceQr} from "../../src/services/attendance-qr"
 import AttendanceWorkdayScreen from "../../src/screens/attendance/AttendanceWorkdayScreen"
 import AttendanceInboxScreen from "../../src/screens/attendance/AttendanceInboxScreen"
 import ProfileScreen from "../../src/screens/profile/ProfileScreen"
@@ -64,7 +71,7 @@ function renderedTree(value: TestRenderer.ReactTestRendererJSON | TestRenderer.R
 const text = (tree: TestRenderer.ReactTestRenderer) => JSON.stringify(renderedTree(tree.toJSON()))
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree,id).props.onPress() }); await settle() }
 beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
-beforeEach(() => { jest.clearAllMocks(); mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
+beforeEach(() => { jest.clearAllMocks(); mockQr.available = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
 afterEach(async () => { await act(async () => { roots.splice(0).forEach(root => root.unmount()) }); await settle() })
 it.each(["ru","az","en"])("renders actual %s office day and sends the canonical start action", async language => {
   const tree = await render(AttendanceWorkdayScreen,language), copy = {ru,az,en}[language as "ru"|"az"|"en"].officeAttendance
@@ -143,4 +150,51 @@ it.each([
   const tree = await render(AttendanceWorkdayScreen); await press(tree, 'office-workday-return')
   expect(text(tree)).toContain(ru.attendanceLocation[copyKey])
   expect(text(tree)).not.toContain(ru.officeAttendance.failed)
+})
+
+
+it.each(["ru","az","en"])("offers optional QR in %s without replacing ordinary time actions",async language=>{
+  mockQr.available=true
+  const tree=await render(AttendanceWorkdayScreen,language)
+  const copy={ru,az,en}[language as "ru"|"az"|"en"].attendanceQr
+  expect(text(tree)).toContain(copy.optional)
+  expect(text(tree)).toContain(copy.startWithoutQr)
+  capture(tree,`qr-office-${language}`)
+  await press(tree,"office-workday-qr")
+  const scanner=tree.root.findByType(AttendanceQrScanner)
+  expect(scanner.props.visible).toBe(true)
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+  await act(async()=>scanner.props.onConfirm('fictional-qr'))
+  expect(guardAttendanceQr).toHaveBeenCalledWith('org-fixture:office-fixture')
+  expect(changeAttendanceWorkday).toHaveBeenCalledWith('start','fictional-qr')
+})
+it("never opens the QR camera while paused and finishes without QR",async()=>{
+  mockQr.available=true
+  mockWorkday.activeWorkday={key:'org-fixture:office-fixture',workdayId:'wd',startedAt:'2026-10-13T08:00:00Z',syncState:'CONFIRMED',paused:true}
+  const tree=await render(AttendanceWorkdayScreen)
+  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+  expect(text(tree)).toContain(ru.attendanceQr.breakPrivacy)
+  await press(tree,'office-workday-action')
+  expect(changeAttendanceWorkday).toHaveBeenCalledWith('end')
+})
+it("closes an open QR scanner when the day moves into a break",async()=>{
+  mockQr.available=true
+  mockWorkday.activeWorkday={key:'org-fixture:office-fixture',workdayId:'wd',startedAt:'2026-10-13T08:00:00Z',syncState:'CONFIRMED'}
+  const tree=await render(AttendanceWorkdayScreen)
+  await press(tree,'office-workday-qr')
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(true)
+  mockWorkday.activeWorkday={...mockWorkday.activeWorkday,paused:true}
+  await act(async()=>tree.update(<I18nextProvider i18n={locale}><AttendanceWorkdayScreen/></I18nextProvider>))
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+it("does not offer QR for a completed day or revoked attendance",async()=>{
+  mockQr.available=true;completedToday()
+  const tree=await render(AttendanceWorkdayScreen)
+  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  mockBootstrap.data.policies.agentPermissions!.attendanceWorkday=false
+  await act(async()=>tree.update(<I18nextProvider i18n={locale}><AttendanceWorkdayScreen/></I18nextProvider>))
+  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
 })

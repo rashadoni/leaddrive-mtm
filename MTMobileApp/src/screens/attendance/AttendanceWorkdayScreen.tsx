@@ -1,3 +1,7 @@
+import AttendanceQrScanner from '../../components/AttendanceQrScanner'
+import AttendanceQrReceipt from '../../components/AttendanceQrReceipt'
+import {useAttendanceQr} from '../../hooks/useAttendanceQr'
+import {guardAttendanceQr} from '../../services/attendance-qr'
 import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
 import { useAttendanceInstallation } from '../../hooks/useAttendanceInstallation'
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
@@ -38,6 +42,8 @@ export default function AttendanceWorkdayScreen() {
   const mounted = useRef(true), busyRef = useRef(false)
   const key = workdayKey(agent?.organizationId, agent?.id), allowed = hasOfficeAttendanceAccess(bootstrap, agent)
   const current = active?.key === key ? active : null
+  const qr = useAttendanceQr(current?.workdayId ?? bootstrap?.workday?.id)
+  const [scan,setScan] = useState<{scope:string;action:'START'|'FINISH';workdayId?:string}|null>(null)
   const pending = current?.syncState === "START_PENDING" || current?.syncState === "FINISH_PENDING" || operations.some(item => item.status === "pending")
   const conflict = operations.some(item => item.status === "conflict" && current
     && (item.data.id === current.workdayId || item.data.workdayId === current.workdayId))
@@ -46,6 +52,7 @@ export default function AttendanceWorkdayScreen() {
   const returnable = !installation.blocked && completed && canReturnToWorkday(bootstrap?.policies) && !refused
   const open = current?.syncState === "CONFIRMED"
   const paused = open && current.paused
+  useEffect(()=>{if(paused || !qr.available || (scan && scan.scope!==key))setScan(null)},[paused,qr.available,key,scan])
   const loadQueue = useCallback(async () => {
     const scope = officeAttendanceScope()
     const items = await allOutboxOperations(); guardOfficeAttendance(scope)
@@ -60,17 +67,18 @@ export default function AttendanceWorkdayScreen() {
   }, [loadQueue])
   useAutoRefresh(() => { void refresh() })
   useEffect(() => { mounted.current = true; if (allowed) void loadQueue().catch(() => {}); else setOperations([]); return () => { mounted.current = false } }, [allowed, key, loadQueue])
-  async function change(action: "start" | "end" | "pause" | "resume") {
+  async function change(action: "start" | "end" | "pause" | "resume", qrToken?: string) {
     if (busyRef.current || !allowed || !hydrated || pending || conflict || completed || recovery.operation || (installation.blocked && (action === 'start' || action === 'end'))) return
     const scope = officeAttendanceScope()
     busyRef.current = true; setBusy(true); setError(false); setInstallationRefusal(null)
     try {
-      if (action === "end") {
+      if (action === "end" && qrToken === undefined) {
         const confirmed = await ask({ title: t("officeAttendance.finishTitle"), message: t("officeAttendance.finishBody"), buttons: [{ text: t("officeAttendance.keepOpen"), value: false, style: "cancel" }, { text: t("officeAttendance.finish"), value: true }], dismissValue: false })
         if (!confirmed || !mounted.current) return
       }
       guardOfficeAttendance(scope)
-      await changeAttendanceWorkday(action)
+      if (qrToken !== undefined) await changeAttendanceWorkday(action, qrToken)
+      else await changeAttendanceWorkday(action)
       if (!mounted.current) return
       await loadQueue()
       await refreshAttendanceSession()
@@ -116,13 +124,16 @@ export default function AttendanceWorkdayScreen() {
           {returnable && <Text style={styles.muted}>{t('officeAttendance.returnHint')}</Text>}
           {refused && <Text accessibilityRole="alert" style={styles.error}>{t(refused === 'locked' ? 'officeAttendance.returnLocked' : 'officeAttendance.returnNotToday')}</Text>}
           {busy && <ActivityIndicator color={fieldTheme.color.primary} />}
+          {qr.available && !completed && <Text style={styles.muted}>{t(paused?'attendanceQr.breakPrivacy':'attendanceQr.optional')}</Text>}
           <View style={styles.actions}>
+            {qr.available && !paused && !completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-qr" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} style={styles.button} onPress={()=>setScan({scope:key,action:open?'FINISH':'START',workdayId:current?.workdayId})}><Text style={styles.buttonText}>{t(open?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable>}
             {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || pending || conflict} onPress={() => void change(paused ? "resume" : "pause")} style={[styles.button, styles.secondary, (busy || pending || conflict) && styles.disabled]}><Text style={styles.secondaryText}>{t(paused ? "officeAttendance.resume" : "officeAttendance.pause")}</Text></Pressable>}
-            {!completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} onPress={() => void change(open ? "end" : "start")} style={[styles.button, (busy || !hydrated || pending || conflict) && styles.disabled]}><Text style={styles.buttonText}>{t(open ? "officeAttendance.finish" : "officeAttendance.start")}</Text></Pressable>}
+            {!completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} onPress={() => void change(open ? "end" : "start")} style={[styles.button, qr.available && styles.secondary, (busy || !hydrated || pending || conflict) && styles.disabled]}><Text style={qr.available?styles.secondaryText:styles.buttonText}>{t(qr.available ? (open?"attendanceQr.finishWithoutQr":"attendanceQr.startWithoutQr") : (open ? "officeAttendance.finish" : "officeAttendance.start"))}</Text></Pressable>}
             {returnable && <Pressable testID="office-workday-return" accessibilityRole="button" disabled={busy || !hydrated || pending} onPress={() => void returnToWork()} style={[styles.button, (busy || !hydrated || pending) && styles.disabled]}><Text style={styles.buttonText}>{t('officeAttendance.returnToWork')}</Text></Pressable>}
           </View>
           <Text style={styles.muted}>{t("officeAttendance.closeHint")}</Text>
         </View>
+        <AttendanceQrReceipt receipts={qr.receipts} />
         <AttendanceInstallationCard installation={installation} />
         <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation} refresh={async () => { await refresh(); await recovery.reload() }} />
         <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>
@@ -132,6 +143,10 @@ export default function AttendanceWorkdayScreen() {
         <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>
       </>}
     </ScrollView>
+    <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
+      if(!scan || scan.scope!==key || (scan.action==='FINISH' && current?.workdayId!==scan.workdayId) || (scan.action==='START' && current))throw new Error('ATTENDANCE_QR_CHANGED')
+      guardAttendanceQr(key); await change(scan.action==='START'?'start':'end',token);setScan(null)
+    }}/>
   </View>
 }
 const styles = StyleSheet.create({

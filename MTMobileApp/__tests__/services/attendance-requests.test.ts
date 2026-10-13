@@ -251,3 +251,27 @@ it("retains private evidence when storage persisted the queue but lost its ackno
   expect(fs.unlink).not.toHaveBeenCalled()
   expect((await allOutboxOperations())[0].attendanceDocuments).toEqual([document])
 })
+
+it('persists a safe QR receipt before acknowledgement and retries the exact token after a storage failure', async () => {
+  ;(useAuthStore.getState as jest.Mock).mockReturnValue({isLoggedIn:true,agent:{id:'fictional-agent',organizationId:'fictional-org',role:'AGENT'}})
+  const first=await enqueueOutboxOperation({entity:'workdays',op:'create',data:{action:'START',id:'qr-day',occurredAt:'2026-10-13T08:00:00Z',attendanceQr:{version:1,token:'fictional-private-qr'}}})
+  ;(api.syncPush as jest.Mock).mockImplementation(async operations=>({results:operations.map((item:{operationId:string})=>({operationId:item.operationId,status:'ok',serverData:{attendanceQr:{eventId:'qr-event',state:'VERIFIED',branch:{id:'qr-branch',name:'Fictional branch'}}}}))}))
+  const nativeSet=AsyncStorage.setItem
+  const originalSet=(nativeSet as jest.Mock).getMockImplementation()!
+  ;(nativeSet as jest.Mock).mockImplementationOnce(async (key:string,value:string)=>{if(key.startsWith('@mtm_attendance_qr_receipts'))throw new Error('disk');return originalSet(key,value)})
+  await flushOutbox(pushAttendanceAndLegacy)
+  expect((await allOutboxOperations()).map(row=>row.operationId)).toEqual([first.operationId])
+  // Retry after the recorded backoff; the durable operation must be identical.
+  const deferred=(await allOutboxOperations())[0]
+  const clock=jest.spyOn(Date,'now').mockReturnValue(deferred.nextAttemptAt+1)
+  try {
+    expect((await flushOutbox(pushAttendanceAndLegacy)).sent).toBe(1)
+    expect(await allOutboxOperations()).toEqual([])
+  } finally { clock.mockRestore() }
+  const calls=(api.syncPush as jest.Mock).mock.calls
+  expect(calls).toHaveLength(2)
+  expect(calls[0][0][0].operationId).toBe(calls[1][0][0].operationId)
+  expect(calls[0][0][0].data.attendanceQr).toEqual(calls[calls.length-1][0][0].data.attendanceQr)
+  const receipt=await AsyncStorage.getItem('@mtm_attendance_qr_receipts_v1:'+scope)
+  expect(receipt).toContain('qr-event');expect(receipt).not.toContain('fictional-private-qr')
+})

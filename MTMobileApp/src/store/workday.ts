@@ -105,8 +105,8 @@ interface WorkdayState {
   syncError: WorkdaySyncError
   hydrated: boolean
   hydrate: () => Promise<void>
-  start: (key: string, guard?: () => void) => Promise<void>
-  end: (key: string, guard?: () => void) => Promise<void>
+  start: (key: string, guard?: () => void, qrToken?: string | null) => Promise<void>
+  end: (key: string, guard?: () => void, qrToken?: string | null) => Promise<void>
   retryAttendanceMark: (key: string, operationId: string) => Promise<void>
   /**
    * Take a break. The server refuses GPS points recorded inside a pause
@@ -188,37 +188,43 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       set({ activeWorkday: null, finishedWorkday: null, syncError: null, hydrated: true })
     }
   },
-  start: (key, guard) => serializeMutation(async () => {
+  start: (key, guard, qrToken) => serializeMutation(async () => {
     guard?.()
     // Owner decision 4 (audit 2026-09-05): a finished day stays finished. A
     // break/resume control replaces the restart (task A7/B3, sprint 3).
     const finished = get().finishedWorkday
     if (finished?.key === key && finished.dateKey === localDateKey()) return
+    if (qrToken !== undefined && get().activeWorkday?.key === key) throw new Error('ATTENDANCE_QR_CHANGED')
     const startedAt = new Date().toISOString()
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
     const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
     const attendanceMark = await captureAttendanceMark(key, startedAt, false)
+    const { newAttendanceQr } = require('../services/attendance-qr') as typeof import('../services/attendance-qr')
+    const attendanceQr = attendanceMark ? newAttendanceQr(key, qrToken) : undefined
     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
     if (!guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt, ...(attendanceMark ? { attendanceMark } : {}), ...(attendanceQr ? { attendanceQr } : {}) } }, key, guard)
     guard?.()
     if (guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
     set({ activeWorkday, syncError: null })
   }),
-  end: (key, guard) => serializeMutation(async () => {
+  end: (key, guard, qrToken) => serializeMutation(async () => {
     guard?.()
     const activeWorkday = get().activeWorkday
     if (activeWorkday?.key !== key) return
+    if (qrToken !== undefined && activeWorkday.syncState !== "CONFIRMED") throw new Error("ATTENDANCE_QR_CHANGED")
     const occurredAt = new Date().toISOString()
     const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
     const attendanceMark = await captureAttendanceMark(key, occurredAt, activeWorkday.paused === true)
+    const { newAttendanceQr } = require('../services/attendance-qr') as typeof import('../services/attendance-qr')
+    const attendanceQr = attendanceMark ? newAttendanceQr(key, activeWorkday.paused === true ? null : qrToken) : undefined
     // The server state machine uses FINISH (not END). Keeping the wire value
     // aligned means that pressing “End workday” actually closes the server
     // workday and stops live GPS, including after an offline retry.
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt, ...(attendanceMark ? { attendanceMark } : {}), ...(attendanceQr ? { attendanceQr } : {}) } }, key, guard)
     guard?.()
     const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING" }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))
@@ -244,7 +250,10 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const attendanceMark = await captureAttendanceMark(key, occurredAt, action === 'FINISH' && local?.paused === true)
     guard()
     if (!attendanceMark) throw new Error('ATTENDANCE_MARK_CHANGED')
-    const nextId = await retryOutboxConflict(operationId, { occurredAt, attendanceMark }, { scope: key, guard })
+    const { newAttendanceQr } = require('../services/attendance-qr') as typeof import('../services/attendance-qr')
+    // A known rolled-back mark is new: never inherit the old scanned code.
+    const attendanceQr = newAttendanceQr(key, null)
+    const nextId = await retryOutboxConflict(operationId, { occurredAt, attendanceMark, attendanceQr }, { scope: key, guard })
     guard()
     if (!nextId) throw new Error('ATTENDANCE_MARK_CHANGED')
     const activeWorkday: ActiveWorkday = action === 'START'

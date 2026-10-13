@@ -92,6 +92,7 @@ const KNOWN_CAPABILITIES: readonly MobileCapability[] = [
 export interface BootstrapPolicies {
   /** Exact opt-in wire version. Missing/unknown never requests a location. */
   attendanceMarkVersion?: 1
+  attendanceBranchQrVersion?: 1
   /**
    * Burn a visible plaque (time, agent, customer, GPS) into field photos.
    * Defaults to FALSE when the server omits it: the plaque travels inside the
@@ -414,6 +415,7 @@ export function toBootstrap(raw: any): BootstrapData {
     // resolves to "no plaque", which is the non-leaking direction.
     policies: {
       ...(record(raw?.policies)?.attendanceMarkVersion === 1 ? { attendanceMarkVersion: 1 as const } : {}),
+      ...(record(raw?.policies)?.attendanceBranchQrVersion === 1 ? { attendanceBranchQrVersion: 1 as const } : {}),
       photoWatermark: record(raw?.policies)?.photoWatermark === true,
       // Missing means an older server: do not expose a planning action that
       // cannot be confirmed by the server yet.

@@ -384,3 +384,12 @@ describe("bootstrap policies — what an agent may do", () => {
     expect(permissions({ policies: { agentPermissions: { contactCreateRequest: "false" } } })).toBeUndefined()
   })
 })
+
+it.each([undefined,null,0,2,'1',true])('does not opt an old or incompatible server into QR version %p',version=>{
+  expect(toBootstrap({policies:{attendanceBranchQrVersion:version}}).policies.attendanceBranchQrVersion).toBeUndefined()
+})
+it('keeps the exact QR wire version separately from GPS evidence',()=>{
+  const policies=toBootstrap({policies:{attendanceBranchQrVersion:1}}).policies
+  expect(policies.attendanceBranchQrVersion).toBe(1)
+  expect(policies.attendanceMarkVersion).toBeUndefined()
+})
