@@ -6,7 +6,7 @@ import { attendanceMarkRejection, canReplaceAttendanceMark } from '../services/a
 import { useWorkdayStore } from '../store/workday'
 import { fieldTheme } from '../theme/fieldTheme'
 
-export default function AttendanceMarkRecoveryCard({ operation, refresh }: { operation: OutboxOperation | null; refresh: () => Promise<unknown> }) {
+export default function AttendanceMarkRecoveryCard({ operation, refresh, installationBlocked = false }: { installationBlocked?: boolean; operation: OutboxOperation | null; refresh: () => Promise<unknown> }) {
   const { t } = useTranslation(), [busy, setBusy] = useState(false), [failed, setFailed] = useState(false)
   const writing = useRef(false)
   const mounted = useRef(true)
@@ -14,8 +14,9 @@ export default function AttendanceMarkRecoveryCard({ operation, refresh }: { ope
   const reason = operation && attendanceMarkRejection(operation)
   if (!operation || !reason) return null
   const replace = canReplaceAttendanceMark(operation)
+  const awaitingInstallation = installationBlocked && (reason === 'installation' || reason === 'app')
   async function retry() {
-    if (!operation || !replace || writing.current) return
+    if (!operation || !replace || awaitingInstallation || writing.current) return
     writing.current = true; setBusy(true); setFailed(false)
     try { await useWorkdayStore.getState().retryAttendanceMark(operation.scopeKey, operation.operationId); if (mounted.current) await refresh() }
     catch { if (mounted.current) setFailed(true) }
@@ -24,10 +25,10 @@ export default function AttendanceMarkRecoveryCard({ operation, refresh }: { ope
   return <View testID="attendance-mark-recovery" style={styles.card}>
     <Text style={styles.title}>{t(`attendanceLocation.${reason}Title`)}</Text>
     <Text style={styles.copy}>{t(`attendanceLocation.${reason}Body`)}</Text>
-    <Text style={styles.copy}>{t(replace ? 'attendanceLocation.retryTime' : 'attendanceLocation.unknownReceipt')}</Text>
+    <Text style={styles.copy}>{t(awaitingInstallation ? 'attendanceInstallation.waitForApproval' : replace ? 'attendanceLocation.retryTime' : 'attendanceLocation.unknownReceipt')}</Text>
     {failed && <Text accessibilityRole="alert" style={styles.warning}>{t('attendanceLocation.retryFailed')}</Text>}
     {busy && <ActivityIndicator color={fieldTheme.color.primary} />}
-    {replace && <Pressable testID="attendance-mark-retry" accessibilityRole="button" disabled={busy} onPress={() => void retry()} style={[styles.button, busy && styles.disabled]}><Text style={styles.buttonText}>{t('attendanceLocation.retryMark')}</Text></Pressable>}
+    {replace && !awaitingInstallation && <Pressable testID="attendance-mark-retry" accessibilityRole="button" disabled={busy} onPress={() => void retry()} style={[styles.button, busy && styles.disabled]}><Text style={styles.buttonText}>{t('attendanceLocation.retryMark')}</Text></Pressable>}
   </View>
 }
 const styles = StyleSheet.create({

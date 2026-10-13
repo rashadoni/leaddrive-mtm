@@ -1,3 +1,5 @@
+import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
+import { useAttendanceInstallation } from '../../hooks/useAttendanceInstallation'
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
 import AttendanceMarkRecoveryCard from '../../components/AttendanceMarkRecoveryCard'
 import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery'
@@ -89,6 +91,7 @@ export default function TodayScreen() {
   const [workdayBusy, setWorkdayBusy] = useState(false)
   const [workdayError, setWorkdayError] = useState(false)
   const recovery = useAttendanceMarkRecovery()
+  const installation = useAttendanceInstallation()
   // The server's "no" about one particular day, kept with that day's id so it
   // never speaks for another.
   const [returnRefusal, setReturnRefusal] = useState<{ workdayId: string; reason: "notToday" | "locked" } | null>(null)
@@ -258,13 +261,14 @@ export default function TodayScreen() {
       await refresh()
     } catch {
       setWorkdayError(true)
+      await installation.reload()
     } finally {
       setWorkdayBusy(false)
     }
-  }, [currentWorkdayKey, finishedWorkday?.workdayId, refresh, workdayBusy, workdayHydrated, workdayReturnable])
+  }, [installation.reload, currentWorkdayKey, finishedWorkday?.workdayId, refresh, workdayBusy, workdayHydrated, workdayReturnable])
 
   const requestWorkdayAction = useCallback(() => {
-    if (recovery.operation) return
+    if (recovery.operation || installation.blocked) return
     if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood) return
     if (workdayReturnable) {
       returnToWorkday().catch(() => {})
@@ -275,7 +279,7 @@ export default function TodayScreen() {
       return
     }
     setEndDayConfirm(true)
-  }, [recovery.operation, returnToWorkday, syncWorkday, workdayBusy, workdayClosedForGood, workdayEnding, workdayHydrated, workdayOpen, workdayReturnable, workdayStarting])
+  }, [recovery.operation, installation.blocked, returnToWorkday, syncWorkday, workdayBusy, workdayClosedForGood, workdayEnding, workdayHydrated, workdayOpen, workdayReturnable, workdayStarting])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -592,7 +596,7 @@ export default function TodayScreen() {
                   </Text>
                 </Pressable>
               ) : null}
-              {!recovery.operation && <Pressable
+              {!recovery.operation && !installation.blocked && <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood }}
                 disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood}
@@ -628,7 +632,8 @@ export default function TodayScreen() {
               </Pressable>}
               </View>
             </View>
-            <AttendanceMarkRecoveryCard operation={recovery.operation} refresh={async () => { await refreshRouteFieldSession(); await refresh(); await recovery.reload() }} />
+            <AttendanceInstallationCard installation={installation} />
+            <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation} refresh={async () => { await refreshRouteFieldSession(); await refresh(); await recovery.reload() }} />
             <AttendanceLocationConsentCard />
             {online === false ? (
               <View style={styles.cachedBadge}>

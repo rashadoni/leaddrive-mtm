@@ -63,6 +63,8 @@ function conflictCustomerId(conflict: SyncConflict): string | null {
 function conflictTranslationKey(code: string) {
   if (code === 'MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED') return 'attendanceLocation.outsideBody'
   if (code === 'MTM_ATTENDANCE_LOCATION_MOCK_REJECTED') return 'attendanceLocation.mockBody'
+  if (code === 'MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED') return 'attendanceLocation.installationBody'
+  if (code === 'MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED') return 'attendanceLocation.appBody'
   if (code.startsWith("MTM_ATTENDANCE_")) return attendanceErrorKey(code)
   const known: Record<string, string> = {
     MTM_VISIT_OUT_OF_ZONE: "syncCenter.conflictOutOfZone",

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
-jest.mock('../../src/services/api', () => ({ api: { getAttendanceLocationConsent: jest.fn(), setAttendanceLocationConsent: jest.fn(), syncPush: jest.fn() } }))
+jest.mock('../../src/services/api', () => ({ api: { getAttendanceInstallation: jest.fn(), getAttendanceLocationConsent: jest.fn(), setAttendanceLocationConsent: jest.fn(), syncPush: jest.fn() } }))
 jest.mock('../../src/store/auth', () => ({ useAuthStore: { getState: jest.fn() } }))
 jest.mock('../../src/store/bootstrap', () => ({ useBootstrapStore: { getState: jest.fn() } }))
 jest.mock('../../src/services/attendance-location-fix', () => ({ readAttendanceLocationFix: jest.fn() }))
@@ -172,4 +172,20 @@ it('withdrawal removes optional background evidence without deleting ordinary co
   const point = { latitude: 40.4, longitude: 49.8, clientLocationId: 'fictional-point', recordedAt: timestamp, isMock: false, attendanceConsentId: 'exact-receipt' }
   await queuePoint(point); await beginAttendanceConsent(scope, accepted, false)
   expect(await readQueue()).toEqual([{ latitude: 40.4, longitude: 49.8, clientLocationId: 'fictional-point', recordedAt: timestamp }])
+})
+
+it.each(['MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED','MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED'])('requires fresh installation approval before replacing %s',async code=>{
+  data.policies.agentPermissions!.attendanceInstallation=true
+  await useWorkdayStore.getState().start(scope);const first=(await allOutboxOperations())[0]
+  await markOutboxConflict(first.operationId,{operationId:first.operationId,status:'conflict',error:code,serverData:{code,committed:false}})
+  await useWorkdayStore.getState().reconcileFromServer(scope,null)
+  const pending={required:true,installationLabel:'Fictional installation',state:'PENDING',requestId:'347bf275-448b-4e8f-b018-ad3571bb7b94',submittedAt:timestamp,decision:null,revocation:null,canRequest:false}
+  ;(api.getAttendanceInstallation as jest.Mock).mockResolvedValue({success:true,data:pending})
+  ;(readAttendanceLocationFix as jest.Mock).mockClear()
+  await expect(useWorkdayStore.getState().retryAttendanceMark(scope,first.operationId)).rejects.toThrow('MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED')
+  expect(readAttendanceLocationFix).not.toHaveBeenCalled();expect((await allOutboxOperations())[0].operationId).toBe(first.operationId)
+  ;(api.getAttendanceInstallation as jest.Mock).mockResolvedValue({success:true,data:{...pending,state:'APPROVED',decision:{action:'APPROVE',at:timestamp,reason:'Fictional approval'}}})
+  const later='2026-10-13T08:01:00.000Z';jest.setSystemTime(new Date(later));(readAttendanceLocationFix as jest.Mock).mockResolvedValue({...fix,capturedAt:later})
+  await useWorkdayStore.getState().retryAttendanceMark(scope,first.operationId)
+  const next=(await allOutboxOperations())[0];expect(next.operationId).not.toBe(first.operationId);expect(next.data).toMatchObject({id:first.data.id,occurredAt:later});expect(readAttendanceLocationFix).toHaveBeenCalledTimes(1)
 })
