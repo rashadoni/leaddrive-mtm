@@ -18,7 +18,11 @@ import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
-type MoreRoute = "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
+import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
+import { useBootstrapStore } from "../../store/bootstrap"
+import { useAuthStore } from "../../store/auth"
+
+type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
@@ -76,7 +80,14 @@ export default function MoreScreen() {
     : i18n.language.toLowerCase().startsWith("en")
       ? { title: "Notifications", body: "Messages, request decisions and deadline reminders" }
       : { title: "Уведомления", body: "Сообщения, решения по заявкам и напоминания о сроках" }
+  const policies = useBootstrapStore(state => state.data?.policies)
+  const role = useAuthStore(state => state.agent?.role)
   const actions: MoreAction[] = [
+    ...(role === "AGENT" && agentMayAttendanceRequests(policies) ? [{
+      route: "AttendanceRequests" as const, icon: "document-text-outline",
+      titleKey: "attendanceRequests.title", bodyKey: "attendanceRequests.menuBody",
+      iconColor: fieldTheme.color.primaryStrong, iconBackground: fieldTheme.color.primarySoft,
+    }] : []),
     {
       route: "Notifications",
       icon: "notifications-outline",
@@ -98,6 +109,9 @@ export default function MoreScreen() {
 
   const open = (route: MoreRoute) => {
     switch (route) {
+      case "AttendanceRequests":
+        navigation.navigate("AttendanceRequests")
+        break
       case "Notifications":
         navigation.navigate("Notifications")
         break

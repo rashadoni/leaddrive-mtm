@@ -14,6 +14,8 @@ export type OutboxOperation = {
   nextAttemptAt: number
   scopeKey: string
   status: "pending" | "conflict"
+  /** Private document dependencies for attendance only; never sent to legacy sync. */
+  attendanceDocuments?: import("./attendance-contract").AttendanceDocument[]
   conflict?: {
     error?: string
     serverData?: Record<string, unknown>
@@ -59,7 +61,7 @@ function inCurrentScope(item: OutboxOperation, scope = getOfflineScope()) {
   return Boolean(scope) && item.scopeKey === scope
 }
 
-export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entity" | "op" | "data">) {
+export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entity" | "op" | "data" | "attendanceDocuments">, expectedScope?: string) {
   const item: OutboxOperation = {
     ...input,
     operationId: createOperationId(),
@@ -70,7 +72,9 @@ export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entit
     status: "pending",
   }
   await serializeMutation(async () => {
+    if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     const items = await read()
+    if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     items.push(item)
     await write(items)
   })
@@ -245,4 +249,46 @@ export async function flushOutbox(
       retryAfterMs,
     }
   }
+}
+
+/** Capture the owner before any await; uploaded ids must be durable before create. */
+export async function persistAttendanceDocuments(operationId: string, scopeKey: string, documents: NonNullable<OutboxOperation["attendanceDocuments"]>) {
+  return serializeMutation(async () => {
+    if (requireOfflineScope() !== scopeKey) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    const items = await read()
+    if (requireOfflineScope() !== scopeKey) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    const item = items.find(row => row.operationId === operationId && row.scopeKey === scopeKey && row.entity === "attendanceRequests" && row.op === "create")
+    if (!item) throw new Error("ATTENDANCE_OPERATION_MISSING")
+    item.attendanceDocuments = documents
+    item.data = { ...item.data, attachmentIds: documents.map(document => document.uploadedId).filter((id): id is string => Boolean(id)) }
+    await write(items)
+    if (requireOfflineScope() !== scopeKey) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    return item
+  })
+}
+
+/** Cleanup cannot race an already-started durable outbox mutation or inspect only
+ * the newly active account. A queued photo still belongs to its original owner. */
+export async function removeUnqueuedAttendanceDocuments(
+  documents: NonNullable<OutboxOperation["attendanceDocuments"]>,
+  remove: (document: NonNullable<OutboxOperation["attendanceDocuments"]>[number]) => Promise<void>,
+) {
+  await serializeMutation(async () => {
+    // A malformed/unreadable queue is not proof that a private file is unused.
+    const raw = await AsyncStorage.getItem(STORAGE_KEY)
+    const parsed: unknown = raw === null ? [] : JSON.parse(raw)
+    if (!Array.isArray(parsed) || parsed.some(item => !item || typeof item.entity !== "string" || typeof item.scopeKey !== "string"
+      || (item.attendanceDocuments !== undefined && (!Array.isArray(item.attendanceDocuments)
+        || item.attendanceDocuments.some((document: unknown) => !document || typeof document !== "object"
+          || typeof (document as { path?: unknown }).path !== "string" || typeof (document as { clientAttachmentId?: unknown }).clientAttachmentId !== "string"))))) {
+      throw new Error("ATTENDANCE_OUTBOX_UNREADABLE")
+    }
+    const operations = parsed as OutboxOperation[]
+    for (const document of documents) {
+      const referenced = operations.some(item => item.entity === "attendanceRequests"
+        && item.scopeKey === document.scopeKey
+        && item.attendanceDocuments?.some(saved => saved.path === document.path && saved.clientAttachmentId === document.clientAttachmentId))
+      if (!referenced) await remove(document)
+    }
+  })
 }

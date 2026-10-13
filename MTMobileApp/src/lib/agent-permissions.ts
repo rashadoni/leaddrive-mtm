@@ -63,3 +63,8 @@ export function isAgentPermissionDisabled(error: unknown): boolean {
   return !!error && typeof error === "object"
     && (error as { code?: unknown }).code === AGENT_PERMISSION_DISABLED_CODE
 }
+
+/** New attendance screens fail closed on older servers and missing grants. */
+export function agentMayAttendanceRequests(policies: PermissionPolicies): boolean {
+  return policies?.agentPermissions?.attendanceRequests === true
+}

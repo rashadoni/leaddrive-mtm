@@ -61,8 +61,9 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
           routeFieldAccess: data.routeFieldAccess,
           loading: false,
         })
-        // This APK never opens HRM data or creates HRM requests. It may
-        // reconcile the server-owned workday only as its own minimal Route
+        // Retired HRM routes remain closed. New own attendance requests
+        // require their explicit permission and use a separate API. The app
+        // reconciles the server-owned workday as its own minimal Route
         // Field execution/GPS boundary; the existing v1 outbox is retained
         // and can drain only through the server-confirmed Route Field path.
         return data.routeFieldAccess
