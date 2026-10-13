@@ -621,10 +621,10 @@ class ApiClient {
 
   // Attendance uses the existing authenticated transport and its own narrow API.
   getAttendanceInstallation(guard: () => void) {
-    return this.request('/mobile/attendance/installation', {method:'GET'}, 20_000, 2, guard)
+    return this.request('/mobile/attendance/installation', {method:'GET'}, 20_000, 1, guard)
   }
   requestAttendanceInstallation(input: {requestId: string}, guard: () => void) {
-    return this.request('/mobile/attendance/installation', {method:'POST',body:JSON.stringify(input)}, 20_000, 2, guard)
+    return this.request('/mobile/attendance/installation', {method:'POST',body:JSON.stringify(input)}, 20_000, 1, guard)
   }
   getAttendanceLocationConsent(guard: () => void) {
     return this.request("/mobile/attendance/location-consent", {}, 5_000, 1, guard)

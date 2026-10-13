@@ -180,3 +180,8 @@
 - Contabo available RAM15519MiB/disk241GiB/PSI0. Sequential source parse19 touched TS/TSX:0 syntax diagnostics; attendanceLocation30/attendanceInstallation16 locale keys in parity; diff-check and release-profile verifier PASS. Jest/semantic tsc/native/device NOT RUN locally under host contract. Next action: scoped checkpoint, merge parent121 evidence history, stacked PR/CI and independent review. Parent121 remains separate and unmerged while latest evidence-head gates are pending.
 
 - Parent121 evidence1399a34 normally merged into this continuation; append-only journal conflict resolved by preserving both phase entries. No product conflict.
+
+### 2026-10-13 — installation transport v1 and parent correction
+
+- Normal merge includes parent PR1211fd1eb2 background route fix, preserving both service tests and journal additions. New installation GET/POST also corrected to API v1; existing new regression asserts both exact v1 URLs. Parameter four is apiVersion, not a retry count. No product data/request sent.
+- First4.5 CI still pending at this correction. New exact head must pass required Jest/tsc/APK before merge; prior source-only checks are not runtime verification. Next: CI failure review and fictional component evidence capture, then coordinator review.
