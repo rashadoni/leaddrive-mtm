@@ -52,3 +52,10 @@
   Last completed action: controlled behavior and source verification. Stopping
   point: path-scoped checkpoint; next coordinator may publish a PR, await exact
   required checks and signed build, then coordinate release and S23 retest.
+
+## 2026-10-13 22:51 UTC — coordinator review and release preparation
+
+- Coordinator reviewed the API classification, existing JSON parser, localized screen mapping and regression cases. Current origin/main and installed source are `11401a8`; corrected repository owner is `rashadoni`. Stale README ownership/build instructions do not supersede current remote and workflow facts.
+- Parent task's autonomous fix/test/delivery authorization applies to publishing this bounded PR. This supersedes the earlier subtask's no-push delegation limit for the coordinator only. Required `scope` and `tests` plus signed APK build must pass before merge/install; no server deploy target is invented for this Android repository.
+- Prepared patch release `3.8.2` consistently in package/lock, Android versionName, runtime profile and its existing version assertion. CI supplies the monotonic Android versionCode as `1000 + GITHUB_RUN_NUMBER`; signing and package identity are unchanged.
+- Local checks: version consistency and diff whitespace; pre-commit Gitleaks remains required. RN Jest/semantic TypeScript/native build remain NOT RUN locally and will run in GitHub. Next: publish PR, inspect exact CI/build, merge only after green gates, then verify the installed fix on the S23.
