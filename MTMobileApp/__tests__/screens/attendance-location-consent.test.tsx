@@ -78,7 +78,7 @@ it('withdraws immediately, locks on unknown reply, remounts and retries the immu
 })
 it('does not duplicate an inflight decision when changing language', async () => {
   own=accepted; let finish!:()=>void; (sendAttendanceConsent as jest.Mock).mockImplementationOnce(()=>new Promise<void>(done=>{finish=done}))
-  const tree=await render(); await press(tree,'attendance-consent-revoke'); await act(async()=>locale.changeLanguage('en'))
+  const tree=await render(); await press(tree,'attendance-consent-revoke'); await act(async()=>{ await locale.changeLanguage('en') })
   expect(node(tree,'attendance-consent-retry').props.disabled).toBe(true); await press(tree,'attendance-consent-retry'); expect(sendAttendanceConsent).toHaveBeenCalledTimes(1)
   await act(async()=>finish()); await settle(); expect(node(tree,'attendance-consent-refresh').props.disabled).toBe(false)
 })

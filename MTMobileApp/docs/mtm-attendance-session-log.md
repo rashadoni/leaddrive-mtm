@@ -147,3 +147,8 @@
 - Published cc8fe89 and PR https://github.com/rashadoni/leaddrive-mtm/pull/121 . First APK CI38378774955 ran the full Jest gate:212 suites /1673 tests PASS,2 suites failed before execution (office screen lacked AsyncStorage mock; consent screen mock referenced a non-hoistable imported fixture). Fixed those two fixture setups without changing production behavior or weakening assertions. Types/native build were skipped by the failed test gate, not passed. Required CI run38378774945 was still queued. Native/service privacy/recovery regressions that executed passed.
 - Read-only coordinator server505712243 review found no blocking issue in same-consent locks, source-linked TTL integrity rows or fresh office-return transaction gate. Suggested safe null-body parsing as a small pre-existing robustness improvement.
 - Current result: PR121 awaiting new CI after fixture fix. Last action: inspected full test failure logs and fixed setup. Stopping point: checkpoint for CI rerun; next action full Jest/tsc/APK and actual render inspection. Attach-artifact request is pending in desktop connector; PR exists independently.
+
+### 2026-10-13 — PR121 complete Jest pass; narrow test typing fix
+
+- APK CI38379298391 head39e4524: all214 suites /1707 tests PASS,1 existing todo. Semantic tsc reached one error in new consent test: React act callback returned i18next TFunction instead of void. Changed callback to await inside a void block; production files unchanged. Native build still NOT RUN because tsc correctly stopped the workflow. Required CI workflow remained queued; no gate was bypassed.
+- Next action: rerun required CI on this test-only checkpoint, then signed APK and saved fictional component renders.
