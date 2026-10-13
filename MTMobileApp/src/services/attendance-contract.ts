@@ -40,9 +40,16 @@ export function validAttendanceInput(input: AttendanceInput): boolean {
     || new Date(`${input.endDate}T00:00Z`).getTime() - new Date(`${input.startDate}T00:00Z`).getTime() > 365 * 86_400_000
     || input.reason.trim().length < 3 || input.reason.trim().length > 1000
     || input.attachmentIds.length > 3 || input.attachmentIds.some(id => !UUID_PATTERN.test(id)) || new Set(input.attachmentIds).size !== input.attachmentIds.length) return false
-  if (input.unit === "HOURS") return input.startDate === input.endDate
-    && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.startTime ?? "")
-    && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.endTime ?? "") && input.endTime! > input.startTime!
+  if (input.unit === "HOURS") {
+    if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.startTime ?? "")
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(input.endTime ?? "")) return false
+    if (input.startDate === input.endDate) return input.endTime! > input.startTime!
+    // Only a full time correction may cross midnight. These are civil dates;
+    // the server resolves its frozen timezone and rejects DST gaps/folds or
+    // an actual elapsed interval longer than 24 hours.
+    return input.kind === "TIME_CORRECTION" && input.endTime! <= input.startTime!
+      && new Date(`${input.endDate}T00:00Z`).getTime() - new Date(`${input.startDate}T00:00Z`).getTime() === 86_400_000
+  }
   return input.unit === "DAYS" && !input.startTime && !input.endTime && !attendanceNeedsHours(input.kind)
 }
 export function attendanceErrorKey(error: unknown): string {

@@ -234,3 +234,22 @@
 - Downloaded CI host-component trees; rendered fictional RU/AZ/EN office/camera/confirmation at1440/390 into docs/attendance-qr/actual/components-*.png. All6 have no horizontal overflow. Inspected RU1440/EN390. These are HTML previews from actual React Native component trees, not device/emulator screenshots; camera scan and permissions on a physical phone remain NOT RUN.
 - Capture preflight: availableRAM15284MiB,disk239GiB,memory PSI0; one short Chromium run only. No full local Jest/tsc/native build.
 - Evidence-only checkpoint follows; wait for its fresh required CI before normal merge PR123. Then continue server5.1/5.2 reminders in its separate worktree.
+
+
+### 2026-10-13 — mobile overnight TIME_CORRECTION planning
+
+- Continuing in /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-mobile-night-correction/MTMobileApp, branch codex/mtm-attendance-night-correction from authoritative attendance/main15dcf94. codex-project-context confirms Contabo; its retired origin owner is superseded by attendance=https://github.com/rashadoni/leaddrive-mtm.git. No mobile production server/path registered; release is PR/main and signed Android CI. No retired remote used.
+- Coordinator server checkpoint3a3f80fe1 accepts the existing endDate field for TIME_CORRECTION HOURS on startDate or exactly the next day, with overnight endTime<=startTime and actual UTC duration>0<=24h. Canonical workDate and correction basis stay on startDate; DST gaps/folds are rejected by the server. No client timezone guess or new body field. Other hourly request kinds remain same-day.
+- Plan: show existing endDate control with clear RU/AZ/EN labels and hint, preserve explicitly edited endDate while editing startDate/reselecting kind, validate civil-day boundary locally, retain the existing durable UUID/outbox protocol. Prepare real component and lost-reply queue regressions. Mock before visible product changes; heavy Jest/semantic tsc/Android gates remain CI-only.
+- Current result: source review and HTML mock prepared, no product code yet. Last action: confirm existing form/queue contract. Stopping point: PNG capture and coordinator showing; next implement after mock is shown. GPS remains OFF without approved text and default email recipients remain empty.
+
+
+### 2026-10-13 — overnight correction implemented after shown mock
+
+- Coordinator viewed and showed the RU1440 mock before UI code. Captured1440/390 with one Chromium, no horizontal overflow and controls>=48px; preflight availableRAM13979MiB/disk237GiB/memoryPSI0. These are declared design mockups, not native-device evidence.
+- Existing correction form now displays both date fields with RU/AZ/EN labels and night-shift guidance. A manually different endDate survives startDate edits and repeated selection of the current kind. Ordinary hourly requests continue to follow one date; switching away from correction restores that constraint. Corrected the old same-day-only validation copy and the misleading completed-day-only hint; server approval remains authoritative.
+- Local civil-date validation allows only TIME_CORRECTION to end exactly the following day with endTime<=startTime. Same-day inputs are unchanged. Actual UTC duration/DST ambiguity are still validated by the server; the phone does not guess them from its own timezone. Existing input schema and durable outbox transport remain unchanged.
+- Added13 contract/service cases (calendar/month/year/leap boundaries, unsupported hourly kinds, invalid intervals, exact UUID/body across reply loss and account round trip) and6 actual screen cases (RU/AZ/EN form, preservation and other hourly kinds). CI will emit three fictional native component trees for layout previews. Updated release identity3.8.1/fallback50 and corresponding expectations.
+- Current result: implementation and regressions prepared. Last action: path-scoped source review. Stopping point: coordinated narrow checks before checkpoint/PR; next mandatory CI Jest/semantic tsc/signed Android and actual render inspection. Heavy gates and physical-device testing NOT RUN locally per host contract.
+
+- Coordinated narrow verification after availableRAM13973MiB/disk237GiB/memoryPSI0: syntax-only parse8 touched TS/TSX PASS, attendanceRequests72-key RU/AZ/EN parity PASS, release-profile3.8.1+50 PASS, git diff --check PASS. No semantic/Jest/native pass is implied; those gates run in GitHub CI. Current result: ready for scoped checkpoint and PR; next exact-head mandatory CI and fictional actual component preview.

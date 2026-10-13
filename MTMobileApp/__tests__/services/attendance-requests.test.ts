@@ -44,6 +44,47 @@ it("validates full same-day correction clock pairs and real calendar dates", () 
   expect(validAttendanceInput({ ...input(), startDate: "2026-02-30" })).toBe(false)
   expect(validAttendanceInput({ ...input(), endDate: "2026-10-15" })).toBe(false)
 })
+it.each([
+  ["2026-10-14", "2026-10-15", "22:00", "06:00"],
+  ["2026-10-31", "2026-11-01", "23:00", "07:00"],
+  ["2026-12-31", "2027-01-01", "23:00", "00:00"],
+  ["2028-02-28", "2028-02-29", "22:00", "06:00"],
+  ["2026-10-14", "2026-10-15", "06:00", "06:00"],
+])("accepts only the intended next civil date for a correction: %s to %s", (startDate, endDate, startTime, endTime) => {
+  const value: AttendanceInput = { ...input(), kind: "TIME_CORRECTION", startDate, endDate, startTime, endTime }
+  expect(validAttendanceInput(value)).toBe(true)
+  for (const kind of ["HOURLY_ABSENCE", "OVERTIME", "TIME_OFF", "ANNUAL_LEAVE", "SICK_LEAVE", "BUSINESS_TRIP", "REMOTE_WORK"] as const) {
+    expect(validAttendanceInput({ ...value, kind })).toBe(false)
+  }
+})
+it.each([
+  ["2026-10-14", "2026-10-16", "22:00", "06:00"],
+  ["2026-10-14", "2026-10-13", "22:00", "06:00"],
+  ["2026-10-14", "2026-10-15", "06:00", "06:01"],
+  ["2026-10-14", "2026-10-14", "22:00", "06:00"],
+  ["2026-10-14", "2026-10-14", "06:00", "06:00"],
+  ["2026-02-28", "2026-02-29", "22:00", "06:00"],
+  ["2026-10-14", "2026-10-15", "24:00", "06:00"],
+])("rejects an invalid correction interval %s %s %s %s", (startDate, endDate, startTime, endTime) => {
+  expect(validAttendanceInput({ ...input(), kind: "TIME_CORRECTION", startDate, endDate, startTime, endTime })).toBe(false)
+})
+it("retains the overnight dates, full clock pair and UUID across lost reply and account round trip", async () => {
+  const value: AttendanceInput = { ...input(), kind: "TIME_CORRECTION", startDate: "2026-10-31", endDate: "2026-11-01", startTime: "22:00", endTime: "06:00" }
+  const queued = await queueAttendanceRequest(scope, value, [])
+  ;(api.submitAttendanceRequest as jest.Mock).mockRejectedValueOnce(new Error("lost reply"))
+  expect((await pushAttendanceAndLegacy(await allOutboxOperations())).results[0].status).toBe("deferred")
+  setOfflineScope("other-org", "other-agent")
+  expect(await allOutboxOperations()).toHaveLength(0)
+  setOfflineScope("fictional-org", "fictional-agent")
+  const recovered = await allOutboxOperations()
+  expect(recovered).toHaveLength(1)
+  expect(recovered[0]).toMatchObject({ operationId: queued.operationId, data: value })
+  expect((await queueAttendanceRequest(scope, value, [])).operationId).toBe(queued.operationId)
+  expect((await flushOutbox(pushAttendanceAndLegacy)).sent).toBe(1)
+  expect((api.submitAttendanceRequest as jest.Mock).mock.calls.map(call => call[0])).toEqual([value, value])
+  expect((await cachedAttendanceRequests(scope)).items[0]).toMatchObject({ clientRequestId: value.clientRequestId, startDate: value.startDate, endDate: value.endDate, details: { startTime: "22:00", endTime: "06:00" } })
+  expect(await allOutboxOperations()).toHaveLength(0)
+})
 it("persists the request before transport, survives a lost response and retries the same UUID/input", async () => {
   const value = input()
   const first = await queueAttendanceRequest(scope, value, [])
