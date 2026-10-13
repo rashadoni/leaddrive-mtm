@@ -611,7 +611,7 @@ class ApiClient {
     return this.request("/mobile/location", {
       method: "POST",
       body: JSON.stringify(data),
-    }, 20_000, 2, guard)
+    }, 20_000, 1, guard)
   }
 
   async getLocationHistory(date?: string, signal?: AbortSignal) {

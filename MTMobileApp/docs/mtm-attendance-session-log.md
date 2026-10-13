@@ -160,6 +160,11 @@
 - One Chromium capture at a time, preflight availableRAM15581MiB/disk241GiB/PSI0. Browser-default borders removed in preview adapter so they do not masquerade as component styling. Repeated capture is tied only to that adapter correction. No product changes after2893d21.
 - Current result: mobile3.3–3.7/optional background signal complete and CI verified, evidence ready. Last action: inspect fictional CI tree previews. Stopping point: evidence-only checkpoint before final PR checks/merge. Next action: merge verified PR121, then continue separate installation approval4.5 worktree; physical device test remains NOT RUN.
 
+### 2026-10-13 — PR121 transport route correction before merge
+
+- Final route review found that adding the guarded background transport accidentally selected API v2; the existing location endpoint is v1. Corrected sendLocation to keep v1 and added a successful transport regression asserting exact URL, method, body and authenticated guard. Existing denial-only tests and broad green CI did not catch this routing mistake; the earlier completion statement is superseded until the new exact head passes CI. Root notified; PR121 not merged.
+- No location data or production request used. Local Jest/tsc/native builds NOT RUN under host rules; required CI/APK will rerun. Next action: checkpoint this narrow fix, normal-merge it into PR122 and verify both heads before merge.
+
 ### 2026-10-13 — mobile4.5 installation approval, separate continuation
 
 - Продолжается worktree /mnt/HC_Volume_106454338/codex-alt-data/worktrees/leaddrive-mobile-installation-approval, branch codex/mtm-attendance-installation-approval от mobile PR121 checkpoint2893d21. Parent PR остаётся отдельно на CI; no merge до required gates+независимого review. Routing codex-project-context подтверждает Contabo, retired origin не используется; только attendance=https://github.com/rashadoni/leaddrive-mtm.git, release через PR/CI, прямого production destination здесь нет.
