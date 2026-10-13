@@ -1096,6 +1096,10 @@
     }
   },
   "officeAttendance": {
+    "returnHint": "Bugünkü iş gününə qayıda bilərsiniz. Bitirdikdən sonrakı vaxt fasilə sayılacaq.",
+    "returnToWork": "İşə qayıt",
+    "returnNotToday": "Yalnız elə həmin gün qayıtmaq olar. O gün artıq keçib.",
+    "returnLocked": "Bu günü rəhbər artıq yoxlayıb və ya düzəldib — ona qayıtmaq olmur.",
     "myAttendance": "LeadDrive · Mənim uçotum",
     "workday": "İş günü",
     "profile": "Profil",
@@ -1131,6 +1135,14 @@
     "saving": "Saxlanılır…"
   },
   "attendanceLocation": {
+    "outsideTitle": "Qeyd filialdan kənardadır",
+    "outsideBody": "Server bu qeydi qəbul etmədi. Filiala yaxınlaşın və yenidən qeyd edin. Məkan səhv müəyyən edilibsə, rəhbərə müraciət edin.",
+    "mockTitle": "Telefon saxta məkan siqnalı bildirdi",
+    "mockBody": "Server bu qeydi qəbul etmədi. Telefonun məkan parametrlərini yoxlayın və yenidən cəhd edin. Səhv olduğunu düşünürsünüzsə, rəhbərə müraciət edin. Bu qeyd təkbaşına pozuntunu sübut etmir.",
+    "retryTime": "Yeni qeyd yeni vaxtı saxlayacaq. Əvvəlki vaxt üçün düzəliş sorğusu göndərin.",
+    "unknownReceipt": "Qeydin nəticəsi hələ təsdiqlənməyib. Məlumatları yeniləyin; ilkin qeyd növbədə qalır.",
+    "retryMark": "Yenidən qeyd et",
+    "retryFailed": "Yeni qeyd hazırlamaq mümkün olmadı. Məlumatları yeniləyib yenidən cəhd edin.",
     "title": "Günün başlanğıc və son məkanı",
     "accepted": "Razılıq qüvvədədir",
     "off": "Məkan toplanmır",

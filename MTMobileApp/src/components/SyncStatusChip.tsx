@@ -1,4 +1,6 @@
 import { attendanceErrorKey } from "../services/attendance-contract"
+import { attendanceMarkRejection, canReplaceAttendanceMark } from '../services/attendance-mark-recovery'
+import { useWorkdayStore } from '../store/workday'
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
@@ -59,6 +61,8 @@ function conflictCustomerId(conflict: SyncConflict): string | null {
 }
 
 function conflictTranslationKey(code: string) {
+  if (code === 'MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED') return 'attendanceLocation.outsideBody'
+  if (code === 'MTM_ATTENDANCE_LOCATION_MOCK_REJECTED') return 'attendanceLocation.mockBody'
   if (code.startsWith("MTM_ATTENDANCE_")) return attendanceErrorKey(code)
   const known: Record<string, string> = {
     MTM_VISIT_OUT_OF_ZONE: "syncCenter.conflictOutOfZone",
@@ -193,7 +197,8 @@ export default function SyncStatusChip({ inverse = false }: Props) {
         })
         dataPatch = { checkInLat: position.latitude, checkInLng: position.longitude, force: false }
       }
-      await retryOutboxConflict(operation.operationId, dataPatch)
+      if (attendanceMarkRejection(operation)) await useWorkdayStore.getState().retryAttendanceMark(operation.scopeKey, operation.operationId)
+      else await retryOutboxConflict(operation.operationId, dataPatch)
       await runMobileSync()
       await reload()
     } catch {
@@ -205,6 +210,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
   const discard = async (conflict: SyncConflict) => {
     const operation = conflict.operation
+    if (conflict.kind === 'legacy' && attendanceMarkRejection(conflict.operation) && !canReplaceAttendanceMark(conflict.operation)) return
     const busyKey = `${conflict.kind}:${operation.operationId}`
     setBusyId(busyKey)
     setActionError(null)
@@ -346,22 +352,22 @@ export default function SyncStatusChip({ inverse = false }: Props) {
                       <Text style={styles.conflictBody}>{t("syncCenter.routeCommandConflictHelp")}</Text>
                     ) : null}
                     <View style={styles.actionRow}>
-                      <Pressable
+                      {(!legacyOperation || !attendanceMarkRejection(legacyOperation) || canReplaceAttendanceMark(legacyOperation)) && <Pressable
                         accessibilityRole="button"
                         disabled={operationBusy || !syncAllowed}
                         onPress={() => { discard(conflict).catch(() => {}) }}
                         style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
                       >
                         <Text style={styles.secondaryText}>{t("syncCenter.discard")}</Text>
-                      </Pressable>
-                      {legacyOperation ? (
+                      </Pressable>}
+                      {legacyOperation && (!attendanceMarkRejection(legacyOperation) || canReplaceAttendanceMark(legacyOperation)) ? (
                         <Pressable
                           accessibilityRole="button"
                           disabled={operationBusy || !syncAllowed}
                           onPress={() => { retry(legacyOperation).catch(() => {}) }}
                           style={[styles.secondaryButton, (operationBusy || !syncAllowed) && styles.disabled]}
                         >
-                          <Text style={styles.secondaryText}>{t("common.retry")}</Text>
+                          <Text style={styles.secondaryText}>{t(attendanceMarkRejection(legacyOperation) ? 'attendanceLocation.retryMark' : "common.retry")}</Text>
                         </Pressable>
                       ) : null}
                       {canForce ? (

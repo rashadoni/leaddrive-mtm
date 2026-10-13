@@ -53,6 +53,16 @@ it("checks the scope again after asynchronous device-header lookup, before sendi
   await expect(api.getAttendanceRequests(undefined, () => { if (!valid) throw new Error("scope changed") })).rejects.toThrow("scope changed")
   expect(global.fetch).not.toHaveBeenCalled()
 })
+it.each(['background', 'return'])('guards %s transport after asynchronous headers and before fetch', async kind => {
+  let valid = true
+  ;(getFieldDeviceId as jest.Mock).mockImplementation(async () => { valid = false; return 'rf-device' })
+  const guard = () => { if (!valid) throw new Error('scope changed') }
+  const request = kind === 'background'
+    ? api.sendLocation({ latitude: 40.4, longitude: 49.8, isMock: false, attendanceConsentId: 'fictional-receipt' }, guard)
+    : api.returnToWorkday({ operationId: 'wdr-fixture', workdayId: 'wd-fixture' }, guard)
+  await expect(request).rejects.toThrow('scope changed')
+  expect(global.fetch).not.toHaveBeenCalled()
+})
 it("does not return an old account's response after its scope changes", async () => {
   let valid = true
   ;(global.fetch as jest.Mock).mockImplementation(async () => { valid = false; return { status: 200, ok: true, json: async () => ({ success: true, data: { private: "old account" } }) } })

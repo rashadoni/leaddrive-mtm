@@ -9,7 +9,11 @@ import path from "path"
  */
 type Listener = (event: Record<string, unknown>) => void
 
-const mockSent: Array<{ latitude: number }> = []
+jest.mock("../../src/services/attendance-background-evidence", () => ({
+  prepareAttendanceBackgroundEvidence: jest.fn(async (point: object, isMock?: boolean) => ({point: typeof isMock === 'boolean' ? {...point,isMock,attendanceConsentId:'fictional-exact-consent'} : point, guard: () => {}})),
+  withoutAttendanceBackgroundEvidence: (point: object) => point,
+}))
+const mockSent: Array<{ latitude: number; isMock?: boolean; attendanceConsentId?: string }> = []
 let mockRunning = false
 
 // The factory runs before this file's consts exist, so the mocks live inside it.
@@ -74,9 +78,10 @@ describe("positions from the fused provider", () => {
     expect(Geolocation.watchPosition).not.toHaveBeenCalled()
 
     // A precise fused reading is uploaded as is — no second request per point.
-    mockNativeListener.current!(fix(40.41, t0, 9))
+    mockNativeListener.current!({...fix(40.41, t0, 9),isMock:true})
     await flush(); await flush()
     expect(mockSent.map((point) => point.latitude)).toEqual([40.41])
+    expect(mockSent[0]).toMatchObject({isMock:true,attendanceConsentId:'fictional-exact-consent'})
     expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
 
     // Bursts while driving do not become a point every five seconds.
@@ -87,6 +92,7 @@ describe("positions from the fused provider", () => {
     mockNativeListener.current!(fix(40.43, t0 + 31_000, 8))
     await flush(); await flush()
     expect(mockSent.map((point) => point.latitude)).toEqual([40.41, 40.43])
+    expect(mockSent[1]).not.toHaveProperty('isMock')
 
     const stopping = stopTracking()
     await new Promise((resolve) => setTimeout(resolve, 3_100))
@@ -102,6 +108,7 @@ describe("positions from the fused provider", () => {
     const pkg = fs.readFileSync(path.resolve(__dirname, "../../android/app/src/main/java/com/mtmobileapp/PresentationFilesPackage.kt"), "utf8")
     expect(pkg).toContain("FieldLocationModule(reactContext)")
     const module = fs.readFileSync(path.resolve(__dirname, "../../android/app/src/main/java/com/mtmobileapp/FieldLocationModule.kt"), "utf8")
+    expect(module).toContain('map.putBoolean("isMock", LocationCompat.isMock(location))')
     expect(module).toContain("Priority.PRIORITY_HIGH_ACCURACY")
     expect(module).toContain("setMinUpdateDistanceMeters(0f)")
     // Half the send gap, so two readings make one 30 s point (not 20 s → 40 s).

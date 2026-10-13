@@ -1096,6 +1096,10 @@
     }
   },
   "officeAttendance": {
+    "returnHint": "You can return to today’s workday. The time since finishing will count as a break.",
+    "returnToWork": "Return to work",
+    "returnNotToday": "You can only return on the same day. That day has passed.",
+    "returnLocked": "A manager has already reviewed or corrected this day, so you cannot return to it.",
     "myAttendance": "LeadDrive · My attendance",
     "workday": "Working day",
     "profile": "Profile",
@@ -1131,6 +1135,14 @@
     "saving": "Saving…"
   },
   "attendanceLocation": {
+    "outsideTitle": "The mark is outside the branch",
+    "outsideBody": "The server did not accept this mark. Move to the branch and mark again. If the location is incorrect, contact your manager.",
+    "mockTitle": "The phone reported a mock location",
+    "mockBody": "The server did not accept this mark. Check your phone’s location settings and try again. Contact your manager if this is an error. The finding alone does not prove misconduct.",
+    "retryTime": "A new mark records the new time. To use the earlier time, submit a correction request.",
+    "unknownReceipt": "The mark’s result is not confirmed yet. Refresh the data; the original mark stays in the queue.",
+    "retryMark": "Mark again",
+    "retryFailed": "Could not prepare a new mark. Refresh the data and try again.",
     "title": "Day start and finish location",
     "accepted": "Consent is active",
     "off": "Location is not collected",

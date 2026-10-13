@@ -248,7 +248,7 @@ export async function pushAttendanceAndLegacy(operations: OutboxOperation[], gua
   const legacy = operations.filter(item => item.entity !== "attendanceRequests")
   const sendLegacy = async () => {
     if (legacy.some(item => item.entity === "attendanceConsents" || (item.entity === "workdays" && item.data.attendanceMark))) {
-      const { pushAttendanceLocationOperations } = await import("./attendance-location")
+      const { pushAttendanceLocationOperations } = require("./attendance-location") as typeof import('./attendance-location')
       return pushAttendanceLocationOperations(legacy, guard)
     }
     return guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)

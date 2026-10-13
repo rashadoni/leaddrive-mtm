@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Looper
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -74,6 +75,7 @@ class FieldLocationModule(
     if (location.hasBearing()) map.putDouble("heading", location.bearing.toDouble()) else map.putNull("heading")
     if (location.hasAltitude()) map.putDouble("altitude", location.altitude) else map.putNull("altitude")
     map.putBoolean("isMoving", location.hasSpeed() && location.speed > 1.0f)
+    map.putBoolean("isMock", LocationCompat.isMock(location))
     return map
   }
 

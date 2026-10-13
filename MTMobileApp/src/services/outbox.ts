@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { getOfflineScope, requireOfflineScope } from "./offline-scope"
 import { retryAfterMsFromError, retryDelayMs } from "./sync-retry"
+import { canReplaceAttendanceMark } from './attendance-mark-recovery'
+import { redactAttendanceMarkData } from './attendance-location-contract'
 
 const STORAGE_KEY = "@mtm_sync_outbox_v1"
 
@@ -76,7 +78,6 @@ export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entit
     const items = await read()
     if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     if (item.entity === "workdays" && item.data.attendanceMark && items.some(row => row.scopeKey === item.scopeKey && row.entity === "attendanceConsents")) {
-      const { redactAttendanceMarkData } = await import("./attendance-location-contract")
       item.data = redactAttendanceMarkData(item.data)
     }
     items.push(item)
@@ -166,15 +167,20 @@ export async function conflictOutboxOperations() {
 export async function retryOutboxConflict(
   operationId: string,
   dataPatch?: Record<string, unknown>,
+  attendance?: { scope: string; guard: () => void },
 ): Promise<string | null> {
   const scope = requireOfflineScope()
   let nextOperationId: string | null = null
   await serializeMutation(async () => {
+    attendance?.guard()
+    if (attendance && scope !== attendance.scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
     const items = await read()
+    attendance?.guard()
     await write(items.map((item) => {
       if (item.operationId !== operationId || item.scopeKey !== scope || item.status !== "conflict") {
         return item
       }
+      if (attendance && !canReplaceAttendanceMark(item)) throw new Error('ATTENDANCE_MARK_CHANGED')
       // The server idempotently pins both successful and conflicting
       // operationIds. A user-directed retry must therefore be a new
       // operation while retaining the same entity payload/client id;
@@ -184,13 +190,15 @@ export async function retryOutboxConflict(
         ...item,
         operationId: nextOperationId,
         clientTimestamp: Date.now(),
-        data: dataPatch ? { ...item.data, ...dataPatch } : item.data,
+        data: dataPatch ? (attendance && (attendancePrivacyBlocked(scope) || items.some(row => row.scopeKey === scope && row.entity === 'attendanceConsents'))
+          ? redactAttendanceMarkData({ ...item.data, ...dataPatch }) : { ...item.data, ...dataPatch }) : item.data,
         status: "pending" as const,
         conflict: undefined,
         attempts: 0,
         nextAttemptAt: 0,
       }
     }))
+    attendance?.guard()
   })
   return nextOperationId
 }
@@ -340,7 +348,6 @@ export async function queueAttendanceConsent(scope: string, input: import('./att
     if (pending) throw new Error('ATTENDANCE_CONSENT_PENDING')
     const item: OutboxOperation = { operationId: input.requestId, entity: 'attendanceConsents', op: 'create', data: { ...input },
       clientTimestamp: Date.now(), attempts: 0, nextAttemptAt: 0, scopeKey: scope, status: 'pending' }
-    const { redactAttendanceMarkData } = await import('./attendance-location-contract')
     const next = items.filter(row => !(row.scopeKey === scope && row.entity === 'attendanceConsents' && row.status === 'conflict'))
       .map(row => row.scopeKey === scope && row.entity === 'workdays' ? { ...row, data: redactAttendanceMarkData(row.data) } : row)
     next.push(item)
@@ -357,7 +364,6 @@ export async function prepareAttendanceMarks(scope: string, operationIds: string
     const items = await readAttendancePrivacyQueue()
     if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
     const blocked = attendancePrivacyBlocked(scope) || items.some(item => item.scopeKey === scope && item.entity === 'attendanceConsents')
-    const { redactAttendanceMarkData } = await import('./attendance-location-contract')
     let changed = false
     const next = items.map(item => {
       const mark = item.data.attendanceMark as import('./attendance-location-contract').AttendanceMark | undefined

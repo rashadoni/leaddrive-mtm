@@ -80,6 +80,6 @@ describe("the request goes to the server's own door", () => {
     expect(method).toContain("data: { operationId: string; workdayId: string }")
     expect(method).toContain('this.request("/mobile/route-field/workday-return", {')
     expect(method).toContain('method: "POST"')
-    expect(method).toContain("}, 20_000, 2)")
+    expect(method).toContain("}, 20_000, 2, guard)")
   })
 })

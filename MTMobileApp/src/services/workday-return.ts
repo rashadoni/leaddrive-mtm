@@ -59,14 +59,17 @@ function returnedWorkday(response: unknown): BootstrapWorkday | null {
  * the day running on this device. A refusal with a reason is an outcome; no
  * answer, or an answer without a reason, throws — the caller says "try again".
  */
-export async function returnToClosedWorkday(key: string, workdayId: string): Promise<WorkdayReturnOutcome> {
+export async function returnToClosedWorkday(key: string, workdayId: string, guard?: () => void): Promise<WorkdayReturnOutcome> {
+  guard?.()
   // One id per tap. A tap whose answer was lost needs no memory of it: the
   // next one finds the day open and is told so.
   const operationId = "wdr-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
   let response: unknown
   try {
-    response = await api.returnToWorkday({ operationId, workdayId })
+    response = guard ? await api.returnToWorkday({ operationId, workdayId }, guard) : await api.returnToWorkday({ operationId, workdayId })
+    guard?.()
   } catch (error) {
+    guard?.()
     const code = (error as { code?: unknown } | null)?.code
     if (typeof code === "string" && Object.prototype.hasOwnProperty.call(REFUSALS, code)) return REFUSALS[code]
     throw error
@@ -74,6 +77,8 @@ export async function returnToClosedWorkday(key: string, workdayId: string): Pro
   const workday = returnedWorkday(response)
   // The same door the server's shift always comes in by; it also forgets
   // "finished today", which is no longer true.
-  if (workday) await useWorkdayStore.getState().reconcileFromServer(key, workday)
+  if (workday && workday.id !== workdayId) throw new Error('MTM_WORKDAY_RETURN_RESPONSE_INVALID')
+  if (workday) await useWorkdayStore.getState().reconcileFromServer(key, workday, guard)
+  guard?.()
   return "returned"
 }

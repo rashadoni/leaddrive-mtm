@@ -12,6 +12,9 @@ import type { ActiveWorkday } from "../../src/store/workday"
 const mockAuth = { agent: officeAgent, logout: jest.fn(), switchServer: jest.fn(), serverDomain: "fictional.invalid" }
 const mockBootstrap = { data: officeBootstrap() }
 const mockWorkday: { activeWorkday: ActiveWorkday | null; finishedWorkday: null; hydrated: boolean } = { activeWorkday: null, finishedWorkday: null, hydrated: true }
+const mockRecovery = { operation: null, reload: jest.fn().mockResolvedValue(undefined) }
+jest.mock("../../src/hooks/useAttendanceMarkRecovery", () => ({ useAttendanceMarkRecovery: () => mockRecovery }))
+jest.mock("../../src/services/workday-return", () => ({ canReturnToWorkday: (policies: {workdayReturn?: boolean}) => policies?.workdayReturn === true, returnToClosedWorkday: jest.fn().mockResolvedValue("returned") }))
 const mockAsk = jest.fn().mockResolvedValue(true)
 jest.mock("../../src/store/auth", () => ({ useAuthStore: (selector?: (value: unknown) => unknown) => selector ? selector(mockAuth) : mockAuth }))
 jest.mock("../../src/store/bootstrap", () => ({ useBootstrapStore: (selector: (value: unknown) => unknown) => selector(mockBootstrap) }))
@@ -33,6 +36,7 @@ jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 import AttendanceWorkdayScreen from "../../src/screens/attendance/AttendanceWorkdayScreen"
 import AttendanceInboxScreen from "../../src/screens/attendance/AttendanceInboxScreen"
 import ProfileScreen from "../../src/screens/profile/ProfileScreen"
+import { returnToClosedWorkday } from "../../src/services/workday-return"
 import { changeAttendanceWorkday } from "../../src/services/attendance-session"
 import { readAttendanceInbox, markAttendanceInboxRead } from "../../src/services/attendance-inbox"
 import { allOutboxOperations } from "../../src/services/outbox"
@@ -104,4 +108,28 @@ it("does not load field alerts for an office profile", async () => {
 it("hides private day actions when the current permission is withdrawn", async () => {
   mockBootstrap.data.policies.agentPermissions!.attendanceWorkday = false
   const tree = await render(AttendanceWorkdayScreen); expect(node(tree,"office-workday-action")).toBeUndefined(); expect(text(tree)).not.toContain("Aylin Demo")
+})
+
+function completedToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Baku',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date())
+  const part = (type: string) => parts.find(item => item.type === type)!.value
+  mockBootstrap.data.workday = { id:'wd-today',status:'COMPLETED',startedAt:new Date().toISOString(),completedAt:new Date().toISOString(),workDate:`${part('year')}-${part('month')}-${part('day')}` }
+  mockBootstrap.data.policies.workdayReturn = true
+}
+it.each(['ru','az','en'])('renders actual %s office return and calls the guarded existing service', async language => {
+  completedToday(); const tree = await render(AttendanceWorkdayScreen, language)
+  expect(node(tree,'office-workday-action')).toBeUndefined(); expect(node(tree,'office-workday-return')).toBeDefined(); capture(tree,`office-return-${language}`)
+  await press(tree,'office-workday-return'); expect(returnToClosedWorkday).toHaveBeenCalledWith('org-fixture:office-fixture','wd-today',expect.any(Function))
+})
+it.each(['old-day','missing-policy','revoked'])('does not offer office return for %s', async reason => {
+  completedToday()
+  if (reason === 'old-day') mockBootstrap.data.workday!.workDate = '2020-01-01'
+  if (reason === 'missing-policy') mockBootstrap.data.policies.workdayReturn = undefined
+  if (reason === 'revoked') mockBootstrap.data.policies.agentPermissions!.attendanceWorkday = false
+  const tree = await render(AttendanceWorkdayScreen); expect(node(tree,'office-workday-return')).toBeUndefined()
+})
+it.each(['locked','notToday'])('explains office return refusal %s and removes the failed action', async outcome => {
+  completedToday(); (returnToClosedWorkday as jest.Mock).mockResolvedValueOnce(outcome)
+  const tree = await render(AttendanceWorkdayScreen); await press(tree,'office-workday-return')
+  expect(node(tree,'office-workday-return')).toBeUndefined(); expect(text(tree)).toContain(outcome === 'locked' ? ru.officeAttendance.returnLocked : ru.officeAttendance.returnNotToday)
 })

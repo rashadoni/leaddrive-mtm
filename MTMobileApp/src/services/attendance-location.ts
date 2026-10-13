@@ -23,6 +23,10 @@ function guardAccount(scope: string) {
   const auth = useAuthStore.getState()
   if (!auth.isLoggedIn || getOfflineScope() !== scope || offlineScopeKey(auth.agent?.organizationId, auth.agent?.id) !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
 }
+export function guardAttendanceMark(scope: string) {
+  guardAccount(scope)
+  if (!attendanceMarkAvailable()) throw Object.assign(new Error('ATTENDANCE_LOCATION_UNAVAILABLE'), { status: 403 })
+}
 export function attendanceLocationScope(): string {
   const scope = getOfflineScope()
   if (!scope || !attendanceLocationAvailable()) throw Object.assign(new Error('ATTENDANCE_LOCATION_UNAVAILABLE'), { status: 403 })
@@ -47,7 +51,14 @@ export async function beginAttendanceConsent(scope: string, own: OwnAttendanceLo
   const policyRevisionId = accepted ? own.policy?.id : own.consent?.policyRevisionId
   if (!policyRevisionId || (accepted && (!own.policy?.enabled || !own.policy.legalReviewConfirmed))) throw new Error('ATTENDANCE_LOCATION_INVALID')
   const input: AttendanceConsentInput = { requestId: attendanceUuid(), policyRevisionId, expectedConsentId: own.consent?.id ?? null, accepted }
-  return queueAttendanceConsent(scope, input)
+  const item = await queueAttendanceConsent(scope, input)
+  // Field coordinates retain their existing contract. Remove only this new,
+  // consent-bound evidence from its separate queue; the epoch already blocks
+  // transport even if this second storage write fails.
+  const { redactBackgroundAttendanceEvidence } = require('./location-outbox') as typeof import('./location-outbox')
+  await redactBackgroundAttendanceEvidence()
+  guardAccount(scope)
+  return item
 }
 /** Explicit retry and background flush share the exact durable request body. */
 export async function sendAttendanceConsent(scope: string, item: OutboxOperation): Promise<void> {
@@ -101,7 +112,7 @@ export async function captureAttendanceMark(scope: string, occurredAt: string, p
   const guard = () => { guardAttendanceLocation(scope); if (epoch !== attendancePrivacyEpoch(scope)) throw new Error('ATTENDANCE_CONSENT_CHANGED') }
   try {
     guard()
-    const { readAttendanceLocationFix } = await import('./attendance-location-fix')
+    const { readAttendanceLocationFix } = require('./attendance-location-fix') as typeof import('./attendance-location-fix')
     guard()
     const fix = await readAttendanceLocationFix(guard)
     guard()

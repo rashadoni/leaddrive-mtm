@@ -1,3 +1,4 @@
+jest.mock("../../src/services/attendance-location", () => ({ captureAttendanceMark: jest.fn().mockResolvedValue(undefined) }))
 import AsyncStorage from "@react-native-async-storage/async-storage"
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")

@@ -9,11 +9,12 @@ import { useAuthStore } from '../../src/store/auth'
 import { useBootstrapStore } from '../../src/store/bootstrap'
 import { officeAgent, officeBootstrap } from '../../test-support/office-attendance'
 import { setOfflineScope } from '../../src/services/offline-scope'
-import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, queueAttendanceConsent, releaseAttendancePrivacyBlock, attendancePrivacyEpoch } from '../../src/services/outbox'
+import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, queueAttendanceConsent, releaseAttendancePrivacyBlock, attendancePrivacyEpoch, markOutboxConflict } from '../../src/services/outbox'
 import { captureAttendanceMark, beginAttendanceConsent, changeAttendanceConsent, sendAttendanceConsent, pendingAttendanceConsent, pushAttendanceLocationOperations, attendanceLocationAvailable, readAttendanceLocation } from '../../src/services/attendance-location'
 import { parseOwnAttendanceLocation, type OwnAttendanceLocation } from '../../src/services/attendance-location-contract'
 import { readAttendanceLocationFix } from '../../src/services/attendance-location-fix'
 import { useWorkdayStore } from '../../src/store/workday'
+import { queuePoint, readQueue } from '../../src/services/location-outbox'
 const scope = `${officeAgent.organizationId}:${officeAgent.id}`
 const timestamp = '2026-10-13T08:00:00.000Z'
 const fix = { latitude: 40.4, longitude: 49.8, accuracy: 12, capturedAt: timestamp, isMock: false, provider: 'UNKNOWN' as const }
@@ -129,4 +130,46 @@ it('blocks later capture/transmit even if the first withdrawal storage write fai
   expect(readAttendanceLocationFix).not.toHaveBeenCalled()
   await pushAttendanceLocationOperations(original)
   expect((api.syncPush as jest.Mock).mock.calls.at(-1)![0][0].data.attendanceMark.location).toBeNull()
+})
+it.each(['MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED', 'MTM_ATTENDANCE_LOCATION_MOCK_REJECTED'])('replaces an explicitly uncommitted %s with a new tap and preserves the original workday identity', async code => {
+  await useWorkdayStore.getState().start(scope)
+  const [original] = await allOutboxOperations()
+  await markOutboxConflict(original.operationId, { operationId: original.operationId, status: 'conflict', error: code, serverData: { code, committed: false } })
+  await useWorkdayStore.getState().reconcileFromServer(scope, null)
+  jest.setSystemTime(new Date('2026-10-13T08:01:00Z'))
+  ;(readAttendanceLocationFix as jest.Mock).mockResolvedValue({ ...fix, capturedAt: '2026-10-13T08:01:00.000Z' })
+  await useWorkdayStore.getState().retryAttendanceMark(scope, original.operationId)
+  const [retried] = await allOutboxOperations()
+  expect(retried.operationId).not.toBe(original.operationId)
+  expect(retried.data.id).toBe(original.data.id)
+  expect(retried.data.occurredAt).toBe('2026-10-13T08:01:00.000Z')
+  expect(retried.data.attendanceMark).toMatchObject({ consentRevisionId: 'exact-receipt', location: { capturedAt: '2026-10-13T08:01:00.000Z' } })
+  expect(retried.status).toBe('pending'); expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe('START_PENDING')
+  // Losing the new reply retries the saved fresh tap, never takes another fix.
+  ;(api.syncPush as jest.Mock).mockRejectedValueOnce(new Error('lost reply'))
+  await flushOutbox(pushAttendanceLocationOperations)
+  expect((await allOutboxOperations())[0].data).toEqual(retried.data)
+  expect((await allOutboxOperations())[0].operationId).toBe(retried.operationId)
+})
+it.each([undefined, true, 'false'])('never replaces a mark without exact committed:false (%s)', async committed => {
+  await useWorkdayStore.getState().start(scope); const [original] = await allOutboxOperations()
+  await markOutboxConflict(original.operationId, { operationId: original.operationId, status: 'conflict', error: 'MTM_ATTENDANCE_LOCATION_OUTSIDE_REJECTED', serverData: { committed } })
+  await expect(useWorkdayStore.getState().retryAttendanceMark(scope, original.operationId)).rejects.toThrow('ATTENDANCE_MARK_CHANGED')
+  expect((await allOutboxOperations())[0].operationId).toBe(original.operationId)
+})
+it('serializes two retry taps and does not send a fix captured after scope is lost', async () => {
+  await useWorkdayStore.getState().start(scope); const [original] = await allOutboxOperations()
+  await markOutboxConflict(original.operationId, { operationId: original.operationId, status: 'conflict', error: 'MTM_ATTENDANCE_LOCATION_MOCK_REJECTED', serverData: { committed: false } })
+  ;(readAttendanceLocationFix as jest.Mock).mockImplementation(async () => { data.policies.agentPermissions!.attendanceWorkday = false; return fix })
+  await expect(useWorkdayStore.getState().retryAttendanceMark(scope, original.operationId)).rejects.toThrow()
+  expect((await allOutboxOperations())[0].operationId).toBe(original.operationId)
+  data.policies.agentPermissions!.attendanceWorkday = true; (readAttendanceLocationFix as jest.Mock).mockResolvedValue(fix)
+  const results = await Promise.allSettled([useWorkdayStore.getState().retryAttendanceMark(scope, original.operationId), useWorkdayStore.getState().retryAttendanceMark(scope, original.operationId)])
+  expect(results.map(result => result.status)).toEqual(['fulfilled', 'rejected'])
+  expect(await allOutboxOperations()).toHaveLength(1)
+})
+it('withdrawal removes optional background evidence without deleting ordinary coordinates', async () => {
+  const point = { latitude: 40.4, longitude: 49.8, clientLocationId: 'fictional-point', recordedAt: timestamp, isMock: false, attendanceConsentId: 'exact-receipt' }
+  await queuePoint(point); await beginAttendanceConsent(scope, accepted, false)
+  expect(await readQueue()).toEqual([{ latitude: 40.4, longitude: 49.8, clientLocationId: 'fictional-point', recordedAt: timestamp }])
 })
