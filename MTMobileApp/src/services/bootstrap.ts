@@ -127,6 +127,12 @@ export interface BootstrapPolicies {
    * through `agentMay()`, which hides nothing without an explicit `false`.
    */
   agentPermissions?: Record<string, boolean>
+  /**
+   * Whether the server can return an employee to the workday they closed
+   * earlier today. Absent on a server that cannot; read it only through
+   * `canReturnToWorkday()`, which offers nothing without an explicit `true`.
+   */
+  workdayReturn?: boolean
 }
 
 export type MobileRouteTargetDirection = "DOCTOR" | "PHARMACY" | "ORGANIZATION"
@@ -425,6 +431,9 @@ export function toBootstrap(raw: any): BootstrapData {
       contactClasses: parseContactClasses(record(raw?.policies)?.contactClasses),
       // Boolean answers only; anything else stays undefined and hides nothing.
       agentPermissions: parseAgentPermissions(record(raw?.policies)?.agentPermissions),
+      // Strict `=== true`: a button the server would answer with "not found"
+      // is worse than the old "day finished".
+      workdayReturn: record(raw?.policies)?.workdayReturn === true,
     },
     routeTargetTypes: routeTargetTypes(raw?.routeTargetTypes),
     workday: workday

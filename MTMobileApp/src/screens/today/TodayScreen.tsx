@@ -24,8 +24,10 @@ import { readOfflineRoute, readOfflineTasks } from "../../services/offline-reads
 import { useAuthStore } from "../../store/auth"
 import { useKpiStore } from "../../store/kpi"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
+import { useBootstrapStore } from "../../store/bootstrap"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
+import { canReturnToWorkday, returnToClosedWorkday } from "../../services/workday-return"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -70,6 +72,7 @@ export default function TodayScreen() {
   const pauseWorkday = useWorkdayStore((state) => state.pause)
   const resumeWorkday = useWorkdayStore((state) => state.resume)
   const finishedWorkday = useWorkdayStore((state) => state.finishedWorkday)
+  const serverReturnsWorkdays = useBootstrapStore((state) => canReturnToWorkday(state.data?.policies))
   const online = useSyncStatusStore((state) => state.online)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
   // Today's route that is saved but not approved yet (selectTodayAwaitingRoute):
@@ -83,6 +86,9 @@ export default function TodayScreen() {
   const [startingRoute, setStartingRoute] = useState(false)
   const [workdayBusy, setWorkdayBusy] = useState(false)
   const [workdayError, setWorkdayError] = useState(false)
+  // The server's "no" about one particular day, kept with that day's id so it
+  // never speaks for another.
+  const [returnRefusal, setReturnRefusal] = useState<{ workdayId: string; reason: "notToday" | "locked" } | null>(null)
   const [endDayConfirm, setEndDayConfirm] = useState(false)
   const [notice, setNotice] = useState<{ title: string; body: string; icon: string } | null>(null)
   const [unreadMessage, setUnreadMessage] = useState<TeamMessageSummary | null>(null)
@@ -113,6 +119,15 @@ export default function TodayScreen() {
   // cannot be restarted from this screen the same day.
   const workdayFinishedToday = workdayHydrated && !currentWorkday
     && finishedWorkday?.key === currentWorkdayKey && finishedWorkday.dateKey === todayKey
+  // Owner, 2026-10-13: a day closed by mistake, or closed before coming back
+  // to work, is returned to the same day — the same workday going on, the time
+  // away a pause. Offered only where the server can do it, and not for a day
+  // it has already refused.
+  const workdayReturnRefused = workdayFinishedToday && returnRefusal?.workdayId === finishedWorkday?.workdayId
+    ? returnRefusal?.reason ?? null
+    : null
+  const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
+  const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
 
   const refresh = useCallback(async () => {
     let liveRouteFailed = false
@@ -227,14 +242,36 @@ export default function TodayScreen() {
     }
   }, [currentWorkdayKey, pauseWorkday, refresh, resumeWorkday, workdayBusy, workdayHydrated, workdayOpen, workdayPaused])
 
+  const returnToWorkday = useCallback(async () => {
+    const workdayId = finishedWorkday?.workdayId
+    if (workdayBusy || !workdayHydrated || !workdayReturnable || !workdayId) return
+    setWorkdayBusy(true)
+    setWorkdayError(false)
+    try {
+      const outcome = await returnToClosedWorkday(currentWorkdayKey, workdayId)
+      if (outcome === "notToday" || outcome === "locked") setReturnRefusal({ workdayId, reason: outcome })
+      // "alreadyOpen" needs no words: the refresh below shows the day running.
+      await refreshRouteFieldSession()
+      await refresh()
+    } catch {
+      setWorkdayError(true)
+    } finally {
+      setWorkdayBusy(false)
+    }
+  }, [currentWorkdayKey, finishedWorkday?.workdayId, refresh, workdayBusy, workdayHydrated, workdayReturnable])
+
   const requestWorkdayAction = useCallback(() => {
-    if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday) return
+    if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood) return
+    if (workdayReturnable) {
+      returnToWorkday().catch(() => {})
+      return
+    }
     if (!workdayOpen) {
       syncWorkday().catch(() => {})
       return
     }
     setEndDayConfirm(true)
-  }, [syncWorkday, workdayBusy, workdayEnding, workdayFinishedToday, workdayHydrated, workdayOpen, workdayStarting])
+  }, [returnToWorkday, syncWorkday, workdayBusy, workdayClosedForGood, workdayEnding, workdayHydrated, workdayOpen, workdayReturnable, workdayStarting])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -507,9 +544,14 @@ export default function TodayScreen() {
                             ? t("todayV2.dayStartedOnAt", { date: startedOn, time: startedAt })
                             : t("todayV2.dayStartedAt", { time: startedAt }))
                           : workdayFinishedToday
-                            ? t("todayV2.dayFinishedAt", { time: finishedAt ?? "" })
+                            ? t(workdayReturnable ? "todayV2.dayFinishedReturn" : "todayV2.dayFinishedAt", { time: finishedAt ?? "" })
                             : t("todayV2.dayStartHint")}
                 </Text>
+                {workdayReturnRefused ? (
+                  <Text style={styles.inlineError}>
+                    {t(workdayReturnRefused === "locked" ? "todayV2.returnLocked" : "todayV2.returnNotToday")}
+                  </Text>
+                ) : null}
                 {workdayError ? <Text style={styles.inlineError}>{t("todayV2.workdayError")}</Text> : null}
               </View>
               {/*
@@ -548,28 +590,36 @@ export default function TodayScreen() {
               ) : null}
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday }}
-                disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday}
+                accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood }}
+                disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood}
                 onPress={requestWorkdayAction}
                 style={({ pressed }) => [
                   styles.workdayButton,
                   !twoPane && styles.workdayButtonPhone,
                   workdayOpen && styles.workdayButtonActive,
                   pressed && styles.pressed,
-                  (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayFinishedToday) && styles.disabled,
+                  (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood) && styles.disabled,
                 ]}
               >
                 {workdayBusy || !workdayHydrated ? (
                   <ActivityIndicator size="small" color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor} />
                 ) : twoPane || !workdayOpen || workdayEnding ? (
                   <Icon
-                    name={workdayOpen ? "stop-circle-outline" : workdayFinishedToday ? "checkmark-circle" : "play-circle"}
+                    name={workdayOpen ? "stop-circle-outline" : workdayClosedForGood ? "checkmark-circle" : "play-circle"}
                     size={22}
                     color={workdayOpen ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
                   />
                 ) : null}
                 <Text style={[styles.workdayButtonText, workdayOpen && styles.workdayButtonTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                  {t(workdayOpen ? "todayV2.endDay" : workdayEnding ? "todayV2.endDayPendingButton" : workdayFinishedToday ? "todayV2.dayFinishedButton" : "todayV2.startDay")}
+                  {t(workdayOpen
+                    ? "todayV2.endDay"
+                    : workdayEnding
+                      ? "todayV2.endDayPendingButton"
+                      : workdayReturnable
+                        ? "todayV2.returnToWork"
+                        : workdayFinishedToday
+                          ? "todayV2.dayFinishedButton"
+                          : "todayV2.startDay")}
                 </Text>
               </Pressable>
               </View>
