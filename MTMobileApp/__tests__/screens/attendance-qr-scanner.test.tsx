@@ -42,7 +42,7 @@ it('cancel or denied camera does not create a mark',async()=>{
  await act(async()=>node(tree,'attendance-qr-cancel').props.onPress());expect(confirm).not.toHaveBeenCalled()
 })
 it('ignores invalid, duplicate and late background scans',async()=>{
- const tree=await render();await act(async()=>mockScan([{type:'qr',value:'x'.repeat(4097)}]));expect(node(tree,'attendance-qr-confirm')).toBeUndefined()
+ const tree=await render();await act(async()=>mockScan([{type:'qr',value:'x'.repeat(2049)}]));expect(node(tree,'attendance-qr-confirm')).toBeUndefined()
  await act(async()=>mockScan([{type:'qr',value:raw}]));await act(async()=>mockScan([{type:'qr',value:'different'}]))
  await act(async()=>{AppState.currentState='background';background('background')});expect(close).toHaveBeenCalled()
  await act(async()=>mockScan([{type:'qr',value:raw}]));expect(confirm).not.toHaveBeenCalled()

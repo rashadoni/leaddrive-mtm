@@ -4,7 +4,7 @@ export type AttendanceQrReceipt = { eventId: string; state: AttendanceQrState; b
 export type SavedAttendanceQrReceipt = AttendanceQrReceipt & { operationId: string; workdayId: string; action: 'START' | 'FINISH'; occurredAt: string }
 const object = (value: unknown): Record<string, unknown> | null => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 const id = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 191
-export const validAttendanceQrToken = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0 && value.length <= 4096
+export const validAttendanceQrToken = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0 && value.length <= 2048
 export function parseAttendanceQrReceipt(value: unknown): AttendanceQrReceipt {
   const row = object(value), branch = object(row?.branch)
   if (!row || !id(row.eventId) || !['VERIFIED','NOT_PROVIDED','EXPIRED','INVALID','BRANCH_CHANGED','REUSED'].includes(String(row.state))
