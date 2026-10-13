@@ -52,7 +52,7 @@ export default function ServerScreen({ onServerSelected }: Props) {
       const result = await api.pingServer(normalizedInput)
       if (!result.success) {
         console.warn("[ServerScreen] ping failed:", result.error)
-        setError(t("server.serverNotFoundHelp"))
+        setError(t(result.reason === "not_found" ? "server.serverNotFoundHelp" : "server.couldNotConnectHelp"))
         return
       }
 
