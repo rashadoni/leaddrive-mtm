@@ -289,3 +289,10 @@
 
 - Product588729f25a72a6b85bc01427efa8d6e7bdc8094c published through authoritative attendance remote as https://github.com/rashadoni/leaddrive-mtm/pull/125, Ready and attached. Required CI38431536054 and signed build38431536078 running, not yet passed. Independent read-only review found no blockers in URL/version selection, exact body/UUID preservation, scope guards and409 receipt classification.
 - Server repair PR748 moves the corresponding7 handlers and allowlists; its focused146 tests and separate34 controller tests PASS. Server/mobile production acceptance is still incomplete: deployed server d6096af9 demo fails at MOBILE_LOGIN, and the old v1 attendance prefix is independently proven withdrawn410. Corrected server must be released before this mobile PR merges. Next: CI, server release/demo diagnosis, then mobile main build/APK. This journal checkpoint stays local while CI runs.
+
+
+## 2026-10-13 — corrective PR125 verified, awaiting companion server
+
+Exact product head588729f25a72a6b85bc01427efa8d6e7bdc8094c: CI38431610949 SUCCESS (218 suites,1800 tests PASS, one existing TODO; semantic TypeScript PASS). Signed Android38431536078 SUCCESS, including package/version/release-signature checks. The cancelled draft CI38431536054 tests are superseded, not counted as PASS. PR125 description updated with the actual results. Local targeted Jest had stopped before running because the RN preset is absent; no full dependency installation or heavy local check was performed.
+
+Merge/release waits for server PR748's v2 attendance routes to reach production. Existing APK v3.8.1-build460 still has the old withdrawn v1 attendance URLs and must be superseded by a signed main release after125. Server production demo login is still unresolved; a bounded credential-free dev-client diagnostic recognized Cloudflare1010, which does not by itself prove the Node production controller failed for that same reason. No auth credentials, edge policy, user-agent identity or alternate origin were changed. Native physical-phone/GPS/QR/offline acceptance remains NOT RUN. Next: verified server deploy, normal mobile merge, signed main APK and link.
