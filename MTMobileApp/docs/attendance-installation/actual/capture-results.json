@@ -1,0 +1,122 @@
+[
+  {
+    "language": "ru",
+    "width": 1440,
+    "height": 525,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "attendance-installation-request",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      }
+    ]
+  },
+  {
+    "language": "ru",
+    "width": 390,
+    "height": 1066,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "attendance-installation-request",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      }
+    ]
+  },
+  {
+    "language": "az",
+    "width": 1440,
+    "height": 525,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "attendance-installation-request",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      }
+    ]
+  },
+  {
+    "language": "az",
+    "width": 390,
+    "height": 1020,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "attendance-installation-request",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      }
+    ]
+  },
+  {
+    "language": "en",
+    "width": 1440,
+    "height": 525,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "attendance-installation-request",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      }
+    ]
+  },
+  {
+    "language": "en",
+    "width": 390,
+    "height": 1020,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "attendance-installation-request",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      },
+      {
+        "id": "attendance-installation-refresh",
+        "height": 50
+      }
+    ]
+  }
+]

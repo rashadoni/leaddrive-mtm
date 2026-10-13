@@ -1,0 +1,31 @@
+{
+  "head": "45f87ef766064b3f5a5dc123ce78d85ff61a6010",
+  "workflow": "https://github.com/rashadoni/leaddrive-mtm/actions/runs/38383852631",
+  "boundary": "Fictional actual React Native CI component trees, rendered into HTML previews. Not Android screenshots; no physical-device permissions, native spacing or scan verification.",
+  "files": [
+    {
+      "name": "installation-request-ru.json",
+      "sha256": "43f9fdb396d854ff15f3793c4151f610f2790c33d3ae4f62204d6cf811447420"
+    },
+    {
+      "name": "installation-request-az.json",
+      "sha256": "09ad0b25db9cc1ceda03fc7df811b901841c47f9f5c3567effd85a3952dd783a"
+    },
+    {
+      "name": "installation-request-en.json",
+      "sha256": "0536c7f9376c9c8947e746f77d276e6a755d76d10a410186dcb3f17ced9cb7b7"
+    },
+    {
+      "name": "installation-pending-ru.json",
+      "sha256": "1c73a94cf74b250a4384b545880a95ac5720b13cbb1c317ac6e23dfee54610f5"
+    },
+    {
+      "name": "installation-pending-az.json",
+      "sha256": "b40dfe35f419355c6e7a25fe407d5ed49b86fa2f375e17c0b7e634a3c55695f7"
+    },
+    {
+      "name": "installation-pending-en.json",
+      "sha256": "f3b8e9fc22e9fe596c1b2c180c1d49fe8af3b1849784d93664eeffaa6d99f324"
+    }
+  ]
+}
