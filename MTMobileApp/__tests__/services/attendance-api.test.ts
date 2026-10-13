@@ -28,10 +28,10 @@ it("uses ordinary authenticated own-list/quota/create/cancel API doors", async (
   await api.cancelAttendanceRequest("own-id", guard)
   const calls = (global.fetch as jest.Mock).mock.calls
   expect(calls.map(call => call[0])).toEqual([
-    "https://fictional.invalid/api/v1/mtm/mobile/attendance/requests?cursor=cursor-id",
-    "https://fictional.invalid/api/v1/mtm/mobile/attendance/request-limits?month=2026-10",
-    "https://fictional.invalid/api/v1/mtm/mobile/attendance/requests",
-    "https://fictional.invalid/api/v1/mtm/mobile/attendance/requests/own-id",
+    "https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/requests?cursor=cursor-id",
+    "https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/request-limits?month=2026-10",
+    "https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/requests",
+    "https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/requests/own-id",
   ])
   expect(calls[2][1].body).toBe(JSON.stringify(value))
   expect(calls[3][1].method).toBe("DELETE")
@@ -40,7 +40,7 @@ it("uses ordinary authenticated own-list/quota/create/cancel API doors", async (
 it("uploads private multipart bytes with no location or visit fields and lets native fetch choose the boundary", async () => {
   await api.uploadAttendanceDocument("request-uuid", "document-uuid", "/private/document.jpg", () => {})
   const [url, options] = (global.fetch as jest.Mock).mock.calls[0]
-  expect(url).toContain("/mobile/attendance/attachments")
+  expect(url).toBe("https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/attachments")
   expect(options.headers["Content-Type"]).toBeUndefined()
   const parts = options.body.getParts()
   expect(parts.map((part: { fieldName: string }) => part.fieldName)).toEqual(["clientRequestId", "clientAttachmentId", "file"])
@@ -89,7 +89,7 @@ it("uses only guarded own consent API and preserves the exact revision and reque
   const guard = jest.fn()
   await api.getAttendanceLocationConsent(guard); await api.setAttendanceLocationConsent(input, guard)
   const calls = (global.fetch as jest.Mock).mock.calls
-  expect(calls.map(call => call[0])).toEqual(["https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent", "https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent"])
+  expect(calls.map(call => call[0])).toEqual(["https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/location-consent", "https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/location-consent"])
   expect(calls[1][1].body).toBe(JSON.stringify(input)); expect(calls[1][1].method).toBe("POST"); expect(guard).toHaveBeenCalled()
 })
 
@@ -109,7 +109,7 @@ it('sends an installation request through the current guarded device header with
   const guard=jest.fn(),requestId=attendanceUuid()
   await api.getAttendanceInstallation(guard); await api.requestAttendanceInstallation({requestId},guard)
   const calls=(global.fetch as jest.Mock).mock.calls
-  expect(calls.map(call=>call[0])).toEqual(['https://fictional.invalid/api/v1/mtm/mobile/attendance/installation','https://fictional.invalid/api/v1/mtm/mobile/attendance/installation'])
+  expect(calls.map(call=>call[0])).toEqual(['https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/installation','https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/installation'])
   expect(calls[1][1].headers['x-field-device-id']).toBe('rf-fictional-device');expect(JSON.parse(calls[1][1].body)).toEqual({requestId});expect(guard).toHaveBeenCalled()
 })
 it.each([false,true,'false',undefined])('copies only exact uncommitted duplicate receipt (%s)',async committed=>{

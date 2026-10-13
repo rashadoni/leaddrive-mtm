@@ -450,7 +450,7 @@ class ApiClient {
         err.status = res.status
         // Only this explicit rejected installation request may release its
         // durable local UUID. Do not forward arbitrary server error payloads.
-        if (path === '/mobile/attendance/installation' && options.method === 'POST' && res.status === 409
+        if (apiVersion === 2 && path === '/mobile/route-field/attendance/installation' && options.method === 'POST' && res.status === 409
           && data.code === 'MTM_ATTENDANCE_INSTALLATION_ALREADY_REQUESTED' && data.data?.committed === false) {
           (err as RetryableSyncError & {committed?: false}).committed = false
         }
@@ -621,35 +621,35 @@ class ApiClient {
 
   // Attendance uses the existing authenticated transport and its own narrow API.
   getAttendanceInstallation(guard: () => void) {
-    return this.request('/mobile/attendance/installation', {method:'GET'}, 20_000, 1, guard)
+    return this.request('/mobile/route-field/attendance/installation', {method:'GET'}, 20_000, 2, guard)
   }
   requestAttendanceInstallation(input: {requestId: string}, guard: () => void) {
-    return this.request('/mobile/attendance/installation', {method:'POST',body:JSON.stringify(input)}, 20_000, 1, guard)
+    return this.request('/mobile/route-field/attendance/installation', {method:'POST',body:JSON.stringify(input)}, 20_000, 2, guard)
   }
   getAttendanceLocationConsent(guard: () => void) {
-    return this.request("/mobile/attendance/location-consent", {}, 5_000, 1, guard)
+    return this.request("/mobile/route-field/attendance/location-consent", {}, 5_000, 2, guard)
   }
   setAttendanceLocationConsent(input: import("./attendance-location-contract").AttendanceConsentInput, guard: () => void) {
-    return this.request("/mobile/attendance/location-consent", { method: "POST", body: JSON.stringify(input) }, 10_000, 1, guard)
+    return this.request("/mobile/route-field/attendance/location-consent", { method: "POST", body: JSON.stringify(input) }, 10_000, 2, guard)
   }
   getAttendanceRequests(cursor: string | undefined, guard: () => void) {
-    return this.request(`/mobile/attendance/requests${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {}, 20_000, 1, guard)
+    return this.request(`/mobile/route-field/attendance/requests${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {}, 20_000, 2, guard)
   }
   getAttendanceQuota(month: string, guard: () => void) {
-    return this.request(`/mobile/attendance/request-limits?month=${encodeURIComponent(month)}`, {}, 20_000, 1, guard)
+    return this.request(`/mobile/route-field/attendance/request-limits?month=${encodeURIComponent(month)}`, {}, 20_000, 2, guard)
   }
   submitAttendanceRequest(input: import("./attendance-contract").AttendanceInput, guard: () => void) {
-    return this.request("/mobile/attendance/requests", { method: "POST", body: JSON.stringify(input) }, 20_000, 1, guard)
+    return this.request("/mobile/route-field/attendance/requests", { method: "POST", body: JSON.stringify(input) }, 20_000, 2, guard)
   }
   cancelAttendanceRequest(id: string, guard: () => void) {
-    return this.request(`/mobile/attendance/requests/${encodeURIComponent(id)}`, { method: "DELETE" }, 20_000, 1, guard)
+    return this.request(`/mobile/route-field/attendance/requests/${encodeURIComponent(id)}`, { method: "DELETE" }, 20_000, 2, guard)
   }
   uploadAttendanceDocument(clientRequestId: string, clientAttachmentId: string, path: string, guard: () => void) {
     const body = new FormData()
     body.append("clientRequestId", clientRequestId)
     body.append("clientAttachmentId", clientAttachmentId)
     body.append("file", { uri: `file://${path.replace(/^file:\/\//, "")}`, type: "image/jpeg", name: "document.jpg" } as unknown as Blob)
-    return this.request("/mobile/attendance/attachments", { method: "POST", body }, 60_000, 1, guard)
+    return this.request("/mobile/route-field/attendance/attachments", { method: "POST", body }, 60_000, 2, guard)
   }
 
   async syncPush(operations: Array<{
