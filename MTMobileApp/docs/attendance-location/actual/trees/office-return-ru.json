@@ -1,0 +1,337 @@
+{
+  "type": "View",
+  "props": {
+    "style": {
+      "flex": 1,
+      "backgroundColor": "#F1F6F3"
+    }
+  },
+  "children": [
+    {
+      "type": "View",
+      "props": {
+        "style": [
+          {
+            "backgroundColor": "#055342",
+            "padding": 24,
+            "gap": 8
+          },
+          {
+            "paddingTop": 12
+          }
+        ]
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "color": "#F8FCFA",
+              "fontSize": 13
+            }
+          },
+          "children": [
+            "LeadDrive · Мой учёт"
+          ]
+        },
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "color": "#F8FCFA",
+              "fontSize": 27,
+              "fontWeight": "700"
+            }
+          },
+          "children": [
+            "Рабочий день"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RCTScrollView",
+      "props": {},
+      "children": [
+        {
+          "type": "RCTRefreshControl",
+          "props": {},
+          "children": null
+        },
+        {
+          "type": "View",
+          "props": {},
+          "children": [
+            {
+              "type": "View",
+              "props": {
+                "style": {
+                  "backgroundColor": "#FBFDFC",
+                  "borderWidth": 1,
+                  "borderColor": "#D6E3DC",
+                  "borderRadius": 22,
+                  "padding": 22,
+                  "gap": 16
+                }
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#08705A",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    }
+                  },
+                  "children": [
+                    "День завершён"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 20,
+                      "color": "#13231F",
+                      "fontWeight": "600"
+                    }
+                  },
+                  "children": [
+                    "Aylin Demo"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 27,
+                      "fontWeight": "700",
+                      "color": "#055342"
+                    }
+                  },
+                  "children": [
+                    "13 окт., 14:06"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "lineHeight": 23,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Завершение рабочего дня"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "lineHeight": 23,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Можно вернуться к сегодняшнему дню. Время после завершения будет перерывом."
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "gap": 12
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "office-workday-return",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 50,
+                            "padding": 14,
+                            "justifyContent": "center",
+                            "alignItems": "center",
+                            "backgroundColor": "#055342",
+                            "borderRadius": 12,
+                            "flexGrow": 1
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "color": "#F8FCFA",
+                              "fontSize": 16,
+                              "fontWeight": "700",
+                              "textAlign": "center"
+                            }
+                          },
+                          "children": [
+                            "Вернуться к работе"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "lineHeight": 23,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Завершите день, когда закончите работу. Незакрытый день останется открытым."
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Text",
+              "props": {
+                "style": {
+                  "fontSize": 15,
+                  "lineHeight": 23,
+                  "color": "#5E7069"
+                }
+              },
+              "children": [
+                "Непрерывное отслеживание места в этом рабочем дне не используется."
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "accessibilityRole": "button",
+                "style": [
+                  {
+                    "minHeight": 50,
+                    "padding": 14,
+                    "justifyContent": "center",
+                    "alignItems": "center",
+                    "backgroundColor": "#055342",
+                    "borderRadius": 12,
+                    "flexGrow": 1
+                  },
+                  {
+                    "backgroundColor": "#FBFDFC",
+                    "borderColor": "#D6E3DC",
+                    "borderWidth": 1
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "textAlign": "center"
+                    }
+                  },
+                  "children": [
+                    "Мои заявки"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "accessibilityRole": "button",
+                "style": [
+                  {
+                    "minHeight": 50,
+                    "padding": 14,
+                    "justifyContent": "center",
+                    "alignItems": "center",
+                    "backgroundColor": "#055342",
+                    "borderRadius": 12,
+                    "flexGrow": 1
+                  },
+                  {
+                    "backgroundColor": "#FBFDFC",
+                    "borderColor": "#D6E3DC",
+                    "borderWidth": 1
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "textAlign": "center"
+                    }
+                  },
+                  "children": [
+                    "Уведомления"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "accessibilityRole": "button",
+                "style": [
+                  {
+                    "minHeight": 50,
+                    "padding": 14,
+                    "justifyContent": "center",
+                    "alignItems": "center",
+                    "backgroundColor": "#055342",
+                    "borderRadius": 12,
+                    "flexGrow": 1
+                  },
+                  {
+                    "backgroundColor": "#FBFDFC",
+                    "borderColor": "#D6E3DC",
+                    "borderWidth": 1
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "textAlign": "center"
+                    }
+                  },
+                  "children": [
+                    "Профиль"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

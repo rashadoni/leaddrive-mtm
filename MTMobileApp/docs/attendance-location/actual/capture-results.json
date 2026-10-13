@@ -1,0 +1,272 @@
+[
+  {
+    "language": "ru",
+    "width": 1440,
+    "height": 1360,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "office-workday-return",
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-disclosure",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-accept",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      }
+    ]
+  },
+  {
+    "language": "ru",
+    "width": 390,
+    "height": 2630,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "office-workday-return",
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-disclosure",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-accept",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      }
+    ]
+  },
+  {
+    "language": "az",
+    "width": 1440,
+    "height": 1314,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "office-workday-return",
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-disclosure",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-accept",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      }
+    ]
+  },
+  {
+    "language": "az",
+    "width": 390,
+    "height": 2446,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "office-workday-return",
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-disclosure",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-accept",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      }
+    ]
+  },
+  {
+    "language": "en",
+    "width": 1440,
+    "height": 1289,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "office-workday-return",
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-disclosure",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-accept",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      }
+    ]
+  },
+  {
+    "language": "en",
+    "width": 390,
+    "height": 2469,
+    "overflow": false,
+    "buttons": [
+      {
+        "id": "office-workday-return",
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-mark-retry",
+        "height": 50
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-disclosure",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-accept",
+        "height": 48
+      },
+      {
+        "id": "attendance-consent-refresh",
+        "height": 48
+      }
+    ]
+  }
+]

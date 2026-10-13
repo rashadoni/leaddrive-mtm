@@ -1,0 +1,113 @@
+{
+  "type": "View",
+  "props": {
+    "testID": "attendance-location-card",
+    "style": {
+      "backgroundColor": "#FBFDFC",
+      "borderRadius": 20,
+      "borderWidth": 1,
+      "borderColor": "#D6E3DC",
+      "padding": 20,
+      "gap": 12
+    }
+  },
+  "children": [
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 20,
+          "fontWeight": "700",
+          "color": "#13231F"
+        }
+      },
+      "children": [
+        "Günün başlanğıc və son məkanı"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 16,
+          "fontWeight": "600",
+          "color": "#055342"
+        }
+      },
+      "children": [
+        "Məkan toplanmır"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Məkan yalnız iş gününün başlanğıcına və sonuna aiddir. Fasilə zamanı qeydə alınmır."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "GPS və ya razılıq olmasa da, vaxt qeyd olunur. Telefon icazəsi razılığınızı əvəz etmir."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Təşkilat təsdiqlənmiş mətnlə məkan toplanmasını hələ aktivləşdirməyib."
+      ]
+    },
+    {
+      "type": "View",
+      "props": {
+        "testID": "attendance-consent-refresh",
+        "accessibilityRole": "button",
+        "style": {
+          "minHeight": 48,
+          "padding": 12,
+          "alignItems": "center",
+          "justifyContent": "center",
+          "borderWidth": 1,
+          "borderColor": "#D6E3DC",
+          "borderRadius": 12
+        }
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 16,
+              "color": "#055342",
+              "fontWeight": "600",
+              "textAlign": "center"
+            }
+          },
+          "children": [
+            "Vəziyyəti yenilə"
+          ]
+        }
+      ]
+    }
+  ]
+}
