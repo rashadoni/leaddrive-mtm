@@ -912,6 +912,18 @@ class ApiClient {
     }, 20_000, 2)
   }
 
+  /**
+   * The employee returns to the workday they closed earlier today. Online
+   * only, never through the outbox: whether it is still the same day is the
+   * server's clock to say, and a return that arrives tomorrow is not one.
+   */
+  async returnToWorkday(data: { operationId: string; workdayId: string }) {
+    return this.request("/mobile/route-field/workday-return", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
   /** The agent takes his own waiting request about this organization back. */
   async cancelOrganizationLocationRequest(id: string) {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/location-request`, {

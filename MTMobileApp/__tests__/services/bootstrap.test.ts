@@ -294,6 +294,24 @@ describe("bootstrap policies — photo watermark", () => {
   })
 })
 
+// «Вернуться к работе» is drawn only for a server that can do it: against an
+// older one the button would answer "not found" where the card used to say,
+// truthfully, that the day is finished.
+describe("bootstrap policies — returning to a closed workday", () => {
+  it("reads an explicit yes", () => {
+    expect(toBootstrap({ policies: { workdayReturn: true } }).policies.workdayReturn).toBe(true)
+  })
+
+  it("is off when an older server omits it", () => {
+    expect(toBootstrap({ policies: {} }).policies.workdayReturn).toBe(false)
+    expect(toBootstrap({ capabilities: [] }).policies.workdayReturn).toBe(false)
+  })
+
+  it.each([false, null, undefined, "true", 1, {}, []])("is off for anything but true: %p", (value) => {
+    expect(toBootstrap({ policies: { workdayReturn: value } }).policies.workdayReturn).toBe(false)
+  })
+})
+
 describe("bootstrap policies — own route planning", () => {
   it("requires an explicit server permission", () => {
     expect(toBootstrap({ policies: { canPlanOwnRoutes: true } }).policies.canPlanOwnRoutes).toBe(true)

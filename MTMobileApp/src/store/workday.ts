@@ -42,6 +42,11 @@ export interface ActiveWorkday {
  * Kept after `activeWorkday` is cleared so "Today" can show "Finished at
  * 18:24" instead of falling back to "not started", and so the same day
  * cannot be restarted from this device (owner decision 4).
+ *
+ * Not restarted is not the same as not returned to: since 2026-10-13 the
+ * employee may come back to the day they closed earlier the same day
+ * (`services/workday-return.ts`). That is the same workday going on, with the
+ * time away recorded as a pause — never a second one.
  */
 export interface FinishedWorkday {
   key: string
@@ -268,7 +273,16 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
         ...(workday!.status === "PAUSED" && workday!.pausedAt ? { pausedAt: workday!.pausedAt } : {}),
       }
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
-      set({ activeWorkday, syncError: finishConflict ? "FINISH_CONFLICT" : null })
+      // The day this device remembers as finished is open on the server: the
+      // employee returned to it (here, or on another device), or a manager
+      // reopened it. "Finished" would now be a lie that also blocks nothing.
+      const returned = get().finishedWorkday?.workdayId === activeWorkday.workdayId
+      if (returned) await AsyncStorage.removeItem(FINISHED_STORAGE_KEY)
+      set({
+        activeWorkday,
+        ...(returned ? { finishedWorkday: null } : {}),
+        syncError: finishConflict ? "FINISH_CONFLICT" : null,
+      })
     } else if (local && (pendingStart || pendingFinish) && !startConflict && !finishConflict && !workday) {
       // Offline or deferred mutation: no server workday exists yet. Preserve
       // the visible pending state and retry from the durable outbox.
