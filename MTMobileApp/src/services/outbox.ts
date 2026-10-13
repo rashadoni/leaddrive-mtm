@@ -75,6 +75,10 @@ export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entit
     if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     const items = await read()
     if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    if (item.entity === "workdays" && item.data.attendanceMark && items.some(row => row.scopeKey === item.scopeKey && row.entity === "attendanceConsents")) {
+      const { redactAttendanceMarkData } = await import("./attendance-location-contract")
+      item.data = redactAttendanceMarkData(item.data)
+    }
     items.push(item)
     await write(items)
   })
@@ -297,5 +301,66 @@ export async function removeUnqueuedAttendanceDocuments(
         && item.attendanceDocuments?.some(saved => saved.path === document.path && saved.clientAttachmentId === document.clientAttachmentId))
       if (!referenced) await remove(document)
     }
+  })
+}
+
+async function readAttendancePrivacyQueue(): Promise<OutboxOperation[]> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEY)
+  const parsed: unknown = raw === null ? [] : JSON.parse(raw)
+  if (!Array.isArray(parsed) || parsed.some(row => !row || typeof row.scopeKey !== "string" || typeof row.operationId !== "string"
+    || typeof row.entity !== "string" || !row.data || typeof row.data !== "object" || Array.isArray(row.data))) throw new Error("ATTENDANCE_OUTBOX_UNREADABLE")
+  return parsed as OutboxOperation[]
+}
+export async function attendancePrivacyOperations(scope: string) {
+  if (requireOfflineScope() !== scope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+  const rows = await readAttendancePrivacyQueue()
+  if (requireOfflineScope() !== scope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+  return rows.filter(row => row.scopeKey === scope)
+}
+
+// Consent withdrawals and their coordinate removal share ONE durable write.
+// A capture/transport already in progress observes the synchronous epoch fence.
+const attendancePrivacyEpochs = new Map<string, number>()
+export const attendancePrivacyEpoch = (scope: string) => attendancePrivacyEpochs.get(scope) ?? 0
+export async function queueAttendanceConsent(scope: string, input: import('./attendance-location-contract').AttendanceConsentInput) {
+  attendancePrivacyEpochs.set(scope, attendancePrivacyEpoch(scope) + 1)
+  return serializeMutation(async () => {
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const items = await readAttendancePrivacyQueue()
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const pending = items.find(item => item.scopeKey === scope && item.entity === 'attendanceConsents' && item.status === 'pending')
+    if (pending) throw new Error('ATTENDANCE_CONSENT_PENDING')
+    const item: OutboxOperation = { operationId: input.requestId, entity: 'attendanceConsents', op: 'create', data: { ...input },
+      clientTimestamp: Date.now(), attempts: 0, nextAttemptAt: 0, scopeKey: scope, status: 'pending' }
+    const { redactAttendanceMarkData } = await import('./attendance-location-contract')
+    const next = items.filter(row => !(row.scopeKey === scope && row.entity === 'attendanceConsents' && row.status === 'conflict'))
+      .map(row => row.scopeKey === scope && row.entity === 'workdays' ? { ...row, data: redactAttendanceMarkData(row.data) } : row)
+    next.push(item)
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    await write(next)
+    return item
+  })
+}
+/** Re-read rather than sending a stale flush snapshot. Preserve identities,
+ * original timestamps, all other payload fields, and other accounts verbatim. */
+export async function prepareAttendanceMarks(scope: string, operationIds: string[], consentId: string | null) {
+  return serializeMutation(async () => {
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const items = await readAttendancePrivacyQueue()
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const blocked = items.some(item => item.scopeKey === scope && item.entity === 'attendanceConsents')
+    const { redactAttendanceMarkData } = await import('./attendance-location-contract')
+    let changed = false
+    const next = items.map(item => {
+      const mark = item.data.attendanceMark as import('./attendance-location-contract').AttendanceMark | undefined
+      if (item.scopeKey !== scope || item.entity !== 'workdays' || !mark) return item
+      if (!blocked && consentId && mark.consentRevisionId === consentId) return item
+      const data = redactAttendanceMarkData(item.data)
+      if (JSON.stringify(data) === JSON.stringify(item.data)) return item
+      changed = true; return { ...item, data }
+    })
+    if (changed) await write(next)
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    return next.filter(item => item.scopeKey === scope && operationIds.includes(item.operationId))
   })
 }

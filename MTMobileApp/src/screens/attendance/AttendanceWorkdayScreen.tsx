@@ -1,3 +1,4 @@
+import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useNavigation } from "@react-navigation/native"
@@ -93,6 +94,7 @@ export default function AttendanceWorkdayScreen() {
           <Text style={styles.muted}>{t("officeAttendance.closeHint")}</Text>
         </View>
         <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>
+        <AttendanceLocationConsentCard />
         {bootstrap?.policies.agentPermissions?.attendanceRequests === true && <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnRequests" as never)}><Text style={styles.secondaryText}>{t("attendanceRequests.title")}</Text></Pressable>}
         <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnInbox" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.inbox")}</Text></Pressable>
         <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>

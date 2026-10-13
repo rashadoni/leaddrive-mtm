@@ -1113,7 +1113,7 @@
     "pause": "Fasilə ver",
     "resume": "Günə davam et",
     "closeHint": "İşi bitirəndə günü tamamlayın. Bağlanmamış gün açıq qalacaq.",
-    "noTracking": "Ofis iş günü üçün arxa fonda məkan məlumatı toplanmır.",
+    "noTracking": "Bu iş günündə məkanın fasiləsiz izlənməsi istifadə edilmir.",
     "pendingHint": "Qeyd telefonda saxlanılıb. Serverlə əlaqə qurulduqdan sonra vəziyyəti təsdiqlənəcək.",
     "conflict": "Server qeydi qəbul etmədi. Məlumatı yeniləyib günü yoxlayın; lazım olsa düzəliş müraciəti göndərin.",
     "failed": "Günün vəziyyətini təsdiqləmək olmadı. Saxlanmış qeydlər telefonda qalır. Yeniləmək üçün ekranı aşağı çəkin.",
@@ -1129,5 +1129,25 @@
     "read": "Oxunub",
     "unread": "Yeni",
     "saving": "Saxlanılır…"
+  },
+  "attendanceLocation": {
+    "title": "Günün başlanğıc və son məkanı",
+    "accepted": "Razılıq qüvvədədir",
+    "off": "Məkan toplanmır",
+    "summary": "Məkan yalnız iş gününün başlanğıcına və sonuna aiddir. Fasilə zamanı qeydə alınmır.",
+    "noGps": "GPS və ya razılıq olmasa da, vaxt qeyd olunur. Telefon icazəsi razılığınızı əvəz etmir.",
+    "noText": "Təşkilat təsdiqlənmiş mətnlə məkan toplanmasını hələ aktivləşdirməyib.",
+    "failed": "Cari vəziyyəti təsdiqləmək olmadı. Yoxlanılana qədər bu telefonda məkanın toplanması sönülü qalır.",
+    "pending": "Cavab hələ təsdiqlənməyib. Məkan göndərilmir; təkrar eyni qərarı istifadə edir.",
+    "pendingWithdrawal": "Bu telefonda məkan söndürülüb, növbədəki koordinatlar silinib. Geri götürmə serverlə sinxronlaşana qədər saxlanılır.",
+    "changed": "Razılıq və ya mətn dəyişib. Yeni qərardan əvvəl vəziyyəti yeniləyin və mətni oxuyun.",
+    "unavailable": "Bu ayar əlçatan deyil. İş gününü yeniləyin.",
+    "showText": "Təşkilatın mətnini oxu",
+    "hideText": "Mətni yığ",
+    "confirm": "Bu mətni oxudum və orada göstərilən məkan toplanmasına razıyam.",
+    "accept": "Razılıq ver",
+    "revoke": "Razılığı geri götür",
+    "retry": "Göndərilən qərarı yoxla",
+    "refresh": "Vəziyyəti yenilə"
   }
 }

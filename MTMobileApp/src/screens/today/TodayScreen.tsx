@@ -1,3 +1,4 @@
+import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
@@ -573,6 +574,7 @@ export default function TodayScreen() {
               </Pressable>
               </View>
             </View>
+            <AttendanceLocationConsentCard />
             {online === false ? (
               <View style={styles.cachedBadge}>
                 <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />

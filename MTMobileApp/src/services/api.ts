@@ -611,6 +611,12 @@ class ApiClient {
   }
 
   // Attendance uses the existing authenticated transport and its own narrow API.
+  getAttendanceLocationConsent(guard: () => void) {
+    return this.request("/mobile/attendance/location-consent", {}, 5_000, 1, guard)
+  }
+  setAttendanceLocationConsent(input: import("./attendance-location-contract").AttendanceConsentInput, guard: () => void) {
+    return this.request("/mobile/attendance/location-consent", { method: "POST", body: JSON.stringify(input) }, 10_000, 1, guard)
+  }
   getAttendanceRequests(cursor: string | undefined, guard: () => void) {
     return this.request(`/mobile/attendance/requests${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {}, 20_000, 1, guard)
   }

@@ -189,10 +189,12 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     if (finished?.key === key && finished.dateKey === localDateKey()) return
     const startedAt = new Date().toISOString()
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
+    const { captureAttendanceMark } = await import("../services/attendance-location")
+    const attendanceMark = await captureAttendanceMark(key, startedAt, false)
     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
     if (!guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt } }, key, guard)
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
     guard?.()
     if (guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
@@ -203,11 +205,13 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const activeWorkday = get().activeWorkday
     if (activeWorkday?.key !== key) return
     const occurredAt = new Date().toISOString()
+    const { captureAttendanceMark } = await import("../services/attendance-location")
+    const attendanceMark = await captureAttendanceMark(key, occurredAt, activeWorkday.paused === true)
     // The server state machine uses FINISH (not END). Keeping the wire value
     // aligned means that pressing “End workday” actually closes the server
     // workday and stops live GPS, including after an offline retry.
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
     guard?.()
     const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING" }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))

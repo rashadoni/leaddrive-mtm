@@ -74,3 +74,11 @@ it("does not send a workday after its admission changes during device identity l
   await expect(api.syncPush([], () => { if (!valid) throw new Error("withdrawn") })).rejects.toThrow("withdrawn")
   expect(global.fetch).not.toHaveBeenCalled()
 })
+it("uses only guarded own consent API and preserves the exact revision and request UUID", async () => {
+  const input = { requestId: attendanceUuid(), policyRevisionId: "own-policy", expectedConsentId: "own-receipt", accepted: false }
+  const guard = jest.fn()
+  await api.getAttendanceLocationConsent(guard); await api.setAttendanceLocationConsent(input, guard)
+  const calls = (global.fetch as jest.Mock).mock.calls
+  expect(calls.map(call => call[0])).toEqual(["https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent", "https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent"])
+  expect(calls[1][1].body).toBe(JSON.stringify(input)); expect(calls[1][1].method).toBe("POST"); expect(guard).toHaveBeenCalled()
+})
