@@ -13,8 +13,8 @@ export function attendanceMarkAvailable(): boolean {
   const auth = useAuthStore.getState(), { data, routeFieldAccess } = useBootstrapStore.getState(), m = data?.manifest
   return auth.isLoggedIn && !!auth.agent && !!m && m.tenant.id === auth.agent.organizationId && data?.tenant?.id === auth.agent.organizationId
     && m.principal.id === auth.agent.id && data?.principal?.id === auth.agent.id && m.principal.role === auth.agent.role && data?.principal?.role === auth.agent.role
-    && m.modules.routeField.enabled === true && data.policies.attendanceMarkVersion === 1 && data.policies.agentPermissions?.attendanceWorkday === true
-    && ((auth.agent.role === 'AGENT' && hasRouteFieldAccess(routeFieldAccess)) || hasOfficeAttendanceAccess(data, auth.agent))
+    && data.policies.attendanceMarkVersion === 1 && data.policies.agentPermissions?.attendanceWorkday === true
+    && ((auth.agent.role === 'AGENT' && m.modules.routeField.enabled === true && hasRouteFieldAccess(routeFieldAccess)) || hasOfficeAttendanceAccess(data, auth.agent))
 }
 export function attendanceLocationAvailable(): boolean {
   return attendanceMarkAvailable() && useBootstrapStore.getState().data?.policies.agentPermissions?.attendanceLocation === true

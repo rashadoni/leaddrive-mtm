@@ -52,3 +52,32 @@
   restriction). Required next gates are existing GitHub `CI` (scope/tests) and
   `build-apk.yml`, followed by the coordinator's physical S23 retest. No remote
   push, merge, production settings change or device action was performed here.
+
+## Hosted regression gate — remaining mark admission corrected
+
+- PR 127 initial hosted CI run 38486449362 and APK run 38486449397 stopped
+  before publication: 218 suites passed and two suites failed (35 assertions).
+  The realistic EMPLOYEE fixture exposed the same erroneous field-execution
+  requirement in `attendanceMarkAvailable`; this is a production guard issue,
+  not a reason to restore the old unrealistic fixture or weaken expectations.
+- Moved only that field-manifest condition inside the AGENT branch. All roles
+  still require exact current account/tenant/role, the supported mark protocol
+  and explicit attendanceWorkday true. An AGENT still requires both an enabled
+  field manifest and current field admission. Office access uses its existing
+  separate strict own-attendance guard.
+- The shared mark helper also fences installation and QR. Added regressions
+  for real office mark admission with empty field streams, separate location,
+  installation and QR grants, immediate workday-grant withdrawal, and both
+  independent field-agent denial conditions. Existing consent/installation
+  safety tests retain their assertions. Their fixture's parsed field state is
+  now correctly asserted as disabled.
+- Source inspection found no other direct field-manifest requirement in the
+  own-attendance service chain. Canonical START/FINISH obtain a mark through
+  this helper; QR requires its own protocol and permission. Location remains
+  separately permitted, consent-bound and OFF in the physical fixture.
+- PASS locally: 24 actual pure bootstrap/access checks plus 16 actual mark,
+  location, installation and QR guard checks with in-memory store state and no
+  network/storage/native effects; changed test syntax and diff whitespace.
+  Full RN/Jest, semantic typecheck and APK build remain NOT_RUN locally and
+  must be rerun in hosted CI on the new checkpoint. No physical result or
+  finished APK is claimed by these local checks.
