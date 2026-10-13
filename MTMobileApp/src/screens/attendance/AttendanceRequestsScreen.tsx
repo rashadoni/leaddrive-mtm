@@ -6,8 +6,7 @@ import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { hasRouteFieldAccess } from "../../services/bootstrap"
+import { mayUseOwnAttendanceRequests } from "../../services/attendance-access"
 import { getOfflineScope } from "../../services/offline-scope"
 import { ATTENDANCE_KINDS, attendanceDate, attendanceErrorKey, attendanceNeedsHours, attendanceUuid, validAttendanceInput, type AttendanceDocument, type AttendanceInput, type AttendanceKind, type AttendanceQuota, type AttendanceRequest } from "../../services/attendance-contract"
 import { attendanceAccessDenied, attendanceGuard, attendanceQueued, attendanceScope, cachedAttendanceRequests, clearAttendanceCache, discardAttendanceDraftDocuments, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from "../../services/attendance-requests"
@@ -36,7 +35,7 @@ export default function AttendanceRequestsScreen() {
   const agent = useAuthStore(state => state.agent)
   const bootstrap = useBootstrapStore(state => state.data)
   const admission = useBootstrapStore(state => state.routeFieldAccess)
-  const allowed = agent?.role === "AGENT" && hasRouteFieldAccess(admission) && agentMayAttendanceRequests(bootstrap?.policies)
+  const allowed = mayUseOwnAttendanceRequests(bootstrap, agent, admission)
   const [draft, setDraft] = useState(() => newDraft(today(bootstrap?.timezone ?? null)))
   const [editing, setEditing] = useState(false)
   const [documents, setDocuments] = useState<AttendanceDocument[]>([])
@@ -221,7 +220,7 @@ export default function AttendanceRequestsScreen() {
       <LightScreenStatusBar />
       <View style={styles.content}>
         <View style={styles.heading}>
-          {button(t("attendanceRequests.back"), () => navigation.goBack(), "attendance-back")}
+          {button(t("attendanceRequests.back"), () => agent?.role === "AGENT" ? navigation.goBack() : navigation.navigate("OwnWorkday" as never), "attendance-back")}
           <Text style={styles.title}>{t("attendanceRequests.title")}</Text>
         </View>
         {!allowed || denied ? <Text testID="attendance-unavailable" style={styles.body}>{t("attendanceRequests.unavailable")}</Text> : <>

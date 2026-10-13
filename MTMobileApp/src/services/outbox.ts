@@ -201,17 +201,21 @@ export async function clearOutbox() {
 
 export async function flushOutbox(
   send: (operations: OutboxOperation[]) => Promise<{ results?: OutboxPushResult[] }>,
-  options?: { now?: () => number; random?: () => number },
+  options?: { now?: () => number; random?: () => number; select?: (operation: OutboxOperation) => boolean; guard?: () => void },
 ) {
-  const pending = await pendingOutboxOperations()
+  options?.guard?.()
+  const pending = (await pendingOutboxOperations()).filter(item => options?.select ? options.select(item) : true)
+  options?.guard?.()
   if (pending.length === 0) return { sent: 0, deferred: 0, conflicted: 0 }
   try {
     const response = await send(pending)
+    options?.guard?.()
     const resultById = new Map((response.results ?? []).map((result) => [result.operationId, result.status]))
     let sent = 0
     let deferred = 0
     let conflicted = 0
     for (const item of pending) {
+      options?.guard?.()
       const status = resultById.get(item.operationId)
       if (status === "ok") {
         await acknowledgeOutboxOperation(item.operationId)
@@ -233,8 +237,11 @@ export async function flushOutbox(
     }
     return { sent, deferred, conflicted }
   } catch (error) {
+    // A lost scope/admission must not acknowledge or reschedule another session.
+    options?.guard?.()
     const retryAfterMs = retryAfterMsFromError(error)
     for (const item of pending) {
+      options?.guard?.()
       await deferOutboxOperation(item.operationId, options?.now?.() ?? Date.now(), {
         retryAfterMs,
         jitter: retryAfterMs !== undefined,

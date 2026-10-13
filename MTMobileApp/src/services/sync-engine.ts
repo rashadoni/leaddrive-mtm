@@ -6,6 +6,8 @@ import { allMediaUploads, flushMediaOutbox, type MediaOutboxItem } from "./media
 import { pullAndApplySync } from "./sync-cache"
 import { clearRouteV2RoutesState, syncRouteV2Routes, type RouteV2SyncOutcome } from "./sync-v2-routes"
 import { offlineScopeKey } from "./offline-scope"
+import { hasOfficeAttendanceAccess } from "./attendance-access"
+import { guardOfficeAttendance } from "./attendance-session-guard"
 import { retryAfterMsFromError } from "./sync-retry"
 import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
@@ -175,6 +177,19 @@ async function performSync(): Promise<MobileSyncResult> {
   const agent = useAuthStore.getState().agent
   const scopeKey = offlineScopeKey(agent?.organizationId, agent?.id)
   if (!agent || !scopeKey) return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
+  const officeData = useBootstrapStore.getState().data
+  if (hasOfficeAttendanceAccess(officeData, agent)) {
+    const guard = () => guardOfficeAttendance(scopeKey)
+    // No route commands, pull, v2, field media or derived field counters.
+    const result = await flushOutbox(operations => pushAttendanceAndLegacy(operations, guard), {
+      guard,
+      select: item => item.scopeKey === scopeKey && (item.entity === "workdays"
+        || (item.entity === "attendanceRequests" && useBootstrapStore.getState().data?.policies.agentPermissions?.attendanceRequests === true)),
+    })
+    guard()
+    return { success: result.deferred === 0 && result.conflicted === 0, ...result, mediaSent: 0 }
+  }
+  if (agent.role !== "AGENT") return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
   // Bootstrap admission is the outer safety fence. Do not inspect, retry or
   // clear any v1 durable queue before it grants Route Field access: a tenant
   // can be disabled while an old APK still has v1 operations on disk.

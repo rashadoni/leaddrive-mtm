@@ -35,6 +35,9 @@ import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
 import AttendanceRequestsScreen from "../screens/attendance/AttendanceRequestsScreen"
+import AttendanceWorkdayScreen from "../screens/attendance/AttendanceWorkdayScreen"
+import AttendanceInboxScreen from "../screens/attendance/AttendanceInboxScreen"
+import { hasOfficeAttendanceAccess } from "../services/attendance-access"
 import { agentMayAttendanceRequests } from "../lib/agent-permissions"
 import TeamMessagesScreen from "../screens/more/TeamMessagesScreen"
 import NotificationsScreen from "../screens/more/NotificationsScreen"
@@ -180,19 +183,33 @@ function tabOptions(name: string, label: string, iconOverride?: { active: string
   }
 }
 
+function OfficeTabs() {
+  const { t } = useTranslation(), insets = useSafeAreaInsets()
+  const requests = useBootstrapStore(state => state.data?.policies.agentPermissions?.attendanceRequests === true)
+  return <Tab.Navigator key="own-attendance-tabs" initialRouteName="OwnWorkday" screenOptions={{ headerShown: false, tabBarActiveTintColor: fieldTheme.color.primaryStrong, tabBarInactiveTintColor: fieldTheme.color.inkMuted, tabBarStyle: { minHeight: TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8), paddingBottom: Math.max(insets.bottom, 8) }, tabBarLabelStyle: styles.tabLabel }}>
+    <Tab.Screen name="OwnWorkday" component={AttendanceWorkdayScreen} options={tabOptions("OwnWorkday", t("officeAttendance.workday"), { active: "time", inactive: "time-outline" })} />
+    {requests && <Tab.Screen name="OwnRequests" component={AttendanceRequestsScreen} options={tabOptions("OwnRequests", t("attendanceRequests.title"), { active: "document-text", inactive: "document-text-outline" })} />}
+    <Tab.Screen name="OwnInbox" component={AttendanceInboxScreen} options={tabOptions("OwnInbox", t("officeAttendance.inbox"), { active: "notifications", inactive: "notifications-outline" })} />
+    <Tab.Screen name="OwnProfile" component={ProfileScreen} options={tabOptions("OwnProfile", t("officeAttendance.profile"), { active: "person", inactive: "person-outline" })} />
+  </Tab.Navigator>
+}
+
 function MainTabs() {
   const { t } = useTranslation()
   const { width, height } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
+  const bootstrap = useBootstrapStore(state => state.data), agent = useAuthStore(state => state.agent)
+  const office = hasOfficeAttendanceAccess(bootstrap, agent)
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
   const rail = shouldUseNavigationRail(width, height)
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
 
   // This APK does not infer access from an agent role. A tenant may enable
   // HRM while Route Field is disabled; only its own manifest module opens tabs.
-  if (!hasRouteFieldAccess(routeFieldAccess)) {
-    return <RouteFieldAccessScreen access={routeFieldAccess} />
+  if (office) return <OfficeTabs />
+  if (agent?.role !== "AGENT" || !hasRouteFieldAccess(routeFieldAccess)) {
+    return <RouteFieldAccessScreen attendance={agent?.role !== "AGENT"} access={hasRouteFieldAccess(routeFieldAccess) ? "unavailable" : routeFieldAccess} />
   }
 
   return (
@@ -286,7 +303,9 @@ export default function AppNavigatorAndroidV2() {
     switchServer,
   } = useAuthStore()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
-  const routeFieldAdmitted = hasRouteFieldAccess(routeFieldAccess)
+  const bootstrap = useBootstrapStore(state => state.data), agent = useAuthStore(state => state.agent)
+  const routeFieldAdmitted = agent?.role === "AGENT" && hasRouteFieldAccess(routeFieldAccess)
+  const office = hasOfficeAttendanceAccess(bootstrap, agent)
 
   useEffect(() => {
     checkAuth()
@@ -305,7 +324,7 @@ export default function AppNavigatorAndroidV2() {
       <Stack.Navigator
         // Recreate the stack when admission changes so a revoked user cannot
         // remain on a previously-mounted detail screen with stale read data.
-        key={routeFieldAdmitted ? "route-field-admitted" : "route-field-blocked"}
+        key={office ? `own-attendance:${agent?.organizationId}:${agent?.id}` : routeFieldAdmitted ? "route-field-admitted" : "route-field-blocked"}
         screenOptions={{ headerShown: false }}
       >
         {isLoggedIn ? (

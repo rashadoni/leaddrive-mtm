@@ -99,16 +99,16 @@ interface WorkdayState {
   syncError: WorkdaySyncError
   hydrated: boolean
   hydrate: () => Promise<void>
-  start: (key: string) => Promise<void>
-  end: (key: string) => Promise<void>
+  start: (key: string, guard?: () => void) => Promise<void>
+  end: (key: string, guard?: () => void) => Promise<void>
   /**
    * Take a break. The server refuses GPS points recorded inside a pause
    * (leaddrive-v2 `MTM_LOCATION_WORKDAY_PAUSED`), so the local flag is not
    * cosmetic: it is what stops this device sending them in the first place.
    */
-  pause: (key: string) => Promise<void>
+  pause: (key: string, guard?: () => void) => Promise<void>
   /** Come back from a break. */
-  resume: (key: string) => Promise<void>
+  resume: (key: string, guard?: () => void) => Promise<void>
   /**
    * Reconcile the client-local workday with the authoritative server shift
    * returned by /mobile/bootstrap. Conservative on purpose:
@@ -158,6 +158,10 @@ function belongsToWorkday(item: OutboxOperation, workdayId: string) {
     (item.data.id === workdayId || item.data.workdayId === workdayId)
 }
 
+function queueWorkday(input: Parameters<typeof enqueueOutboxOperation>[0], key: string, guard?: () => void) {
+  return guard ? enqueueOutboxOperation(input, key) : enqueueOutboxOperation(input)
+}
+
 export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   activeWorkday: null,
   finishedWorkday: null,
@@ -177,7 +181,8 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       set({ activeWorkday: null, finishedWorkday: null, syncError: null, hydrated: true })
     }
   },
-  start: (key) => serializeMutation(async () => {
+  start: (key, guard) => serializeMutation(async () => {
+    guard?.()
     // Owner decision 4 (audit 2026-09-05): a finished day stays finished. A
     // break/resume control replaces the restart (task A7/B3, sprint 3).
     const finished = get().finishedWorkday
@@ -185,39 +190,52 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const startedAt = new Date().toISOString()
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
-    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt } })
+    if (!guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
+    guard?.()
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt } }, key, guard)
+    guard?.()
+    if (guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
+    guard?.()
     set({ activeWorkday, syncError: null })
   }),
-  end: (key) => serializeMutation(async () => {
+  end: (key, guard) => serializeMutation(async () => {
+    guard?.()
     const activeWorkday = get().activeWorkday
     if (activeWorkday?.key !== key) return
     const occurredAt = new Date().toISOString()
     // The server state machine uses FINISH (not END). Keeping the wire value
     // aligned means that pressing “End workday” actually closes the server
     // workday and stops live GPS, including after an offline retry.
-    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt } })
+    guard?.()
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
+    guard?.()
     const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING" }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))
     if (get().activeWorkday?.key === key) set({ activeWorkday: pendingFinish, syncError: null })
   }),
-  pause: (key) => serializeMutation(async () => {
+  pause: (key, guard) => serializeMutation(async () => {
+    guard?.()
     const activeWorkday = get().activeWorkday
     // Only a confirmed, running shift can pause: pausing one the server has
     // not yet accepted would queue PAUSE behind a START that may still be
     // rejected, and the server answers MTM_WORKDAY_NOT_RUNNING anyway.
     if (activeWorkday?.key !== key || activeWorkday.syncState !== "CONFIRMED" || activeWorkday.paused) return
     const occurredAt = new Date().toISOString()
-    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "PAUSE", workdayId: activeWorkday.workdayId, occurredAt } })
+    guard?.()
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "PAUSE", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
+    guard?.()
     const paused: ActiveWorkday = { ...activeWorkday, paused: true, pausedAt: occurredAt }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(paused))
     if (get().activeWorkday?.key === key) set({ activeWorkday: paused, syncError: null })
   }),
-  resume: (key) => serializeMutation(async () => {
+  resume: (key, guard) => serializeMutation(async () => {
+    guard?.()
     const activeWorkday = get().activeWorkday
     if (activeWorkday?.key !== key || activeWorkday.syncState !== "CONFIRMED" || !activeWorkday.paused) return
     const occurredAt = new Date().toISOString()
-    await enqueueOutboxOperation({ entity: "workdays", op: "create", data: { action: "RESUME", workdayId: activeWorkday.workdayId, occurredAt } })
+    guard?.()
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "RESUME", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
+    guard?.()
     const { paused: _paused, pausedAt: _pausedAt, ...running } = activeWorkday
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(running))
     if (get().activeWorkday?.key === key) set({ activeWorkday: running, syncError: null })

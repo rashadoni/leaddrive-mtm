@@ -933,7 +933,8 @@
       "ADMIN": "İnzibatçı",
       "MANAGER": "Menecer",
       "SUPERVISOR": "Supervayzer",
-      "AGENT": "Sahə əməkdaşı"
+      "AGENT": "Sahə əməkdaşı",
+      "EMPLOYEE": "Əməkdaş"
     },
     "route": {
       "DRAFT": "Qaralama",
@@ -1093,5 +1094,40 @@
       "OVERTIME": "Əlavə iş",
       "TIME_CORRECTION": "Başlanğıc / bitmə düzəlişi"
     }
+  },
+  "officeAttendance": {
+    "myAttendance": "LeadDrive · Mənim uçotum",
+    "workday": "İş günü",
+    "profile": "Profil",
+    "inbox": "Bildirişlər",
+    "running": "İş günü davam edir",
+    "paused": "Fasilə",
+    "completed": "Gün tamamlanıb",
+    "notStarted": "Gün hələ başlamayıb",
+    "waiting": "Təsdiq gözlənilir",
+    "startedAt": "İş gününün başlanğıcı",
+    "finishedAt": "İş gününün sonu",
+    "pausedAt": "Fasilə: {{time}}",
+    "start": "Günü başlat",
+    "finish": "Günü bitir",
+    "pause": "Fasilə ver",
+    "resume": "Günə davam et",
+    "closeHint": "İşi bitirəndə günü tamamlayın. Bağlanmamış gün açıq qalacaq.",
+    "noTracking": "Ofis iş günü üçün arxa fonda məkan məlumatı toplanmır.",
+    "pendingHint": "Qeyd telefonda saxlanılıb. Serverlə əlaqə qurulduqdan sonra vəziyyəti təsdiqlənəcək.",
+    "conflict": "Server qeydi qəbul etmədi. Məlumatı yeniləyib günü yoxlayın; lazım olsa düzəliş müraciəti göndərin.",
+    "failed": "Günün vəziyyətini təsdiqləmək olmadı. Saxlanmış qeydlər telefonda qalır. Yeniləmək üçün ekranı aşağı çəkin.",
+    "unavailable": "İş vaxtı uçotu hazırda əlçatan deyil. Girişi yeniləyin və ya inzibatçı ilə əlaqə saxlayın.",
+    "finishTitle": "İş günü tamamlansın?",
+    "finishBody": "İşi bitirmisinizsə, çıxışı təsdiqləyin. Müvəqqəti ayrılmaq üçün fasilədən istifadə edin.",
+    "keepOpen": "Açıq saxla",
+    "inboxHint": "Sizin uçotunuz üzrə qərarlar və qeydlər",
+    "inboxEmpty": "Hələ bildiriş yoxdur.",
+    "inboxFailed": "Bildirişləri yeniləmək olmadı. «Yenilə» düyməsinə basın.",
+    "refresh": "Yenilə",
+    "markRead": "Oxunmuş qeyd et",
+    "read": "Oxunub",
+    "unread": "Yeni",
+    "saving": "Saxlanılır…"
   }
 }

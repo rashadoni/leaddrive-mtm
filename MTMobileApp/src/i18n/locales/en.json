@@ -933,7 +933,8 @@
       "ADMIN": "Administrator",
       "MANAGER": "Manager",
       "SUPERVISOR": "Supervisor",
-      "AGENT": "Field agent"
+      "AGENT": "Field agent",
+      "EMPLOYEE": "Employee"
     },
     "route": {
       "DRAFT": "Draft",
@@ -1093,5 +1094,40 @@
       "OVERTIME": "Overtime",
       "TIME_CORRECTION": "Correct start / finish"
     }
+  },
+  "officeAttendance": {
+    "myAttendance": "LeadDrive · My attendance",
+    "workday": "Working day",
+    "profile": "Profile",
+    "inbox": "Notifications",
+    "running": "Day in progress",
+    "paused": "On a break",
+    "completed": "Day completed",
+    "notStarted": "Day not started",
+    "waiting": "Awaiting confirmation",
+    "startedAt": "Working day started",
+    "finishedAt": "Working day completed",
+    "pausedAt": "Break since {{time}}",
+    "start": "Start day",
+    "finish": "Finish day",
+    "pause": "Take a break",
+    "resume": "Resume day",
+    "closeHint": "Finish the day when you stop working. An unfinished day stays open.",
+    "noTracking": "Background location is not collected for office attendance.",
+    "pendingHint": "The event is saved on this phone. Its status will be confirmed after reconnecting.",
+    "conflict": "The server did not accept the event. Refresh and check the day; submit a correction request if needed.",
+    "failed": "The day could not be confirmed. Saved events remain on this phone. Pull down to refresh.",
+    "unavailable": "Attendance is currently unavailable. Refresh access or contact your administrator.",
+    "finishTitle": "Finish the working day?",
+    "finishBody": "Confirm leaving if you have finished work. Use a break for a temporary absence.",
+    "keepOpen": "Keep open",
+    "inboxHint": "Decisions and records for your attendance",
+    "inboxEmpty": "No notifications yet.",
+    "inboxFailed": "Could not refresh notifications. Tap Refresh.",
+    "refresh": "Refresh",
+    "markRead": "Mark as read",
+    "read": "Read",
+    "unread": "New",
+    "saving": "Saving…"
   }
 }

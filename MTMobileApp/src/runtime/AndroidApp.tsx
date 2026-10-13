@@ -25,6 +25,7 @@ import { markMobileOffline } from "../services/sync-engine"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { dropIdleConnections } from "../services/connection-health"
+import { refreshAttendanceSession } from "../services/attendance-session"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { dismissAllChoices } from "../services/app-feedback"
 import { fieldTheme } from "../theme/fieldTheme"
@@ -58,7 +59,7 @@ function AppContent() {
   // transition.
   const [foregroundEpoch, setForegroundEpoch] = useState(0)
 
-  const refreshAdmissionAndSync = useCallback(() => refreshRouteFieldSession(), [])
+  const refreshAdmissionAndSync = useCallback(() => useAuthStore.getState().agent?.role === "AGENT" ? refreshRouteFieldSession() : refreshAttendanceSession(), [])
 
   useEffect(() => {
     if (isLoggedIn) {

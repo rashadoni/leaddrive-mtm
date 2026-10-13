@@ -70,6 +70,16 @@ jobs:
       - name: Install JS dependencies
         run: npm ci --legacy-peer-deps --no-audit --no-fund
       - name: Run tests
+        env:
+          MTM_ATTENDANCE_RENDER_DIR: ${{ runner.temp }}/mtm-attendance-renders
         run: npx jest --ci
+      - name: Preserve fictional attendance component renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtm-attendance-component-renders
+          path: ${{ runner.temp }}/mtm-attendance-renders
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Run TypeScript check
         run: npx tsc --noEmit

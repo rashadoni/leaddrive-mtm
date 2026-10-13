@@ -563,8 +563,15 @@ class ApiClient {
 
   // --- Profile ---
 
-  async getProfile() {
-    return this.request("/mobile/profile")
+  async getProfile(guard?: () => void) {
+    return this.request("/mobile/profile", {}, 20_000, 1, guard)
+  }
+
+  getOwnAttendanceNotifications(guard: () => void) {
+    return this.request("/mobile/notifications", {}, 20_000, 1, guard)
+  }
+  markOwnAttendanceNotifications(ids: string[], guard: () => void) {
+    return this.request("/mobile/notifications", { method: "PATCH", body: JSON.stringify({ ids, isRead: true }) }, 20_000, 1, guard)
   }
 
   // --- Legacy heartbeat ---
@@ -630,7 +637,8 @@ class ApiClient {
     op: "create" | "update"
     data: Record<string, unknown>
     clientTimestamp: number
-  }>) {
+  }>, guard?: () => void) {
+    guard?.()
     // `clientId` is observational only for legacy v1 push. Never use the
     // agent id here: an installation can legitimately change accounts. A
     // storage failure leaves the durable operation untouched and falls back to
@@ -642,7 +650,7 @@ class ApiClient {
     return this.request("/mobile/sync/push", {
       method: "POST",
       body: JSON.stringify({ ...(clientId ? { clientId } : {}), operations }),
-    })
+    }, 20_000, 1, guard)
   }
 
   async syncPull(since?: string | null) {

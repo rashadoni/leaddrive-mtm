@@ -24,7 +24,7 @@ import { ROUTE_FIELD_PROFILE } from './src/runtime/route-field-profile'
 // merging into one release row.
 // TODO: read versionCode from native via react-native-device-info's
 // getBuildNumber() if we ever forget to bump in lockstep.
-const ANDROID_VERSION_CODE = 45
+const ANDROID_VERSION_CODE = 46
 initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${APP_VERSION}+${ANDROID_VERSION_CODE}`)
 
 // Ping interval — keeps agent "online" on server even without GPS fix
