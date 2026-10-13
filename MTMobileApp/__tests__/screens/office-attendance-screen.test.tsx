@@ -1,3 +1,4 @@
+jest.mock("@react-native-async-storage/async-storage", () => require("@react-native-async-storage/async-storage/jest/async-storage-mock"))
 import React from "react"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"

@@ -7,11 +7,11 @@ import { I18nextProvider } from 'react-i18next'
 import ru from '../../src/i18n/locales/ru.json'
 import az from '../../src/i18n/locales/az.json'
 import en from '../../src/i18n/locales/en.json'
-import { officeAgent, officeBootstrap } from '../../test-support/office-attendance'
+import { officeAgent as mockOfficeAgent, officeBootstrap } from '../../test-support/office-attendance'
 import type { OwnAttendanceLocation } from '../../src/services/attendance-location-contract'
 import type { OutboxOperation } from '../../src/services/outbox'
 const mockBootstrap = { data: officeBootstrap() }
-jest.mock('../../src/store/auth', () => ({ useAuthStore: (select: (state: unknown) => unknown) => select({ agent: officeAgent }) }))
+jest.mock('../../src/store/auth', () => ({ useAuthStore: (select: (state: unknown) => unknown) => select({ agent: mockOfficeAgent }) }))
 jest.mock('../../src/store/bootstrap', () => ({ useBootstrapStore: (select: (state: unknown) => unknown) => select(mockBootstrap) }))
 jest.mock('../../src/services/attendance-location', () => ({ attendanceLocationScope: jest.fn(() => 'org-fixture:office-fixture'), readAttendanceLocation: jest.fn(), pendingAttendanceConsent: jest.fn(), beginAttendanceConsent: jest.fn(), sendAttendanceConsent: jest.fn() }))
 import AttendanceLocationConsentCard from '../../src/components/AttendanceLocationConsentCard'
