@@ -1,0 +1,113 @@
+{
+  "type": "View",
+  "props": {
+    "testID": "attendance-location-card",
+    "style": {
+      "backgroundColor": "#FBFDFC",
+      "borderRadius": 20,
+      "borderWidth": 1,
+      "borderColor": "#D6E3DC",
+      "padding": 20,
+      "gap": 12
+    }
+  },
+  "children": [
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 20,
+          "fontWeight": "700",
+          "color": "#13231F"
+        }
+      },
+      "children": [
+        "Day start and finish location"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 16,
+          "fontWeight": "600",
+          "color": "#055342"
+        }
+      },
+      "children": [
+        "Location is not collected"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Location applies only to starting and finishing the workday. It is not recorded during a break."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Time is recorded even without GPS or consent. Phone permission does not replace your consent."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "The organisation has not enabled collection with an approved text."
+      ]
+    },
+    {
+      "type": "View",
+      "props": {
+        "testID": "attendance-consent-refresh",
+        "accessibilityRole": "button",
+        "style": {
+          "minHeight": 48,
+          "padding": 12,
+          "alignItems": "center",
+          "justifyContent": "center",
+          "borderWidth": 1,
+          "borderColor": "#D6E3DC",
+          "borderRadius": 12
+        }
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 16,
+              "color": "#055342",
+              "fontWeight": "600",
+              "textAlign": "center"
+            }
+          },
+          "children": [
+            "Refresh state"
+          ]
+        }
+      ]
+    }
+  ]
+}

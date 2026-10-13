@@ -1,0 +1,89 @@
+{
+  "type": "View",
+  "props": {
+    "testID": "attendance-mark-recovery",
+    "style": {
+      "backgroundColor": "#FBFDFC",
+      "borderRadius": 20,
+      "borderWidth": 1,
+      "borderColor": "#D6E3DC",
+      "padding": 20,
+      "gap": 12
+    }
+  },
+  "children": [
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 20,
+          "fontWeight": "700",
+          "color": "#13231F"
+        }
+      },
+      "children": [
+        "Telefon saxta məkan siqnalı bildirdi"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Server bu qeydi qəbul etmədi. Telefonun məkan parametrlərini yoxlayın və yenidən cəhd edin. Səhv olduğunu düşünürsünüzsə, rəhbərə müraciət edin. Bu qeyd təkbaşına pozuntunu sübut etmir."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Yeni qeyd yeni vaxtı saxlayacaq. Əvvəlki vaxt üçün düzəliş sorğusu göndərin."
+      ]
+    },
+    {
+      "type": "View",
+      "props": {
+        "testID": "attendance-mark-retry",
+        "accessibilityRole": "button",
+        "style": [
+          {
+            "minHeight": 50,
+            "padding": 14,
+            "alignItems": "center",
+            "justifyContent": "center",
+            "borderRadius": 12,
+            "backgroundColor": "#055342"
+          },
+          false
+        ]
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 16,
+              "color": "#F8FCFA",
+              "fontWeight": "600",
+              "textAlign": "center"
+            }
+          },
+          "children": [
+            "Yenidən qeyd et"
+          ]
+        }
+      ]
+    }
+  ]
+}

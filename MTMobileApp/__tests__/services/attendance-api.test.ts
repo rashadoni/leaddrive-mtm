@@ -53,6 +53,16 @@ it("checks the scope again after asynchronous device-header lookup, before sendi
   await expect(api.getAttendanceRequests(undefined, () => { if (!valid) throw new Error("scope changed") })).rejects.toThrow("scope changed")
   expect(global.fetch).not.toHaveBeenCalled()
 })
+it.each(['background', 'return'])('guards %s transport after asynchronous headers and before fetch', async kind => {
+  let valid = true
+  ;(getFieldDeviceId as jest.Mock).mockImplementation(async () => { valid = false; return 'rf-device' })
+  const guard = () => { if (!valid) throw new Error('scope changed') }
+  const request = kind === 'background'
+    ? api.sendLocation({ latitude: 40.4, longitude: 49.8, isMock: false, attendanceConsentId: 'fictional-receipt' }, guard)
+    : api.returnToWorkday({ operationId: 'wdr-fixture', workdayId: 'wd-fixture' }, guard)
+  await expect(request).rejects.toThrow('scope changed')
+  expect(global.fetch).not.toHaveBeenCalled()
+})
 it("does not return an old account's response after its scope changes", async () => {
   let valid = true
   ;(global.fetch as jest.Mock).mockImplementation(async () => { valid = false; return { status: 200, ok: true, json: async () => ({ success: true, data: { private: "old account" } }) } })
@@ -73,4 +83,24 @@ it("does not send a workday after its admission changes during device identity l
   ;(getFieldDeviceId as jest.Mock).mockImplementation(async () => { valid = false; return "rf-device" })
   await expect(api.syncPush([], () => { if (!valid) throw new Error("withdrawn") })).rejects.toThrow("withdrawn")
   expect(global.fetch).not.toHaveBeenCalled()
+})
+it("uses only guarded own consent API and preserves the exact revision and request UUID", async () => {
+  const input = { requestId: attendanceUuid(), policyRevisionId: "own-policy", expectedConsentId: "own-receipt", accepted: false }
+  const guard = jest.fn()
+  await api.getAttendanceLocationConsent(guard); await api.setAttendanceLocationConsent(input, guard)
+  const calls = (global.fetch as jest.Mock).mock.calls
+  expect(calls.map(call => call[0])).toEqual(["https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent", "https://fictional.invalid/api/v1/mtm/mobile/attendance/location-consent"])
+  expect(calls[1][1].body).toBe(JSON.stringify(input)); expect(calls[1][1].method).toBe("POST"); expect(guard).toHaveBeenCalled()
+})
+
+it("preserves the v1 background location route and sends the exact consent-bound body", async () => {
+  const guard = jest.fn()
+  const point = { latitude: 40.4, longitude: 49.8, workdayId: "wd-fictional", clientLocationId: "point-fictional", recordedAt: "2026-10-13T10:00:00.000Z", isMock: false, attendanceConsentId: "receipt-fictional" }
+  await api.sendLocation(point, guard)
+  const [url, options] = (global.fetch as jest.Mock).mock.calls[0]
+  expect(url).toBe("https://fictional.invalid/api/v1/mtm/mobile/location")
+  expect(options.method).toBe("POST")
+  expect(options.body).toBe(JSON.stringify(point))
+  expect(options.headers.Authorization).toBe("Bearer fictional-token")
+  expect(guard).toHaveBeenCalled()
 })

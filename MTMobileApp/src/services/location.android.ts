@@ -2,6 +2,7 @@ import { NativeEventEmitter, NativeModules } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
+import { prepareAttendanceBackgroundEvidence, withoutAttendanceBackgroundEvidence } from './attendance-background-evidence'
 import { i18n } from "../i18n/index.android"
 import {
   classifyUploadFailure,
@@ -191,6 +192,7 @@ function startNativeStream(): boolean {
     heading: number | null
     altitude: number | null
     timestamp: number
+    isMock?: boolean
   }) => {
     onHeartbeat({
       coords: {
@@ -202,6 +204,7 @@ function startNativeStream(): boolean {
         altitude: event.altitude ?? null,
       },
       timestamp: event.timestamp,
+      ...(typeof event.isMock === 'boolean' ? { mocked: event.isMock } : {}),
     })
   })
   fieldLocation.start().then((started) => {
@@ -263,20 +266,33 @@ function stopWatching() {
  * `clientLocationId` travel with it — the server keeps the capture time and
  * refuses a duplicate.
  */
-async function sendOrQueue(point: QueuedPoint): Promise<void> {
+async function sendOrQueue(point: QueuedPoint, nativeMock?: boolean): Promise<void> {
+  const prepared = await prepareAttendanceBackgroundEvidence(point, nativeMock)
+  point = prepared.point
   try {
-    await api.sendLocation(point)
+    await api.sendLocation(point, prepared.guard)
   } catch (error) {
     const verdict = classifyUploadFailure(error as { message?: string; status?: number })
     if (verdict === "stop") {
       stopTracking().catch(() => {})
       return
     }
-    if (verdict === "retry") await queuePoint(point)
+    if (verdict === "retry") {
+      try { prepared.guard() } catch { point = withoutAttendanceBackgroundEvidence(point) }
+      await queuePoint(point)
+    }
     return
   }
   // The line is up right now: this is the moment to carry what is waiting.
-  await flushQueue((queued) => api.sendLocation(queued)).catch(() => {})
+  await flushQueue(async queued => {
+    const fresh = await prepareAttendanceBackgroundEvidence(queued)
+    // Persist one-way removal before transmission, including after restart.
+    if (queued.attendanceConsentId && !fresh.point.attendanceConsentId) {
+      const { redactBackgroundAttendanceEvidence } = require('./location-outbox') as typeof import('./location-outbox')
+      await redactBackgroundAttendanceEvidence(queued.clientLocationId)
+    }
+    await api.sendLocation(fresh.point, fresh.guard)
+  }).catch(() => {})
 }
 
 function uploadPosition(position: {
@@ -289,6 +305,7 @@ function uploadPosition(position: {
     altitude: number | null
   }
   timestamp: number
+  mocked?: boolean
 }): Promise<unknown> {
   const { latitude, longitude, accuracy, speed, heading, altitude } = position.coords
   const capturedAt = Number.isFinite(position.timestamp) ? position.timestamp : Date.now()
@@ -310,7 +327,7 @@ function uploadPosition(position: {
     ...(activeTrackingWorkdayId ? { workdayId: activeTrackingWorkdayId } : {}),
     recordedAt,
     clientLocationId,
-  })
+  }, typeof position.mocked === 'boolean' ? position.mocked : undefined)
 }
 
 function sleep(ms: number) {

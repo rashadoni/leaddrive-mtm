@@ -38,6 +38,8 @@ export interface QueuedPoint {
   workdayId?: string
   recordedAt: string
   clientLocationId: string
+  isMock?: boolean
+  attendanceConsentId?: string
 }
 
 export type UploadVerdict =
@@ -104,19 +106,42 @@ export async function readQueue(): Promise<QueuedPoint[]> {
   }
 }
 
-async function writeQueue(queue: readonly QueuedPoint[]): Promise<void> {
+async function writeQueue(queue: readonly QueuedPoint[], strict = false): Promise<void> {
   try {
     if (queue.length === 0) await AsyncStorage.removeItem(OUTBOX_KEY)
     else await AsyncStorage.setItem(OUTBOX_KEY, JSON.stringify(queue))
-  } catch {}
+  } catch (error) { if (strict) throw error }
+}
+
+let mutations: Promise<void> = Promise.resolve()
+function mutate<T>(run: () => Promise<T>): Promise<T> {
+  const next = mutations.then(run)
+  mutations = next.then(() => undefined, () => undefined)
+  return next
 }
 
 export async function queuePoint(point: QueuedPoint): Promise<void> {
-  await writeQueue(appendPoint(await readQueue(), point))
+  await mutate(async () => writeQueue(appendPoint(await readQueue(), point)))
 }
 
 export async function clearQueue(): Promise<void> {
-  await writeQueue([])
+  await mutate(async () => writeQueue([]))
+}
+
+/** Coordinates and their original capture identity survive withdrawal. */
+export async function redactBackgroundAttendanceEvidence(clientLocationId?: string): Promise<void> {
+  await mutate(async () => {
+    const raw = await AsyncStorage.getItem(OUTBOX_KEY)
+    if (!raw) return
+    const rows: QueuedPoint[] = JSON.parse(raw)
+    if (!Array.isArray(rows)) throw new Error('ATTENDANCE_LOCATION_QUEUE_UNREADABLE')
+    const next = rows.map(point => {
+      if (clientLocationId && point.clientLocationId !== clientLocationId) return point
+      const { isMock: _mock, attendanceConsentId: _consent, ...ordinary } = point
+      return ordinary
+    })
+    await writeQueue(next, true)
+  })
 }
 
 export interface FlushResult {
@@ -157,7 +182,13 @@ export async function flushQueue(
     }
   }
 
-  const remainder = queue.slice(index)
-  await writeQueue(remainder)
-  return { sent, dropped, remaining: remainder.length }
+  // A concurrent capture or withdrawal may have changed the durable queue.
+  // Remove delivered identities only; never restore the old snapshot's flags.
+  const completed = new Set(queue.slice(0, index).map(point => point.clientLocationId))
+  const remaining = await mutate(async () => {
+    const latest = (await readQueue()).filter(point => !completed.has(point.clientLocationId))
+    await writeQueue(latest)
+    return latest.length
+  })
+  return { sent, dropped, remaining }
 }

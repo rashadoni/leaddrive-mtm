@@ -1,0 +1,50 @@
+diff --git a/MTMobileApp/src/screens/today/TodayScreen.tsx b/MTMobileApp/src/screens/today/TodayScreen.tsx
+index 737d0f6..2a37fbd 100644
+--- a/MTMobileApp/src/screens/today/TodayScreen.tsx
++++ b/MTMobileApp/src/screens/today/TodayScreen.tsx
+@@ -1,3 +1,4 @@
++import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
+ import React, { useCallback, useEffect, useMemo, useState } from "react"
+ import {
+   ActivityIndicator,
+@@ -573,6 +574,7 @@ export default function TodayScreen() {
+               </Pressable>
+               </View>
+             </View>
++            <AttendanceLocationConsentCard />
+             {online === false ? (
+               <View style={styles.cachedBadge}>
+                 <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />
+diff --git a/MTMobileApp/src/store/workday.ts b/MTMobileApp/src/store/workday.ts
+index 120423c..52962fe 100644
+--- a/MTMobileApp/src/store/workday.ts
++++ b/MTMobileApp/src/store/workday.ts
+@@ -189,10 +189,12 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
+     if (finished?.key === key && finished.dateKey === localDateKey()) return
+     const startedAt = new Date().toISOString()
+     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
++    const { captureAttendanceMark } = await import("../services/attendance-location")
++    const attendanceMark = await captureAttendanceMark(key, startedAt, false)
+     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
+     if (!guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
+     guard?.()
+-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt } }, key, guard)
++    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
+     guard?.()
+     if (guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
+     guard?.()
+@@ -203,11 +205,13 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
+     const activeWorkday = get().activeWorkday
+     if (activeWorkday?.key !== key) return
+     const occurredAt = new Date().toISOString()
++    const { captureAttendanceMark } = await import("../services/attendance-location")
++    const attendanceMark = await captureAttendanceMark(key, occurredAt, activeWorkday.paused === true)
+     // The server state machine uses FINISH (not END). Keeping the wire value
+     // aligned means that pressing “End workday” actually closes the server
+     // workday and stops live GPS, including after an offline retry.
+     guard?.()
+-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
++    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
+     guard?.()
+     const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING" }
+     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))

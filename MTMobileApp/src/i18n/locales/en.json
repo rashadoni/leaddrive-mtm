@@ -1096,6 +1096,10 @@
     }
   },
   "officeAttendance": {
+    "returnHint": "You can return to today’s workday. The time since finishing will count as a break.",
+    "returnToWork": "Return to work",
+    "returnNotToday": "You can only return on the same day. That day has passed.",
+    "returnLocked": "A manager has already reviewed or corrected this day, so you cannot return to it.",
     "myAttendance": "LeadDrive · My attendance",
     "workday": "Working day",
     "profile": "Profile",
@@ -1113,7 +1117,7 @@
     "pause": "Take a break",
     "resume": "Resume day",
     "closeHint": "Finish the day when you stop working. An unfinished day stays open.",
-    "noTracking": "Background location is not collected for office attendance.",
+    "noTracking": "This workday does not use continuous location tracking.",
     "pendingHint": "The event is saved on this phone. Its status will be confirmed after reconnecting.",
     "conflict": "The server did not accept the event. Refresh and check the day; submit a correction request if needed.",
     "failed": "The day could not be confirmed. Saved events remain on this phone. Pull down to refresh.",
@@ -1129,5 +1133,33 @@
     "read": "Read",
     "unread": "New",
     "saving": "Saving…"
+  },
+  "attendanceLocation": {
+    "outsideTitle": "The mark is outside the branch",
+    "outsideBody": "The server did not accept this mark. Move to the branch and mark again. If the location is incorrect, contact your manager.",
+    "mockTitle": "The phone reported a mock location",
+    "mockBody": "The server did not accept this mark. Check your phone’s location settings and try again. Contact your manager if this is an error. The finding alone does not prove misconduct.",
+    "retryTime": "A new mark records the new time. To use the earlier time, submit a correction request.",
+    "unknownReceipt": "The mark’s result is not confirmed yet. Refresh the data; the original mark stays in the queue.",
+    "retryMark": "Mark again",
+    "retryFailed": "Could not prepare a new mark. Refresh the data and try again.",
+    "title": "Day start and finish location",
+    "accepted": "Consent is active",
+    "off": "Location is not collected",
+    "summary": "Location applies only to starting and finishing the workday. It is not recorded during a break.",
+    "noGps": "Time is recorded even without GPS or consent. Phone permission does not replace your consent.",
+    "noText": "The organisation has not enabled collection with an approved text.",
+    "failed": "The current state could not be confirmed. Collection on this phone remains off until it is checked.",
+    "pending": "The reply is not confirmed yet. Location is not sent; retry uses the same decision.",
+    "pendingWithdrawal": "Location on this phone is off and queued coordinates have been removed. Withdrawal is saved until it syncs with the server.",
+    "changed": "The consent or text has changed. Refresh and read the text before making a new decision.",
+    "unavailable": "This setting is unavailable. Refresh your workday.",
+    "showText": "Read the organisation’s text",
+    "hideText": "Collapse text",
+    "confirm": "I have read this text and consent to the location collection it describes.",
+    "accept": "Give consent",
+    "revoke": "Withdraw consent",
+    "retry": "Check the submitted decision",
+    "refresh": "Refresh state"
   }
 }

@@ -1,3 +1,4 @@
+import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
@@ -193,6 +194,8 @@ export default function ProfileScreen() {
           valueColor={loadError ? fieldTheme.color.amber : fieldTheme.color.success}
         />
       </SectionCard>
+
+      <AttendanceLocationConsentCard />
 
       <SectionCard icon="language-outline" title={t("profile.language")}>
         <View style={styles.localeRow}>

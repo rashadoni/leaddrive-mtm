@@ -184,6 +184,7 @@ async function performSync(): Promise<MobileSyncResult> {
     const result = await flushOutbox(operations => pushAttendanceAndLegacy(operations, guard), {
       guard,
       select: item => item.scopeKey === scopeKey && (item.entity === "workdays"
+        || (item.entity === "attendanceConsents" && useBootstrapStore.getState().data?.policies.agentPermissions?.attendanceLocation === true)
         || (item.entity === "attendanceRequests" && useBootstrapStore.getState().data?.policies.agentPermissions?.attendanceRequests === true)),
     })
     guard()

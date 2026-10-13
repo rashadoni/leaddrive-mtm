@@ -246,11 +246,18 @@ export async function pushAttendanceAndLegacy(operations: OutboxOperation[], gua
   guard?.()
   const attendance = operations.filter(item => item.entity === "attendanceRequests")
   const legacy = operations.filter(item => item.entity !== "attendanceRequests")
-  if (attendance.length === 0) return guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)
+  const sendLegacy = async () => {
+    if (legacy.some(item => item.entity === "attendanceConsents" || (item.entity === "workdays" && item.data.attendanceMark))) {
+      const { pushAttendanceLocationOperations } = require("./attendance-location") as typeof import('./attendance-location')
+      return pushAttendanceLocationOperations(legacy, guard)
+    }
+    return guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)
+  }
+  if (attendance.length === 0) return sendLegacy()
   const scope = getOfflineScope()
   const results: OutboxPushResult[] = []
   if (legacy.length) {
-    try { results.push(...((await (guard ? api.syncPush(legacy, guard) : api.syncPush(legacy)))?.results ?? [])); guard?.() } catch { /* Keep those operations pending. */ }
+    try { results.push(...((await sendLegacy())?.results ?? [])); guard?.() } catch { /* Keep those operations pending. */ }
   }
   for (const item of attendance) {
     guard?.()

@@ -1,3 +1,6 @@
+import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
+import AttendanceMarkRecoveryCard from '../../components/AttendanceMarkRecoveryCard'
+import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery'
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
@@ -85,6 +88,7 @@ export default function TodayScreen() {
   const [startingRoute, setStartingRoute] = useState(false)
   const [workdayBusy, setWorkdayBusy] = useState(false)
   const [workdayError, setWorkdayError] = useState(false)
+  const recovery = useAttendanceMarkRecovery()
   // The server's "no" about one particular day, kept with that day's id so it
   // never speaks for another.
   const [returnRefusal, setReturnRefusal] = useState<{ workdayId: string; reason: "notToday" | "locked" } | null>(null)
@@ -260,6 +264,7 @@ export default function TodayScreen() {
   }, [currentWorkdayKey, finishedWorkday?.workdayId, refresh, workdayBusy, workdayHydrated, workdayReturnable])
 
   const requestWorkdayAction = useCallback(() => {
+    if (recovery.operation) return
     if (workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood) return
     if (workdayReturnable) {
       returnToWorkday().catch(() => {})
@@ -270,7 +275,7 @@ export default function TodayScreen() {
       return
     }
     setEndDayConfirm(true)
-  }, [returnToWorkday, syncWorkday, workdayBusy, workdayClosedForGood, workdayEnding, workdayHydrated, workdayOpen, workdayReturnable, workdayStarting])
+  }, [recovery.operation, returnToWorkday, syncWorkday, workdayBusy, workdayClosedForGood, workdayEnding, workdayHydrated, workdayOpen, workdayReturnable, workdayStarting])
 
   const taskRemaining = stats
     ? Math.max(stats.tasks.total - stats.tasks.done, 0)
@@ -587,7 +592,7 @@ export default function TodayScreen() {
                   </Text>
                 </Pressable>
               ) : null}
-              <Pressable
+              {!recovery.operation && <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: workdayOpen, disabled: workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood }}
                 disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding || workdayClosedForGood}
@@ -620,9 +625,11 @@ export default function TodayScreen() {
                           ? "todayV2.dayFinishedButton"
                           : "todayV2.startDay")}
                 </Text>
-              </Pressable>
+              </Pressable>}
               </View>
             </View>
+            <AttendanceMarkRecoveryCard operation={recovery.operation} refresh={async () => { await refreshRouteFieldSession(); await refresh(); await recovery.reload() }} />
+            <AttendanceLocationConsentCard />
             {online === false ? (
               <View style={styles.cachedBadge}>
                 <Icon name="cloud-offline-outline" size={16} color={fieldTheme.color.amber} />

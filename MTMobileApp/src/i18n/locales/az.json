@@ -1096,6 +1096,10 @@
     }
   },
   "officeAttendance": {
+    "returnHint": "Bugünkü iş gününə qayıda bilərsiniz. Bitirdikdən sonrakı vaxt fasilə sayılacaq.",
+    "returnToWork": "İşə qayıt",
+    "returnNotToday": "Yalnız elə həmin gün qayıtmaq olar. O gün artıq keçib.",
+    "returnLocked": "Bu günü rəhbər artıq yoxlayıb və ya düzəldib — ona qayıtmaq olmur.",
     "myAttendance": "LeadDrive · Mənim uçotum",
     "workday": "İş günü",
     "profile": "Profil",
@@ -1113,7 +1117,7 @@
     "pause": "Fasilə ver",
     "resume": "Günə davam et",
     "closeHint": "İşi bitirəndə günü tamamlayın. Bağlanmamış gün açıq qalacaq.",
-    "noTracking": "Ofis iş günü üçün arxa fonda məkan məlumatı toplanmır.",
+    "noTracking": "Bu iş günündə məkanın fasiləsiz izlənməsi istifadə edilmir.",
     "pendingHint": "Qeyd telefonda saxlanılıb. Serverlə əlaqə qurulduqdan sonra vəziyyəti təsdiqlənəcək.",
     "conflict": "Server qeydi qəbul etmədi. Məlumatı yeniləyib günü yoxlayın; lazım olsa düzəliş müraciəti göndərin.",
     "failed": "Günün vəziyyətini təsdiqləmək olmadı. Saxlanmış qeydlər telefonda qalır. Yeniləmək üçün ekranı aşağı çəkin.",
@@ -1129,5 +1133,33 @@
     "read": "Oxunub",
     "unread": "Yeni",
     "saving": "Saxlanılır…"
+  },
+  "attendanceLocation": {
+    "outsideTitle": "Qeyd filialdan kənardadır",
+    "outsideBody": "Server bu qeydi qəbul etmədi. Filiala yaxınlaşın və yenidən qeyd edin. Məkan səhv müəyyən edilibsə, rəhbərə müraciət edin.",
+    "mockTitle": "Telefon saxta məkan siqnalı bildirdi",
+    "mockBody": "Server bu qeydi qəbul etmədi. Telefonun məkan parametrlərini yoxlayın və yenidən cəhd edin. Səhv olduğunu düşünürsünüzsə, rəhbərə müraciət edin. Bu qeyd təkbaşına pozuntunu sübut etmir.",
+    "retryTime": "Yeni qeyd yeni vaxtı saxlayacaq. Əvvəlki vaxt üçün düzəliş sorğusu göndərin.",
+    "unknownReceipt": "Qeydin nəticəsi hələ təsdiqlənməyib. Məlumatları yeniləyin; ilkin qeyd növbədə qalır.",
+    "retryMark": "Yenidən qeyd et",
+    "retryFailed": "Yeni qeyd hazırlamaq mümkün olmadı. Məlumatları yeniləyib yenidən cəhd edin.",
+    "title": "Günün başlanğıc və son məkanı",
+    "accepted": "Razılıq qüvvədədir",
+    "off": "Məkan toplanmır",
+    "summary": "Məkan yalnız iş gününün başlanğıcına və sonuna aiddir. Fasilə zamanı qeydə alınmır.",
+    "noGps": "GPS və ya razılıq olmasa da, vaxt qeyd olunur. Telefon icazəsi razılığınızı əvəz etmir.",
+    "noText": "Təşkilat təsdiqlənmiş mətnlə məkan toplanmasını hələ aktivləşdirməyib.",
+    "failed": "Cari vəziyyəti təsdiqləmək olmadı. Yoxlanılana qədər bu telefonda məkanın toplanması sönülü qalır.",
+    "pending": "Cavab hələ təsdiqlənməyib. Məkan göndərilmir; təkrar eyni qərarı istifadə edir.",
+    "pendingWithdrawal": "Bu telefonda məkan söndürülüb, növbədəki koordinatlar silinib. Geri götürmə serverlə sinxronlaşana qədər saxlanılır.",
+    "changed": "Razılıq və ya mətn dəyişib. Yeni qərardan əvvəl vəziyyəti yeniləyin və mətni oxuyun.",
+    "unavailable": "Bu ayar əlçatan deyil. İş gününü yeniləyin.",
+    "showText": "Təşkilatın mətnini oxu",
+    "hideText": "Mətni yığ",
+    "confirm": "Bu mətni oxudum və orada göstərilən məkan toplanmasına razıyam.",
+    "accept": "Razılıq ver",
+    "revoke": "Razılığı geri götür",
+    "retry": "Göndərilən qərarı yoxla",
+    "refresh": "Vəziyyəti yenilə"
   }
 }

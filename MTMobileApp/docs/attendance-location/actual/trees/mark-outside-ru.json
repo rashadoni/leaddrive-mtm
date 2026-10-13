@@ -1,0 +1,89 @@
+{
+  "type": "View",
+  "props": {
+    "testID": "attendance-mark-recovery",
+    "style": {
+      "backgroundColor": "#FBFDFC",
+      "borderRadius": 20,
+      "borderWidth": 1,
+      "borderColor": "#D6E3DC",
+      "padding": 20,
+      "gap": 12
+    }
+  },
+  "children": [
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 20,
+          "fontWeight": "700",
+          "color": "#13231F"
+        }
+      },
+      "children": [
+        "Место отметки вне филиала"
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Сервер не принял эту отметку. Подойдите к филиалу и отметьтесь заново. Если место определено неверно, обратитесь к руководителю."
+      ]
+    },
+    {
+      "type": "Text",
+      "props": {
+        "style": {
+          "fontSize": 15,
+          "lineHeight": 23,
+          "color": "#5E7069"
+        }
+      },
+      "children": [
+        "Повторная отметка запишет новое время. Если нужен прежний момент, подайте заявку на исправление."
+      ]
+    },
+    {
+      "type": "View",
+      "props": {
+        "testID": "attendance-mark-retry",
+        "accessibilityRole": "button",
+        "style": [
+          {
+            "minHeight": 50,
+            "padding": 14,
+            "alignItems": "center",
+            "justifyContent": "center",
+            "borderRadius": 12,
+            "backgroundColor": "#055342"
+          },
+          false
+        ]
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 16,
+              "color": "#F8FCFA",
+              "fontWeight": "600",
+              "textAlign": "center"
+            }
+          },
+          "children": [
+            "Отметиться заново"
+          ]
+        }
+      ]
+    }
+  ]
+}

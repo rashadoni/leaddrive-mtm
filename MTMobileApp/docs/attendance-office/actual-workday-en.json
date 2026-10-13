@@ -1,0 +1,324 @@
+{
+  "type": "View",
+  "props": {
+    "style": {
+      "flex": 1,
+      "backgroundColor": "#F1F6F3"
+    }
+  },
+  "children": [
+    {
+      "type": "View",
+      "props": {
+        "style": [
+          {
+            "backgroundColor": "#055342",
+            "padding": 24,
+            "gap": 8
+          },
+          {
+            "paddingTop": 12
+          }
+        ]
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "color": "#F8FCFA",
+              "fontSize": 13
+            }
+          },
+          "children": [
+            "LeadDrive · My attendance"
+          ]
+        },
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "color": "#F8FCFA",
+              "fontSize": 27,
+              "fontWeight": "700"
+            }
+          },
+          "children": [
+            "Working day"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RCTScrollView",
+      "props": {},
+      "children": [
+        {
+          "type": "RCTRefreshControl",
+          "props": {},
+          "children": null
+        },
+        {
+          "type": "View",
+          "props": {},
+          "children": [
+            {
+              "type": "View",
+              "props": {
+                "style": {
+                  "backgroundColor": "#FBFDFC",
+                  "borderWidth": 1,
+                  "borderColor": "#D6E3DC",
+                  "borderRadius": 22,
+                  "padding": 22,
+                  "gap": 16
+                }
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#08705A",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    }
+                  },
+                  "children": [
+                    "Day not started"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 20,
+                      "color": "#13231F",
+                      "fontWeight": "600"
+                    }
+                  },
+                  "children": [
+                    "Aylin Demo"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 27,
+                      "fontWeight": "700",
+                      "color": "#055342"
+                    }
+                  },
+                  "children": [
+                    "—"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "lineHeight": 23,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Working day started"
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "style": {
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "gap": 12
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "View",
+                      "props": {
+                        "testID": "office-workday-action",
+                        "accessibilityRole": "button",
+                        "style": [
+                          {
+                            "minHeight": 50,
+                            "padding": 14,
+                            "justifyContent": "center",
+                            "alignItems": "center",
+                            "backgroundColor": "#055342",
+                            "borderRadius": 12,
+                            "flexGrow": 1
+                          },
+                          false
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "Text",
+                          "props": {
+                            "style": {
+                              "color": "#F8FCFA",
+                              "fontSize": 16,
+                              "fontWeight": "700",
+                              "textAlign": "center"
+                            }
+                          },
+                          "children": [
+                            "Start day"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "fontSize": 15,
+                      "lineHeight": 23,
+                      "color": "#5E7069"
+                    }
+                  },
+                  "children": [
+                    "Finish the day when you stop working. An unfinished day stays open."
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Text",
+              "props": {
+                "style": {
+                  "fontSize": 15,
+                  "lineHeight": 23,
+                  "color": "#5E7069"
+                }
+              },
+              "children": [
+                "Background location is not collected for office attendance."
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "accessibilityRole": "button",
+                "style": [
+                  {
+                    "minHeight": 50,
+                    "padding": 14,
+                    "justifyContent": "center",
+                    "alignItems": "center",
+                    "backgroundColor": "#055342",
+                    "borderRadius": 12,
+                    "flexGrow": 1
+                  },
+                  {
+                    "backgroundColor": "#FBFDFC",
+                    "borderColor": "#D6E3DC",
+                    "borderWidth": 1
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "textAlign": "center"
+                    }
+                  },
+                  "children": [
+                    "My requests"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "accessibilityRole": "button",
+                "style": [
+                  {
+                    "minHeight": 50,
+                    "padding": 14,
+                    "justifyContent": "center",
+                    "alignItems": "center",
+                    "backgroundColor": "#055342",
+                    "borderRadius": 12,
+                    "flexGrow": 1
+                  },
+                  {
+                    "backgroundColor": "#FBFDFC",
+                    "borderColor": "#D6E3DC",
+                    "borderWidth": 1
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "textAlign": "center"
+                    }
+                  },
+                  "children": [
+                    "Notifications"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "accessibilityRole": "button",
+                "style": [
+                  {
+                    "minHeight": 50,
+                    "padding": 14,
+                    "justifyContent": "center",
+                    "alignItems": "center",
+                    "backgroundColor": "#055342",
+                    "borderRadius": 12,
+                    "flexGrow": 1
+                  },
+                  {
+                    "backgroundColor": "#FBFDFC",
+                    "borderColor": "#D6E3DC",
+                    "borderWidth": 1
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 16,
+                      "fontWeight": "600",
+                      "textAlign": "center"
+                    }
+                  },
+                  "children": [
+                    "Profile"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

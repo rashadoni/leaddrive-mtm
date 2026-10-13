@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { getOfflineScope, requireOfflineScope } from "./offline-scope"
 import { retryAfterMsFromError, retryDelayMs } from "./sync-retry"
+import { canReplaceAttendanceMark } from './attendance-mark-recovery'
+import { redactAttendanceMarkData } from './attendance-location-contract'
 
 const STORAGE_KEY = "@mtm_sync_outbox_v1"
 
@@ -75,6 +77,9 @@ export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entit
     if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     const items = await read()
     if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    if (item.entity === "workdays" && item.data.attendanceMark && items.some(row => row.scopeKey === item.scopeKey && row.entity === "attendanceConsents")) {
+      item.data = redactAttendanceMarkData(item.data)
+    }
     items.push(item)
     await write(items)
   })
@@ -162,15 +167,20 @@ export async function conflictOutboxOperations() {
 export async function retryOutboxConflict(
   operationId: string,
   dataPatch?: Record<string, unknown>,
+  attendance?: { scope: string; guard: () => void },
 ): Promise<string | null> {
   const scope = requireOfflineScope()
   let nextOperationId: string | null = null
   await serializeMutation(async () => {
+    attendance?.guard()
+    if (attendance && scope !== attendance.scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
     const items = await read()
+    attendance?.guard()
     await write(items.map((item) => {
       if (item.operationId !== operationId || item.scopeKey !== scope || item.status !== "conflict") {
         return item
       }
+      if (attendance && !canReplaceAttendanceMark(item)) throw new Error('ATTENDANCE_MARK_CHANGED')
       // The server idempotently pins both successful and conflicting
       // operationIds. A user-directed retry must therefore be a new
       // operation while retaining the same entity payload/client id;
@@ -180,13 +190,15 @@ export async function retryOutboxConflict(
         ...item,
         operationId: nextOperationId,
         clientTimestamp: Date.now(),
-        data: dataPatch ? { ...item.data, ...dataPatch } : item.data,
+        data: dataPatch ? (attendance && (attendancePrivacyBlocked(scope) || items.some(row => row.scopeKey === scope && row.entity === 'attendanceConsents'))
+          ? redactAttendanceMarkData({ ...item.data, ...dataPatch }) : { ...item.data, ...dataPatch }) : item.data,
         status: "pending" as const,
         conflict: undefined,
         attempts: 0,
         nextAttemptAt: 0,
       }
     }))
+    attendance?.guard()
   })
   return nextOperationId
 }
@@ -297,5 +309,72 @@ export async function removeUnqueuedAttendanceDocuments(
         && item.attendanceDocuments?.some(saved => saved.path === document.path && saved.clientAttachmentId === document.clientAttachmentId))
       if (!referenced) await remove(document)
     }
+  })
+}
+
+async function readAttendancePrivacyQueue(): Promise<OutboxOperation[]> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEY)
+  const parsed: unknown = raw === null ? [] : JSON.parse(raw)
+  if (!Array.isArray(parsed) || parsed.some(row => !row || typeof row.scopeKey !== "string" || typeof row.operationId !== "string"
+    || typeof row.entity !== "string" || !row.data || typeof row.data !== "object" || Array.isArray(row.data))) throw new Error("ATTENDANCE_OUTBOX_UNREADABLE")
+  return parsed as OutboxOperation[]
+}
+export async function attendancePrivacyOperations(scope: string) {
+  if (requireOfflineScope() !== scope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+  const rows = await readAttendancePrivacyQueue()
+  if (requireOfflineScope() !== scope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+  return rows.filter(row => row.scopeKey === scope)
+}
+
+// Consent withdrawals and their coordinate removal share ONE durable write.
+// A capture/transport already in progress observes the synchronous epoch fence.
+const attendancePrivacyEpochs = new Map<string, number>()
+const attendancePrivacyBlockedScopes = new Set<string>()
+export const attendancePrivacyBlocked = (scope: string) => attendancePrivacyBlockedScopes.has(scope)
+export function releaseAttendancePrivacyBlock(scope: string, epoch: number) {
+  if (attendancePrivacyEpoch(scope) === epoch) attendancePrivacyBlockedScopes.delete(scope)
+}
+export const attendancePrivacyEpoch = (scope: string) => attendancePrivacyEpochs.get(scope) ?? 0
+export async function queueAttendanceConsent(scope: string, input: import('./attendance-location-contract').AttendanceConsentInput) {
+  // Even an unsuccessful disk write must stop this running process from
+  // sending a previously captured fix. No success is claimed until persisted.
+  attendancePrivacyBlockedScopes.add(scope)
+  attendancePrivacyEpochs.set(scope, attendancePrivacyEpoch(scope) + 1)
+  return serializeMutation(async () => {
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const items = await readAttendancePrivacyQueue()
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const pending = items.find(item => item.scopeKey === scope && item.entity === 'attendanceConsents' && item.status === 'pending')
+    if (pending) throw new Error('ATTENDANCE_CONSENT_PENDING')
+    const item: OutboxOperation = { operationId: input.requestId, entity: 'attendanceConsents', op: 'create', data: { ...input },
+      clientTimestamp: Date.now(), attempts: 0, nextAttemptAt: 0, scopeKey: scope, status: 'pending' }
+    const next = items.filter(row => !(row.scopeKey === scope && row.entity === 'attendanceConsents' && row.status === 'conflict'))
+      .map(row => row.scopeKey === scope && row.entity === 'workdays' ? { ...row, data: redactAttendanceMarkData(row.data) } : row)
+    next.push(item)
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    await write(next)
+    return item
+  })
+}
+/** Re-read rather than sending a stale flush snapshot. Preserve identities,
+ * original timestamps, all other payload fields, and other accounts verbatim. */
+export async function prepareAttendanceMarks(scope: string, operationIds: string[], consentId: string | null) {
+  return serializeMutation(async () => {
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const items = await readAttendancePrivacyQueue()
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    const blocked = attendancePrivacyBlocked(scope) || items.some(item => item.scopeKey === scope && item.entity === 'attendanceConsents')
+    let changed = false
+    const next = items.map(item => {
+      const mark = item.data.attendanceMark as import('./attendance-location-contract').AttendanceMark | undefined
+      if (item.scopeKey !== scope || item.entity !== 'workdays' || !mark) return item
+      if (!blocked && consentId && mark.consentRevisionId === consentId) return item
+      const data = redactAttendanceMarkData(item.data)
+      if (JSON.stringify(data) === JSON.stringify(item.data)) return item
+      changed = true; return { ...item, data }
+    })
+    if (changed) await write(next)
+    if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
+    return next.filter(item => item.scopeKey === scope && operationIds.includes(item.operationId))
   })
 }

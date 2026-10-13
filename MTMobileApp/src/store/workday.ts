@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { create } from "zustand"
-import { allOutboxOperations, enqueueOutboxOperation, type OutboxOperation } from "../services/outbox"
+import { allOutboxOperations, enqueueOutboxOperation, retryOutboxConflict, type OutboxOperation } from "../services/outbox"
+import { canReplaceAttendanceMark } from '../services/attendance-mark-recovery'
 import { isWorkdayOpen, type BootstrapWorkday } from "../services/bootstrap"
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
@@ -106,6 +107,7 @@ interface WorkdayState {
   hydrate: () => Promise<void>
   start: (key: string, guard?: () => void) => Promise<void>
   end: (key: string, guard?: () => void) => Promise<void>
+  retryAttendanceMark: (key: string, operationId: string) => Promise<void>
   /**
    * Take a break. The server refuses GPS points recorded inside a pause
    * (leaddrive-v2 `MTM_LOCATION_WORKDAY_PAUSED`), so the local flag is not
@@ -126,7 +128,7 @@ interface WorkdayState {
    *   - a durable pending mutation stays visible while offline; a completed
    *     unrelated shift never clears it.
    */
-  reconcileFromServer: (key: string, workday: BootstrapWorkday | null | undefined) => Promise<void>
+  reconcileFromServer: (key: string, workday: BootstrapWorkday | null | undefined, guard?: () => void) => Promise<void>
 }
 
 export function workdayKey(tenantId?: string | null, userId?: string | null) {
@@ -194,10 +196,12 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     if (finished?.key === key && finished.dateKey === localDateKey()) return
     const startedAt = new Date().toISOString()
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
+    const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
+    const attendanceMark = await captureAttendanceMark(key, startedAt, false)
     const activeWorkday: ActiveWorkday = { key, workdayId, startedAt, syncState: "START_PENDING" }
     if (!guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt } }, key, guard)
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "START", id: workdayId, occurredAt: startedAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
     guard?.()
     if (guard) await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
     guard?.()
@@ -208,15 +212,41 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     const activeWorkday = get().activeWorkday
     if (activeWorkday?.key !== key) return
     const occurredAt = new Date().toISOString()
+    const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
+    const attendanceMark = await captureAttendanceMark(key, occurredAt, activeWorkday.paused === true)
     // The server state machine uses FINISH (not END). Keeping the wire value
     // aligned means that pressing “End workday” actually closes the server
     // workday and stops live GPS, including after an offline retry.
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt, ...(attendanceMark ? { attendanceMark } : {}) } }, key, guard)
     guard?.()
     const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING" }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))
     if (get().activeWorkday?.key === key) set({ activeWorkday: pendingFinish, syncError: null })
+  }),
+  retryAttendanceMark: (key, operationId) => serializeMutation(async () => {
+    const { captureAttendanceMark, guardAttendanceMark } = require('../services/attendance-location') as typeof import('../services/attendance-location')
+    const guard = () => guardAttendanceMark(key)
+    guard()
+    const item = (await allOutboxOperations()).find(row => row.operationId === operationId && row.scopeKey === key)
+    guard()
+    if (!item || !canReplaceAttendanceMark(item)) throw new Error('ATTENDANCE_MARK_CHANGED')
+    const action = item.data.action, local = get().activeWorkday
+    const workdayId = action === 'START' ? item.data.id : item.data.workdayId
+    if (typeof workdayId !== 'string' || (action === 'START' && local?.key === key && (local.workdayId !== workdayId || local.syncState === 'CONFIRMED'))
+      || (action === 'FINISH' && (local?.key !== key || local.workdayId !== workdayId))) throw new Error('ATTENDANCE_MARK_CHANGED')
+    const occurredAt = new Date().toISOString()
+    const attendanceMark = await captureAttendanceMark(key, occurredAt, action === 'FINISH' && local?.paused === true)
+    guard()
+    if (!attendanceMark) throw new Error('ATTENDANCE_MARK_CHANGED')
+    const nextId = await retryOutboxConflict(operationId, { occurredAt, attendanceMark }, { scope: key, guard })
+    guard()
+    if (!nextId) throw new Error('ATTENDANCE_MARK_CHANGED')
+    const activeWorkday: ActiveWorkday = action === 'START'
+      ? { key, workdayId, startedAt: occurredAt, syncState: 'START_PENDING' }
+      : { ...local!, syncState: 'FINISH_PENDING' }
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday)); guard()
+    set({ activeWorkday, syncError: null })
   }),
   pause: (key, guard) => serializeMutation(async () => {
     guard?.()
@@ -245,12 +275,14 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(running))
     if (get().activeWorkday?.key === key) set({ activeWorkday: running, syncError: null })
   }),
-  reconcileFromServer: (key, workday) => serializeMutation(async () => {
+  reconcileFromServer: (key, workday, guard) => serializeMutation(async () => {
+    guard?.()
     const local = get().activeWorkday
     const open = isWorkdayOpen(workday)
     const operations = local
       ? (await allOutboxOperations()).filter((item) => belongsToWorkday(item, local.workdayId))
       : []
+    guard?.()
     const pendingStart = operations.some((item) => item.status === "pending" && item.data.action === "START")
     const pendingFinish = operations.some((item) => item.status === "pending" && item.data.action === "FINISH")
     const startConflict = operations.some((item) => item.status === "conflict" && item.data.action === "START")
@@ -273,11 +305,13 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
         ...(workday!.status === "PAUSED" && workday!.pausedAt ? { pausedAt: workday!.pausedAt } : {}),
       }
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
+      guard?.()
       // The day this device remembers as finished is open on the server: the
       // employee returned to it (here, or on another device), or a manager
       // reopened it. "Finished" would now be a lie that also blocks nothing.
       const returned = get().finishedWorkday?.workdayId === activeWorkday.workdayId
       if (returned) await AsyncStorage.removeItem(FINISHED_STORAGE_KEY)
+      guard?.()
       set({
         activeWorkday,
         ...(returned ? { finishedWorkday: null } : {}),
@@ -293,6 +327,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       return
     } else if (local) {
       await AsyncStorage.removeItem(STORAGE_KEY)
+      guard?.()
       // The server closed this very shift: remember when, so "Today" shows
       // "finished at" instead of "not started" (audit M-05).
       // A START refused because today's shift already exists and is finished
@@ -306,6 +341,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       )
         ? await rememberFinishedWorkday(key, workday)
         : get().finishedWorkday
+      guard?.()
       if (get().activeWorkday?.workdayId === local.workdayId) {
         set({
           activeWorkday: null,
@@ -317,6 +353,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
       // Fresh install or cleared storage: the server already knows the shift
       // is over, so the device must not offer to start it again today.
       const finishedWorkday = await rememberFinishedWorkday(key, workday)
+      guard?.()
       set({ finishedWorkday })
     }
   }),

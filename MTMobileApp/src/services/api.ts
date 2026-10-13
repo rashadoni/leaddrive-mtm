@@ -598,11 +598,14 @@ class ApiClient {
     recordedAt?: string
     /** Deterministic retry key so a retried point is not duplicated. */
     clientLocationId?: string
-  }) {
+    /** Optional consent-bound attendance evidence; unknown values are omitted. */
+    isMock?: boolean
+    attendanceConsentId?: string
+  }, guard?: () => void) {
     return this.request("/mobile/location", {
       method: "POST",
       body: JSON.stringify(data),
-    })
+    }, 20_000, 1, guard)
   }
 
   async getLocationHistory(date?: string, signal?: AbortSignal) {
@@ -611,6 +614,12 @@ class ApiClient {
   }
 
   // Attendance uses the existing authenticated transport and its own narrow API.
+  getAttendanceLocationConsent(guard: () => void) {
+    return this.request("/mobile/attendance/location-consent", {}, 5_000, 1, guard)
+  }
+  setAttendanceLocationConsent(input: import("./attendance-location-contract").AttendanceConsentInput, guard: () => void) {
+    return this.request("/mobile/attendance/location-consent", { method: "POST", body: JSON.stringify(input) }, 10_000, 1, guard)
+  }
   getAttendanceRequests(cursor: string | undefined, guard: () => void) {
     return this.request(`/mobile/attendance/requests${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {}, 20_000, 1, guard)
   }
@@ -917,11 +926,11 @@ class ApiClient {
    * only, never through the outbox: whether it is still the same day is the
    * server's clock to say, and a return that arrives tomorrow is not one.
    */
-  async returnToWorkday(data: { operationId: string; workdayId: string }) {
+  async returnToWorkday(data: { operationId: string; workdayId: string }, guard?: () => void) {
     return this.request("/mobile/route-field/workday-return", {
       method: "POST",
       body: JSON.stringify(data),
-    }, 20_000, 2)
+    }, 20_000, 2, guard)
   }
 
   /** The agent takes his own waiting request about this organization back. */

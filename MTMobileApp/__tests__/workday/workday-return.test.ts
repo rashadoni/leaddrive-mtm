@@ -1,3 +1,4 @@
+jest.mock("../../src/services/attendance-location", () => ({ captureAttendanceMark: jest.fn().mockResolvedValue(undefined) }))
 import AsyncStorage from "@react-native-async-storage/async-storage"
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -147,6 +148,14 @@ describe("returning to the day closed earlier today", () => {
 })
 
 describe("the day returned to is the same day going on", () => {
+  it('does not reconcile a late office response after its guard revokes access', async () => {
+    await closedDayOnThisDevice()
+    let allowed = true
+    returnToWorkday.mockImplementation(async () => { allowed = false; return { success: true, data: { workday: { id: 'wd-today', status: 'STARTED', startedAt: new Date().toISOString() } } } })
+    await expect(returnToClosedWorkday(KEY, 'wd-today', () => { if (!allowed) throw new Error('scope lost') })).rejects.toThrow('scope lost')
+    expect(useWorkdayStore.getState().activeWorkday).toBeNull()
+    expect(useWorkdayStore.getState().finishedWorkday?.workdayId).toBe('wd-today')
+  })
   it("is finished again as the same workday, and can be returned to again", async () => {
     await closedDayOnThisDevice()
     returnToWorkday.mockResolvedValue({

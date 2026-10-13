@@ -1,0 +1,203 @@
+{
+  "type": "View",
+  "props": {
+    "style": {
+      "flex": 1,
+      "backgroundColor": "#F1F6F3"
+    }
+  },
+  "children": [
+    {
+      "type": "View",
+      "props": {
+        "style": [
+          {
+            "backgroundColor": "#055342",
+            "padding": 24,
+            "gap": 8
+          },
+          {
+            "paddingTop": 12
+          }
+        ]
+      },
+      "children": [
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 26,
+              "fontWeight": "700",
+              "color": "#F8FCFA"
+            }
+          },
+          "children": [
+            "Bildirişlər"
+          ]
+        },
+        {
+          "type": "Text",
+          "props": {
+            "style": {
+              "fontSize": 15,
+              "lineHeight": 22,
+              "color": "#F8FCFA"
+            }
+          },
+          "children": [
+            "Sizin uçotunuz üzrə qərarlar və qeydlər"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RCTScrollView",
+      "props": {},
+      "children": [
+        {
+          "type": "RCTRefreshControl",
+          "props": {},
+          "children": null
+        },
+        {
+          "type": "View",
+          "props": {},
+          "children": [
+            {
+              "type": "View",
+              "props": {
+                "testID": "office-inbox-refresh",
+                "accessibilityRole": "button",
+                "style": {
+                  "minHeight": 48,
+                  "padding": 12,
+                  "borderRadius": 12,
+                  "borderWidth": 1,
+                  "borderColor": "#D6E3DC",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "backgroundColor": "#FBFDFC"
+                }
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  },
+                  "children": [
+                    "Yenilə"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "View",
+              "props": {
+                "testID": "office-notice-notice-1",
+                "style": {
+                  "borderWidth": 1,
+                  "borderColor": "#D6E3DC",
+                  "borderRadius": 18,
+                  "backgroundColor": "#FBFDFC",
+                  "padding": 20,
+                  "gap": 12
+                }
+              },
+              "children": [
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#055342",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    }
+                  },
+                  "children": [
+                    "Yeni"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#13231F",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    }
+                  },
+                  "children": [
+                    "Fictional approval"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#5E7069",
+                      "fontSize": 15,
+                      "lineHeight": 23
+                    }
+                  },
+                  "children": [
+                    "Fictional own body"
+                  ]
+                },
+                {
+                  "type": "Text",
+                  "props": {
+                    "style": {
+                      "color": "#5E7069",
+                      "fontSize": 15,
+                      "lineHeight": 23
+                    }
+                  },
+                  "children": [
+                    "13.10.2026, 12:00:00"
+                  ]
+                },
+                {
+                  "type": "View",
+                  "props": {
+                    "testID": "office-read-notice-1",
+                    "accessibilityRole": "button",
+                    "style": {
+                      "minHeight": 48,
+                      "padding": 12,
+                      "borderRadius": 12,
+                      "borderWidth": 1,
+                      "borderColor": "#D6E3DC",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "backgroundColor": "#FBFDFC"
+                    }
+                  },
+                  "children": [
+                    {
+                      "type": "Text",
+                      "props": {
+                        "style": {
+                          "color": "#055342",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        }
+                      },
+                      "children": [
+                        "Oxunmuş qeyd et"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
