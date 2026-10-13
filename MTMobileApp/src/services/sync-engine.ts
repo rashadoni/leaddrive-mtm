@@ -1,4 +1,5 @@
 import { api } from "./api"
+import { pushAttendanceAndLegacy } from "./attendance-requests"
 import { allOutboxOperations, flushOutbox } from "./outbox"
 import { allRouteCommandJournalEntries, flushRouteCommandJournal } from "./route-command-journal"
 import { allMediaUploads, flushMediaOutbox, type MediaOutboxItem } from "./media-outbox"
@@ -104,7 +105,7 @@ export async function flushRouteFieldOutbox() {
   if (!hasRouteFieldAccess(useBootstrapStore.getState().routeFieldAccess)) {
     return { sent: 0, deferred: 0, conflicted: 0 }
   }
-  return flushOutbox((operations) => api.syncPush(operations))
+  return flushOutbox(pushAttendanceAndLegacy)
 }
 
 /**

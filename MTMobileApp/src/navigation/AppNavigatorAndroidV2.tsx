@@ -34,6 +34,8 @@ import RouteOrganizationLocationFixScreen from "../screens/base/RouteOrganizatio
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
+import AttendanceRequestsScreen from "../screens/attendance/AttendanceRequestsScreen"
+import { agentMayAttendanceRequests } from "../lib/agent-permissions"
 import TeamMessagesScreen from "../screens/more/TeamMessagesScreen"
 import NotificationsScreen from "../screens/more/NotificationsScreen"
 import TodayScreen from "../screens/today/TodayScreen"
@@ -69,6 +71,7 @@ export type RootStackParamList = {
 }
 
 export type MoreStackParamList = {
+  AttendanceRequests: undefined
   MoreHome: undefined
   Notifications: undefined
   Messages: undefined
@@ -120,9 +123,13 @@ const PlanningBuilderScreen = ({
 type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
 
 function MoreStackNavigator() {
+  const policies = useBootstrapStore(state => state.data?.policies)
+  const role = useAuthStore(state => state.agent?.role)
+  const attendanceAllowed = role === "AGENT" && agentMayAttendanceRequests(policies)
   return (
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
       <MoreStack.Screen name="MoreHome" component={MoreScreen} />
+      {attendanceAllowed && <MoreStack.Screen name="AttendanceRequests" component={AttendanceRequestsScreen} />}
       <MoreStack.Screen name="Notifications" component={NotificationsScreen} />
       <MoreStack.Screen name="Messages" component={TeamMessagesScreen} />
       <MoreStack.Screen name="Visits" component={VisitScreen} />

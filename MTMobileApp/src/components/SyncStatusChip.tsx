@@ -1,3 +1,4 @@
+import { attendanceErrorKey } from "../services/attendance-contract"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
@@ -44,7 +45,7 @@ type SyncConflict =
 
 function conflictCode(conflict: SyncConflict) {
   const code = conflict.kind === "legacy"
-    ? conflict.operation.conflict?.serverData?.code
+    ? (conflict.operation.conflict?.serverData?.code ?? (conflict.operation.entity === "attendanceRequests" ? conflict.operation.conflict?.error : undefined))
     : conflict.operation.conflict?.code
   return typeof code === "string" ? code : "SYNC_CONFLICT"
 }
@@ -58,6 +59,7 @@ function conflictCustomerId(conflict: SyncConflict): string | null {
 }
 
 function conflictTranslationKey(code: string) {
+  if (code.startsWith("MTM_ATTENDANCE_")) return attendanceErrorKey(code)
   const known: Record<string, string> = {
     MTM_VISIT_OUT_OF_ZONE: "syncCenter.conflictOutOfZone",
     MTM_VISIT_FORCE_FORBIDDEN: "syncCenter.conflictForceForbidden",

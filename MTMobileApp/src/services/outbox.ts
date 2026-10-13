@@ -14,6 +14,8 @@ export type OutboxOperation = {
   nextAttemptAt: number
   scopeKey: string
   status: "pending" | "conflict"
+  /** Private document dependencies for attendance only; never sent to legacy sync. */
+  attendanceDocuments?: import("./attendance-contract").AttendanceDocument[]
   conflict?: {
     error?: string
     serverData?: Record<string, unknown>
@@ -59,7 +61,7 @@ function inCurrentScope(item: OutboxOperation, scope = getOfflineScope()) {
   return Boolean(scope) && item.scopeKey === scope
 }
 
-export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entity" | "op" | "data">) {
+export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entity" | "op" | "data" | "attendanceDocuments">, expectedScope?: string) {
   const item: OutboxOperation = {
     ...input,
     operationId: createOperationId(),
@@ -70,7 +72,9 @@ export async function enqueueOutboxOperation(input: Pick<OutboxOperation, "entit
     status: "pending",
   }
   await serializeMutation(async () => {
+    if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     const items = await read()
+    if (expectedScope && requireOfflineScope() !== expectedScope) throw new Error("ATTENDANCE_SCOPE_CHANGED")
     items.push(item)
     await write(items)
   })
@@ -245,4 +249,20 @@ export async function flushOutbox(
       retryAfterMs,
     }
   }
+}
+
+/** Capture the owner before any await; uploaded ids must be durable before create. */
+export async function persistAttendanceDocuments(operationId: string, scopeKey: string, documents: NonNullable<OutboxOperation["attendanceDocuments"]>) {
+  return serializeMutation(async () => {
+    if (requireOfflineScope() !== scopeKey) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    const items = await read()
+    if (requireOfflineScope() !== scopeKey) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    const item = items.find(row => row.operationId === operationId && row.scopeKey === scopeKey && row.entity === "attendanceRequests" && row.op === "create")
+    if (!item) throw new Error("ATTENDANCE_OPERATION_MISSING")
+    item.attendanceDocuments = documents
+    item.data = { ...item.data, attachmentIds: documents.map(document => document.uploadedId).filter((id): id is string => Boolean(id)) }
+    await write(items)
+    if (requireOfflineScope() !== scopeKey) throw new Error("ATTENDANCE_SCOPE_CHANGED")
+    return item
+  })
 }

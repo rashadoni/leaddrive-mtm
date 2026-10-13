@@ -377,7 +377,7 @@ class ApiClient {
     this._onUnauthorized?.(REVOKED_REASON)
   }
 
-  private async request(path: string, options: RequestInit = {}, timeoutMs = 20_000, apiVersion: 1 | 2 = 1) {
+  private async request(path: string, options: RequestInit = {}, timeoutMs = 20_000, apiVersion: 1 | 2 = 1, guard?: () => void) {
     if (!this.baseUrl) throw new Error("Server not configured")
 
     const url = `${this.baseForApiVersion(apiVersion)}${path}`
@@ -389,6 +389,8 @@ class ApiClient {
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     }
+
+    if (typeof FormData !== "undefined" && options.body instanceof FormData) delete headers["Content-Type"]
 
     if (requestToken) {
       headers.Authorization = `Bearer ${requestToken}`
@@ -416,7 +418,9 @@ class ApiClient {
     }
 
     try {
+      guard?.()
       const res = await fetch(url, { ...options, headers, signal: controller.signal })
+      guard?.()
       // Any answer, a refusal included, proves the connection carries traffic.
       noteAnswered()
       if (res.status === 401) {
@@ -459,6 +463,7 @@ class ApiClient {
         throw err
       }
 
+      guard?.()
       return data
     } catch (e: any) {
       if (e.name === "AbortError") {
@@ -596,6 +601,27 @@ class ApiClient {
   async getLocationHistory(date?: string, signal?: AbortSignal) {
     const qs = date ? `?date=${encodeURIComponent(date)}` : ""
     return this.request(`/mobile/location${qs}`, { signal })
+  }
+
+  // Attendance uses the existing authenticated transport and its own narrow API.
+  getAttendanceRequests(cursor: string | undefined, guard: () => void) {
+    return this.request(`/mobile/attendance/requests${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`, {}, 20_000, 1, guard)
+  }
+  getAttendanceQuota(month: string, guard: () => void) {
+    return this.request(`/mobile/attendance/request-limits?month=${encodeURIComponent(month)}`, {}, 20_000, 1, guard)
+  }
+  submitAttendanceRequest(input: import("./attendance-contract").AttendanceInput, guard: () => void) {
+    return this.request("/mobile/attendance/requests", { method: "POST", body: JSON.stringify(input) }, 20_000, 1, guard)
+  }
+  cancelAttendanceRequest(id: string, guard: () => void) {
+    return this.request(`/mobile/attendance/requests/${encodeURIComponent(id)}`, { method: "DELETE" }, 20_000, 1, guard)
+  }
+  uploadAttendanceDocument(clientRequestId: string, clientAttachmentId: string, path: string, guard: () => void) {
+    const body = new FormData()
+    body.append("clientRequestId", clientRequestId)
+    body.append("clientAttachmentId", clientAttachmentId)
+    body.append("file", { uri: `file://${path.replace(/^file:\/\//, "")}`, type: "image/jpeg", name: "document.jpg" } as unknown as Blob)
+    return this.request("/mobile/attendance/attachments", { method: "POST", body }, 60_000, 1, guard)
   }
 
   async syncPush(operations: Array<{
