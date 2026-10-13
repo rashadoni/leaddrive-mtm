@@ -9,7 +9,7 @@ import { useAuthStore } from '../../src/store/auth'
 import { useBootstrapStore } from '../../src/store/bootstrap'
 import { officeAgent, officeBootstrap } from '../../test-support/office-attendance'
 import { setOfflineScope } from '../../src/services/offline-scope'
-import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, queueAttendanceConsent } from '../../src/services/outbox'
+import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, queueAttendanceConsent, releaseAttendancePrivacyBlock, attendancePrivacyEpoch } from '../../src/services/outbox'
 import { captureAttendanceMark, beginAttendanceConsent, changeAttendanceConsent, sendAttendanceConsent, pendingAttendanceConsent, pushAttendanceLocationOperations, attendanceLocationAvailable, readAttendanceLocation } from '../../src/services/attendance-location'
 import { parseOwnAttendanceLocation, type OwnAttendanceLocation } from '../../src/services/attendance-location-contract'
 import { readAttendanceLocationFix } from '../../src/services/attendance-location-fix'
@@ -21,7 +21,7 @@ const accepted: OwnAttendanceLocation = { policy: { id: 'policy-one', version: 1
 let data = officeBootstrap()
 beforeEach(async () => {
   jest.clearAllMocks(); jest.useFakeTimers().setSystemTime(new Date(timestamp)); await AsyncStorage.clear()
-  setOfflineScope(officeAgent.organizationId, officeAgent.id); data = officeBootstrap(); data.policies.attendanceMarkVersion = 1; data.policies.agentPermissions!.attendanceLocation = true
+  setOfflineScope(officeAgent.organizationId, officeAgent.id); releaseAttendancePrivacyBlock(scope, attendancePrivacyEpoch(scope)); data = officeBootstrap(); data.policies.attendanceMarkVersion = 1; data.policies.agentPermissions!.attendanceLocation = true
   ;(useAuthStore.getState as jest.Mock).mockReturnValue({ isLoggedIn: true, agent: officeAgent })
   ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ data, routeFieldAccess: 'unavailable' }))
   ;(api.getAttendanceLocationConsent as jest.Mock).mockResolvedValue({ success: true, data: accepted })
@@ -88,7 +88,7 @@ it('withdraws in one durable queue write, preserves other accounts and binds unk
   await sendAttendanceConsent(scope, (await pendingAttendanceConsent(scope))!)
   expect((api.setAttendanceLocationConsent as jest.Mock).mock.calls[1][0]).toEqual(input)
   await pushAttendanceLocationOperations([original]) // stale in-memory original must not leak
-  expect((api.syncPush as jest.Mock).mock.calls.at(-1)[0][0].data).toEqual(marked.data)
+  expect((api.syncPush as jest.Mock).mock.calls.at(-1)![0][0].data).toEqual(marked.data)
   setOfflineScope('other-org','other-agent'); expect(await allOutboxOperations()).toEqual([foreign])
 })
 it('withdrawal during capture discards the fix and keeps future persisted workdays redacted', async () => {
@@ -117,4 +117,16 @@ it('does not expose or accept a response after switching accounts', async () => 
   ;(api.getAttendanceLocationConsent as jest.Mock).mockImplementation(async () => { setOfflineScope('other','other'); return {success:true,data:accepted} })
   await expect(readAttendanceLocation(scope)).rejects.toThrow('ATTENDANCE_SCOPE_CHANGED')
   expect(readAttendanceLocationFix).not.toHaveBeenCalled()
+})
+it('blocks later capture/transmit even if the first withdrawal storage write fails', async () => {
+  // Explicitly confirmed consent opens this process after previous withdrawals.
+  const acceptedItem = await beginAttendanceConsent(scope, accepted, true); await sendAttendanceConsent(scope, acceptedItem)
+  await useWorkdayStore.getState().start(scope); const original = await allOutboxOperations()
+  ;(AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error('storage unavailable'))
+  await expect(beginAttendanceConsent(scope, accepted, false)).rejects.toThrow('storage unavailable')
+  ;(readAttendanceLocationFix as jest.Mock).mockClear()
+  expect((await captureAttendanceMark(scope, timestamp, false))?.locationState).toBe('NO_CONSENT')
+  expect(readAttendanceLocationFix).not.toHaveBeenCalled()
+  await pushAttendanceLocationOperations(original)
+  expect((api.syncPush as jest.Mock).mock.calls.at(-1)![0][0].data.attendanceMark.location).toBeNull()
 })

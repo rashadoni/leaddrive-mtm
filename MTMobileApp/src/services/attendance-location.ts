@@ -7,7 +7,7 @@ import { hasRouteFieldAccess } from './bootstrap'
 import { getFieldDeviceId } from './field-device-id'
 import { attendanceUuid } from './attendance-contract'
 import { parseOwnAttendanceLocation, parseAttendanceConsent, type OwnAttendanceLocation, type AttendanceConsentInput, type AttendanceMark } from './attendance-location-contract'
-import { attendancePrivacyOperations, queueAttendanceConsent, attendancePrivacyEpoch, prepareAttendanceMarks, acknowledgeOutboxOperation, markOutboxConflict, type OutboxOperation, type OutboxPushResult } from './outbox'
+import { attendancePrivacyOperations, queueAttendanceConsent, attendancePrivacyEpoch, attendancePrivacyBlocked, releaseAttendancePrivacyBlock, prepareAttendanceMarks, acknowledgeOutboxOperation, markOutboxConflict, type OutboxOperation, type OutboxPushResult } from './outbox'
 
 export function attendanceMarkAvailable(): boolean {
   const auth = useAuthStore.getState(), { data, routeFieldAccess } = useBootstrapStore.getState(), m = data?.manifest
@@ -54,12 +54,14 @@ export async function sendAttendanceConsent(scope: string, item: OutboxOperation
   const guard = () => guardAttendanceLocation(scope)
   guard()
   if (item.scopeKey !== scope || item.entity !== 'attendanceConsents' || item.status !== 'pending') throw new Error('ATTENDANCE_CONSENT_CHANGED')
+  const epoch = attendancePrivacyEpoch(scope)
   try {
     const response = await api.setAttendanceLocationConsent(item.data as AttendanceConsentInput, guard); guard()
     if (response?.success !== true) throw new Error('ATTENDANCE_LOCATION_INVALID')
     const receipt = parseAttendanceConsent(response.data?.consent)
     if (receipt.policyRevisionId !== item.data.policyRevisionId || receipt.accepted !== item.data.accepted) throw new Error('ATTENDANCE_LOCATION_INVALID')
     await acknowledgeOutboxOperation(item.operationId); guard()
+    if (item.data.accepted === true) releaseAttendancePrivacyBlock(scope, epoch)
   } catch (error) {
     guard()
     // A definite invalid/stale request can be replaced only after a fresh read.
@@ -91,7 +93,7 @@ export async function captureAttendanceMark(scope: string, occurredAt: string, p
   const epoch = attendancePrivacyEpoch(scope)
   let own: OwnAttendanceLocation
   try {
-    if (await pendingAttendanceConsent(scope)) return empty
+    if (attendancePrivacyBlocked(scope) || await pendingAttendanceConsent(scope)) return empty
     own = await readAttendanceLocation(scope)
   } catch { guardAccount(scope); return empty }
   if (epoch !== attendancePrivacyEpoch(scope) || !own.maySendLocation || !own.consent) return empty
@@ -133,7 +135,7 @@ export async function pushAttendanceLocationOperations(operations: OutboxOperati
   let consentId: string | null = null
   const epoch = attendancePrivacyEpoch(scope)
   try {
-    if (attendanceLocationAvailable() && !(await pendingAttendanceConsent(scope))) {
+    if (attendanceLocationAvailable() && !attendancePrivacyBlocked(scope) && !(await pendingAttendanceConsent(scope))) {
       const own = await readAttendanceLocation(scope)
       if (own.maySendLocation) consentId = own.consent!.id
     }

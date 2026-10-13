@@ -321,8 +321,16 @@ export async function attendancePrivacyOperations(scope: string) {
 // Consent withdrawals and their coordinate removal share ONE durable write.
 // A capture/transport already in progress observes the synchronous epoch fence.
 const attendancePrivacyEpochs = new Map<string, number>()
+const attendancePrivacyBlockedScopes = new Set<string>()
+export const attendancePrivacyBlocked = (scope: string) => attendancePrivacyBlockedScopes.has(scope)
+export function releaseAttendancePrivacyBlock(scope: string, epoch: number) {
+  if (attendancePrivacyEpoch(scope) === epoch) attendancePrivacyBlockedScopes.delete(scope)
+}
 export const attendancePrivacyEpoch = (scope: string) => attendancePrivacyEpochs.get(scope) ?? 0
 export async function queueAttendanceConsent(scope: string, input: import('./attendance-location-contract').AttendanceConsentInput) {
+  // Even an unsuccessful disk write must stop this running process from
+  // sending a previously captured fix. No success is claimed until persisted.
+  attendancePrivacyBlockedScopes.add(scope)
   attendancePrivacyEpochs.set(scope, attendancePrivacyEpoch(scope) + 1)
   return serializeMutation(async () => {
     if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
@@ -348,7 +356,7 @@ export async function prepareAttendanceMarks(scope: string, operationIds: string
     if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
     const items = await readAttendancePrivacyQueue()
     if (requireOfflineScope() !== scope) throw new Error('ATTENDANCE_SCOPE_CHANGED')
-    const blocked = items.some(item => item.scopeKey === scope && item.entity === 'attendanceConsents')
+    const blocked = attendancePrivacyBlocked(scope) || items.some(item => item.scopeKey === scope && item.entity === 'attendanceConsents')
     const { redactAttendanceMarkData } = await import('./attendance-location-contract')
     let changed = false
     const next = items.map(item => {
