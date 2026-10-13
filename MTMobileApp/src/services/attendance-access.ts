@@ -10,10 +10,13 @@ const OFFICE_ROLES = new Set(["EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])
 export function hasOfficeAttendanceAccess(data: BootstrapData | null | undefined, agent: AttendancePrincipal): boolean {
   const manifest = data?.manifest
   return !!agent && OFFICE_ROLES.has(agent.role) && !!manifest
-    && manifest.modules.routeField.enabled === true
     && manifest.tenant.id === agent.organizationId && data?.tenant?.id === agent.organizationId
     && manifest.principal.id === agent.id && data?.principal?.id === agent.id
     && manifest.principal.role === agent.role && data?.principal?.role === agent.role
+    // The manifest's routeField flag is scoped to field execution. An office
+    // EMPLOYEE correctly has it disabled and no field streams. Its separate
+    // own-attendance grant and supported mark protocol admit only these screens.
+    && data.policies.attendanceMarkVersion === 1
     && data.policies.agentPermissions?.attendanceWorkday === true
 }
 export function mayUseOwnAttendanceRequests(data: BootstrapData | null | undefined, agent: AttendancePrincipal, fieldAccess: RouteFieldAccess): boolean {

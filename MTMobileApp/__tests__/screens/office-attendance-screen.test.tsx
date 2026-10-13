@@ -76,6 +76,8 @@ beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resour
 beforeEach(() => { jest.clearAllMocks(); mockQr.available = false; mockInstallation.blocked = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
 afterEach(async () => { await act(async () => { roots.splice(0).forEach(root => root.unmount()) }); await settle() })
 it.each(["ru","az","en"])("renders actual %s office day and sends the canonical start action", async language => {
+  expect(mockBootstrap.data.manifest?.modules.routeField.enabled).toBe(false)
+  expect(mockBootstrap.data.manifest?.streams).toEqual([])
   const tree = await render(AttendanceWorkdayScreen,language), copy = {ru,az,en}[language as "ru"|"az"|"en"].officeAttendance
   expect(text(tree)).toContain(copy.workday); expect(text(tree)).toContain(copy.noTracking); expect(text(tree)).not.toContain("officeAttendance.")
   capture(tree, `workday-${language}`)
