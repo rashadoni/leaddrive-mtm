@@ -10,7 +10,9 @@ import { useBootstrapStore } from '../../src/store/bootstrap'
 import { officeAgent, officeBootstrap } from '../../test-support/office-attendance'
 import { setOfflineScope } from '../../src/services/offline-scope'
 import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, queueAttendanceConsent, releaseAttendancePrivacyBlock, attendancePrivacyEpoch, markOutboxConflict } from '../../src/services/outbox'
-import { captureAttendanceMark, beginAttendanceConsent, changeAttendanceConsent, sendAttendanceConsent, pendingAttendanceConsent, pushAttendanceLocationOperations, attendanceLocationAvailable, readAttendanceLocation } from '../../src/services/attendance-location'
+import { captureAttendanceMark, beginAttendanceConsent, changeAttendanceConsent, sendAttendanceConsent, pendingAttendanceConsent, pushAttendanceLocationOperations, attendanceMarkAvailable, attendanceLocationAvailable, readAttendanceLocation } from '../../src/services/attendance-location'
+import { attendanceInstallationAvailable } from '../../src/services/attendance-installation'
+import { attendanceQrAvailable } from '../../src/services/attendance-qr'
 import { parseOwnAttendanceLocation, type OwnAttendanceLocation } from '../../src/services/attendance-location-contract'
 import { readAttendanceLocationFix } from '../../src/services/attendance-location-fix'
 import { useWorkdayStore } from '../../src/store/workday'
@@ -33,10 +35,41 @@ beforeEach(async () => {
 })
 afterEach(() => jest.useRealTimers())
 it('is strict about current principal, role, entitlement and protocol without changing field access', () => {
-  expect(attendanceLocationAvailable()).toBe(true); expect(data.routeFieldAccess).toBe('unavailable')
+  expect(attendanceLocationAvailable()).toBe(true); expect(data.routeFieldAccess).toBe('disabled')
   data.policies.attendanceMarkVersion = undefined; expect(attendanceLocationAvailable()).toBe(false)
   data.policies.attendanceMarkVersion = 1; data.manifest!.principal.id = 'other'; expect(attendanceLocationAvailable()).toBe(false)
   data.manifest!.principal.id = officeAgent.id; data.policies.agentPermissions!.attendanceLocation = false; expect(attendanceLocationAvailable()).toBe(false)
+})
+it('admits office marks without field execution and keeps location, installation and QR separately granted', () => {
+  expect(data.manifest!.modules.routeField.enabled).toBe(false)
+  expect(data.manifest!.streams).toEqual([])
+  expect(data.capabilities).toEqual([])
+  expect(attendanceMarkAvailable()).toBe(true)
+  data.policies.agentPermissions!.attendanceLocation = false
+  expect(attendanceLocationAvailable()).toBe(false)
+  expect(attendanceInstallationAvailable()).toBe(false)
+  expect(attendanceQrAvailable()).toBe(false)
+  data.policies.agentPermissions!.attendanceInstallation = true
+  data.policies.attendanceBranchQrVersion = 1
+  data.policies.agentPermissions!.attendanceBranchQr = true
+  expect(attendanceInstallationAvailable()).toBe(true)
+  expect(attendanceQrAvailable()).toBe(true)
+  data.policies.agentPermissions!.attendanceWorkday = false
+  expect(attendanceMarkAvailable()).toBe(false)
+  expect(attendanceInstallationAvailable()).toBe(false)
+  expect(attendanceQrAvailable()).toBe(false)
+})
+it('retains both field admission gates for an AGENT even when its attendance grant is present', () => {
+  const fieldAgent = { ...officeAgent, role: 'AGENT' }
+  data = officeBootstrap('AGENT')
+  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ isLoggedIn: true, agent: fieldAgent })
+  ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ data, routeFieldAccess: 'enabled' }))
+  expect(attendanceMarkAvailable()).toBe(true)
+  data.manifest!.modules.routeField.enabled = false
+  expect(attendanceMarkAvailable()).toBe(false)
+  data.manifest!.modules.routeField.enabled = true
+  ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ data, routeFieldAccess: 'offline' }))
+  expect(attendanceMarkAvailable()).toBe(false)
 })
 it.each([null, { ...accepted.policy!, enabled: false }])('keeps collection off without an enabled reviewed policy', async policy => {
   ;(api.getAttendanceLocationConsent as jest.Mock).mockResolvedValue({ success: true, data: { policy, consent: null, maySendLocation: false } })
