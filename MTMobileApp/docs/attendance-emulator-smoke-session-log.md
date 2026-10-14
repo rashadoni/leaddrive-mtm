@@ -61,3 +61,11 @@ reviewed-main checks. Preserve the produced mode-labelled sanitized report.
 - Resource preflight: about 14.3 GiB available RAM, 232 GiB disk free, zero
   current memory pressure. Full RN/TypeScript/build/emulator gates remain
   **NOT RUN locally**. Source is ready for coordinator review; nothing pushed.
+
+## 2026-10-14 — coordinator review
+
+- Coordinator accepted the scoped design and requested cancellation of obsolete
+  PR contract runs. Added a per-branch concurrency group with
+  `cancel-in-progress: true` to the small contract workflow; no other behavior
+  changed. YAML parse and whitespace check **PASS**. Initial checkpoint
+  `7f2d2ff3e927579f341def06ff46edb5c5698256` also passed the mandatory gitleaks hook.

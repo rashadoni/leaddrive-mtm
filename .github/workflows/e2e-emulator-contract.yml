@@ -6,6 +6,9 @@ on:
       - "scripts/e2e/**"
 permissions:
   contents: read
+concurrency:
+  group: emulator-smoke-contract-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   contract:
     runs-on: ubuntu-24.04
