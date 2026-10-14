@@ -1098,6 +1098,14 @@
       "TIME_CORRECTION": "Başlanğıc / bitmə düzəlişi"
     }
   },
+  "attendanceNotice": {
+    "approved": "Uçot dəyişikliyi təsdiqləndi",
+    "rejected": "Müraciət rədd edildi",
+    "cancelled": "Təsdiqlənmiş məzuniyyət ləğv edildi",
+    "startReminder": "İş gününüz başlayıb — gəlişinizi qeyd edin",
+    "finishReminder": "Qrafik üzrə iş gününüz bitib — gedişinizi qeyd edin",
+    "reminderBody": "Tətbiqi açıb davamiyyət qeydlərinizi yoxlayın. Xatırlatma iş vaxtınızı dəyişmir."
+  },
   "officeAttendance": {
     "returnHint": "Bugünkü iş gününə qayıda bilərsiniz. Bitirdikdən sonrakı vaxt fasilə sayılacaq.",
     "returnToWork": "İşə qayıt",
