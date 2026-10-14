@@ -22,6 +22,7 @@ import { useSyncStatusStore } from "../store/sync-status"
 import { forgetTrackingResume, setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
 import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
+import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { dropIdleConnections } from "../services/connection-health"
@@ -58,6 +59,8 @@ function AppContent() {
   // tearing down an already-running foreground service on every AppState
   // transition.
   const [foregroundEpoch, setForegroundEpoch] = useState(0)
+
+  useEffect(() => startForegroundSyncRetry(), [])
 
   const refreshAdmissionAndSync = useCallback(() => useAuthStore.getState().agent?.role === "AGENT" ? refreshRouteFieldSession() : refreshAttendanceSession(), [])
 

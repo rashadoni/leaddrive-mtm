@@ -33,6 +33,13 @@ export type OutboxPushResult = {
 }
 
 let storageQueue: Promise<void> = Promise.resolve()
+// Metadata-only invalidation after durable persistence; subscribers never own
+// acknowledgements or retry policy and cannot make a successful write fail.
+const outboxListeners = new Set<() => void>()
+export function subscribeOutboxChanges(listener: () => void) {
+  outboxListeners.add(listener)
+  return () => { outboxListeners.delete(listener) }
+}
 
 function createOperationId() {
   return `mtm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -51,6 +58,7 @@ async function read(): Promise<OutboxOperation[]> {
 
 async function write(items: OutboxOperation[]) {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+  for (const listener of outboxListeners) { try { listener() } catch {} }
 }
 
 function serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
