@@ -99,7 +99,8 @@ export function startForegroundSyncRetry(): () => void {
         void refresh(() => guard(principal)).catch(error => {
           // A lifecycle cancellation before sending can be reconsidered when
           // the same principal returns. Failed admission/unchanged backoff is
-          // deliberately consumed until an operation or deadline changes.
+          // deliberately consumed until an operation/deadline changes or
+          // admission has a confirmed refused-to-admitted recovery.
           if (error instanceof Error && error.message === CANCELLED) {
             for (const token of claimed) attempted.delete(token)
           }
