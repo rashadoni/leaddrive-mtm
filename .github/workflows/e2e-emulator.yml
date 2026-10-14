@@ -14,8 +14,18 @@ name: E2E on emulator
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: Full client flow, or manual auth/tabs/profile/logout in the empty owned attendance fixture.
+        type: choice
+        options: [full, attendance_fixture]
+        default: full
+        required: true
       release_tag:
-        description: Release to test, e.g. v3.3.0-build382. Empty = newest build of main.
+        description: Published release tag. Required in attendance_fixture; full may use newest main build.
+        type: string
+        required: false
+      expected_main_sha:
+        description: Exact reviewed current main SHA; required only in attendance_fixture.
         type: string
         required: false
   workflow_run:
@@ -32,7 +42,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: e2e-emulator-${{ github.ref }}
+  group: e2e-emulator-${{ github.ref }}-${{ inputs.mode || 'full' }}
   cancel-in-progress: true
 
 jobs:
@@ -41,16 +51,28 @@ jobs:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    env:
+      E2E_SMOKE_MODE: ${{ inputs.mode || 'full' }}
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Verify manual fixture scope and reviewed main
+        run: |
+          set -euo pipefail
+          if [ "$E2E_SMOKE_MODE" = attendance_fixture ]; then
+            git fetch origin main
+          fi
+          python3 scripts/e2e/attendance_fixture_guard.py workflow
+
       - name: Pick the build and verify its checksum
         id: build
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_METADATA: ${{ runner.temp }}/e2e-release-metadata.json
         run: |
           set -euo pipefail
           tag="$RELEASE_TAG"
@@ -65,10 +87,20 @@ jobs:
             done
           fi
           test -n "$tag" || { echo "::error::no release built from main was found"; exit 1; }
+          if [ "$E2E_SMOKE_MODE" = attendance_fixture ]; then
+            gh release view "$tag" --json tagName,targetCommitish,body,isDraft > "$RELEASE_METADATA"
+            git fetch origin "refs/tags/$tag:refs/tags/$tag"
+            python3 scripts/e2e/attendance_fixture_guard.py release
+          fi
           mkdir apk
           gh release download "$tag" --dir apk --pattern '*.apk' --pattern '*.apk.sha256'
           (cd apk && sha256sum -c ./*.apk.sha256)
           apk=$(ls apk/*.apk)
+          if [ "$E2E_SMOKE_MODE" = attendance_fixture ]; then
+            # A single normal release asset; never interpolate an arbitrary
+            # release filename into the emulator action's shell script.
+            [[ "$apk" =~ ^apk/[a-zA-Z0-9._-]+\.apk$ ]] || exit 1
+          fi
           sha=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
           version=$(printf '%s' "$tag" | sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+)-build[0-9]+$/\1/')
           {
@@ -103,9 +135,13 @@ jobs:
           # A field account for what comes after sign-in. The script keeps
           # nothing it reads from the screen once these are in use: this
           # repository's logs and artifacts are public.
-          E2E_AGENT_COMPANY: ${{ secrets.E2E_COMPANY }}
-          E2E_AGENT_EMAIL: ${{ secrets.E2E_AGENT_EMAIL }}
-          E2E_AGENT_PASSWORD: ${{ secrets.E2E_AGENT_PASSWORD }}
+          E2E_AGENT_COMPANY: ${{ (inputs.mode == 'full' || inputs.mode == '') && secrets.E2E_COMPANY || '' }}
+          E2E_AGENT_EMAIL: ${{ (inputs.mode == 'full' || inputs.mode == '') && secrets.E2E_AGENT_EMAIL || '' }}
+          E2E_AGENT_PASSWORD: ${{ (inputs.mode == 'full' || inputs.mode == '') && secrets.E2E_AGENT_PASSWORD || '' }}
+          # No fallback to the ordinary account when a fixture secret is absent.
+          E2E_ATTENDANCE_COMPANY: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'attendance_fixture' && secrets.E2E_ATTENDANCE_COMPANY || '' }}
+          E2E_ATTENDANCE_EMAIL: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'attendance_fixture' && secrets.E2E_ATTENDANCE_EMAIL || '' }}
+          E2E_ATTENDANCE_PASSWORD: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'attendance_fixture' && secrets.E2E_ATTENDANCE_PASSWORD || '' }}
         with:
           api-level: 34
           target: google_apis
@@ -123,7 +159,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-emulator-${{ steps.build.outputs.tag || 'no-build' }}
+          name: e2e-emulator-${{ steps.build.outputs.tag || 'no-build' }}-${{ inputs.mode || 'full' }}
           path: e2e-out
           retention-days: 14
           if-no-files-found: warn

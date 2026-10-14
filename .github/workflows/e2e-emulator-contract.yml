@@ -1,0 +1,16 @@
+name: Emulator smoke contract
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/e2e-emulator*.yml"
+      - "scripts/e2e/**"
+permissions:
+  contents: read
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test routing, redaction and fixture flow without a device or secrets
+        run: python3 -m unittest discover -s scripts/e2e -p 'test_*.py' -v
