@@ -13,6 +13,11 @@ every tab, a client's card and the «propose a change» form, the profile, and
 signs out. It reads and never writes — no workday is started, nothing is
 submitted — because the account lives in a real company.
 
+The manual attendance_fixture mode uses only the separately owned fictional
+FIELD account. It has no clients: client-card/change-form coverage is NOT_RUN.
+Login/logout and background sync can write session/installation metadata;
+neither mode deliberately changes business records.
+
 THIS REPOSITORY IS PUBLIC, and so are its run logs, summaries and artifacts.
 From the moment the account's company is typed, nothing read from the screen is
 kept or printed: no screenshot, no UI dump, no device log. A failed check names
@@ -31,6 +36,10 @@ Usage: emulator_signin.py <apk>
   E2E_AGENT_COMPANY, E2E_AGENT_EMAIL, E2E_AGENT_PASSWORD
                         a field account, from secrets; without all three the
                         walk stops at the sign-in form
+  E2E_SMOKE_MODE        full (default) or attendance_fixture (manual only)
+  E2E_ATTENDANCE_COMPANY, E2E_ATTENDANCE_EMAIL, E2E_ATTENDANCE_PASSWORD
+                        separate owned FIELD fixture credentials; required in
+                        fixture mode, with no fallback to the ordinary account
 """
 import functools
 import html
@@ -43,6 +52,7 @@ import sys
 import tempfile
 import time
 import zipfile
+from attendance_fixture_guard import account_settings, smoke_mode
 
 PKG = "com.mtmobileapp"
 OUT = os.environ.get("E2E_OUT", "e2e-out")
@@ -54,14 +64,13 @@ RESOURCES_FILE = "MTMobileApp/src/i18n/mobile-resources.ts"
 SCREENS_DIR = "MTMobileApp/src/screens"
 CLIENT_CARD = "MTMobileApp/src/screens/base/RouteContactDetailScreen.android.tsx"
 CHANGE_FORM = "MTMobileApp/src/screens/base/RouteContactChangeRequestScreen.android.tsx"
-AGENT_COMPANY = os.environ.get("E2E_AGENT_COMPANY", "")
-AGENT_EMAIL = os.environ.get("E2E_AGENT_EMAIL", "")
-AGENT_PASSWORD = os.environ.get("E2E_AGENT_PASSWORD", "")
+SMOKE_MODE = smoke_mode(os.environ)
+AGENT_COMPANY, AGENT_EMAIL, AGENT_PASSWORD = account_settings(os.environ)
 SECRETS = [value for value in (AGENT_PASSWORD, AGENT_EMAIL, AGENT_COMPANY) if value]
 private = False  # True from the moment the account's company is typed: see the note on top
 
 APP_LABEL = "LeadDrive"
-results = []  # (ok, what, detail)
+results = []  # (ok: True/PASS, False/FAIL, None/NOT_RUN, what, detail)
 not_responding = []  # titles of the system's «isn't responding» dialogs that were dismissed
 asked_by_system = []  # packages of Android's own prompts that were declined: the walk only reads
 
@@ -256,7 +265,7 @@ def unpack_handset_code(apk, device_abis):
 def record(ok, what, detail=""):
     what, detail = redact(what), redact(detail)
     results.append((ok, what, detail))
-    print(("PASS  " if ok else "FAIL  ") + what + (f" — {detail}" if detail else ""), flush=True)
+    print(("NOT_RUN  " if ok is None else "PASS  " if ok else "FAIL  ") + what + (f" — {detail}" if detail else ""), flush=True)
 
 
 def wait_for(what, check, timeout, name):
@@ -496,7 +505,10 @@ def signed_in_walk(server, sign_in):
         if crashed:
             return
 
-    if clients == tabs["clients"]:
+    if SMOKE_MODE == "attendance_fixture":
+        record(None, "Client card and proposed change flow", "NOT_RUN: the owned attendance fixture deliberately has no clients; full mode remains required for this flow")
+        record(None, "Attendance marks and employee requests", "NOT_RUN: this smoke performs no workday or request writes; physical-device acceptance is separate")
+    elif clients == tabs["clients"]:
         client_card_walk(clients, list(tabs.values()))
         if crash_line():
             return
@@ -549,17 +561,20 @@ def finish():
            (f"{len(ours)} time(s)" if ours else "no ANR of the app in the log") + (f"; the emulator's own: {', '.join(others)}" if others else ""))
     record(bool(alive) and bool(focus) and PKG in focus.group(0), "The app is still running in the foreground", (focus.group(0) if focus else "no focused window")[:120])
 
-    failed = [row for row in results if not row[0]]
+    failed = [row for row in results if row[0] is False]
+    passed = sum(row[0] is True for row in results)
+    not_run = sum(row[0] is None for row in results)
     lines = ["| | Check | Measured |", "|---|---|---|"]
-    lines += [f"| {'✅' if ok else '❌'} | {what} | {detail.replace('|', '/')} |" for ok, what, detail in results]
+    lines += [f"| {'NOT_RUN' if ok is None else '✅' if ok else '❌'} | {what} | {detail.replace('|', '/')} |" for ok, what, detail in results]
     report = "\n".join(lines) + "\n"
+    totals = f"{passed} of {passed + len(failed)} checks passed" + (f"; {not_run} NOT_RUN" if not_run else "")
     with open(f"{OUT}/report.md", "w", encoding="utf-8") as file:
         file.write(report)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as file:
-            file.write(f"### {len(results) - len(failed)} of {len(results)} checks passed\n\n{report}")
-    print(f"\n{len(results) - len(failed)} of {len(results)} checks passed", flush=True)
+            file.write(f"### {totals}\n\n{report}")
+    print(f"\n{totals}", flush=True)
     return 1 if failed else 0
 
 
