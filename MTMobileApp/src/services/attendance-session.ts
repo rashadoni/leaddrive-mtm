@@ -6,22 +6,30 @@ import { guardOfficeAttendance, officeAttendanceScope } from "./attendance-sessi
 import { runMobileSync } from "./sync-engine"
 
 /** Both shells share the durable workday; only the office lane is selected here. */
-export async function refreshAttendanceSession(): Promise<boolean> {
+export async function refreshAttendanceSession(continueSession?: () => void): Promise<boolean> {
+  continueSession?.()
   const auth = useAuthStore.getState()
   const scope = offlineScopeKey(auth.agent?.organizationId, auth.agent?.id)
   if (!auth.isLoggedIn || !scope || getOfflineScope() !== scope) return false
   const current = () => getOfflineScope() === scope && useAuthStore.getState().agent?.role === auth.agent?.role
   await useWorkdayStore.getState().hydrate()
+  continueSession?.()
   if (!current()) return false
   await useBootstrapStore.getState().fetchBootstrap()
+  continueSession?.()
   if (!current()) return false
   try { guardOfficeAttendance(scope) } catch { return false }
-  const reconcile = () => useWorkdayStore.getState().reconcileFromServer(scope, useBootstrapStore.getState().data?.workday)
+  const reconcile = () => continueSession
+    ? useWorkdayStore.getState().reconcileFromServer(scope, useBootstrapStore.getState().data?.workday, continueSession)
+    : useWorkdayStore.getState().reconcileFromServer(scope, useBootstrapStore.getState().data?.workday)
   await reconcile()
+  continueSession?.()
   guardOfficeAttendance(scope)
   await runMobileSync()
+  continueSession?.()
   if (!current()) return false
   await useBootstrapStore.getState().fetchBootstrap()
+  continueSession?.()
   if (!current()) return false
   try { guardOfficeAttendance(scope) } catch { return false }
   await reconcile()

@@ -11,19 +11,23 @@ import { runMobileSync, withdrawRouteFieldV2ShadowState } from "./sync-engine"
  * after a sync attempt. This keeps a pending START from unlocking either route
  * execution or GPS, while retaining that outbox operation for retry.
  */
-export async function refreshRouteFieldSession(): Promise<RouteFieldAccess> {
+export async function refreshRouteFieldSession(continueSession?: () => void): Promise<RouteFieldAccess> {
+  continueSession?.()
   const auth = useAuthStore.getState()
   if (!auth.isLoggedIn || !auth.agent) return "unavailable"
 
   const key = workdayKey(auth.agent.organizationId, auth.agent.id)
   await useWorkdayStore.getState().hydrate()
+  continueSession?.()
 
   const reconcile = async () => {
     const bootstrap = useBootstrapStore.getState().data
-    await useWorkdayStore.getState().reconcileFromServer(key, bootstrap?.workday)
+    if (continueSession) await useWorkdayStore.getState().reconcileFromServer(key, bootstrap?.workday, continueSession)
+    else await useWorkdayStore.getState().reconcileFromServer(key, bootstrap?.workday)
   }
 
   let access = await useBootstrapStore.getState().fetchBootstrap()
+  continueSession?.()
   if (!hasRouteFieldAccess(access)) {
     const bootstrap = useBootstrapStore.getState().data
     if (isConfirmedRouteFieldWithdrawal(bootstrap, access)) {
@@ -41,11 +45,14 @@ export async function refreshRouteFieldSession(): Promise<RouteFieldAccess> {
   // Adopt a server-started session (another device / restored install) before
   // draining the local queue. No mutable authority changes hands here.
   await reconcile()
+  continueSession?.()
   await runMobileSync()
+  continueSession?.()
 
   // A queued START/FINISH is not confirmed by a successful HTTP push alone:
   // read bootstrap again so UI and GPS use the canonical post-transaction row.
   access = await useBootstrapStore.getState().fetchBootstrap()
+  continueSession?.()
   if (hasRouteFieldAccess(access)) {
     await reconcile()
     return access
