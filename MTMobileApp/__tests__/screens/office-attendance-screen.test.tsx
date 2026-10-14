@@ -110,6 +110,41 @@ it.each([401,403,404])("clears private inbox content and controls after %s", asy
   const tree = await render(AttendanceInboxScreen); (readAttendanceInbox as jest.Mock).mockRejectedValueOnce({status}); await press(tree,"office-inbox-refresh")
   expect(text(tree)).not.toContain(notice.body); expect(node(tree,"office-inbox-unavailable")).toBeDefined()
 })
+it("changes already loaded attendance titles with the selected app language without reading or writing again", async () => {
+  const localized = { ...notice, title: "Заявка одобрена", titleKey: "attendanceNotice.approved" }
+  ;(readAttendanceInbox as jest.Mock).mockResolvedValue([localized, { ...notice, id: "legacy", title: "Legacy human message" }])
+  const tree = await render(AttendanceInboxScreen, "az")
+  expect(text(tree)).toContain(az.attendanceNotice.approved)
+  expect(text(tree)).not.toContain(localized.title)
+  const reads = (readAttendanceInbox as jest.Mock).mock.calls.length
+  for (const language of ["ru", "en", "az"] as const) {
+    await act(async () => { await locale.changeLanguage(language) })
+    expect(text(tree)).toContain({ ru, en, az }[language].attendanceNotice.approved)
+    expect(text(tree)).toContain("Legacy human message")
+    expect(text(tree)).toContain(notice.body)
+    expect(text(tree)).not.toContain(localized.title)
+    expect(readAttendanceInbox).toHaveBeenCalledTimes(reads)
+    expect(markAttendanceInboxRead).not.toHaveBeenCalled()
+  }
+  ;(readAttendanceInbox as jest.Mock).mockResolvedValue([{ ...localized, isRead: true }])
+  await press(tree, "office-read-notice-1")
+  expect(markAttendanceInboxRead).toHaveBeenCalledWith("org-fixture:office-fixture", "notice-1")
+  expect(text(tree)).toContain(az.attendanceNotice.approved)
+  expect(node(tree, "office-read-notice-1")).toBeUndefined()
+})
+it.each(["az", "ru", "en"] as const)("renders known reminder copy in %s and retains unkeyed body text", async language => {
+  ;(readAttendanceInbox as jest.Mock).mockResolvedValue([
+    { ...notice, title: "Stored reminder title", body: "Stored static reminder body", titleKey: "attendanceNotice.startReminder", bodyKey: "attendanceNotice.reminderBody" },
+    { ...notice, id: "rejected", title: "Stored rejected title", titleKey: "attendanceNotice.rejected" },
+    { ...notice, id: "cancelled", title: "Stored cancelled title", titleKey: "attendanceNotice.cancelled" },
+  ])
+  const tree = await render(AttendanceInboxScreen, language), copy = { az, ru, en }[language].attendanceNotice
+  expect(text(tree)).toContain(copy.startReminder); expect(text(tree)).toContain(copy.reminderBody)
+  expect(text(tree)).toContain(copy.rejected); expect(text(tree)).toContain(copy.cancelled)
+  expect(text(tree)).toContain(notice.body)
+  expect(text(tree)).not.toContain("Stored reminder"); expect(text(tree)).not.toContain("Stored static")
+  expect(text(tree)).not.toContain("attendanceNotice.")
+})
 it("a reply after inbox unmount never starts a new mutation", async () => {
   let resolve!: (value: unknown) => void; (markAttendanceInboxRead as jest.Mock).mockImplementationOnce(() => new Promise(done => { resolve = done }))
   const tree = await render(AttendanceInboxScreen); await press(tree,"office-read-notice-1"); await act(async () => tree.unmount()); await act(async () => resolve(undefined)); expect(markAttendanceInboxRead).toHaveBeenCalledTimes(1)

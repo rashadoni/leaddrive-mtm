@@ -19,6 +19,11 @@ it("projects only display fields from the own notification endpoint", async () =
   expect(await readAttendanceInbox(scope)).toEqual([item])
   expect(api.getOwnAttendanceNotifications).toHaveBeenCalledWith(expect.any(Function))
 })
+it("retains stored text and derives only safe presentation keys for existing notices", async () => {
+  const metadata = { domain: "route", attendanceRequestId: "00000000-0000-4000-8000-000000000001", status: "APPROVED", reason: "private", titleKey: "untrusted.key" }
+  ;(api.getOwnAttendanceNotifications as jest.Mock).mockResolvedValue({ success: true, data: { items: [{ ...item, title: "Заявка одобрена", metadata }] } })
+  expect(await readAttendanceInbox(scope)).toEqual([{ ...item, title: "Заявка одобрена", titleKey: "attendanceNotice.approved" }])
+})
 it("refuses an old account's response and a withdrawn admission before sending", async () => {
   ;(api.getOwnAttendanceNotifications as jest.Mock).mockImplementation(async () => { setOfflineScope("other", "other"); return { success: true, data: { items: [item] } } })
   await expect(readAttendanceInbox(scope)).rejects.toThrow("ATTENDANCE_ACCESS_UNAVAILABLE")
@@ -31,6 +36,16 @@ it("marks exactly the selected own notice and rejects an unconfirmed write", asy
   await markAttendanceInboxRead(scope, item.id)
   expect(api.markOwnAttendanceNotifications).toHaveBeenCalledWith([item.id], expect.any(Function))
   await expect(markAttendanceInboxRead(scope, item.id)).rejects.toThrow("ATTENDANCE_INBOX_INVALID")
+})
+it("rejects a late localized response after admission is withdrawn", async () => {
+  ;(api.getOwnAttendanceNotifications as jest.Mock).mockImplementation(async () => {
+    const withdrawn = officeBootstrap(); withdrawn.policies.agentPermissions!.attendanceWorkday = false
+    ;(useBootstrapStore.getState as jest.Mock).mockReturnValue({ data: withdrawn })
+    return { success: true, data: { items: [{ ...item, metadata: { domain: "route", attendanceRequestId: "00000000-0000-4000-8000-000000000001", status: "APPROVED" } }] } }
+  })
+  await expect(readAttendanceInbox(scope)).rejects.toThrow("ATTENDANCE_ACCESS_UNAVAILABLE")
+  await expect(markAttendanceInboxRead(scope, item.id)).rejects.toThrow("ATTENDANCE_ACCESS_UNAVAILABLE")
+  expect(api.markOwnAttendanceNotifications).not.toHaveBeenCalled()
 })
 it("rejects a malformed or unbounded list instead of treating it as an empty inbox", async () => {
   for (const items of [[{ ...item, isRead: "false" }], Array.from({ length: 101 }, () => item)]) {

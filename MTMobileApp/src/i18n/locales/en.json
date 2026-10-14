@@ -1098,6 +1098,14 @@
       "TIME_CORRECTION": "Correct start / finish"
     }
   },
+  "attendanceNotice": {
+    "approved": "Attendance change approved",
+    "rejected": "Request rejected",
+    "cancelled": "Approved leave has been cancelled",
+    "startReminder": "Your scheduled workday has started — record your arrival",
+    "finishReminder": "Your scheduled workday has ended — record your departure",
+    "reminderBody": "Open the app and check your attendance marks. This reminder does not change your working time."
+  },
   "officeAttendance": {
     "returnHint": "You can return to today’s workday. The time since finishing will count as a break.",
     "returnToWork": "Return to work",

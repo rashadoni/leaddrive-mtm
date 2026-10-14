@@ -43,8 +43,8 @@ export default function AttendanceInboxScreen() {
         {error && <Text accessibilityRole="alert" style={styles.error}>{t("officeAttendance.inboxFailed")}</Text>}
         {!loading && !error && items.length === 0 && <Text style={styles.body}>{t("officeAttendance.inboxEmpty")}</Text>}
         {items.map(item => <View testID={`office-notice-${item.id}`} style={styles.card} key={item.id}>
-          {!item.isRead && <Text style={styles.action}>{t("officeAttendance.unread")}</Text>}<Text style={styles.name}>{item.title}</Text>
-          {item.body && <Text style={styles.body}>{item.body}</Text>}
+          {!item.isRead && <Text style={styles.action}>{t("officeAttendance.unread")}</Text>}<Text style={styles.name}>{item.titleKey ? t(item.titleKey) : item.title}</Text>
+          {item.body && <Text style={styles.body}>{item.bodyKey ? t(item.bodyKey) : item.body}</Text>}
           <Text style={styles.body}>{Number.isFinite(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleString(i18n.language, { timeZone: bootstrap?.timezone ?? "UTC" }) : "—"}</Text>
           {item.isRead ? <Text style={styles.body}>{t("officeAttendance.read")}</Text> : <Pressable testID={`office-read-${item.id}`} accessibilityRole="button" disabled={writing !== null} onPress={() => void markRead(item.id)} style={styles.button}><Text style={styles.action}>{t(writing === item.id ? "officeAttendance.saving" : "officeAttendance.markRead")}</Text></Pressable>}
         </View>)}
