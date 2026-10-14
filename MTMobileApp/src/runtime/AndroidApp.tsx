@@ -23,6 +23,7 @@ import { forgetTrackingResume, setTrackingWorkdayId, startTracking, stopTracking
 import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
 import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
+import { createForegroundLocationPermission } from "../services/foreground-location-permission"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { dropIdleConnections } from "../services/connection-health"
@@ -40,10 +41,38 @@ function netInfoOnline(state: { isConnected: boolean | null; isInternetReachable
 
 initSentry(`${ROUTE_FIELD_PROFILE.sentryProject}@${ROUTE_FIELD_PROFILE.apkVersion}`)
 
+function trackingPrincipalScope(): string | null {
+  const auth = useAuthStore.getState()
+  if (!auth.isLoggedIn || auth.agent?.role !== "AGENT" || !auth.agent.id || !auth.agent.organizationId) return null
+  return JSON.stringify([auth.serverDomain, auth.agent.organizationId, auth.agent.id])
+}
+
+// Module lifetime: a tracking effect cleanup or component remount must not
+// reopen the sheet for the same principal after Android returns a refusal.
+const foregroundLocationPermission = createForegroundLocationPermission({
+  check: async () => {
+    if (Platform.OS !== "android") return true
+    const [fine, coarse] = await Promise.all([
+      PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION),
+      PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION),
+    ])
+    return fine || coarse
+  },
+  request: async () => {
+    const result = await PermissionsAndroid.requestMultiple([
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+    ])
+    return result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED ||
+      result[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
+  },
+})
+
 function AppContent() {
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   const authLoading = useAuthStore((state) => state.isLoading)
   const agent = useAuthStore((state) => state.agent)
+  const serverDomain = useAuthStore((state) => state.serverDomain)
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
   const appStateRef = useRef<AppStateStatus>(AppState.currentState)
@@ -54,6 +83,8 @@ function AppContent() {
     ? activeWorkday.workdayId
     : null
   const mayTrack = isLoggedIn && agent?.role === "AGENT" && workdayHydrated && activeWorkdayId !== null
+  const trackingScope = isLoggedIn && agent?.role === "AGENT" && agent.id && agent.organizationId
+    ? JSON.stringify([serverDomain, agent.organizationId, agent.id]) : null
   // Bump only when Android has returned to the foreground. This retries a
   // deferred workday GPS start after a system permission screen without
   // tearing down an already-running foreground service on every AppState
@@ -121,27 +152,10 @@ function AppContent() {
     }
   }, [])
 
-  const requestForegroundLocation = useCallback(async (): Promise<boolean> => {
-    if (Platform.OS !== "android") return true
-    try {
-      const [fineGranted, coarseGranted] = await Promise.all([
-        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION),
-        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION),
-      ])
-      if (fineGranted || coarseGranted) return true
-      const result = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-      ])
-      return result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED ||
-        result[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
-    } catch {
-      return false
-    }
-  }, [])
-
   useEffect(() => {
     let cancelled = false
+    // Loading retained auth is not a logout and must not clear a denial.
+    if (!authLoading) foregroundLocationPermission.setScope(trackingScope)
 
     if (!mayTrack || !activeWorkdayId) {
       // Until the session and the workday are read, «not tracking» only means
@@ -166,7 +180,13 @@ function AppContent() {
       // Android 12+ rejects starting a foreground service from a background
       // state. A runtime-permission sheet can briefly make the app inactive,
       // so wait for the AppState listener below to retry after the return.
-      if (AppState.currentState !== "active") return
+      if (authLoading || AppState.currentState !== "active") return
+      const requestForegroundLocation = () => foregroundLocationPermission.ensure(() => {
+        const workday = useWorkdayStore.getState().activeWorkday
+        return !cancelled && !useAuthStore.getState().isLoading && AppState.currentState === "active" && trackingPrincipalScope() === trackingScope &&
+          workday?.key === currentWorkdayKey && workday.workdayId === activeWorkdayId &&
+          workday.syncState === "CONFIRMED" && !workday.paused
+      })
       if (!await requestForegroundLocation() || cancelled) return
       await requestTrackingNotification()
       if (AppState.currentState !== "active" || cancelled) return
@@ -178,7 +198,7 @@ function AppContent() {
         workday?.key === key && workday.syncState === "CONFIRMED" && !workday.paused
         ? workday.workdayId
         : null
-      if (!latestWorkdayId || cancelled) return
+      if (!latestWorkdayId || cancelled || trackingPrincipalScope() !== trackingScope) return
 
       setTrackingWorkdayId(latestWorkdayId)
       // No stop here when this run was cancelled meanwhile. A cancel means the
@@ -192,7 +212,7 @@ function AppContent() {
     return () => {
       cancelled = true
     }
-  }, [activeWorkdayId, authLoading, foregroundEpoch, mayTrack, requestForegroundLocation, requestTrackingNotification, workdayHydrated])
+  }, [activeWorkdayId, authLoading, currentWorkdayKey, foregroundEpoch, mayTrack, requestTrackingNotification, trackingScope, workdayHydrated])
 
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
