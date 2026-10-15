@@ -31,7 +31,9 @@ interface AuthState {
    * attempt via clearRevokedReason().
    */
   revokedReason: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (identifier: string, password: string) => Promise<void>
+  /** After a code from WhatsApp: set one's own password and sign in with it. */
+  loginWithCode: (setupToken: string, password: string) => Promise<void>
   logout: () => Promise<void>
   /**
    * Called by the api.ts unauthorized callback — flips the store to
@@ -45,6 +47,19 @@ interface AuthState {
   setServer: (domain: string, name: string) => void
 }
 
+/** What every way in does once the server says yes: the password form, or a code from WhatsApp. */
+function signedIn(result: any, set: (state: Partial<AuthState>) => void) {
+  if (!result?.success) throw new Error(result?.error || "Login failed")
+  setOfflineScope(result.data.agent?.organizationId, result.data.agent?.id)
+  useKpiStore.getState().setScope(
+    kpiScopeKey(result.data.agent?.organizationId, result.data.agent?.id),
+  )
+  set({ isLoggedIn: true, agent: result.data.agent })
+  // Tell the server where to deliver a push. Best effort on purpose: a
+  // phone without Play services still signs in and works.
+  void registerPushToken()
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   isLoggedIn: false,
   isLoading: true,
@@ -54,21 +69,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   agent: null,
   revokedReason: null,
 
-  login: async (email: string, password: string) => {
+  login: async (identifier: string, password: string) => {
     useKpiStore.getState().clearScope()
-    const result = await api.login(email, password)
-    if (result.success) {
-      setOfflineScope(result.data.agent?.organizationId, result.data.agent?.id)
-      useKpiStore.getState().setScope(
-        kpiScopeKey(result.data.agent?.organizationId, result.data.agent?.id),
-      )
-      set({ isLoggedIn: true, agent: result.data.agent })
-      // Tell the server where to deliver a push. Best effort on purpose: a
-      // phone without Play services still signs in and works.
-      void registerPushToken()
-    } else {
-      throw new Error(result.error || "Login failed")
-    }
+    signedIn(await api.login(identifier, password), set)
+  },
+
+  loginWithCode: async (setupToken: string, password: string) => {
+    useKpiStore.getState().clearScope()
+    signedIn(await api.setPasswordWithCode(setupToken, password), set)
   },
 
   logout: async () => {
