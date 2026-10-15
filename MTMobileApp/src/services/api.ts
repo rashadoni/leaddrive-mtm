@@ -504,36 +504,84 @@ class ApiClient {
 
   // --- Auth ---
 
-  async login(email: string, password: string) {
+  /** The company of the stored server, as the server's sign-in knows it. */
+  private async companySlug(): Promise<string | undefined> {
+    const storedServer = await AsyncStorage.getItem(STORAGE_KEY_SERVER)
+    return storedServer ? this.slugForDomain(storedServer) : undefined
+  }
+
+  async login(identifier: string, password: string) {
     // F-35: tenant-scope the lookup so an agent with a colliding email in
     // another org can't accidentally log into the wrong tenant. The slug
     // is derived from the stored server domain ("app" → "leaddrive",
     // "acme" → "acme", "fanum.tech" → "fanum"); when no clean
     // derivation is possible we omit the field and the server falls
     // through to the legacy path with a deprecation warning.
-    const storedServer = await AsyncStorage.getItem(STORAGE_KEY_SERVER)
-    const organizationSlug = storedServer ? this.slugForDomain(storedServer) : undefined
+    const organizationSlug = await this.companySlug()
+    // An employee whom HR added with a WhatsApp number and no email signs in
+    // with the number (owner, 2026-10-15); everyone else keeps the email.
+    const credential = identifier.includes("@") ? { email: identifier } : { phone: identifier }
     const data = await this.request("/mobile/auth", {
       method: "POST",
-      body: JSON.stringify({ email, password, ...(organizationSlug ? { organizationSlug } : {}) }),
+      body: JSON.stringify({ ...credential, password, ...(organizationSlug ? { organizationSlug } : {}) }),
     })
-
-    if (data.success && data.data.token) {
-      this.token = data.data.token
-      this.agentId = data.data.agent?.id || null
-      this._agentRole = data.data.agent?.role || null
-      this._agentName = data.data.agent?.name || null
-      this._agentCode = data.data.agent?.code || null
-      await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
-      await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
-      // M1-3: surface agent identity to Sentry so field crashes can be
-      // filtered per-rep and per-org. Org id isn't returned by login
-      // (it's bound on the server side via subdomain), so we attach
-      // only agentId here.
-      setAgentContext(this.agentId, data.data.agent?.organizationId ?? null)
-    }
-
+    if (data.success && data.data.token) await this.acceptSession(data)
     return data
+  }
+
+  // --- Sign-in by a code from WhatsApp (owner, 2026-10-15: «через WhatsApp
+  // приходил OTP-пароль, чтоб сами назначали, а кадровик не занимался этой
+  // рутиной»). The code proves the number; the person then sets their own
+  // password and is signed in exactly as the password form signs them in.
+
+  private async companySlugForCode(): Promise<string> {
+    const organizationSlug = await this.companySlug()
+    if (organizationSlug) return organizationSlug
+    // A number is matched inside one company only.
+    const err = new Error("Company not known") as RetryableSyncError
+    err.code = "MTM_LOGIN_CODE_NO_COMPANY"
+    throw err
+  }
+
+  async requestLoginCode(phone: string, language: string): Promise<{ resendAfterSeconds: number; expiresInSeconds: number }> {
+    const data = await this.request("/mobile/auth/code", {
+      method: "POST",
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), phone, language }),
+    })
+    return { resendAfterSeconds: Number(data.data?.resendAfterSeconds) || 60, expiresInSeconds: Number(data.data?.expiresInSeconds) || 600 }
+  }
+
+  async verifyLoginCode(phone: string, code: string): Promise<{ setupToken: string; name: string; organizationName: string }> {
+    const data = await this.request("/mobile/auth/code/verify", {
+      method: "POST",
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), phone, code }),
+    })
+    return { setupToken: String(data.data?.setupToken ?? ""), name: String(data.data?.agent?.name ?? ""), organizationName: String(data.data?.organizationName ?? "") }
+  }
+
+  async setPasswordWithCode(setupToken: string, password: string) {
+    const data = await this.request("/mobile/auth/password", {
+      method: "POST",
+      body: JSON.stringify({ setupToken, password }),
+    })
+    if (data.success && data.data.token) await this.acceptSession(data)
+    return data
+  }
+
+  /** A sign-in the server accepted, by password or by a code: the session this phone keeps. */
+  private async acceptSession(data: any) {
+    this.token = data.data.token
+    this.agentId = data.data.agent?.id || null
+    this._agentRole = data.data.agent?.role || null
+    this._agentName = data.data.agent?.name || null
+    this._agentCode = data.data.agent?.code || null
+    await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
+    await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
+    // M1-3: surface agent identity to Sentry so field crashes can be
+    // filtered per-rep and per-org. Org id isn't returned by login
+    // (it's bound on the server side via subdomain), so we attach
+    // only agentId here.
+    setAgentContext(this.agentId, data.data.agent?.organizationId ?? null)
   }
 
   async logout() {

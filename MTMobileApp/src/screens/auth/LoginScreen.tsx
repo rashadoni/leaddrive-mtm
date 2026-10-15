@@ -19,6 +19,7 @@ import { useAuthStore } from "../../store/auth"
 import { api, REVOKED_REASON } from "../../services/api"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import LoginCodeFlow from "./LoginCodeFlow"
 
 interface Props {
   serverDomain: string
@@ -31,7 +32,9 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const tablet = isTabletWidth(width)
+  // A WhatsApp number or an email (owner, 2026-10-15: HR adds employees by number).
   const [email, setEmail] = useState("")
+  const [mode, setMode] = useState<"password" | "code">("password")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -63,7 +66,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
     setError(null)
     setLoading(true)
     try {
-      const normalizedEmail = email.trim().toLowerCase()
+      const normalizedEmail = email.includes("@") ? email.trim().toLowerCase() : email.trim()
       await login(normalizedEmail, password)
       if (rememberMe) await api.saveCredentials(normalizedEmail)
       else await api.clearCredentials()
@@ -154,132 +157,156 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
               </Pressable>
             </View>
 
-            <Text style={styles.formTitle}>{t("auth.accountTitle")}</Text>
-            <Text style={styles.formBody}>{t("auth.accountHelp")}</Text>
+            {mode === "code" ? (
+              <LoginCodeFlow initialPhone={email.includes("@") ? "" : email} onCancel={() => setMode("password")} />
+            ) : (
+              <>
+              <Text style={styles.formTitle}>{t("auth.accountTitle")}</Text>
+              <Text style={styles.formBody}>{t("auth.accountHelp")}</Text>
 
-            {revokedReason === REVOKED_REASON && (
-              <View style={styles.revokedBanner} accessibilityLiveRegion="polite">
-                <Icon name="lock-closed" size={21} color={fieldTheme.color.danger} />
-                <View style={styles.errorCopy}>
-                  <Text style={styles.errorTitle}>{t("auth.accessRevokedTitle")}</Text>
-                  <Text style={styles.errorText}>{t("auth.accessRevokedBody")}</Text>
+              {revokedReason === REVOKED_REASON && (
+                <View style={styles.revokedBanner} accessibilityLiveRegion="polite">
+                  <Icon name="lock-closed" size={21} color={fieldTheme.color.danger} />
+                  <View style={styles.errorCopy}>
+                    <Text style={styles.errorTitle}>{t("auth.accessRevokedTitle")}</Text>
+                    <Text style={styles.errorText}>{t("auth.accessRevokedBody")}</Text>
+                  </View>
                 </View>
-              </View>
-            )}
-
-            <Text style={styles.label}>{t("auth.email")}</Text>
-            <View style={[styles.inputWrap, error && !email.trim() && styles.inputWrapError]}>
-              <Icon name="mail-outline" size={21} color={fieldTheme.color.inkMuted} />
-              <TextInput
-                testID="login-email"
-                style={styles.input}
-                value={email}
-                onChangeText={(value) => {
-                  setEmail(value)
-                  if (error) setError(null)
-                }}
-                placeholder="agent@company.com"
-                placeholderTextColor="#81928B"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoCorrect={false}
-                autoComplete="email"
-                autoFocus
-                returnKeyType="next"
-                editable={!loading}
-                accessibilityLabel={t("auth.email")}
-              />
-            </View>
-
-            <Text style={styles.label}>{t("auth.password")}</Text>
-            <View style={[styles.inputWrap, error && !password && styles.inputWrapError]}>
-              <Icon name="key-outline" size={21} color={fieldTheme.color.inkMuted} />
-              <TextInput
-                testID="login-password"
-                style={styles.input}
-                value={password}
-                onChangeText={(value) => {
-                  setPassword(value)
-                  if (error) setError(null)
-                }}
-                placeholder={t("auth.passwordPlaceholder")}
-                placeholderTextColor="#81928B"
-                secureTextEntry={!showPassword}
-                autoComplete="current-password"
-                returnKeyType="go"
-                editable={!loading}
-                onSubmitEditing={() => { handleLogin().catch(() => {}) }}
-                accessibilityLabel={t("auth.password")}
-              />
-              <Pressable
-                testID="toggle-password"
-                accessibilityRole="button"
-                accessibilityLabel={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
-                accessibilityState={{ expanded: showPassword }}
-                onPress={() => setShowPassword((current) => !current)}
-                style={({ pressed }) => [styles.eyeButton, pressed && styles.pressed]}
-              >
-                <Icon
-                  name={showPassword ? "eye-off-outline" : "eye-outline"}
-                  size={23}
-                  color={fieldTheme.color.inkMuted}
-                />
-              </Pressable>
-            </View>
-
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: rememberMe }}
-              accessibilityLabel={t("auth.rememberMe")}
-              onPress={() => setRememberMe((current) => !current)}
-              style={({ pressed }) => [styles.rememberRow, pressed && styles.pressed]}
-            >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                {rememberMe && <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />}
-              </View>
-              <View style={styles.rememberCopy}>
-                <Text style={styles.rememberText}>{t("auth.rememberMe")}</Text>
-                <Text style={styles.rememberHint}>{t("auth.rememberHint")}</Text>
-              </View>
-            </Pressable>
-
-            {error && (
-              <View style={styles.errorBox} accessibilityLiveRegion="polite">
-                <Icon name="alert-circle" size={21} color={fieldTheme.color.danger} />
-                <View style={styles.errorCopy}>
-                  <Text style={styles.errorTitle}>{t("auth.loginFailedTitle")}</Text>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              </View>
-            )}
-
-            <Pressable
-              testID="login-submit"
-              accessibilityRole="button"
-              accessibilityLabel={t("auth.signIn")}
-              accessibilityState={{ disabled: loading }}
-              onPress={() => { handleLogin().catch(() => {}) }}
-              disabled={loading}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                loading && styles.disabled,
-                pressed && !loading && styles.primaryPressed,
-              ]}
-            >
-              {loading ? (
-                <>
-                  <ActivityIndicator color={fieldTheme.color.onColor} />
-                  <Text style={styles.primaryText}>{t("auth.signingIn")}</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.primaryText}>{t("auth.signIn")}</Text>
-                  <Icon name="arrow-forward" size={21} color={fieldTheme.color.onColor} />
-                </>
               )}
-            </Pressable>
 
-            <Text style={styles.helpText}>{t("auth.loginHelp")}</Text>
+              <Text style={styles.label}>{t("auth.identifier")}</Text>
+              <View style={[styles.inputWrap, error && !email.trim() && styles.inputWrapError]}>
+                <Icon name="mail-outline" size={21} color={fieldTheme.color.inkMuted} />
+                <TextInput
+                  testID="login-email"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value)
+                    if (error) setError(null)
+                  }}
+                  placeholder={t("auth.identifierPlaceholder")}
+                  placeholderTextColor="#81928B"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  autoFocus
+                  returnKeyType="next"
+                  editable={!loading}
+                  accessibilityLabel={t("auth.identifier")}
+                />
+              </View>
+
+              <Text style={styles.label}>{t("auth.password")}</Text>
+              <View style={[styles.inputWrap, error && !password && styles.inputWrapError]}>
+                <Icon name="key-outline" size={21} color={fieldTheme.color.inkMuted} />
+                <TextInput
+                  testID="login-password"
+                  style={styles.input}
+                  value={password}
+                  onChangeText={(value) => {
+                    setPassword(value)
+                    if (error) setError(null)
+                  }}
+                  placeholder={t("auth.passwordPlaceholder")}
+                  placeholderTextColor="#81928B"
+                  secureTextEntry={!showPassword}
+                  autoComplete="current-password"
+                  returnKeyType="go"
+                  editable={!loading}
+                  onSubmitEditing={() => { handleLogin().catch(() => {}) }}
+                  accessibilityLabel={t("auth.password")}
+                />
+                <Pressable
+                  testID="toggle-password"
+                  accessibilityRole="button"
+                  accessibilityLabel={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
+                  accessibilityState={{ expanded: showPassword }}
+                  onPress={() => setShowPassword((current) => !current)}
+                  style={({ pressed }) => [styles.eyeButton, pressed && styles.pressed]}
+                >
+                  <Icon
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={23}
+                    color={fieldTheme.color.inkMuted}
+                  />
+                </Pressable>
+              </View>
+
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: rememberMe }}
+                accessibilityLabel={t("auth.rememberMe")}
+                onPress={() => setRememberMe((current) => !current)}
+                style={({ pressed }) => [styles.rememberRow, pressed && styles.pressed]}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />}
+                </View>
+                <View style={styles.rememberCopy}>
+                  <Text style={styles.rememberText}>{t("auth.rememberMe")}</Text>
+                  <Text style={styles.rememberHint}>{t("auth.rememberHint")}</Text>
+                </View>
+              </Pressable>
+
+              {error && (
+                <View style={styles.errorBox} accessibilityLiveRegion="polite">
+                  <Icon name="alert-circle" size={21} color={fieldTheme.color.danger} />
+                  <View style={styles.errorCopy}>
+                    <Text style={styles.errorTitle}>{t("auth.loginFailedTitle")}</Text>
+                    <Text style={styles.errorText}>{error}</Text>
+                  </View>
+                </View>
+              )}
+
+              <Pressable
+                testID="login-submit"
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.signIn")}
+                accessibilityState={{ disabled: loading }}
+                onPress={() => { handleLogin().catch(() => {}) }}
+                disabled={loading}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  loading && styles.disabled,
+                  pressed && !loading && styles.primaryPressed,
+                ]}
+              >
+                {loading ? (
+                  <>
+                    <ActivityIndicator color={fieldTheme.color.onColor} />
+                    <Text style={styles.primaryText}>{t("auth.signingIn")}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.primaryText}>{t("auth.signIn")}</Text>
+                    <Icon name="arrow-forward" size={21} color={fieldTheme.color.onColor} />
+                  </>
+                )}
+              </Pressable>
+
+              {/* First sign-in, or a forgotten password: a code from WhatsApp. */}
+              <View style={styles.orRow}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>{t("auth.codeStartHint")}</Text>
+                <View style={styles.orLine} />
+              </View>
+              <Pressable
+                testID="login-code-start"
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.codeStart")}
+                onPress={() => { clearRevokedReason(); setError(null); setMode("code") }}
+                disabled={loading}
+                style={({ pressed }) => [styles.whatsappButton, pressed && styles.pressed]}
+              >
+                <View style={styles.whatsappMark}><Icon name="logo-whatsapp" size={18} color="#FFFFFF" /></View>
+                <Text style={styles.whatsappText}>{t("auth.codeStart")}</Text>
+              </Pressable>
+
+              <Text style={styles.helpText}>{t("auth.loginHelp")}</Text>
+              </>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -436,6 +463,24 @@ const styles = StyleSheet.create({
   primaryPressed: { backgroundColor: "#842F1E", transform: [{ scale: 0.99 }] },
   primaryText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
   disabled: { opacity: 0.65 },
+  orRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
+  orLine: { flex: 1, height: 1, backgroundColor: fieldTheme.color.border },
+  orText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  whatsappButton: {
+    minHeight: 54,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1.5,
+    borderColor: "#25D366",
+    backgroundColor: fieldTheme.color.surface,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    marginTop: fieldTheme.space.md,
+    paddingHorizontal: fieldTheme.space.lg,
+  },
+  whatsappMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#25D366" },
+  whatsappText: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
   helpText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center", marginTop: fieldTheme.space.md },
   pressed: { opacity: 0.72 },
 })
