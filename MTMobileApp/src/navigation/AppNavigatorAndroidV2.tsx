@@ -37,6 +37,7 @@ import MoreScreen from "../screens/more/MoreScreen"
 import AttendanceRequestsScreen from "../screens/attendance/AttendanceRequestsScreen"
 import AttendanceWorkdayScreen from "../screens/attendance/AttendanceWorkdayScreen"
 import AttendanceInboxScreen from "../screens/attendance/AttendanceInboxScreen"
+import AttendanceExplanationsScreen from "../screens/attendance/AttendanceExplanationsScreen"
 import { hasOfficeAttendanceAccess } from "../services/attendance-access"
 import { agentMayAttendanceRequests } from "../lib/agent-permissions"
 import TeamMessagesScreen from "../screens/more/TeamMessagesScreen"
@@ -189,6 +190,7 @@ function OfficeTabs() {
   return <Tab.Navigator key="own-attendance-tabs" initialRouteName="OwnWorkday" screenOptions={{ headerShown: false, tabBarActiveTintColor: fieldTheme.color.primaryStrong, tabBarInactiveTintColor: fieldTheme.color.inkMuted, tabBarStyle: { minHeight: TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8), paddingBottom: Math.max(insets.bottom, 8) }, tabBarLabelStyle: styles.tabLabel }}>
     <Tab.Screen name="OwnWorkday" component={AttendanceWorkdayScreen} options={tabOptions("OwnWorkday", t("officeAttendance.workday"), { active: "time", inactive: "time-outline" })} />
     {requests && <Tab.Screen name="OwnRequests" component={AttendanceRequestsScreen} options={tabOptions("OwnRequests", t("attendanceRequests.title"), { active: "document-text", inactive: "document-text-outline" })} />}
+    <Tab.Screen name="OwnExplanations" component={AttendanceExplanationsScreen} options={tabOptions("OwnExplanations", t("explanations.tab"), { active: "chatbox-ellipses", inactive: "chatbox-ellipses-outline" })} />
     <Tab.Screen name="OwnInbox" component={AttendanceInboxScreen} options={tabOptions("OwnInbox", t("officeAttendance.inbox"), { active: "notifications", inactive: "notifications-outline" })} />
     <Tab.Screen name="OwnProfile" component={ProfileScreen} options={tabOptions("OwnProfile", t("officeAttendance.profile"), { active: "person", inactive: "person-outline" })} />
   </Tab.Navigator>

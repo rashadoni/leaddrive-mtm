@@ -701,6 +701,13 @@ class ApiClient {
   cancelAttendanceRequest(id: string, guard: () => void) {
     return this.request(`/mobile/route-field/attendance/requests/${encodeURIComponent(id)}`, { method: "DELETE" }, 20_000, 2, guard)
   }
+  /** Owner, 2026-10-16: HR asks the late and the absent to explain; the employee answers here. */
+  getAttendanceExplanations(guard: () => void) {
+    return this.request("/mobile/route-field/attendance/explanations", {}, 20_000, 2, guard)
+  }
+  answerAttendanceExplanation(input: import("./attendance-explanations").AttendanceExplanationAnswer, guard: () => void) {
+    return this.request("/mobile/route-field/attendance/explanations", { method: "POST", body: JSON.stringify(input) }, 20_000, 2, guard)
+  }
   uploadAttendanceDocument(clientRequestId: string, clientAttachmentId: string, path: string, guard: () => void) {
     const body = new FormData()
     body.append("clientRequestId", clientRequestId)
