@@ -10,8 +10,9 @@ import { attendanceAccessDenied } from "../../services/attendance-requests"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { useNavigation } from "@react-navigation/native"
 export default function AttendanceInboxScreen() {
-  const { t, i18n } = useTranslation(), top = useHeaderTop(), bottom = useTabBarPadding()
+  const { t, i18n } = useTranslation(), top = useHeaderTop(), bottom = useTabBarPadding(), navigation = useNavigation()
   const agent = useAuthStore(state => state.agent), bootstrap = useBootstrapStore(state => state.data)
   const allowed = hasOfficeAttendanceAccess(bootstrap, agent)
   const [items, setItems] = useState<AttendanceNotice[]>([]), [loading, setLoading] = useState(false), [writing, setWriting] = useState<string | null>(null)
@@ -45,6 +46,7 @@ export default function AttendanceInboxScreen() {
         {items.map(item => <View testID={`office-notice-${item.id}`} style={styles.card} key={item.id}>
           {!item.isRead && <Text style={styles.action}>{t("officeAttendance.unread")}</Text>}<Text style={styles.name}>{item.titleKey ? t(item.titleKey) : item.title}</Text>
           {item.body && <Text style={styles.body}>{item.bodyKey ? t(item.bodyKey) : item.body}</Text>}
+          {item.explanation && <Pressable testID={`office-explain-${item.id}`} accessibilityRole="button" onPress={() => navigation.navigate("OwnExplanations" as never)} style={styles.button}><Text style={styles.action}>{t("explanations.openFromInbox")}</Text></Pressable>}
           <Text style={styles.body}>{Number.isFinite(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleString(i18n.language, { timeZone: bootstrap?.timezone ?? "UTC" }) : "—"}</Text>
           {item.isRead ? <Text style={styles.body}>{t("officeAttendance.read")}</Text> : <Pressable testID={`office-read-${item.id}`} accessibilityRole="button" disabled={writing !== null} onPress={() => void markRead(item.id)} style={styles.button}><Text style={styles.action}>{t(writing === item.id ? "officeAttendance.saving" : "officeAttendance.markRead")}</Text></Pressable>}
         </View>)}
