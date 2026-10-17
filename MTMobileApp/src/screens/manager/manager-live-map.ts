@@ -414,7 +414,6 @@ export function buildManagerLiveMapDocument(
           button.onclick = function () { selectMarker(marker); };
           markerLayer.appendChild(button);
         });
-        if (markers.length === 1 && selectedId === null) selectMarker(markers[0]);
       }
 
       document.getElementById("zoom-in").onclick = function () {

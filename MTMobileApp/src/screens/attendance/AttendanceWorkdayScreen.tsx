@@ -27,7 +27,12 @@ import { fieldTheme } from "../../theme/fieldTheme"
 function dateKey(timezone: string | null) {
   try { const parts = new Intl.DateTimeFormat("en", { timeZone: timezone ?? "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date()); return `${parts.find(p => p.type === "year")!.value}-${parts.find(p => p.type === "month")!.value}-${parts.find(p => p.type === "day")!.value}` } catch { return "" }
 }
-export default function AttendanceWorkdayScreen() {
+/**
+ * `managerShell`: the «İş günü» tab of a manager. No line about tracking that
+ * is not used, no location card until the company turns location on, no
+ * «Profil» button — it is the «Daha çox» tab (owner, 2026-10-17).
+ */
+export default function AttendanceWorkdayScreen({ managerShell = false }: { managerShell?: boolean } = {}) {
   const { t, i18n } = useTranslation(), navigation = useNavigation()
   const top = useHeaderTop(), bottom = useTabBarPadding()
   const agent = useAuthStore(state => state.agent), bootstrap = useBootstrapStore(state => state.data)
@@ -136,11 +141,11 @@ export default function AttendanceWorkdayScreen() {
         <AttendanceQrReceipt receipts={qr.receipts} />
         <AttendanceInstallationCard installation={installation} />
         <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation} refresh={async () => { await refresh(); await recovery.reload() }} />
-        <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>
-        <AttendanceLocationConsentCard />
+        {managerShell ? null : <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>}
+        <AttendanceLocationConsentCard hideUntilEnabled={managerShell} />
         {bootstrap?.policies.agentPermissions?.attendanceRequests === true && <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnRequests" as never)}><Text style={styles.secondaryText}>{t("attendanceRequests.title")}</Text></Pressable>}
         <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnInbox" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.inbox")}</Text></Pressable>
-        <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>
+        {managerShell ? null : <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>}
       </>}
     </ScrollView>
     <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused && !installation.blocked && !recovery.operation && !pending && !conflict} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{

@@ -47,7 +47,6 @@ const COPY = {
     today: "Сегодня",
     previous: "Предыдущий период",
     next: "Следующий период",
-    guide: "Выберите вид → нажмите день → проверьте встречи или создайте маршрут.",
     routes: "Маршруты",
     agents: "Сотрудники",
     stops: "Встречи",
@@ -81,7 +80,6 @@ const COPY = {
     today: "Bu gün",
     previous: "Əvvəlki dövr",
     next: "Növbəti dövr",
-    guide: "Görünüşü seçin → günə toxunun → görüşlərə baxın və ya marşrut yaradın.",
     routes: "Marşrut",
     agents: "Əməkdaş",
     stops: "Görüş",
@@ -115,7 +113,6 @@ const COPY = {
     today: "Today",
     previous: "Previous period",
     next: "Next period",
-    guide: "Choose a view → tap a day → review meetings or create a route.",
     routes: "Routes",
     agents: "Employees",
     stops: "Meetings",
@@ -298,11 +295,6 @@ export default function ManagerPlanningCalendarScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void load(true) }} colors={[fieldTheme.color.primary]} tintColor={fieldTheme.color.primary} />}
         contentContainerStyle={[styles.content, tablet && styles.contentTablet, { paddingBottom: tabBarPadding + fieldTheme.space.xl }]}
       >
-        <View style={styles.guide}>
-          <Icon name="sparkles-outline" size={20} color={fieldTheme.color.blue} />
-          <Text style={styles.guideText}>{copy.guide}</Text>
-        </View>
-
         <View style={[styles.controls, tablet && styles.controlsTablet]}>
           <View style={styles.segment} accessibilityRole="tablist">
             {(["month", "week"] as ManagerCalendarMode[]).map((value) => (
@@ -582,8 +574,6 @@ const styles = StyleSheet.create({
   createButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
   content: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: 10, gap: 10 },
   contentTablet: { padding: fieldTheme.space.md, gap: fieldTheme.space.md },
-  guide: { minHeight: 42, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: 10, paddingVertical: 6, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.blueSoft, borderWidth: 1, borderColor: "#BED4F0" },
-  guideText: { flex: 1, color: fieldTheme.color.ink, fontSize: 11, lineHeight: 15, fontWeight: "700" },
   controls: { gap: 8 },
   controlsTablet: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   segment: { minHeight: 46, flexDirection: "row", padding: 2, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, borderWidth: 1, borderColor: fieldTheme.color.border },

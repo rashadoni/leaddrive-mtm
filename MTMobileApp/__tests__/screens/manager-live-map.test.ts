@@ -137,7 +137,9 @@ describe("manager live map truth model", () => {
 
     expect(html).toContain("ReactNativeWebView.postMessage")
     expect(html).toContain("window.__selectManagerMarker")
-    expect(html).toContain("markers.length === 1 && selectedId === null")
+    // A lone marker no longer opens its own popup: the employee is named once,
+    // in the team list, until the manager taps the marker (owner, 2026-10-17).
+    expect(html).not.toContain("markers.length === 1 && selectedId === null")
     expect(html).toContain("connect-src 'none'")
     expect(html).toContain("\\u003c/script>")
     expect(html).toContain("basemaps.cartocdn.com/light_all/")
