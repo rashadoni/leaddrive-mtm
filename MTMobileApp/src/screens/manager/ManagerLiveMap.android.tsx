@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { WebView } from "react-native-webview"
 import { useTranslation } from "react-i18next"
 import { formatManagerEvidenceAge } from "../../services/manager-location-truth"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { formatLocalizedDateTime } from "../../lib/format-localized-date"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { api } from "../../services/api"
@@ -23,11 +22,6 @@ interface ManagerLiveMapProps {
   rows: ManagerLiveMapRow[]
   loading: boolean
   loadError: boolean
-}
-
-function formatTimestamp(value: string | null, language: string): string {
-  if (!value) return "—"
-  return formatLocalizedDateTime(value, language)
 }
 
 function evidenceAgeLabel(ageMs: number | null, t: any): string {
@@ -59,16 +53,6 @@ function markerStatusLabel(marker: ManagerLiveMapMarker, t: any): string {
     return `${location} · ${presence}`
   }
   return `${location} · ${t("managerShell.gpsDelayed", { defaultValue: "GPS is delayed" })} · ${presence}`
-}
-
-function markerTone(marker: ManagerLiveMapMarker) {
-  if (marker.status === "CURRENT") {
-    return { color: fieldTheme.color.success, tint: fieldTheme.color.successSoft, icon: "locate" }
-  }
-  if (marker.status === "STALE") {
-    return { color: fieldTheme.color.amber, tint: fieldTheme.color.amberSoft, icon: "time-outline" }
-  }
-  return { color: fieldTheme.color.blue, tint: fieldTheme.color.blueSoft, icon: "location-outline" }
 }
 
 export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLiveMapProps) {
@@ -113,11 +97,6 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     setVisualError(false)
     setSelectedId((current) => resolveManagerLiveMapSelection(model.markers, current))
   }, [mapDocument, model.markers])
-
-  const selectedMarker = useMemo(
-    () => model.markers.find((marker) => marker.id === selectedId) ?? null,
-    [model.markers, selectedId],
-  )
 
   const onMessage = useCallback((event: { nativeEvent: { data: string } }) => {
     try {
@@ -165,36 +144,6 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
           title={t("managerShell.liveMapSnapshotPreserved", { defaultValue: "Showing the last loaded team map" })}
           body={t("managerShell.liveMapSnapshotPreservedBody", { defaultValue: "It may be outdated. Refresh after the connection returns before treating a marker as current." })}
         />
-      ) : null}
-
-      {model.markers.length > 0 ? (
-        <View style={styles.evidenceSection}>
-          <View style={styles.evidenceHeading}>
-            <View style={styles.evidenceHeadingIcon}>
-              <Icon name="cloud-done-outline" size={20} color={fieldTheme.color.primary} />
-            </View>
-            <View style={styles.evidenceHeadingCopy}>
-              <Text style={styles.evidenceTitle}>{t("managerShell.liveMapEvidenceTitle", { defaultValue: "Employees shown on the map" })}</Text>
-              <Text style={styles.evidenceBody}>{t("managerShell.liveMapEvidenceBody", { defaultValue: "Every card identifies a server-accepted GPS point. Tap a card or its marker for details." })}</Text>
-            </View>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator
-            contentContainerStyle={styles.evidenceRail}
-          >
-            {model.markers.map((marker) => (
-              <EvidenceMarkerCard
-                key={marker.id}
-                marker={marker}
-                language={i18n.language}
-                selected={marker.id === selectedId}
-                onPress={() => selectMarker(marker.id)}
-                t={t}
-              />
-            ))}
-          </ScrollView>
-        </View>
       ) : null}
 
       {model.markers.length === 0 ? (
@@ -254,8 +203,6 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
         </View>
       ) : null}
 
-      {selectedMarker ? <SelectedMarker marker={selectedMarker} language={i18n.language} t={t} /> : null}
-
       {model.noCoordinatesCount > 0 ? (
         <View style={styles.noCoordinatesNote}>
           <Icon name="eye-off-outline" size={19} color={fieldTheme.color.inkMuted} />
@@ -281,53 +228,6 @@ function MapCount({ color, value, label }: { color: string; value: number; label
   )
 }
 
-function EvidenceMarkerCard({
-  marker,
-  language,
-  selected,
-  onPress,
-  t,
-}: {
-  marker: ManagerLiveMapMarker
-  language: string
-  selected: boolean
-  onPress: () => void
-  t: any
-}) {
-  const tone = markerTone(marker)
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`${marker.name}. ${markerStatusLabel(marker, t)}. ${evidenceAgeLabel(marker.locationAgeMs, t)}`}
-      accessibilityHint={t("managerShell.liveMapEvidenceHint", { defaultValue: "Show this employee on the map" })}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.evidenceCard,
-        { borderColor: selected ? tone.color : fieldTheme.color.border },
-        selected && { backgroundColor: tone.tint },
-        pressed && styles.evidenceCardPressed,
-      ]}
-    >
-      <View style={[styles.evidenceMarker, { backgroundColor: tone.color }]}>
-        <Text style={styles.evidenceInitials}>{marker.initials}</Text>
-      </View>
-      <View style={styles.evidenceCardCopy}>
-        <Text style={styles.evidenceName} numberOfLines={1}>{marker.name}</Text>
-        <Text style={[styles.evidenceStatus, { color: tone.color }]} numberOfLines={2}>{markerStatusLabel(marker, t)}</Text>
-        <View style={styles.evidenceMetaRow}>
-          <Icon name="cloud-done-outline" size={14} color={fieldTheme.color.inkMuted} />
-          <Text style={styles.evidenceMeta} numberOfLines={1}>
-            {t("managerShell.liveMapServerEvidence", { defaultValue: "Accepted by server" })} · {evidenceAgeLabel(marker.locationAgeMs, t)}
-          </Text>
-        </View>
-        <Text style={styles.evidenceTimestamp} numberOfLines={1}>{formatTimestamp(marker.recordedAt, language)}</Text>
-      </View>
-      <Icon name={selected ? "checkmark-circle" : "chevron-forward"} size={21} color={selected ? tone.color : fieldTheme.color.inkMuted} />
-    </Pressable>
-  )
-}
-
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (
     <View style={styles.legendItem}>
@@ -344,37 +244,6 @@ function MapNotice({ icon, color, tint, title, body }: { icon: string; color: st
       <View style={styles.noticeCopy}>
         <Text style={[styles.noticeTitle, { color }]}>{title}</Text>
         <Text style={styles.noticeBody}>{body}</Text>
-      </View>
-    </View>
-  )
-}
-
-function SelectedMarker({ marker, language, t }: { marker: ManagerLiveMapMarker; language: string; t: any }) {
-  const tone = markerTone(marker)
-  const status = markerStatusLabel(marker, t)
-  return (
-    <View style={[styles.selected, { backgroundColor: tone.tint, borderColor: tone.color }]} accessibilityLiveRegion="polite">
-      <View style={[styles.selectedIcon, { backgroundColor: tone.color }]}>
-        <Icon name={tone.icon} size={21} color={fieldTheme.color.onColor} />
-      </View>
-      <View style={styles.selectedCopy}>
-        <Text style={styles.selectedEyebrow}>{t("managerShell.liveMapSelected", { defaultValue: "Selected employee" })}</Text>
-        <Text style={styles.selectedName}>{marker.name}</Text>
-        <Text style={[styles.selectedStatus, { color: tone.color }]}>{status}</Text>
-        <Text style={styles.selectedMeta}>
-          {t(marker.status === "CURRENT" ? "managerShell.positionReceived" : "managerShell.historicalPositionReceived", {
-            defaultValue: marker.status === "CURRENT" ? "Received {{age}}" : "Historical point from {{age}}",
-            age: evidenceAgeLabel(marker.locationAgeMs, t),
-          })}
-          {marker.recordedAt ? ` · ${formatTimestamp(marker.recordedAt, language)}` : ""}
-          {marker.accuracy == null ? "" : ` · ±${Math.round(marker.accuracy)} m`}
-        </Text>
-        <View style={[styles.presence, { backgroundColor: marker.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
-          <View style={[styles.presenceDot, { backgroundColor: marker.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
-          <Text style={[styles.presenceText, { color: marker.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
-            {t(marker.isOnline ? "managerShell.online" : "managerShell.offline", { defaultValue: marker.isOnline ? "Online" : "Offline" })}
-          </Text>
-        </View>
       </View>
     </View>
   )
@@ -405,55 +274,6 @@ const styles = StyleSheet.create({
   body: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, maxWidth: 680 },
   counts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   countsTablet: { maxWidth: 390, justifyContent: "flex-end" },
-  evidenceSection: {
-    gap: fieldTheme.space.sm,
-    padding: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.canvas,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-  },
-  evidenceHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  evidenceHeadingIcon: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: fieldTheme.radius.sm,
-    backgroundColor: fieldTheme.color.primarySoft,
-  },
-  evidenceHeadingCopy: { flex: 1, gap: 2 },
-  evidenceTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
-  evidenceBody: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
-  evidenceRail: { gap: fieldTheme.space.sm, paddingVertical: 2, paddingRight: fieldTheme.space.sm },
-  evidenceCard: {
-    width: 276,
-    minHeight: 112,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fieldTheme.space.sm,
-    padding: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 2,
-    backgroundColor: fieldTheme.color.surface,
-  },
-  evidenceCardPressed: { opacity: 0.76, transform: [{ scale: 0.99 }] },
-  evidenceMarker: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 22,
-    borderWidth: 3,
-    borderColor: fieldTheme.color.surface,
-  },
-  evidenceInitials: { color: fieldTheme.color.onColor, fontSize: 12, fontWeight: "900" },
-  evidenceCardCopy: { flex: 1, gap: 2 },
-  evidenceName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "900" },
-  evidenceStatus: { fontSize: 11, lineHeight: 15, fontWeight: "800" },
-  evidenceMetaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  evidenceMeta: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "700" },
-  evidenceTimestamp: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14 },
   count: {
     minHeight: 44,
     flexDirection: "row",
@@ -503,24 +323,6 @@ const styles = StyleSheet.create({
   noticeCopy: { flex: 1, gap: 2 },
   noticeTitle: { fontSize: 13, fontWeight: "900" },
   noticeBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
-  selected: {
-    minHeight: 88,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fieldTheme.space.md,
-    padding: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1,
-  },
-  selectedIcon: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md },
-  selectedCopy: { flex: 1, gap: 2 },
-  selectedEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "900", letterSpacing: 0.6 },
-  selectedName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  selectedStatus: { fontSize: 12, lineHeight: 17, fontWeight: "900" },
-  selectedMeta: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
-  presence: { minHeight: 34, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, borderRadius: fieldTheme.radius.pill },
-  presenceDot: { width: 8, height: 8, borderRadius: fieldTheme.radius.pill },
-  presenceText: { fontSize: 10, fontWeight: "900" },
   noCoordinatesNote: {
     minHeight: 44,
     flexDirection: "row",

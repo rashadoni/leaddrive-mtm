@@ -50,6 +50,8 @@ import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { agentMay, agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
 import { useLocationFixStore, waitingLocationFixFor } from "../../store/location-fixes"
 import { locationFixCoversCheckIn } from "../base/organization-location-fix-model"
@@ -129,6 +131,8 @@ const VISIT_COPY = {
     noSearchBody: "Проверьте написание или очистите поиск.",
     activeEyebrow: "Визит идёт сейчас",
     activeBody: "Сначала добавьте нужное фото, затем завершите визит и оставьте результат.",
+    staleEyebrow: "Не закрыт визит от {{date}}",
+    staleBody: "Этот визит забыли закрыть. Закройте его — фото в него уже не добавить, сегодняшние визиты идут отдельно.",
     elapsed: "Идёт {{count}} мин",
     photos: "Фото: {{count}}",
     addPhoto: "Добавить фото",
@@ -200,6 +204,8 @@ const VISIT_COPY = {
     noSearchBody: "Yazılışı yoxlayın və ya axtarışı təmizləyin.",
     activeEyebrow: "Ziyarət indi davam edir",
     activeBody: "Lazım olan fotonu əlavə edin, sonra ziyarəti bitirib nəticəni yazın.",
+    staleEyebrow: "{{date}} tarixli ziyarət bağlanmayıb",
+    staleBody: "Bu ziyarəti bağlamağı unutmusunuz. Onu bağlayın — ona artıq foto əlavə olunmur, bugünkü ziyarətlər ayrıca aparılır.",
     elapsed: "{{count}} dəq davam edir",
     photos: "Foto: {{count}}",
     addPhoto: "Foto əlavə et",
@@ -271,6 +277,8 @@ const VISIT_COPY = {
     noSearchBody: "Check the spelling or clear the search.",
     activeEyebrow: "Visit in progress",
     activeBody: "Add any required photo, then finish the visit and record the result.",
+    staleEyebrow: "Visit from {{date}} was never closed",
+    staleBody: "This visit was left open. Close it — no photo can be added to it any more; today's visits are separate.",
     elapsed: "In progress for {{count}} min",
     photos: "Photos: {{count}}",
     addPhoto: "Add photo",
@@ -386,6 +394,7 @@ export default function VisitScreen() {
   const tablet = visitScreenLayout(width) === "tablet"
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
   const copy = VISIT_COPY[visitScreenLanguage(i18n.language)]
+  const timezone = useBootstrapStore((state) => state.data?.timezone)
   const [visits, setVisits] = useState<Visit[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loadState, setLoadState] = useState<LoadState>("loading")
@@ -1083,9 +1092,15 @@ export default function VisitScreen() {
   }
 
 
+  // A visit left open on an earlier day is closed, not worked in (owner,
+  // 2026-10-17; see stale-visit.ts).
+  const staleSinceDay = visitOpenSinceEarlierDay(activeVisit?.checkInAt, new Date(), timezone)
   const commonPanelProps = {
     copy,
     activeVisit,
+    staleSinceLabel: staleSinceDay
+      ? formatLocalizedDate(staleVisitDayDate(staleSinceDay), i18n.language, { day: "numeric", month: "long" })
+      : null,
     elapsedMin,
     photoCount: photos.count,
     mutating,
@@ -1297,6 +1312,7 @@ function checkInIssueText(issue: CheckInIssue, copy: Copy): { title: string; bod
 function VisitActionPanel({
   copy,
   activeVisit,
+  staleSinceLabel,
   elapsedMin,
   photoCount,
   mutating,
@@ -1327,6 +1343,8 @@ function VisitActionPanel({
   fixLocationLabel: string | null
   onFixLocation: () => void
   activeVisit: Visit | null
+  /** The day an open visit was started, when that day is over — see stale-visit.ts. */
+  staleSinceLabel: string | null
   elapsedMin: number
   photoCount: number
   mutating: boolean
@@ -1362,15 +1380,17 @@ function VisitActionPanel({
         {loadState === "offline" && <StateNotice kind="offline" copy={copy} cachedTitle={cachedTitle} onRetry={onRetry} />}
         <View style={[styles.activeCard, tablet && styles.cardTablet]}>
           <View style={styles.sectionIconRow}>
-            <View style={[styles.sectionIcon, { backgroundColor: fieldTheme.color.successSoft }]}>
-              <Icon name="location" size={23} color={fieldTheme.color.success} />
+            <View style={[styles.sectionIcon, { backgroundColor: staleSinceLabel ? fieldTheme.color.dangerSoft : fieldTheme.color.successSoft }]}>
+              <Icon name={staleSinceLabel ? "alert-circle" : "location"} size={23} color={staleSinceLabel ? fieldTheme.color.danger : fieldTheme.color.success} />
             </View>
             <View style={styles.sectionTitleCopy}>
-              <Text style={[styles.sectionEyebrow, { color: fieldTheme.color.success }]}>{copy.activeEyebrow}</Text>
+              <Text style={[styles.sectionEyebrow, { color: staleSinceLabel ? fieldTheme.color.danger : fieldTheme.color.success }]} testID={staleSinceLabel ? "visits-stale-visit" : undefined}>
+                {staleSinceLabel ? copy.staleEyebrow.replace("{{date}}", staleSinceLabel) : copy.activeEyebrow}
+              </Text>
               <Text style={styles.sectionTitle}>{activeVisit.customer?.name || "—"}</Text>
             </View>
           </View>
-          <Text style={styles.sectionBody}>{copy.activeBody}</Text>
+          <Text style={styles.sectionBody}>{staleSinceLabel ? copy.staleBody : copy.activeBody}</Text>
 
           <View style={styles.activeMeta}>
             <MetaPill icon="time-outline" text={copy.elapsed.replace("{{count}}", String(elapsedMin))} />
@@ -1378,7 +1398,7 @@ function VisitActionPanel({
             {signature.visible && signature.signed ? <MetaPill icon="checkmark-done-outline" text={translate("signature.taken")} /> : null}
           </View>
 
-          {elapsedMin >= 25 ? (
+          {!staleSinceLabel && elapsedMin >= 25 ? (
             <View style={[styles.visitTimeNotice, elapsedMin >= 30 && styles.visitTimeNoticeOvertime]} accessibilityLiveRegion="polite">
               <Icon name={elapsedMin >= 30 ? "alert-circle" : "time-outline"} size={19} color={elapsedMin >= 30 ? fieldTheme.color.danger : fieldTheme.color.amber} />
               <Text style={[styles.visitTimeNoticeText, elapsedMin >= 30 && styles.visitTimeNoticeTextOvertime]}>
@@ -1415,7 +1435,7 @@ function VisitActionPanel({
               <Icon name="easel-outline" size={21} color={fieldTheme.color.primary} />
               <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.openWorkspace}</Text>
             </Pressable>
-            <Pressable
+            {staleSinceLabel ? null : <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.addPhoto}
               disabled={mutating}
@@ -1429,8 +1449,8 @@ function VisitActionPanel({
             >
               <Icon name="camera-outline" size={21} color={fieldTheme.color.primary} />
               <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.addPhoto}</Text>
-            </Pressable>
-            {signature.visible && !signature.signed && !activeVisit.pendingCheckOut ? (
+            </Pressable>}
+            {!staleSinceLabel && signature.visible && !signature.signed && !activeVisit.pendingCheckOut ? (
               <Pressable
                 testID="visit-signature-button"
                 accessibilityRole="button"

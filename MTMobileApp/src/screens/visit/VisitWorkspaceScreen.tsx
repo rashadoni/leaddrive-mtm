@@ -40,6 +40,8 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import ShortWindowPage from "../../components/ShortWindowPage"
 import StatusBarBand from "../../components/StatusBarBand"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 type LoadState = "loading" | "ready" | "offline" | "error"
@@ -95,6 +97,7 @@ const COPY = {
     openPresentation: "Открыть презентацию",
     visitWarning: "До рекомендуемых 30 минут осталось не более 5 минут.",
     visitOvertime: "Прошло 30 минут. Завершите визит, если работа с клиентом закончена.",
+    staleVisit: (date: string) => `Не закрыт визит от ${date}. Добавить в него уже ничего нельзя — закройте его на экране маршрута.`,
     status: {
       PLANNED: "Запланирован",
       CHECKED_IN: "Идёт сейчас",
@@ -159,6 +162,7 @@ const COPY = {
     openPresentation: "Təqdimatı aç",
     visitWarning: "Tövsiyə olunan 30 dəqiqəyə 5 dəqiqədən az qalıb.",
     visitOvertime: "30 dəqiqə keçib. Müştəri ilə iş bitibsə, ziyarəti tamamlayın.",
+    staleVisit: (date: string) => `${date} tarixli ziyarət bağlanmayıb. Ona artıq heç nə əlavə olunmur — onu marşrut ekranında bağlayın.`,
     status: {
       PLANNED: "Planlaşdırılıb",
       CHECKED_IN: "İndi davam edir",
@@ -223,6 +227,7 @@ const COPY = {
     openPresentation: "Open presentation",
     visitWarning: "The recommended 30-minute limit is less than 5 minutes away.",
     visitOvertime: "30 minutes have passed. Finish the visit if the customer work is complete.",
+    staleVisit: (date: string) => `The visit from ${date} was never closed. Nothing can be added to it any more — close it on the route screen.`,
     status: {
       PLANNED: "Planned",
       CHECKED_IN: "In progress",
@@ -325,6 +330,7 @@ export default function VisitWorkspaceScreen() {
   const copy = COPY[languageFor(i18n.language)]
   const { visitId, name, section = "summary" } = route.params
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
+  const timezone = useBootstrapStore((state) => state.data?.timezone)
 
   const [data, setData] = useState<VisitWorkspace | null>(null)
   const [catalog, setCatalog] = useState<PresentationCatalog>({ groups: [], products: [] })
@@ -410,7 +416,11 @@ export default function VisitWorkspaceScreen() {
   const pendingParts: string[] = []
   if (!hasResult) pendingParts.push(copy.pendingResult)
   if (!hasTaskContent) pendingParts.push(copy.pendingTasks)
-  const visibleSection = data?.status === "CHECKED_IN" ? section : "summary"
+  // A visit left open on an earlier day is read, not worked in: today's
+  // photo went into one on the owner's phone (2026-10-17). See stale-visit.ts.
+  const staleSince = data?.status === "CHECKED_IN" ? visitOpenSinceEarlierDay(data.checkInAt, new Date(clock), timezone) : null
+  const liveVisit = data?.status === "CHECKED_IN" && !staleSince
+  const visibleSection = liveVisit ? section : "summary"
   const title = data?.customer.name || name || copy.eyebrow
   const statusVisual = visitStatusVisual(data?.status ?? "")
   const timeStatus = visitTimeStatus(data?.checkInAt, clock)
@@ -558,7 +568,16 @@ export default function VisitWorkspaceScreen() {
               </View>
             </View> : null}
 
-            {data.status === "CHECKED_IN" && timeStatus !== "normal" ? (
+            {staleSince ? (
+              <View style={[styles.timeNotice, styles.timeNoticeOvertime]} testID="visit-workspace-stale" accessibilityLiveRegion="polite">
+                <Icon name="alert-circle" size={22} color={fieldTheme.color.danger} />
+                <Text style={[styles.timeNoticeText, styles.timeNoticeTextOvertime]}>
+                  {copy.staleVisit(formatLocalizedDate(staleVisitDayDate(staleSince), i18n.language, { day: "numeric", month: "long" }))}
+                </Text>
+              </View>
+            ) : null}
+
+            {liveVisit && timeStatus !== "normal" ? (
               <View style={[styles.timeNotice, timeStatus === "overtime" && styles.timeNoticeOvertime]} accessibilityLiveRegion="polite">
                 <Icon
                   name={timeStatus === "overtime" ? "alert-circle" : "time-outline"}
@@ -577,7 +596,7 @@ export default function VisitWorkspaceScreen() {
               badge={data.presentationSessions.length ? `${copy.opened}: ${data.presentationSessions.length}` : undefined}
             >
               <Text style={styles.presentationHint}>{copy.presentationsHint}</Text>
-              {data.status === "CHECKED_IN" ? (
+              {liveVisit ? (
                 catalog.products.length ? (
                   <View style={styles.presentationList}>
                     {catalog.products.map((product) => (
