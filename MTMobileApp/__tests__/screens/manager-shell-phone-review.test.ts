@@ -35,7 +35,7 @@ describe("manager shell: what the phone review found", () => {
   })
 
   it("3. says the role in words, never MANAGER", () => {
-    const translate = (dictionary: Record<string, any>) => (key: string) => key.split(".").reduce((node, part) => node?.[part], dictionary) as string
+    const translate = (dictionary: Record<string, any>) => (key: string): string => key.split(".").reduce<any>((node, part) => node?.[part], dictionary)
     expect(statusLabel(translate(az), "role", "MANAGER")).toBe("Menecer")
     expect(statusLabel(translate(az), "role", "SUPERVISOR")).toBe("Supervayzer")
     expect(statusLabel(translate(ru), "role", "MANAGER")).toBe("Менеджер")
