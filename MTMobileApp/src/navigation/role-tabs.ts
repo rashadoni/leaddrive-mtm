@@ -38,10 +38,15 @@ export type ShellPrincipal = { id: string; organizationId: string; role: string 
  * Decided from the bootstrap, as every other door in this app: the role alone
  * opens nothing. The answer must name the same person and organization as the
  * session (a late bootstrap of the previous user must not open his shell), it
- * must carry the strict manifest (a legacy server keeps today's screen), the
- * tenant's Route Field module must be on — Team, Plan and Approvals are route
- * work — and the server must hand out TEAM_READ, which every
- * /mobile/manager/* route requires. No bootstrap yet means no.
+ * must carry the strict manifest (a legacy server keeps today's screen), and
+ * the server must hand out TEAM_READ, which every /mobile/manager/* route
+ * requires. No bootstrap yet means no.
+ *
+ * Not the manifest's routeField module: the server turns it on only with
+ * ROUTE_EXECUTE — the agent's own route — which a manager does not have. On
+ * the owner's phone (2026-10-17, build 486) that kept every real manager on
+ * the lock screen. Each /mobile/manager/* section checks the tenant's modules
+ * itself.
  */
 export function hasManagerShellAccess(data: BootstrapData | null | undefined, agent: ShellPrincipal): boolean {
   const manifest = data?.manifest
@@ -49,7 +54,6 @@ export function hasManagerShellAccess(data: BootstrapData | null | undefined, ag
     && data.tenant?.id === agent.organizationId && manifest.tenant.id === agent.organizationId
     && data.principal?.id === agent.id && manifest.principal.id === agent.id
     && data.principal?.role === agent.role && manifest.principal.role === agent.role
-    && manifest.modules.routeField.enabled === true
     && hasCapability(data.capabilities, "TEAM_READ")
 }
 

@@ -64,8 +64,12 @@ describe("which shell a principal gets", () => {
     expect(shellOf("MANAGER", { capabilities: [] })).toEqual({ kind: "office" })
   })
 
-  it("keeps today's screen when the tenant's Route Field module is off", () => {
-    expect(shellOf("MANAGER", { routeField: false, attendance: false })).toEqual({ kind: "blocked", attendance: true, access: "disabled" })
+  // The owner's phone, 2026-10-17, build 486: the real server sends a manager
+  // routeField off (it needs ROUTE_EXECUTE, an agent's grant) and TEAM_READ on.
+  // Requiring the module kept every real manager on the lock screen.
+  it("opens the manager tabs as the real server sends a manager: Route Field module off, team grant on", () => {
+    expect(shellOf("MANAGER", { routeField: false, attendance: false })).toEqual({ kind: "manager", tabs: MANAGER_TAB_NAMES })
+    expect(shellOf("SUPERVISOR", { routeField: false })).toEqual({ kind: "manager", tabs: ["Team", "Planning", "Approvals", "OwnWorkday", "More"] })
   })
 
   it("behaves as today while the bootstrap has not loaded", () => {
