@@ -50,6 +50,7 @@ import type { MobileProductPresentation } from "../services/product-presentation
 import type { RoutePlanningTargetHint } from "../services/route-planning-target"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
+import ManagerTeamMessageScreen from "../screens/manager/ManagerTeamMessageScreen.android"
 import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
 import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
@@ -82,6 +83,8 @@ export type RootStackParamList = {
   ContactTransfer: undefined
   /** One employee from «Komanda»: the day on a map, the route, the workday (owner, 2026-10-17). */
   ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null }
+  /** «Komandaya yaz» from «Komanda»: to the whole team or one employee (owner, 2026-10-17). */
+  ManagerTeamMessage: undefined
   /** The agent's own planner in the field shell; the team planner in the manager shell. */
   PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } | undefined
 }
@@ -445,6 +448,7 @@ export default function AppNavigatorAndroidV2() {
               <>
                 <Stack.Screen name="PlanningBuilder" component={ManagerPlanningBuilderScreen} />
                 <Stack.Screen name="ManagerEmployee" component={ManagerEmployeeScreen} />
+                <Stack.Screen name="ManagerTeamMessage" component={ManagerTeamMessageScreen} />
                 {/* His own workday tab opens these by name; in the office shell they are tabs. */}
                 {office ? (
                   <>

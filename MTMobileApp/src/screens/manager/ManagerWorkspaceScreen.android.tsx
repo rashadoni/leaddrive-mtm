@@ -395,17 +395,29 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 : t("common.loading")}
               tablet={expandedTablet}
             />
-            {shellTabs.includes("Planning") ? (
+            {/* The approved pair under the tiles (2026-10-17): write to the team, create a route. */}
+            <View style={styles.homeActions}>
               <Pressable
                 accessibilityRole="button"
-                testID="manager-home-create-route"
-                style={({ pressed }) => [styles.createRoute, pressed && styles.buttonPressed]}
-                onPress={() => navigation.navigate("PlanningBuilder", { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 })}
+                testID="manager-home-write-team"
+                style={({ pressed }) => [styles.homeAction, styles.writeTeam, pressed && styles.buttonPressed]}
+                onPress={() => navigation.navigate("ManagerTeamMessage")}
               >
-                <Icon name="add" size={22} color={fieldTheme.color.onColor} />
-                <Text style={styles.createRouteText}>{t("managerShell.createRoute")}</Text>
+                <Icon name="chatbox-outline" size={21} color={fieldTheme.color.primaryStrong} />
+                <Text style={styles.writeTeamText} numberOfLines={2}>{t("managerShell.writeTeam")}</Text>
               </Pressable>
-            ) : null}
+              {shellTabs.includes("Planning") ? (
+                <Pressable
+                  accessibilityRole="button"
+                  testID="manager-home-create-route"
+                  style={({ pressed }) => [styles.homeAction, styles.createRoute, pressed && styles.buttonPressed]}
+                  onPress={() => navigation.navigate("PlanningBuilder", { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 })}
+                >
+                  <Icon name="add" size={22} color={fieldTheme.color.onColor} />
+                  <Text style={styles.createRouteText} numberOfLines={2}>{t("managerShell.createRoute")}</Text>
+                </Pressable>
+              ) : null}
+            </View>
             {loadError && (
               <View style={styles.errorNotice}>
                 <Icon name="cloud-offline-outline" size={21} color={fieldTheme.color.amber} />
@@ -914,16 +926,21 @@ const styles = StyleSheet.create({
   tileLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
   tileValue: { color: fieldTheme.color.ink, fontSize: 30, lineHeight: 36, fontWeight: "900", letterSpacing: -0.5 },
   tileHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16 },
-  createRoute: {
+  homeActions: { flexDirection: "row", gap: fieldTheme.space.sm },
+  homeAction: {
+    flex: 1,
     minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primary,
   },
-  createRouteText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
+  writeTeam: { borderWidth: 2, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
+  writeTeamText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  createRoute: { backgroundColor: fieldTheme.color.primary },
+  createRouteText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
   openRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2, marginTop: fieldTheme.space.sm, minHeight: 28 },
   openText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
   presencePill: {

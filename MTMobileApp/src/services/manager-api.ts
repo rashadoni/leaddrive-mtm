@@ -50,6 +50,23 @@ export const managerApi = {
   },
 
   /**
+   * «Komandaya yaz»: whom the manager may write to — his team as the server
+   * scopes it, active employees only, himself left out.
+   */
+  getMessageRecipients(signal?: AbortSignal) {
+    return api.requestLegacy("/mobile/manager/messages", { signal })
+  },
+
+  /**
+   * Send to the whole team or to one employee of it. Someone outside the team
+   * is refused with 403 MTM_TEAM_MESSAGE_RECIPIENT_FORBIDDEN; a resend with
+   * the same clientMessageId is answered with the first message (`replayed`).
+   */
+  sendTeamMessage(data: { to: "TEAM"; body: string; clientMessageId: string } | { to: "AGENT"; agentId: string; body: string; clientMessageId: string }) {
+    return api.requestLegacy("/mobile/manager/messages", { method: "POST", body: JSON.stringify(data) })
+  },
+
+  /**
    * Legacy manager catalog. Route Field never sends team-assignment filters;
    * server-side RLS remains authoritative for every returned organization.
    */
