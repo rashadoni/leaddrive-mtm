@@ -203,3 +203,97 @@ export function doctorDecisionRefusal(error: Refusal): { key: string; reload: bo
   if (error?.status === 403) return { key: "managerShell.doctorForbidden", reload: false }
   return { key: "managerShell.decisionFailed", reload: false }
 }
+
+/**
+ * An employee's Personnel request (leave, sick leave, a time correction…)
+ * waiting for the manager, as GET /mobile/manager/approvals sends it in
+ * `data.attendance`. Separate from the Workforce `hrm` queue above.
+ */
+export interface AttendanceApproval {
+  id: string
+  /** The request's `updatedAt`; the decision must carry it back. */
+  version: string
+  employeeName: string
+  teamName?: string
+  kind: string
+  unit: "DAYS" | "HOURS"
+  startDate: string
+  endDate: string
+  startTime?: string
+  endTime?: string
+  /** The tenant's own name for the day kind, when the request names one. */
+  dayKindNames?: { az?: string; ru?: string; en?: string }
+  reason?: string
+}
+
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
+const CLOCK = /^\d{2}:\d{2}/
+
+export function toAttendanceApprovals(raw: any): AttendanceApproval[] {
+  const items: any[] = Array.isArray(raw?.attendance) ? raw.attendance : []
+  return items
+    .filter((item) => String(item?.status ?? "PENDING").toUpperCase() === "PENDING")
+    .map((item): AttendanceApproval | null => {
+      const id = str(item?.id)
+      const version = str(item?.version)
+      const startDate = str(item?.startDate)?.slice(0, 10)
+      const endDate = str(item?.endDate)?.slice(0, 10) ?? startDate
+      const details = item?.details && typeof item.details === "object" ? item.details : {}
+      const kind = str(details.kind)
+      if (!id || !version || !startDate || !endDate || !DATE_KEY.test(startDate) || !DATE_KEY.test(endDate) || !kind) return null
+      const names = details.dayKind?.names && typeof details.dayKind.names === "object" ? details.dayKind.names : null
+      const startTime = str(details.startTime)
+      const endTime = str(details.endTime)
+      return {
+        id,
+        version,
+        employeeName: str(item?.employeeName)?.trim() || "—",
+        teamName: str(item?.teamName)?.trim() || undefined,
+        kind,
+        unit: details.unit === "HOURS" ? "HOURS" : "DAYS",
+        startDate,
+        endDate,
+        startTime: startTime && CLOCK.test(startTime) ? startTime.slice(0, 5) : undefined,
+        endTime: endTime && CLOCK.test(endTime) ? endTime.slice(0, 5) : undefined,
+        dayKindNames: names
+          ? { az: str(names.az)?.trim() || undefined, ru: str(names.ru)?.trim() || undefined, en: str(names.en)?.trim() || undefined }
+          : undefined,
+        reason: str(item?.reason)?.trim() || undefined,
+      }
+    })
+    .filter((item): item is AttendanceApproval => item !== null)
+}
+
+/** The kind in words: the tenant's day-kind name in the app language, else the app's own word for the kind. */
+export function attendanceKindLabel(item: AttendanceApproval, language: string, t: (key: string) => string): string {
+  const locale = language.toLowerCase().startsWith("az") ? "az" : language.toLowerCase().startsWith("en") ? "en" : "ru"
+  const own = item.dayKindNames?.[locale]
+  if (own) return own
+  const key = `attendanceRequests.kinds.${item.kind}`
+  const word = t(key)
+  return word && word !== key ? word : t("attendanceRequests.kind")
+}
+
+/** «17 oktyabr» or «17 oktyabr — 20 oktyabr»; with the hours when the request is by the hour. */
+export function attendancePeriod(item: AttendanceApproval, formatDay: (dateKey: string) => string): string {
+  const days = item.startDate === item.endDate ? formatDay(item.startDate) : `${formatDay(item.startDate)} — ${formatDay(item.endDate)}`
+  if (item.unit !== "HOURS" || !item.startTime) return days
+  return `${days}, ${item.startTime}${item.endTime ? `–${item.endTime}` : ""}`
+}
+
+/** A rejection must say why: the server refuses a reason shorter than this. */
+export const ATTENDANCE_REJECT_NOTE_MIN = 3
+
+/** What a refused decision on a Personnel request means, as a managerShell.* key. */
+export function attendanceDecisionRefusal(error: Refusal): { key: string; reload: boolean } {
+  const code = typeof error?.code === "string" ? error.code : ""
+  switch (code) {
+    case "MTM_ATTENDANCE_REQUEST_CHANGED":
+    case "MTM_ATTENDANCE_REQUEST_ALREADY_DECIDED": return { key: "managerShell.attendanceChanged", reload: true }
+    case "MTM_ATTENDANCE_DECISION_FORBIDDEN": return { key: "managerShell.attendanceForbidden", reload: false }
+    case "MTM_ATTENDANCE_REQUEST_SELF_APPROVAL": return { key: "managerShell.attendanceOwnRequest", reload: false }
+    case "MTM_ATTENDANCE_REQUEST_NOT_FOUND": return { key: "managerShell.decisionGone", reload: true }
+    case "MTM_ATTENDANCE_DISABLED": return { key: "managerShell.attendanceDisabled", reload: true }
+  }
+  return { key: "managerShell.decisionFailed", reload: false }
+}

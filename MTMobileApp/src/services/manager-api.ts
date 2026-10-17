@@ -152,6 +152,18 @@ export const managerApi = {
     })
   },
 
+  /**
+   * Decide an employee's Personnel request. `version` is the request's
+   * version as listed; a stale one is refused with 409
+   * MTM_ATTENDANCE_REQUEST_CHANGED. A rejection needs a reason (3+ chars).
+   */
+  attendanceDecision(id: string, decision: "APPROVED" | "REJECTED", version: string, note?: string | null) {
+    return api.requestLegacy(`/mobile/manager/attendance-requests/${encodeURIComponent(id)}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, version, note: note?.trim() ? note.trim() : null }),
+    })
+  },
+
   hrmDecision(id: string, decision: "APPROVED" | "REJECTED", note?: string) {
     return api.requestLegacy(`/operations/hrm/${id}/decision`, {
       method: "POST",

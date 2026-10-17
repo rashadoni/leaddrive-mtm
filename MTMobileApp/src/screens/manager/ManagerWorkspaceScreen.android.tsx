@@ -30,6 +30,12 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { contactTransferAvailable } from "../../lib/field-contacts-policy"
 import { planningTodayKey, toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
 import {
+  ATTENDANCE_REJECT_NOTE_MIN,
+  attendanceDecisionRefusal,
+  attendanceKindLabel,
+  attendancePeriod,
+  toAttendanceApprovals,
+  type AttendanceApproval,
   doctorDecisionRefusal,
   routeDraftsAwaitingPublish,
   routeDraftWindow,
@@ -61,7 +67,7 @@ import ManagerLiveMap from "./ManagerLiveMap.android"
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
 /** Which approval queue a decision targets — each hits its own decision endpoint. */
-type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange" | "doctorRequest"
+type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange" | "doctorRequest" | "attendance"
 type SelfShareState = "idle" | "locating" | "sending" | "success" | "permissionDenied" | "error"
 
 const SCREEN_META: Record<
@@ -118,6 +124,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
   const [approvals, setApprovals] = useState<ManagerApprovals | null>(null)
   const [routeDrafts, setRouteDrafts] = useState<RouteDraftApproval[]>([])
   const [doctorRequests, setDoctorRequests] = useState<DoctorRequestApproval[]>([])
+  const [attendance, setAttendance] = useState<AttendanceApproval[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -152,7 +159,10 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
       } else {
         // Each queue answers for itself: a manager the server lets publish
         // routes but not decide doctors still sees his drafts.
-        if (response.approvals) setApprovals(toApprovals(response.approvals.data))
+        if (response.approvals) {
+          setApprovals(toApprovals(response.approvals.data))
+          setAttendance(toAttendanceApprovals(response.approvals.data))
+        }
         if (response.drafts) setRouteDrafts(routeDraftsAwaitingPublish(response.drafts.data, today))
         if (response.doctors) setDoctorRequests(toDoctorRequestApprovals(response.doctors.data))
       }
@@ -262,6 +272,35 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
     }
   }
 
+  /**
+   * An employee's Personnel request. The decision carries the version the
+   * manager saw: a request changed meanwhile is refused, said in words, and
+   * the list reloads. A rejection must give a reason; the server takes none
+   * shorter than three letters, so the app asks again instead of sending it.
+   */
+  const decideAttendance = async (item: AttendanceApproval, decision: "APPROVED" | "REJECTED", note?: string) => {
+    if (busyId) return
+    if (decision === "REJECTED" && (note?.trim().length ?? 0) < ATTENDANCE_REJECT_NOTE_MIN) {
+      setToast({ visible: true, type: "error", title: t("managerShell.attendanceReasonRequired") })
+      return
+    }
+    setBusyId(item.id)
+    try {
+      const res = await managerApi.attendanceDecision(item.id, decision, item.version, note)
+      if (res?.success) {
+        setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
+        reload("silent")
+      }
+    } catch (e: any) {
+      if (e?.message === "SESSION_EXPIRED") return
+      const refusal = attendanceDecisionRefusal(e)
+      setToast({ visible: true, type: "error", title: t(refusal.key) })
+      if (refusal.reload) reload("silent")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const publishDraft = async (draft: RouteDraftApproval) => {
     if (busyId) return
     setBusyId(draft.id)
@@ -294,7 +333,14 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
     details: [request.clinicName, request.address, request.phone].filter(Boolean).join(" · ") || undefined,
     reason: request.notes,
   }))
-  const approvalsTotal = (approvals?.total ?? 0) + draftItems.length + doctorItems.length
+  const attendanceItems: ApprovalItem[] = attendance.map((item) => ({
+    id: item.id,
+    agentName: [item.employeeName, item.teamName].filter(Boolean).join(" · "),
+    primary: attendanceKindLabel(item, i18n.language, t),
+    details: attendancePeriod(item, (day) => formatLocalizedDate(day, i18n.language, { day: "numeric", month: "long", timeZone: "UTC" }) || day),
+    reason: item.reason,
+  }))
+  const approvalsTotal = (approvals?.total ?? 0) + draftItems.length + doctorItems.length + attendanceItems.length
 
   return (
     <View style={styles.root}>
@@ -487,6 +533,14 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 onApprove={(id) => decide("doctorRequest", id, "APPROVED")}
                 onReject={(id) => setRejectTarget({ kind: "doctorRequest", id })}
               />
+              <ApprovalSection
+                title={t("managerShell.approvalsAttendance")}
+                items={attendanceItems}
+                t={t}
+                busyId={busyId}
+                onApprove={(id) => { const item = attendance.find((entry) => entry.id === id); if (item) void decideAttendance(item, "APPROVED") }}
+                onReject={(id) => setRejectTarget({ kind: "attendance", id })}
+              />
               {approvals ? (
                 <>
               <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide("hrm", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "hrm", id })} />
@@ -512,7 +566,17 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
         title={t("managerShell.rejectTitle")}
         message={t("managerShell.rejectMessage")}
         onCancel={() => setRejectTarget(null)}
-        onSubmit={(note) => { const target = rejectTarget; setRejectTarget(null); if (target) decide(target.kind, target.id, "REJECTED", note) }}
+        onSubmit={(note) => {
+          const target = rejectTarget
+          setRejectTarget(null)
+          if (!target) return
+          if (target.kind === "attendance") {
+            const item = attendance.find((entry) => entry.id === target.id)
+            if (item) void decideAttendance(item, "REJECTED", note)
+          } else {
+            decide(target.kind, target.id, "REJECTED", note)
+          }
+        }}
       />
       <FeedbackToast visible={toast.visible} type={toast.type} title={toast.title} onDismiss={() => setToast((s) => ({ ...s, visible: false }))} />
     </View>
