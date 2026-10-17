@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -145,8 +146,12 @@ export default function ManagerTeamMessageScreen() {
             ? t("teamMessage.sendTeam", { count: recipients.length })
             : t("teamMessage.sendOne", { name: selected?.name ?? "" })
 
+  // Android 16 draws the app edge-to-edge and no longer shrinks the window for
+  // the keyboard: on the S23 (2026-10-18) «Göndər» stood under it while the
+  // manager typed. "padding" lifts the footer by exactly the part the keyboard
+  // covers, as NotesModal does.
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView style={styles.root} behavior="padding">
       <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={t("teamMessage.back")} onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -286,7 +291,7 @@ export default function ManagerTeamMessageScreen() {
           </View>
         </>
       )}
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 

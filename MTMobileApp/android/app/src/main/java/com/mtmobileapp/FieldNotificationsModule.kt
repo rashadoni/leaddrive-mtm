@@ -213,6 +213,20 @@ class FieldNotificationReceiver : BroadcastReceiver() {
     const val DEFAULT_CHANNEL = "field-reminders"
 
     /**
+     * A manager's message to the team (owner, 2026-10-18: it reached the
+     * employee «но не всплывающий» — only in the shade). Only a channel of high
+     * importance pops a notification up over the screen; "field-reminders" was
+     * created with default importance, and Android never lets an app raise the
+     * importance of a channel it already created. So messages get a channel of
+     * their own. The server names it in the push (leaddrive-v2
+     * MTM_TEAM_MESSAGES_PUSH_CHANNEL); `ensureTeamMessagesChannel` creates it at
+     * process start, before Firebase draws a push that arrived while closed.
+     */
+    const val TEAM_MESSAGES_CHANNEL = "team-messages"
+
+    fun ensureTeamMessagesChannel(context: Context) = ensureChannel(context, TEAM_MESSAGES_CHANNEL)
+
+    /**
      * Creating the channel before posting into it.
      *
      * On Android 8 and up `notify` into a channel that does not exist does
@@ -228,13 +242,23 @@ class FieldNotificationReceiver : BroadcastReceiver() {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
       val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
       if (manager.getNotificationChannel(channelId) != null) return
-      manager.createNotificationChannel(
+      val channel = if (channelId == TEAM_MESSAGES_CHANNEL) {
+        NotificationChannel(
+          channelId,
+          context.getString(R.string.team_messages_channel_name),
+          NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+          description = context.getString(R.string.team_messages_channel_description)
+          enableVibration(true)
+        }
+      } else {
         NotificationChannel(
           channelId,
           context.getString(R.string.field_notifications_channel_name),
           NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply { description = context.getString(R.string.field_notifications_channel_description) },
-      )
+        ).apply { description = context.getString(R.string.field_notifications_channel_description) }
+      }
+      manager.createNotificationChannel(channel)
     }
 
     fun post(context: Context, id: String, title: String, body: String, channelId: String) {
@@ -256,7 +280,9 @@ class FieldNotificationReceiver : BroadcastReceiver() {
         .setContentText(body)
         .setStyle(NotificationCompat.BigTextStyle().bigText(body))
         .setAutoCancel(true)
-        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        // Android 7 has no channels: there the notification's own priority pops it up.
+        .setPriority(if (channelId == TEAM_MESSAGES_CHANNEL) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
+        .apply { if (channelId == TEAM_MESSAGES_CHANNEL) setDefaults(NotificationCompat.DEFAULT_ALL) }
         .apply { contentIntent?.let { setContentIntent(it) } }
         .build()
       try {

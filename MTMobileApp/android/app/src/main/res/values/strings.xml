@@ -2,5 +2,7 @@
     <string name="app_name">LeadDrive Route Field</string>
     <!-- Shown in Android settings, so it is the agent's own words, not an id. -->
     <string name="field_notifications_channel_name">Работа в поле</string>
-    <string name="field_notifications_channel_description">Сообщения команды, напоминания о визитах и сроках задач.</string>
+    <string name="field_notifications_channel_description">Напоминания о визитах и сроках задач.</string>
+    <string name="team_messages_channel_name">Сообщения команды</string>
+    <string name="team_messages_channel_description">Сообщения руководителя: всплывают поверх экрана.</string>
 </resources>
