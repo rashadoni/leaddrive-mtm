@@ -27,7 +27,7 @@ describe("the manager's shell keeps what a manager uses", () => {
     // The approvals tile counts the same queues the Təsdiqlər tab lists.
     expect(workspace).toContain("Promise.all([managerApi.getTeam(), managerApi.getLocations(), approvalQueues(draftWindow).catch(() => null)])")
     expect(workspace).toContain('onPress: () => navigation.navigate("Approvals" as never)')
-    expect(workspace).toContain('navigation.navigate("PlanningBuilder" as never, { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 } as never)')
+    expect(workspace).toContain('navigation.navigate("PlanningBuilder", { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 })')
     // «Diqqət»: old or missing GPS, or a visit left open on an earlier day.
     expect(workspace).toContain('truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES" || Boolean(agent.openVisitSince)')
     expect(workspace).toContain('t("managerShell.openVisitLeft"')

@@ -400,7 +400,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 accessibilityRole="button"
                 testID="manager-home-create-route"
                 style={({ pressed }) => [styles.createRoute, pressed && styles.buttonPressed]}
-                onPress={() => navigation.navigate("PlanningBuilder" as never, { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 } as never)}
+                onPress={() => navigation.navigate("PlanningBuilder", { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 })}
               >
                 <Icon name="add" size={22} color={fieldTheme.color.onColor} />
                 <Text style={styles.createRouteText}>{t("managerShell.createRoute")}</Text>
