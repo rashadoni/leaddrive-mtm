@@ -1,4 +1,5 @@
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
+import ManagerSelfLocationShare from "../manager/ManagerSelfLocationShare.android"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
@@ -53,7 +54,14 @@ const LANGUAGE_LABEL_KEY: Record<string, string> = {
   ru: "profile.languageRu",
 }
 
-export default function ProfileScreen() {
+/**
+ * `managerShell`: the «Daha çox» tab of a manager. A tab has nowhere to go
+ * back to, the server address is a technician's, and the workday location
+ * card is the «İş günü» tab's — the owner went through the manager's tabs on
+ * 2026-10-17 and had them taken out. «Mövqeyimi paylaş» moved here from
+ * «Komanda».
+ */
+export default function ProfileScreen({ managerShell = false }: { managerShell?: boolean } = {}) {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
@@ -191,17 +199,21 @@ export default function ProfileScreen() {
 
   const settingsColumn = (
     <View style={styles.column}>
-      <SectionCard icon="cloud-done-outline" title={t("profile.connectionTitle")}>
-        <InfoRow icon="business-outline" label={t("profile.infoServer")} value={serverDomain || "—"} />
-        <InfoRow
-          icon={loadError ? "cloud-offline-outline" : "checkmark-circle-outline"}
-          label={t("profile.infoStatus")}
-          value={t(loadError ? "profile.statusNotConfirmed" : "profile.statusConnected")}
-          valueColor={loadError ? fieldTheme.color.amber : fieldTheme.color.success}
-        />
-      </SectionCard>
+      {managerShell ? <ManagerSelfLocationShare /> : (
+        <>
+          <SectionCard icon="cloud-done-outline" title={t("profile.connectionTitle")}>
+            <InfoRow icon="business-outline" label={t("profile.infoServer")} value={serverDomain || "—"} />
+            <InfoRow
+              icon={loadError ? "cloud-offline-outline" : "checkmark-circle-outline"}
+              label={t("profile.infoStatus")}
+              value={t(loadError ? "profile.statusNotConfirmed" : "profile.statusConnected")}
+              valueColor={loadError ? fieldTheme.color.amber : fieldTheme.color.success}
+            />
+          </SectionCard>
 
-      <AttendanceLocationConsentCard />
+          <AttendanceLocationConsentCard />
+        </>
+      )}
 
       <SectionCard icon="language-outline" title={t("profile.language")}>
         <View style={styles.localeRow}>
@@ -281,14 +293,16 @@ export default function ProfileScreen() {
       >
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={styles.headerInner}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("profile.back")}
-              onPress={() => office ? navigation.navigate((ownAttendance ? "OwnWorkday" : "Team") as never) : navigation.goBack()}
-              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-            >
-              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
-            </Pressable>
+            {managerShell ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("profile.back")}
+                onPress={() => office ? navigation.navigate((ownAttendance ? "OwnWorkday" : "Team") as never) : navigation.goBack()}
+                style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+              >
+                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              </Pressable>
+            )}
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{upperInitial(agent?.name)}</Text>
             </View>

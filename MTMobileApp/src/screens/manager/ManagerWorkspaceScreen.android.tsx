@@ -1,9 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from "react"
 import {
-  ActivityIndicator,
   Linking,
-  PermissionsAndroid,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,8 +22,6 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { managerApi } from "../../services/manager-api"
-import { hasCapability } from "../../services/bootstrap"
-import { captureOneShotLocation } from "../../services/self-location-share"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { contactTransferAvailable } from "../../lib/field-contacts-policy"
 import { planningTodayKey, toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
@@ -55,13 +50,11 @@ import {
   formatManagerEvidenceAge,
   managerAgentTruth,
   normalizeManagerLocations,
-  teamPresenceSummary,
   type ManagerAgentTruth,
   type ManagerLocationEvidence,
   type ManagerTeamAgent,
 } from "../../services/manager-location-truth"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
-import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
 import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
 
@@ -69,7 +62,6 @@ export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
 /** Which approval queue a decision targets — each hits its own decision endpoint. */
 type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange" | "doctorRequest" | "attendance"
-type SelfShareState = "idle" | "locating" | "sending" | "success" | "permissionDenied" | "error"
 
 const SCREEN_META: Record<
   ManagerWorkspaceKind,
@@ -115,7 +107,6 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
-  const canShareSelfLocation = useBootstrapStore((state) => hasCapability(state.capabilities, "SELF_LOCATION_SHARE"))
   // No "transfer contacts" door when the organization switched contacts off.
   const canTransferContacts = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies)) && contactTransfer
   const timezone = useBootstrapStore((state) => state.data?.timezone)
@@ -132,10 +123,11 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
   const [updatedAt, setUpdatedAt] = useState<number | null>(null)
   const [observedAt, setObservedAt] = useState(() => Date.now())
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [selfShareState, setSelfShareState] = useState<SelfShareState>("idle")
   const [rejectTarget, setRejectTarget] = useState<{ kind: ApprovalKind; id: string } | null>(null)
   const [toast, setToast] = useState<{ visible: boolean; type: "success" | "error"; title: string }>({ visible: false, type: "success", title: "" })
   const requestId = useRef(0)
+  const scrollRef = useRef<ScrollView>(null)
+  const teamListY = useRef(0)
 
   const reload = useCallback(async (mode: "initial" | "manual" | "silent" = "initial") => {
     const currentRequestId = ++requestId.current
@@ -144,8 +136,10 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
     if (mode === "manual") setRefreshing(true)
     const today = planningTodayKey(new Date(), timezone)
     const draftWindow = routeDraftWindow(today)
+    // «Komanda» reads the approval queues too: «Təsdiq gözləyir» counts them.
+    // A queue the manager may not read answers as empty, not as an error.
     const request = kind === "team"
-      ? Promise.all([managerApi.getTeam(), managerApi.getLocations()])
+      ? Promise.all([managerApi.getTeam(), managerApi.getLocations(), approvalQueues(draftWindow).catch(() => null)])
       : kind === "planning"
         ? managerApi.getPlanning()
         : approvalQueues(draftWindow)
@@ -155,6 +149,13 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
       if (kind === "team") {
         setTeam(Array.isArray(response?.[0]?.data?.agents) ? response[0].data.agents : [])
         setLocations(normalizeManagerLocations(response?.[1]?.data?.locations))
+        const queues = response?.[2]
+        if (queues?.approvals) {
+          setApprovals(toApprovals(queues.approvals.data))
+          setAttendance(toAttendanceApprovals(queues.approvals.data))
+        }
+        if (queues?.drafts) setRouteDrafts(routeDraftsAwaitingPublish(queues.drafts.data, today))
+        if (queues?.doctors) setDoctorRequests(toDoctorRequestApprovals(queues.doctors.data))
       } else if (kind === "planning") {
         setPlanning(toPlanningRoutes(response?.data))
       } else {
@@ -196,57 +197,6 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
       .filter((agent) => !viewerId || agent.id !== viewerId)
       .map((agent) => ({ agent, truth: managerAgentTruth(agent, locations, observedAt) }))
   }, [locations, observedAt, team, viewerId])
-  const presence = teamPresenceSummary(teamRows, viewerId)
-  const selfShareBusy = selfShareState === "locating" || selfShareState === "sending"
-
-  const requestForegroundLocation = async (): Promise<boolean> => {
-    if (Platform.OS !== "android") return true
-    try {
-      const [fineGranted, coarseGranted] = await Promise.all([
-        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION),
-        PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION),
-      ])
-      if (fineGranted || coarseGranted) return true
-      const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, {
-        title: t("managerShell.shareLocationPermissionTitle"),
-        message: t("managerShell.shareLocationPermissionBody"),
-        buttonPositive: t("permission.allow"),
-        buttonNegative: t("permission.deny"),
-      })
-      if (result === PermissionsAndroid.RESULTS.GRANTED) return true
-      // Android 12+ may grant approximate (COARSE) location when the user
-      // declines precise (FINE). A one-shot approximate point is still useful
-      // and must not be misreported as a total permission denial.
-      return PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION)
-    } catch {
-      return false
-    }
-  }
-
-  const shareSelfLocation = async () => {
-    if (!canShareSelfLocation || selfShareBusy) return
-    setSelfShareState("locating")
-    const permitted = await requestForegroundLocation()
-    if (!permitted) {
-      setSelfShareState("permissionDenied")
-      setToast({ visible: true, type: "error", title: t("managerShell.shareLocationPermissionDenied") })
-      return
-    }
-
-    try {
-      const position = await captureOneShotLocation()
-      setSelfShareState("sending")
-      const response = await managerApi.shareSelfLocation(position)
-      if (!response?.success) throw new Error("SELF_LOCATION_SHARE_FAILED")
-      setSelfShareState("success")
-      setToast({ visible: true, type: "success", title: t("managerShell.shareLocationSuccess") })
-      await reload("silent")
-    } catch (error: any) {
-      if (error?.message === "SESSION_EXPIRED") return
-      setSelfShareState("error")
-      setToast({ visible: true, type: "error", title: t("managerShell.shareLocationError") })
-    }
-  }
 
   const decide = async (queue: ApprovalKind, id: string, decision: "APPROVED" | "REJECTED", note?: string) => {
     if (busyId) return
@@ -349,6 +299,52 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
   }))
   const approvalsTotal = (approvals?.total ?? 0) + draftItems.length + doctorItems.length + attendanceItems.length
 
+  // «Bu gün» (owner-approved mockup, 2026-10-17): four live numbers where a
+  // memo of the tab bar and «share my location» stood. A tile opens the tab
+  // it counts, or scrolls to the team list under the map.
+  const shellTabs: string[] = (navigation.getState()?.routeNames as string[] | undefined) ?? []
+  const showTeamList = () => scrollRef.current?.scrollTo({ y: Math.max(0, teamListY.current - fieldTheme.space.md), animated: true })
+  const visitsPlanned = teamRows.reduce((sum, { agent }) => sum + (agent.routeToday?.planned ?? 0), 0)
+  const visitsDone = teamRows.reduce((sum, { agent }) => sum + (agent.routeToday?.visited ?? 0), 0)
+  const atWork = teamRows.filter(({ agent }) => agent.workday?.status === "STARTED" || agent.workday?.status === "PAUSED").length
+  const needsAttention = teamRows.filter(({ agent, truth }) => (
+    truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES" || Boolean(agent.openVisitSince)
+  )).length
+  const todayTiles: TodayTile[] = [
+    ...(shellTabs.includes("Approvals") ? [{
+      key: "approvals",
+      label: t("managerShell.tileApprovals"),
+      value: String(approvalsTotal),
+      hint: t("managerShell.tileApprovalsHint"),
+      tone: approvalsTotal > 0 ? "primary" as const : "plain" as const,
+      onPress: () => navigation.navigate("Approvals" as never),
+    }] : []),
+    {
+      key: "visits",
+      label: t("managerShell.tileVisits"),
+      value: `${visitsDone} / ${visitsPlanned}`,
+      hint: t("managerShell.tileVisitsHint"),
+      tone: "plain",
+      onPress: shellTabs.includes("Planning") ? () => navigation.navigate("Planning" as never) : showTeamList,
+    },
+    {
+      key: "atWork",
+      label: t("managerShell.tileAtWork"),
+      value: `${atWork} / ${teamRows.length}`,
+      hint: t("managerShell.tileAtWorkHint"),
+      tone: "plain",
+      onPress: showTeamList,
+    },
+    {
+      key: "attention",
+      label: t("managerShell.tileAttention"),
+      value: String(needsAttention),
+      hint: t("managerShell.tileAttentionHint"),
+      tone: needsAttention > 0 ? "warning" : "plain",
+      onPress: showTeamList,
+    },
+  ]
+
   return (
     <View style={styles.root}>
       {/* The header is white: the app-wide light icons vanished on it
@@ -368,6 +364,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.content, tablet && styles.contentTablet]}
         refreshControl={(
           <RefreshControl
@@ -378,76 +375,8 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
           />
         )}
       >
-        <MobileWorkflowGuide
-          title={t("managerShell.workflowTitle")}
-          body={t("managerShell.workflowBody")}
-          steps={[
-            { icon: "people-outline", label: t("managerShell.teamTitle"), active: kind === "team" },
-            { icon: "calendar-outline", label: t("managerShell.planningTitle"), active: kind === "planning" },
-            { icon: "shield-checkmark-outline", label: t("managerShell.approvalsTitle"), active: kind === "approvals" },
-          ]}
-        />
         {kind === "team" ? (
           <>
-            {canShareSelfLocation && (
-              <View style={[styles.selfShareCard, expandedTablet && styles.selfShareCardTablet]}>
-                <View style={styles.selfShareIcon}>
-                  <Icon name={selfShareState === "success" ? "checkmark" : "navigate"} size={24} color={fieldTheme.color.onColor} />
-                </View>
-                <View style={styles.selfShareCopy}>
-                  <Text style={styles.selfShareTitle}>{t("managerShell.shareLocationTitle")}</Text>
-                  <Text style={styles.selfShareBody}>
-                    {selfShareState === "locating"
-                      ? t("managerShell.shareLocationLocating")
-                      : selfShareState === "sending"
-                        ? t("managerShell.shareLocationSending")
-                        : selfShareState === "success"
-                          ? t("managerShell.shareLocationSuccessBody")
-                          : selfShareState === "permissionDenied"
-                            ? t("managerShell.shareLocationPermissionDeniedBody")
-                            : selfShareState === "error"
-                              ? t("managerShell.shareLocationErrorBody")
-                              : t("managerShell.shareLocationBody")}
-                  </Text>
-                  {selfShareState === "permissionDenied" && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={t("permission.openSettings")}
-                      style={({ pressed }) => [styles.settingsLink, pressed && styles.buttonPressed]}
-                      onPress={() => { void Linking.openSettings() }}
-                    >
-                      <Icon name="settings-outline" size={17} color={fieldTheme.color.primaryStrong} />
-                      <Text style={styles.settingsLinkText}>{t("permission.openSettings")}</Text>
-                    </Pressable>
-                  )}
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("managerShell.shareLocationTitle")}
-                  accessibilityState={{ busy: selfShareBusy, disabled: selfShareBusy }}
-                  disabled={selfShareBusy}
-                  style={({ pressed }) => [styles.selfShareButton, pressed && styles.buttonPressed, selfShareBusy && styles.buttonDisabled]}
-                  onPress={() => { void shareSelfLocation() }}
-                >
-                  {selfShareBusy ? (
-                    <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
-                  ) : (
-                    <Icon name={selfShareState === "success" ? "refresh" : "location"} size={20} color={fieldTheme.color.onColor} />
-                  )}
-                  <Text style={styles.selfShareButtonText}>
-                    {selfShareState === "success"
-                      ? t("managerShell.shareLocationAgain")
-                      : selfShareState === "permissionDenied" || selfShareState === "error"
-                        ? t("managerShell.shareLocationRetry")
-                        : selfShareState === "locating"
-                          ? t("managerShell.shareLocationLocatingShort")
-                          : selfShareState === "sending"
-                            ? t("managerShell.shareLocationSendingShort")
-                            : t("managerShell.shareLocationAction")}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
             {canTransferContacts ? (
               <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
                 <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.onColor} /></View>
@@ -458,31 +387,25 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 <Icon name="chevron-forward" size={21} color={fieldTheme.color.primary} />
               </Pressable>
             ) : null}
-            <View style={[styles.teamSnapshot, expandedTablet && styles.teamSnapshotTablet]}>
-              <View style={styles.snapshotCopy}>
-                <Text style={styles.snapshotTitle}>{t("managerShell.teamSnapshot", { defaultValue: "Team status" })}</Text>
-                <Text style={styles.snapshotMeta}>
-                  {updatedAt
-                    ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatLocalizedDateTime(updatedAt, i18n.language) })
-                    : t("common.loading")}
-                </Text>
-              </View>
-              <View style={styles.snapshotCounts}>
-                <SummaryCount color={fieldTheme.color.success} value={presence.online} label={t("managerShell.online", { defaultValue: "Online" })} />
-                <SummaryCount color={fieldTheme.color.inkMuted} value={presence.offline} label={t("managerShell.offline", { defaultValue: "Offline" })} />
-                <SummaryCount color={fieldTheme.color.amber} value={presence.gpsAttention} label={t("managerShell.gpsNeedsAttention", { defaultValue: "GPS attention" })} />
-              </View>
+            <TodayTiles
+              tiles={todayTiles}
+              title={t("managerShell.todayTitle")}
+              updated={updatedAt
+                ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatLocalizedDateTime(updatedAt, i18n.language) })
+                : t("common.loading")}
+              tablet={expandedTablet}
+            />
+            {shellTabs.includes("Planning") ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={t("managerShell.refreshTeam", { defaultValue: "Refresh team status" })}
-                disabled={refreshing}
-                style={({ pressed }) => [styles.refreshButton, pressed && styles.buttonPressed, refreshing && styles.buttonDisabled]}
-                onPress={() => { void reload("manual") }}
+                testID="manager-home-create-route"
+                style={({ pressed }) => [styles.createRoute, pressed && styles.buttonPressed]}
+                onPress={() => navigation.navigate("PlanningBuilder" as never, { initialDate: planningTodayKey(new Date(), timezone), initialHorizon: 1 } as never)}
               >
-                <Icon name="refresh" size={19} color={fieldTheme.color.primaryStrong} />
-                <Text style={styles.refreshButtonText}>{t("managerShell.refresh", { defaultValue: "Refresh" })}</Text>
+                <Icon name="add" size={22} color={fieldTheme.color.onColor} />
+                <Text style={styles.createRouteText}>{t("managerShell.createRoute")}</Text>
               </Pressable>
-            </View>
+            ) : null}
             {loadError && (
               <View style={styles.errorNotice}>
                 <Icon name="cloud-offline-outline" size={21} color={fieldTheme.color.amber} />
@@ -494,7 +417,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
             )}
             <ManagerLiveMap rows={teamRows} loading={loading} loadError={loadError} />
             {teamRows.length > 0 ? (
-              <View style={[styles.teamList, expandedTablet && styles.teamListTablet]}>
+              <View style={[styles.teamList, expandedTablet && styles.teamListTablet]} onLayout={(event) => { teamListY.current = event.nativeEvent.layout.y }}>
                 {teamRows.map(({ agent, truth }) => (
                   <AgentTruthCard
                     key={agent.id}
@@ -638,12 +561,48 @@ function workdayLabel(status: string | null | undefined, t: any) {
   return t("managerShell.workdayNotStarted", { defaultValue: "Workday not started" })
 }
 
-function SummaryCount({ color, value, label }: { color: string; value: number; label: string }) {
+type TodayTile = { key: string; label: string; value: string; hint: string; tone: "primary" | "warning" | "plain"; onPress: () => void }
+
+/** The day's numbers in an even grid: pairs of one height, a lone last tile takes the row. */
+function TodayTiles({ tiles, title, updated, tablet }: { tiles: TodayTile[]; title: string; updated: string; tablet: boolean }) {
   return (
-    <View style={styles.summaryCount}>
-      <View style={[styles.summaryDot, { backgroundColor: color }]} />
-      <Text style={styles.summaryValue}>{value}</Text>
-      <Text style={styles.summaryLabel}>{label}</Text>
+    <View style={styles.today} testID="manager-today-tiles">
+      <View style={styles.todayHeading}>
+        <Text style={styles.todayTitle}>{title}</Text>
+        <Text style={styles.todayUpdated}>{updated}</Text>
+      </View>
+      <View style={styles.tileGrid}>
+        {tiles.map((tile, index) => {
+          const alone = !tablet && tiles.length % 2 === 1 && index === tiles.length - 1
+          return (
+            <Pressable
+              key={tile.key}
+              testID={`manager-tile-${tile.key}`}
+              accessibilityRole="button"
+              accessibilityLabel={`${tile.label}: ${tile.value}. ${tile.hint}`}
+              onPress={tile.onPress}
+              style={({ pressed }) => [
+                styles.tile,
+                tablet ? styles.tileTablet : alone ? styles.tileWide : styles.tileHalf,
+                tile.tone === "primary" && styles.tilePrimary,
+                tile.tone === "warning" && styles.tileWarning,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <View style={styles.tileTop}>
+                <Text style={styles.tileLabel}>{tile.label}</Text>
+                <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} />
+              </View>
+              <Text style={[
+                styles.tileValue,
+                tile.tone === "primary" && { color: fieldTheme.color.primaryStrong },
+                tile.tone === "warning" && { color: fieldTheme.color.amber },
+              ]}>{tile.value}</Text>
+              <Text style={styles.tileHint}>{tile.hint}</Text>
+            </Pressable>
+          )
+        })}
+      </View>
     </View>
   )
 }
@@ -696,6 +655,11 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
         <View style={styles.agentCopy}>
           <Text style={styles.agentName}>{agent.name}</Text>
           <Text style={styles.agentMeta}>{statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
+          {agent.openVisitSince ? (
+            <Text style={styles.agentOpenVisit} testID={`manager-agent-open-visit-${agent.id}`}>
+              {t("managerShell.openVisitLeft", { date: formatLocalizedDate(agent.openVisitSince, language, { day: "numeric", month: "long" }) })}
+            </Text>
+          ) : null}
           {route ? (
             <Text style={styles.agentRoute} testID={`manager-agent-route-${agent.id}`}>
               {t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
@@ -880,86 +844,8 @@ const styles = StyleSheet.create({
   statusCopy: { flex: 1, gap: 3 },
   statusTitle: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
   statusBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19 },
-  teamSnapshot: {
-    gap: fieldTheme.space.md,
-    padding: fieldTheme.space.lg,
-    borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.surface,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-  },
-  teamSnapshotTablet: { flexDirection: "row", alignItems: "center" },
-  snapshotCopy: { flex: 1, gap: 3 },
-  snapshotTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
-  snapshotMeta: { color: fieldTheme.color.inkMuted, fontSize: 12 },
-  snapshotCounts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  summaryCount: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.canvas,
-  },
-  summaryDot: { width: 8, height: 8, borderRadius: fieldTheme.radius.pill },
-  summaryValue: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  summaryLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
-  refreshButton: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: fieldTheme.space.sm,
-    paddingHorizontal: fieldTheme.space.lg,
-    borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primarySoft,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.primary,
-  },
-  refreshButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
   buttonPressed: { opacity: 0.72 },
   buttonDisabled: { opacity: 0.55 },
-  selfShareCard: {
-    gap: fieldTheme.space.md,
-    padding: fieldTheme.space.lg,
-    borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.primarySoft,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.primary,
-  },
-  selfShareCardTablet: { flexDirection: "row", alignItems: "center" },
-  selfShareIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: fieldTheme.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: fieldTheme.color.primary,
-  },
-  selfShareCopy: { flex: 1, gap: fieldTheme.space.xs },
-  selfShareTitle: { color: fieldTheme.color.primaryStrong, fontSize: 17, fontWeight: "900" },
-  selfShareBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19, maxWidth: 680 },
-  selfShareButton: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: fieldTheme.space.sm,
-    paddingHorizontal: fieldTheme.space.lg,
-    borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primary,
-  },
-  selfShareButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
-  settingsLink: {
-    minHeight: 40,
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: fieldTheme.space.sm,
-    paddingHorizontal: fieldTheme.space.sm,
-  },
-  settingsLinkText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900", textDecorationLine: "underline" },
   errorNotice: {
     minHeight: 64,
     flexDirection: "row",
@@ -1003,6 +889,41 @@ const styles = StyleSheet.create({
   agentName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   agentRoute: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800", marginTop: 2 },
+  agentOpenVisit: { color: fieldTheme.color.danger, fontSize: 13, fontWeight: "900", marginTop: 2 },
+  today: { gap: fieldTheme.space.sm },
+  todayHeading: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: fieldTheme.space.sm, paddingHorizontal: 4 },
+  todayTitle: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900", letterSpacing: 0.6, textTransform: "uppercase" },
+  todayUpdated: { flexShrink: 1, color: fieldTheme.color.inkMuted, fontSize: 12, textAlign: "right" },
+  tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
+  tile: {
+    minHeight: 116,
+    justifyContent: "space-between",
+    gap: fieldTheme.space.xs,
+    padding: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.lg,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  tileHalf: { flexBasis: "45%", flexGrow: 1 },
+  tileWide: { flexBasis: "100%" },
+  tileTablet: { flexBasis: "22%", flexGrow: 1 },
+  tilePrimary: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  tileWarning: { borderColor: "#E8D69F", backgroundColor: fieldTheme.color.amberSoft },
+  tileTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 4 },
+  tileLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
+  tileValue: { color: fieldTheme.color.ink, fontSize: 30, lineHeight: 36, fontWeight: "900", letterSpacing: -0.5 },
+  tileHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16 },
+  createRoute: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.primary,
+  },
+  createRouteText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   openRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2, marginTop: fieldTheme.space.sm, minHeight: 28 },
   openText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
   presencePill: {

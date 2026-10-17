@@ -15,6 +15,8 @@ export interface ManagerTeamAgent {
   workday: { status: string; startedAt?: string | null; completedAt?: string | null } | null
   /** Today's published route points: «Визиты 3 из 8». Absent without Routes. */
   routeToday?: { planned: number; visited: number; skipped: number } | null
+  /** Check-in of a visit still open from an earlier day of the company; absent from an older server. */
+  openVisitSince?: string | null
 }
 
 export interface ManagerLocationEvidence {

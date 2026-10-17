@@ -8,7 +8,12 @@ import { attendanceLocationScope, readAttendanceLocation, pendingAttendanceConse
 import type { OwnAttendanceLocation } from '../services/attendance-location-contract'
 import type { OutboxOperation } from '../services/outbox'
 
-export default function AttendanceLocationConsentCard() {
+/**
+ * `hideUntilEnabled`: say nothing while the company has not turned location
+ * on and the person has nothing pending or given — the manager's «İş günü»
+ * (owner, 2026-10-17). Without it the card explains that location is off.
+ */
+export default function AttendanceLocationConsentCard({ hideUntilEnabled = false }: { hideUntilEnabled?: boolean } = {}) {
   const { t, i18n } = useTranslation()
   const agent = useAuthStore(state => state.agent), data = useBootstrapStore(state => state.data)
   const visible = data?.policies.attendanceMarkVersion === 1 && data.policies.agentPermissions?.attendanceLocation === true
@@ -64,6 +69,7 @@ export default function AttendanceLocationConsentCard() {
     } finally { if (ticket === epoch.current) { writing.current = false; setBusy(false) } }
   }
   if (!visible) return null
+  if (hideUntilEnabled && own?.policy?.enabled !== true && own?.consent?.accepted !== true && !pending) return null
   const locale = i18n.language.startsWith('az') ? 'az' : i18n.language.startsWith('ru') ? 'ru' : 'en'
   const awaiting = pending?.status === 'pending', conflict = pending?.status === 'conflict'
   const on = own?.maySendLocation === true && !pending && !failed
