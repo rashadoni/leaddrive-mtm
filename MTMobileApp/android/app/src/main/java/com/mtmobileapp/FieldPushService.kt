@@ -9,6 +9,9 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.modules.core.DeviceEventManagerModule
+import java.lang.ref.WeakReference
 
 /**
  * Server-sent notifications.
@@ -29,6 +32,9 @@ class FieldPushService : FirebaseMessagingService() {
     // JS registers the token with the server on its next start; storing it
     // here keeps a token that arrived while the app was closed.
     getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_PENDING_TOKEN, token).apply()
+    // And tell the running app at once, so a token rotated while it is open
+    // reaches the server now, not at the next start.
+    FieldPushModule.announceToken(token)
   }
 
   override fun onMessageReceived(message: RemoteMessage) {
@@ -52,7 +58,36 @@ class FieldPushModule(
   private val reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
 
+  init {
+    active = WeakReference(reactContext)
+  }
+
   override fun getName(): String = "FieldPush"
+
+  /** NativeEventEmitter bookkeeping; the event goes out through DeviceEventEmitter. */
+  @ReactMethod
+  fun addListener(eventName: String) = Unit
+
+  @ReactMethod
+  fun removeListeners(count: Int) = Unit
+
+  companion object {
+    const val TOKEN_REFRESH_EVENT = "FieldPushTokenRefresh"
+    @Volatile private var active: WeakReference<ReactApplicationContext>? = null
+
+    /** Best effort: with no live JS the token waits in prefs for the next start. */
+    fun announceToken(token: String) {
+      val context = active?.get() ?: return
+      try {
+        if (!context.hasActiveReactInstance()) return
+        val payload = Arguments.createMap()
+        payload.putString("token", token)
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(TOKEN_REFRESH_EVENT, payload)
+      } catch (error: Throwable) {
+        // The pending token in prefs is still there.
+      }
+    }
+  }
 
   @ReactMethod
   fun getToken(promise: Promise) {

@@ -30,6 +30,7 @@ import { dropIdleConnections } from "../services/connection-health"
 import { refreshAttendanceSession } from "../services/attendance-session"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { dismissAllChoices } from "../services/app-feedback"
+import { startPushTokenRefresh } from "../services/push-lifecycle"
 import { fieldTheme } from "../theme/fieldTheme"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
@@ -126,6 +127,14 @@ function AppContent() {
     if (wasLoggedIn.current && !isLoggedIn) dismissAllChoices()
     wasLoggedIn.current = isLoggedIn
   }, [isLoggedIn])
+
+  // The push address follows the session, not the sign-in screen: a token
+  // Firebase rotated while the app ran in the background reached the server
+  // only at the next login (2026-10-17). Every role, the manager included.
+  useEffect(() => {
+    if (!isLoggedIn || authLoading) return
+    return startPushTokenRefresh({ organizationId: agent?.organizationId, id: agent?.id })
+  }, [agent?.id, agent?.organizationId, authLoading, isLoggedIn])
 
   useEffect(() => {
     api.setUnauthorizedHandler((reason) => {

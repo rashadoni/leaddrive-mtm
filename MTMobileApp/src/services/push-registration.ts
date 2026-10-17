@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { api } from "./api"
 import { getFieldDeviceId } from "./field-device-id"
 import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
+import { getOfflineScope } from "./offline-scope"
 
 /**
  * Telling the server where to deliver a push.
@@ -22,6 +23,46 @@ import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
 
 const LAST_TOKEN_KEY = "@mtm_push_token_v1"
 const STATUS_KEY = "@mtm_push_status_v1"
+/** What this install last sent for one signed-in principal (org:agent). */
+const SENT_KEY_PREFIX = "@mtm_push_sent_v1:"
+
+/**
+ * The server stamps `lastSeenAt` on every registration, so one a day tells a
+ * phone that still has the app from one that stopped reporting. More often
+ * says nothing new; a refusal waits as long, so a refused address is never
+ * retried in a loop.
+ */
+export const PUSH_REREGISTER_AFTER_MS = 24 * 60 * 60 * 1000
+
+export interface PushSentRecord {
+  token: string
+  outcome: "registered" | "refused"
+  at: number
+}
+
+/** Whether this token is worth sending now: it is new for this principal, or the last word is a day old. */
+export function pushRegistrationDue(record: PushSentRecord | null, token: string, now = Date.now()): boolean {
+  if (!record || record.token !== token) return true
+  return !(now - record.at < PUSH_REREGISTER_AFTER_MS)
+}
+
+async function readSent(scope: string): Promise<PushSentRecord | null> {
+  try {
+    const raw = await AsyncStorage.getItem(`${SENT_KEY_PREFIX}${scope}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as PushSentRecord
+    return typeof parsed?.token === "string" && typeof parsed.at === "number" ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+async function writeSent(scope: string | null, record: PushSentRecord): Promise<void> {
+  if (!scope) return
+  try {
+    await AsyncStorage.setItem(`${SENT_KEY_PREFIX}${scope}`, JSON.stringify(record))
+  } catch {}
+}
 
 export type PushDeliveryState =
   /** The server holds this phone's address. */
@@ -90,11 +131,14 @@ export async function lastPushStatus(): Promise<PushStatus | null> {
  * is cheap and keeps `lastSeenAt` fresh, so a device that stopped reporting
  * can be told apart from one that never had the app.
  */
-export async function registerPushToken(): Promise<PushStatus> {
+export async function registerPushToken(knownToken?: string | null): Promise<PushStatus> {
   const checkedAt = new Date().toISOString()
   if (!nativeModule()) return remember({ state: "unsupported", checkedAt })
-  const token = await currentPushToken()
+  const token = knownToken || await currentPushToken()
   if (!token) return remember({ state: "noAddress", checkedAt })
+  // The principal this address is registered for, read before the request:
+  // a sign-out meanwhile must not credit the next person with it.
+  const scope = getOfflineScope()
   try {
     const deviceId = await getFieldDeviceId().catch(() => undefined)
     const response = await api.registerDeviceToken({
@@ -107,9 +151,48 @@ export async function registerPushToken(): Promise<PushStatus> {
     // An older server does not answer this at all; then we know the address
     // arrived and nothing more, which is what `undefined` says.
     const serverSends = typeof response?.data?.pushEnabled === "boolean" ? response.data.pushEnabled : undefined
+    await writeSent(scope, { token, outcome: "registered", at: Date.now() })
     return remember({ state: "registered", serverSends, checkedAt })
-  } catch {
+  } catch (error) {
+    // A session that ended is not the server refusing this address.
+    if ((error as { message?: string })?.message !== "SESSION_EXPIRED") {
+      await writeSent(scope, { token, outcome: "refused", at: Date.now() })
+    }
     return remember({ state: "serverRefused", checkedAt })
+  }
+}
+
+let refreshing: Promise<PushStatus | null> | null = null
+
+/**
+ * Keep the server's address for this phone current without asking it twice.
+ *
+ * Firebase rotates the token on its own; until 2026-10-17 the Android app
+ * sent it only at sign-in and from «Bildirişlər», so after a rotation the
+ * server kept a dead address until the next login. Called on start, on the
+ * return to the foreground and on Firebase's refresh event. Sends only when
+ * the token is new for this principal or its last word is a day old, and
+ * never for a session that has ended (`stillCurrent`).
+ */
+export async function refreshPushToken(
+  scope: string,
+  stillCurrent: () => boolean,
+  announcedToken?: string | null,
+  now: () => number = Date.now,
+): Promise<PushStatus | null> {
+  if (refreshing) return refreshing
+  refreshing = (async () => {
+    if (!nativeModule() || !stillCurrent()) return null
+    const token = announcedToken || await currentPushToken()
+    if (!token || !stillCurrent()) return null
+    if (!pushRegistrationDue(await readSent(scope), token, now())) return null
+    if (!stillCurrent() || getOfflineScope() !== scope) return null
+    return registerPushToken(token)
+  })()
+  try {
+    return await refreshing
+  } finally {
+    refreshing = null
   }
 }
 
@@ -132,6 +215,8 @@ export async function unregisterPushToken(): Promise<void> {
   try {
     await AsyncStorage.removeItem(LAST_TOKEN_KEY)
     await AsyncStorage.removeItem(STATUS_KEY)
+    const scope = getOfflineScope()
+    if (scope) await AsyncStorage.removeItem(`${SENT_KEY_PREFIX}${scope}`)
   } catch {}
   const native = nativeModule()
   if (native) {
