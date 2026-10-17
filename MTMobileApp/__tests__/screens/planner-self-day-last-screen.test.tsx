@@ -238,12 +238,13 @@ describe("the agent picks the day after the clients", () => {
     const tree = await open({ initialDate: TOMORROW })
     expect(byTestId(tree, "mtm-mobile-self-plan-day-tomorrow").props.accessibilityState.checked).toBe(true)
     expect(button(tree, "Marşruta əlavə et").props.disabled).toBe(true)
-    expect(screenText(tree)).toContain("Marşruta əlavə ediləcək müştəriləri seçin")
-    expect(screenText(tree)).not.toContain("Müştəriləri seçin, sonra günü")
+    // The dock's hint, a text of its own (the subtitle above keeps «… sonra günü.»).
+    expect(textsOf(tree.root)).toContain("Marşruta əlavə ediləcək müştəriləri seçin")
+    expect(textsOf(tree.root)).not.toContain("Müştəriləri seçin, sonra günü")
 
     await press(client(tree, "Doctor a"))
     expect(button(tree, "Marşruta əlavə et").props.disabled).toBe(false)
-    expect(screenText(tree)).not.toContain("Marşruta əlavə ediləcək müştəriləri seçin")
+    expect(textsOf(tree.root)).not.toContain("Marşruta əlavə ediləcək müştəriləri seçin")
   })
 })
 
