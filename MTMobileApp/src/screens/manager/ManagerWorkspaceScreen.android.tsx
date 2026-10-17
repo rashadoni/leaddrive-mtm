@@ -936,8 +936,12 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.sm,
     paddingHorizontal: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.md,
+    // Both keep a 2 dp border: the flex basis counts it, and on the S23
+    // (2026-10-18) the outlined one stood 4 dp wider than its pair.
+    borderWidth: 2,
+    borderColor: fieldTheme.color.primary,
   },
-  writeTeam: { borderWidth: 2, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
+  writeTeam: { backgroundColor: fieldTheme.color.surface },
   writeTeamText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900", textAlign: "center" },
   createRoute: { backgroundColor: fieldTheme.color.primary },
   createRouteText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },

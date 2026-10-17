@@ -23,6 +23,9 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     FieldHttp.install(this)
+    // Before Firebase draws a team message that arrived while the app was closed:
+    // a push naming a channel that does not exist falls back to the default one.
+    FieldNotificationReceiver.ensureTeamMessagesChannel(this)
     loadReactNative(this)
   }
 }

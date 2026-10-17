@@ -31,6 +31,18 @@ describe("the manager writes to the team", () => {
     // An even pair: both stretch the row, so they are one width and one height.
     expect(workspace).toContain('homeActions: { flexDirection: "row", gap: fieldTheme.space.sm },')
     expect(workspace).toContain("flex: 1,\n    minHeight: 52,")
+    // One border for both: the flex basis counts it (4 dp apart on the S23, 2026-10-18).
+    const homeAction = workspace.slice(workspace.indexOf("  homeAction: {"), workspace.indexOf("  writeTeam: {"))
+    expect(homeAction).toContain("borderWidth: 2,")
+    expect(workspace).toContain("  writeTeam: { backgroundColor: fieldTheme.color.surface },")
+    expect(workspace).toContain("  createRoute: { backgroundColor: fieldTheme.color.primary },")
+    expect(workspace.slice(workspace.indexOf("  writeTeam: {"), workspace.indexOf("  createRouteText: {"))).not.toContain("borderWidth")
+  })
+
+  it("keeps «Göndər» above the keyboard", () => {
+    // Android 16 no longer shrinks the window for the keyboard (S23, 2026-10-18).
+    expect(screen).toContain('<KeyboardAvoidingView style={styles.root} behavior="padding">')
+    expect(screen).not.toContain("<View style={styles.root}>")
   })
 
   it("is a screen of the manager's stack only", () => {
