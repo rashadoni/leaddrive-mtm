@@ -120,7 +120,7 @@ const mounted: TestRenderer.ReactTestRenderer[] = []
 const settle = async () => {
   for (let i = 0; i < 4; i++) await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
 }
-async function open(props: Record<string, unknown> = {}) {
+async function open(props: Partial<React.ComponentProps<typeof PlanningWorkspaceCore>> = {}) {
   let tree!: TestRenderer.ReactTestRenderer
   await act(async () => {
     tree = TestRenderer.create(
