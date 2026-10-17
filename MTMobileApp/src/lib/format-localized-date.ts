@@ -42,3 +42,20 @@ export function formatLocalizedDate(
   }
   return date.toLocaleDateString(language, options)
 }
+
+/**
+ * Day, short month and time — «17 okt, 15:05» — in the app's language.
+ *
+ * `toLocaleString([], …)` takes the phone's locale, not the app's: a manager
+ * reading the app in Azerbaijani saw «17 окт., 15:05» on a Russian-set phone
+ * (2026-10-17). Hermes has no Azerbaijani data either, so az is built here.
+ */
+export function formatLocalizedDateTime(value: Date | string | number, language: string): string {
+  const date = typeof value === "number" ? new Date(value) : toDate(value)
+  if (!date || Number.isNaN(date.getTime())) return "—"
+  const time = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`
+  if (language.toLowerCase().startsWith("az")) {
+    return `${formatAzerbaijaniDate(date, { day: "numeric", month: "short" })}, ${time}`
+  }
+  return `${date.toLocaleDateString(language, { day: "numeric", month: "short" })}, ${time}`
+}

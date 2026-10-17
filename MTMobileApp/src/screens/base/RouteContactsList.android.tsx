@@ -123,6 +123,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
   const [loadError, setLoadError] = useState(false)
   const [requests, setRequests] = useState<DoctorCreateRequestItem[]>([])
   const requestId = useRef(0)
+  const requestsTicket = useRef(0)
   const controllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
@@ -180,15 +181,20 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
    * the screen that shows the clients.
    */
   const loadRequests = useCallback(async () => {
+    // Latest read wins. On a weak line the read sent when the tab came into
+    // view can answer after the one a pull sent later — and put «Menecer
+    // gözləyir» back over the manager's approval (2026-10-17).
+    const ticket = ++requestsTicket.current
     try {
       const response = await api.getDoctorCreateRequests(20)
+      if (ticket !== requestsTicket.current) return
       const raw: unknown[] = Array.isArray(response?.data?.requests) ? response.data.requests : []
       const mapped = raw
         .map(toDoctorCreateRequestItem)
         .filter((item): item is DoctorCreateRequestItem => item !== null)
       setRequests(mapped)
     } catch {
-      setRequests([])
+      if (ticket === requestsTicket.current) setRequests([])
     }
   }, [])
 
@@ -228,8 +234,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
 
   const refresh = () => {
     setRefreshing(true)
-    void loadRequests()
-    void loadRows(debouncedSearch)
+    void Promise.all([loadRequests(), loadRows(debouncedSearch)])
   }
 
   const loadMore = () => {
@@ -255,34 +260,6 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
           <Icon name="person-add-outline" size={20} color={fieldTheme.color.onColor} />
           <Text style={styles.addDoctorText}>{copy.addDoctor}</Text>
         </Pressable>
-      ) : null}
-      {shownRequests.length > 0 ? (
-        <View style={styles.requestsCard}>
-          <Text style={styles.requestsTitle}>{requestCopy.title}</Text>
-          {shownRequests.map((item) => {
-            const tone = doctorRequestTone(item.status)
-            const visual = REQUEST_TONE[tone]
-            return (
-              <View key={item.id} style={styles.requestRow}>
-                <View style={[styles.requestDot, { backgroundColor: visual.color }]} />
-                <View style={styles.requestCopy}>
-                  <Text style={styles.requestName} numberOfLines={1}>{item.displayName}</Text>
-                  <Text style={styles.requestMeta} numberOfLines={1}>
-                    {[item.clinicName, item.specialtyName].filter(Boolean).join(" · ")}
-                  </Text>
-                  {item.decisionComment ? (
-                    <Text style={styles.requestComment} numberOfLines={2}>{item.decisionComment}</Text>
-                  ) : null}
-                </View>
-                <View style={[styles.requestPill, { backgroundColor: visual.background }]}>
-                  <Text style={[styles.requestPillText, { color: visual.color }]} numberOfLines={2}>
-                    {requestCopy[item.status]}
-                  </Text>
-                </View>
-              </View>
-            )
-          })}
-        </View>
       ) : null}
       <ScrollView
         horizontal
@@ -329,6 +306,41 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
     </View>
   )
 
+  /**
+   * The agent's own requests scroll with the list, so pulling down on them
+   * asks the server again. Pinned above the list they could not be pulled:
+   * 2026-10-17, «Menecer gözləyir» stayed after the manager had approved, and
+   * pulling on the card did nothing.
+   */
+  const requestsCard = shownRequests.length > 0 ? (
+    <View style={[styles.requestsCard, styles.requestsInList]}>
+      <Text style={styles.requestsTitle}>{requestCopy.title}</Text>
+      {shownRequests.map((item) => {
+        const tone = doctorRequestTone(item.status)
+        const visual = REQUEST_TONE[tone]
+        return (
+          <View key={item.id} style={styles.requestRow}>
+            <View style={[styles.requestDot, { backgroundColor: visual.color }]} />
+            <View style={styles.requestCopy}>
+              <Text style={styles.requestName} numberOfLines={1}>{item.displayName}</Text>
+              <Text style={styles.requestMeta} numberOfLines={1}>
+                {[item.clinicName, item.specialtyName].filter(Boolean).join(" · ")}
+              </Text>
+              {item.decisionComment ? (
+                <Text style={styles.requestComment} numberOfLines={2}>{item.decisionComment}</Text>
+              ) : null}
+            </View>
+            <View style={[styles.requestPill, { backgroundColor: visual.background }]}>
+              <Text style={[styles.requestPillText, { color: visual.color }]} numberOfLines={2}>
+                {requestCopy[item.status]}
+              </Text>
+            </View>
+          </View>
+        )
+      })}
+    </View>
+  ) : null
+
   return (
     <View style={styles.root}>
       {header ? null : topArea}
@@ -341,7 +353,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
         contentContainerStyle={[styles.listContent, { paddingBottom: tabBarPadding }]}
         columnWrapperStyle={tablet ? styles.tabletRow : undefined}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={header ? <View style={styles.headerInList}>{header}{topArea}</View> : null}
+        ListHeaderComponent={header ? <><View style={styles.headerInList}>{header}{topArea}</View>{requestsCard}</> : requestsCard}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} colors={[fieldTheme.color.primary]} tintColor={fieldTheme.color.primary} />}
         onEndReached={loadMore}
         onEndReachedThreshold={0.35}
@@ -393,6 +405,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   topArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, gap: fieldTheme.space.md },
+  requestsInList: { marginBottom: fieldTheme.space.md },
   requestsCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, gap: fieldTheme.space.xs },
   requestsTitle: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "900", letterSpacing: 0.4 },
   requestRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs },

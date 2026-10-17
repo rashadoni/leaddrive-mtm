@@ -28,12 +28,27 @@ import { hasCapability } from "../../services/bootstrap"
 import { captureOneShotLocation } from "../../services/self-location-share"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { contactTransferAvailable } from "../../lib/field-contacts-policy"
-import { toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
-import { toApprovals, type ApprovalItem, type ManagerApprovals } from "../../services/manager-approvals"
+import { planningTodayKey, toPlanningRoutes, type PlanningRoute } from "../../services/manager-planning"
+import {
+  doctorDecisionRefusal,
+  routeDraftsAwaitingPublish,
+  routeDraftWindow,
+  routePublishRefusal,
+  toApprovals,
+  toDoctorRequestApprovals,
+  type ApprovalItem,
+  type DoctorRequestApproval,
+  type ManagerApprovals,
+  type RouteDraftApproval,
+} from "../../services/manager-approvals"
+import { formatLocalizedDate, formatLocalizedDateTime } from "../../lib/format-localized-date"
+import { statusLabel } from "../../lib/status-labels"
+import { useAuthStore } from "../../store/auth"
 import {
   formatManagerEvidenceAge,
   managerAgentTruth,
   normalizeManagerLocations,
+  teamPresenceSummary,
   type ManagerAgentTruth,
   type ManagerLocationEvidence,
   type ManagerTeamAgent,
@@ -46,7 +61,7 @@ import ManagerLiveMap from "./ManagerLiveMap.android"
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
 /** Which approval queue a decision targets — each hits its own decision endpoint. */
-type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange"
+type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange" | "doctorRequest"
 type SelfShareState = "idle" | "locating" | "sending" | "success" | "permissionDenied" | "error"
 
 const SCREEN_META: Record<
@@ -76,12 +91,17 @@ const SCREEN_META: Record<
   },
 }
 
-export default function ManagerWorkspaceScreen({ kind }: { kind: ManagerWorkspaceKind }) {
-  return kind === "planning" ? <ManagerPlanningWorkspace /> : <ManagerReadWorkspace kind={kind} />
+/**
+ * `contactTransfer` opens the «transfer contacts» door; only a navigator that
+ * registers the ContactTransfer screen may pass it. The Route Field APK's
+ * manager shell does not (owner-approved mockup, 2026-10-17).
+ */
+export default function ManagerWorkspaceScreen({ kind, contactTransfer = false }: { kind: ManagerWorkspaceKind; contactTransfer?: boolean }) {
+  return kind === "planning" ? <ManagerPlanningWorkspace /> : <ManagerReadWorkspace kind={kind} contactTransfer={contactTransfer} />
 }
 
-function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
-  const { t } = useTranslation()
+function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspaceKind; contactTransfer: boolean }) {
+  const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
   const meta = SCREEN_META[kind]
@@ -90,11 +110,14 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   const expandedTablet = isExpandedTabletWidth(width)
   const canShareSelfLocation = useBootstrapStore((state) => hasCapability(state.capabilities, "SELF_LOCATION_SHARE"))
   // No "transfer contacts" door when the organization switched contacts off.
-  const canTransferContacts = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies))
+  const canTransferContacts = useBootstrapStore((state) => contactTransferAvailable(state.data?.policies)) && contactTransfer
+  const timezone = useBootstrapStore((state) => state.data?.timezone)
   const [team, setTeam] = useState<ManagerTeamAgent[]>([])
   const [locations, setLocations] = useState<ManagerLocationEvidence[]>([])
   const [planning, setPlanning] = useState<PlanningRoute[]>([])
   const [approvals, setApprovals] = useState<ManagerApprovals | null>(null)
+  const [routeDrafts, setRouteDrafts] = useState<RouteDraftApproval[]>([])
+  const [doctorRequests, setDoctorRequests] = useState<DoctorRequestApproval[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
@@ -111,11 +134,13 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
     setObservedAt(Date.now())
     if (mode === "initial") setLoading(true)
     if (mode === "manual") setRefreshing(true)
+    const today = planningTodayKey(new Date(), timezone)
+    const draftWindow = routeDraftWindow(today)
     const request = kind === "team"
       ? Promise.all([managerApi.getTeam(), managerApi.getLocations()])
       : kind === "planning"
         ? managerApi.getPlanning()
-        : managerApi.getApprovals()
+        : approvalQueues(draftWindow)
     try {
       const response: any = await request
       if (currentRequestId !== requestId.current) return
@@ -125,7 +150,11 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
       } else if (kind === "planning") {
         setPlanning(toPlanningRoutes(response?.data))
       } else {
-        setApprovals(toApprovals(response?.data))
+        // Each queue answers for itself: a manager the server lets publish
+        // routes but not decide doctors still sees his drafts.
+        if (response.approvals) setApprovals(toApprovals(response.approvals.data))
+        if (response.drafts) setRouteDrafts(routeDraftsAwaitingPublish(response.drafts.data, today))
+        if (response.doctors) setDoctorRequests(toDoctorRequestApprovals(response.doctors.data))
       }
       setLoadError(false)
       const receivedAt = Date.now()
@@ -142,15 +171,15 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
         setRefreshing(false)
       }
     }
-  }, [kind])
+  }, [kind, timezone])
 
   useAutoRefresh(useCallback(() => { void reload(updatedAt == null ? "initial" : "silent") }, [reload, updatedAt]))
 
   const teamRows = useMemo(() => {
     return team.map((agent) => ({ agent, truth: managerAgentTruth(agent, locations, observedAt) }))
   }, [locations, observedAt, team])
-  const onlineCount = teamRows.filter(({ truth }) => truth.isOnline).length
-  const gpsAttentionCount = teamRows.filter(({ truth }) => truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES").length
+  const viewerId = useAuthStore((state) => state.agent?.id)
+  const presence = teamPresenceSummary(teamRows, viewerId)
   const selfShareBusy = selfShareState === "locating" || selfShareState === "sending"
 
   const requestForegroundLocation = async (): Promise<boolean> => {
@@ -212,17 +241,60 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
           ? await managerApi.routeChangeDecision(id, decision, note)
           : queue === "customer"
             ? await managerApi.customerCreateDecision(id, decision, note)
-            : await managerApi.contactChangeDecision(id, decision, note || (decision === "APPROVED" ? t("managerShell.contactChangeApprovedNote") : t("managerShell.contactChangeRejectedNote")))
+            : queue === "doctorRequest"
+              ? await managerApi.contactCreateDecision(id, decision, note)
+              : await managerApi.contactChangeDecision(id, decision, note || (decision === "APPROVED" ? t("managerShell.contactChangeApprovedNote") : t("managerShell.contactChangeRejectedNote")))
       if (res?.success) {
         setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
-        reload()
+        reload("silent")
       }
     } catch (e: any) {
-      if (e?.message !== "SESSION_EXPIRED") setToast({ visible: true, type: "error", title: t("common.error") })
+      if (e?.message === "SESSION_EXPIRED") return
+      if (queue === "doctorRequest") {
+        const refusal = doctorDecisionRefusal(e)
+        setToast({ visible: true, type: "error", title: t(refusal.key) })
+        if (refusal.reload) reload("silent")
+      } else {
+        setToast({ visible: true, type: "error", title: t("common.error") })
+      }
     } finally {
       setBusyId(null)
     }
   }
+
+  const publishDraft = async (draft: RouteDraftApproval) => {
+    if (busyId) return
+    setBusyId(draft.id)
+    try {
+      const res = await managerApi.publishRouteDraft(draft.id, draft.version)
+      if (res?.success) {
+        setToast({ visible: true, type: "success", title: t("managerShell.published") })
+        reload("silent")
+      }
+    } catch (e: any) {
+      if (e?.message === "SESSION_EXPIRED") return
+      const refusal = routePublishRefusal(e)
+      setToast({ visible: true, type: "error", title: t(refusal.key) })
+      if (refusal.reload) reload("silent")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const draftItems: ApprovalItem[] = routeDrafts.map((draft) => ({
+    id: draft.id,
+    agentName: draft.agentName,
+    primary: formatLocalizedDate(draft.date, i18n.language, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }) || draft.date,
+    details: [t("managerShell.draftStops", { count: draft.stops }), draft.name].filter(Boolean).join(" · "),
+  }))
+  const doctorItems: ApprovalItem[] = doctorRequests.map((request) => ({
+    id: request.id,
+    agentName: request.agentName,
+    primary: [request.displayName, request.specialtyName].filter(Boolean).join(" · "),
+    details: [request.clinicName, request.address, request.phone].filter(Boolean).join(" · ") || undefined,
+    reason: request.notes,
+  }))
+  const approvalsTotal = (approvals?.total ?? 0) + draftItems.length + doctorItems.length
 
   return (
     <View style={styles.root}>
@@ -231,7 +303,7 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
           <View style={[styles.icon, { backgroundColor: meta.tint }]}>
             <Icon name={meta.icon} size={28} color={meta.color} />
           </View>
-          <View style={styles.headerCopy}>
+          <View style={[styles.headerCopy, tablet && styles.headerCopyTablet]}>
             <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
             <Text style={styles.title}>{t(meta.titleKey)}</Text>
             <Text style={styles.body}>{t(meta.bodyKey)}</Text>
@@ -335,14 +407,14 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
                 <Text style={styles.snapshotTitle}>{t("managerShell.teamSnapshot", { defaultValue: "Team status" })}</Text>
                 <Text style={styles.snapshotMeta}>
                   {updatedAt
-                    ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatTimestamp(updatedAt) })
+                    ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatLocalizedDateTime(updatedAt, i18n.language) })
                     : t("common.loading")}
                 </Text>
               </View>
               <View style={styles.snapshotCounts}>
-                <SummaryCount color={fieldTheme.color.success} value={onlineCount} label={t("managerShell.online", { defaultValue: "Online" })} />
-                <SummaryCount color={fieldTheme.color.inkMuted} value={Math.max(0, teamRows.length - onlineCount)} label={t("managerShell.offline", { defaultValue: "Offline" })} />
-                <SummaryCount color={fieldTheme.color.amber} value={gpsAttentionCount} label={t("managerShell.gpsNeedsAttention", { defaultValue: "GPS attention" })} />
+                <SummaryCount color={fieldTheme.color.success} value={presence.online} label={t("managerShell.online", { defaultValue: "Online" })} />
+                <SummaryCount color={fieldTheme.color.inkMuted} value={presence.offline} label={t("managerShell.offline", { defaultValue: "Offline" })} />
+                <SummaryCount color={fieldTheme.color.amber} value={presence.gpsAttention} label={t("managerShell.gpsNeedsAttention", { defaultValue: "GPS attention" })} />
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -368,7 +440,7 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
             {teamRows.length > 0 ? (
               <View style={[styles.teamList, expandedTablet && styles.teamListTablet]}>
                 {teamRows.map(({ agent, truth }) => (
-                  <AgentTruthCard key={agent.id} agent={agent} truth={truth} t={t} tablet={expandedTablet} />
+                  <AgentTruthCard key={agent.id} agent={agent} truth={truth} t={t} language={i18n.language} self={!!viewerId && agent.id === viewerId} tablet={expandedTablet} />
                 ))}
               </View>
             ) : (
@@ -397,15 +469,40 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
             <StatusPanel icon="calendar-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.planningEmpty")} body={t(meta.bodyKey)} />
           )
         ) : (
-          approvals && approvals.total > 0 ? (
+          approvalsTotal > 0 ? (
             <View style={styles.itemList}>
+              <ApprovalSection
+                title={t("managerShell.approvalsRouteDrafts")}
+                items={draftItems}
+                t={t}
+                busyId={busyId}
+                approveLabel={t("managerShell.publish")}
+                onApprove={(id) => { const draft = routeDrafts.find((item) => item.id === id); if (draft) void publishDraft(draft) }}
+              />
+              <ApprovalSection
+                title={t("managerShell.approvalsDoctors")}
+                items={doctorItems}
+                t={t}
+                busyId={busyId}
+                onApprove={(id) => decide("doctorRequest", id, "APPROVED")}
+                onReject={(id) => setRejectTarget({ kind: "doctorRequest", id })}
+              />
+              {approvals ? (
+                <>
               <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide("hrm", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "hrm", id })} />
               <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} busyId={busyId} onApprove={(id) => decide("routeChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "routeChange", id })} />
               <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} busyId={busyId} onApprove={(id) => decide("customer", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "customer", id })} />
               <ApprovalSection title={t("managerShell.approvalsContactChanges")} items={approvals.contactChanges} t={t} busyId={busyId} onApprove={(id) => decide("contactChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "contactChange", id })} />
+                </>
+              ) : null}
             </View>
           ) : (
-            <StatusPanel icon="checkmark-done-outline" color={meta.color} title={loading ? t("common.loading") : t("managerShell.approvalsEmpty")} body={t(meta.bodyKey)} />
+            <StatusPanel
+              icon={loadError ? "cloud-offline-outline" : "checkmark-done-outline"}
+              color={loadError ? fieldTheme.color.amber : meta.color}
+              title={loading ? t("common.loading") : loadError ? t("managerShell.approvalsLoadError") : t("managerShell.approvalsEmpty")}
+              body={loadError ? t("managerShell.pullToRetry") : t(meta.bodyKey)}
+            />
           )
         )}
       </ScrollView>
@@ -422,15 +519,23 @@ function ManagerReadWorkspace({ kind }: { kind: ManagerWorkspaceKind }) {
   )
 }
 
-function formatTimestamp(value: number | string) {
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return "—"
-  return date.toLocaleString([], {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+/**
+ * The approvals tab reads three queues side by side. Each may be refused on
+ * its own — the server decides per permission — so one refusal leaves the
+ * others on screen; only when all three fail does the tab say it could not load.
+ */
+async function approvalQueues(window: { start: string; endExclusive: string }) {
+  const [approvals, drafts, doctors] = await Promise.allSettled([
+    managerApi.getApprovals(),
+    managerApi.getRouteDrafts(window.start, window.endExclusive),
+    managerApi.getContactCreateRequests(),
+  ])
+  if (approvals.status === "rejected" && drafts.status === "rejected" && doctors.status === "rejected") throw approvals.reason
+  return {
+    approvals: approvals.status === "fulfilled" ? approvals.value : null,
+    drafts: drafts.status === "fulfilled" ? drafts.value : null,
+    doctors: doctors.status === "fulfilled" ? doctors.value : null,
+  }
 }
 
 function ageLabel(ageMs: number | null, t: any) {
@@ -461,10 +566,13 @@ function SummaryCount({ color, value, label }: { color: string; value: number; l
   )
 }
 
-function AgentTruthCard({ agent, truth, t, tablet }: {
+function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
   agent: ManagerTeamAgent
   truth: ManagerAgentTruth
   t: any
+  language: string
+  /** The manager's own card: no presence verdict about the person holding the phone. */
+  self: boolean
   tablet: boolean
 }) {
   const location = truth.location
@@ -479,7 +587,7 @@ function AgentTruthCard({ agent, truth, t, tablet }: {
         ? { icon: "time-outline", color: fieldTheme.color.amber, tint: fieldTheme.color.amberSoft, label: t("managerShell.gpsStale", { defaultValue: "Old GPS point" }) }
         : { icon: "location-outline", color: fieldTheme.color.inkMuted, tint: fieldTheme.color.surfaceStrong, label: t("managerShell.noCoordinates", { defaultValue: "No GPS position" }) }
   const lastSeen = truth.lastSeenAt
-    ? t("managerShell.lastSeenAt", { defaultValue: "Last app activity: {{time}}", time: formatTimestamp(truth.lastSeenAt) })
+    ? t("managerShell.lastSeenAt", { defaultValue: "Last app activity: {{time}}", time: formatLocalizedDateTime(truth.lastSeenAt, language) })
     : t("managerShell.neverSeen", { defaultValue: "No app activity recorded" })
   const locationTitle = currentPosition
     ? t("managerShell.currentPosition", { defaultValue: "Current position" })
@@ -498,20 +606,28 @@ function AgentTruthCard({ agent, truth, t, tablet }: {
         </View>
         <View style={styles.agentCopy}>
           <Text style={styles.agentName}>{agent.name}</Text>
-          <Text style={styles.agentMeta}>{agent.role} · {workdayLabel(agent.workday?.status, t)}</Text>
+          <Text style={styles.agentMeta}>{statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
         </View>
-        <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
-          <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
-          <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
-            {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
-          </Text>
-        </View>
+        {self ? (
+          <View style={[styles.presencePill, { backgroundColor: fieldTheme.color.primarySoft }]} testID="manager-own-card">
+            <Text style={[styles.presenceText, { color: fieldTheme.color.primaryStrong }]}>{t("managerShell.you")}</Text>
+          </View>
+        ) : (
+          <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+            <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
+            <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
+              {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.presenceEvidence}>
-        <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
-        <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
-      </View>
+      {self ? null : (
+        <View style={styles.presenceEvidence}>
+          <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
+          <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
+        </View>
+      )}
 
       <View style={[styles.locationPanel, { backgroundColor: gpsConfig.tint }]}>
         <View style={styles.locationHeading}>
@@ -534,7 +650,7 @@ function AgentTruthCard({ agent, truth, t, tablet }: {
                 : t("managerShell.historicalPositionReceived", { defaultValue: "Historical point from {{age}}", age: ageLabel(truth.locationAgeMs, t) })}
             </Text>
             <Text style={styles.locationDetails}>
-              {location.recordedAt ? formatTimestamp(location.recordedAt) : t("managerShell.timeUnknown", { defaultValue: "Time unknown" })}
+              {location.recordedAt ? formatLocalizedDateTime(location.recordedAt, language) : t("managerShell.timeUnknown", { defaultValue: "Time unknown" })}
               {location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)} m`}
               {location.battery == null ? "" : ` · ${Math.round(location.battery)}%`}
             </Text>
@@ -576,16 +692,18 @@ function StatusPanel({ icon, color, title, body }: { icon: string; color: string
   )
 }
 
-function ApprovalSection({ title, items, t, busyId, onApprove, onReject }: {
+function ApprovalSection({ title, items, t, busyId, onApprove, onReject, approveLabel }: {
   title: string
   items: ApprovalItem[]
   t: (k: string) => string
   busyId?: string | null
   onApprove?: (id: string) => void
+  /** Absent for a queue with one action only (publishing a draft). */
   onReject?: (id: string) => void
+  approveLabel?: string
 }) {
   if (items.length === 0) return null
-  const actionable = !!(onApprove && onReject)
+  const actionable = !!onApprove
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title} · {items.length}</Text>
@@ -598,12 +716,14 @@ function ApprovalSection({ title, items, t, busyId, onApprove, onReject }: {
           </View>
           {actionable && (
             <View style={styles.decisionBtns}>
-              <TouchableOpacity style={[styles.approveBtn, busyId === it.id && styles.btnBusy]} disabled={busyId === it.id} onPress={() => onApprove!(it.id)}>
-                <Text style={styles.approveBtnText}>{t("managerShell.approve")}</Text>
+              <TouchableOpacity accessibilityRole="button" style={[styles.approveBtn, busyId === it.id && styles.btnBusy]} disabled={busyId === it.id} onPress={() => onApprove!(it.id)}>
+                <Text style={styles.approveBtnText}>{approveLabel ?? t("managerShell.approve")}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.rejectBtn, busyId === it.id && styles.btnBusy]} disabled={busyId === it.id} onPress={() => onReject!(it.id)}>
-                <Text style={styles.rejectBtnText}>{t("managerShell.reject")}</Text>
-              </TouchableOpacity>
+              {onReject ? (
+                <TouchableOpacity accessibilityRole="button" style={[styles.rejectBtn, busyId === it.id && styles.btnBusy]} disabled={busyId === it.id} onPress={() => onReject(it.id)}>
+                  <Text style={styles.rejectBtnText}>{t("managerShell.reject")}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           )}
         </View>
@@ -636,7 +756,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerCopy: { flex: 1, gap: fieldTheme.space.xs },
+  // No `flex: 1` on a phone: in the column header it collapsed the copy to
+  // zero height, and only the icon showed (2026-10-17). The tablet row grows it.
+  headerCopy: { gap: fieldTheme.space.xs },
+  headerCopyTablet: { flex: 1 },
   eyebrow: {
     color: fieldTheme.color.primary,
     fontSize: 12,

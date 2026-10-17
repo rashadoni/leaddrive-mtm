@@ -73,3 +73,133 @@ export function toApprovals(raw: any): ManagerApprovals {
 
   return { hrm, routeChanges, customers, contactChanges, total: hrm.length + routeChanges.length + customers.length + contactChanges.length }
 }
+
+/**
+ * An agent's route that is saved and waits for the manager to publish it.
+ *
+ * 2026-10-06: an agent built his route, the app said «saved», and he could not
+ * start it — it was a draft, and nothing told the manager. The rule is the
+ * server's (src/lib/mtm/routes-awaiting-publish.ts): a DRAFT whose day has not
+ * passed and that has at least one stop; the nearest day first, because that
+ * agent is the one standing still.
+ */
+export interface RouteDraftApproval {
+  id: string
+  /** The version the manager saw; publishing an older one is refused. */
+  version: number
+  /** Calendar day, YYYY-MM-DD. */
+  date: string
+  agentName: string
+  stops: number
+  name?: string
+}
+
+function dateKey(value: unknown): string | null {
+  const raw = str(value)
+  if (!raw || !/^\d{4}-\d{2}-\d{2}/.test(raw)) return null
+  return raw.slice(0, 10)
+}
+
+export function routeDraftsAwaitingPublish(raw: any, todayKey: string): RouteDraftApproval[] {
+  const routes: any[] = Array.isArray(raw?.routes) ? raw.routes : []
+  return routes
+    .map((route): RouteDraftApproval | null => {
+      const id = str(route?.id)
+      const date = dateKey(route?.date)
+      const version = Number(route?.version)
+      if (!id || !date || route?.status !== "DRAFT" || !Number.isInteger(version) || version < 1) return null
+      const points = Array.isArray(route?.points) ? route.points.length : 0
+      const total = Number(route?.totalPoints)
+      const stops = Math.max(Number.isFinite(total) ? total : 0, points)
+      return {
+        id,
+        version,
+        date,
+        agentName: str(route?.agent?.name)?.trim() || "—",
+        stops,
+        name: str(route?.name)?.trim() || undefined,
+      }
+    })
+    .filter((item): item is RouteDraftApproval => item !== null && item.date >= todayKey && item.stops > 0)
+    .sort((left, right) => left.date.localeCompare(right.date) || left.agentName.localeCompare(right.agentName))
+}
+
+/** The query window for those drafts: from today, as far as the server lets one read reach. */
+export function routeDraftWindow(todayKey: string): { start: string; endExclusive: string } {
+  const [year, month, day] = todayKey.split("-").map(Number)
+  const end = new Date(Date.UTC(year, month - 1, day + 366))
+  return { start: todayKey, endExclusive: end.toISOString().slice(0, 10) }
+}
+
+/** An agent's request to add a doctor who is not in the base yet. */
+export interface DoctorRequestApproval {
+  id: string
+  agentName: string
+  displayName: string
+  specialtyName?: string
+  clinicName: string
+  address?: string
+  phone?: string
+  notes?: string
+  submittedAt?: string
+}
+
+const OPEN_DOCTOR_REQUEST = new Set(["SUBMITTED", "IN_REVIEW", "NEEDS_INFO"])
+
+export function toDoctorRequestApprovals(raw: any): DoctorRequestApproval[] {
+  const requests: any[] = Array.isArray(raw?.requests) ? raw.requests : []
+  return requests
+    .filter((request) => OPEN_DOCTOR_REQUEST.has(String(request?.status ?? "").toUpperCase()))
+    .map((request): DoctorRequestApproval | null => {
+      const id = str(request?.id)
+      const displayName = str(request?.displayName)?.trim()
+      if (!id || !displayName) return null
+      return {
+        id,
+        agentName: str(request?.requestedByAgent?.name)?.trim() ?? "",
+        displayName,
+        specialtyName: str(request?.specialtyName)?.trim() || undefined,
+        clinicName: str(request?.clinicName)?.trim() ?? "",
+        address: str(request?.address)?.trim() || undefined,
+        phone: str(request?.phone)?.trim() || undefined,
+        notes: str(request?.notes)?.trim() || undefined,
+        submittedAt: str(request?.submittedAt),
+      }
+    })
+    .filter((item): item is DoctorRequestApproval => item !== null)
+}
+
+type Refusal = { code?: unknown; status?: unknown; message?: unknown } | null | undefined
+
+/**
+ * What a refused publish means, as a managerShell.* message key — never the
+ * code itself. `reload` says the list on screen is no longer the truth.
+ */
+export function routePublishRefusal(error: Refusal): { key: string; reload: boolean } {
+  const code = typeof error?.code === "string" ? error.code : ""
+  switch (code) {
+    case "ROUTE_VERSION_CONFLICT": return { key: "managerShell.publishVersionConflict", reload: true }
+    case "ROUTE_TRANSITION_INVALID": return { key: "managerShell.publishNotDraft", reload: true }
+    case "ROUTE_EMPTY": return { key: "managerShell.publishEmpty", reload: true }
+    case "ROUTE_CONFLICT": return { key: "managerShell.publishScheduleConflict", reload: false }
+    case "ROUTE_POINT_TIME_CONFLICT": return { key: "managerShell.publishTimeConflict", reload: false }
+    case "MTM_ROUTE_SCOPE_DENIED": return { key: "managerShell.publishForbidden", reload: true }
+  }
+  if (error?.status === 404) return { key: "managerShell.decisionGone", reload: true }
+  if (error?.status === 403) return { key: "managerShell.publishForbidden", reload: true }
+  return { key: "managerShell.decisionFailed", reload: false }
+}
+
+/** The same for a decision on a new-doctor request. */
+export function doctorDecisionRefusal(error: Refusal): { key: string; reload: boolean } {
+  const code = typeof error?.code === "string" ? error.code : ""
+  switch (code) {
+    case "MTM_CONTACT_CREATE_DUPLICATE": return { key: "managerShell.doctorDuplicate", reload: false }
+    case "MTM_CONTACT_CREATE_ALREADY_DECIDED": return { key: "managerShell.doctorAlreadyDecided", reload: true }
+    case "MTM_CONTACT_CREATE_CONFLICT": return { key: "managerShell.doctorBeingDecided", reload: true }
+    case "MTM_SELF_REVIEW_DENIED": return { key: "managerShell.doctorOwnRequest", reload: false }
+  }
+  if (error?.status === 404) return { key: "managerShell.decisionGone", reload: true }
+  if (error?.status === 403) return { key: "managerShell.doctorForbidden", reload: false }
+  return { key: "managerShell.decisionFailed", reload: false }
+}

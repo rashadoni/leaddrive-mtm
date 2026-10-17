@@ -129,12 +129,23 @@ function operationForVisit(operation: OutboxOperation, id: string) {
  * durable optimistic visit. A rejected check-in is removed from the active
  * banner (the conflict centre remains the evidence); a rejected check-out
  * restores the visit because it is still active on the server.
+ *
+ * «Active on the server» is not «still going» while this phone holds its
+ * check-out: the server simply has not received it. Reading the visit back as
+ * open then put «Ziyarəti bitir» on screen again for a visit the agent had
+ * just finished (2026-10-17), so a waiting check-out keeps it finished.
  */
 export async function reconcileOptimisticVisit(
   serverActive: OptimisticVisit | null | undefined,
 ): Promise<OptimisticVisit | null> {
   if (serverActive) {
-    const normalized = { ...serverActive, pendingCheckOut: false }
+    const checkOutWaiting = (await allOutboxOperations()).some((item) => (
+      operationForVisit(item, serverActive.id)
+      && item.op === "update"
+      && item.data.status === "CHECKED_OUT"
+      && item.status === "pending"
+    ))
+    const normalized = { ...serverActive, pendingCheckOut: checkOutWaiting }
     await saveOptimisticVisit(normalized)
     return normalized
   }

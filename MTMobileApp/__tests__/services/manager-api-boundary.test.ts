@@ -17,6 +17,8 @@ describe("legacy manager API boundary", () => {
       "/operations/hrm/",
       "/route-change-requests/",
       "/customer-create-requests/",
+      "/contact-create-requests/${encodeURIComponent(id)}/decision",
+      "/routes/${encodeURIComponent(id)}/publish",
       "/contact-change-requests/",
       "/mobile/tasks/bulk-reassign",
       "/mobile/team-schedule",

@@ -89,7 +89,23 @@ describe("clients screen shows the requests", () => {
   })
 
   it("never lets a failed status read break the client list", () => {
-    expect(screen).toContain("} catch {\n      setRequests([])\n    }")
+    expect(screen).toContain("} catch {\n      if (ticket === requestsTicket.current) setRequests([])\n    }")
+  })
+
+  // 2026-10-17: «Menecer gözləyir» stayed after the manager approved, and a
+  // pull on the clients screen did not change it.
+  it("lets the newest read win, so an older answer cannot bring back «waiting»", () => {
+    expect(screen).toContain("const ticket = ++requestsTicket.current")
+    expect(screen).toContain("if (ticket !== requestsTicket.current) return")
+  })
+
+  it("scrolls the requests with the list, so pulling on them asks the server again", () => {
+    const topArea = screen.slice(screen.indexOf("  const topArea = ("), screen.indexOf("  const requestsCard = "))
+    expect(topArea).not.toContain("styles.requestsCard")
+    expect(screen).toContain("{requestsCard}</> : requestsCard}")
+    const refresh = screen.slice(screen.indexOf("  const refresh = () => {"), screen.indexOf("  const loadMore"))
+    expect(refresh).toContain("loadRequests()")
+    expect(refresh).toContain("loadRows(debouncedSearch)")
   })
 
   it("renders the manager's comment with the status", () => {

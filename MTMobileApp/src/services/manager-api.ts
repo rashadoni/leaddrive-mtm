@@ -121,6 +121,37 @@ export const managerApi = {
     return api.requestLegacy("/organization-assignments", { method: "POST", body: JSON.stringify(data) })
   },
 
+  /**
+   * Drafts of the team's routes from `start` on (GET /routes, mobile token
+   * allowed; the server scopes them to the manager's team). One page of the
+   * nearest 200 is the queue: a draft further out than that is not today's.
+   */
+  getRouteDrafts(start: string, endExclusive: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ status: "DRAFT", start, endExclusive, limit: "200" })
+    return api.requestLegacy(`/routes?${query.toString()}`, { signal })
+  },
+
+  /** Publish an agent's draft; a stale `expectedVersion` is refused with 409 ROUTE_VERSION_CONFLICT. */
+  publishRouteDraft(id: string, expectedVersion: number) {
+    return api.requestLegacy(`/routes/${encodeURIComponent(id)}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ expectedVersion }),
+    })
+  },
+
+  /** The team's open requests for a new doctor (SUBMITTED, IN_REVIEW, NEEDS_INFO), oldest first. */
+  getContactCreateRequests(signal?: AbortSignal) {
+    return api.requestLegacy("/contact-create-requests", { signal })
+  },
+
+  /** Approve (creates the doctor, refused with 409 MTM_CONTACT_CREATE_DUPLICATE) or reject a request. */
+  contactCreateDecision(id: string, decision: "APPROVED" | "REJECTED", comment?: string) {
+    return api.requestLegacy(`/contact-create-requests/${encodeURIComponent(id)}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision, ...(comment ? { comment } : {}) }),
+    })
+  },
+
   hrmDecision(id: string, decision: "APPROVED" | "REJECTED", note?: string) {
     return api.requestLegacy(`/operations/hrm/${id}/decision`, {
       method: "POST",

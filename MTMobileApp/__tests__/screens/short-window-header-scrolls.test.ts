@@ -134,7 +134,7 @@ describe("Müştərilər: header, tabs and search are the list's first rows", ()
 
   it.each(lists)("%s draws the header and search in ListHeaderComponent", (file, searchId) => {
     const source = read(file)
-    expect(source).toContain("ListHeaderComponent={header ? <View style={styles.headerInList}>{header}{topArea}</View> : null}")
+    expect(source).toMatch(/ListHeaderComponent=\{header \? (?:<>)?<View style=\{styles\.headerInList\}>\{header\}\{topArea\}<\/View>/)
     expect(source).toContain("{header ? null : topArea}")
     const topArea = between(source, "  const topArea = (", "\n  return (")
     expect(topArea).toContain(`testID="${searchId}"`)

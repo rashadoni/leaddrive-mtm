@@ -283,3 +283,65 @@ export function routeStopWho(point: {
   }
 }
 
+
+/**
+ * Stops finished on this phone that the server may not know about yet.
+ *
+ * 2026-10-17, the owner's phone: after «Ziyarəti bitir» → «Təsdiq et» the
+ * Route tab showed the same stop again as «Növbəti nöqtə» with «Artıq
+ * buradayam» and 1/2 for about twenty seconds — until the sync reached the
+ * server and the route read came back with the stop VISITED. That window
+ * invites a second check-in at a clinic the agent has just left. A visit
+ * checked out here is done here, at once; the server's word replaces it
+ * when it arrives.
+ *
+ * Keyed by route point, holding the visit that finished it, so a visit the
+ * server later refused can take its stop back (`withoutRefusedVisits`).
+ */
+export type LocallyFinishedStops = Readonly<Record<string, string>>
+
+export function markStopFinishedLocally(
+  finished: LocallyFinishedStops,
+  visit: { id: string; routePointId?: string | null } | null | undefined,
+): LocallyFinishedStops {
+  if (!visit?.routePointId || finished[visit.routePointId] === visit.id) return finished
+  return { ...finished, [visit.routePointId]: visit.id }
+}
+
+/**
+ * Drop stops whose visit the server refused (a conflict in the outbox), or
+ * whose check-out it refused and that is open again (`reopenedVisitId`).
+ */
+export function withoutRefusedVisits(
+  finished: LocallyFinishedStops,
+  refusedVisitIds: ReadonlySet<string>,
+  reopenedVisitId?: string | null,
+): LocallyFinishedStops {
+  const kept = Object.entries(finished).filter(([, visitId]) => !refusedVisitIds.has(visitId) && visitId !== reopenedVisitId)
+  return kept.length === Object.keys(finished).length ? finished : Object.fromEntries(kept)
+}
+
+/**
+ * The route's stops with those finished on this phone counted as VISITED.
+ * A stop the server already closed (VISITED, SKIPPED) keeps its own status.
+ * The visit whose check-out is still waiting to sync counts too: it is over
+ * for the agent, only the upload is left.
+ */
+export function withLocallyFinishedStops<T extends { id: string; status?: string | null }>(
+  points: readonly T[],
+  finished: LocallyFinishedStops,
+  pendingCheckOutVisit?: { routePointId?: string | null; pendingCheckOut?: boolean } | null,
+): T[] {
+  const pendingPointId = pendingCheckOutVisit?.pendingCheckOut ? pendingCheckOutVisit.routePointId ?? null : null
+  if (Object.keys(finished).length === 0 && !pendingPointId) return points as T[]
+  return points.map((point) => {
+    const done = finished[point.id] !== undefined || point.id === pendingPointId
+    if (!done || point.status === "VISITED" || point.status === "SKIPPED") return point
+    return { ...point, status: "VISITED" }
+  })
+}
+
+/** The name the check-in notice says: the doctor when the stop names one, else the place. */
+export function checkInNoticeName(point: Parameters<typeof routeStopWho>[0]): string {
+  return routeStopWho(point).name
+}

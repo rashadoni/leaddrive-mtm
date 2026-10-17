@@ -49,7 +49,7 @@ describe("route screen speaks through the app's own feedback layer", () => {
 
   it("reports the owner's two saves as success notices", () => {
     expect(checkInStart).toBeGreaterThanOrEqual(0)
-    expect(checkIn).toContain('notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: point.customer.name }) })')
+    expect(checkIn).toContain('notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: checkInNoticeName(point) }) })')
     expect(source).toContain('notify({ tone: "success", title: t("visit.checkOutQueuedTitle"), message: t("visit.checkOutQueuedBody") })')
     expect(source).toContain('notify({ tone: "error", title: t("common.error"), message: t("visit.checkInFailed") })')
     expect(source).toContain('notify({ tone: "error", title: t("common.error"), message: t("visit.checkOutFailed") })')

@@ -50,14 +50,18 @@ function reachableFiles(entry: string): Set<string> {
 }
 
 describe("Route Field Android import graph", () => {
-  it("does not package legacy navigator, manager transport, or a team-planning adapter", () => {
+  it("does not package the legacy navigator or the commercial screens", () => {
     const reachable = [...reachableFiles(path.join(sourceRoot, "App.android.ts"))]
       .map((file) => path.relative(sourceRoot, file))
 
     expect(reachable).not.toContain("src/navigation/AppNavigator.tsx")
-    expect(reachable).not.toContain("src/services/manager-api.ts")
-    expect(reachable).not.toContain("src/services/commercial-api.ts")
-    expect(reachable).not.toContain("src/screens/manager/ManagerPlanningWorkspace.android.tsx")
+    // The manager shell (2026-10-17) brings its own transport and the team
+    // planner, whose contact targets read through the commercial facade. The
+    // commercial screens themselves stay out, and so does contact transfer.
+    expect(reachable).toContain("src/services/manager-api.ts")
+    expect(reachable).toContain("src/screens/manager/ManagerPlanningWorkspace.android.tsx")
+    expect(reachable).not.toContain("src/screens/manager/ContactTransferScreen.android.tsx")
+    expect(reachable).not.toContain("src/screens/dashboard/DashboardScreen.android.tsx")
     expect(reachable).not.toContain("src/screens/base/ContactDetailScreen.tsx")
     expect(reachable).not.toContain("src/screens/base/ContactsList.tsx")
     expect(reachable).not.toContain("src/screens/base/BaseScreen.tsx")

@@ -46,6 +46,7 @@ import {
   type OptimisticVisit,
 } from "../../services/visit-outbox"
 import { runMobileSync } from "../../services/sync-engine"
+import { conflictOutboxOperations } from "../../services/outbox"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
@@ -70,6 +71,11 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
   awaitingRouteStops,
+  checkInNoticeName,
+  markStopFinishedLocally,
+  withLocallyFinishedStops,
+  withoutRefusedVisits,
+  type LocallyFinishedStops,
   nearestPendingStopId,
   routeDockAction,
   routeStopWho,
@@ -1273,6 +1279,10 @@ export default function RouteScreen() {
   const [awaitingApproval, setAwaitingApproval] = useState(false)
   // …and its stops in the agent's order, so the plan stays on the phone.
   const [awaitingStops, setAwaitingStops] = useState<AwaitingRouteStop[]>([])
+  // Stops whose visit was checked out on this phone, until the server's route
+  // says so too (withLocallyFinishedStops). Without them the stop just left
+  // came back as «Növbəti nöqtə» for the length of the sync.
+  const [finishedLocally, setFinishedLocally] = useState<LocallyFinishedStops>({})
 
   const fetchActiveVisit = useCallback(async () => {
     try {
@@ -1285,6 +1295,12 @@ export default function RouteScreen() {
           active ? { ...active, status: "CHECKED_IN", pendingCheckOut: false } : null,
         )
         setActiveVisit(reconciled)
+        // A visit the server refused does not finish its stop after all, and
+        // a check-out it refused leaves the visit open again.
+        const refused = new Set((await conflictOutboxOperations())
+          .filter((operation) => operation.entity === "visits" && typeof operation.data?.id === "string")
+          .map((operation) => operation.data.id as string))
+        setFinishedLocally((current) => withoutRefusedVisits(current, refused, reconciled && !reconciled.pendingCheckOut ? reconciled.id : null))
       }
     } catch {
       // Keep the local visit visible when a refresh fails in weak coverage.
@@ -1506,13 +1522,20 @@ export default function RouteScreen() {
   }, [workdayHydrated])
 
   const sortedPoints = useMemo(
-    () => route?.points ? [...route.points].sort((left, right) => left.orderIndex - right.orderIndex) : [],
-    [route?.points],
+    () => route?.points
+      ? withLocallyFinishedStops(
+          [...route.points].sort((left, right) => left.orderIndex - right.orderIndex),
+          finishedLocally,
+          activeVisit,
+        )
+      : [],
+    [route?.points, finishedLocally, activeVisit],
   )
   // Every stop, the one being visited included (routeStopState): the list is
   // the agent's whole day in order, not «what is left besides this visit».
   const displayedPoints = sortedPoints
-  const visitingPointId = activeVisit?.routePointId ?? null
+  // A visit whose check-out only waits to sync is over: its stop reads done.
+  const visitingPointId = activeVisit && !activeVisit.pendingCheckOut ? activeVisit.routePointId ?? null : null
   const nearestPointId = useMemo(
     () => nearestPendingStopId(sortedPoints, visitingPointId),
     [sortedPoints, visitingPointId],
@@ -1851,7 +1874,9 @@ export default function RouteScreen() {
       setActiveVisit(visit)
       setPhonePanelVisible(false)
       setSelectedPointId(point.id)
-      notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: point.customer.name }) })
+      // The doctor when the stop names one: «Test E2E Klinika ziyarəti» was the
+      // organization, not the person the agent came to see (2026-10-17).
+      notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: checkInNoticeName(point) }) })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
         if (result.conflicted > 0) notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
@@ -1925,6 +1950,7 @@ export default function RouteScreen() {
         notes: notes || undefined,
       })
       setActiveVisit(visit)
+      setFinishedLocally((current) => markStopFinishedLocally(current, visit))
       // The panel moves on to the next stop instead of staying on the one
       // just finished (Redmi Pad SE, 2026-09-15).
       setSelectedPointId(null)

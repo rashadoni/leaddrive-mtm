@@ -264,6 +264,18 @@ export default function ManagerPlanningCalendarScreen() {
     setAnchor(selectedDate)
   }
 
+  // On a phone the button has a row of its own under the title, whole.
+  const createButton = (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
+      style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
+    >
+      <Icon name="add-circle" size={21} color={fieldTheme.color.primaryStrong} />
+      <Text style={styles.createButtonText}>{copy.create}</Text>
+    </Pressable>
+  )
+
   return (
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -272,17 +284,14 @@ export default function ManagerPlanningCalendarScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
             <Text style={styles.title}>{copy.title}</Text>
-            <Text numberOfLines={tablet ? 2 : 1} style={styles.subtitle}>{copy.subtitle}</Text>
+            {/* Wraps instead of «…»: on a 360–412 dp phone one line cut it
+                mid-sentence, and the button beside it lost its last letters
+                («Marşrut yar», 2026-10-17). */}
+            <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
-            style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
-          >
-            <Icon name="add-circle" size={21} color={fieldTheme.color.primaryStrong} />
-            <Text style={styles.createButtonText}>{copy.create}</Text>
-          </Pressable>
+          {tablet ? createButton : null}
         </View>
+        {tablet ? null : <View style={styles.headerActions}>{createButton}</View>}
       </View>
 
       <ScrollView
@@ -564,11 +573,12 @@ const styles = StyleSheet.create({
   headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   headerInnerTablet: { paddingVertical: fieldTheme.space.xs },
   headerIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.14)" },
-  headerCopy: { flex: 1, minWidth: 220, gap: 2 },
+  headerCopy: { flex: 1, minWidth: 0, gap: 2 },
+  headerActions: { width: "100%", maxWidth: 1180, alignSelf: "center", flexDirection: "row", marginTop: fieldTheme.space.sm },
   eyebrow: { color: "#BBD6CB", fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
   title: { color: fieldTheme.color.onColor, fontSize: 21, lineHeight: 25, fontWeight: "900" },
   subtitle: { color: "#D7E9E1", fontSize: 11, lineHeight: 15, maxWidth: 680 },
-  createButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 11, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  createButton: { flexShrink: 0, minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 11, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
   createButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
   content: { width: "100%", maxWidth: 1180, alignSelf: "center", padding: 10, gap: 10 },
   contentTablet: { padding: fieldTheme.space.md, gap: fieldTheme.space.md },
