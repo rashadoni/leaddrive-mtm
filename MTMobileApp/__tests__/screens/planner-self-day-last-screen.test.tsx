@@ -231,6 +231,20 @@ describe("the agent picks the day after the clients", () => {
     expect(saveDraft).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it("asks only for the clients on a live day that is already chosen", async () => {
+    // A day picked on the calendar opens chosen (agent's phone, 2026-10-18).
+    routesByDate[TOMORROW] = [{ ...liveRoute(TOMORROW), status: "PLANNED" }]
+    const tree = await open({ initialDate: TOMORROW })
+    expect(byTestId(tree, "mtm-mobile-self-plan-day-tomorrow").props.accessibilityState.checked).toBe(true)
+    expect(button(tree, "Marşruta əlavə et").props.disabled).toBe(true)
+    expect(screenText(tree)).toContain("Marşruta əlavə ediləcək müştəriləri seçin")
+    expect(screenText(tree)).not.toContain("Müştəriləri seçin, sonra günü")
+
+    await press(client(tree, "Doctor a"))
+    expect(button(tree, "Marşruta əlavə et").props.disabled).toBe(false)
+    expect(screenText(tree)).not.toContain("Marşruta əlavə ediləcək müştəriləri seçin")
+  })
 })
 
 describe("«Planı dəyiş» names its day and leads to another one", () => {

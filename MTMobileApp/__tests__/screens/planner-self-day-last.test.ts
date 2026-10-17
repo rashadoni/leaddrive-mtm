@@ -295,7 +295,7 @@ describe("where the planner is opened from", () => {
 
 describe("the words, in three languages", () => {
   const keys = [
-    "planDayQuestion", "planDayTomorrow", "planDayOther", "planDayMarked", "planDayChooseHint", "planDayMarkFirst",
+    "planDayQuestion", "planDayTomorrow", "planDayOther", "planDayMarked", "planDayChooseHint", "planDayMarkFirst", "planDayMarkToAdd",
     "planDayChecking", "planDayCheckFailed", "planDayDropped", "planDayHasDraft", "planDayHasPublished", "planDayBlocked",
     "planAddToRoute", "planAddingToRoute", "planInRoute", "planOtherDay", "planOtherDayDiscardTitle",
     "planOtherDayDiscardBody", "planPublishedRouteLabel",

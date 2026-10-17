@@ -1513,7 +1513,9 @@ export default function PlanningWorkspaceCore({
             ? undefined
             : activeEditAvailability === "offline"
               ? t("managerShell.planEditOffline")
-              : basket.length === 0 ? t("managerShell.planDayMarkFirst") : undefined,
+              // The day is chosen already (often opened from the calendar):
+              // only the clients are left to mark.
+              : basket.length === 0 ? t("managerShell.planDayMarkToAdd") : undefined,
           disabled: saving || basket.length === 0 || activeEditAvailability !== "available",
           onPress: () => { void appendToPublishedRoute() },
         }
