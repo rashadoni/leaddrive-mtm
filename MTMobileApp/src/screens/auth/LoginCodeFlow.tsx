@@ -14,11 +14,21 @@ import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
  * digits LeadDrive sends to that WhatsApp → your own password, after which the
  * phone is signed in exactly as the password form signs it in. The same way
  * serves «I forgot my password».
+ *
+ * Two doors to it (owner, 2026-10-17, on the old screen where the WhatsApp
+ * button sat below the fold: «регистрация или вход… если забыл пароль, то
+ * через OTP вход и дальше новый пароль с повтором»): the «Первый вход» tab,
+ * where the number is all that is asked, and «Забыли пароль?» under the
+ * password field. Called «first sign-in», not «registration»: the company
+ * creates the employee; a number it does not know gets no code.
  */
+
+export type LoginCodePurpose = "first" | "reset"
 
 type Step = "phone" | "code" | "password"
 
-const WHATSAPP_GREEN = "#25D366"
+/** White text on WhatsApp's own green fails contrast; this darker one passes. */
+const WHATSAPP_BUTTON = "#157A3C"
 const CODE_LENGTH = 6
 
 /** The server's refusal codes, said in words. Anything else is «no connection». */
@@ -75,7 +85,12 @@ export function passwordRules(password: string, repeat: string) {
   return { length, cases, digitSymbol: digit && symbol, match, ok: length && cases && digit && symbol && match }
 }
 
-export default function LoginCodeFlow({ initialPhone, onCancel }: { initialPhone: string; onCancel: () => void }) {
+export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset" }: {
+  initialPhone: string
+  onCancel: () => void
+  /** «first»: inside the «Первый вход» tab, whose tabs are the way back. */
+  purpose?: LoginCodePurpose
+}) {
   const { t, i18n } = useTranslation()
   const loginWithCode = useAuthStore((state) => state.loginWithCode)
   const [step, setStep] = useState<Step>("phone")
@@ -170,15 +185,23 @@ export default function LoginCodeFlow({ initialPhone, onCancel }: { initialPhone
     </Pressable>
   )
 
+  // Back to where the person came from. On the first tab the tabs above lead
+  // out, so «Назад» returns to the number, and on the number step there is none.
+  const goBack = purpose === "first" ? () => { setStep("phone"); setSetup(null); setPassword(""); setRepeat(""); setError(null) } : onCancel
+  const back = purpose === "first" && step === "phone" ? null : (
+    <Pressable testID="login-code-cancel" accessibilityRole="button" onPress={goBack} disabled={busy} style={[styles.link, styles.back]}>
+      <Icon name="arrow-back" size={17} color={fieldTheme.color.primary} />
+      <Text style={styles.linkText}>{t(purpose === "first" ? "auth.codeBack" : "auth.codeBackToPassword")}</Text>
+    </Pressable>
+  )
+
   return (
     <View testID={`login-code-step-${step}`}>
+      {back}
       {step === "phone" && (
         <>
-          <View style={styles.titleRow}>
-            <View style={styles.whatsappMark}><Icon name="logo-whatsapp" size={20} color="#FFFFFF" /></View>
-            <Text style={styles.title}>{t("auth.codeTitle")}</Text>
-          </View>
-          <Text style={styles.body}>{t("auth.codeBody")}</Text>
+          {purpose === "reset" ? <Text style={styles.title}>{t("auth.resetTitle")}</Text> : null}
+          <Text style={[styles.body, purpose === "first" && styles.bodyFirst]}>{t(purpose === "first" ? "auth.firstBody" : "auth.resetBody")}</Text>
           <Text style={styles.label}>{t("auth.codePhoneLabel")}</Text>
           <View style={styles.inputWrap}>
             <Icon name="call-outline" size={21} color={fieldTheme.color.inkMuted} />
@@ -199,7 +222,19 @@ export default function LoginCodeFlow({ initialPhone, onCancel }: { initialPhone
             />
           </View>
           {errorBox}
-          {primary("login-code-send", t("auth.codeSend"), t("auth.codeSending"), () => { sendCode().catch(() => {}) })}
+          <Pressable
+            testID="login-code-send"
+            accessibilityRole="button"
+            accessibilityLabel={t("auth.codeStart")}
+            accessibilityState={{ disabled: busy }}
+            onPress={() => { sendCode().catch(() => {}) }}
+            disabled={busy}
+            style={({ pressed }) => [styles.whatsappButton, busy && styles.disabled, pressed && !busy && styles.pressed]}
+          >
+            {busy ? <ActivityIndicator color="#FFFFFF" /> : <View style={styles.whatsappMark}><Icon name="logo-whatsapp" size={18} color={WHATSAPP_BUTTON} /></View>}
+            <Text style={styles.primaryText}>{busy ? t("auth.codeSending") : t("auth.codeStart")}</Text>
+          </Pressable>
+          <Text style={[styles.muted, styles.centered]}>{t("auth.firstHint")}</Text>
         </>
       )}
 
@@ -287,17 +322,26 @@ export default function LoginCodeFlow({ initialPhone, onCancel }: { initialPhone
         </>
       )}
 
-      <Pressable testID="login-code-cancel" accessibilityRole="button" onPress={onCancel} disabled={busy} style={[styles.link, styles.cancel]}>
-        <Icon name="arrow-back" size={17} color={fieldTheme.color.primary} />
-        <Text style={styles.linkText}>{t("auth.codeBackToPassword")}</Text>
-      </Pressable>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  titleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  whatsappMark: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: WHATSAPP_GREEN },
+  whatsappMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
+  whatsappButton: {
+    minHeight: 56,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: WHATSAPP_BUTTON,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.sm,
+    marginTop: fieldTheme.space.lg,
+    paddingHorizontal: fieldTheme.space.lg,
+  },
+  bodyFirst: { marginTop: 0 },
+  centered: { textAlign: "center", marginTop: fieldTheme.space.md },
+  back: { alignSelf: "flex-start", marginBottom: fieldTheme.space.xs },
   title: { color: fieldTheme.color.ink, fontSize: 25, lineHeight: 31, fontWeight: "900" },
   body: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, marginTop: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
   label: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800", marginTop: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
@@ -328,7 +372,6 @@ const styles = StyleSheet.create({
   linkRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
   link: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 6 },
   linkText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "800" },
-  cancel: { alignSelf: "center", marginTop: fieldTheme.space.md },
   muted: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: fieldTheme.space.sm },
   rules: { gap: 6, marginTop: fieldTheme.space.md },
   rule: { flexDirection: "row", alignItems: "center", gap: 8 },
