@@ -90,7 +90,7 @@ const CALENDAR_COPY = {
     priorityLabel: "Приоритет",
     client: "Клиент",
     planOwnRoute: "Составить мой маршрут",
-    planOwnRouteHint: "Выберите день и клиентов — редактировать этот план сможете только вы.",
+    planOwnRouteHint: "Выберите клиентов и день — редактировать этот план сможете только вы.",
   },
   az: {
     title: "Təqvim",
@@ -141,7 +141,7 @@ const CALENDAR_COPY = {
     priorityLabel: "Prioritet",
     client: "Müştəri",
     planOwnRoute: "Öz marşrutumu qur",
-    planOwnRouteHint: "Günü və müştəriləri seçin — bu planı yalnız siz redaktə edə bilərsiniz.",
+    planOwnRouteHint: "Müştəriləri və günü seçin — bu planı yalnız siz redaktə edə bilərsiniz.",
   },
   en: {
     title: "Calendar",
@@ -192,7 +192,7 @@ const CALENDAR_COPY = {
     priorityLabel: "Priority",
     client: "Client",
     planOwnRoute: "Build my route",
-    planOwnRouteHint: "Choose a day and customers — only you can edit this plan.",
+    planOwnRouteHint: "Choose customers and a day — only you can edit this plan.",
   },
 } as const
 
@@ -477,8 +477,12 @@ export default function WeekScreen() {
   }
 
   const openOwnRoutePlanner = () => {
+    // The planner asks for the day after the clients (owner, 2026-10-17).
+    // A day the agent moved to on the calendar is his answer already; the
+    // calendar's own default, today, is not.
+    const pickedDay = selectedDate && selectedDate !== data?.today ? selectedDate : null
     navigation.navigate("PlanningBuilder", {
-      initialDate: selectedDate ?? anchor,
+      ...(pickedDay ? { initialDate: pickedDay } : {}),
       initialHorizon: 1,
     })
   }

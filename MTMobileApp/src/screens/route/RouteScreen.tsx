@@ -2190,7 +2190,9 @@ export default function RouteScreen() {
         label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
         icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
         onPress={() => {
-          if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder")
+          // Changing today's waiting route opens on today; a new plan asks
+          // for its day after the clients.
+          if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder", emptyMode === "awaiting-approval" ? { initialDate: localRouteDateKey() } : undefined)
           else { setLoading(true); fetchRoute() }
         }}
         tone="secondary"

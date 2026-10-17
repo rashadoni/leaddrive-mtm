@@ -65,8 +65,11 @@ describe("agent month calendar", () => {
     expect(monthComponent).toContain("copy.routeShort} · {day.plannedStops}")
   })
 
-  it("opens route planning on the selected calendar date", () => {
-    expect(source).toContain("initialDate: selectedDate ?? anchor")
+  it("opens route planning on the calendar day the agent moved to", () => {
+    // Today, the calendar's default, is not a choice: the planner asks for
+    // the day after the clients (owner, 2026-10-17).
+    expect(source).toContain("const pickedDay = selectedDate && selectedDate !== data?.today ? selectedDate : null")
+    expect(source).toContain("...(pickedDay ? { initialDate: pickedDay } : {}),")
     expect(source).toContain("initialHorizon: 1")
   })
 
