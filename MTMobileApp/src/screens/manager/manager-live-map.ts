@@ -61,16 +61,17 @@ export interface ManagerLiveMapDocumentLabels {
   mapAttribution: string
 }
 
-/**
- * Keeps an explicit selection while it is still present and makes the only
- * available server marker self-explanatory without requiring a first tap.
- */
+/** Keeps the marker the manager tapped while it is still on the map. */
 export function resolveManagerLiveMapSelection(
   markers: ManagerLiveMapMarker[],
   selectedId: string | null,
 ): string | null {
+  // Only what the manager tapped. A lone marker used to select itself and
+  // its employee was then printed a second time under the map — next to the
+  // same person in the team list below (owner, 2026-10-17: «два раза агента
+  // список выходит»). The marker's own popup is the detail now.
   if (selectedId && markers.some((marker) => marker.id === selectedId)) return selectedId
-  return markers.length === 1 ? markers[0].id : null
+  return null
 }
 
 function validLatitude(value: number): boolean {

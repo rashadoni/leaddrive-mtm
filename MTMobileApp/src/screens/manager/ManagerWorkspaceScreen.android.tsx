@@ -186,10 +186,16 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
 
   useAutoRefresh(useCallback(() => { void reload(updatedAt == null ? "initial" : "silent") }, [reload, updatedAt]))
 
-  const teamRows = useMemo(() => {
-    return team.map((agent) => ({ agent, truth: managerAgentTruth(agent, locations, observedAt) }))
-  }, [locations, observedAt, team])
   const viewerId = useAuthStore((state) => state.agent?.id)
+  // The people the manager looks after — not the manager. The server's team
+  // includes the viewer's own card; on the phone the owner read it as a bug
+  // (2026-10-17: «менеджер сам себя видит, открывается у него карточка»).
+  // His own day is the «İş günü» tab, his position the share button above.
+  const teamRows = useMemo(() => {
+    return team
+      .filter((agent) => !viewerId || agent.id !== viewerId)
+      .map((agent) => ({ agent, truth: managerAgentTruth(agent, locations, observedAt) }))
+  }, [locations, observedAt, team, viewerId])
   const presence = teamPresenceSummary(teamRows, viewerId)
   const selfShareBusy = selfShareState === "locating" || selfShareState === "sending"
 
@@ -496,7 +502,6 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                     truth={truth}
                     t={t}
                     language={i18n.language}
-                    self={!!viewerId && agent.id === viewerId}
                     tablet={expandedTablet}
                     onOpen={() => navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline })}
                   />
@@ -643,13 +648,11 @@ function SummaryCount({ color, value, label }: { color: string; value: number; l
   )
 }
 
-function AgentTruthCard({ agent, truth, t, language, self, tablet, onOpen }: {
+function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
   agent: ManagerTeamAgent
   truth: ManagerAgentTruth
   t: any
   language: string
-  /** The manager's own card: no presence verdict about the person holding the phone. */
-  self: boolean
   tablet: boolean
   /** The employee's card: his day on a map, the route, the workday (owner, 2026-10-17). */
   onOpen: () => void
@@ -699,26 +702,18 @@ function AgentTruthCard({ agent, truth, t, language, self, tablet, onOpen }: {
             </Text>
           ) : null}
         </View>
-        {self ? (
-          <View style={[styles.presencePill, { backgroundColor: fieldTheme.color.primarySoft }]} testID="manager-own-card">
-            <Text style={[styles.presenceText, { color: fieldTheme.color.primaryStrong }]}>{t("managerShell.you")}</Text>
-          </View>
-        ) : (
-          <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
-            <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
-            <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
-              {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
-            </Text>
-          </View>
-        )}
+        <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+          <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
+          <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
+            {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
+          </Text>
+        </View>
       </View>
 
-      {self ? null : (
-        <View style={styles.presenceEvidence}>
-          <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
-          <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
-        </View>
-      )}
+      <View style={styles.presenceEvidence}>
+        <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
+        <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
+      </View>
 
       <View style={[styles.locationPanel, { backgroundColor: gpsConfig.tint }]}>
         <View style={styles.locationHeading}>

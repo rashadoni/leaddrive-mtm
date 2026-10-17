@@ -102,17 +102,19 @@ describe("manager live map truth model", () => {
     expect(model.noCoordinatesCount).toBe(1)
   })
 
-  it("automatically selects only an unambiguous single server marker", () => {
+  it("selects only the marker the manager tapped, never one by itself", () => {
     const current = buildManagerLiveMapModel([row("only", "Only Agent", {})]).markers
     const multiple = buildManagerLiveMapModel([
       row("first", "First Agent", {}),
       row("second", "Second Agent", {}),
     ]).markers
 
-    expect(resolveManagerLiveMapSelection(current, null)).toBe("only")
+    // Nothing is selected for the manager: a lone marker selecting itself
+    // printed its employee a second time under the map (owner, 2026-10-17).
+    expect(resolveManagerLiveMapSelection(current, null)).toBeNull()
     expect(resolveManagerLiveMapSelection(multiple, null)).toBeNull()
     expect(resolveManagerLiveMapSelection(multiple, "second")).toBe("second")
-    expect(resolveManagerLiveMapSelection(current, "missing")).toBe("only")
+    expect(resolveManagerLiveMapSelection(current, "missing")).toBeNull()
   })
 
   it("builds a raster map without remote scripts, device geolocation, or raw script injection", () => {

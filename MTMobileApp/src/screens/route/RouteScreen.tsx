@@ -90,6 +90,8 @@ import {
 } from "./route-screen-state"
 import { hasUsableCoordinates, IMPLAUSIBLE_DISTANCE_METERS } from "../visit/visit-checkin-model"
 import { toVisitWorkspace, visitActionShown, type VisitWorkspace } from "../../services/visit-workspace"
+import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 
 interface RoutePoint {
   id: string
@@ -128,6 +130,9 @@ const ROUTE_COPY = {
     nextStop: "Следующая точка",
     selectedStop: "Выбранная точка",
     activeVisit: "Сейчас идёт визит",
+    staleVisitTitle: "Не закрыт визит от {{date}}",
+    staleVisitBody: "Этот визит забыли закрыть. Закройте его — фото и презентации в него уже не добавить, сегодняшние визиты идут отдельно.",
+    closeStaleVisit: "Закрыть визит",
     reminderChannel: "Напоминания о визитах",
     reminderChannelHint: "Напоминание, если визит идёт дольше обычного.",
     routeComplete: "Маршрут выполнен",
@@ -226,6 +231,9 @@ const ROUTE_COPY = {
     nextStop: "Növbəti nöqtə",
     selectedStop: "Seçilmiş nöqtə",
     activeVisit: "Ziyarət davam edir",
+    staleVisitTitle: "{{date}} tarixli ziyarət bağlanmayıb",
+    staleVisitBody: "Bu ziyarəti bağlamağı unutmusunuz. Onu bağlayın — ona artıq foto və təqdimat əlavə olunmur, bugünkü ziyarətlər ayrıca aparılır.",
+    closeStaleVisit: "Ziyarəti bağla",
     reminderChannel: "Ziyarət xatırlatmaları",
     reminderChannelHint: "Ziyarət adi haldan uzun sürərsə xatırladır.",
     routeComplete: "Marşrut tamamlandı",
@@ -324,6 +332,9 @@ const ROUTE_COPY = {
     nextStop: "Next stop",
     selectedStop: "Selected stop",
     activeVisit: "Visit in progress",
+    staleVisitTitle: "Visit from {{date}} was never closed",
+    staleVisitBody: "This visit was left open. Close it — no photo or presentation can be added to it any more; today's visits are separate.",
+    closeStaleVisit: "Close the visit",
     reminderChannel: "Visit reminders",
     reminderChannelHint: "A reminder when a visit runs longer than usual.",
     routeComplete: "Route complete",
@@ -1004,6 +1015,7 @@ function PointActionPanel({
   point,
   nextPoint,
   activeVisit,
+  staleSinceLabel,
   navigationStarted,
   photoCount,
   elapsedMin,
@@ -1022,6 +1034,8 @@ function PointActionPanel({
   point: RoutePoint | null
   nextPoint: RoutePoint | null
   activeVisit: OptimisticVisit | null
+  /** The day an open visit was started, when that day is over — see stale-visit.ts. */
+  staleSinceLabel: string | null
   navigationStarted: boolean
   photoCount: number
   elapsedMin: number
@@ -1037,6 +1051,34 @@ function PointActionPanel({
   signature: { visible: boolean; required: boolean; signed: boolean }
   onSignature: () => void
 }) {
+  if (activeVisit && staleSinceLabel) {
+    // Not «visit in progress»: a visit left open on another day. Today's
+    // photo went into such a visit on the owner's phone (2026-10-17); the
+    // owner chose to show it with its date and let it only be closed.
+    const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
+    return (
+      <View style={[styles.actionPanel, styles.staleVisitPanel]} testID="route-stale-visit" accessibilityLiveRegion="polite">
+        <View style={styles.actionEyebrowRow}>
+          <Icon name="alert-circle" size={18} color={fieldTheme.color.danger} />
+          <Text style={[styles.actionEyebrow, styles.staleVisitEyebrow]}>{renderTemplate(copy.staleVisitTitle, { date: staleSinceLabel })}</Text>
+        </View>
+        <Text style={styles.actionTitle}>{who.name}</Text>
+        {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
+        <Text style={styles.staleVisitBody}>{copy.staleVisitBody}</Text>
+        {activeVisit.pendingCheckOut ? (
+          <ActionButton label={copy.waitingForSync} icon="cloud-upload-outline" onPress={() => {}} disabled />
+        ) : (
+          <ActionButton
+            label={mutating ? copy.finishingVisit : copy.closeStaleVisit}
+            icon={mutating ? "hourglass-outline" : "checkmark-circle"}
+            onPress={onCheckOut}
+            disabled={mutating}
+          />
+        )}
+      </View>
+    )
+  }
+
   if (activeVisit) {
     const pending = activeVisit.pendingCheckOut
     const required = workspace?.requirements.filter((requirement) => (
@@ -1235,6 +1277,7 @@ export default function RouteScreen() {
   const workdayTransitionPending = currentWorkday?.syncState === "START_PENDING" || currentWorkday?.syncState === "FINISH_PENDING"
   const workdayActive = workdayHydrated && currentWorkday?.syncState === "CONFIRMED" && !workdayPaused
   const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  const timezone = useBootstrapStore((state) => state.data?.timezone)
   // This shortcut is for field agents only. Managers keep their existing
   // team-planning workspace, so they are never sent into a locked "my route"
   // screen by mistake.
@@ -1554,6 +1597,10 @@ export default function RouteScreen() {
     : null
   const focusPoint = activeRoutePoint ?? selectedPoint ?? nextPoint ?? sortedPoints[0] ?? null
   const activeVisitWho = routeStopWho(activeRoutePoint ?? { customer: activeVisit?.customer })
+  const staleSinceDay = visitOpenSinceEarlierDay(activeVisit?.checkInAt, new Date(), timezone)
+  const staleSinceLabel = staleSinceDay
+    ? formatLocalizedDate(staleVisitDayDate(staleSinceDay), i18n.language, { day: "numeric", month: "long" })
+    : null
   const currentStep = remaining === 0 && totalPoints > 0
     ? 5
     : activeVisit
@@ -1996,6 +2043,7 @@ export default function RouteScreen() {
       point={focusPoint}
       nextPoint={nextPoint}
       activeVisit={activeVisit}
+      staleSinceLabel={staleSinceLabel}
       navigationStarted={Boolean(focusPoint && navigationStartedFor === focusPoint.id)}
       photoCount={photos.count}
       elapsedMin={elapsedMin}
@@ -2484,6 +2532,9 @@ const styles = StyleSheet.create({
   actionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },
   actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", letterSpacing: 0.7 },
+  staleVisitPanel: { borderColor: fieldTheme.color.danger, backgroundColor: fieldTheme.color.dangerSoft },
+  staleVisitEyebrow: { flex: 1, color: fieldTheme.color.danger },
+  staleVisitBody: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20 },
   actionTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 29, fontWeight: "900", letterSpacing: -0.4 },
   actionAddress: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   visitFacts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },

@@ -42,7 +42,8 @@ describe("who a stop of the route is about", () => {
 
     const panel = route.slice(route.indexOf("function PointActionPanel("), route.indexOf("export default function RouteScreen("))
     expect(panel).toContain("routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })")
-    expect(panel.split("<Text style={styles.actionTitle}>{who.name}</Text>").length - 1).toBe(2)
+    // Three titles: a live visit, a visit left open on an earlier day, a stop.
+    expect(panel.split("<Text style={styles.actionTitle}>{who.name}</Text>").length - 1).toBe(3)
     expect(panel).not.toContain("<Text style={styles.actionTitle}>{activeVisit.customer?.name}</Text>")
     expect(panel).not.toContain("<Text style={styles.actionTitle}>{point.customer.name}</Text>")
 

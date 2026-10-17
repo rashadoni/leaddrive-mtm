@@ -28,10 +28,9 @@ describe("manager shell: what the phone review found", () => {
     expect(formatLocalizedDateTime(at, "az")).toBe("17 okt, 15:05")
     expect(formatLocalizedDateTime(at.getTime(), "az-AZ")).toBe("17 okt, 15:05")
     expect(formatLocalizedDateTime("not a date", "az")).toBe("—")
-    for (const source of [workspace, liveMap]) {
-      expect(source).not.toMatch(/toLocaleString\(\[\]/)
-      expect(source).toContain("formatLocalizedDateTime(")
-    }
+    for (const source of [workspace, liveMap]) expect(source).not.toMatch(/toLocaleString\(\[\]/)
+    // The map prints no date of its own since the cards under it went (7.).
+    expect(workspace).toContain("formatLocalizedDateTime(")
   })
 
   it("3. says the role in words, never MANAGER", () => {
@@ -59,7 +58,7 @@ describe("manager shell: what the phone review found", () => {
     expect(calendar).toContain("headerCopy: { flex: 1, minWidth: 0, gap: 2 },")
   })
 
-  it("6. does not call the manager «offline» on his own card, nor count him", () => {
+  it("6. leaves the manager out of his own team: no card, no count, not on the map", () => {
     const rows = [
       { agent: { id: "manager" }, truth: { isOnline: false, gpsFreshness: "NO_COORDINATES" as const } },
       { agent: { id: "agent-1" }, truth: { isOnline: true, gpsFreshness: "FRESH" as const } },
@@ -67,9 +66,21 @@ describe("manager shell: what the phone review found", () => {
     ]
     expect(teamPresenceSummary(rows, "manager")).toEqual({ online: 1, offline: 1, gpsAttention: 1 })
     expect(teamPresenceSummary(rows, null)).toEqual({ online: 1, offline: 2, gpsAttention: 2 })
-    expect(workspace).toContain("self={!!viewerId && agent.id === viewerId}")
-    const card = workspace.slice(workspace.indexOf("function AgentTruthCard"))
-    expect(card).toContain('{self ? (\n          <View style={[styles.presencePill, { backgroundColor: fieldTheme.color.primarySoft }]} testID="manager-own-card">')
-    for (const locale of ["ru", "en", "az"] as const) expect(mobileResources[locale].managerShell.you).toBeTruthy()
+    // Owner, 2026-10-17: «менеджер сам себя видит, открывается у него
+    // карточка». The rows that feed both the list and the map leave him out.
+    expect(workspace).toContain(".filter((agent) => !viewerId || agent.id !== viewerId)")
+    expect(workspace).not.toContain("manager-own-card")
+    expect(workspace).toContain("<ManagerLiveMap rows={teamRows}")
+  })
+
+  it("7. shows each employee once on «Komanda»: the map has no card list of its own", () => {
+    // One agent stood three times on one screen: a card rail above the map, a
+    // «Seçilmiş əməkdaş» block under it and his card in the team list (owner,
+    // 2026-10-17: «два раза агента список выходит»). The list stays; the map
+    // names an employee in its own popup when a marker is tapped.
+    expect(liveMap).not.toContain("managerShell.liveMapEvidenceTitle")
+    expect(liveMap).not.toContain("managerShell.liveMapSelected")
+    expect(liveMap).not.toContain("<ScrollView")
+    expect(workspace).toContain("{teamRows.map(({ agent, truth }) => (")
   })
 })
