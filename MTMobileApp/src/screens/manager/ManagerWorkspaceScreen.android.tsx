@@ -41,11 +41,14 @@ import {
   type ManagerApprovals,
   type RouteDraftApproval,
 } from "../../services/manager-approvals"
-import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { formatLocalizedDate, formatLocalizedDateTime } from "../../lib/format-localized-date"
+import { statusLabel } from "../../lib/status-labels"
+import { useAuthStore } from "../../store/auth"
 import {
   formatManagerEvidenceAge,
   managerAgentTruth,
   normalizeManagerLocations,
+  teamPresenceSummary,
   type ManagerAgentTruth,
   type ManagerLocationEvidence,
   type ManagerTeamAgent,
@@ -175,8 +178,8 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
   const teamRows = useMemo(() => {
     return team.map((agent) => ({ agent, truth: managerAgentTruth(agent, locations, observedAt) }))
   }, [locations, observedAt, team])
-  const onlineCount = teamRows.filter(({ truth }) => truth.isOnline).length
-  const gpsAttentionCount = teamRows.filter(({ truth }) => truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES").length
+  const viewerId = useAuthStore((state) => state.agent?.id)
+  const presence = teamPresenceSummary(teamRows, viewerId)
   const selfShareBusy = selfShareState === "locating" || selfShareState === "sending"
 
   const requestForegroundLocation = async (): Promise<boolean> => {
@@ -300,7 +303,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
           <View style={[styles.icon, { backgroundColor: meta.tint }]}>
             <Icon name={meta.icon} size={28} color={meta.color} />
           </View>
-          <View style={styles.headerCopy}>
+          <View style={[styles.headerCopy, tablet && styles.headerCopyTablet]}>
             <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
             <Text style={styles.title}>{t(meta.titleKey)}</Text>
             <Text style={styles.body}>{t(meta.bodyKey)}</Text>
@@ -404,14 +407,14 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 <Text style={styles.snapshotTitle}>{t("managerShell.teamSnapshot", { defaultValue: "Team status" })}</Text>
                 <Text style={styles.snapshotMeta}>
                   {updatedAt
-                    ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatTimestamp(updatedAt) })
+                    ? t("managerShell.updatedAt", { defaultValue: "Updated at {{time}}", time: formatLocalizedDateTime(updatedAt, i18n.language) })
                     : t("common.loading")}
                 </Text>
               </View>
               <View style={styles.snapshotCounts}>
-                <SummaryCount color={fieldTheme.color.success} value={onlineCount} label={t("managerShell.online", { defaultValue: "Online" })} />
-                <SummaryCount color={fieldTheme.color.inkMuted} value={Math.max(0, teamRows.length - onlineCount)} label={t("managerShell.offline", { defaultValue: "Offline" })} />
-                <SummaryCount color={fieldTheme.color.amber} value={gpsAttentionCount} label={t("managerShell.gpsNeedsAttention", { defaultValue: "GPS attention" })} />
+                <SummaryCount color={fieldTheme.color.success} value={presence.online} label={t("managerShell.online", { defaultValue: "Online" })} />
+                <SummaryCount color={fieldTheme.color.inkMuted} value={presence.offline} label={t("managerShell.offline", { defaultValue: "Offline" })} />
+                <SummaryCount color={fieldTheme.color.amber} value={presence.gpsAttention} label={t("managerShell.gpsNeedsAttention", { defaultValue: "GPS attention" })} />
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -437,7 +440,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
             {teamRows.length > 0 ? (
               <View style={[styles.teamList, expandedTablet && styles.teamListTablet]}>
                 {teamRows.map(({ agent, truth }) => (
-                  <AgentTruthCard key={agent.id} agent={agent} truth={truth} t={t} tablet={expandedTablet} />
+                  <AgentTruthCard key={agent.id} agent={agent} truth={truth} t={t} language={i18n.language} self={!!viewerId && agent.id === viewerId} tablet={expandedTablet} />
                 ))}
               </View>
             ) : (
@@ -535,17 +538,6 @@ async function approvalQueues(window: { start: string; endExclusive: string }) {
   }
 }
 
-function formatTimestamp(value: number | string) {
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return "—"
-  return date.toLocaleString([], {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
 function ageLabel(ageMs: number | null, t: any) {
   const age = formatManagerEvidenceAge(ageMs)
   if (!age) return t("managerShell.timeUnknown", { defaultValue: "time unknown" })
@@ -574,10 +566,13 @@ function SummaryCount({ color, value, label }: { color: string; value: number; l
   )
 }
 
-function AgentTruthCard({ agent, truth, t, tablet }: {
+function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
   agent: ManagerTeamAgent
   truth: ManagerAgentTruth
   t: any
+  language: string
+  /** The manager's own card: no presence verdict about the person holding the phone. */
+  self: boolean
   tablet: boolean
 }) {
   const location = truth.location
@@ -592,7 +587,7 @@ function AgentTruthCard({ agent, truth, t, tablet }: {
         ? { icon: "time-outline", color: fieldTheme.color.amber, tint: fieldTheme.color.amberSoft, label: t("managerShell.gpsStale", { defaultValue: "Old GPS point" }) }
         : { icon: "location-outline", color: fieldTheme.color.inkMuted, tint: fieldTheme.color.surfaceStrong, label: t("managerShell.noCoordinates", { defaultValue: "No GPS position" }) }
   const lastSeen = truth.lastSeenAt
-    ? t("managerShell.lastSeenAt", { defaultValue: "Last app activity: {{time}}", time: formatTimestamp(truth.lastSeenAt) })
+    ? t("managerShell.lastSeenAt", { defaultValue: "Last app activity: {{time}}", time: formatLocalizedDateTime(truth.lastSeenAt, language) })
     : t("managerShell.neverSeen", { defaultValue: "No app activity recorded" })
   const locationTitle = currentPosition
     ? t("managerShell.currentPosition", { defaultValue: "Current position" })
@@ -611,20 +606,28 @@ function AgentTruthCard({ agent, truth, t, tablet }: {
         </View>
         <View style={styles.agentCopy}>
           <Text style={styles.agentName}>{agent.name}</Text>
-          <Text style={styles.agentMeta}>{agent.role} · {workdayLabel(agent.workday?.status, t)}</Text>
+          <Text style={styles.agentMeta}>{statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
         </View>
-        <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
-          <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
-          <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
-            {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
-          </Text>
-        </View>
+        {self ? (
+          <View style={[styles.presencePill, { backgroundColor: fieldTheme.color.primarySoft }]} testID="manager-own-card">
+            <Text style={[styles.presenceText, { color: fieldTheme.color.primaryStrong }]}>{t("managerShell.you")}</Text>
+          </View>
+        ) : (
+          <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+            <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
+            <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
+              {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.presenceEvidence}>
-        <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
-        <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
-      </View>
+      {self ? null : (
+        <View style={styles.presenceEvidence}>
+          <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
+          <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
+        </View>
+      )}
 
       <View style={[styles.locationPanel, { backgroundColor: gpsConfig.tint }]}>
         <View style={styles.locationHeading}>
@@ -647,7 +650,7 @@ function AgentTruthCard({ agent, truth, t, tablet }: {
                 : t("managerShell.historicalPositionReceived", { defaultValue: "Historical point from {{age}}", age: ageLabel(truth.locationAgeMs, t) })}
             </Text>
             <Text style={styles.locationDetails}>
-              {location.recordedAt ? formatTimestamp(location.recordedAt) : t("managerShell.timeUnknown", { defaultValue: "Time unknown" })}
+              {location.recordedAt ? formatLocalizedDateTime(location.recordedAt, language) : t("managerShell.timeUnknown", { defaultValue: "Time unknown" })}
               {location.accuracy == null ? "" : ` · ±${Math.round(location.accuracy)} m`}
               {location.battery == null ? "" : ` · ${Math.round(location.battery)}%`}
             </Text>
@@ -753,7 +756,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerCopy: { flex: 1, gap: fieldTheme.space.xs },
+  // No `flex: 1` on a phone: in the column header it collapsed the copy to
+  // zero height, and only the icon showed (2026-10-17). The tablet row grows it.
+  headerCopy: { gap: fieldTheme.space.xs },
+  headerCopyTablet: { flex: 1 },
   eyebrow: {
     color: fieldTheme.color.primary,
     fontSize: 12,

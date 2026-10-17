@@ -146,3 +146,25 @@ export function formatManagerEvidenceAge(ageMs: number | null): { value: number;
   if (hours < 48) return { value: hours, unit: "hour" }
   return { value: Math.floor(hours / 24), unit: "day" }
 }
+
+/**
+ * The team's counts, without the person looking at them.
+ *
+ * Presence on the server is a GPS fact from an active field workday
+ * (POST /mobile/ping is deliberately write-free), so a manager who reads the
+ * team screen is never «online» there — his own card said «Oflayn» while he
+ * held the phone (2026-10-17). He is not one of the people the counts are
+ * about; his card says «you» instead (AgentTruthCard).
+ */
+export function teamPresenceSummary(
+  rows: ReadonlyArray<{ agent: { id: string }; truth: Pick<ManagerAgentTruth, "isOnline" | "gpsFreshness"> }>,
+  viewerId: string | null | undefined,
+): { online: number; offline: number; gpsAttention: number } {
+  const team = rows.filter(({ agent }) => !viewerId || agent.id !== viewerId)
+  const online = team.filter(({ truth }) => truth.isOnline).length
+  return {
+    online,
+    offline: team.length - online,
+    gpsAttention: team.filter(({ truth }) => truth.gpsFreshness === "STALE" || truth.gpsFreshness === "NO_COORDINATES").length,
+  }
+}

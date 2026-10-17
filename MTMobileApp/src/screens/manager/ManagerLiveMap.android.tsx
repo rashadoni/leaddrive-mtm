@@ -5,6 +5,7 @@ import { WebView } from "react-native-webview"
 import { useTranslation } from "react-i18next"
 import { formatManagerEvidenceAge } from "../../services/manager-location-truth"
 import { fieldTheme } from "../../theme/fieldTheme"
+import { formatLocalizedDateTime } from "../../lib/format-localized-date"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { api } from "../../services/api"
@@ -26,14 +27,7 @@ interface ManagerLiveMapProps {
 
 function formatTimestamp(value: string | null, language: string): string {
   if (!value) return "—"
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return "—"
-  return date.toLocaleString(language, {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  return formatLocalizedDateTime(value, language)
 }
 
 function evidenceAgeLabel(ageMs: number | null, t: any): string {
