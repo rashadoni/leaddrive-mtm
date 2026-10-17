@@ -47,14 +47,16 @@ describe("the manager's shell keeps what a manager uses", () => {
   it("«share my location» lives in Daha çox, unchanged", () => {
     expect(share).toContain('hasCapability(state.capabilities, "SELF_LOCATION_SHARE")')
     expect(share).toContain("managerApi.shareSelfLocation(position)")
-    expect(profile).toContain("{managerShell ? <ManagerSelfLocationShare /> : (")
+    expect(navigator).toContain("const ManagerMoreScreen = () => <ProfileScreen managerShell managerCard={<ManagerSelfLocationShare />} />")
+    expect(profile).toContain("{managerShell ? managerCard : (")
+    // The profile is shared with agents and office staff: no GPS module of its own.
+    expect(profile).not.toContain("ManagerSelfLocationShare")
   })
 
   it("Daha çox: no back arrow on a tab, no server address, no second location card — for the manager only", () => {
-    expect(navigator).toContain("const ManagerMoreScreen = () => <ProfileScreen managerShell />")
     expect(navigator).toContain("More: ManagerMoreScreen,")
     expect(profile).toContain("{managerShell ? null : (\n              <Pressable\n                accessibilityRole=\"button\"\n                accessibilityLabel={t(\"profile.back\")}")
-    const managerBranch = profile.slice(profile.indexOf("{managerShell ? <ManagerSelfLocationShare /> : ("), profile.indexOf('<SectionCard icon="language-outline"'))
+    const managerBranch = profile.slice(profile.indexOf("{managerShell ? managerCard : ("), profile.indexOf('<SectionCard icon="language-outline"'))
     expect(managerBranch).toContain('t("profile.connectionTitle")')
     expect(managerBranch).toContain("<AttendanceLocationConsentCard />")
   })

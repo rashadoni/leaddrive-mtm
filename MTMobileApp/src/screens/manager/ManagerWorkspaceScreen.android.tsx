@@ -892,7 +892,7 @@ const styles = StyleSheet.create({
   agentOpenVisit: { color: fieldTheme.color.danger, fontSize: 13, fontWeight: "900", marginTop: 2 },
   today: { gap: fieldTheme.space.sm },
   todayHeading: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: fieldTheme.space.sm, paddingHorizontal: 4 },
-  todayTitle: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900", letterSpacing: 0.6, textTransform: "uppercase" },
+  todayTitle: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "900" },
   todayUpdated: { flexShrink: 1, color: fieldTheme.color.inkMuted, fontSize: 12, textAlign: "right" },
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   tile: {

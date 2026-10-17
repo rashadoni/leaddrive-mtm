@@ -51,6 +51,7 @@ import type { RoutePlanningTargetHint } from "../services/route-planning-target"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
 import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
+import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
 import { AGENT_TAB_NAMES, hasManagerShellAccess, mainShell, type ManagerTabName } from "./role-tabs"
 
@@ -161,7 +162,7 @@ const ManagerApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
 // The manager's own workday and «more» leave out what is not his to use
 // there (owner, 2026-10-17 — see the screens' managerShell).
 const ManagerOwnWorkdayScreen = () => <AttendanceWorkdayScreen managerShell />
-const ManagerMoreScreen = () => <ProfileScreen managerShell />
+const ManagerMoreScreen = () => <ProfileScreen managerShell managerCard={<ManagerSelfLocationShare />} />
 
 const MANAGER_TAB_COMPONENTS: Record<ManagerTabName, React.ComponentType<any>> = {
   Team: ManagerTeamScreen,

@@ -1,5 +1,4 @@
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
-import ManagerSelfLocationShare from "../manager/ManagerSelfLocationShare.android"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
@@ -58,10 +57,11 @@ const LANGUAGE_LABEL_KEY: Record<string, string> = {
  * `managerShell`: the «Daha çox» tab of a manager. A tab has nowhere to go
  * back to, the server address is a technician's, and the workday location
  * card is the «İş günü» tab's — the owner went through the manager's tabs on
- * 2026-10-17 and had them taken out. «Mövqeyimi paylaş» moved here from
- * «Komanda».
+ * 2026-10-17 and had them taken out. `managerCard` takes their place: the
+ * navigator hands in «Mövqeyimi paylaş», moved here from «Komanda» — this
+ * screen, shared with agents and office staff, does not load GPS code itself.
  */
-export default function ProfileScreen({ managerShell = false }: { managerShell?: boolean } = {}) {
+export default function ProfileScreen({ managerShell = false, managerCard = null }: { managerShell?: boolean; managerCard?: React.ReactNode } = {}) {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
@@ -199,7 +199,7 @@ export default function ProfileScreen({ managerShell = false }: { managerShell?:
 
   const settingsColumn = (
     <View style={styles.column}>
-      {managerShell ? <ManagerSelfLocationShare /> : (
+      {managerShell ? managerCard : (
         <>
           <SectionCard icon="cloud-done-outline" title={t("profile.connectionTitle")}>
             <InfoRow icon="business-outline" label={t("profile.infoServer")} value={serverDomain || "—"} />
