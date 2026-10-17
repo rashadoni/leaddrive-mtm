@@ -13,10 +13,11 @@ describe("self planner uses one direct flow", () => {
     expect(core).toContain("{selfPlanning ? null : <StepRail")
   })
 
-  it("keeps the date and customers on the same screen", () => {
-    expect(core).toContain("<Text style={styles.fieldLabel}>{selfCopy.routeDate}</Text>")
-    expect(core).toContain("<CompactPlanDatePicker")
+  it("keeps the customers and the day on the same screen, the day last", () => {
+    // Owner, 2026-10-17 («День в конце»): planner-self-day-last.test.ts.
     expect(core).toContain("selfCopy.chooseTargets")
+    expect(core).toContain("<SelfDayChooser")
+    expect(core).not.toContain("selfCopy.routeDate")
   })
 
   it("does not ask an agent to choose between draft and publish", () => {
