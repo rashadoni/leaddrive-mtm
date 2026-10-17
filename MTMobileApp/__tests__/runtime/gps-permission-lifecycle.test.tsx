@@ -31,6 +31,7 @@ jest.mock("../../src/services/connection-health", () => ({ dropIdleConnections: 
 jest.mock("../../src/services/attendance-session", () => ({ refreshAttendanceSession: jest.fn(async () => {}) }))
 jest.mock("../../src/services/field-session", () => ({ refreshRouteFieldSession: jest.fn(async () => {}) }))
 jest.mock("../../src/services/app-feedback", () => ({ dismissAllChoices: jest.fn() }))
+jest.mock("../../src/services/push-lifecycle", () => ({ startPushTokenRefresh: jest.fn(() => () => {}) }))
 
 import AndroidApp from "../../src/runtime/AndroidApp"
 import { useAuthStore } from "../../src/store/auth"

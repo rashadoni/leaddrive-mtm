@@ -15,6 +15,7 @@ import {
 } from "react-native"
 import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useNavigation } from "@react-navigation/native"
@@ -344,6 +345,9 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
 
   return (
     <View style={styles.root}>
+      {/* The header is white: the app-wide light icons vanished on it
+          (Komanda, Təsdiqlər — 2026-10-17, only «100» of the battery read). */}
+      <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={[styles.headerInner, tablet && styles.headerInnerTablet]}>
           <View style={[styles.icon, { backgroundColor: meta.tint }]}>
