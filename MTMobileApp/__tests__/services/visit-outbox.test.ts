@@ -88,6 +88,19 @@ describe("durable visit mutations", () => {
     ])
   })
 
+  it("keeps a visit finished while its check-out waits, even though the server still has it open", async () => {
+    const { visit, operation: checkIn } = await queueVisitCheckIn({ customer: { id: "customer-1", name: "Clinic" }, routeId: "route-1", routePointId: "point-1" })
+    await flushOutbox(async () => ({ results: [{ operationId: checkIn.operationId, status: "ok" }] }))
+    await queueVisitCheckOut(visit, {})
+
+    // The server has the check-in, not yet the check-out: it reads the visit back as CHECKED_IN.
+    await expect(reconcileOptimisticVisit({ ...visit, pendingCheckOut: false })).resolves.toMatchObject({
+      id: visit.id,
+      routePointId: "point-1",
+      pendingCheckOut: true,
+    })
+  })
+
   it("restores an active visit when check-out is rejected", async () => {
     const { visit, operation: checkIn } = await queueVisitCheckIn({ customer: { id: "customer-1", name: "Clinic" } })
     await flushOutbox(async () => ({ results: [{ operationId: checkIn.operationId, status: "ok" }] }))

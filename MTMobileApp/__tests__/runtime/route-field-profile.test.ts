@@ -7,7 +7,7 @@ import {
 describe("Route Field product profile", () => {
   it("keeps the installed Route APK identity and namespaces only new v3 state", () => {
     expect(ROUTE_FIELD_PROFILE.applicationId).toBe("com.mtmobileapp")
-    expect(ROUTE_FIELD_PROFILE.apkVersion).toBe("3.10.0+56")
+    expect(ROUTE_FIELD_PROFILE.apkVersion).toBe("3.11.0+57")
     expect(ROUTE_FIELD_STORAGE_PREFIX).toBe("@leaddrive_route_field_v3")
     expect(routeFieldStorageKey("manifest")).toBe("@leaddrive_route_field_v3:manifest")
   })

@@ -18,6 +18,8 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { guardOfficeAttendance, officeAttendanceScope } from "../../services/attendance-session-guard"
 import { useAuthStore } from "../../store/auth"
+import { useBootstrapStore } from "../../store/bootstrap"
+import { hasOfficeAttendanceAccess } from "../../services/attendance-access"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
@@ -60,6 +62,10 @@ export default function ProfileScreen() {
   const tabBarPadding = useTabBarPadding()
   const headerTop = useHeaderTop()
   const office = agent?.role !== "AGENT"
+  // A manager's profile is the «more» tab of his shell; only one who also
+  // keeps his own workday reads it through the office-attendance guard and
+  // goes back to that workday.
+  const ownAttendance = useBootstrapStore((state) => hasOfficeAttendanceAccess(state.data, agent))
   const loadEpoch = useRef(0)
   const [, setProfile] = useState<any>(null)
   const [alerts, setAlerts] = useState<MtmAlert[]>([])
@@ -93,7 +99,7 @@ export default function ProfileScreen() {
     if (manual) setRefreshing(true)
     if (office) setAlerts([])
     try {
-      const scope = office ? officeAttendanceScope() : null
+      const scope = office && ownAttendance ? officeAttendanceScope() : null
       const guard = scope ? () => guardOfficeAttendance(scope) : undefined
       const [profileResult, alertsResult] = await Promise.all([
         (guard ? api.getProfile(guard) : api.getProfile()).catch(() => null),
@@ -117,7 +123,7 @@ export default function ProfileScreen() {
     } finally {
       if (ticket === loadEpoch.current) { setLoading(false); setRefreshing(false) }
     }
-  }, [office, agent?.id, agent?.organizationId])
+  }, [office, ownAttendance, agent?.id, agent?.organizationId])
 
   useEffect(() => { void load(); return () => { loadEpoch.current += 1 } }, [load])
 
@@ -278,7 +284,7 @@ export default function ProfileScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("profile.back")}
-              onPress={() => office ? navigation.navigate("OwnWorkday" as never) : navigation.goBack()}
+              onPress={() => office ? navigation.navigate((ownAttendance ? "OwnWorkday" : "Team") as never) : navigation.goBack()}
               style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
             >
               <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />

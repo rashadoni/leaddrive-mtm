@@ -80,17 +80,30 @@ describe("Route Field product boundary", () => {
     expect(todaySource).toContain('syncState === "CONFIRMED"')
   })
 
-  it("does not expose the manager shell from Route Field navigation", () => {
+  // The manager shell came back on 2026-10-17 (owner-approved mockup): Team,
+  // Plan, Approvals, More — opened only by the server's team grant
+  // (role-tabs.ts mainShell). Field detail screens stay behind the AGENT
+  // admission, and the old dashboard and contact transfer stay out.
+  it("opens the manager shell only through the server's team grant", () => {
     expect(navigatorSource).toContain("RouteFieldAccessScreen")
     expect(navigatorSource).toContain("routeFieldAdmitted ?")
-    expect(navigatorSource).not.toContain("ManagerWorkspaceScreen")
+    expect(navigatorSource).toContain("mainShell({ agent, data: bootstrap, routeFieldAccess, office })")
+    expect(navigatorSource).toContain("const managerShell = hasManagerShellAccess(bootstrap, agent)")
+    expect(navigatorSource).toContain('<ManagerWorkspaceScreen kind="team" />')
+    expect(navigatorSource).toContain('<ManagerWorkspaceScreen kind="approvals" />')
     expect(navigatorSource).not.toContain("ContactTransferScreen")
+    expect(navigatorSource).not.toContain("contactTransfer")
     expect(navigatorSource).not.toContain("DashboardScreen")
   })
 
-  it("keeps the active route planner self-only and its manager facade unreachable", () => {
+  it("keeps the field agent's planner self-only and the team planner in the manager shell", () => {
     expect(navigatorSource).toContain("RouteSelfPlanningWorkspace")
-    expect(navigatorSource).not.toContain("ManagerPlanningWorkspace")
+    // The team planner is registered only under `managerShell`.
+    const managerBlock = navigatorSource.slice(navigatorSource.indexOf("{managerShell ? ("))
+    expect(managerBlock).toContain('<Stack.Screen name="PlanningBuilder" component={ManagerPlanningBuilderScreen} />')
+    const fieldBlock = navigatorSource.slice(navigatorSource.indexOf("{routeFieldAdmitted ? ("), navigatorSource.indexOf("{managerShell ? ("))
+    expect(fieldBlock).toContain('<Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />')
+    expect(fieldBlock).not.toContain("ManagerPlanning")
     expect(navigatorSource).not.toContain('mode="self"')
     expect(selfPlannerSource).not.toContain("manager-api")
     expect(selfPlannerSource).not.toContain("commercial-api")

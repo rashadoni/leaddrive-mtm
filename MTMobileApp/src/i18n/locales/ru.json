@@ -195,7 +195,7 @@
     "checkedInTitle": "Чек-ин выполнен",
     "checkedInBody": "Вы сейчас в {{name}}",
     "checkInQueuedTitle": "Чек-ин сохранён",
-    "checkInQueuedBody": "Визит в {{name}} активен и ожидает синхронизации.",
+    "checkInQueuedBody": "Визит: {{name}}. Он идёт и ожидает синхронизации.",
     "syncConflictTitle": "Визит требует внимания",
     "syncConflictBody": "Сервер отклонил сохранённое изменение. Откройте центр синхронизации.",
     "checkInBlocked": "Чек-ин заблокирован",

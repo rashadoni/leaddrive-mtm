@@ -195,7 +195,7 @@
     "checkedInTitle": "Checked In",
     "checkedInBody": "You are now at {{name}}",
     "checkInQueuedTitle": "Check-in saved",
-    "checkInQueuedBody": "Visit at {{name}} is active and awaiting synchronization.",
+    "checkInQueuedBody": "Visit to {{name}} is active and awaiting synchronization.",
     "syncConflictTitle": "Visit needs attention",
     "syncConflictBody": "The server rejected a saved change. Open Sync Center to review it.",
     "checkInBlocked": "Check-in Blocked",

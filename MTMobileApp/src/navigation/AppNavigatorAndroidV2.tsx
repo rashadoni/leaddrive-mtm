@@ -48,7 +48,10 @@ import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.andro
 import type { RawTask } from "../services/task-detail"
 import type { MobileProductPresentation } from "../services/product-presentations"
 import type { RoutePlanningTargetHint } from "../services/route-planning-target"
-import { AGENT_TAB_NAMES } from "./role-tabs"
+import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
+import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
+import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
+import { AGENT_TAB_NAMES, hasManagerShellAccess, mainShell, type ManagerTabName } from "./role-tabs"
 
 export type RootStackParamList = {
   Main: undefined
@@ -67,10 +70,15 @@ export type RootStackParamList = {
   Base: undefined
   GpsHistory: undefined
   Profile: undefined
+  /** The manager's own-attendance screens, pushed from his workday tab. */
+  OwnRequests: undefined
+  OwnExplanations: undefined
+  OwnInbox: undefined
+  OwnProfile: undefined
   /** Type-only legacy entry keeps an unmounted manager source file type-safe;
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
-  /** Route Field planning is self-only; team planning remains in the legacy shell. */
+  /** The agent's own planner in the field shell; the team planner in the manager shell. */
   PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } | undefined
 }
 
@@ -106,6 +114,10 @@ const ICONS: Record<string, { active: string; inactive: string }> = {
   Clients: { active: "people", inactive: "people-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
   More: { active: "ellipsis-horizontal-circle", inactive: "ellipsis-horizontal-circle-outline" },
+  Team: { active: "people", inactive: "people-outline" },
+  Planning: { active: "calendar", inactive: "calendar-outline" },
+  Approvals: { active: "shield-checkmark", inactive: "shield-checkmark-outline" },
+  OwnWorkday: { active: "time", inactive: "time-outline" },
 }
 
 const PlanningBuilderScreen = ({
@@ -125,6 +137,40 @@ const PlanningBuilderScreen = ({
 )
 
 type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
+
+/** The team planner the calendar's «create» opens; the same draft/publish API, team-scoped by the server. */
+const ManagerPlanningBuilderScreen = ({
+  navigation,
+  route,
+}: {
+  navigation: { goBack: () => void }
+  route: { params?: { initialDate?: string; initialHorizon?: 1 | 7 } }
+}) => (
+  <ManagerPlanningWorkspace
+    onClose={() => navigation.goBack()}
+    initialDate={route.params?.initialDate}
+    initialHorizon={route.params?.initialHorizon}
+  />
+)
+const ManagerTeamScreen = () => <ManagerWorkspaceScreen kind="team" />
+const ManagerApprovalsScreen = () => <ManagerWorkspaceScreen kind="approvals" />
+
+const MANAGER_TAB_COMPONENTS: Record<ManagerTabName, React.ComponentType<any>> = {
+  Team: ManagerTeamScreen,
+  Planning: ManagerPlanningCalendarScreen,
+  Approvals: ManagerApprovalsScreen,
+  OwnWorkday: AttendanceWorkdayScreen,
+  // Profile, language and sign-out: the one «more» a manager needs here.
+  More: ProfileScreen,
+}
+
+const MANAGER_TAB_LABEL_KEYS: Record<ManagerTabName, string> = {
+  Team: "navV2.team",
+  Planning: "navV2.planning",
+  Approvals: "navV2.approvals",
+  OwnWorkday: "officeAttendance.workday",
+  More: "navV2.more",
+}
 
 function MoreStackNavigator() {
   const policies = useBootstrapStore(state => state.data?.policies)
@@ -198,27 +244,71 @@ function OfficeTabs() {
 
 function MainTabs() {
   const { t } = useTranslation()
-  const { width, height } = useWindowDimensions()
-  const insets = useSafeAreaInsets()
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const bootstrap = useBootstrapStore(state => state.data), agent = useAuthStore(state => state.agent)
   const office = hasOfficeAttendanceAccess(bootstrap, agent)
   const contactsEnabled = useBootstrapStore((state) => fieldContactsEnabled(state.data?.policies))
+
+  // This APK does not infer access from a role. A tenant may enable HRM while
+  // Route Field is disabled; only its own manifest module opens tabs, and the
+  // manager tabs open only on the server's team grant (mainShell).
+  const shell = mainShell({ agent, data: bootstrap, routeFieldAccess, office })
+  if (shell.kind === "office") return <OfficeTabs />
+  if (shell.kind === "blocked") {
+    return <RouteFieldAccessScreen attendance={shell.attendance} access={shell.access} />
+  }
+  if (shell.kind === "manager") {
+    return (
+      <ShellTabs navigatorKey={`manager-tabs:${shell.tabs.join(",")}`} initialRouteName="Team">
+        {shell.tabs.map((name) => (
+          <Tab.Screen
+            key={name}
+            name={name}
+            component={MANAGER_TAB_COMPONENTS[name]}
+            options={tabOptions(name, t(MANAGER_TAB_LABEL_KEYS[name]))}
+          />
+        ))}
+      </ShellTabs>
+    )
+  }
+
+  return (
+    <ShellTabs navigatorKey="route-field-tabs" initialRouteName="Today">
+      {AGENT_TAB_NAMES.map((name) => (
+        <Tab.Screen
+          key={name}
+          name={name}
+          component={TAB_COMPONENTS[name]}
+          options={tabOptions(
+            name,
+            t(name === "Clients" && !contactsEnabled ? "navV2.places" : TAB_LABEL_KEYS[name]),
+            name === "Clients" && !contactsEnabled ? { active: "business", inactive: "business-outline" } : undefined,
+          )}
+        />
+      ))}
+    </ShellTabs>
+  )
+}
+
+/**
+ * One tab bar for both shells: the same height, rail and captions whether the
+ * field agent or his manager holds the phone.
+ */
+function ShellTabs({ navigatorKey, initialRouteName, children }: {
+  navigatorKey: string
+  initialRouteName: string
+  children: React.ReactNode
+}) {
+  const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
   const rail = shouldUseNavigationRail(width, height)
   const tabBarHeight = TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8)
-
-  // This APK does not infer access from an agent role. A tenant may enable
-  // HRM while Route Field is disabled; only its own manifest module opens tabs.
-  if (office) return <OfficeTabs />
-  if (agent?.role !== "AGENT" || !hasRouteFieldAccess(routeFieldAccess)) {
-    return <RouteFieldAccessScreen attendance={agent?.role !== "AGENT"} access={hasRouteFieldAccess(routeFieldAccess) ? "unavailable" : routeFieldAccess} />
-  }
 
   return (
     <View style={styles.tabsRoot}>
       <Tab.Navigator
-        key="route-field-tabs"
-        initialRouteName="Today"
+        key={navigatorKey}
+        initialRouteName={initialRouteName}
         screenOptions={{
           headerShown: false,
           tabBarPosition: rail ? "left" : "bottom",
@@ -270,18 +360,7 @@ function MainTabs() {
           tabBarLabelStyle: styles.tabLabel,
         }}
       >
-        {AGENT_TAB_NAMES.map((name) => (
-          <Tab.Screen
-            key={name}
-            name={name}
-            component={TAB_COMPONENTS[name]}
-            options={tabOptions(
-              name,
-              t(name === "Clients" && !contactsEnabled ? "navV2.places" : TAB_LABEL_KEYS[name]),
-              name === "Clients" && !contactsEnabled ? { active: "business", inactive: "business-outline" } : undefined,
-            )}
-          />
-        ))}
+        {children}
       </Tab.Navigator>
       {/* With the rail the clock sits over the rail's light top, and the battery
           over whatever the screen starts with: white on white on the phone held
@@ -308,6 +387,8 @@ export default function AppNavigatorAndroidV2() {
   const bootstrap = useBootstrapStore(state => state.data), agent = useAuthStore(state => state.agent)
   const routeFieldAdmitted = agent?.role === "AGENT" && hasRouteFieldAccess(routeFieldAccess)
   const office = hasOfficeAttendanceAccess(bootstrap, agent)
+  const managerShell = hasManagerShellAccess(bootstrap, agent)
+  const ownRequests = bootstrap?.policies.agentPermissions?.attendanceRequests === true
 
   useEffect(() => {
     checkAuth()
@@ -326,7 +407,9 @@ export default function AppNavigatorAndroidV2() {
       <Stack.Navigator
         // Recreate the stack when admission changes so a revoked user cannot
         // remain on a previously-mounted detail screen with stale read data.
-        key={office ? `own-attendance:${agent?.organizationId}:${agent?.id}` : routeFieldAdmitted ? "route-field-admitted" : "route-field-blocked"}
+        key={managerShell
+          ? `manager:${agent?.organizationId}:${agent?.id}${office ? ":own-attendance" : ""}`
+          : office ? `own-attendance:${agent?.organizationId}:${agent?.id}` : routeFieldAdmitted ? "route-field-admitted" : "route-field-blocked"}
         screenOptions={{ headerShown: false }}
       >
         {isLoggedIn ? (
@@ -347,6 +430,20 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
                 <Stack.Screen name="Profile" component={ProfileScreen} />
                 <Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />
+              </>
+            ) : null}
+            {managerShell ? (
+              <>
+                <Stack.Screen name="PlanningBuilder" component={ManagerPlanningBuilderScreen} />
+                {/* His own workday tab opens these by name; in the office shell they are tabs. */}
+                {office ? (
+                  <>
+                    {ownRequests ? <Stack.Screen name="OwnRequests" component={AttendanceRequestsScreen} /> : null}
+                    <Stack.Screen name="OwnExplanations" component={AttendanceExplanationsScreen} />
+                    <Stack.Screen name="OwnInbox" component={AttendanceInboxScreen} />
+                    <Stack.Screen name="OwnProfile" component={ProfileScreen} />
+                  </>
+                ) : null}
               </>
             ) : null}
           </>

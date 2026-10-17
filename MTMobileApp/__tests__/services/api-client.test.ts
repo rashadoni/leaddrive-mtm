@@ -617,7 +617,7 @@ describe("ApiClient — request error handling", () => {
     const [, opts] = mockFetch.mock.calls[0]
     expect(opts.headers.Authorization).toBe("Bearer bearer-abc")
     expect(opts.headers["x-field-device-id"]).toBe("rf-test-0000001-0000002-0000003")
-    expect(opts.headers["x-field-apk-version"]).toBe("3.10.0+56")
+    expect(opts.headers["x-field-apk-version"]).toBe("3.11.0+57")
   })
 
   it("uses the deployed v1 API for mobile message lists and threads", async () => {
@@ -707,7 +707,7 @@ describe("ApiClient — Route Field device identity", () => {
     const [, options] = mockFetch.mock.calls[0]
     expect(JSON.parse(options.body).clientId).toBeUndefined()
     expect(options.headers["x-field-device-id"]).toBeUndefined()
-    expect(options.headers["x-field-apk-version"]).toBe("3.10.0+56")
+    expect(options.headers["x-field-apk-version"]).toBe("3.11.0+57")
   })
 })
 
@@ -729,7 +729,7 @@ describe("ApiClient — Route Field sync v2 transport", () => {
     expect(options.headers).toMatchObject({
       Authorization: "Bearer bearer-abc",
       "x-field-device-id": "rf-test-0000001-0000002-0000003",
-      "x-field-apk-version": "3.10.0+56",
+      "x-field-apk-version": "3.11.0+57",
     })
   })
 
@@ -968,6 +968,52 @@ describe("ApiClient — fullLogout", () => {
     ;(global.fetch as jest.Mock) = fetchMock
     await managerApi.customerCreateDecision("cc-2", "APPROVED")
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ decision: "APPROVED" })
+  })
+
+  it("getRouteDrafts reads the team's DRAFT routes from today on", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true, data: { routes: [] } }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await managerApi.getRouteDrafts("2026-10-17", "2027-10-18")
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/routes?status=DRAFT&start=2026-10-17&endExclusive=2027-10-18&limit=200")
+    expect(opts.method).toBeUndefined()
+  })
+
+  it("publishRouteDraft posts the version the manager saw", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await managerApi.publishRouteDraft("route-1", 4)
+    const [url, opts] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/routes/route-1/publish")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ expectedVersion: 4 })
+  })
+
+  it("publishRouteDraft surfaces ROUTE_VERSION_CONFLICT as a code, not a message", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    ;(global.fetch as jest.Mock) = jest.fn().mockResolvedValue({ status: 409, ok: false, json: async () => ({ error: "changed", code: "ROUTE_VERSION_CONFLICT", currentVersion: 5 }) })
+    await expect(managerApi.publishRouteDraft("route-1", 4)).rejects.toMatchObject({ code: "ROUTE_VERSION_CONFLICT", status: 409, currentVersion: 5 })
+  })
+
+  it("contactCreateDecision posts to the contact-create decision endpoint", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "jwt"
+    const fetchMock = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true }) })
+    ;(global.fetch as jest.Mock) = fetchMock
+    await managerApi.getContactCreateRequests()
+    expect(fetchMock.mock.calls[0][0]).toBe("https://app.leaddrivecrm.org/api/v1/mtm/contact-create-requests")
+    await managerApi.contactCreateDecision("ccr-1", "REJECTED", "already in the base")
+    const [url, opts] = fetchMock.mock.calls[1]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/contact-create-requests/ccr-1/decision")
+    expect(opts.method).toBe("POST")
+    expect(JSON.parse(opts.body)).toEqual({ decision: "REJECTED", comment: "already in the base" })
+    await managerApi.contactCreateDecision("ccr-2", "APPROVED")
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)).toEqual({ decision: "APPROVED" })
   })
 
   it("updateTaskFields PUTs to the mobile task endpoint with the given fields", async () => {
