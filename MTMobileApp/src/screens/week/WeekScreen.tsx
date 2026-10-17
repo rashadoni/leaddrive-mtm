@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useNavigation, type NavigationProp } from "@react-navigation/native"
+import { useFocusEffect, useNavigation, type NavigationProp } from "@react-navigation/native"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import ShortWindowPage from "../../components/ShortWindowPage"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
@@ -378,11 +378,16 @@ export default function WeekScreen() {
   const notice = cachedViewNotice({ online, requestFailed: offline })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
+  // Only the latest read may land: a quiet re-read of this month must not
+  // overwrite the month the agent has paged to meanwhile.
+  const latestRequest = useRef(0)
 
   const fetchMonth = useCallback(async (month: string) => {
+    const request = ++latestRequest.current
     try {
       const window = monthGridWindow(month)
       const responses = await Promise.all(window.weekStarts.map((start) => api.getWeek(start)))
+      if (request !== latestRequest.current) return
       if (responses.every((response) => response.success && response.data)) {
         const weeks = responses.map((response) => toWeekData(response.data))
         setData(combineCalendarWeeks(weeks, window))
@@ -394,16 +399,33 @@ export default function WeekScreen() {
       // SESSION_EXPIRED is handled by the API interceptor. There is no month
       // cache yet, so every other failure must be visible instead of looking
       // like a genuinely empty calendar.
-      if (error.message !== "SESSION_EXPIRED") setOffline(true)
+      if (request === latestRequest.current && error.message !== "SESSION_EXPIRED") setOffline(true)
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (request === latestRequest.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }, [])
 
   useEffect(() => {
     fetchMonth(anchor)
   }, [anchor, fetchMonth])
+
+  // Back from the planner the month is read again (agent's phone,
+  // 2026-10-18: a route just saved for the 21st left the 21st empty until a
+  // pull-to-refresh). Quietly: the month stays on screen, the chosen day stays
+  // chosen. The first focus is the mount, which the effect above reads.
+  const anchorRef = useRef(anchor)
+  anchorRef.current = anchor
+  const focusedBefore = useRef(false)
+  useFocusEffect(useCallback(() => {
+    if (!focusedBefore.current) {
+      focusedBefore.current = true
+      return
+    }
+    fetchMonth(anchorRef.current)
+  }, [fetchMonth]))
 
   useEffect(() => {
     if (!data?.days.length) {
