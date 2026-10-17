@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -34,7 +34,13 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
   const tablet = isTabletWidth(width)
   // A WhatsApp number or an email (owner, 2026-10-15: HR adds employees by number).
   const [email, setEmail] = useState("")
-  const [mode, setMode] = useState<"password" | "code">("password")
+  // Owner, 2026-10-17: «регистрация или вход» — two tabs, so the WhatsApp way
+  // in is no longer below the fold. A phone that remembers a number opens on
+  // «Вход»; a new one on «Первый вход».
+  const [tab, setTab] = useState<"signin" | "first">("signin")
+  const tabTouched = useRef(false)
+  // «Забыли пароль?»: the same code, then a new password with its repeat.
+  const [resetting, setResetting] = useState(false)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -46,7 +52,10 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
 
   useEffect(() => {
     api.getSavedCredentials().then((credentials) => {
-      if (!credentials) return
+      if (!credentials) {
+        if (!tabTouched.current) setTab("first")
+        return
+      }
       setEmail(credentials.email)
       // Passwords are never persisted. Only the email convenience field is
       // restored; every new session still requires the user's password.
@@ -54,6 +63,14 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
       setRememberMe(true)
     }).catch(() => {})
   }, [])
+
+  const openTab = (next: "signin" | "first") => {
+    tabTouched.current = true
+    setTab(next)
+    setError(null)
+    clearRevokedReason()
+  }
+  const codePhone = email.includes("@") ? "" : email
 
   const handleLogin = async () => {
     if (loading) return
@@ -157,15 +174,14 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
               </Pressable>
             </View>
 
-            {mode === "code" ? (
-              <LoginCodeFlow initialPhone={email.includes("@") ? "" : email} onCancel={() => setMode("password")} />
+            {resetting ? (
+              <LoginCodeFlow purpose="reset" initialPhone={codePhone} onCancel={() => setResetting(false)} />
             ) : (
               <>
-              <Text style={styles.formTitle}>{t("auth.accountTitle")}</Text>
-              <Text style={styles.formBody}>{t("auth.accountHelp")}</Text>
+              <Text style={styles.formTitle}>{t("auth.signInTitle")}</Text>
 
               {revokedReason === REVOKED_REASON && (
-                <View style={styles.revokedBanner} accessibilityLiveRegion="polite">
+                <View style={styles.revokedBanner} accessibilityLiveRegion="polite" testID="login-revoked">
                   <Icon name="lock-closed" size={21} color={fieldTheme.color.danger} />
                   <View style={styles.errorCopy}>
                     <Text style={styles.errorTitle}>{t("auth.accessRevokedTitle")}</Text>
@@ -174,6 +190,26 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                 </View>
               )}
 
+              <View style={styles.tabs} accessibilityRole="tablist">
+                {(["signin", "first"] as const).map((key) => (
+                  <Pressable
+                    key={key}
+                    testID={`login-tab-${key}`}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: tab === key }}
+                    onPress={() => openTab(key)}
+                    disabled={loading}
+                    style={[styles.tab, tab === key && styles.tabOn]}
+                  >
+                    <Text style={[styles.tabText, tab === key && styles.tabTextOn]}>{t(key === "signin" ? "auth.tabSignIn" : "auth.tabFirst")}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {tab === "first" ? (
+                <LoginCodeFlow purpose="first" initialPhone={codePhone} onCancel={() => openTab("signin")} />
+              ) : (
+              <>
               <Text style={styles.label}>{t("auth.identifier")}</Text>
               <View style={[styles.inputWrap, error && !email.trim() && styles.inputWrapError]}>
                 <Icon name="mail-outline" size={21} color={fieldTheme.color.inkMuted} />
@@ -184,6 +220,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                   onChangeText={(value) => {
                     setEmail(value)
                     if (error) setError(null)
+                    if (revokedReason) clearRevokedReason()
                   }}
                   placeholder={t("auth.identifierPlaceholder")}
                   placeholderTextColor="#81928B"
@@ -208,6 +245,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                   onChangeText={(value) => {
                     setPassword(value)
                     if (error) setError(null)
+                    if (revokedReason) clearRevokedReason()
                   }}
                   placeholder={t("auth.passwordPlaceholder")}
                   placeholderTextColor="#81928B"
@@ -233,6 +271,18 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                   />
                 </Pressable>
               </View>
+
+              <Pressable
+                testID="login-forgot"
+                accessibilityRole="button"
+                accessibilityLabel={t("auth.forgotPassword")}
+                onPress={() => { clearRevokedReason(); setError(null); setResetting(true) }}
+                disabled={loading}
+                style={({ pressed }) => [styles.forgot, pressed && styles.pressed]}
+              >
+                <Icon name="logo-whatsapp" size={18} color={fieldTheme.color.primary} />
+                <Text style={styles.forgotText}>{t("auth.forgotPassword")}</Text>
+              </Pressable>
 
               <Pressable
                 accessibilityRole="checkbox"
@@ -286,25 +336,9 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
                 )}
               </Pressable>
 
-              {/* First sign-in, or a forgotten password: a code from WhatsApp. */}
-              <View style={styles.orRow}>
-                <View style={styles.orLine} />
-                <Text style={styles.orText}>{t("auth.codeStartHint")}</Text>
-                <View style={styles.orLine} />
-              </View>
-              <Pressable
-                testID="login-code-start"
-                accessibilityRole="button"
-                accessibilityLabel={t("auth.codeStart")}
-                onPress={() => { clearRevokedReason(); setError(null); setMode("code") }}
-                disabled={loading}
-                style={({ pressed }) => [styles.whatsappButton, pressed && styles.pressed]}
-              >
-                <View style={styles.whatsappMark}><Icon name="logo-whatsapp" size={18} color="#FFFFFF" /></View>
-                <Text style={styles.whatsappText}>{t("auth.codeStart")}</Text>
-              </Pressable>
-
               <Text style={styles.helpText}>{t("auth.loginHelp")}</Text>
+              </>
+              )}
               </>
             )}
           </View>
@@ -381,7 +415,7 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.primarySoft,
     borderRadius: fieldTheme.radius.md,
     padding: fieldTheme.space.md,
-    marginBottom: fieldTheme.space.xl,
+    marginBottom: fieldTheme.space.lg,
   },
   companyIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface },
   companyCopy: { flex: 1 },
@@ -399,7 +433,6 @@ const styles = StyleSheet.create({
   },
   changeText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
   formTitle: { color: fieldTheme.color.ink, fontSize: 27, lineHeight: 33, fontWeight: "900" },
-  formBody: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, marginTop: fieldTheme.space.sm, marginBottom: fieldTheme.space.lg },
   label: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800", marginTop: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
   inputWrap: {
     minHeight: 56,
@@ -463,24 +496,21 @@ const styles = StyleSheet.create({
   primaryPressed: { backgroundColor: "#842F1E", transform: [{ scale: 0.99 }] },
   primaryText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
   disabled: { opacity: 0.65 },
-  orRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
-  orLine: { flex: 1, height: 1, backgroundColor: fieldTheme.color.border },
-  orText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
-  whatsappButton: {
-    minHeight: 54,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1.5,
-    borderColor: "#25D366",
-    backgroundColor: fieldTheme.color.surface,
+  tabs: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: fieldTheme.space.sm,
+    gap: 4,
+    padding: 4,
+    borderRadius: fieldTheme.radius.md,
+    backgroundColor: fieldTheme.color.surfaceStrong,
     marginTop: fieldTheme.space.md,
-    paddingHorizontal: fieldTheme.space.lg,
+    marginBottom: fieldTheme.space.md,
   },
-  whatsappMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#25D366" },
-  whatsappText: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
+  tab: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: 12, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm },
+  tabOn: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  tabText: { color: fieldTheme.color.inkMuted, fontSize: 15, fontWeight: "800" },
+  tabTextOn: { color: fieldTheme.color.ink },
+  forgot: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", alignSelf: "flex-end", gap: 6, marginTop: 4 },
+  forgotText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "800" },
   helpText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center", marginTop: fieldTheme.space.md },
   pressed: { opacity: 0.72 },
 })

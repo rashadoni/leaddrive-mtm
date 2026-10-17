@@ -44,10 +44,10 @@ async function type(tree: Tree, testID: string, value: string) {
 async function press(tree: Tree, testID: string) {
   await act(async () => { byTestId(tree, testID).props.onPress() })
 }
-async function render(initialPhone = "") {
+async function render(initialPhone = "", purpose: "first" | "reset" = "reset") {
   let tree!: Tree
   const onCancel = jest.fn()
-  await act(async () => { tree = TestRenderer.create(<LoginCodeFlow initialPhone={initialPhone} onCancel={onCancel} />) })
+  await act(async () => { tree = TestRenderer.create(<LoginCodeFlow initialPhone={initialPhone} onCancel={onCancel} purpose={purpose} />) })
   return { tree, onCancel }
 }
 const errorText = (tree: Tree) => textsOf(byTestId(tree, "login-code-error")).join("")
@@ -145,8 +145,22 @@ describe("signing in with a code from WhatsApp", () => {
 
   it("goes back to the password form", async () => {
     const { tree, onCancel } = await render("")
+    expect(textsOf(tree.root).join(" ")).toContain("auth.resetTitle")
     await press(tree, "login-code-cancel")
     expect(onCancel).toHaveBeenCalled()
+  })
+
+  // Owner, 2026-10-17: «Первый вход» is a tab; the tabs are its way out.
+  it("on the first sign-in tab asks only for the number, and «Назад» from the code returns to it", async () => {
+    const { tree, onCancel } = await render("+994501234567", "first")
+    expect(has(tree, "login-code-cancel")).toBe(false)
+    expect(textsOf(tree.root).join(" ")).toContain("auth.firstBody")
+    expect(textsOf(tree.root).join(" ")).not.toContain("auth.resetTitle")
+    await press(tree, "login-code-send")
+    expect(has(tree, "login-code-step-code")).toBe(true)
+    await press(tree, "login-code-cancel")
+    expect(has(tree, "login-code-step-phone")).toBe(true)
+    expect(onCancel).not.toHaveBeenCalled()
   })
 })
 
