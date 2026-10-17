@@ -12,7 +12,9 @@ export interface ManagerTeamAgent {
   role: string
   isOnline: boolean
   lastSeenAt?: string | null
-  workday: { status: string } | null
+  workday: { status: string; startedAt?: string | null; completedAt?: string | null } | null
+  /** Today's published route points: «Визиты 3 из 8». Absent without Routes. */
+  routeToday?: { planned: number; visited: number; skipped: number } | null
 }
 
 export interface ManagerLocationEvidence {

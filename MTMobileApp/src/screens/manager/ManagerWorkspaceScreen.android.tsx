@@ -490,7 +490,16 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
             {teamRows.length > 0 ? (
               <View style={[styles.teamList, expandedTablet && styles.teamListTablet]}>
                 {teamRows.map(({ agent, truth }) => (
-                  <AgentTruthCard key={agent.id} agent={agent} truth={truth} t={t} language={i18n.language} self={!!viewerId && agent.id === viewerId} tablet={expandedTablet} />
+                  <AgentTruthCard
+                    key={agent.id}
+                    agent={agent}
+                    truth={truth}
+                    t={t}
+                    language={i18n.language}
+                    self={!!viewerId && agent.id === viewerId}
+                    tablet={expandedTablet}
+                    onOpen={() => navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline })}
+                  />
                 ))}
               </View>
             ) : (
@@ -634,7 +643,7 @@ function SummaryCount({ color, value, label }: { color: string; value: number; l
   )
 }
 
-function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
+function AgentTruthCard({ agent, truth, t, language, self, tablet, onOpen }: {
   agent: ManagerTeamAgent
   truth: ManagerAgentTruth
   t: any
@@ -642,6 +651,8 @@ function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
   /** The manager's own card: no presence verdict about the person holding the phone. */
   self: boolean
   tablet: boolean
+  /** The employee's card: his day on a map, the route, the workday (owner, 2026-10-17). */
+  onOpen: () => void
 }) {
   const location = truth.location
   const currentPosition = truth.isOnline && truth.gpsFreshness === "FRESH"
@@ -666,8 +677,15 @@ function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
     void Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`)
   }
 
+  const route = agent.routeToday
   return (
-    <View style={[styles.agentCard, tablet && styles.agentCardTablet]}>
+    <Pressable
+      testID={`manager-agent-card-${agent.id}`}
+      accessibilityRole="button"
+      accessibilityLabel={t("managerShell.openEmployee", { name: agent.name })}
+      onPress={onOpen}
+      style={({ pressed }) => [styles.agentCard, tablet && styles.agentCardTablet, pressed && styles.buttonPressed]}
+    >
       <View style={styles.agentHeader}>
         <View style={[styles.agentAvatar, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
           <Icon name="person" size={22} color={truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted} />
@@ -675,6 +693,11 @@ function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
         <View style={styles.agentCopy}>
           <Text style={styles.agentName}>{agent.name}</Text>
           <Text style={styles.agentMeta}>{statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
+          {route ? (
+            <Text style={styles.agentRoute} testID={`manager-agent-route-${agent.id}`}>
+              {t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
+            </Text>
+          ) : null}
         </View>
         {self ? (
           <View style={[styles.presencePill, { backgroundColor: fieldTheme.color.primarySoft }]} testID="manager-own-card">
@@ -744,7 +767,12 @@ function AgentTruthCard({ agent, truth, t, language, self, tablet }: {
           </Text>
         )}
       </View>
-    </View>
+
+      <View style={styles.openRow}>
+        <Text style={styles.openText}>{t("managerShell.openEmployeeAction")}</Text>
+        <Icon name="chevron-forward" size={18} color={fieldTheme.color.primary} />
+      </View>
+    </Pressable>
   )
 }
 
@@ -979,6 +1007,9 @@ const styles = StyleSheet.create({
   agentCopy: { flex: 1, gap: 2 },
   agentName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
+  agentRoute: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800", marginTop: 2 },
+  openRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2, marginTop: fieldTheme.space.sm, minHeight: 28 },
+  openText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
   presencePill: {
     minHeight: 32,
     flexDirection: "row",

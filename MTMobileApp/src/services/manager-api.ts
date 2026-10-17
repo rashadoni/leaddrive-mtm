@@ -17,6 +17,24 @@ export const managerApi = {
     return api.requestLegacy("/mobile/manager/locations", { signal })
   },
 
+  /**
+   * One employee's card: name, role, team, his manager, phone. The server
+   * answers only for an employee inside the caller's scope (404 otherwise).
+   */
+  getEmployee(agentId: string, signal?: AbortSignal) {
+    return api.requestLegacy(`/agents/${encodeURIComponent(agentId)}`, { signal })
+  },
+
+  /**
+   * One employee's day, as the web «История» reads it: track, stops, gaps,
+   * the day's routes and visits, the workday. Scoped and audited on the
+   * server; fewer map points than the web asks for — a phone draws less.
+   */
+  getEmployeeDay(agentId: string, date: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ agentId, date, limit: "600" })
+    return api.requestLegacy(`/location-history?${query.toString()}`, { signal }, 30_000)
+  },
+
   getPlanning(date?: string, signal?: AbortSignal) {
     const qs = date ? `?date=${encodeURIComponent(date)}` : ""
     return api.requestLegacy(`/mobile/manager/planning${qs}`, { signal })
