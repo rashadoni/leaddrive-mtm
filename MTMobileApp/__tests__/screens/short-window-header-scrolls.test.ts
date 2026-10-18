@@ -129,7 +129,7 @@ describe("Müştərilər: header, tabs and search are the list's first rows", ()
     expect(base).toContain("<RouteContactsList header={short ? header : undefined} />")
     const header = between(base, "  const header = (", "\n  return (")
     expect(header).toContain('accessibilityRole="tab"')
-    expect(base).toContain("{short ? <StatusBarBand /> : null}")
+    expect(base).toContain('{short ? <StatusBarBand tone="light" /> : null}')
   })
 
   it.each(lists)("%s draws the header and search in ListHeaderComponent", (file, searchId) => {

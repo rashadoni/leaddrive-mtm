@@ -4,6 +4,7 @@ import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import NotificationBell from "../../components/NotificationBell"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
@@ -69,7 +70,7 @@ export default function RouteBaseScreen() {
               onPress={() => navigation.goBack()}
               style={({ pressed }) => [styles.backButton, tablet && styles.backButtonTablet, pressed && styles.pressed]}
             >
-              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
             </Pressable>
           ) : null}
           <View style={styles.titleCopy}>
@@ -77,7 +78,7 @@ export default function RouteBaseScreen() {
             <Text style={styles.headerTitle}>{t(contactsEnabled ? "baseHub.title" : "baseHub.placesTitle")}</Text>
             <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
-          <NotificationBell />
+          <NotificationBell tone="light" />
         </View>
 
         {contactsEnabled ? (
@@ -93,7 +94,7 @@ export default function RouteBaseScreen() {
                   onPress={() => setTab(item.key)}
                   style={({ pressed }) => [styles.segmentButton, tablet && styles.segmentButtonTablet, selected && styles.segmentButtonActive, pressed && styles.pressed]}
                 >
-                  <Icon name={selected ? item.icon.replace("-outline", "") : item.icon} size={21} color={selected ? fieldTheme.color.primaryStrong : "#C8DDD4"} />
+                  <Icon name={selected ? item.icon.replace("-outline", "") : item.icon} size={21} color={selected ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
                   <Text style={[styles.segmentText, selected && styles.segmentTextActive]}>{t(item.labelKey)}</Text>
                 </Pressable>
               )
@@ -115,28 +116,31 @@ export default function RouteBaseScreen() {
           ? <RouteOrganizationExplorerScreen header={short ? header : undefined} />
           : <RouteContactsList header={short ? header : undefined} />}
       </View>
-      {short ? <StatusBarBand /> : null}
+      <LightScreenStatusBar />
+      {short ? <StatusBarBand tone="light" /> : null}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: fieldTheme.space.lg, paddingHorizontal: fieldTheme.space.lg },
+  // White like every tab's header; the two lists are tabs with an underline,
+  // not a second filled menu (owner-approved colours, 2026-10-18).
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1100, alignSelf: "center" },
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
-  backButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
+  backButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },
   backButtonTablet: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet },
   titleCopy: { flex: 1 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 29, lineHeight: 35, fontWeight: "900", marginTop: 2 },
-  headerSubtitle: { color: "#D7E9E1", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
-  segment: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.xs, marginTop: fieldTheme.space.lg, gap: fieldTheme.space.xs },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 29, lineHeight: 35, fontWeight: "900", marginTop: 2 },
+  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, marginBottom: fieldTheme.space.md },
+  segment: { flexDirection: "row", marginTop: fieldTheme.space.xs, gap: fieldTheme.space.lg },
   segmentTablet: { maxWidth: 560 },
-  segmentButton: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm },
+  segmentButton: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderBottomWidth: 3, borderBottomColor: "transparent" },
   segmentButtonTablet: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet },
-  segmentButtonActive: { backgroundColor: fieldTheme.color.surface },
-  segmentText: { fontSize: 14, fontWeight: "800", color: "#D7E9E1" },
+  segmentButtonActive: { borderBottomColor: fieldTheme.color.primary },
+  segmentText: { fontSize: 14, fontWeight: "800", color: fieldTheme.color.inkMuted },
   segmentTextActive: { color: fieldTheme.color.primaryStrong },
   content: { flex: 1 },
   pressed: { opacity: 0.72 },

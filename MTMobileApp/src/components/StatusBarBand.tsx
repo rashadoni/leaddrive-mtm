@@ -12,12 +12,15 @@ import { fieldTheme } from "../theme/fieldTheme"
  * «Tapşırıqlar» became single scrolling pages; «Bu gün» and «Marşrut» had it on
  * the phone already. Render it last in the screen's root so it stays on top.
  */
-export default function StatusBarBand() {
+export default function StatusBarBand({ tone = "green" }: { tone?: "green" | "light" } = {}) {
   const insets = useSafeAreaInsets()
   if (insets.top <= 0) return null
-  return <View pointerEvents="none" style={[styles.band, { height: insets.top }]} />
+  return <View pointerEvents="none" style={[styles.band, tone === "light" && styles.light, { height: insets.top }]} />
 }
 
 const styles = StyleSheet.create({
   band: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldTheme.color.primaryStrong },
+  // The white tab headers (owner-approved colours, 2026-10-18): the band is
+  // white too, and the screen's LightScreenStatusBar turns the icons dark.
+  light: { backgroundColor: fieldTheme.color.surface },
 })

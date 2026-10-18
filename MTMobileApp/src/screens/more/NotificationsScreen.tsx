@@ -30,6 +30,7 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 
 /** While the list is open it asks again this often. */
 const NOTIFICATIONS_REFRESH_INTERVAL_MS = 60_000
@@ -133,17 +134,18 @@ const COPY = {
   },
 } as const
 
-const KIND_VISUAL: Record<FeedKind, { icon: string; color: string; background: string }> = {
-  message: { icon: "chatbubble-ellipses-outline", color: fieldTheme.color.primaryStrong, background: fieldTheme.color.primarySoft },
-  request: { icon: "document-text-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
-  task: { icon: "alarm-outline", color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft },
-  visit: { icon: "time-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
-  workday: { icon: "calendar-outline", color: fieldTheme.color.primaryStrong, background: fieldTheme.color.surfaceStrong },
-  route: { icon: "map-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
-  approval: { icon: "shield-checkmark-outline", color: fieldTheme.color.violet, background: fieldTheme.color.violetSoft },
-  other: { icon: "information-circle-outline", color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong },
+/** Grey icons with no square under them; only an alert keeps its amber (owner-approved colours, 2026-10-18). */
+const KIND_VISUAL: Record<FeedKind, { icon: string; color: string }> = {
+  message: { icon: "chatbubble-ellipses-outline", color: fieldTheme.color.inkMuted },
+  request: { icon: "document-text-outline", color: fieldTheme.color.inkMuted },
+  task: { icon: "alarm-outline", color: fieldTheme.color.inkMuted },
+  visit: { icon: "time-outline", color: fieldTheme.color.inkMuted },
+  workday: { icon: "calendar-outline", color: fieldTheme.color.inkMuted },
+  route: { icon: "map-outline", color: fieldTheme.color.inkMuted },
+  approval: { icon: "shield-checkmark-outline", color: fieldTheme.color.inkMuted },
+  other: { icon: "information-circle-outline", color: fieldTheme.color.inkMuted },
 }
-const ALERT_VISUAL = { icon: "warning-outline", color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft }
+const ALERT_VISUAL = { icon: "warning-outline", color: fieldTheme.color.amber }
 
 const FIELD_KINDS: FeedKind[] = ["message", "request", "route", "task", "visit", "workday", "other"]
 const MANAGER_KINDS: FeedKind[] = ["approval", "request", "workday", "other"]
@@ -265,7 +267,7 @@ export default function NotificationsScreen() {
         onPress={() => open(item)}
         style={({ pressed }) => [styles.item, !item.read && styles.itemUnread, pressed && styles.pressed]}
       >
-        <View style={[styles.itemIcon, { backgroundColor: visual.background }]}>
+        <View style={styles.itemIcon}>
           <Icon name={visual.icon} size={20} color={visual.color} />
         </View>
         <View style={styles.itemCopy}>
@@ -304,7 +306,7 @@ export default function NotificationsScreen() {
               onPress={() => navigation.goBack()}
               style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
             >
-              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
             </Pressable>
             <View style={styles.headerCopy}>
               <Text style={styles.title} numberOfLines={1}>{copy.title}</Text>
@@ -393,20 +395,21 @@ export default function NotificationsScreen() {
           {earlier.map(renderItem)}
         </View>
       </ScrollView>
-      {/* The green header scrolls away with the list; the band keeps the clock readable. */}
-      <StatusBarBand />
+      {/* The header scrolls away with the list; the band keeps the clock readable. */}
+      <LightScreenStatusBar />
+      <StatusBarBand tone="light" />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
   headerRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
+  backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },
   headerCopy: { flex: 1, minWidth: 0 },
-  title: { color: fieldTheme.color.onColor, fontSize: 22, lineHeight: 28, fontWeight: "900" },
-  subtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  title: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900" },
+  subtitle: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   content: { padding: fieldTheme.space.lg, gap: fieldTheme.space.sm },
   contentTablet: { width: "100%", maxWidth: 820, alignSelf: "center" },
   actionRow: { flexDirection: "row", gap: fieldTheme.space.sm },
@@ -430,8 +433,8 @@ const styles = StyleSheet.create({
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
   section: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900", letterSpacing: 0.8, marginTop: fieldTheme.space.sm, marginHorizontal: 2 },
   item: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md },
-  itemUnread: { borderColor: fieldTheme.color.primary, backgroundColor: "#F4FBF8" },
-  itemIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  itemUnread: { borderColor: fieldTheme.color.primary },
+  itemIcon: { width: 28, height: 40, alignItems: "center", justifyContent: "center" },
   itemCopy: { flex: 1, minWidth: 0 },
   itemTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: fieldTheme.color.danger },

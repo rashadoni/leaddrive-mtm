@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import SyncStatusChip from "../../components/SyncStatusChip"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -559,7 +560,6 @@ export default function TodayScreen() {
     day: "numeric",
     month: "long",
   })
-  const nextDark = nextKind === "route" || nextKind === "awaiting" || nextKind === "tasks"
   const startedAt = workdayActive && currentWorkday?.startedAt
     ? new Date(currentWorkday.startedAt).toLocaleTimeString(i18n.language, {
         hour: "2-digit",
@@ -610,13 +610,13 @@ export default function TodayScreen() {
                   {t("todayV2.greeting", { name: agent?.name ?? "" })}
                 </Text>
                 {/* Pulled into the title's line: the header keeps its height. */}
-                {compactHeader ? <View style={styles.bellSlot}><NotificationBell /></View> : null}
+                {compactHeader ? <View style={styles.bellSlot}><NotificationBell tone="light" /></View> : null}
               </View>
               <Text style={styles.date}>{dateLabel}</Text>
             </View>
             <View style={[styles.headerActions, compactHeader && styles.headerActionsCompact]}>
-              {compactHeader ? null : <NotificationBell />}
-              <SyncStatusChip inverse />
+              {compactHeader ? null : <NotificationBell tone="light" />}
+              <SyncStatusChip />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t("todayV2.refresh")}
@@ -629,8 +629,8 @@ export default function TodayScreen() {
                 ]}
               >
                 {refreshing
-                  ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
-                  : <Icon name="refresh" size={20} color={fieldTheme.color.onColor} />}
+                  ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
+                  : <Icon name="refresh" size={20} color={fieldTheme.color.ink} />}
                 <Text style={styles.refreshText}>{t("todayV2.refresh")}</Text>
               </Pressable>
             </View>
@@ -809,7 +809,7 @@ export default function TodayScreen() {
                 onPress={() => navigation.navigate("More", { screen: "Messages" })}
                 style={({ pressed }) => [styles.messageBanner, pressed && styles.pressed]}
               >
-                <View style={styles.messageBannerIcon}><Icon name="megaphone-outline" size={20} color={fieldTheme.color.onColor} /></View>
+                <View style={styles.messageBannerIcon}><Icon name="megaphone-outline" size={22} color={fieldTheme.color.primaryStrong} /></View>
                 <View style={styles.messageBannerCopy}>
                   <Text style={styles.messageBannerLabel}>{i18n.language.toLowerCase().startsWith("az") ? "Yeni mesaj" : i18n.language.toLowerCase().startsWith("en") ? "New message" : "Новое сообщение"}</Text>
                   <Text style={styles.messageBannerTitle} numberOfLines={1}>{unreadMessage.title}</Text>
@@ -847,8 +847,8 @@ export default function TodayScreen() {
                 {nextKind === "route" && route && route.points.length > 0 ? (
                   <>
                     <View style={styles.routeSummaryHeader}>
-                      <View style={[styles.nextIcon, styles.routeSummaryIcon, styles.nextIconDark]}>
-                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.onColor} />
+                      <View style={[styles.nextIcon, styles.routeSummaryIcon]}>
+                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.primaryStrong} />
                       </View>
                       <View style={styles.routeSummaryCopy}>
                         <Text style={styles.routeSummaryTitle}>{t("todayV2.routeTitle")}</Text>
@@ -888,8 +888,8 @@ export default function TodayScreen() {
                 ) : nextKind === "awaiting" && awaitingRoute ? (
                   <>
                     <View style={styles.routeSummaryHeader}>
-                      <View style={[styles.nextIcon, styles.routeSummaryIcon, styles.nextIconDark]}>
-                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.onColor} />
+                      <View style={[styles.nextIcon, styles.routeSummaryIcon]}>
+                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.primaryStrong} />
                       </View>
                       <View style={styles.routeSummaryCopy}>
                         <Text style={styles.routeSummaryTitle}>{nextCopy.eyebrow}</Text>
@@ -919,26 +919,22 @@ export default function TodayScreen() {
                   </>
                 ) : (
                   <>
-                    <View style={[styles.nextIcon, nextDark && styles.nextIconDark]}>
+                    <View style={styles.nextIcon}>
                       {nextKind === "loading"
                         ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} />
-                        : <Icon
-                            name={nextCopy.icon}
-                            size={22}
-                            color={nextDark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
-                          />}
+                        : <Icon name={nextCopy.icon} size={22} color={fieldTheme.color.primaryStrong} />}
                     </View>
-                    <Text style={[styles.nextEyebrow, nextDark && styles.nextTextOnDark]}>
+                    <Text style={styles.nextEyebrow}>
                       {nextCopy.eyebrow}
                     </Text>
-                    <Text style={[styles.nextTitle, nextDark && styles.nextTextOnDark]}>
+                    <Text style={styles.nextTitle}>
                       {nextCopy.title}
                     </Text>
-                    <Text style={[styles.nextBody, nextDark && styles.nextBodyOnDark]}>
+                    <Text style={styles.nextBody}>
                       {nextCopy.body}
                     </Text>
                     {nextCopy.supporting ? (
-                      <Text style={[styles.nextSupporting, nextDark && styles.nextBodyOnDark]}>
+                      <Text style={styles.nextSupporting}>
                         {nextCopy.supporting}
                       </Text>
                     ) : null}
@@ -960,19 +956,15 @@ export default function TodayScreen() {
                   <Pressable
                     accessibilityRole="button"
                     onPress={nextAction}
-                    style={({ pressed }) => [
-                      styles.nextButton,
-                      !nextDark && styles.nextButtonLight,
-                      pressed && styles.pressed,
-                    ]}
+                    style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
                   >
-                    <Text style={[styles.nextButtonText, !nextDark && styles.nextButtonTextLight]}>
+                    <Text style={styles.nextButtonText}>
                       {nextCopy.button}
                     </Text>
                     <Icon
                       name={nextKind === "unknown" ? "refresh" : nextCopy.startRoute || nextCopy.startWorkday ? "play" : "arrow-forward"}
                       size={20}
-                      color={nextDark ? fieldTheme.color.primaryStrong : fieldTheme.color.onColor}
+                      color={fieldTheme.color.onColor}
                     />
                   </Pressable>
                 ) : null}
@@ -1036,7 +1028,8 @@ export default function TodayScreen() {
         onCancel={() => setNotice(null)}
         onConfirm={() => setNotice(null)}
       />
-      <StatusBarBand />
+      <LightScreenStatusBar />
+      <StatusBarBand tone="light" />
     </View>
   )
 }
@@ -1046,8 +1039,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: fieldTheme.color.canvas,
   },
+  // White, like every tab's header (owner-approved colours, 2026-10-18):
+  // green stays the accent, not the surface.
   header: {
-    backgroundColor: fieldTheme.color.primaryStrong,
+    backgroundColor: fieldTheme.color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: fieldTheme.color.border,
     paddingHorizontal: fieldTheme.space.lg,
     paddingBottom: fieldTheme.space.xl,
   },
@@ -1077,14 +1074,14 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    color: fieldTheme.color.onColor,
+    color: fieldTheme.color.ink,
     fontSize: 29,
     lineHeight: 35,
     fontWeight: "900",
     letterSpacing: -0.45,
   },
   date: {
-    color: "#CFE3DA",
+    color: fieldTheme.color.inkMuted,
     fontSize: 15,
     lineHeight: 21,
     fontWeight: "600",
@@ -1108,11 +1105,11 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.pill,
     borderWidth: 1,
-    borderColor: "#5B8B7D",
-    backgroundColor: "#174F43",
+    borderColor: fieldTheme.color.border,
+    backgroundColor: fieldTheme.color.surface,
   },
   refreshText: {
-    color: fieldTheme.color.onColor,
+    color: fieldTheme.color.ink,
     fontSize: 13,
     fontWeight: "800",
   },
@@ -1240,23 +1237,26 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.border,
     backgroundColor: fieldTheme.color.surface,
   },
-  messageBanner: { minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md, borderWidth: 1, borderColor: "#A9D9CA", borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft },
-  messageBannerIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 21, backgroundColor: fieldTheme.color.primary },
+  // A new message is said by a green edge, not a green card.
+  messageBanner: { minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md, borderWidth: 1, borderLeftWidth: 4, borderColor: fieldTheme.color.border, borderLeftColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
+  messageBannerIcon: { width: 28, alignItems: "center", justifyContent: "center" },
   messageBannerCopy: { flex: 1, minWidth: 0 },
   messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.5 },
   messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
   messageBannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
+  // The next step is a white card for every kind (owner-approved colours,
+  // 2026-10-18): its kind shows in the edge, the one fill is its button.
   nextPanelRoute: {
-    borderColor: fieldTheme.color.primaryStrong,
-    backgroundColor: fieldTheme.color.primaryStrong,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.primary,
   },
   nextPanelTasks: {
-    borderColor: fieldTheme.color.blue,
-    backgroundColor: fieldTheme.color.blue,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.blue,
   },
   nextPanelUnknown: {
-    borderColor: "#E7CB8A",
-    backgroundColor: fieldTheme.color.amberSoft,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.amber,
   },
   nextEmptyRow: {
     minHeight: 68,
@@ -1276,7 +1276,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 20,
-    backgroundColor: fieldTheme.color.successSoft,
   },
   nextEmptyCopy: { flex: 1, minWidth: 0 },
   nextEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
@@ -1288,10 +1287,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primarySoft,
-  },
-  nextIconDark: {
-    backgroundColor: "rgba(248,252,250,0.16)",
   },
   nextEyebrow: {
     color: fieldTheme.color.primaryStrong,
@@ -1326,24 +1321,18 @@ const styles = StyleSheet.create({
   routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   routeSummaryIcon: { width: 36, height: 36, marginBottom: 0 },
   routeSummaryCopy: { flex: 1, minWidth: 0 },
-  routeSummaryTitle: { color: fieldTheme.color.onColor, fontSize: 16, lineHeight: 21, fontWeight: "900" },
-  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.onColor, fontSize: 12, lineHeight: 17, fontWeight: "700", opacity: 0.82 },
+  routeSummaryTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900" },
+  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
   routeClients: { alignSelf: "stretch", marginTop: fieldTheme.space.sm },
   routeClientRow: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs },
-  routeClientRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(248,252,250,0.24)" },
-  routeClientNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.18)" },
-  routeClientNumberDone: { backgroundColor: fieldTheme.color.success },
-  routeClientNumberText: { color: fieldTheme.color.onColor, fontSize: 11, fontWeight: "900" },
-  routeClientName: { flex: 1, color: fieldTheme.color.onColor, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  routeClientRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: fieldTheme.color.border },
+  routeClientNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
+  routeClientNumberDone: { borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.success },
+  routeClientNumberText: { color: fieldTheme.color.ink, fontSize: 11, fontWeight: "900" },
+  routeClientName: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   routeClientNameDone: { opacity: 0.7, textDecorationLine: "line-through" },
-  routeClientNextBadge: { minHeight: 24, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.onColor },
+  routeClientNextBadge: { minHeight: 24, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary },
   routeClientNextText: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900" },
-  nextTextOnDark: {
-    color: fieldTheme.color.onColor,
-  },
-  nextBodyOnDark: {
-    color: fieldTheme.color.onColor,
-  },
   cachedBadge: {
     minHeight: 30,
     marginTop: fieldTheme.space.md,
@@ -1352,7 +1341,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.amberSoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
   },
   cachedBadgeText: {
     color: fieldTheme.color.amber,
@@ -1366,9 +1356,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: fieldTheme.space.md,
     borderWidth: 1,
-    borderColor: "#E7CB8A",
+    borderLeftWidth: 4,
+    borderColor: fieldTheme.color.border,
+    borderLeftColor: fieldTheme.color.amber,
     borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.amberSoft,
+    backgroundColor: fieldTheme.color.surface,
   },
   alwaysNoticeCopy: { flex: 1, minWidth: 0 },
   alwaysNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
@@ -1392,18 +1384,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.onColor,
-  },
-  nextButtonLight: {
     backgroundColor: fieldTheme.color.primaryStrong,
   },
   nextButtonText: {
-    color: fieldTheme.color.primaryStrong,
+    color: fieldTheme.color.onColor,
     fontSize: 15,
     fontWeight: "900",
-  },
-  nextButtonTextLight: {
-    color: fieldTheme.color.onColor,
   },
   attentionRow: {
     minHeight: LAYOUT_TOUCH_TARGETS.compact,
@@ -1412,7 +1398,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.coralSoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.coral,
+    backgroundColor: fieldTheme.color.surface,
   },
   attentionText: {
     flex: 1,
