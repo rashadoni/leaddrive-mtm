@@ -325,10 +325,13 @@ def keyboard_shown():
 
 
 def hide_keyboard():
+    """Close the keyboard if it is up; True when it was."""
     # BACK closes the keyboard — and leaves the app when there is none.
     if keyboard_shown():
         shell("input keyevent 4")
         time.sleep(1)
+        return True
+    return False
 
 
 def clear_field(node, length):
@@ -411,18 +414,25 @@ def first_sign_in_checks(found, sign_in):
     record(has_text(found, sign_in["tabSignIn"]) and has_text(found, sign_in["tabFirst"]),
            f"The sign-in screen has the tabs «{sign_in['tabSignIn']}» and «{sign_in['tabFirst']}»")
     # The screen turns to it once reading the saved account comes back empty.
-    offered, deadline = first_sign_in_offered(found, sign_in), time.time() + 15
+    # Then the phone field takes the focus (`autoFocus` in LoginCodeFlow) and
+    # the keyboard opens: on a 720x1600 screen the window ends at y=1090, and
+    # «Get a code», right under the field, is cut to its top pixels or left out
+    # of the dump. Run 39170988424 failed here with «First sign-in» chosen;
+    # 39169379126 passed with the same build only because its button peeked
+    # out by a few pixels. So the keyboard is closed and the screen read again,
+    # rather than taking the field alone for the step: that would stop checking
+    # that the button is there at all. `hide_keyboard` presses BACK only while
+    # the keyboard is shown — without one, BACK would leave the sign-in screen.
+    offered, deadline, closed = first_sign_in_offered(found, sign_in), time.time() + 15, False
     while not offered and time.time() < deadline:
         time.sleep(2)
-        # The number field takes the focus, and on a budget screen the keyboard
-        # leaves «Get a code» out of the window, so out of the dump (39170988424:
-        # the window ended at 1090 px, the field at 1059).
-        hide_keyboard()
+        closed = hide_keyboard() or closed
         found, _ = nodes()
         offered = first_sign_in_offered(found, sign_in)
     chosen = next((n.get("content-desc", "") for n in found if n.get("resource-id", "").startswith("login-tab-") and n.get("selected") == "true"), "")
     record(bool(offered), f"A phone with no saved account opens on «{sign_in['tabFirst']}»",
-           offered or f"chosen tab: «{chosen or 'none'}»; on screen: {own_words(found) or 'nothing readable'}")
+           (offered + (", read with the keyboard closed" if closed else "")) if offered
+           else f"chosen tab: «{chosen or 'none'}»; on screen: {own_words(found) or 'nothing readable'}")
 
 
 KEY_LIKE = re.compile(r"^([a-z][A-Za-z0-9]*)(\.[A-Za-z0-9_]+)+$")
