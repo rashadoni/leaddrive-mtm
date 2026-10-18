@@ -28,6 +28,7 @@ import { useAuthStore } from "../../store/auth"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { fieldTheme } from "../../theme/fieldTheme"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import FeedbackToast from "../../components/FeedbackToast"
 import { pendingTaskStatusOverlay, taskDetailPrimaryAction } from "./task-detail-state"
@@ -290,20 +291,20 @@ function friendlyCopy(language: string): FriendlyCopy {
 
 function priorityVisual(priority: string) {
   if (priority === "URGENT" || priority === "HIGH") {
-    return { fill: fieldTheme.color.dangerSoft, ink: fieldTheme.color.danger, icon: "alert-circle-outline" }
+    return { ink: fieldTheme.color.danger, icon: "alert-circle-outline" }
   }
   if (priority === "MEDIUM") {
-    return { fill: fieldTheme.color.amberSoft, ink: fieldTheme.color.amber, icon: "flag-outline" }
+    return { ink: fieldTheme.color.amber, icon: "flag-outline" }
   }
-  return { fill: fieldTheme.color.successSoft, ink: fieldTheme.color.success, icon: "leaf-outline" }
+  return { ink: fieldTheme.color.success, icon: "leaf-outline" }
 }
 
 function statusVisual(status: string) {
-  if (status === "COMPLETED") return { fill: fieldTheme.color.successSoft, ink: fieldTheme.color.success, icon: "checkmark-circle-outline" }
-  if (status === "IN_PROGRESS") return { fill: fieldTheme.color.blueSoft, ink: fieldTheme.color.blue, icon: "play-circle-outline" }
-  if (status === "CANCELLED") return { fill: fieldTheme.color.dangerSoft, ink: fieldTheme.color.danger, icon: "close-circle-outline" }
-  if (status === "OVERDUE") return { fill: fieldTheme.color.coralSoft, ink: fieldTheme.color.coral, icon: "time-outline" }
-  return { fill: fieldTheme.color.amberSoft, ink: fieldTheme.color.amber, icon: "hourglass-outline" }
+  if (status === "COMPLETED") return { ink: fieldTheme.color.success, icon: "checkmark-circle-outline" }
+  if (status === "IN_PROGRESS") return { ink: fieldTheme.color.blue, icon: "play-circle-outline" }
+  if (status === "CANCELLED") return { ink: fieldTheme.color.danger, icon: "close-circle-outline" }
+  if (status === "OVERDUE") return { ink: fieldTheme.color.coral, icon: "time-outline" }
+  return { ink: fieldTheme.color.amber, icon: "hourglass-outline" }
 }
 
 function fileIcon(mime: string): string {
@@ -559,6 +560,7 @@ export default function TaskDetailScreen() {
 
   return (
     <View style={styles.container}>
+      <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerInner}>
           <View style={styles.headerTools}>
@@ -568,17 +570,17 @@ export default function TaskDetailScreen() {
               accessibilityRole="button"
               accessibilityLabel={copy.back}
             >
-              <Icon name="arrow-back" size={22} color={fieldTheme.color.onColor} />
+              <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
               <Text style={styles.backText}>{copy.back}</Text>
             </TouchableOpacity>
           </View>
           <Text style={[styles.headerTitle, expandedTablet && styles.headerTitleTablet]}>{task.title}</Text>
           <View style={styles.headerSignals}>
-            <View style={[styles.headerPill, { backgroundColor: statusTone.fill }]}>
+            <View style={styles.headerPill}>
               <Icon name={statusTone.icon} size={17} color={statusTone.ink} />
               <Text style={[styles.headerPillText, { color: statusTone.ink }]}>{statusLabel}</Text>
             </View>
-            <View style={[styles.headerPill, { backgroundColor: priorityTone.fill }]}>
+            <View style={styles.headerPill}>
               <Icon name={priorityTone.icon} size={17} color={priorityTone.ink} />
               <Text style={[styles.headerPillText, { color: priorityTone.ink }]}>{priorityLabel}</Text>
             </View>
@@ -951,13 +953,14 @@ function Notice({
   tone: "amber" | "blue" | "danger"
   busy?: boolean
 }) {
+  // White with a coloured edge, not a tinted box (owner-approved colours, 2026-10-18).
   const visual = tone === "danger"
-    ? { backgroundColor: fieldTheme.color.dangerSoft, color: fieldTheme.color.danger }
+    ? { color: fieldTheme.color.danger }
     : tone === "blue"
-      ? { backgroundColor: fieldTheme.color.blueSoft, color: fieldTheme.color.blue }
-      : { backgroundColor: fieldTheme.color.amberSoft, color: fieldTheme.color.amber }
+      ? { color: fieldTheme.color.blue }
+      : { color: fieldTheme.color.amber }
   return (
-    <View style={[styles.notice, { backgroundColor: visual.backgroundColor }]}>
+    <View style={[styles.notice, { borderLeftColor: visual.color }]}>
       <View style={styles.noticeIcon}>
         {busy ? <ActivityIndicator size="small" color={visual.color} /> : <Icon name={icon} size={22} color={visual.color} />}
       </View>
@@ -1067,28 +1070,29 @@ function ActionNoteModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: {
-    backgroundColor: fieldTheme.color.primaryStrong,
+    backgroundColor: fieldTheme.color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: fieldTheme.color.border,
     paddingHorizontal: fieldTheme.space.lg,
     paddingBottom: fieldTheme.space.xl,
-    borderBottomLeftRadius: fieldTheme.radius.lg,
-    borderBottomRightRadius: fieldTheme.radius.lg,
   },
   headerInner: { width: "100%", maxWidth: 1120, alignSelf: "center" },
   headerTools: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   backButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingRight: fieldTheme.space.md },
-  backText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "800" },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: fieldTheme.space.xs },
+  backText: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "800" },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: fieldTheme.space.xs },
   headerTitleTablet: { fontSize: 32, lineHeight: 39, maxWidth: 780 },
   headerSignals: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
-  headerPill: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 32, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill },
+  headerPill: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 32 },
   headerPillText: { fontSize: 13, fontWeight: "800" },
   scrollContent: { padding: fieldTheme.space.lg },
   contentFrame: { width: "100%", maxWidth: 1120, alignSelf: "center", gap: fieldTheme.space.md },
   tabletFlow: { minHeight: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.sm },
   flowStep: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  flowStepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primaryStrong },
-  flowStepNumberText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
+  flowStepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: fieldTheme.color.primary },
+  flowStepNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   flowStepLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 16, fontWeight: "800" },
   columns: { gap: fieldTheme.space.md },
   columnsTablet: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.lg },
@@ -1102,9 +1106,9 @@ const styles = StyleSheet.create({
     padding: fieldTheme.space.lg,
   },
   sectionHeading: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
-  stepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primaryStrong },
-  stepNumberText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
-  sectionIcon: { width: 32, height: 32, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  stepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: fieldTheme.color.primary },
+  stepNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
+  sectionIcon: { width: 32, height: 32, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
   sectionCopy: { flex: 1, minWidth: 0 },
   cardTitle: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 22, fontWeight: "900" },
   cardHint: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, marginTop: 2 },
@@ -1113,7 +1117,7 @@ const styles = StyleSheet.create({
   descriptionMuted: { color: fieldTheme.color.inkMuted, fontStyle: "italic", fontWeight: "500" },
   infoRow: { flexDirection: "row", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.md, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
   infoRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
-  infoIcon: { width: 36, height: 36, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
+  infoIcon: { width: 36, height: 36, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
   infoCopy: { flex: 1, minWidth: 0 },
   infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
   infoValue: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "800", marginTop: 2 },
@@ -1128,7 +1132,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
   inlineMessage: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   inlineMessageText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: "700" },
-  resultBlock: { borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.successSoft, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
+  resultBlock: { borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
   resultHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   resultLabel: { color: fieldTheme.color.success, fontSize: 13, fontWeight: "900" },
   resultText: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 22, marginTop: fieldTheme.space.sm },
@@ -1138,7 +1142,7 @@ const styles = StyleSheet.create({
   retryText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "800" },
   fileList: { gap: fieldTheme.space.sm },
   fileRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, minHeight: 52, paddingVertical: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
-  fileIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  fileIcon: { width: 40, height: 40, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
   fileCopy: { flex: 1, minWidth: 0 },
   fileName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   fileMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
@@ -1158,7 +1162,7 @@ const styles = StyleSheet.create({
   timelineLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   timelineTime: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   emptyText: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
-  notice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.lg },
+  notice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.lg },
   noticeIcon: { width: 28, alignItems: "center", paddingTop: 1 },
   noticeCopy: { flex: 1, minWidth: 0 },
   noticeTitle: { fontSize: 15, lineHeight: 20, fontWeight: "900" },
@@ -1168,18 +1172,18 @@ const styles = StyleSheet.create({
   actionDockInnerTablet: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   actionDockCopy: { flex: 1, minWidth: 0 },
   nextStepRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  nextStepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  nextStepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
   nextStepLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 },
   actionDockHint: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, marginTop: 4 },
   actionDockError: { color: fieldTheme.color.danger, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 4 },
   primaryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl },
   primaryButtonTablet: { minWidth: 230 },
   primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
-  finishedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong, alignSelf: "flex-end" },
+  finishedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", alignSelf: "flex-end" },
   disabled: { opacity: 0.45 },
   modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.55)" },
   modalCard: { width: "100%", maxWidth: 520, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
-  modalIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  modalIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   modalTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: fieldTheme.space.lg },
   modalBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 21, marginTop: fieldTheme.space.sm },
   noteInput: { minHeight: 120, maxHeight: 220, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.canvas, color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },

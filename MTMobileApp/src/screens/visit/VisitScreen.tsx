@@ -46,6 +46,7 @@ import SignaturePadModal from "../../components/SignaturePadModal"
 import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
@@ -1155,7 +1156,7 @@ export default function VisitScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
             </Pressable>
           )}
           <View style={styles.headerCopy}>
@@ -1227,7 +1228,8 @@ export default function VisitScreen() {
           />
         </>
       )}
-      <StatusBarBand />
+      <LightScreenStatusBar />
+      <StatusBarBand tone="light" />
 
       <NotesModal
         visible={notesVisible}
@@ -1380,7 +1382,7 @@ function VisitActionPanel({
         {loadState === "offline" && <StateNotice kind="offline" copy={copy} cachedTitle={cachedTitle} onRetry={onRetry} />}
         <View style={[styles.activeCard, tablet && styles.cardTablet]}>
           <View style={styles.sectionIconRow}>
-            <View style={[styles.sectionIcon, { backgroundColor: staleSinceLabel ? fieldTheme.color.dangerSoft : fieldTheme.color.successSoft }]}>
+            <View style={styles.sectionIcon}>
               <Icon name={staleSinceLabel ? "alert-circle" : "location"} size={23} color={staleSinceLabel ? fieldTheme.color.danger : fieldTheme.color.success} />
             </View>
             <View style={styles.sectionTitleCopy}>
@@ -1652,7 +1654,7 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.customerAvatar, { backgroundColor: category.background }]}>
+      <View style={styles.customerAvatar}>
         <Text style={[styles.customerInitial, { color: category.color }]}>
           {upperInitial(customer.name)}
         </Text>
@@ -1667,24 +1669,24 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
           picks by (measured on the phone 2026-09-13).
         */}
         {customer.coordinateState === "missing" && (
-          <View style={[styles.smallPill, styles.customerStatePill, { backgroundColor: fieldTheme.color.surfaceStrong }]}>
+          <View style={[styles.smallPill, styles.customerStatePill]}>
             <Text style={[styles.customerStateText, { color: fieldTheme.color.inkMuted }]}>{copy.coordinatesMissing}</Text>
           </View>
         )}
         {customer.coordinateState === "suspicious" && (
-          <View style={[styles.smallPill, styles.customerStatePill, { backgroundColor: fieldTheme.color.amberSoft }]}>
+          <View style={[styles.smallPill, styles.customerStatePill]}>
             <Text style={[styles.customerStateText, { color: fieldTheme.color.amber }]}>{copy.coordinatesSuspicious}</Text>
           </View>
         )}
       </View>
       <View style={styles.customerMeta}>
         {customer.category && (
-          <View style={[styles.smallPill, { backgroundColor: category.background }]}>
+          <View style={styles.smallPill}>
             <Text style={[styles.smallPillText, { color: category.color }]}>{customer.category}</Text>
           </View>
         )}
         {distance && customer.distanceMeters != null && (
-          <View style={[styles.smallPill, { backgroundColor: distance.background }]}>
+          <View style={styles.smallPill}>
             <Text style={[styles.smallPillText, { color: distance.color }]}>
               {formatDistance(customer.distanceMeters)}
             </Text>
@@ -1774,7 +1776,7 @@ function VisitRow({ visit, copy, language, onPress }: {
         ? ({ pressed }: { pressed: boolean }) => [styles.visitRow, active && styles.visitRowActive, pressed && styles.pressed]
         : [styles.visitRow, active && styles.visitRowActive]}
     >
-      <View style={[styles.visitStatusIcon, { backgroundColor: tone.background }]}>
+      <View style={styles.visitStatusIcon}>
         <Icon name={tone.icon} size={21} color={tone.color} />
       </View>
       <View style={styles.visitCopy}>
@@ -1787,7 +1789,7 @@ function VisitRow({ visit, copy, language, onPress }: {
           )}
         </View>
       </View>
-      <View style={[styles.statusPill, { backgroundColor: tone.background }]}>
+      <View style={styles.statusPill}>
         <Text style={[styles.statusText, { color: tone.color }]}>{status}</Text>
       </View>
       {openable ? <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} /> : null}
@@ -1804,9 +1806,8 @@ function StateNotice({ kind, copy, cachedTitle, onRetry }: {
 }) {
   const offline = kind === "offline"
   const color = offline ? fieldTheme.color.amber : fieldTheme.color.danger
-  const background = offline ? fieldTheme.color.amberSoft : fieldTheme.color.dangerSoft
   return (
-    <View style={[styles.stateNotice, { backgroundColor: background }]} accessibilityLiveRegion="polite">
+    <View style={[styles.stateNotice, { borderLeftColor: color }]} accessibilityLiveRegion="polite">
       <Icon name={offline ? "cloud-offline-outline" : "alert-circle-outline"} size={23} color={color} />
       <View style={styles.stateNoticeCopy}>
         <Text style={[styles.stateNoticeTitle, { color }]}>{offline ? cachedTitle ?? copy.offlineTitle : copy.errorTitle}</Text>
@@ -1855,8 +1856,12 @@ function MetaPill({ icon, text }: { icon: string; text: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  // White like the tabs' headers (owner-approved colours, 2026-10-18): green
+  // stays the accent, the screen's one fill is its main button.
   header: {
-    backgroundColor: fieldTheme.color.primaryStrong,
+    backgroundColor: fieldTheme.color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: fieldTheme.color.border,
     paddingHorizontal: fieldTheme.space.lg,
     paddingBottom: fieldTheme.space.lg,
   },
@@ -1866,25 +1871,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: fieldTheme.radius.sm,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
   },
   headerCopy: { flex: 1 },
   eyebrow: {
-    color: "#BBD6CB",
+    color: fieldTheme.color.primary,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: "800",
     letterSpacing: 0.7,
   },
   headerTitle: {
-    color: fieldTheme.color.onColor,
+    color: fieldTheme.color.ink,
     fontSize: 29,
     lineHeight: 35,
     fontWeight: "900",
     marginTop: 2,
   },
   headerSubtitle: {
-    color: "#D7E9E1",
+    color: fieldTheme.color.inkMuted,
     fontSize: 14,
     lineHeight: 20,
     marginTop: fieldTheme.space.xs,
@@ -1921,7 +1927,7 @@ const styles = StyleSheet.create({
   activeCard: {
     backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: "#A9D8C1",
+    borderColor: fieldTheme.color.primary,
     borderRadius: fieldTheme.radius.lg,
     padding: fieldTheme.space.lg,
   },
@@ -1933,7 +1939,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 15,
-    backgroundColor: fieldTheme.color.primarySoft,
   },
   sectionTitleCopy: { flex: 1 },
   sectionEyebrow: {
@@ -1980,14 +1985,14 @@ const styles = StyleSheet.create({
     borderRadius: fieldTheme.radius.md,
     backgroundColor: fieldTheme.color.canvas,
   },
-  customerRowSelected: { borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.successSoft },
-  customerAvatar: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  customerRowSelected: { borderColor: fieldTheme.color.success, borderLeftWidth: 4 },
+  customerAvatar: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: fieldTheme.color.border },
   customerInitial: { fontSize: 17, fontWeight: "900" },
   customerCopy: { flex: 1, minWidth: 0 },
   customerName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   customerAddress: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
   customerMeta: { alignItems: "flex-end", gap: 3 },
-  smallPill: { minHeight: 22, justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
+  smallPill: { minHeight: 22, justifyContent: "center" },
   smallPillText: { fontSize: 10, fontWeight: "900" },
   customerStatePill: { alignSelf: "flex-start", marginTop: 4 },
   customerStateText: { fontSize: 12, lineHeight: 16, fontWeight: "800" },
@@ -2002,7 +2007,11 @@ const styles = StyleSheet.create({
     marginTop: fieldTheme.space.lg,
     paddingHorizontal: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.sm,
-    backgroundColor: fieldTheme.color.successSoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.success,
+    backgroundColor: fieldTheme.color.surface,
   },
   selectionCopy: { flex: 1 },
   selectionLabel: { color: fieldTheme.color.success, fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
@@ -2016,8 +2025,10 @@ const styles = StyleSheet.create({
     padding: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.md,
     borderWidth: 1,
-    borderColor: fieldTheme.color.danger,
-    backgroundColor: fieldTheme.color.dangerSoft,
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.danger,
+    backgroundColor: fieldTheme.color.surface,
   },
   issueCopy: { flex: 1, gap: 2 },
   issueAction: { alignSelf: "flex-start", minHeight: 44, flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8, paddingHorizontal: 14, borderRadius: 12, backgroundColor: fieldTheme.color.primary },
@@ -2037,15 +2048,15 @@ const styles = StyleSheet.create({
   finishButton: { backgroundColor: fieldTheme.color.coral },
   primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   activeMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
-  visitTimeNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
-  visitTimeNoticeOvertime: { backgroundColor: fieldTheme.color.dangerSoft },
+  visitTimeNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
+  visitTimeNoticeOvertime: { borderLeftColor: fieldTheme.color.danger },
   visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
   visitTimeNoticeTextOvertime: { color: fieldTheme.color.danger },
-  metaPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },
+  metaPill: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.md },
   metaPillText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
   addressRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   addressText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
-  pendingNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
+  pendingNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },
   pendingText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "700" },
   // Three actions side by side left about 110 dp each, and «Задачи и
   // презентации» broke mid-word into «презентац / ии». One under another:
@@ -2056,10 +2067,10 @@ const styles = StyleSheet.create({
   historyContent: { paddingVertical: fieldTheme.space.lg },
   historyHeading: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
   historyTitle: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 27, fontWeight: "900", marginTop: 2 },
-  historyCountPill: { minHeight: 32, justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md },
+  historyCountPill: { minHeight: 32, justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.md },
   historyCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
   visitRow: { minHeight: 88, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
-  visitRowActive: { borderColor: "#A9D8C1" },
+  visitRowActive: { borderColor: fieldTheme.color.primary },
   visitStatusIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14 },
   visitCopy: { flex: 1, minWidth: 0 },
   visitName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
@@ -2067,9 +2078,9 @@ const styles = StyleSheet.create({
   visitMetaRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
   visitTime: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   visitDuration: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "900" },
-  statusPill: { minHeight: 30, maxWidth: 120, justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
+  statusPill: { minHeight: 30, maxWidth: 120, justifyContent: "center" },
   statusText: { fontSize: 10, lineHeight: 13, fontWeight: "900", textAlign: "center" },
-  stateNotice: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
+  stateNotice: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
   stateNoticeCopy: { flex: 1, minWidth: 190 },
   stateNoticeTitle: { fontSize: 14, lineHeight: 19, fontWeight: "900" },
   stateNoticeBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
@@ -2082,7 +2093,7 @@ const styles = StyleSheet.create({
   loadingBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: fieldTheme.space.xs },
   emptyHistory: { minHeight: 260, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
   emptyHistoryTablet: { minHeight: 360 },
-  emptyIconWrap: { width: 66, height: 66, alignItems: "center", justifyContent: "center", borderRadius: 22, backgroundColor: fieldTheme.color.primarySoft },
+  emptyIconWrap: { width: 66, height: 66, alignItems: "center", justifyContent: "center", borderRadius: 22 },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 22, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.lg },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 430, marginTop: fieldTheme.space.sm },
   disabled: { opacity: 0.42 },
