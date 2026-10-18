@@ -1118,6 +1118,7 @@
     "correctionDateHint": "End on the start date or the following day. For an overnight shift, such as 22:00–06:00, select the following date. The period cannot exceed 24 hours.",
     "correctionHint": "Enter the correct start and end of the working day. Records change only after approval; original events are retained.",
     "correctionFailed": "The correction was not accepted. Check the workday dates and time marks, then refresh the list.",
+    "staleWorkdayReason": "The workday was not closed on time",
     "documentFailed": "The photo could not be saved or sent. Check its format and size, then retry.",
     "failed": "The action could not be confirmed. Saved requests remain on this phone; refresh the list.",
     "units": {

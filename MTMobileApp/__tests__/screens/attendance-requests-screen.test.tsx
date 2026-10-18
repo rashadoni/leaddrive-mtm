@@ -10,8 +10,10 @@ import en from "../../src/i18n/locales/en.json"
 const mockAuth = { agent: { id: "fictional-agent", organizationId: "fictional-org", role: "AGENT" } }
 const mockBootstrap = { routeFieldAccess: "enabled", data: { timezone: "Asia/Baku", policies: { agentPermissions: { attendanceRequests: true } } } }
 const mockGoBack = jest.fn()
+const mockSetParams = jest.fn()
+const mockRoute: { params?: unknown } = {}
 const mockAsk = jest.fn().mockResolvedValue(true)
-jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ goBack: mockGoBack }) }))
+jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ goBack: mockGoBack, setParams: mockSetParams }), useRoute: () => mockRoute }))
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 12, useTabBarPadding: () => 24 }))
 jest.mock("../../src/hooks/useAutoRefresh", () => ({ useAutoRefresh: () => {} }))
 jest.mock("../../src/store/auth", () => ({ useAuthStore: (selector: (state: unknown) => unknown) => selector(mockAuth) }))
@@ -60,7 +62,7 @@ function captureNightForm(tree: TestRenderer.ReactTestRenderer, language: string
 }
 beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
 beforeEach(() => {
-  jest.clearAllMocks(); setOfflineScope("fictional-org", "fictional-agent")
+  jest.clearAllMocks(); setOfflineScope("fictional-org", "fictional-agent"); mockRoute.params = undefined
   mockAuth.agent.id = "fictional-agent"; mockBootstrap.data.policies.agentPermissions.attendanceRequests = true
   ;(service.cachedAttendanceRequests as jest.Mock).mockResolvedValue(data())
   ;(service.loadAttendanceRequests as jest.Mock).mockResolvedValue(data())
@@ -96,6 +98,38 @@ it("submits a correction as an exact full pair and closes only after the durable
     clientRequestId: expect.stringMatching(/^[a-f0-9-]{36}$/), kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-12", endDate: "2026-10-12", startTime: "09:10", endTime: "18:00", reason: "Fictional missed finish", attachmentIds: [],
   }, [])
   expect(node(tree, "attendance-form")).toBeUndefined()
+})
+it.each(["ru", "az", "en"])("«Указать время ухода» on «Bu gün» opens the %s correction filled in, the finish left to the employee", async language => {
+  // The day left open since 13 October (owner's phone, 2026-10-18).
+  mockRoute.params = { correction: { workDate: "2026-10-13", startTime: "10:21" } }
+  const tree = await open(language)
+  const dictionary = { ru, az, en }[language as "ru" | "az" | "en"].attendanceRequests
+  expect(node(tree, "attendance-form")).toBeDefined()
+  expect(node(tree, "attendance-kind-TIME_CORRECTION").props.accessibilityState.selected).toBe(true)
+  expect(node(tree, "attendance-startDate").props.value).toBe("2026-10-13")
+  expect(node(tree, "attendance-endDate").props.value).toBe("2026-10-13")
+  expect(node(tree, "attendance-startTime").props.value).toBe("10:21")
+  expect(node(tree, "attendance-endTime").props.value).toBe("")
+  expect(node(tree, "attendance-reason").props.value).toBe(dictionary.staleWorkdayReason)
+  // The params are spent: coming back to the screen shows the list.
+  expect(mockSetParams).toHaveBeenCalledWith({ correction: undefined })
+  // Without the finish the form refuses, and nothing is queued.
+  await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+  expect(text(tree)).toContain(dictionary.invalid)
+  await type(tree, "attendance-endTime", "22:19")
+  await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).toHaveBeenCalledWith("fictional-org:fictional-agent", {
+    clientRequestId: expect.stringMatching(/^[a-f0-9-]{36}$/), kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-13", endDate: "2026-10-13", startTime: "10:21", endTime: "22:19", reason: dictionary.staleWorkdayReason, attachmentIds: [],
+  }, [])
+  expect(node(tree, "attendance-form")).toBeUndefined()
+})
+it("the form opens above the monthly allowance, so the times are on the first screen", async () => {
+  mockRoute.params = { correction: { workDate: "2026-10-13", startTime: "10:21" } }
+  const tree = await open()
+  const json = text(tree)
+  expect(json.indexOf('"testID":"attendance-form"')).toBeGreaterThan(-1)
+  expect(json.indexOf('"testID":"attendance-form"')).toBeLessThan(json.indexOf('"testID":"attendance-quota"'))
 })
 it.each(["ru", "az", "en"])("shows %s overnight dates and queues the exact full correction", async language => {
   const tree = await open(language)
