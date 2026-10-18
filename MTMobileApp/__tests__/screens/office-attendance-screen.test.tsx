@@ -43,6 +43,8 @@ jest.mock("../../src/components/ConfirmSheet", () => () => null)
 jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 // The bell reads its own store and the server; these screens are tested without it.
 jest.mock("../../src/components/NotificationBell", () => () => null)
+// The white header's status bar reads the focus, which this navigation mock leaves out.
+jest.mock("../../src/components/LightScreenStatusBar", () => () => null)
 import AttendanceQrScanner from "../../src/components/AttendanceQrScanner"
 import {guardAttendanceQr} from "../../src/services/attendance-qr"
 import AttendanceWorkdayScreen from "../../src/screens/attendance/AttendanceWorkdayScreen"
