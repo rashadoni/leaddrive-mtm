@@ -115,6 +115,49 @@ function trackOf(data: any): EmployeeDayPoint[][] {
   return segments
 }
 
+type WorkWindow = { from: number; to: number }
+
+/**
+ * When he was at work: his workday when there is one, else each of the day's
+ * routes from its start to its finish (a field agent outside HR attendance
+ * has no workday). Before he starts there is nothing to be off plan from: on
+ * the owner's phone (2026-10-18) an agent asleep at home showed «Vizitsiz
+ * dayanma 00:00–01:11» on a day he had not begun.
+ */
+function workWindows(data: any): WorkWindow[] {
+  const finite = (value: unknown) => {
+    const at = typeof value === "string" ? Date.parse(value) : Number.NaN
+    return Number.isFinite(at) ? at : null
+  }
+  const dayStart = finite(data?.workday?.startedAt)
+  if (dayStart != null) return [{ from: dayStart, to: finite(data?.workday?.completedAt) ?? Number.POSITIVE_INFINITY }]
+  return list(data?.plannedRoutes)
+    .filter((route) => route?.status !== "CANCELLED" && route?.status !== "DRAFT")
+    .flatMap((route) => {
+      const from = finite(route?.startedAt)
+      return from == null ? [] : [{ from, to: finite(route?.completedAt) ?? Number.POSITIVE_INFINITY }]
+    })
+}
+
+/** The longest part of a stretch of time that falls inside work, or null. */
+function insideWork(startedAt: unknown, endedAt: unknown, windows: WorkWindow[]): { startedAt: string; endedAt: string; minutes: number } | null {
+  const from = typeof startedAt === "string" ? Date.parse(startedAt) : Number.NaN
+  const to = typeof endedAt === "string" ? Date.parse(endedAt) : Number.NaN
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null
+  let best: WorkWindow | null = null
+  for (const window of windows) {
+    const start = Math.max(from, window.from)
+    const end = Math.min(to, window.to)
+    if (end > start && (!best || end - start > best.to - best.from)) best = { from: start, to: end }
+  }
+  if (!best) return null
+  return {
+    startedAt: best.from === from ? String(startedAt) : new Date(best.from).toISOString(),
+    endedAt: best.to === to ? String(endedAt) : new Date(best.to).toISOString(),
+    minutes: Math.round((best.to - best.from) / 60_000),
+  }
+}
+
 /**
  * @param data the `data` of GET /api/v1/mtm/location-history?agentId&date
  * @param isToday whether the day is the tenant's today: only then is the first
@@ -192,13 +235,23 @@ export function toEmployeeDay(data: any, isToday: boolean, stopMinimumMinutes = 
       }
     : null
 
+  // Only what happened at work counts as off plan, and only as much of it as
+  // fell inside work — a stop that began at home before the route did is
+  // measured from the route's start.
+  const windows = workWindows(data)
   const deviations: EmployeeDayDeviation[] = [
     ...gaps
       .filter((gap) => gap?.reason === "TELEMETRY_GAP")
-      .map((gap) => ({ id: `gap-${gap.id}`, kind: "NO_GPS" as const, startedAt: String(gap.startedAt), endedAt: String(gap.endedAt), minutes: Math.round((num(gap.durationSeconds) ?? 0) / 60) })),
+      .flatMap((gap) => {
+        const part = insideWork(gap.startedAt, gap.endedAt, windows)
+        return part && part.minutes >= stopMinimumMinutes ? [{ id: `gap-${gap.id}`, kind: "NO_GPS" as const, ...part }] : []
+      }),
     ...list(data?.stops)
-      .filter((stop) => !stop?.visit && (num(stop?.durationSeconds) ?? 0) >= stopMinimumMinutes * 60)
-      .map((stop) => ({ id: `stop-${stop.id}`, kind: "STOP_WITHOUT_VISIT" as const, startedAt: String(stop.startedAt), endedAt: String(stop.endedAt), minutes: Math.round((num(stop.durationSeconds) ?? 0) / 60) })),
+      .filter((stop) => !stop?.visit)
+      .flatMap((stop) => {
+        const part = insideWork(stop.startedAt, stop.endedAt, windows)
+        return part && part.minutes >= stopMinimumMinutes ? [{ id: `stop-${stop.id}`, kind: "STOP_WITHOUT_VISIT" as const, ...part }] : []
+      }),
   ].sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt))
 
   return {

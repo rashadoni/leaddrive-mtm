@@ -1471,18 +1471,31 @@ export default function PlanningWorkspaceCore({
   }
 
   // While a published day is open, the dock publishes that change instead.
-  const editAction = {
-    icon: "send",
-    label: saving ? t("managerShell.planPublishingEdit") : t("managerShell.planPublishEdit"),
-    hint: saving
-      ? undefined
-      : !editChanged
-        ? t("managerShell.planEditNoChanges")
-        : editProblem
-          ? t(publishedRouteEditProblemKey(editProblem.code))
-          : undefined,
-    disabled: saving || !editChanged || editProblem !== null,
-    onPress: () => { void publishPublishedEdit() },
+  // With nothing to publish — the clients taken off put back as they were —
+  // it leads out rather than standing disabled: on the agent's phone the
+  // owner read a grey «Dəyişiklikləri dərc et» as a broken button (2026-10-18,
+  // «кнопка не активна»). The route stays as published.
+  const editAction = !saving && !editChanged
+    ? {
+        icon: "checkmark",
+        label: t("managerShell.planEditDone"),
+        hint: t("managerShell.planEditNoChanges"),
+        disabled: false,
+        onPress: () => leaveUnchangedEdit(),
+      }
+    : {
+        icon: "send",
+        label: saving ? t("managerShell.planPublishingEdit") : t("managerShell.planPublishEdit"),
+        hint: saving || !editProblem ? undefined : t(publishedRouteEditProblemKey(editProblem.code)),
+        disabled: saving || editProblem !== null,
+        onPress: () => { void publishPublishedEdit() },
+      }
+  // Leaving an edit that changed nothing: no question to ask, nothing to send.
+  // The agent goes back to his route as after a published change.
+  const leaveUnchangedEdit = () => {
+    if (saving || !editSession || publishedRouteEditChanged(editSession.original, editStops)) return
+    exitPublishedEdit()
+    if (selfPlanLeavesAfterPublishedEdit({ selfPlanning, canClose: Boolean(onClose) })) onClose?.()
   }
 
   // After a save that went through, the agent's one button leads out of the
