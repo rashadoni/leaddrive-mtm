@@ -7,6 +7,8 @@ export interface TodayRoutePoint {
   orderIndex: number
   status: string
   plannedTime?: string
+  /** When the stop was visited; drawn beside it on the day line. */
+  visitedAt?: string
   customer?: {
     id?: string
     name?: string
@@ -89,11 +91,13 @@ function normalizePoint(value: unknown): TodayRoutePoint | null {
       }
     : undefined
 
+  const visitedAt = string(source.visitedAt)
   return {
     id,
     orderIndex: finiteNumber(source.orderIndex) ?? 0,
     status: string(source.status) ?? "",
     plannedTime: string(source.plannedTime),
+    ...(visitedAt ? { visitedAt } : {}),
     customer,
     ...(contact ? { contact } : {}),
   }

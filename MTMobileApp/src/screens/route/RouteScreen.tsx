@@ -69,6 +69,8 @@ import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
+import { DayLineStation } from "../../components/DayLine"
+import { dayStopState } from "../../components/day-line"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
@@ -154,6 +156,7 @@ const ROUTE_COPY = {
     waitingForSync: "Ожидает отправки",
     photos: "Фото: {{count}}",
     visitTimer: "Визит идёт {{minutes}} мин",
+    visitMinutesShort: "{{minutes}} мин",
     visitActions: "Что сделать во время визита",
     presentations: "Презентация",
     visitTasks: "Задачи визита",
@@ -255,6 +258,7 @@ const ROUTE_COPY = {
     waitingForSync: "Göndərilmə gözlənilir",
     photos: "Foto: {{count}}",
     visitTimer: "Ziyarət {{minutes}} dəqiqədir davam edir",
+    visitMinutesShort: "{{minutes}} dəq",
     visitActions: "Ziyarət zamanı nə etmək lazımdır",
     presentations: "Təqdimat",
     visitTasks: "Ziyarət tapşırıqları",
@@ -356,6 +360,7 @@ const ROUTE_COPY = {
     waitingForSync: "Waiting to send",
     photos: "Photos: {{count}}",
     visitTimer: "Visit active for {{minutes}} min",
+    visitMinutesShort: "{{minutes}} min",
     visitActions: "What to do during this visit",
     presentations: "Presentation",
     visitTasks: "Visit tasks",
@@ -561,10 +566,13 @@ function VisitActionButton({
   done = false,
   onPress,
   disabled = false,
+  tone = fieldTheme.color.primaryStrong,
 }: {
   label: string
   detail?: string
   icon: string
+  /** The icon's colour: what the action is about, as elsewhere in the app. */
+  tone?: string
   done?: boolean
   onPress: () => void
   disabled?: boolean
@@ -578,7 +586,7 @@ function VisitActionButton({
       style={({ pressed }) => [styles.visitAction, done && styles.visitActionDone, disabled && styles.buttonDisabled, pressed && !disabled && styles.buttonPressed]}
     >
       <View style={[styles.visitActionIcon, done && styles.visitActionIconDone]}>
-        <Icon name={done ? "checkmark" : icon} size={20} color={done ? fieldTheme.color.success : fieldTheme.color.primaryStrong} />
+        <Icon name={done ? "checkmark" : icon} size={22} color={done ? fieldTheme.color.success : tone} />
       </View>
       <View style={styles.visitActionCopy}>
         <Text style={[styles.visitActionLabel, done && styles.visitActionLabelDone]}>{label}</Text>
@@ -839,7 +847,6 @@ function RoutePathHead({
   language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
 }) {
-  const completion = total > 0 ? Math.round((done / total) * 100) : 0
   // The bar above already says «Bugünkü marşrut»; said again here it was the
   // same words twice on one screen (owner's phone, build 396). A route with a
   // name of its own keeps it; otherwise the line is the day.
@@ -857,12 +864,11 @@ function RoutePathHead({
           </Text>
         ) : null}
       </View>
-      <View style={styles.pathHeadRow} accessibilityLabel={renderTemplate(copy.progress, { done, total })}>
-        <View style={styles.pathHeadTrack}>
-          <View style={[styles.pathHeadFill, { width: `${completion}%` }]} />
-        </View>
-        <Text style={styles.pathHeadCount}>{renderTemplate(copy.pathProgress, { done, total })}</Text>
-      </View>
+      {/* The bar that stood here is the day line itself now: the stops below
+          fill in green as they are visited. The count stays in words. */}
+      <Text style={styles.pathHeadCount} accessibilityLabel={renderTemplate(copy.progress, { done, total })}>
+        {renderTemplate(copy.pathProgress, { done, total })}
+      </Text>
     </View>
   )
 }
@@ -912,6 +918,7 @@ function StopRow({
   roadBelow = false,
   visiting = false,
   nearest = false,
+  visitFacts,
 }: {
   point: RoutePoint
   index: number
@@ -921,6 +928,8 @@ function StopRow({
   visiting?: boolean
   /** Of the stops still ahead, this one is the closest to the agent. */
   nearest?: boolean
+  /** The open visit's minutes and photos, shown on its stop. */
+  visitFacts?: { minutes: number; photos: number }
   onPress: () => void
   language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
@@ -932,66 +941,79 @@ function StopRow({
 }) {
   const status = pointStatus(point, copy, visiting ? point.id : null)
   const who = routeStopWho(point)
+  const done = point.status === "VISITED" && !visiting
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${renderTemplate(copy.stopNumber, { number: index + 1 })}. ${who.name}. ${status.label}`}
-      style={({ pressed }) => [styles.stopRow, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, pressed && styles.stopRowPressed]}
+      style={({ pressed }) => [styles.stopRow, pressed && styles.stopRowPressed]}
     >
       {/*
         The stops are a road, not a list: the line above a stop is filled once
         the agent is past it, so the route colours in from top to bottom as
-        the day goes.
+        the day goes. Since 2026-10-18 (owner-approved mockup) it is the day
+        line: a stop behind the agent is a filled green stop, the one he is at
+        is ringed amber, the next one green, the rest hollow.
       */}
-      <View style={styles.stopRail}>
+      <View style={[styles.stopRail, styles.stopRailWidth]}>
         <View style={[styles.stopRailLine, first && styles.stopRailLineHidden, roadAbove && styles.stopRailLineDone]} />
-        <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, visiting && styles.stopNumberVisiting, point.status === "VISITED" && styles.stopNumberDone]}>
-          {point.status === "VISITED" ? (
-            <Icon name="checkmark" size={17} color={fieldTheme.color.success} />
-          ) : (
-            <Text style={[styles.stopNumberText, recommended && styles.stopNumberTextRecommended, visiting && styles.stopNumberTextVisiting]}>{index + 1}</Text>
-          )}
-        </View>
+        <DayLineStation state={dayStopState(point.status, visiting, recommended)} />
         <View style={[styles.stopRailLine, last && styles.stopRailLineHidden, roadBelow && styles.stopRailLineDone]} />
       </View>
-      <View style={styles.stopCopy}>
-        <View style={styles.stopTitleRow}>
-          <Text style={[styles.stopName, point.status === "VISITED" && styles.stopNameDone]} numberOfLines={2}>
-            {who.name}
-          </Text>
-          {point.distanceMeters != null && point.status !== "VISITED" ? (
-            <Text style={[styles.stopDistance, { color: distanceColor(point.distanceMeters, pointCheckInRadius(point)) }]}>
-              {formatDistance(point.distanceMeters)}
+      {/* A stop still ahead is a white card on the line; a stop behind the
+          agent is a quiet line of text, so the eye goes to what is left. */}
+      <View style={[styles.stopCard, done && styles.stopCardDone, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting]}>
+        <View style={styles.stopCopy}>
+          <View style={styles.stopTitleRow}>
+            <Text style={[styles.stopName, done && styles.stopNameDone, visiting && styles.stopNameVisiting]} numberOfLines={2}>
+              {who.name}
             </Text>
-          ) : null}
-        </View>
-        {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
-        {/* Where this client stands today, in words and in colour: visited
-            (with the time), visit in progress, or still planned. */}
-        <View style={styles.stopMeta}>
-          <View style={styles.stopStatus}>
-            <Icon name={status.icon} size={14} color={status.color} />
-            <Text style={[styles.stopStatusText, { color: status.color }]}>
-              {point.visitedAt
-                ? `${status.label} · ${new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}`
-                : status.label}
-            </Text>
+            {point.distanceMeters != null && point.status !== "VISITED" ? (
+              <Text style={[styles.stopDistance, { color: distanceColor(point.distanceMeters, pointCheckInRadius(point)) }]}>
+                {formatDistance(point.distanceMeters)}
+              </Text>
+            ) : null}
           </View>
-          {nearest && point.status !== "VISITED" ? (
-            <View style={styles.nearestBadge}>
-              <Text style={styles.nearestBadgeText}>{copy.nearest}</Text>
+          {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
+          {/* Where this client stands today, in words and in colour: visited
+              (with the time), visit in progress, or still planned. */}
+          <View style={styles.stopMeta}>
+            <View style={styles.stopStatus}>
+              <Icon name={status.icon} size={14} color={status.color} />
+              <Text style={[styles.stopStatusText, { color: status.color }]}>
+                {point.visitedAt
+                  ? `${status.label} · ${new Date(point.visitedAt).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit" })}`
+                  : status.label}
+              </Text>
             </View>
-          ) : null}
-          {point.distanceMeters == null && !hasUsableCoordinates(point.customer) && point.status !== "VISITED" ? (
-            <View style={styles.metaItem}>
-              <Icon name="help-circle-outline" size={15} color={fieldTheme.color.inkMuted} />
-              <Text style={styles.metaText}>{i18next.t("route.noCoordinates")}</Text>
+            {nearest && point.status !== "VISITED" ? (
+              <View style={styles.nearestBadge}>
+                <Text style={styles.nearestBadgeText}>{copy.nearest}</Text>
+              </View>
+            ) : null}
+            {point.distanceMeters == null && !hasUsableCoordinates(point.customer) && point.status !== "VISITED" ? (
+              <View style={styles.metaItem}>
+                <Icon name="help-circle-outline" size={15} color={fieldTheme.color.inkMuted} />
+                <Text style={styles.metaText}>{i18next.t("route.noCoordinates")}</Text>
+              </View>
+            ) : null}
+          </View>
+          {visiting && visitFacts ? (
+            <View style={styles.stopVisitFacts}>
+              <View style={styles.metaItem}>
+                <Icon name="time-outline" size={16} color={fieldTheme.color.blue} />
+                <Text style={styles.stopVisitFactText}>{renderTemplate(copy.visitMinutesShort, { minutes: visitFacts.minutes })}</Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Icon name="camera-outline" size={16} color={fieldTheme.color.violet} />
+                <Text style={styles.stopVisitFactText}>{renderTemplate(copy.photos, { count: visitFacts.photos })}</Text>
+              </View>
             </View>
           ) : null}
         </View>
+        {done ? null : <Icon name="chevron-forward" size={20} color={selected || visiting ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />}
       </View>
-      <Icon name="chevron-forward" size={20} color={selected ? fieldTheme.color.primary : fieldTheme.color.border} />
     </Pressable>
   )
 }
@@ -1152,6 +1174,7 @@ function PointActionPanel({
               label={copy.visitTasks}
               detail={taskStepTotal > 0 ? `${taskStepDone} / ${taskStepTotal}` : "0"}
               icon="checkbox-outline"
+              tone={fieldTheme.color.blue}
               done={taskStepTotal > 0 && taskStepDone === taskStepTotal}
               onPress={onOpenTasks}
             />
@@ -1163,6 +1186,7 @@ function PointActionPanel({
                 label={photoCount > 0 ? copy.takeAnotherPhoto : copy.takePhoto}
                 detail={photoCount > 0 ? renderTemplate(copy.photos, { count: photoCount }) : undefined}
                 icon="camera-outline"
+                tone={fieldTheme.color.violet}
                 onPress={onPhoto}
                 disabled={mutating}
               />
@@ -2251,6 +2275,7 @@ export default function RouteScreen() {
                     roadBelow={item.status === "VISITED"}
                     visiting={visitingPointId === item.id}
                     nearest={nearestPointId === item.id}
+                    visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
                   />
                 ))}
               </View>
@@ -2323,6 +2348,7 @@ export default function RouteScreen() {
               roadBelow={item.status === "VISITED"}
               visiting={visitingPointId === item.id}
               nearest={nearestPointId === item.id}
+              visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
             />
           </View>
         )}
@@ -2388,16 +2414,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   phoneContent: { flexGrow: 1 },
   phoneMain: { paddingHorizontal: fieldTheme.space.lg },
-  phoneRowWrap: { paddingHorizontal: fieldTheme.space.lg },
+  phoneRowWrap: { paddingHorizontal: fieldTheme.space.xs },
   phoneFooter: { paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
 
   pathHead: { gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg, marginBottom: fieldTheme.space.sm },
   pathHeadRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  pathHeadTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 20, fontWeight: "900" },
-  pathHeadDate: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "700" },
-  pathHeadTrack: { flex: 1, height: 8, borderRadius: 4, overflow: "hidden", backgroundColor: fieldTheme.color.surfaceStrong },
-  pathHeadFill: { height: 8, borderRadius: 4, backgroundColor: fieldTheme.color.success },
-  pathHeadCount: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "900" },
+  pathHeadTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 18, fontWeight: "700" },
+  pathHeadDate: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "400" },
+  pathHeadCount: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "500" },
   gateTitle: { flex: 1 },
   dock: {
     gap: fieldTheme.space.sm,
@@ -2408,7 +2432,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: fieldTheme.color.border,
   },
-  dockCaption: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "700" },
+  dockCaption: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "400" },
   dockRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   dockPrimary: { flex: 1 },
 
@@ -2433,9 +2457,9 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.82 },
   headerAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   headerCopy: { flex: 1 },
-  headerTitle: { color: fieldTheme.color.ink, fontSize: 25, fontWeight: "800", letterSpacing: -0.4 },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 24, fontWeight: "700", letterSpacing: -0.3 },
   headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
-  agentName: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700", marginTop: fieldTheme.space.sm },
+  agentName: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "400", marginTop: fieldTheme.space.sm },
 
   connectionBanner: {
     flexDirection: "row",
@@ -2453,7 +2477,7 @@ const styles = StyleSheet.create({
   },
   connectionBannerSlow: { borderLeftColor: fieldTheme.color.amber },
   connectionCopy: { flex: 1 },
-  connectionTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  connectionTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "500" },
   connectionBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
 
   stepsWrap: {
@@ -2480,13 +2504,13 @@ const styles = StyleSheet.create({
   // Done and current are the colour of the ring and the mark, not a filled circle.
   stepCircleDone: { borderColor: fieldTheme.color.success },
   stepCircleCurrent: { borderWidth: 2, borderColor: fieldTheme.color.primary },
-  stepNumber: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
+  stepNumber: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "500" },
   stepNumberCurrent: { color: fieldTheme.color.primaryStrong },
   stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "700", marginTop: 5, textAlign: "center" },
   stepLabelCurrent: { color: fieldTheme.color.primaryStrong },
   stepLine: { flex: 1, height: 2, backgroundColor: fieldTheme.color.border, marginTop: 14 },
   stepLineDone: { backgroundColor: fieldTheme.color.success },
-  currentStepText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800", textAlign: "center", marginTop: fieldTheme.space.sm },
+  currentStepText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "500", textAlign: "center", marginTop: fieldTheme.space.sm },
 
   summary: {
     backgroundColor: fieldTheme.color.surface,
@@ -2505,15 +2529,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   summaryCopy: { flex: 1 },
-  summaryEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "800", letterSpacing: 0.6 },
-  summaryTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "800", marginTop: 2 },
+  summaryEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "500", letterSpacing: 0.6 },
+  summaryTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "700", marginTop: 2 },
   summaryDate: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700", marginTop: 3 },
   summaryBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   remainingPill: { paddingVertical: 6 },
-  remainingText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "800" },
+  remainingText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "500" },
   progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: fieldTheme.space.lg },
   progressText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
-  progressPercent: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
+  progressPercent: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "500" },
   progressTrack: { height: 8, borderRadius: 4, backgroundColor: fieldTheme.color.surfaceStrong, overflow: "hidden", marginTop: fieldTheme.space.sm },
   progressFill: { height: "100%", borderRadius: 4, backgroundColor: fieldTheme.color.success },
 
@@ -2543,36 +2567,36 @@ const styles = StyleSheet.create({
   actionEmptyText: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 21, textAlign: "center", maxWidth: 320 },
   actionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },
-  actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", letterSpacing: 0.7 },
+  actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700", letterSpacing: 0.7 },
   staleVisitPanel: { borderColor: fieldTheme.color.danger },
   staleVisitEyebrow: { flex: 1, color: fieldTheme.color.danger },
   staleVisitBody: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20 },
-  actionTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 29, fontWeight: "900", letterSpacing: -0.4 },
+  actionTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 29, fontWeight: "700", letterSpacing: -0.4 },
   actionAddress: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   visitFacts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   factPill: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 11, paddingVertical: 7 },
   factText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
   visitTimeNotice: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   visitTimeNoticeOvertime: { borderLeftColor: fieldTheme.color.danger },
-  visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
+  visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "500" },
   visitTimeNoticeTextOvertime: { color: fieldTheme.color.danger },
-  visitActionsTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "900", marginTop: fieldTheme.space.xs },
+  visitActionsTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "700", marginTop: fieldTheme.space.xs },
   visitAction: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
   visitActionDone: { borderColor: fieldTheme.color.success },
   visitActionIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   visitActionIconDone: {},
   visitActionCopy: { flex: 1, minWidth: 0 },
-  visitActionLabel: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  visitActionLabel: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700" },
   visitActionLabelDone: { color: fieldTheme.color.success },
   visitActionDetail: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  requiredRemaining: { color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
+  requiredRemaining: { color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "500" },
   detailFacts: { gap: fieldTheme.space.sm },
   detailFact: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   detailFactText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "600" },
   recommendation: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface },
   recommendationText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "600" },
   completedState: { minHeight: 52, flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.success },
-  completedStateText: { color: fieldTheme.color.success, fontSize: 15, fontWeight: "800" },
+  completedStateText: { color: fieldTheme.color.success, fontSize: 15, fontWeight: "600" },
 
   actionButton: {
     minHeight: 52,
@@ -2587,83 +2611,90 @@ const styles = StyleSheet.create({
   },
   actionButtonSecondary: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
   actionButtonDanger: { backgroundColor: fieldTheme.color.danger },
-  actionButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  actionButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "500", textAlign: "center" },
   actionButtonTextSecondary: { color: fieldTheme.color.primaryStrong },
   buttonDisabled: { opacity: 0.5 },
   buttonPressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
 
   sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: fieldTheme.space.xl, marginBottom: fieldTheme.space.sm },
-  sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
-  sectionCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "700" },
+  sectionCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "400" },
   sectionHeadingEnd: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, flexShrink: 1 },
   planActionRow: { alignItems: "flex-start", marginBottom: fieldTheme.space.md },
   changePlanButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
-  changePlanText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
+  changePlanText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "700" },
   // One road, not a stack of cards: a row has no margin and no padding above
   // or below, so the line of one stop meets the line of the next. As separate
   // cards the road was a grey stub inside each of them.
   stopRow: {
-    minHeight: 88,
+    minHeight: 64,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
     gap: fieldTheme.space.md,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1,
-    borderColor: "transparent",
     paddingHorizontal: fieldTheme.space.md,
   },
-  stopRowSelected: { borderColor: fieldTheme.color.primary },
-  stopRowVisiting: { borderColor: fieldTheme.color.amber },
+  // The card, not the row, carries the margin, so the line runs on between cards.
+  stopCard: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
+    marginVertical: 5,
+    paddingHorizontal: fieldTheme.space.md,
+    ...fieldTheme.card,
+    borderRadius: fieldTheme.radius.md,
+  },
+  stopCardDone: { marginVertical: 0, paddingHorizontal: 0, backgroundColor: "transparent", borderWidth: 0, elevation: 0, shadowOpacity: 0 },
+  stopRowSelected: { borderWidth: 1.5, borderColor: fieldTheme.color.primary },
+  // The stop being visited: an amber edge round its card, raised above the rest.
+  stopRowVisiting: { borderWidth: 1.5, borderColor: fieldTheme.color.amber, elevation: 4 },
   stopRowPressed: { opacity: 0.78 },
   stopRail: { alignItems: "center", alignSelf: "stretch" },
-  stopRailLine: { flex: 1, width: 3, minHeight: 12, backgroundColor: fieldTheme.color.border },
+  stopRailWidth: { width: 34 },
+  stopRailLine: { flex: 1, width: 4, minHeight: 8, backgroundColor: fieldTheme.color.line },
   stopRailLineDone: { backgroundColor: fieldTheme.color.success },
   stopRailLineHidden: { backgroundColor: "transparent" },
-  stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface, borderWidth: 2, borderColor: fieldTheme.color.border },
-  // The stop's state is the colour of its ring and number, not a filled circle (owner-approved colours, 2026-10-18).
-  stopNumberRecommended: { borderColor: fieldTheme.color.primary },
-  stopNumberDone: { borderColor: fieldTheme.color.success },
-  stopNumberVisiting: { borderColor: fieldTheme.color.amber },
   nearestBadge: { paddingVertical: 4 },
-  nearestBadgeText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "900" },
-  stopNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
-  stopNumberTextRecommended: { color: fieldTheme.color.primaryStrong },
-  stopNumberTextVisiting: { color: fieldTheme.color.amber },
+  nearestBadgeText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "500" },
   stopCopy: { flex: 1, minWidth: 0, paddingVertical: fieldTheme.space.md },
   // The name has the line to itself with the distance at its end; the status
   // stands under the address, where a narrow list never squeezed the name.
   stopTitleRow: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "flex-start" },
-  stopName: { flexGrow: 1, flexShrink: 1, color: fieldTheme.color.ink, fontSize: 16, fontWeight: "800" },
-  stopNameDone: { color: fieldTheme.color.inkMuted },
-  stopDistance: { fontSize: 13, fontWeight: "800", marginTop: 2 },
+  stopName: { flexGrow: 1, flexShrink: 1, color: fieldTheme.color.ink, fontSize: 16, fontWeight: "500" },
+  stopNameDone: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
+  stopNameVisiting: { fontSize: 18, fontWeight: "700" },
+  stopDistance: { fontSize: 13, fontWeight: "500", marginTop: 2 },
   stopStatus: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
-  stopStatusText: { fontSize: 12, fontWeight: "800" },
+  stopStatusText: { fontSize: 12.5, fontWeight: "500" },
   stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: 2 },
-  stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
+  stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
+  stopVisitFacts: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.lg, marginTop: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
+  stopVisitFactText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "500" },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
+  metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "400" },
 
   completeCard: { alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.success, borderRadius: fieldTheme.radius.lg, padding: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
-  completeTitle: { color: fieldTheme.color.success, fontSize: 20, fontWeight: "900" },
+  completeTitle: { color: fieldTheme.color.success, fontSize: 20, fontWeight: "700" },
   completeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   emptyState: { alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xxl, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, marginTop: fieldTheme.space.lg },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   emptyIconOffline: {},
   emptyIconSlow: {},
-  emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center" },
+  emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "700", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
   awaitingStops: { alignSelf: "stretch", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas, paddingHorizontal: fieldTheme.space.md },
   awaitingStopRow: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm },
   awaitingStopRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
   awaitingStopNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
-  awaitingStopNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  awaitingStopNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
   awaitingStopCopy: { flex: 1, gap: 2 },
-  awaitingStopName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  awaitingStopName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "600" },
   awaitingStopPlace: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
 
   ownRouteCard: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, marginTop: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.primary },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  cardTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
+  cardTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "700" },
   cardBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
   hint: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.blue, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
   hintText: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 18 },
@@ -2671,11 +2702,13 @@ const styles = StyleSheet.create({
 
   tabletTop: { paddingHorizontal: fieldTheme.space.xl },
   tabletBody: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
-  tabletListPane: { flex: 1, minWidth: 280, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, overflow: "hidden" },
-  tabletListContent: { padding: fieldTheme.space.lg, paddingTop: 0 },
+  // The stops stand on the ground as cards on the day line, as on the phone;
+  // a white pane under white cards hid them (2026-10-18).
+  tabletListPane: { flex: 1, minWidth: 280 },
+  tabletListContent: { paddingTop: 0 },
   // The heading sat on the pane's edge: «Marşrut nöqtələri» touched the left
   // border and «2 dayanacaq» the right one.
-  tabletSectionHeading: { marginTop: fieldTheme.space.lg, paddingHorizontal: fieldTheme.space.lg },
+  tabletSectionHeading: { marginTop: 0, paddingHorizontal: fieldTheme.space.md },
   tabletActionPane: { flex: 1, minWidth: 300 },
 
   modalLayer: { flex: 1, justifyContent: "flex-end" },

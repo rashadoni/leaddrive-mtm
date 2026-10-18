@@ -16,7 +16,12 @@ import { Appearance } from "react-native"
  */
 
 const LIGHT = {
-  canvas: "#F1F6F3",
+  /**
+   * The ground every screen stands on: a soft evergreen tint one step below
+   * the white cards (owner, 2026-10-18: «как будто А4 бумага и на ней
+   * менюшки» — the ground was #F1F6F3, a shade off the cards' white).
+   */
+  canvas: "#E3ECE7",
   surface: "#FBFDFC",
   surfaceStrong: "#E5F0EA",
   ink: "#13231F",
@@ -41,6 +46,8 @@ const LIGHT = {
   onColor: "#F8FCFA",
   /** A dimmed layer under a sheet or a dialog. */
   scrim: "rgba(19,35,31,0.42)",
+  /** The day line ahead of the agent: track and rings of the stops still to come. */
+  line: "#C7D6CE",
 }
 
 export type FieldPalette = { [K in keyof typeof LIGHT]: string }
@@ -73,6 +80,7 @@ const DARK: FieldPalette = {
   successSoft: "#15352A",
   onColor: "#F8FCFA",
   scrim: "rgba(0,0,0,0.6)",
+  line: "#33423C",
 }
 
 export const FIELD_PALETTES: Readonly<Record<"light" | "dark", FieldPalette>> = { light: LIGHT, dark: DARK }
@@ -90,8 +98,33 @@ export function fieldColorSchemeOf(value: string | null | undefined): FieldColor
  */
 export const fieldColorScheme: FieldColorScheme = fieldColorSchemeOf(Appearance?.getColorScheme?.())
 
+/**
+ * A card raised off the ground. By day a soft shadow lifts it (Material
+ * elevation); on the night ground a shadow does not show, so a hairline
+ * border separates it instead. Spread first, then the card's own padding and
+ * radius.
+ */
+export const FIELD_CARDS = {
+  light: {
+    backgroundColor: LIGHT.surface,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: LIGHT.ink,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  dark: {
+    backgroundColor: DARK.surface,
+    borderWidth: 1,
+    borderColor: DARK.border,
+    elevation: 0,
+  },
+} as const
+
 export const fieldTheme = {
   color: FIELD_PALETTES[fieldColorScheme],
+  card: FIELD_CARDS[fieldColorScheme],
   space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
   radius: { sm: 10, md: 16, lg: 22, pill: 999 },
 } as const
