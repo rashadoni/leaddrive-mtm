@@ -63,8 +63,9 @@ function formatDate(dateKey: string, language: string): string {
   })
 }
 
-function accuracyTone(accuracy?: number): { color: string; background: string } {
-  if (accuracy == null) return { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong }
+// Accuracy is said by the colour of its words (owner-approved colours, 2026-10-18).
+function accuracyTone(accuracy?: number): { color: string } {
+  if (accuracy == null) return { color: fieldTheme.color.inkMuted }
   if (accuracy <= 25) return { color: fieldTheme.color.success }
   if (accuracy <= 75) return { color: fieldTheme.color.amber }
   return { color: fieldTheme.color.danger }
