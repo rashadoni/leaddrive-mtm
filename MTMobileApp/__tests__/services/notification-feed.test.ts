@@ -396,6 +396,12 @@ describe("the bell is in the corner of every main screen", () => {
     expect(missing).toEqual([])
   })
 
+  it("does not cut the list's buttons to «Hamısını oxunmu…»", () => {
+    const screen = read("screens/more/NotificationsScreen.tsx")
+    expect(screen).toContain("<Text style={styles.secondaryButtonText} numberOfLines={2}>{copy.markAll}</Text>")
+    expect(screen).not.toContain("<Text style={styles.secondaryButtonText} numberOfLines={1}>")
+  })
+
   it("opens one list over the tabs, in both shells", () => {
     const navigator = read("navigation/AppNavigatorAndroidV2.tsx")
     expect(navigator).toContain('{routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={NotificationsScreen} /> : null}')

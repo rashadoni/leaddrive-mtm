@@ -323,7 +323,7 @@ export default function NotificationsScreen() {
               style={({ pressed }) => [styles.secondaryButton, unread === 0 && styles.disabled, pressed && styles.pressed]}
             >
               <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primary} />
-              <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.markAll}</Text>
+              <Text style={styles.secondaryButtonText} numberOfLines={2}>{copy.markAll}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -332,7 +332,7 @@ export default function NotificationsScreen() {
               testID="notifications-settings-toggle"
             >
               <Icon name="options-outline" size={18} color={fieldTheme.color.primary} />
-              <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.settings}</Text>
+              <Text style={styles.secondaryButtonText} numberOfLines={2}>{copy.settings}</Text>
             </Pressable>
           </View>
 
@@ -411,7 +411,9 @@ const styles = StyleSheet.create({
   contentTablet: { width: "100%", maxWidth: 820, alignSelf: "center" },
   actionRow: { flexDirection: "row", gap: fieldTheme.space.sm },
   secondaryButton: { flex: 1, minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md },
-  secondaryButtonText: { flexShrink: 1, color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
+  // Two lines rather than «Hamısını oxunmu…»: on a 384 dp phone the words did
+  // not fit beside the icon (Galaxy S23, 2026-10-18).
+  secondaryButtonText: { flexShrink: 1, color: fieldTheme.color.primary, fontSize: 13, lineHeight: 17, fontWeight: "900", textAlign: "center" },
   settingsCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   settingsRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   settingsLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
