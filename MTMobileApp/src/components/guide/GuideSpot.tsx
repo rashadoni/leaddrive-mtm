@@ -19,13 +19,24 @@ let owners = 0
  * covers it exactly (absolute, takes no room, lets every touch through) and,
  * only while the guide points at it, says where it stands on the screen.
  */
-export default function GuideSpot({ id, style }: { id: string; style?: StyleProp<ViewStyle> }) {
+export default function GuideSpot({ id, style, anyScreen = false }: {
+  id: string
+  style?: StyleProp<ViewStyle>
+  /**
+   * For a control outside the screens: the tab bar puts every button in the
+   * focus of its own tab, so the button of a tab not open yet — the one the
+   * guide asks to press — would never count as on screen (SM-S918B,
+   * 2026-10-18: «Təsdiqlər» was not found). The guide's own check of the
+   * focused route keeps it to the right moment.
+   */
+  anyScreen?: boolean
+}) {
   const ref = useRef<View>(null)
   const owner = useRef(0)
   if (owner.current === 0) owner.current = ++owners
   const focused = useScreenFocused()
   const targeted = useGuideStore((state) => guideTargetSpot(state) === id)
-  const live = targeted && focused
+  const live = targeted && (anyScreen || focused)
 
   const measure = useCallback(() => {
     const node = ref.current

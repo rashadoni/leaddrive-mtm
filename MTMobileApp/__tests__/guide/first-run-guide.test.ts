@@ -125,6 +125,8 @@ describe("every control a step points at is marked on its screen", () => {
   it("lights the tab bar's own buttons and the bell of every screen", () => {
     const navigator = fs.readFileSync(path.join(SRC, "navigation/AppNavigatorAndroidV2.tsx"), "utf8")
     expect(navigator).toContain("tabBarButton: (props: BottomTabBarButtonProps) => <GuideTabButton {...props} spot={`tab.${name}`} />")
+    // The tab bar puts each button in its own tab's focus: the spot ignores it (guide-spot-focus.test.tsx).
+    expect(fs.readFileSync(path.join(SRC, "components/guide/GuideTabButton.tsx"), "utf8")).toContain("<GuideSpot id={spot} anyScreen />")
     const bell = fs.readFileSync(path.join(SRC, "components/NotificationBell.tsx"), "utf8")
     expect(bell).toContain('<GuideSpot id="bell" />')
   })

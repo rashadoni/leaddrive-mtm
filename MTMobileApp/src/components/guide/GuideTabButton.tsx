@@ -33,7 +33,7 @@ export default function GuideTabButton({ spot, ...props }: BottomTabBarButtonPro
       style={style}
     >
       {children}
-      <GuideSpot id={spot} />
+      <GuideSpot id={spot} anyScreen />
     </Pressable>
   )
 }
