@@ -304,6 +304,12 @@ class SignInTabsTests(unittest.TestCase):
         with self.on(Device(screen)):
             return self.walk.nodes()[0]
 
+    def test_the_build_is_known_to_have_the_tabs_from_its_own_sign_in_screen(self):
+        # The real LoginScreen.tsx of this checkout (no E2E_REF), not a fixture.
+        self.assertTrue(self.walk.has_sign_in_tabs())
+        with patch.object(self.walk, "source_of", return_value='<TextInput testID="login-email" />'):
+            self.assertFalse(self.walk.has_sign_in_tabs())
+
     def test_either_tab_is_the_sign_in_screen_and_the_company_step_is_not(self):
         for screen in ("first", "signin", "old"):
             with self.subTest(screen=screen):
