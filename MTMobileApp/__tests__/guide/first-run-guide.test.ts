@@ -255,6 +255,11 @@ describe("where the bubble stands", () => {
     expect(placement.left + placement.arrowX).toBe(160)
   })
 
+  it("leaves the finger room between a tab and the bubble", () => {
+    const tab = { x: 128, y: 750, width: 64, height: 62 }
+    expect(guideBubblePlacement(tab, phone, 220, 64).bottom).toBe(823 - 750 + 64)
+  })
+
   it("stands in the middle when the control was not found", () => {
     const placement = guideBubblePlacement(null, phone, 200)
     expect(placement.side).toBe("center")

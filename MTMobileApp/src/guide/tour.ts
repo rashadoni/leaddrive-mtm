@@ -148,6 +148,8 @@ export function guideBubblePlacement(
   hole: GuideRect | null,
   frame: { width: number; height: number; top: number; bottom: number },
   bubbleHeight = GUIDE_BUBBLE_HEIGHT,
+  /** Room between the control and the bubble: wider over a tab, where the finger stands. */
+  gap = GUIDE_BUBBLE_GAP,
 ): GuideBubblePlacement {
   const width = Math.min(GUIDE_BUBBLE_MAX_WIDTH, frame.width - EDGE * 2)
   if (!hole) {
@@ -159,11 +161,11 @@ export function guideBubblePlacement(
   const arrowX = Math.min(Math.max(24, centerX - left), width - 24)
   const roomBelow = frame.height - frame.bottom - (hole.y + hole.height)
   const roomAbove = hole.y - frame.top
-  if (roomBelow >= roomAbove && roomBelow >= bubbleHeight + GUIDE_BUBBLE_GAP) {
-    return { side: "below", top: hole.y + hole.height + GUIDE_BUBBLE_GAP, left, width, arrowX }
+  if (roomBelow >= roomAbove && roomBelow >= bubbleHeight + gap) {
+    return { side: "below", top: hole.y + hole.height + gap, left, width, arrowX }
   }
-  if (roomAbove >= bubbleHeight + GUIDE_BUBBLE_GAP) {
-    return { side: "above", bottom: frame.height - hole.y + GUIDE_BUBBLE_GAP, left, width, arrowX }
+  if (roomAbove >= bubbleHeight + gap) {
+    return { side: "above", bottom: frame.height - hole.y + gap, left, width, arrowX }
   }
   return { side: "center", bottom: frame.bottom + EDGE, left, width, arrowX: width / 2 }
 }

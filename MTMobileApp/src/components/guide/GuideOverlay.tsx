@@ -29,6 +29,8 @@ const AUTO_START_MS = 1200
 /** How long a step looks for its control before it says so and offers «Növbəti». */
 const FIND_MS = 1500
 const DIM = "rgba(6, 22, 17, 0.76)"
+/** The finger is 44 dp and bobs 7 dp: the bubble keeps clear of it. */
+const FINGER_GAP = 64
 
 /**
  * The first-run guide over the whole app (owner-approved mockup, 2026-10-18):
@@ -159,7 +161,7 @@ function GuideLayer({ run, route, name }: { run: GuideRun; route: string | null;
           index={run.step}
           total={steps.length}
           last={run.step === steps.length - 1}
-          placement={guideBubblePlacement(hole, frame, bubbleHeight ?? undefined)}
+          placement={guideBubblePlacement(hole, frame, bubbleHeight ?? undefined, tapping && hole && fingerAbove(hole, frame) ? FINGER_GAP : undefined)}
           measured={bubbleHeight !== null}
           onMeasure={(height) => setBubble((known) => (known?.key === stepKey && known.height === height ? known : { key: stepKey, height }))}
           onSkip={skip}
@@ -170,6 +172,11 @@ function GuideLayer({ run, route, name }: { run: GuideRun; route: string | null;
       ) : null}
     </View>
   )
+}
+
+/** Over a control in the lower half (a tab) the finger stands above it, between it and the bubble. */
+function fingerAbove(hole: GuideRect, frame: { height: number }): boolean {
+  return hole.y + hole.height / 2 > frame.height / 2
 }
 
 /** The lit control, a little larger than itself and kept inside the screen. */
@@ -241,7 +248,7 @@ function TapCue({ hole, frame }: { hole: GuideRect; frame: { width: number; heig
   }, [bob, pulse])
 
   const radius = holeRadius(hole)
-  const lower = hole.y + hole.height / 2 > frame.height / 2
+  const lower = fingerAbove(hole, frame)
   const centerX = hole.x + hole.width / 2
   // Over a tab; beside a control at the top, on the side with room.
   const finger = lower
