@@ -154,11 +154,17 @@ class WalkTests(unittest.TestCase):
 
 
 def dump(*nodes):
-    """A uiautomator dump of the app's window: (resource-id, text[, other attributes]) per node, in tree order."""
-    rows = "".join(f'<node index="0" text="{node[1]}" resource-id="{node[0]}" class="android.view.ViewGroup" '
-                   + "".join(f'{key}="{value}" ' for key, value in (node[2] if len(node) > 2 else {}).items())
-                   + f'package="com.mtmobileapp" bounds="[0,{40 * at}][720,{40 * at + 40}]" />'
-                   for at, node in enumerate(nodes))
+    """A uiautomator dump of the app's window: (resource-id, text[, other attributes]) per node, in tree order.
+
+    Nodes are stacked 40 px apart unless their attributes give `bounds`.
+    """
+    rows = ""
+    for at, node in enumerate(nodes):
+        attrs = {"bounds": f"[0,{40 * at}][720,{40 * at + 40}]", **(node[2] if len(node) > 2 else {})}
+        bounds = attrs.pop("bounds")
+        rows += (f'<node index="0" text="{node[1]}" resource-id="{node[0]}" class="android.view.ViewGroup" '
+                 + "".join(f'{key}="{value}" ' for key, value in attrs.items())
+                 + f'package="com.mtmobileapp" bounds="{bounds}" />')
     return f"<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"0\">{rows}</hierarchy>"
 
 
@@ -236,6 +242,15 @@ SCREENS = {
                   tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
                   ("login-code-step-phone", ""), ("", "WhatsApp number"), ("login-code-phone", "+994 "),
                   ("login-code-send", ""), ("", "Get a code in WhatsApp")),
+    # The same tab with the keyboard the phone field opens (`autoFocus`), as in
+    # run 39170988424, 05-sign-in-form: the window ends at y=1090 and «Get a
+    # code», right under the field, is not in the dump at all.
+    "first-keyboard": dump(("com.mtmobileapp:id/action_bar_root", "", {"bounds": "[0,48][720,1090]"}),
+                           ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+                           tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
+                           ("login-code-step-phone", "", {"bounds": "[82,714][638,1090]"}), ("", "WhatsApp number"),
+                           ("login-code-phone", "+994 ", {"bounds": "[159,951][635,1059]"}),
+                           ("android:id/navigationBarBackground", "", {"bounds": "[0,1552][720,1600]"})),
     # The same screen while LoginScreen still reads the saved account, and after a press on «Sign in».
     "signin": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
                    tab("signin", True), ("", "Sign in"), tab("first", False), ("", "First sign-in"),
@@ -254,26 +269,45 @@ class Device:
     `turns` is LoginScreen's late switch to «First sign-in» once the saved
     account reads empty: it happens after the first look, unless a tab was
     pressed before (`tabTouched`).
+
+    `focus` names the screens whose field takes the focus as they appear
+    (`autoFocus`): the keyboard opens, and the dump is the screen's
+    «-keyboard» variant until BACK closes it. `backs` says what each BACK
+    pressed: the keyboard, or — with none up — the screen, which a real
+    phone would leave.
     """
 
-    def __init__(self, screen, leads=(), turns=()):
-        self.screen, self.leads, self.turns = screen, dict(leads), dict(turns)
-        self.taps, self.touched = [], False
+    def __init__(self, screen, leads=(), turns=(), focus=()):
+        self.screen, self.leads, self.turns, self.focus = screen, dict(leads), dict(turns), set(focus)
+        self.taps, self.touched, self.backs = [], False, []
+        self.keyboard = screen in self.focus
+
+    def show(self, screen):
+        if screen != self.screen and screen in self.focus:
+            self.keyboard = True
+        self.screen = screen
 
     def shell(self, command, **_):
+        if command == "dumpsys input_method":
+            return f"  mInputShown={'true' if self.keyboard else 'false'}\n"
+        if command == "input keyevent 4":
+            self.backs.append("keyboard" if self.keyboard else "screen")
+            self.keyboard = False
+            return ""
         if not command.startswith("uiautomator dump"):
             return ""
-        shown = SCREENS[self.screen]
+        shown = SCREENS[self.screen + "-keyboard" if self.keyboard and self.screen + "-keyboard" in SCREENS else self.screen]
         if self.screen in self.turns and not self.touched:
-            self.screen = self.turns[self.screen]
+            self.show(self.turns[self.screen])
         return shown
 
     def tap(self, node):
         test_id = node.get("resource-id", "")
         self.taps.append(test_id)
         if test_id.startswith("login-tab-"):  # LoginScreen.openTab
-            self.touched, self.screen = True, test_id.removeprefix("login-tab-")
-        self.screen = self.leads.get((self.screen, test_id), self.screen)
+            self.touched = True
+            self.show(test_id.removeprefix("login-tab-"))
+        self.show(self.leads.get((self.screen, test_id), self.screen))
 
 
 class SignInTabsTests(unittest.TestCase):
@@ -354,14 +388,32 @@ class SignInTabsTests(unittest.TestCase):
         ])
         self.assertEqual(device.taps, [], "«Get a code» would send a WhatsApp message")
 
+    def test_a_phone_field_that_opened_the_keyboard_is_read_with_the_keyboard_closed(self):
+        # Run 39170988424: «First sign-in» chosen, and still a FAIL — the
+        # keyboard hid «Get a code», so the step looked unfinished for 15 s.
+        self.assertEqual(self.walk.first_sign_in_offered(self.parsed("first-keyboard"), AUTH), "")
+        for start, turns in (("first", {}), ("signin", {"signin": "first"})):
+            with self.subTest(start=start):
+                self.walk.results.clear()
+                device = Device(start, turns=turns, focus={"first"})
+                with self.on(device):
+                    self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
+                self.assertEqual(self.walk.results[-1], (
+                    True, "A phone with no saved account opens on «First sign-in»",
+                    "«WhatsApp number» and «Get a code in WhatsApp», read with the keyboard closed"))
+                self.assertEqual(device.backs, ["keyboard"], "one BACK, for the keyboard: with none up it leaves the screen")
+                self.assertEqual(device.taps, [], "«Get a code» would send a WhatsApp message")
+
     def test_a_phone_that_stays_on_sign_in_is_a_failure_that_names_the_tab(self):
-        with self.on(Device("signin")):
+        device = Device("signin")
+        with self.on(device):
             self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
         ok, what, detail = self.walk.results[-1]
         self.assertFalse(ok)
         self.assertEqual(what, "A phone with no saved account opens on «First sign-in»")
         self.assertTrue(detail.startswith("chosen tab: «Sign in»; on screen: "), detail)
         self.assertNotIn("test-company", detail)
+        self.assertEqual(device.backs, [], "no keyboard was up, so BACK would have left the sign-in screen")
 
     def test_the_field_account_types_its_email_only_on_the_password_form_and_nothing_private_is_printed(self):
         walk = self.walk
