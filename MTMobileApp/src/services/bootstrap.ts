@@ -175,6 +175,8 @@ export interface BootstrapWorkday {
   startedAt?: string
   pausedAt?: string
   completedAt?: string
+  /** An open day's latest mark (leaddrive-v2 #878): no finish may precede it. */
+  lastMarkAt?: string
 }
 
 function str(value: unknown): string | undefined {
@@ -446,6 +448,7 @@ export function toBootstrap(raw: any): BootstrapData {
           startedAt: str(workday.startedAt),
           pausedAt: str(workday.pausedAt),
           completedAt: str(workday.completedAt),
+          lastMarkAt: str(workday.lastMarkAt),
         }
       : null,
     manifest,

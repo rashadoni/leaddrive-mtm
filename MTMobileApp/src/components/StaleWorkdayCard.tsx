@@ -39,6 +39,7 @@ export default function StaleWorkdayCard({
   busy,
   error,
   onCloseDay,
+  onCancelSent,
 }: {
   day: string
   startedAt: string
@@ -49,6 +50,8 @@ export default function StaleWorkdayCard({
   busy: boolean
   error: string | null
   onCloseDay: () => void
+  /** `sent` only: cancel the waiting request and offer «Günü bağla» again. */
+  onCancelSent?: () => void
 }) {
   const { t, i18n } = useTranslation()
   const date = formatLocalizedDate(staleVisitDayDate(day), i18n.language, { day: "numeric", month: "long" })
@@ -67,6 +70,18 @@ export default function StaleWorkdayCard({
         <Text style={styles.body}>{body}</Text>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
+      {mode === "sent" && onCancelSent ? (
+        <Pressable
+          testID="today-stale-cancel-sent"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          onPress={onCancelSent}
+          style={({ pressed }) => [styles.button, styles.buttonOutline, pressed && styles.pressed, busy && styles.disabled]}
+        >
+          <Text style={[styles.buttonText, styles.buttonTextOutline]}>{t("todayV2.staleCancelSent")}</Text>
+        </Pressable>
+      ) : null}
       {mode === "sent" || mode === "approved" ? null : (
         <Pressable
           testID="today-stale-close-day"
@@ -126,6 +141,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: fieldTheme.radius.pill,
     backgroundColor: fieldTheme.color.danger,
+  },
+  buttonOutline: {
+    borderWidth: 1,
+    borderColor: fieldTheme.color.danger,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  buttonTextOutline: {
+    color: fieldTheme.color.danger,
   },
   buttonText: {
     color: fieldTheme.color.onColor,

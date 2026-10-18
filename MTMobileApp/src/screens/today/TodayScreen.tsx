@@ -52,7 +52,8 @@ import { askBackgroundLocation, backgroundLocationMissing } from "../../services
 import StaleWorkdayCard from "../../components/StaleWorkdayCard"
 import StaleWorkdayCloseSheet from "../../components/StaleWorkdayCloseSheet"
 import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceRequest } from "../../services/attendance-requests"
+import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from "../../services/attendance-requests"
+import { ask } from "../../services/app-feedback"
 import type { AttendanceInput } from "../../services/attendance-contract"
 import { runMobileSync } from "../../services/sync-engine"
 import {
@@ -213,6 +214,26 @@ export default function TodayScreen() {
       setCloseSending(false)
     }
   }, [closeSending, currentWorkdayKey, readFinishTimeSent, staleDay])
+  // A finish sent and still waiting can be taken back, here: «Mənim
+  // müraciətlərim» is a long screen to look for it in (owner, 2026-10-18).
+  const pendingFinishRequest = staleSentFinish?.pending ?? null
+  const cancelSentFinish = useCallback(async () => {
+    if (!pendingFinishRequest || closeSending) return
+    const confirmed = await ask({ title: t("attendanceRequests.cancelTitle"), message: t("attendanceRequests.cancelBody"), tone: "warning", dismissValue: false,
+      buttons: [{ text: t("attendanceRequests.keep"), value: false, style: "cancel" }, { text: t("attendanceRequests.cancel"), value: true, style: "destructive" }] })
+    if (!confirmed) return
+    setCloseSending(true)
+    setCloseFailed(false)
+    try {
+      await queueAttendanceCancellation(attendanceScope(), pendingFinishRequest)
+      await runMobileSync()
+      await readFinishTimeSent()
+    } catch {
+      setCloseFailed(true)
+    } finally {
+      setCloseSending(false)
+    }
+  }, [closeSending, pendingFinishRequest, readFinishTimeSent, t])
   useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
@@ -620,6 +641,7 @@ export default function TodayScreen() {
                 busy={workdayBusy || !workdayHydrated || closeSending}
                 error={workdayError ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError") : null}
                 onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}
+                onCancelSent={pendingFinishRequest ? () => { cancelSentFinish().catch(() => {}) } : undefined}
               />
             ) : (
             <View style={styles.workdayPanel}>
@@ -973,6 +995,7 @@ export default function TodayScreen() {
           visible={closeSheetOpen}
           correction={staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone)}
           timezone={companyTimezone}
+          lastMarkAt={currentWorkday.lastMarkAt ?? null}
           sending={closeSending}
           failed={closeFailed}
           onCancel={() => setCloseSheetOpen(false)}

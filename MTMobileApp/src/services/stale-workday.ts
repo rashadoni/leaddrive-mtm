@@ -99,7 +99,22 @@ export function clockFieldText(text: string): string {
 
 export type StaleWorkdayFinish =
   | { ok: true; input: AttendanceInput; nextDay: boolean }
-  | { ok: false; error: "format" | "future" }
+  | { ok: false; error: "format" | "future" | "beforeLastMark" }
+
+/**
+ * The earliest finish the day's journal takes: its latest mark, rounded up to
+ * the minute the request can name (22:18:57 → 22:19). Owner's phone,
+ * 2026-10-18: 18:30 for a day with a break at 22:18 sat «waiting» for an
+ * approval nobody could give; the server now refuses it (leaddrive-v2 #878),
+ * and the sheet says so before sending.
+ */
+export function staleWorkdayEarliestFinish(lastMarkAt: string | null | undefined, timezone?: string | null): { day: string; clock: string } | null {
+  if (!lastMarkAt) return null
+  const at = Date.parse(lastMarkAt)
+  if (!Number.isFinite(at)) return null
+  const minute = new Date(Math.ceil(at / 60_000) * 60_000)
+  return { day: planningTodayKey(minute, timezone), clock: companyClock(minute, timezone) }
+}
 
 /**
  * The time-correction request that closes the day at the finish typed in.
@@ -114,6 +129,7 @@ export function staleWorkdayFinishRequest(
   timezone: string | null | undefined,
   clientRequestId: string,
   reason: string,
+  lastMarkAt?: string | null,
 ): StaleWorkdayFinish {
   const endTime = normalizeClock(finishText)
   if (!endTime) return { ok: false, error: "format" }
@@ -122,6 +138,10 @@ export function staleWorkdayFinishRequest(
   const today = planningTodayKey(now, timezone)
   if (endDate > today || (endDate === today && endTime > companyClock(now, timezone))) {
     return { ok: false, error: "future" }
+  }
+  const earliest = staleWorkdayEarliestFinish(lastMarkAt, timezone)
+  if (earliest && (endDate < earliest.day || (endDate === earliest.day && endTime < earliest.clock))) {
+    return { ok: false, error: "beforeLastMark" }
   }
   return {
     ok: true,
@@ -149,6 +169,8 @@ export function staleWorkdayFinishRequest(
  */
 export type StaleWorkdayFinishSent = {
   finish: string
+  /** The request waiting on the server — what «Ləğv et» cancels. Absent while it is only queued here, or approved. */
+  pending?: AttendanceRequest
   /**
    * Already approved — by the manager, or at once where the company lets a
    * forgotten day's close through on its own (leaddrive-v2
@@ -166,7 +188,13 @@ export function staleWorkdayFinishSent(
   const request = requests.find((row) => row.details.kind === "TIME_CORRECTION"
     && (row.status === "PENDING" || row.status === "APPROVED")
     && String(row.startDate).slice(0, 10) === workDate)
-  if (request) return { finish: request.details.endTime ?? "", approved: request.status === "APPROVED" }
+  if (request) {
+    return {
+      finish: request.details.endTime ?? "",
+      approved: request.status === "APPROVED",
+      ...(request.status === "PENDING" ? { pending: request } : {}),
+    }
+  }
   const operation = queued.find((row) => row.entity === "attendanceRequests" && row.op === "create"
     && row.status === "pending" && row.data.kind === "TIME_CORRECTION"
     && String(row.data.startDate).slice(0, 10) === workDate)

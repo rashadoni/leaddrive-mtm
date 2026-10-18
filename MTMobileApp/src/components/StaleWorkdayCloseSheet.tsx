@@ -9,6 +9,7 @@ import {
   clockFieldText,
   nextDayKey,
   normalizeClock,
+  staleWorkdayEarliestFinish,
   staleWorkdayFinishRequest,
   type StaleWorkdayCorrection,
 } from "../services/stale-workday"
@@ -28,6 +29,8 @@ export default function StaleWorkdayCloseSheet(props: {
   visible: boolean
   correction: StaleWorkdayCorrection
   timezone?: string | null
+  /** The day's latest mark (bootstrap): the finish cannot precede it. */
+  lastMarkAt?: string | null
   sending: boolean
   failed: boolean
   onCancel: () => void
@@ -46,6 +49,7 @@ function CloseSheetCard({
   visible,
   correction,
   timezone,
+  lastMarkAt,
   sending,
   failed,
   onCancel,
@@ -54,15 +58,21 @@ function CloseSheetCard({
   const { t, i18n } = useTranslation()
   const insets = useSafeAreaInsets()
   const [text, setText] = useState("")
-  const [error, setError] = useState<"format" | "future" | null>(null)
+  const [error, setError] = useState<"format" | "future" | "beforeLastMark" | null>(null)
   useEffect(() => { if (visible) { setText(""); setError(null) } }, [visible])
 
   const dayLabel = (day: string) => formatLocalizedDate(staleVisitDayDate(day), i18n.language, { day: "numeric", month: "long" })
   const finish = normalizeClock(text)
+  // The latest mark, shown when the day has one after its start: the finish can be no earlier.
+  const earliest = staleWorkdayEarliestFinish(lastMarkAt, timezone)
+  const earliestLabel = earliest
+    ? earliest.day === correction.workDate ? earliest.clock : `${dayLabel(earliest.day)}, ${earliest.clock}`
+    : null
+  const showsEarliest = earliest !== null && (earliest.day !== correction.workDate || earliest.clock > correction.startTime)
   const afterMidnight = finish !== null && finish <= correction.startTime
   const send = () => {
     const result = staleWorkdayFinishRequest(
-      correction, text, new Date(), timezone, attendanceUuid(), t("attendanceRequests.staleWorkdayReason"),
+      correction, text, new Date(), timezone, attendanceUuid(), t("attendanceRequests.staleWorkdayReason"), lastMarkAt,
     )
     if (!result.ok) { setError(result.error); return }
     onSend(result.input)
@@ -71,7 +81,9 @@ function CloseSheetCard({
     ? t("todayV2.staleSheetInvalid")
     : error === "future"
       ? t("todayV2.staleSheetFuture")
-      : failed ? t("todayV2.staleSheetFailed") : null
+      : error === "beforeLastMark"
+        ? t("todayV2.staleSheetBeforeLastMark", { time: earliestLabel ?? "" })
+        : failed ? t("todayV2.staleSheetFailed") : null
 
   return (
     <KeyboardAvoidingView style={styles.scrim} behavior="padding">
@@ -79,6 +91,9 @@ function CloseSheetCard({
       <View testID="today-stale-close-sheet" style={[styles.sheet, { paddingBottom: insets.bottom + fieldTheme.space.lg }]}>
         <Text style={styles.title}>{t("todayV2.staleSheetTitle", { date: dayLabel(correction.workDate) })}</Text>
         <Text style={styles.meta}>{t("todayV2.staleSheetStart", { time: correction.startTime })}</Text>
+        {showsEarliest ? (
+          <Text testID="today-stale-last-mark" style={styles.meta}>{t("todayV2.staleSheetLastMark", { time: earliestLabel ?? "" })}</Text>
+        ) : null}
         <Text style={styles.question}>{t("todayV2.staleSheetQuestion")}</Text>
         <TextInput
           testID="today-stale-finish"
