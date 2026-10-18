@@ -40,17 +40,11 @@ export default function GuideSpot({ id, style, anyScreen = false }: {
 
   const measure = useCallback(() => {
     const node = ref.current
-    console.warn("[guide-debug] measure", id, !!node, typeof node?.measureInWindow)
     if (!node || typeof node.measureInWindow !== "function") return
     node.measureInWindow((x, y, width, height) => {
-      console.warn("[guide-debug] report", id, x, y, width, height)
       useGuideStore.getState().reportSpot(id, owner.current, { x, y, width, height })
     })
   }, [id])
-
-  useEffect(() => {
-    if (targeted) console.warn("[guide-debug] spot", id, "targeted", targeted, "focused", focused, "anyScreen", anyScreen, "live", live)
-  }, [anyScreen, focused, id, live, targeted])
 
   useEffect(() => {
     if (!live) return

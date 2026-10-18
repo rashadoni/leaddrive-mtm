@@ -125,10 +125,6 @@ function GuideLayer({ run, route, name }: { run: GuideRun; route: string | null;
     if (step && guideStepDone(step, route)) useGuideStore.getState().next()
   }, [route, step])
 
-  useEffect(() => {
-    console.warn("[guide-debug] layer", JSON.stringify({ step: run.step, screen: step?.screen, spot: step?.spot, route, box, found: spot ?? null, keys: Object.keys(useGuideStore.getState().spots) }))
-  }, [box, route, run.step, spot, step])
-
   const frame = box ? { width: box.width, height: box.height, top: insets.top, bottom: insets.bottom } : null
   const onScreen = !!step && route === step.screen
   const measured: GuideRect | null = onScreen && spot && box
