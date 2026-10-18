@@ -409,7 +409,9 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
 const styles = StyleSheet.create({
   chip: { minHeight: 44, maxWidth: 190, paddingHorizontal: 12, borderRadius: 22, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1 },
-  chipDefault: { backgroundColor: fieldTheme.color.canvas, borderColor: fieldTheme.color.border },
+  // Outlined on the white header like «Yenilə» beside it: a canvas fill read
+  // as a tinted pill once the ground got its tint (2026-10-18).
+  chipDefault: { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.border },
   chipInverse: { backgroundColor: "rgba(255,255,255,0.13)", borderColor: "rgba(255,255,255,0.24)" },
   // The conflict chip is always light, so its text must be dark even on the
   // green header. With `inverse` the label stayed white on #fff7ed and could

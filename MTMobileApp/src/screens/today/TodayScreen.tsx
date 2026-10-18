@@ -26,6 +26,8 @@ import SyncStatusChip from "../../components/SyncStatusChip"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
+import { DayLineRail } from "../../components/DayLine"
+import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
@@ -847,39 +849,45 @@ export default function TodayScreen() {
                 {nextKind === "route" && route && route.points.length > 0 ? (
                   <>
                     <View style={styles.routeSummaryHeader}>
-                      <View style={[styles.nextIcon, styles.routeSummaryIcon]}>
-                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.primaryStrong} />
+                      <View style={styles.routeSummaryIcon}>
+                        <Icon name={nextCopy.icon} size={22} color={fieldTheme.color.primary} />
                       </View>
                       <View style={styles.routeSummaryCopy}>
                         <Text style={styles.routeSummaryTitle}>{t("todayV2.routeTitle")}</Text>
                         <Text style={styles.routeSummaryMeta}>{routeSummaryText}</Text>
                       </View>
+                      {route.totalPoints > 0 ? (
+                        <Text style={styles.routeSummaryCount}>
+                          {route.visitedPoints}
+                          <Text style={styles.routeSummaryTotal}>{` / ${route.totalPoints}`}</Text>
+                        </Text>
+                      ) : null}
                     </View>
+                    {/* The day as a line with its stops on it: the stops
+                        behind the agent filled, the next one ringed. */}
                     <View style={styles.routeClients}>
                       {route.points.map((point, index) => {
                         const done = point.status === "VISITED"
                         const isNext = point.id === route.nextPoint?.id
+                        const visitedAt = done && point.visitedAt
+                          ? new Date(point.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })
+                          : null
                         return (
-                          <View
-                            key={point.id}
-                            style={[
-                              styles.routeClientRow,
-                              index < route.points.length - 1 && styles.routeClientRowDivider,
-                            ]}
-                          >
-                            <View style={[styles.routeClientNumber, done && styles.routeClientNumberDone]}>
-                              {done
-                                ? <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
-                                : <Text style={styles.routeClientNumberText}>{index + 1}</Text>}
+                          <View key={point.id} style={styles.routeClientRow}>
+                            <DayLineRail
+                              state={dayStopState(point.status, false, isNext)}
+                              first={index === 0}
+                              last={index === route.points.length - 1}
+                              filledAbove={index > 0 && route.points[index - 1].status === "VISITED"}
+                              filledBelow={done}
+                            />
+                            <View style={[styles.routeClientCopy, isNext && styles.routeClientCopyNext]}>
+                              <Text style={[styles.routeClientName, done && styles.routeClientNameDone, isNext && styles.routeClientNameNext]} numberOfLines={1}>
+                                {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
+                              </Text>
+                              {isNext ? <Text style={styles.routeClientNextText}>{t("todayV2.nextStopShort")}</Text> : null}
                             </View>
-                            <Text style={[styles.routeClientName, done && styles.routeClientNameDone]} numberOfLines={1}>
-                              {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
-                            </Text>
-                            {isNext ? (
-                              <View style={styles.routeClientNextBadge}>
-                                <Text style={styles.routeClientNextText}>{t("todayV2.nextStopShort")}</Text>
-                              </View>
-                            ) : null}
+                            {visitedAt ? <Text style={styles.routeClientTime}>{visitedAt}</Text> : null}
                           </View>
                         )
                       })}
@@ -888,8 +896,8 @@ export default function TodayScreen() {
                 ) : nextKind === "awaiting" && awaitingRoute ? (
                   <>
                     <View style={styles.routeSummaryHeader}>
-                      <View style={[styles.nextIcon, styles.routeSummaryIcon]}>
-                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.primaryStrong} />
+                      <View style={styles.routeSummaryIcon}>
+                        <Icon name={nextCopy.icon} size={22} color={fieldTheme.color.primary} />
                       </View>
                       <View style={styles.routeSummaryCopy}>
                         <Text style={styles.routeSummaryTitle}>{nextCopy.eyebrow}</Text>
@@ -900,19 +908,19 @@ export default function TodayScreen() {
                         unapproved one cannot have: nothing is done, nothing is next. */}
                     <View style={styles.routeClients}>
                       {awaitingRoute.points.map((point, index) => (
-                        <View
-                          key={point.id}
-                          style={[
-                            styles.routeClientRow,
-                            index < awaitingRoute.points.length - 1 && styles.routeClientRowDivider,
-                          ]}
-                        >
-                          <View style={styles.routeClientNumber}>
-                            <Text style={styles.routeClientNumberText}>{index + 1}</Text>
+                        <View key={point.id} style={styles.routeClientRow}>
+                          <DayLineRail
+                            state="planned"
+                            first={index === 0}
+                            last={index === awaitingRoute.points.length - 1}
+                            filledAbove={false}
+                            filledBelow={false}
+                          />
+                          <View style={styles.routeClientCopy}>
+                            <Text style={styles.routeClientName} numberOfLines={1}>
+                              {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
+                            </Text>
                           </View>
-                          <Text style={styles.routeClientName} numberOfLines={1}>
-                            {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
-                          </Text>
                         </View>
                       ))}
                     </View>
@@ -1072,19 +1080,22 @@ const styles = StyleSheet.create({
   headerInnerCompact: {
     flexDirection: "column",
   },
+  // Bold only where the eye should land: the greeting, names, numbers
+  // (owner-approved mockup, 2026-10-18). Text set 800–900 everywhere made
+  // nothing stand out.
   title: {
     flex: 1,
     color: fieldTheme.color.ink,
-    fontSize: 29,
-    lineHeight: 35,
-    fontWeight: "900",
-    letterSpacing: -0.45,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   date: {
     color: fieldTheme.color.inkMuted,
     fontSize: 15,
     lineHeight: 21,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   headerActions: {
     alignItems: "flex-end",
@@ -1111,7 +1122,7 @@ const styles = StyleSheet.create({
   refreshText: {
     color: fieldTheme.color.ink,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   content: {
     width: "100%",
@@ -1119,7 +1130,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingHorizontal: fieldTheme.space.lg,
     paddingTop: fieldTheme.space.lg,
-    gap: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
   },
   contentTablet: {
     flexDirection: "row",
@@ -1129,7 +1140,7 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.xl,
   },
   primaryColumn: {
-    gap: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
   },
   primaryColumnTablet: {
     flex: 1,
@@ -1147,11 +1158,11 @@ const styles = StyleSheet.create({
     padding: fieldTheme.space.lg,
     flexDirection: "column",
     alignItems: "stretch",
-    gap: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
+    // A white card on the tinted ground, lifted by a shadow instead of a
+    // green outline (owner-approved mockup, 2026-10-18).
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.primary,
-    backgroundColor: fieldTheme.color.surface,
   },
   workdayCopy: {
     flex: 1,
@@ -1173,15 +1184,15 @@ const styles = StyleSheet.create({
   },
   workdayTitle: {
     color: fieldTheme.color.ink,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "900",
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: "700",
   },
   workdayBody: {
     color: fieldTheme.color.inkMuted,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   inlineError: {
     color: fieldTheme.color.danger,
@@ -1216,15 +1227,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
   },
+  // «Günü bitir» is outlined like «Fasilə»: the screen's one filled button is
+  // the route's (owner's rule, 2026-10-18).
   workdayButtonActive: {
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
-    backgroundColor: fieldTheme.color.primarySoft,
+    backgroundColor: fieldTheme.color.surface,
   },
   workdayButtonText: {
     color: fieldTheme.color.onColor,
     fontSize: 15,
-    fontWeight: "900",
+    fontWeight: "500",
   },
   workdayButtonTextActive: {
     color: fieldTheme.color.primaryStrong,
@@ -1232,24 +1245,21 @@ const styles = StyleSheet.create({
   nextPanel: {
     padding: fieldTheme.space.lg,
     alignItems: "flex-start",
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
   },
   // A new message is said by a green edge, not a green card.
   messageBanner: { minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md, borderWidth: 1, borderLeftWidth: 4, borderColor: fieldTheme.color.border, borderLeftColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   messageBannerIcon: { width: 28, alignItems: "center", justifyContent: "center" },
   messageBannerCopy: { flex: 1, minWidth: 0 },
-  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.5 },
-  messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
+  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 11, lineHeight: 14, fontWeight: "500", letterSpacing: 0.3 },
+  messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700", marginTop: 1 },
   messageBannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   // The next step is a white card for every kind (owner-approved colours,
-  // 2026-10-18): its kind shows in the edge, the one fill is its button.
-  nextPanelRoute: {
-    borderLeftWidth: 4,
-    borderLeftColor: fieldTheme.color.primary,
-  },
+  // 2026-10-18): its kind shows in the edge, the one fill is its button. The
+  // route's card has no edge: the day line is its colour (mockup approved
+  // the same evening).
+  nextPanelRoute: {},
   nextPanelTasks: {
     borderLeftWidth: 4,
     borderLeftColor: fieldTheme.color.blue,
@@ -1265,10 +1275,8 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     paddingHorizontal: fieldTheme.space.lg,
     paddingVertical: fieldTheme.space.sm,
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
   },
   nextEmptyIcon: {
     width: 40,
@@ -1278,8 +1286,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   nextEmptyCopy: { flex: 1, minWidth: 0 },
-  nextEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
-  nextEmptyAction: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17, fontWeight: "800", marginTop: 2 },
+  nextEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "700" },
+  nextEmptyAction: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17, fontWeight: "500", marginTop: 2 },
   nextIcon: {
     width: 40,
     height: 40,
@@ -1292,47 +1300,49 @@ const styles = StyleSheet.create({
     color: fieldTheme.color.primaryStrong,
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: "800",
-    letterSpacing: 0.45,
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
   nextTitle: {
     marginTop: fieldTheme.space.sm,
     color: fieldTheme.color.ink,
-    fontSize: 27,
-    lineHeight: 33,
-    fontWeight: "900",
-    letterSpacing: -0.4,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   nextBody: {
     marginTop: fieldTheme.space.sm,
     maxWidth: 560,
     color: fieldTheme.color.inkMuted,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: "500",
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "400",
   },
   nextSupporting: {
     marginTop: fieldTheme.space.xs,
     color: fieldTheme.color.inkMuted,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  routeSummaryIcon: { width: 36, height: 36, marginBottom: 0 },
+  routeSummaryIcon: { width: 34, alignItems: "center" },
   routeSummaryCopy: { flex: 1, minWidth: 0 },
-  routeSummaryTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900" },
-  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
+  routeSummaryTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "700" },
+  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, fontWeight: "400" },
+  routeSummaryCount: { color: fieldTheme.color.primary, fontSize: 17, fontWeight: "700" },
+  routeSummaryTotal: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
   routeClients: { alignSelf: "stretch", marginTop: fieldTheme.space.sm },
-  routeClientRow: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs },
-  routeClientRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: fieldTheme.color.border },
-  routeClientNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
-  routeClientNumberDone: { borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.success },
-  routeClientNumberText: { color: fieldTheme.color.ink, fontSize: 11, fontWeight: "900" },
-  routeClientName: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
-  routeClientNameDone: { opacity: 0.7, textDecorationLine: "line-through" },
-  routeClientNextBadge: { minHeight: 24, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary },
-  routeClientNextText: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900" },
+  // No padding above or below a row: the line of one stop meets the next.
+  routeClientRow: { minHeight: 44, flexDirection: "row", alignItems: "stretch", gap: fieldTheme.space.md },
+  routeClientCopy: { flex: 1, minWidth: 0, justifyContent: "center", paddingVertical: fieldTheme.space.xs },
+  routeClientCopyNext: { paddingVertical: fieldTheme.space.sm },
+  routeClientName: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "400" },
+  routeClientNameDone: { color: fieldTheme.color.inkMuted },
+  routeClientNameNext: { fontSize: 17, lineHeight: 22, fontWeight: "700" },
+  routeClientNextText: { color: fieldTheme.color.primary, fontSize: 13, lineHeight: 17, fontWeight: "500" },
+  routeClientTime: { alignSelf: "center", color: fieldTheme.color.success, fontSize: 13, fontWeight: "500" },
   cachedBadge: {
     minHeight: 30,
     marginTop: fieldTheme.space.md,
@@ -1347,7 +1357,7 @@ const styles = StyleSheet.create({
   cachedBadgeText: {
     color: fieldTheme.color.amber,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   alwaysNotice: {
     marginTop: fieldTheme.space.md,
@@ -1363,7 +1373,7 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.surface,
   },
   alwaysNoticeCopy: { flex: 1, minWidth: 0 },
-  alwaysNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  alwaysNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700" },
   alwaysNoticeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   alwaysNoticeAction: {
     alignSelf: "flex-start",
@@ -1374,10 +1384,12 @@ const styles = StyleSheet.create({
     borderRadius: fieldTheme.radius.pill,
     backgroundColor: fieldTheme.color.primaryStrong,
   },
-  alwaysNoticeActionText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  alwaysNoticeActionText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "500" },
+  // Across the card: the screen's one filled button, as wide as the line above it.
   nextButton: {
+    alignSelf: "stretch",
     minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet,
-    marginTop: "auto",
+    marginTop: fieldTheme.space.md,
     paddingHorizontal: fieldTheme.space.lg,
     flexDirection: "row",
     alignItems: "center",
@@ -1389,27 +1401,24 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: fieldTheme.color.onColor,
     fontSize: 15,
-    fontWeight: "900",
+    fontWeight: "500",
   },
+  // Overdue tasks: a white card said in coral — icon, words, arrow.
   attentionRow: {
-    minHeight: LAYOUT_TOUCH_TARGETS.compact,
-    paddingHorizontal: fieldTheme.space.md,
+    minHeight: 52,
+    paddingHorizontal: fieldTheme.space.lg,
     flexDirection: "row",
     alignItems: "center",
     gap: fieldTheme.space.sm,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    borderLeftWidth: 4,
-    borderLeftColor: fieldTheme.color.coral,
-    backgroundColor: fieldTheme.color.surface,
+    ...fieldTheme.card,
+    borderRadius: fieldTheme.radius.lg,
   },
   attentionText: {
     flex: 1,
     color: fieldTheme.color.coral,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "500",
   },
   pressed: {
     opacity: 0.82,
