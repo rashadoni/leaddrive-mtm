@@ -2712,7 +2712,7 @@ const styles = StyleSheet.create({
   tabletActionPane: { flex: 1, minWidth: 300 },
 
   modalLayer: { flex: 1, justifyContent: "flex-end" },
-  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(19,35,31,0.48)" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: fieldTheme.color.scrim },
   phoneSheet: { maxHeight: "82%", backgroundColor: fieldTheme.color.canvas, borderTopLeftRadius: fieldTheme.radius.lg, borderTopRightRadius: fieldTheme.radius.lg },
   sheetTopRow: { minHeight: 52, alignItems: "center", justifyContent: "center" },
   sheetHandle: { width: 42, height: 5, borderRadius: 3, backgroundColor: fieldTheme.color.border },
