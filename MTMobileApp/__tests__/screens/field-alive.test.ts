@@ -155,3 +155,25 @@ describe("bold only for names and numbers", () => {
     expect(styles.split("\n").filter((line) => /fontWeight: "(800|900)"/.test(line))).toEqual([])
   })
 })
+
+describe("the greeting on a phone", () => {
+  // Owner's phone, 2026-10-18: «Salam, …» squeezed to «Sal / am…» beside the
+  // bell. The phone header is a column; without stretch its greeting block
+  // was as wide as its words.
+  it("has the width of the screen beside the bell", () => {
+    const today = read("src/screens/today/TodayScreen.tsx")
+    expect(today).toContain("<View style={[styles.headerInner, compactHeader && styles.headerInnerCompact]}>")
+    expect(styleOf(today, "headerInnerCompact")).toContain('alignItems: "stretch"')
+    expect(styleOf(today, "title")).toContain("flex: 1")
+  })
+
+  // The same evening: «значок уведомления думаю надо спустить к Yenilə».
+  it("leaves the greeting its own line; the bell stands beside «Yenilə»", () => {
+    const today = read("src/screens/today/TodayScreen.tsx")
+    const titleRow = today.slice(today.indexOf("<View style={styles.titleRow}>"), today.indexOf("<Text style={styles.date}>"))
+    expect(titleRow).not.toContain("NotificationBell")
+    const buttons = today.slice(today.indexOf("<View style={styles.headerButtons}>"))
+    expect(buttons.indexOf('t("todayV2.refresh")')).toBeGreaterThan(-1)
+    expect(buttons.indexOf("{compactHeader ? <NotificationBell /> : null}")).toBeGreaterThan(buttons.indexOf('t("todayV2.refresh")'))
+  })
+})
