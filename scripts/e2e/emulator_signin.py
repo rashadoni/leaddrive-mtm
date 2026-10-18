@@ -6,7 +6,8 @@ jest and tsc never install anything, and the device checklist
 (MTMobileApp/docs/e2e-adb-checklist.md) needs the owner's phone on a cable. This
 is the part of that acceptance a machine can do alone: take the APK an agent
 downloads, install it on a device that has never seen the app, and walk the way
-in — company step, sign-in form, their refusals — against the production server.
+in — company step, the «First sign-in» tab a new phone opens on, the sign-in
+form, their refusals — against the production server.
 
 With a field account in the repository's secrets it goes on: signs in, opens
 every tab, a client's card and the «propose a change» form, the profile, and
@@ -64,6 +65,7 @@ RESOURCES_FILE = "MTMobileApp/src/i18n/mobile-resources.ts"
 SCREENS_DIR = "MTMobileApp/src/screens"
 CLIENT_CARD = "MTMobileApp/src/screens/base/RouteContactDetailScreen.android.tsx"
 CHANGE_FORM = "MTMobileApp/src/screens/base/RouteContactChangeRequestScreen.android.tsx"
+LOGIN_SCREEN = "MTMobileApp/src/screens/auth/LoginScreen.tsx"
 SMOKE_MODE = smoke_mode(os.environ)
 AGENT_COMPANY, AGENT_EMAIL, AGENT_PASSWORD = account_settings(os.environ)
 SECRETS = [value for value in (AGENT_PASSWORD, AGENT_EMAIL, AGENT_COMPANY) if value]
@@ -360,6 +362,57 @@ def tap_text(found, text):
     return True
 
 
+def sign_in_open(found):
+    """The sign-in screen is up, on either of its tabs.
+
+    Since 3.11.3 it has two: «Sign in» (email and password) and «First sign-in»
+    (a code from WhatsApp, LoginCodeFlow). A phone that remembers no account
+    opens on «First sign-in», so `login-email` alone is not the screen (every
+    run of 3.11.32 stopped there: «not seen in 120 s»). Builds before the tabs
+    have the form alone.
+    """
+    return bool(by_id(found, "login-tab-signin") or by_id(found, "login-email"))
+
+
+def open_password_form(what, name):
+    """The email-and-password form behind the «Sign in» tab; the nodes once `login-email` is there.
+
+    LoginScreen first draws «Sign in» and turns to «First sign-in» only when
+    reading the saved account comes back empty — unless a tab was pressed
+    before (`tabTouched`). So the tab is pressed whenever it is there, not only
+    when the form is missing: a form seen a moment too early would otherwise go
+    from under the walk's next tap.
+    """
+    found, _ = nodes()
+    tab = by_id(found, "login-tab-signin")
+    if tab:
+        tap(tab)
+    return wait_for(what, lambda seen: by_id(seen, "login-email") and "form shown", 30, name)
+
+
+def first_sign_in_offered(found, sign_in):
+    """«First sign-in» is the chosen tab and asks for the WhatsApp number; a detail in the app's words, or ""."""
+    tab = by_id(found, "login-tab-first")
+    if tab and tab.get("selected") == "true" and by_id(found, "login-code-phone") and by_id(found, "login-code-send"):
+        return f"«{sign_in['codePhoneLabel']}» and «{sign_in['codeStart']}»"
+    return ""
+
+
+def first_sign_in_checks(found, sign_in):
+    """Owner, 2026-10-17: a new phone opens on «First sign-in». Only its first step is read: «Get a code» would send a WhatsApp message."""
+    record(has_text(found, sign_in["tabSignIn"]) and has_text(found, sign_in["tabFirst"]),
+           f"The sign-in screen has the tabs «{sign_in['tabSignIn']}» and «{sign_in['tabFirst']}»")
+    # The screen turns to it once reading the saved account comes back empty.
+    offered, deadline = first_sign_in_offered(found, sign_in), time.time() + 15
+    while not offered and time.time() < deadline:
+        time.sleep(2)
+        found, _ = nodes()
+        offered = first_sign_in_offered(found, sign_in)
+    chosen = next((n.get("content-desc", "") for n in found if n.get("resource-id", "").startswith("login-tab-") and n.get("selected") == "true"), "")
+    record(bool(offered), f"A phone with no saved account opens on «{sign_in['tabFirst']}»",
+           offered or f"chosen tab: «{chosen or 'none'}»; on screen: {own_words(found) or 'nothing readable'}")
+
+
 KEY_LIKE = re.compile(r"^([a-z][A-Za-z0-9]*)(\.[A-Za-z0-9_]+)+$")
 RAW_MARKERS = ("undefined", "[object Object]", "NaN", "TypeError")
 
@@ -476,7 +529,9 @@ def signed_in_walk(server, sign_in):
     hide_keyboard()
     found, _ = nodes()
     tap(by_id(found, "tenant-continue"))
-    found = wait_for("The account's company opens the sign-in form", lambda seen: by_id(seen, "login-email") and "form shown", 120, "")
+    wait_for("The account's company opens the sign-in screen", lambda seen: sign_in_open(seen) and "screen shown", 120, "")
+    # The screen was just remounted, so it turns to «First sign-in» again.
+    found = open_password_form("…and «Sign in» shows the email and password form", "")
     tap(by_id(found, "login-email"))
     type_text(AGENT_EMAIL)
     hide_keyboard()
@@ -557,7 +612,7 @@ def signed_in_walk(server, sign_in):
     if seen and tap_text(seen, profile["logout"]):
         found = wait_for("Logging out asks to confirm", lambda again: has_text(again, profile["logoutMessage"]) and "confirmation shown", 30, "")
         tap_text(found, profile["logoutConfirm"])
-        wait_for("After logging out the app is back at the way in", lambda again: (by_id(again, "login-email") or by_id(again, "tenant-input")) and "signed out", 60, "")
+        wait_for("After logging out the app is back at the way in", lambda again: (sign_in_open(again) or by_id(again, "tenant-input")) and "signed out", 60, "")
 
 
 
@@ -665,7 +720,7 @@ def main(apk):
     outcome, deadline = None, time.time() + 120
     while outcome is None and time.time() < deadline:
         seen, _ = nodes()
-        outcome = next((text for text in refusals if has_text(seen, text)), None) or ("accepted" if by_id(seen, "login-email") else None)
+        outcome = next((text for text in refusals if has_text(seen, text)), None) or ("accepted" if sign_in_open(seen) else None)
         if outcome is None:
             time.sleep(2)
     evidence("03-company-unknown")
@@ -693,7 +748,10 @@ def main(apk):
     record(has_text(found, server["connectButton"]), f"The button says «{server['connectButton']}»")
     tap(by_id(found, "tenant-continue"))
     connected = time.time()
-    found = wait_for("A real company leads to the sign-in form", lambda seen: by_id(seen, "login-email") and f"{time.time() - connected:.0f} s to answer", 120, "05-sign-in-form")
+    found = wait_for("A real company leads to the sign-in screen", lambda seen: sign_in_open(seen) and f"{time.time() - connected:.0f} s to answer", 120, "05-sign-in-form")
+    if "login-tab-first" in source_of(LOGIN_SCREEN):
+        first_sign_in_checks(found, sign_in)
+    found = open_password_form(f"«{sign_in['tabSignIn']}» shows the email and password form", "05b-password-form")
     hide_keyboard()
     found, _ = nodes()
     domain = f"{COMPANY}.leaddrivecrm.org"

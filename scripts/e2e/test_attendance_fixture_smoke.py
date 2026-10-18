@@ -151,10 +151,11 @@ class WalkTests(unittest.TestCase):
 
 
 def dump(*nodes):
-    """A uiautomator dump of the app's window: (resource-id, text) per node, in tree order."""
-    rows = "".join(f'<node index="0" text="{text}" resource-id="{rid}" class="android.view.ViewGroup" '
-                   f'package="com.mtmobileapp" bounds="[0,{40 * at}][720,{40 * at + 40}]" />'
-                   for at, (rid, text) in enumerate(nodes))
+    """A uiautomator dump of the app's window: (resource-id, text[, other attributes]) per node, in tree order."""
+    rows = "".join(f'<node index="0" text="{node[1]}" resource-id="{node[0]}" class="android.view.ViewGroup" '
+                   + "".join(f'{key}="{value}" ' for key, value in (node[2] if len(node) > 2 else {}).items())
+                   + f'package="com.mtmobileapp" bounds="[0,{40 * at}][720,{40 * at + 40}]" />'
+                   for at, node in enumerate(nodes))
     return f"<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"0\">{rows}</hierarchy>"
 
 
@@ -214,6 +215,168 @@ class AppQuestionTests(unittest.TestCase):
         notice = dump(("app-notice", ""), ("", "Saved"), ("", "Route"))
         _, commands, _ = self.run_nodes([notice], {"Route", "Saved"})
         self.assertEqual(commands, [])
+
+
+def tab(name, chosen):
+    """A tab of the sign-in screen: its words are its content-desc, the chosen one is `selected`."""
+    word = {"signin": "Sign in", "first": "First sign-in"}[name]
+    return (f"login-tab-{name}", "", {"content-desc": word, "selected": "true" if chosen else "false"})
+
+
+# The sign-in screen of 3.11.32 on a clean phone (run 39161991009, 05-sign-in-form):
+# no `login-email` anywhere, which is where every run of that release stopped.
+SCREENS = {
+    "company": dump(("tenant-input", ""), ("tenant-continue", ""), ("", "Connect")),
+    "first": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+                  tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
+                  ("login-code-step-phone", ""), ("", "WhatsApp number"), ("login-code-phone", "+994 "),
+                  ("login-code-send", ""), ("", "Get a code in WhatsApp")),
+    # The same screen while LoginScreen still reads the saved account, and after a press on «Sign in».
+    "signin": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+                   tab("signin", True), ("", "Sign in"), tab("first", False), ("", "First sign-in"),
+                   ("login-email", ""), ("login-password", ""), ("login-submit", ""), ("", "Sign in")),
+    # Before 3.11.3 the form had no tabs.
+    "old": dump(("", "Step 2 of 2"), ("login-email", ""), ("login-password", ""), ("login-submit", "")),
+    "refused": dump(("", "Sign in to the app"), ("", "Rejected")),
+}
+AUTH = {"tabSignIn": "Sign in", "tabFirst": "First sign-in", "codePhoneLabel": "WhatsApp number",
+        "codeStart": "Get a code in WhatsApp", "invalidCredentialsHelp": "Rejected"}
+
+
+class Device:
+    """The app as the walk reads it: one screen per dump, and the screen a tap on a test id leads to.
+
+    `turns` is LoginScreen's late switch to «First sign-in» once the saved
+    account reads empty: it happens after the first look, unless a tab was
+    pressed before (`tabTouched`).
+    """
+
+    def __init__(self, screen, leads=(), turns=()):
+        self.screen, self.leads, self.turns = screen, dict(leads), dict(turns)
+        self.taps, self.touched = [], False
+
+    def shell(self, command, **_):
+        if not command.startswith("uiautomator dump"):
+            return ""
+        shown = SCREENS[self.screen]
+        if self.screen in self.turns and not self.touched:
+            self.screen = self.turns[self.screen]
+        return shown
+
+    def tap(self, node):
+        test_id = node.get("resource-id", "")
+        self.taps.append(test_id)
+        if test_id.startswith("login-tab-"):  # LoginScreen.openTab
+            self.touched, self.screen = True, test_id.removeprefix("login-tab-")
+        self.screen = self.leads.get((self.screen, test_id), self.screen)
+
+
+class SignInTabsTests(unittest.TestCase):
+    """Since 3.11.3 a clean phone opens the sign-in screen on «First sign-in»; the password form is a tab away."""
+
+    def setUp(self):
+        with patch.dict(os.environ, {"E2E_SMOKE_MODE": "full"}, clear=True):
+            self.walk = importlib.reload(importlib.import_module("emulator_signin"))
+        self.walk.results.clear()
+        self.walk.private = True  # no screenshots from a test
+        self.clock = 0.0
+
+    def tick(self):
+        self.clock += 3
+        return self.clock
+
+    def on(self, device, *extra):
+        def no_adb(*args, **_):
+            raise AssertionError(f"a device-free test reached adb {args}")
+
+        stack = contextlib.ExitStack()
+        # A failed wait ends the walk through finish(), which reads the device.
+        for name, value in (("shell", device.shell), ("tap", device.tap), ("crash_line", lambda: ""),
+                            ("adb", no_adb), ("finish", lambda: 1),
+                            ("app_words", lambda: frozenset([*AUTH.values(), "Step 2 of 2", "Sign in to the app", "Connect"])), *extra):
+            stack.enter_context(patch.object(self.walk, name, value))
+        stack.enter_context(patch.object(self.walk.time, "sleep"))
+        stack.enter_context(patch.object(self.walk.time, "time", self.tick))
+        stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+        return stack
+
+    def parsed(self, screen):
+        with self.on(Device(screen)):
+            return self.walk.nodes()[0]
+
+    def test_either_tab_is_the_sign_in_screen_and_the_company_step_is_not(self):
+        for screen in ("first", "signin", "old"):
+            with self.subTest(screen=screen):
+                self.assertTrue(self.walk.sign_in_open(self.parsed(screen)))
+        self.assertFalse(self.walk.sign_in_open(self.parsed("company")))
+
+    def test_a_phone_on_first_sign_in_is_taken_to_the_password_form(self):
+        device = Device("first")
+        with self.on(device):
+            found = self.walk.open_password_form("form", "")
+        self.assertEqual(device.taps, ["login-tab-signin"])
+        self.assertTrue(self.walk.by_id(found, "login-email"))
+        self.assertEqual(self.walk.results, [(True, "form", "form shown")])
+
+    def test_the_tab_is_pressed_even_when_the_form_is_up_for_a_moment(self):
+        # Without the press the form would be gone by the next look.
+        device = Device("signin", turns={"signin": "first"})
+        with self.on(device):
+            found = self.walk.open_password_form("form", "")
+        self.assertEqual(device.taps, ["login-tab-signin"])
+        self.assertTrue(self.walk.by_id(found, "login-email"))
+
+    def test_a_build_without_tabs_goes_straight_to_the_form(self):
+        device = Device("old")
+        with self.on(device):
+            self.walk.open_password_form("form", "")
+        self.assertEqual(device.taps, [])
+        self.assertEqual(self.walk.results, [(True, "form", "form shown")])
+
+    def test_a_clean_phone_on_first_sign_in_is_recorded_in_the_apps_words_and_no_code_is_asked(self):
+        device = Device("signin", turns={"signin": "first"})
+        with self.on(device):
+            self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
+        self.assertEqual(self.walk.results, [
+            (True, "The sign-in screen has the tabs «Sign in» and «First sign-in»", ""),
+            (True, "A phone with no saved account opens on «First sign-in»", "«WhatsApp number» and «Get a code in WhatsApp»"),
+        ])
+        self.assertEqual(device.taps, [], "«Get a code» would send a WhatsApp message")
+
+    def test_a_phone_that_stays_on_sign_in_is_a_failure_that_names_the_tab(self):
+        with self.on(Device("signin")):
+            self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
+        ok, what, detail = self.walk.results[-1]
+        self.assertFalse(ok)
+        self.assertEqual(what, "A phone with no saved account opens on «First sign-in»")
+        self.assertTrue(detail.startswith("chosen tab: «Sign in»; on screen: "), detail)
+        self.assertNotIn("test-company", detail)
+
+    def test_the_field_account_types_its_email_only_on_the_password_form_and_nothing_private_is_printed(self):
+        walk = self.walk
+        walk.AGENT_COMPANY, walk.AGENT_EMAIL, walk.AGENT_PASSWORD = "test-company", "test-email", "test-password"
+        walk.SECRETS = ["test-company", "test-email", "test-password"]
+        walk.private = False
+        device = Device("company", leads={("company", "tenant-continue"): "first",
+                                          ("signin", "login-submit"): "refused"})
+        typed = []
+
+        def type_text(value):
+            typed.append((device.screen, value))
+
+        with self.on(device, ("type_text", type_text), ("hide_keyboard", lambda: None),
+                     ("words", lambda _: {}), ("tab_captions", lambda: {k: k for k in ("today", "calendar", "route", "tasks", "more")})) as stack:
+            printed = stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+            walk.signed_in_walk({}, AUTH)
+        self.assertEqual(device.taps, ["tenant-input", "tenant-continue", "login-tab-signin", "login-email", "login-password", "login-submit"])
+        self.assertEqual(typed, [("company", "test-company"), ("signin", "test-email"), ("signin", "test-password")])
+        self.assertEqual([row[:2] for row in walk.results], [
+            (True, "The account's company opens the sign-in screen"),
+            (True, "…and «Sign in» shows the email and password form"),
+            (False, "The field account signs in and the tabs appear"),
+        ])
+        for secret in walk.SECRETS:
+            self.assertNotIn(secret, printed.getvalue())
 
 
 if __name__ == "__main__":
