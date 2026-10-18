@@ -48,6 +48,7 @@ import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
+import { askLocationDisclosure } from "../../services/location-disclosure"
 import HintCard from "../../components/HintCard"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -550,6 +551,9 @@ export default function VisitScreen() {
     try {
       const fine = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
       if (fine) return true
+      // Google Play: the app's own words before Android's sheet. «Не сейчас»
+      // opens no sheet; the check-in then says location is needed.
+      if (!(await askLocationDisclosure((key) => t(key)))) return false
       const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION, {
         title: t("permission.locationRequiredTitle"),
         message: t("permission.locationRequiredBody"),

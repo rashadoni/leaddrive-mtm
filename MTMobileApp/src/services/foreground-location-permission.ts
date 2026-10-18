@@ -5,6 +5,9 @@
  */
 export function createForegroundLocationPermission(input: {
   check: () => Promise<boolean>
+  /** The app's own words before Android's sheet (location-disclosure.ts);
+   * false keeps the sheet closed and counts as this principal's attempt. */
+  disclose: () => Promise<boolean>
   request: () => Promise<boolean>
 }) {
   let scope: string | null = null
@@ -33,6 +36,8 @@ export function createForegroundLocationPermission(input: {
         attempted = true
         requesting = true
         try {
+          // The day may have ended, or the account changed, while the agent read.
+          if (!await input.disclose() || !current()) return false
           const accepted = await input.request()
           return current() && accepted
         } finally {

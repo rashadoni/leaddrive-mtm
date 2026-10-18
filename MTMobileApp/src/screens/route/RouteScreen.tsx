@@ -35,6 +35,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
+import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
 import { enqueueMediaUpload } from "../../services/media-outbox"
@@ -1839,6 +1840,10 @@ export default function RouteScreen() {
     }
     setMutating(true)
     try {
+      // The library no longer asks for location by itself (AndroidApp): the
+      // check-in asks here, after the disclosure. Refused, the read below
+      // fails and the agent is told location is unavailable.
+      await ensureFieldLocation()
       let coords: { latitude: number; longitude: number } | null = null
       try {
         coords = await new Promise((resolve, reject) => {

@@ -24,6 +24,12 @@ import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
 import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
 import { createForegroundLocationPermission } from "../services/foreground-location-permission"
+import {
+  discloseFieldLocation,
+  fieldLocationGranted,
+  requestFieldLocationSheet,
+  stopLibraryLocationPrompts,
+} from "../services/field-location-permission"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { dropIdleConnections } from "../services/connection-health"
@@ -50,24 +56,14 @@ function trackingPrincipalScope(): string | null {
 }
 
 // Module lifetime: a tracking effect cleanup or component remount must not
-// reopen the sheet for the same principal after Android returns a refusal.
+// reopen the sheet for the same principal after Android returns a refusal,
+// nor the disclosure after «Не сейчас».
 const foregroundLocationPermission = createForegroundLocationPermission({
-  check: async () => {
-    if (Platform.OS !== "android") return true
-    const [fine, coarse] = await Promise.all([
-      PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION),
-      PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION),
-    ])
-    return fine || coarse
-  },
-  request: async () => {
-    const result = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-    ])
-    return result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED ||
-      result[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
-  },
+  check: fieldLocationGranted,
+  // Google Play: the app says what it records, and that it does so with the
+  // app closed, before Android's sheet (services/location-disclosure.ts).
+  disclose: discloseFieldLocation,
+  request: requestFieldLocationSheet,
 })
 
 function AppContent() {
@@ -267,6 +263,9 @@ export default function AndroidApp() {
   const [i18nReady, setI18nReady] = useState(false)
 
   useEffect(() => {
+    // Before any screen reads a position: the library's own sheet has no
+    // disclosure in front of it.
+    stopLibraryLocationPrompts()
     useHintsStore.getState().hydrate().catch(() => {})
     useWorkdayStore.getState().hydrate().catch(() => {})
     // «Клиент здесь»: the places waiting for a manager, remembered across restarts.
