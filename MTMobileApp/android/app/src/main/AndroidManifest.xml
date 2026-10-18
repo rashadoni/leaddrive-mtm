@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -18,12 +19,15 @@
     <!-- Android 13+ hides the GPS service notification without it. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- HeadlessJsTaskService acquires a wake lock for the background action. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android suspends network for a stationary phone with the screen off.
          For a field app that is the working day: the agent stands in a clinic,
          the route stops being recorded, and the office sees a hole it cannot
-         explain. The exemption is requested from the agent, never assumed. -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
+         explain. The agent turns battery optimisation off in the phone's
+         settings (the battery line on «Маршрут»). Not the one-tap system
+         dialog: Google Play allows its permission only to messengers, security
+         apps and the like (owner, 2026-10-18) — and no library may add it. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
     <uses-permission android:name="android.permission.CAMERA" />
 
     <application

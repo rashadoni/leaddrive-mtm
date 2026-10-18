@@ -23,7 +23,7 @@ interface FieldNotificationsNativeModule {
   scheduleAt(id: string, triggerAtMs: number, title: string, body: string, channelId: string): Promise<boolean>
   cancel(id: string): Promise<boolean>
   isIgnoringBatteryOptimizations(): Promise<boolean>
-  requestIgnoreBatteryOptimizations(): Promise<boolean>
+  openBatteryOptimizationSettings(): Promise<boolean>
 }
 
 function nativeModule(): FieldNotificationsNativeModule | null {
@@ -123,12 +123,16 @@ export async function batterySleepExempt(): Promise<boolean> {
   }
 }
 
-/** Opens the system dialog. The answer is the agent's, and it is not assumed. */
-export async function askBatterySleepExemption(): Promise<boolean> {
+/**
+ * Opens the phone's battery optimisation list (FieldNotificationsModule.kt);
+ * the agent switches it off for the app there. Google Play does not allow a
+ * field app the one-tap system dialog. True means only that a screen opened.
+ */
+export async function openBatterySleepSettings(): Promise<boolean> {
   const native = nativeModule()
-  if (!native?.requestIgnoreBatteryOptimizations) return false
+  if (!native?.openBatteryOptimizationSettings) return false
   try {
-    return await native.requestIgnoreBatteryOptimizations()
+    return await native.openBatteryOptimizationSettings()
   } catch {
     return false
   }

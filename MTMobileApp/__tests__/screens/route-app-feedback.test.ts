@@ -63,14 +63,16 @@ describe("route screen speaks through the app's own feedback layer", () => {
 
   it("keeps every choice inside what the sheet can draw, with localized copy", () => {
     // noCoordinates, locationUnavailable, tooFar x3 (override, allowed by the
-    // organization, refused), signature required, signature save failed.
-    expect(askCalls).toHaveLength(7)
+    // organization, refused), signature required, signature save failed, and
+    // the battery line's own sheet before the phone's settings open
+    // (2026-10-18, Google Play), worded from the screen's ROUTE_COPY.
+    expect(askCalls).toHaveLength(8)
     for (const call of askCalls) {
       const buttons = call.match(/\{ text: /g) ?? []
       expect(buttons.length).toBeGreaterThanOrEqual(1)
       expect(buttons.length).toBeLessThanOrEqual(3)
       expect(call).toContain("dismissValue: ")
-      expect(call).toMatch(/title: t\("/)
+      expect(call).toMatch(/title: (t\("|copy\.)/)
       expect(call).not.toMatch(/text: "/)
     }
   })
