@@ -69,7 +69,7 @@ export default function ManagerSelfLocationShare() {
   return (
     <View style={styles.card} testID="manager-self-location-share">
       <View style={styles.icon}>
-        <Icon name={state === "success" ? "checkmark" : "navigate"} size={24} color={fieldTheme.color.onColor} />
+        <Icon name={state === "success" ? "checkmark" : "navigate"} size={24} color={fieldTheme.color.primaryStrong} />
       </View>
       <View style={styles.copy}>
         <Text style={styles.title}>{t("managerShell.shareLocationTitle")}</Text>
@@ -128,25 +128,24 @@ export default function ManagerSelfLocationShare() {
 }
 
 const styles = StyleSheet.create({
+  // A white card; its button is the one fill (owner-approved colours, 2026-10-18).
   card: {
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.primarySoft,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: fieldTheme.color.primary,
+    borderColor: fieldTheme.color.border,
   },
   icon: {
-    width: 48,
-    height: 48,
-    borderRadius: fieldTheme.radius.md,
-    alignItems: "center",
+    width: 28,
+    height: 32,
+    alignItems: "flex-start",
     justifyContent: "center",
-    backgroundColor: fieldTheme.color.primary,
   },
   copy: { gap: fieldTheme.space.xs },
-  title: { color: fieldTheme.color.primaryStrong, fontSize: 17, fontWeight: "900" },
-  body: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19 },
+  title: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900" },
+  body: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
   button: {
     minHeight: 52,
     flexDirection: "row",

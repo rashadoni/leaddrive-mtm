@@ -32,8 +32,6 @@ type MoreAction = {
   bodyKey?: string
   title?: string
   body?: string
-  iconColor: string
-  iconBackground: string
 }
 
 const COMMON_ACTIONS: MoreAction[] = [
@@ -42,24 +40,18 @@ const COMMON_ACTIONS: MoreAction[] = [
     icon: "checkmark-circle-outline",
     titleKey: "moreV2.visitsTitle",
     bodyKey: "moreV2.visitsBody",
-    iconColor: fieldTheme.color.blue,
-    iconBackground: fieldTheme.color.blueSoft,
   },
   {
     route: "GpsHistory",
     icon: "location-outline",
     titleKey: "moreV2.gpsTitle",
     bodyKey: "moreV2.gpsBody",
-    iconColor: fieldTheme.color.violet,
-    iconBackground: fieldTheme.color.violetSoft,
   },
   {
     route: "Profile",
     icon: "person-circle-outline",
     titleKey: "moreV2.profileTitle",
     bodyKey: "moreV2.profileBody",
-    iconColor: fieldTheme.color.amber,
-    iconBackground: fieldTheme.color.amberSoft,
   },
 ]
 
@@ -87,23 +79,18 @@ export default function MoreScreen() {
     ...(role === "AGENT" && agentMayAttendanceRequests(policies) ? [{
       route: "AttendanceRequests" as const, icon: "document-text-outline",
       titleKey: "attendanceRequests.title", bodyKey: "attendanceRequests.menuBody",
-      iconColor: fieldTheme.color.primaryStrong, iconBackground: fieldTheme.color.primarySoft,
     }] : []),
     {
       route: "Notifications",
       icon: "notifications-outline",
       title: notificationsCopy.title,
       body: notificationsCopy.body,
-      iconColor: fieldTheme.color.blue,
-      iconBackground: fieldTheme.color.blueSoft,
     },
     {
       route: "Messages",
       icon: "chatbubble-ellipses-outline",
       title: messagesCopy.title,
       body: messagesCopy.body,
-      iconColor: fieldTheme.color.primaryStrong,
-      iconBackground: fieldTheme.color.primarySoft,
     },
     ...COMMON_ACTIONS,
   ]
@@ -168,8 +155,9 @@ export default function MoreScreen() {
                   pressed && styles.actionPressed,
                 ]}
               >
-                <View style={[styles.iconSurface, { backgroundColor: action.iconBackground }]}>
-                  <Icon name={action.icon} size={25} color={action.iconColor} />
+                {/* One grey for every row, no coloured square (owner-approved colours, 2026-10-18). */}
+                <View style={styles.iconSurface}>
+                  <Icon name={action.icon} size={25} color={fieldTheme.color.inkMuted} />
                 </View>
                 <View style={styles.actionCopy}>
                   <Text style={styles.actionTitle}>{title}</Text>
@@ -240,11 +228,10 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   iconSurface: {
-    width: 48,
+    width: 32,
     height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: fieldTheme.radius.sm,
   },
   actionCopy: {
     flex: 1,

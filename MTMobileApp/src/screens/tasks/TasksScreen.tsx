@@ -29,6 +29,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
@@ -580,10 +581,10 @@ export default function TasksScreen() {
           <View style={styles.headerCopy}>
             <View style={styles.headerTopRow}>
               <View style={styles.eyebrowRow}>
-                <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primarySoft} />
+                <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primary} />
                 <Text style={styles.eyebrow}>{copy.focus}</Text>
               </View>
-              <NotificationBell />
+              <NotificationBell tone="light" />
             </View>
             <Text style={styles.headerTitle}>{copy.title}</Text>
             <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
@@ -688,7 +689,8 @@ export default function TasksScreen() {
         contentContainerStyle={{ paddingBottom: tabBarPadding }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
       />
-      <StatusBarBand />
+      <LightScreenStatusBar />
+      <StatusBarBand tone="light" />
 
       <CompletionModal
         visible={notesVisible}
@@ -922,7 +924,8 @@ function CompletionModal({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: fieldTheme.space.xl, paddingHorizontal: fieldTheme.space.lg },
+  // White like every tab's header (owner-approved colours, 2026-10-18).
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingBottom: fieldTheme.space.xl, paddingHorizontal: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1280, alignSelf: "center", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.lg },
   headerInnerPhone: { flexDirection: "column", alignItems: "stretch", gap: fieldTheme.space.md },
   // Not `flex: 1`: on the phone the header is a column with no height of its
@@ -931,9 +934,9 @@ const styles = StyleSheet.create({
   headerCopy: { flexGrow: 1, flexShrink: 1 },
   headerTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   eyebrowRow: { flexShrink: 1, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  eyebrow: { color: fieldTheme.color.primarySoft, fontSize: 12, fontWeight: "800" },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: fieldTheme.space.sm },
-  headerSubtitle: { color: "#CDE2D9", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "800" },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: fieldTheme.space.sm },
+  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
   // No flex: 1 — inside the list's content a zero flex basis is 0 px.
   bodyTop: { width: "100%", maxWidth: 1280, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
   listCell: { width: "100%", maxWidth: 1280, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, marginBottom: fieldTheme.space.md },

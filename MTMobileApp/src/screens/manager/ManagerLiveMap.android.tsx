@@ -122,7 +122,7 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     <View style={styles.section}>
       <View style={[styles.heading, tablet && styles.headingTablet]}>
         <View style={styles.headingIcon}>
-          <Icon name="map" size={23} color={fieldTheme.color.onColor} />
+          <Icon name="map" size={23} color={fieldTheme.color.primaryStrong} />
         </View>
         <View style={styles.headingCopy}>
           <Text style={styles.eyebrow}>{t("managerShell.liveMapEyebrow", { defaultValue: "One team · one view" })}</Text>
@@ -260,13 +260,12 @@ const styles = StyleSheet.create({
   },
   heading: { gap: fieldTheme.space.md },
   headingTablet: { flexDirection: "row", alignItems: "center" },
+  // The icon alone, with no green square under it (owner-approved colours, 2026-10-18).
   headingIcon: {
-    width: 48,
+    width: 28,
     height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primary,
   },
   headingCopy: { flex: 1, gap: 3 },
   eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "900", letterSpacing: 0.7 },

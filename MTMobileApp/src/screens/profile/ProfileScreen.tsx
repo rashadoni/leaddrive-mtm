@@ -21,6 +21,7 @@ import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { hasOfficeAttendanceAccess } from "../../services/attendance-access"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
@@ -292,6 +293,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
           />
         )}
       >
+        <LightScreenStatusBar />
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={styles.headerInner}>
             {managerShell ? null : (
@@ -301,7 +303,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
                 onPress={() => office ? navigation.navigate((ownAttendance ? "OwnWorkday" : "Team") as never) : navigation.goBack()}
                 style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
               >
-                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+                <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
               </Pressable>
             )}
             <View style={styles.avatar}>
@@ -313,7 +315,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
               {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
             </View>
             {/* «Daha çox» is one of the manager's tabs: it gets the bell too. */}
-            {managerShell ? <NotificationBell /> : null}
+            {managerShell ? <NotificationBell tone="light" /> : null}
           </View>
         </View>
 
@@ -408,18 +410,19 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   loadingState: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.canvas },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "600" },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
+  // White like every tab's header (owner-approved colours, 2026-10-18).
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
   headerInner: { width: "100%", maxWidth: 1120, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  backButton: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.14)" },
-  avatar: { width: 58, height: 58, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
-  avatarText: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "900" },
+  backButton: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
+  avatar: { width: 58, height: 58, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
+  avatarText: { color: fieldTheme.color.primaryStrong, fontSize: 25, fontWeight: "900" },
   identity: { flex: 1, minWidth: 0 },
-  name: { color: fieldTheme.color.onColor, fontSize: 24, lineHeight: 30, fontWeight: "900" },
-  role: { color: fieldTheme.color.primarySoft, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
-  organization: { color: "#CFE3DA", marginTop: 3, fontSize: 13, fontWeight: "600" },
-  errorBanner: { width: "100%", maxWidth: 1120, alignSelf: "center", marginTop: fieldTheme.space.lg, padding: fieldTheme.space.md, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#E7CB8A", backgroundColor: fieldTheme.color.amberSoft },
+  name: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 30, fontWeight: "900" },
+  role: { color: fieldTheme.color.primary, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
+  organization: { color: fieldTheme.color.inkMuted, marginTop: 3, fontSize: 13, fontWeight: "600" },
+  errorBanner: { width: "100%", maxWidth: 1120, alignSelf: "center", marginTop: fieldTheme.space.lg, padding: fieldTheme.space.md, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderLeftWidth: 4, borderColor: fieldTheme.color.border, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface },
   errorText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
-  retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   retryText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
   content: { width: "100%", maxWidth: 1120, alignSelf: "center", padding: fieldTheme.space.lg, gap: fieldTheme.space.lg },
   contentTwoColumn: { flexDirection: "row", alignItems: "flex-start", padding: fieldTheme.space.xl, gap: fieldTheme.space.xl },
