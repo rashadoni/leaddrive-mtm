@@ -33,6 +33,7 @@ import {
   type WeekTaskItem,
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
@@ -726,7 +727,9 @@ function CalendarHeader({
     <View style={[styles.header, { paddingTop: headerTop }]}>
       <View style={styles.titleRow}>
         <View style={styles.titleBlock}>
-          <Text style={styles.headerTitle}>{title}</Text>
+          {/* With «Сегодня» and the bell beside it a 360 dp phone leaves
+              «Календарь» about 140 dp: one line that shrinks, not a word cut in two. */}
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{title}</Text>
           <Text style={styles.headerSubtitle}>{subtitle}</Text>
         </View>
         <Pressable
@@ -743,6 +746,7 @@ function CalendarHeader({
           <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.primary : fieldTheme.color.onColor} />
           <Text style={[styles.todayButtonText, currentWeek && styles.todayButtonTextCurrent]}>{todayLabel}</Text>
         </Pressable>
+        <NotificationBell tone="light" />
       </View>
 
       <View style={styles.weekNavigation}>

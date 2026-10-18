@@ -13,6 +13,7 @@ import {
 import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
+import NotificationBell from "../../components/NotificationBell"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useNavigation } from "@react-navigation/native"
@@ -352,14 +353,20 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
       <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={[styles.headerInner, tablet && styles.headerInnerTablet]}>
-          <View style={[styles.icon, { backgroundColor: meta.tint }]}>
-            <Icon name={meta.icon} size={28} color={meta.color} />
+          {/* The bell in the top corner (owner-approved mockup, 2026-10-18):
+              level with the icon on a phone, at the row's end on a tablet. */}
+          <View style={styles.iconRow}>
+            <View style={[styles.icon, { backgroundColor: meta.tint }]}>
+              <Icon name={meta.icon} size={28} color={meta.color} />
+            </View>
+            {tablet ? null : <NotificationBell tone="light" />}
           </View>
           <View style={[styles.headerCopy, tablet && styles.headerCopyTablet]}>
             <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
             <Text style={styles.title}>{t(meta.titleKey)}</Text>
             <Text style={styles.body}>{t(meta.bodyKey)}</Text>
           </View>
+          {tablet ? <NotificationBell tone="light" /> : null}
         </View>
       </View>
 
@@ -816,6 +823,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  iconRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: fieldTheme.space.md },
   icon: {
     width: 56,
     height: 56,

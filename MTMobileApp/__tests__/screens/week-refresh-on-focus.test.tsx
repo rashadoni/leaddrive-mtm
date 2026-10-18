@@ -41,6 +41,8 @@ jest.mock("react-i18next", () => {
 })
 jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 jest.mock("../../src/components/LightScreenStatusBar", () => () => null)
+// The bell reads its own store and the server; these screens are tested without it.
+jest.mock("../../src/components/NotificationBell", () => () => null)
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 0, useTabBarPadding: () => 0 }))
 jest.mock("../../src/store/auth", () => ({
   useAuthStore: (selector: (state: unknown) => unknown) => selector({ agent: { id: "agent-1", role: "AGENT" } }),

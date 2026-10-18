@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import StatusBarBand from "../../components/StatusBarBand"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
@@ -76,6 +77,7 @@ export default function RouteBaseScreen() {
             <Text style={styles.headerTitle}>{t(contactsEnabled ? "baseHub.title" : "baseHub.placesTitle")}</Text>
             <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
+          <NotificationBell />
         </View>
 
         {contactsEnabled ? (

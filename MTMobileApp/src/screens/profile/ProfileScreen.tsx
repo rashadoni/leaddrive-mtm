@@ -21,6 +21,7 @@ import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { hasOfficeAttendanceAccess } from "../../services/attendance-access"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import NotificationBell from "../../components/NotificationBell"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { useHintsStore } from "../../store/hints"
@@ -311,6 +312,8 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
               <Text style={styles.role}>{statusLabel(t, "role", agent?.role)}</Text>
               {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
             </View>
+            {/* «Daha çox» is one of the manager's tabs: it gets the bell too. */}
+            {managerShell ? <NotificationBell /> : null}
           </View>
         </View>
 

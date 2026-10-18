@@ -46,12 +46,20 @@ export interface NotificationCopy {
   workdayOpenBody: string
 }
 
+/**
+ * One switch per kind of line in the bell. `route`, `approval` and `other`
+ * came with the bell (2026-10-18): the server's inbox has route alerts, a
+ * manager has requests waiting for him, and some rows fit no kind.
+ */
 export interface NotificationPreferences {
   message: boolean
   request: boolean
   task: boolean
   visit: boolean
   workday: boolean
+  route: boolean
+  approval: boolean
+  other: boolean
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
@@ -60,6 +68,9 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   task: true,
   visit: true,
   workday: true,
+  route: true,
+  approval: true,
+  other: true,
 }
 
 /** A visit is worth mentioning here at the same threshold the reminder uses. */
