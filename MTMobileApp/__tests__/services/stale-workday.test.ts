@@ -75,7 +75,7 @@ describe("«Günü bağla» asks only for the finish time", () => {
 
   it("makes the request the form would have made, valid for the server", () => {
     const result = staleWorkdayFinishRequest(correction, "2219", sunday, baku, id, reason)
-    expect(result).toEqual({ ok: true, nextDay: false, input: {
+    expect(result).toEqual({ ok: true, nextDay: false, beforeLastMark: false, input: {
       clientRequestId: id, kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-13", endDate: "2026-10-13",
       startTime: "10:21", endTime: "22:19", reason, attachmentIds: [],
     } })
@@ -99,7 +99,7 @@ describe("«Günü bağla» asks only for the finish time", () => {
   })
 })
 
-describe("no finish before the day's own last mark", () => {
+describe("a finish before the day's own last mark", () => {
   // Owner's phone, 2026-10-18: 18:30 for 13 October, a day with a break at 22:18:57 (Baku).
   const baku = "Asia/Baku"
   const correction = { workDate: "2026-10-13", startTime: "10:21" }
@@ -113,17 +113,18 @@ describe("no finish before the day's own last mark", () => {
     expect(staleWorkdayEarliestFinish(null, baku)).toBeNull()
   })
 
-  it("refuses 18:30 and takes 22:19", () => {
-    expect(staleWorkdayFinishRequest(correction, "1830", sunday, baku, id, "r", lastMarkAt)).toEqual({ ok: false, error: "beforeLastMark" })
-    expect(staleWorkdayFinishRequest(correction, "2218", sunday, baku, id, "r", lastMarkAt)).toEqual({ ok: false, error: "beforeLastMark" })
-    expect(staleWorkdayFinishRequest(correction, "2219", sunday, baku, id, "r", lastMarkAt).ok).toBe(true)
+  it("takes 18:30, saying the later marks are left out; 22:19 leaves nothing out", () => {
+    // Owner, 2026-10-18: «отметки после указанного окончания не считаются рабочим временем, но остаются в истории дня».
+    expect(staleWorkdayFinishRequest(correction, "1830", sunday, baku, id, "r", lastMarkAt)).toMatchObject({ ok: true, beforeLastMark: true, input: { endTime: "18:30" } })
+    expect(staleWorkdayFinishRequest(correction, "2218", sunday, baku, id, "r", lastMarkAt)).toMatchObject({ ok: true, beforeLastMark: true })
+    expect(staleWorkdayFinishRequest(correction, "2219", sunday, baku, id, "r", lastMarkAt)).toMatchObject({ ok: true, beforeLastMark: false })
   })
 
   it("compares across midnight by the date, not only the clock", () => {
     // A mark at 01:10 on the 14th: a finish at 23:00 on the 13th is before it, 01:30 on the 14th is not.
     const afterMidnight = "2026-10-13T21:10:00.000Z"
-    expect(staleWorkdayFinishRequest(correction, "2300", sunday, baku, id, "r", afterMidnight)).toEqual({ ok: false, error: "beforeLastMark" })
-    expect(staleWorkdayFinishRequest(correction, "0130", sunday, baku, id, "r", afterMidnight).ok).toBe(true)
+    expect(staleWorkdayFinishRequest(correction, "2300", sunday, baku, id, "r", afterMidnight)).toMatchObject({ ok: true, beforeLastMark: true })
+    expect(staleWorkdayFinishRequest(correction, "0130", sunday, baku, id, "r", afterMidnight)).toMatchObject({ ok: true, beforeLastMark: false })
   })
 })
 

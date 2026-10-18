@@ -158,18 +158,19 @@ describe("the close-the-day sheet: one field, the finish time", () => {
     expect(text()).toContain("После полуночи — 14 октября")
   })
 
-  it("says how early the finish may be, and refuses a finish before the day's last mark", async () => {
-    // 13 October: a break at 22:18:57 in Baku.
+  it("shows the day's last mark and takes an earlier finish, saying the later marks stay out of the time", async () => {
+    // 13 October: a break at 22:18:57 in Baku. Owner, 2026-10-18: «отметки после указанного окончания
+    // не считаются рабочим временем, но остаются в истории дня».
     const { type, send, onSend, text, node } = await sheet("ru", "2026-10-13T18:18:57.116Z")
     expect(node("today-stale-last-mark")).toBeDefined()
-    expect(text()).toContain("Окончание — не раньше 22:19")
-    type("1830")
+    expect(text()).toContain("Последняя отметка дня: 22:18")
+    type("1800")
+    expect(node("today-stale-late-marks")).toBeDefined()
+    expect(text()).toContain("Отметки после этого времени не войдут в рабочее время, но останутся в истории дня.")
     send()
-    expect(onSend).not.toHaveBeenCalled()
-    expect(text()).toContain("Окончание не может быть раньше 22:19")
+    expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ endDate: "2026-10-13", endTime: "18:00" }))
     type("2219")
-    send()
-    expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ endDate: "2026-10-13", endTime: "22:19" }))
+    expect(node("today-stale-late-marks")).toBeUndefined()
   })
 
   it("refuses what is not a time, and sends nothing", async () => {
@@ -227,7 +228,7 @@ describe("the words exist in all three languages with the same placeholders", ()
     "staleEndNow", "staleEndConfirmTitle", "staleEndConfirmBody",
     "staleSheetTitle", "staleSheetStart", "staleSheetQuestion", "staleSheetHint", "staleSheetNextDay",
     "staleSheetSend", "staleSheetInvalid", "staleSheetFuture", "staleSheetFailed",
-    "staleSheetLastMark", "staleSheetBeforeLastMark", "staleCancelSent",
+    "staleSheetLastMark", "staleSheetLateMarksNote", "staleCancelSent",
   ] as const
   const placeholders = (text: string) => (text.match(/\{\{\w+\}\}/g) ?? []).sort().join(",")
 
