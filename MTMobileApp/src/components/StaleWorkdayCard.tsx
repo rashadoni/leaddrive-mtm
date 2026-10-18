@@ -10,13 +10,19 @@ import { fieldTheme } from "../theme/fieldTheme"
 /**
  * «Bu gün» for a workday left open since an earlier day (`stale-workday.ts`).
  *
- * - `request`: the finish time can be asked for — «Указать время ухода» first,
- *   «Закрыть сейчас» beside it for whoever really means "now".
- * - `sent`: the finish time is with the manager; the only way on is to look at
- *   the request. Closing now would change the day under the request, and the
- *   server would then refuse to approve it.
- * - `closeOnly`: this company takes no requests from the phone, so «Закрыть
- *   сейчас» is the one action, and the card says so before it is pressed.
+ * One button, «Günü bağla» — the words the owner used for it. The first
+ * version had two («Bitmə vaxtını göstər», read as "show me the finish time",
+ * and «İndi bağla») and sent the agent into «Mənim müraciətlərim», a screen of
+ * eight request kinds, documents and limits where the time fields had to be
+ * scrolled to (owner's phone, 2026-10-18). Now:
+ *
+ * - `request`: «Günü bağla» opens the close-the-day sheet on this screen.
+ * - `sent`: the finish time is with the manager — the card says which time,
+ *   and offers nothing: closing now would change the day under the request,
+ *   and the server would refuse to approve it.
+ * - `closeOnly`: this company takes no requests from the phone, so «Günü
+ *   bağla» closes the day now, after a warning that says how many hours that
+ *   writes into it.
  *
  * «Fasilə» is not offered: a break inside a day that ended days ago means nothing.
  */
@@ -27,49 +33,27 @@ export default function StaleWorkdayCard({
   startedAt,
   timezone,
   mode,
+  sentFinish,
   busy,
   error,
-  onSetFinish,
-  onOpenRequest,
-  onCloseNow,
+  onCloseDay,
 }: {
   day: string
   startedAt: string
   timezone?: string | null
   mode: StaleWorkdayCardMode
+  /** The finish time sent to the manager, shown in `sent`. */
+  sentFinish?: string | null
   busy: boolean
   error: string | null
-  onSetFinish: () => void
-  onOpenRequest: () => void
-  onCloseNow: () => void
+  onCloseDay: () => void
 }) {
   const { t, i18n } = useTranslation()
   const date = formatLocalizedDate(staleVisitDayDate(day), i18n.language, { day: "numeric", month: "long" })
   const time = companyClock(new Date(startedAt), timezone)
   const body = mode === "sent"
-    ? t("todayV2.staleDaySent")
+    ? t("todayV2.staleDaySent", { time: sentFinish || "—" })
     : t(mode === "request" ? "todayV2.staleDayBody" : "todayV2.staleDayBodyNoRequest", { date, time })
-
-  const button = (testID: string, label: string, onPress: () => void, primary: boolean) => (
-    <Pressable
-      key={testID}
-      testID={testID}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: busy }}
-      disabled={busy}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        primary ? styles.buttonPrimary : styles.buttonOutline,
-        pressed && styles.pressed,
-        busy && styles.disabled,
-      ]}
-    >
-      <Text style={[styles.buttonText, primary ? styles.buttonTextPrimary : styles.buttonTextOutline]} numberOfLines={2}>
-        {label}
-      </Text>
-    </Pressable>
-  )
 
   return (
     <View testID="today-stale-workday" style={styles.panel}>
@@ -81,14 +65,18 @@ export default function StaleWorkdayCard({
         <Text style={styles.body}>{body}</Text>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
-      <View style={styles.actions}>
-        {mode === "request" ? [
-          button("today-stale-set-finish", t("todayV2.staleSetFinish"), onSetFinish, true),
-          button("today-stale-close-now", t("todayV2.staleEndNow"), onCloseNow, false),
-        ] : mode === "sent"
-          ? button("today-stale-open-request", t("todayV2.staleOpenRequest"), onOpenRequest, false)
-          : button("today-stale-close-now", t("todayV2.staleEndNow"), onCloseNow, true)}
-      </View>
+      {mode === "sent" ? null : (
+        <Pressable
+          testID="today-stale-close-day"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy }}
+          disabled={busy}
+          onPress={onCloseDay}
+          style={({ pressed }) => [styles.button, pressed && styles.pressed, busy && styles.disabled]}
+        >
+          <Text style={styles.buttonText}>{t("todayV2.staleCloseDay")}</Text>
+        </Pressable>
+      )}
     </View>
   )
 }
@@ -129,38 +117,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: "700",
   },
-  actions: {
-    flexDirection: "row",
-    gap: fieldTheme.space.sm,
-  },
   button: {
-    flex: 1,
     minHeight: 52,
-    paddingHorizontal: fieldTheme.space.md,
-    paddingVertical: fieldTheme.space.sm,
+    paddingHorizontal: fieldTheme.space.lg,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: fieldTheme.radius.pill,
-  },
-  buttonPrimary: {
     backgroundColor: fieldTheme.color.danger,
   },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: fieldTheme.color.danger,
-    backgroundColor: fieldTheme.color.surface,
-  },
   buttonText: {
-    fontSize: 15,
-    lineHeight: 19,
+    color: fieldTheme.color.onColor,
+    fontSize: 16,
     fontWeight: "900",
     textAlign: "center",
-  },
-  buttonTextPrimary: {
-    color: fieldTheme.color.onColor,
-  },
-  buttonTextOutline: {
-    color: fieldTheme.color.danger,
   },
   pressed: {
     opacity: 0.82,

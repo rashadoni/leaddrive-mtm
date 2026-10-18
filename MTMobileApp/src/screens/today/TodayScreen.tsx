@@ -50,14 +50,16 @@ import {
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { askBackgroundLocation, backgroundLocationMissing } from "../../services/background-location"
 import StaleWorkdayCard from "../../components/StaleWorkdayCard"
+import StaleWorkdayCloseSheet from "../../components/StaleWorkdayCloseSheet"
 import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests } from "../../services/attendance-requests"
+import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceRequest } from "../../services/attendance-requests"
+import type { AttendanceInput } from "../../services/attendance-contract"
+import { runMobileSync } from "../../services/sync-engine"
 import {
   companyClock,
   staleWorkdayCorrection,
-  staleWorkdayCorrectionSent,
+  staleWorkdayFinishSent,
   workdayOpenSinceEarlierDay,
-  type AttendanceRequestsParams,
 } from "../../services/stale-workday"
 import { staleVisitDayDate } from "../../services/stale-visit"
 
@@ -66,10 +68,7 @@ type TodayNavigationParams = {
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
-  More:
-    | { screen: "Messages" }
-    // `initial: false` keeps the «Ещё» menu under the form, so that tab still opens the menu.
-    | { screen: "AttendanceRequests"; params?: AttendanceRequestsParams; initial: false }
+  More: { screen: "Messages" }
 }
 
 type Destination = Exclude<keyof TodayNavigationParams, "More">
@@ -156,20 +155,21 @@ export default function TodayScreen() {
   const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
   const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
   // Owner, 2026-10-18: a day left open since an earlier date is not "going
-  // on" — it gets a red card and asks for the real finish time
-  // (services/stale-workday.ts). The company's timezone decides the dates.
+  // on" — it gets a red card and «Günü bağla», which asks only for the finish
+  // time (services/stale-workday.ts). The company's timezone decides the dates.
   const companyTimezone = useBootstrapStore((state) => state.data?.timezone ?? null)
   const finishTimeRequestable = useBootstrapStore((state) =>
     agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))
   const staleDay = workdayOpen && currentWorkday
     ? workdayOpenSinceEarlierDay(currentWorkday.startedAt, new Date(), companyTimezone)
     : null
-  // Whether the finish time for that day is already with the manager, read
-  // from the own-requests list and this phone's queue. Keyed by the agent and
-  // the day so it never speaks for another.
-  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; sent: boolean } | null>(null)
-  const staleFinishTimeSent = staleDay !== null && finishTimeSent?.key === currentWorkdayKey
-    && finishTimeSent.day === staleDay && finishTimeSent.sent
+  // The finish time already with the manager for that day, read from the
+  // own-requests list and this phone's queue. Keyed by the agent and the day
+  // so it never speaks for another.
+  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; finish: string | null } | null>(null)
+  const staleSentFinish = staleDay !== null && finishTimeSent?.key === currentWorkdayKey && finishTimeSent.day === staleDay
+    ? finishTimeSent.finish
+    : null
   const readFinishTimeSent = useCallback(async () => {
     if (!staleDay || !finishTimeRequestable) return
     const key = currentWorkdayKey
@@ -178,18 +178,36 @@ export default function TodayScreen() {
     const queued = await attendanceQueued(scope).catch(() => [])
     let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
     try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
-    setFinishTimeSent({ key, day: staleDay, sent: staleWorkdayCorrectionSent(staleDay, requests, queued) })
+    setFinishTimeSent({ key, day: staleDay, finish: staleWorkdayFinishSent(staleDay, requests, queued) })
   }, [currentWorkdayKey, finishTimeRequestable, staleDay])
   useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
   useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
-  const openFinishTimeRequest = useCallback(() => {
-    if (!currentWorkday || !staleDay) return
-    navigation.navigate("More", {
-      screen: "AttendanceRequests",
-      params: staleFinishTimeSent ? {} : { correction: staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone) },
-      initial: false,
-    })
-  }, [companyTimezone, currentWorkday, navigation, staleDay, staleFinishTimeSent])
+  const [closeSheetOpen, setCloseSheetOpen] = useState(false)
+  const [closeSending, setCloseSending] = useState(false)
+  const [closeFailed, setCloseFailed] = useState(false)
+  const openCloseSheet = useCallback(() => {
+    setCloseFailed(false)
+    setCloseSheetOpen(true)
+  }, [])
+  // The request is written to the phone's queue first, so no signal is needed
+  // to send it; the card says «sent» from that moment, and the sync pushes it.
+  const sendFinishTime = useCallback(async (input: AttendanceInput) => {
+    if (!staleDay || closeSending) return
+    const key = currentWorkdayKey
+    const day = staleDay
+    setCloseSending(true)
+    setCloseFailed(false)
+    try {
+      await queueAttendanceRequest(attendanceScope(), input, [])
+      setFinishTimeSent({ key, day, finish: input.endTime ?? null })
+      setCloseSheetOpen(false)
+      runMobileSync().then(() => readFinishTimeSent()).catch(() => {})
+    } catch {
+      setCloseFailed(true)
+    } finally {
+      setCloseSending(false)
+    }
+  }, [closeSending, currentWorkdayKey, readFinishTimeSent, staleDay])
   useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
@@ -592,12 +610,11 @@ export default function TodayScreen() {
                 day={staleDay}
                 startedAt={currentWorkday.startedAt}
                 timezone={companyTimezone}
-                mode={!finishTimeRequestable ? "closeOnly" : staleFinishTimeSent ? "sent" : "request"}
-                busy={workdayBusy || !workdayHydrated}
+                mode={!finishTimeRequestable ? "closeOnly" : staleSentFinish !== null ? "sent" : "request"}
+                sentFinish={staleSentFinish}
+                busy={workdayBusy || !workdayHydrated || closeSending}
                 error={workdayError ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError") : null}
-                onSetFinish={openFinishTimeRequest}
-                onOpenRequest={openFinishTimeRequest}
-                onCloseNow={requestWorkdayAction}
+                onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}
               />
             ) : (
             <View style={styles.workdayPanel}>
@@ -946,14 +963,23 @@ export default function TodayScreen() {
         if(!scan || scan.scope!==currentWorkdayKey || (scan.action==='FINISH' && currentWorkday?.workdayId!==scan.workdayId) || (scan.action==='START' && currentWorkday))throw new Error('ATTENDANCE_QR_CHANGED')
         guardAttendanceQr(currentWorkdayKey);await syncWorkday(token);setScan(null)
       }}/>
+      {staleDay && currentWorkday ? (
+        <StaleWorkdayCloseSheet
+          visible={closeSheetOpen}
+          correction={staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone)}
+          timezone={companyTimezone}
+          sending={closeSending}
+          failed={closeFailed}
+          onCancel={() => setCloseSheetOpen(false)}
+          onSend={(input) => { sendFinishTime(input).catch(() => {}) }}
+        />
+      ) : null}
       <ConfirmSheet
         visible={endDayConfirm}
         icon={staleClose ? "⚠️" : "🌙"}
         iconColor={staleClose ? fieldTheme.color.danger : fieldTheme.color.primaryStrong}
         title={staleClose ? t("todayV2.staleEndConfirmTitle") : t("todayV2.endDayConfirmTitle")}
-        message={staleClose
-          ? [t("todayV2.staleEndConfirmBody", staleClose), finishTimeRequestable && !staleFinishTimeSent ? t("todayV2.staleEndConfirmHint") : ""].filter(Boolean).join(" ")
-          : t("todayV2.endDayConfirmBody")}
+        message={staleClose ? t("todayV2.staleEndConfirmBody", staleClose) : t("todayV2.endDayConfirmBody")}
         cancelText={staleClose ? t("common.cancel") : t("todayV2.endDayConfirmCancel")}
         confirmText={staleClose ? t("todayV2.staleEndNow") : t("todayV2.endDayConfirmAction")}
         destructive

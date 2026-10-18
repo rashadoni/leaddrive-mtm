@@ -1,8 +1,10 @@
 import {
+  clockFieldText,
   companyClock,
+  normalizeClock,
   staleWorkdayCorrection,
-  staleWorkdayCorrectionDraft,
-  staleWorkdayCorrectionSent,
+  staleWorkdayFinishRequest,
+  staleWorkdayFinishSent,
   workdayOpenSinceEarlierDay,
 } from "../../src/services/stale-workday"
 import { validAttendanceInput, type AttendanceRequest } from "../../src/services/attendance-contract"
@@ -45,25 +47,54 @@ describe("a workday left open since an earlier day", () => {
   })
 })
 
-describe("«Указать время ухода» fills the correction request in", () => {
+describe("«Günü bağla» asks only for the finish time", () => {
   const baku = "Asia/Baku"
+  const correction = { workDate: "2026-10-13", startTime: "10:21" }
+  const sunday = new Date("2026-10-18T00:06:00Z") // 04:06 in Baku
+  const id = "c01be938-a8bb-41e1-b08b-d1ea2394d0b3"
+  const reason = "İş günü vaxtında bağlanmayıb"
 
-  it("with the day and the start on the company's clock", () => {
-    expect(companyClock(new Date("2026-10-13T06:21:58.533Z"), "Asia/Baku")).toBe("10:21")
-    expect(staleWorkdayCorrection("2026-10-13T06:21:58.533Z", baku)).toEqual({ workDate: "2026-10-13", startTime: "10:21" })
+  it("knows the day and its start on the company's clock", () => {
+    expect(companyClock(new Date("2026-10-13T06:21:58.533Z"), baku)).toBe("10:21")
+    expect(staleWorkdayCorrection("2026-10-13T06:21:58.533Z", baku)).toEqual(correction)
   })
 
-  it("leaves the finish to the employee — the form refuses to send without it", () => {
-    const draft = staleWorkdayCorrectionDraft(
-      { workDate: "2026-10-13", startTime: "10:21" },
-      "c01be938-a8bb-41e1-b08b-d1ea2394d0b3",
-      "Рабочий день не был закрыт вовремя",
-    )
-    expect(draft).toMatchObject({ kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-13", endDate: "2026-10-13", startTime: "10:21", endTime: "" })
-    expect(validAttendanceInput(draft)).toBe(false)
-    expect(validAttendanceInput({ ...draft, endTime: "22:19" })).toBe(true)
-    // A night shift ends the next day; the form allows it for a correction.
-    expect(validAttendanceInput({ ...draft, endDate: "2026-10-14", endTime: "02:00" })).toBe(true)
+  it("reads the number pad however the time is typed", () => {
+    expect(normalizeClock("2219")).toBe("22:19")
+    expect(normalizeClock("22:19")).toBe("22:19")
+    expect(normalizeClock("22.19")).toBe("22:19")
+    expect(normalizeClock("919")).toBe("09:19")
+    expect(normalizeClock("2519")).toBeNull()
+    expect(normalizeClock("2260")).toBeNull()
+    expect(normalizeClock("22")).toBeNull()
+    expect(clockFieldText("221")).toBe("221")
+    expect(clockFieldText("2219")).toBe("22:19")
+    expect(clockFieldText("22:1")).toBe("221")
+  })
+
+  it("makes the request the form would have made, valid for the server", () => {
+    const result = staleWorkdayFinishRequest(correction, "2219", sunday, baku, id, reason)
+    expect(result).toEqual({ ok: true, nextDay: false, input: {
+      clientRequestId: id, kind: "TIME_CORRECTION", unit: "HOURS", startDate: "2026-10-13", endDate: "2026-10-13",
+      startTime: "10:21", endTime: "22:19", reason, attachmentIds: [],
+    } })
+    expect(result.ok && validAttendanceInput(result.input)).toBe(true)
+  })
+
+  it("puts a finish at or before the start after midnight, on the next day", () => {
+    const result = staleWorkdayFinishRequest(correction, "0130", sunday, baku, id, reason)
+    expect(result.ok && result.nextDay).toBe(true)
+    expect(result.ok && result.input.endDate).toBe("2026-10-14")
+    expect(result.ok && validAttendanceInput(result.input)).toBe(true)
+  })
+
+  it("refuses what is not a time, and a finish that has not happened yet", () => {
+    expect(staleWorkdayFinishRequest(correction, "", sunday, baku, id, reason)).toEqual({ ok: false, error: "format" })
+    expect(staleWorkdayFinishRequest(correction, "2519", sunday, baku, id, reason)).toEqual({ ok: false, error: "format" })
+    // The day before yesterday, opened at 22:00: a finish at 05:00 «today» is still ahead at 04:06.
+    const yesterday = { workDate: "2026-10-17", startTime: "22:00" }
+    expect(staleWorkdayFinishRequest(yesterday, "0500", sunday, baku, id, reason)).toEqual({ ok: false, error: "future" })
+    expect(staleWorkdayFinishRequest(yesterday, "0400", sunday, baku, id, reason).ok).toBe(true)
   })
 })
 
@@ -83,24 +114,24 @@ describe("a finish time already sent is not asked for again", () => {
     clientTimestamp: 0, attempts: 0, nextAttemptAt: 0, scopeKey: "fictional-org:fictional-agent", status,
   })
 
-  it("counts a request waiting for the manager, or approved before the phone saw the day close", () => {
-    expect(staleWorkdayCorrectionSent("2026-10-13", [request()], [])).toBe(true)
-    expect(staleWorkdayCorrectionSent("2026-10-13", [request({ status: "APPROVED" })], [])).toBe(true)
+  it("names the time waiting for the manager, or approved before the phone saw the day close", () => {
+    expect(staleWorkdayFinishSent("2026-10-13", [request()], [])).toBe("22:19")
+    expect(staleWorkdayFinishSent("2026-10-13", [request({ status: "APPROVED" })], [])).toBe("22:19")
   })
 
-  it("offers the button again after a refusal or a cancellation", () => {
-    expect(staleWorkdayCorrectionSent("2026-10-13", [request({ status: "REJECTED" })], [])).toBe(false)
-    expect(staleWorkdayCorrectionSent("2026-10-13", [request({ status: "CANCELLED" })], [])).toBe(false)
+  it("offers «Günü bağla» again after a refusal or a cancellation", () => {
+    expect(staleWorkdayFinishSent("2026-10-13", [request({ status: "REJECTED" })], [])).toBeNull()
+    expect(staleWorkdayFinishSent("2026-10-13", [request({ status: "CANCELLED" })], [])).toBeNull()
   })
 
   it("looks only at a time correction for that very day", () => {
-    expect(staleWorkdayCorrectionSent("2026-10-13", [request({ startDate: "2026-10-12" })], [])).toBe(false)
-    expect(staleWorkdayCorrectionSent("2026-10-13", [request({ kind: "HOURLY_ABSENCE" })], [])).toBe(false)
+    expect(staleWorkdayFinishSent("2026-10-13", [request({ startDate: "2026-10-12" })], [])).toBeNull()
+    expect(staleWorkdayFinishSent("2026-10-13", [request({ kind: "HOURLY_ABSENCE" })], [])).toBeNull()
   })
 
-  it("counts one still in the phone's queue, sent or refused", () => {
-    expect(staleWorkdayCorrectionSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13" })])).toBe(true)
-    expect(staleWorkdayCorrectionSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13" }, "conflict")])).toBe(true)
-    expect(staleWorkdayCorrectionSent("2026-10-13", [], [queued({ kind: "SICK_LEAVE", startDate: "2026-10-13" })])).toBe(false)
+  it("counts one still waiting in the phone's queue, but not one the server refused", () => {
+    expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13", endTime: "22:19" })])).toBe("22:19")
+    expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13", endTime: "22:19" }, "conflict")])).toBeNull()
+    expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "SICK_LEAVE", startDate: "2026-10-13" })])).toBeNull()
   })
 })

@@ -9,7 +9,12 @@ import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
 import { mobileResources } from "../../src/i18n/mobile-resources"
 jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
+jest.mock("react-native-safe-area-context", () => ({
+  SafeAreaProvider: ({ children }: { children: unknown }) => children,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}))
 import StaleWorkdayCard, { type StaleWorkdayCardMode } from "../../src/components/StaleWorkdayCard"
+import StaleWorkdayCloseSheet from "../../src/components/StaleWorkdayCloseSheet"
 
 /**
  * Owner's phone, 2026-10-18 04:06: a workday started on 13 October was still
@@ -33,66 +38,121 @@ beforeAll(async () => {
 })
 afterEach(() => { act(() => { roots.splice(0).forEach((tree) => tree.unmount()) }) })
 
-async function card(mode: StaleWorkdayCardMode, language = "ru") {
-  await locale.changeLanguage(language)
-  const handlers = { onSetFinish: jest.fn(), onOpenRequest: jest.fn(), onCloseNow: jest.fn() }
+async function card(mode: StaleWorkdayCardMode, language = "ru", sentFinish: string | null = null) {
+  await act(async () => { await locale.changeLanguage(language) })
+  const onCloseDay = jest.fn()
   let tree!: TestRenderer.ReactTestRenderer
   act(() => {
     tree = TestRenderer.create(
       <I18nextProvider i18n={locale}>
-        <StaleWorkdayCard day="2026-10-13" startedAt="2026-10-13T06:21:58.533Z" timezone="Asia/Baku" mode={mode} busy={false} error={null} {...handlers} />
+        <StaleWorkdayCard day="2026-10-13" startedAt="2026-10-13T06:21:58.533Z" timezone="Asia/Baku" mode={mode} sentFinish={sentFinish} busy={false} error={null} onCloseDay={onCloseDay} />
       </I18nextProvider>,
     )
   })
   roots.push(tree)
   const button = (id: string) => tree.root.findAll((item) => item.props.testID === id, { deep: false })[0]
-  return { tree, handlers, button, text: JSON.stringify(tree.toJSON()) }
+  return { tree, onCloseDay, button, text: JSON.stringify(tree.toJSON()) }
 }
 
 describe("«Bu gün» for a day left open since 13 October", () => {
-  it("says the date and the start, and asks for the finish time first", async () => {
-    const { text, button, handlers } = await card("request")
+  it("says the date and the start, and has one button — «Закрыть день»", async () => {
+    const { text, button, onCloseDay } = await card("request")
     expect(text).toContain("Рабочий день с 13 октября не закрыт")
     expect(text).toContain("Начат 13 октября в 10:21.")
-    expect(button("today-stale-set-finish")).toBeDefined()
-    expect(button("today-stale-close-now")).toBeDefined()
-    act(() => { button("today-stale-set-finish").props.onPress() })
-    expect(handlers.onSetFinish).toHaveBeenCalledTimes(1)
-    act(() => { button("today-stale-close-now").props.onPress() })
-    expect(handlers.onCloseNow).toHaveBeenCalledTimes(1)
+    expect(text).toContain("Закрыть день")
+    act(() => { button("today-stale-close-day").props.onPress() })
+    expect(onCloseDay).toHaveBeenCalledTimes(1)
+    // The first version's two buttons and its trip to «Мои заявки» are gone.
+    expect(text).not.toContain("Указать время ухода")
+    expect(text).not.toContain("Закрыть сейчас")
   })
 
-  it("reads in Azerbaijani on the agent's phone", async () => {
+  it("reads «Günü bağla» in Azerbaijani on the agent's phone", async () => {
     const { text } = await card("request", "az")
     expect(text).toContain("13 oktyabr tarixli iş günü bağlanmayıb")
-    expect(text).toContain("Bitmə vaxtını göstər")
+    expect(text).toContain("Günü bağla")
+    expect(text).not.toContain("Bitmə vaxtını göstər")
   })
 
-  it("once the finish time is sent, only shows the request — closing now would void it", async () => {
-    const { text, button } = await card("sent")
-    expect(text).toContain(mobileResources.ru.todayV2.staleDaySent)
-    expect(button("today-stale-open-request")).toBeDefined()
-    expect(button("today-stale-set-finish")).toBeUndefined()
-    expect(button("today-stale-close-now")).toBeUndefined()
+  it("once sent, names the finish time and offers nothing — closing now would void the request", async () => {
+    const { text, button } = await card("sent", "ru", "22:19")
+    expect(text).toContain("Вы указали окончание в 22:19.")
+    expect(button("today-stale-close-day")).toBeUndefined()
   })
 
-  it("where the company takes no requests from the phone, closing now is the one way, said before it is pressed", async () => {
+  it("where the company takes no requests from the phone, says before the press what closing now means", async () => {
     const { text, button } = await card("closeOnly")
     expect(text).toContain("Если закрыть сейчас, день закроется текущим временем")
-    expect(button("today-stale-close-now")).toBeDefined()
-    expect(button("today-stale-set-finish")).toBeUndefined()
+    expect(button("today-stale-close-day")).toBeDefined()
   })
 
   it("never leaves a key on screen", async () => {
     for (const language of ["ru", "az", "en"]) {
       for (const mode of ["request", "sent", "closeOnly"] as const) {
-        expect((await card(mode, language)).text).not.toContain("todayV2.")
+        expect((await card(mode, language, "22:19")).text).not.toContain("todayV2.")
       }
     }
   })
 })
 
-describe("the Today screen wires the card in", () => {
+describe("the close-the-day sheet: one field, the finish time", () => {
+  async function sheet(language = "ru") {
+    await act(async () => { await locale.changeLanguage(language) })
+    const onSend = jest.fn()
+    let tree!: TestRenderer.ReactTestRenderer
+    act(() => {
+      tree = TestRenderer.create(
+        <I18nextProvider i18n={locale}>
+          <StaleWorkdayCloseSheet visible correction={{ workDate: "2026-10-13", startTime: "10:21" }} timezone="Asia/Baku" sending={false} failed={false} onCancel={jest.fn()} onSend={onSend} />
+        </I18nextProvider>,
+      )
+    })
+    roots.push(tree)
+    const node = (id: string) => tree.root.findAll((item) => item.props.testID === id, { deep: false })[0]
+    const type = (value: string) => act(() => { node("today-stale-finish").props.onChangeText(value) })
+    const send = () => act(() => { node("today-stale-close-send").props.onPress() })
+    return { onSend, node, type, send, text: () => JSON.stringify(tree.toJSON()) }
+  }
+
+  it("shows the day and its start and asks only when the agent finished", async () => {
+    const { text, node } = await sheet()
+    expect(text()).toContain("Закрыть день 13 октября")
+    expect(text()).toContain("Начало: 10:21")
+    expect(text()).toContain("Во сколько вы закончили?")
+    expect(node("today-stale-finish").props.keyboardType).toBe("number-pad")
+    // Nothing of «Мои заявки»: no request kinds, documents or limits.
+    expect(text()).not.toContain("attendance-kind-")
+    expect(text()).not.toContain("attendance-quota")
+  })
+
+  it("sends the time-correction request for the time typed on the number pad", async () => {
+    const { type, send, onSend, node } = await sheet()
+    type("2219")
+    expect(node("today-stale-finish").props.value).toBe("22:19")
+    send()
+    expect(onSend).toHaveBeenCalledWith({
+      clientRequestId: expect.stringMatching(/^[a-f0-9-]{36}$/), kind: "TIME_CORRECTION", unit: "HOURS",
+      startDate: "2026-10-13", endDate: "2026-10-13", startTime: "10:21", endTime: "22:19",
+      reason: ru.attendanceRequests.staleWorkdayReason, attachmentIds: [],
+    })
+  })
+
+  it("says when the finish falls after midnight", async () => {
+    const { type, text } = await sheet()
+    type("0130")
+    expect(text()).toContain("После полуночи — 14 октября")
+  })
+
+  it("refuses what is not a time, and sends nothing", async () => {
+    const { type, send, onSend, text } = await sheet()
+    type("2519")
+    send()
+    expect(onSend).not.toHaveBeenCalled()
+    expect(text()).toContain("Напишите время, например 18:30.")
+  })
+})
+
+describe("the Today screen wires the card and the sheet in", () => {
   const today = read("screens/today/TodayScreen.tsx")
 
   it("replaces the ordinary card — no «Fasilə», no QR finish — for a stale day only", () => {
@@ -101,14 +161,14 @@ describe("the Today screen wires the card in", () => {
     expect(today).toContain("qr.available && !staleDay && !workdayPaused")
   })
 
-  it("opens the filled-in request under the «Ещё» menu, not in place of it", () => {
-    const open = today.slice(today.indexOf("const openFinishTimeRequest"), today.indexOf("useEffect(()=>", today.indexOf("const openFinishTimeRequest")))
-    expect(open).toContain('screen: "AttendanceRequests"')
-    expect(open).toContain("staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone)")
-    expect(open).toContain("initial: false")
+  it("closes the day on this screen, not in «Мои заявки»", () => {
+    expect(today).toContain("onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}")
+    expect(today).toContain("<StaleWorkdayCloseSheet")
+    expect(today).toContain("await queueAttendanceRequest(attendanceScope(), input, [])")
+    expect(today).not.toContain('screen: "AttendanceRequests"')
   })
 
-  it("asks before «Закрыть сейчас», saying how many hours go into that day", () => {
+  it("asks before closing now where no request can be sent, saying how many hours go into that day", () => {
     const dialog = today.slice(today.indexOf("visible={endDayConfirm}"), today.indexOf("visible={notice !== null}"))
     expect(dialog).toContain('t("todayV2.staleEndConfirmBody", staleClose)')
     expect(dialog).toContain('t("todayV2.staleEndNow")')
@@ -117,14 +177,15 @@ describe("the Today screen wires the card in", () => {
 
   it("offers the request only where the server takes it", () => {
     expect(today).toContain('agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))')
-    expect(read("navigation/AppNavigatorAndroidV2.tsx")).toContain("AttendanceRequests: AttendanceRequestsParams | undefined")
   })
 })
 
 describe("the words exist in all three languages with the same placeholders", () => {
   const keys = [
-    "staleDayTitle", "staleDayBody", "staleDayBodyNoRequest", "staleDaySent", "staleSetFinish",
-    "staleEndNow", "staleOpenRequest", "staleEndConfirmTitle", "staleEndConfirmBody", "staleEndConfirmHint",
+    "staleDayTitle", "staleDayBody", "staleDayBodyNoRequest", "staleDaySent", "staleCloseDay",
+    "staleEndNow", "staleEndConfirmTitle", "staleEndConfirmBody",
+    "staleSheetTitle", "staleSheetStart", "staleSheetQuestion", "staleSheetHint", "staleSheetNextDay",
+    "staleSheetSend", "staleSheetInvalid", "staleSheetFuture", "staleSheetFailed",
   ] as const
   const placeholders = (text: string) => (text.match(/\{\{\w+\}\}/g) ?? []).sort().join(",")
 
