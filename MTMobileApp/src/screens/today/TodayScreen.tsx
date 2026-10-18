@@ -49,13 +49,27 @@ import {
 } from "./today-state"
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { askBackgroundLocation, backgroundLocationMissing } from "../../services/background-location"
+import StaleWorkdayCard from "../../components/StaleWorkdayCard"
+import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
+import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests } from "../../services/attendance-requests"
+import {
+  companyClock,
+  staleWorkdayCorrection,
+  staleWorkdayCorrectionSent,
+  workdayOpenSinceEarlierDay,
+  type AttendanceRequestsParams,
+} from "../../services/stale-workday"
+import { staleVisitDayDate } from "../../services/stale-visit"
 
 type TodayNavigationParams = {
   Route: undefined
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
-  More: { screen: "Messages" }
+  More:
+    | { screen: "Messages" }
+    // `initial: false` keeps the «Ещё» menu under the form, so that tab still opens the menu.
+    | { screen: "AttendanceRequests"; params?: AttendanceRequestsParams; initial: false }
 }
 
 type Destination = Exclude<keyof TodayNavigationParams, "More">
@@ -141,6 +155,41 @@ export default function TodayScreen() {
     : null
   const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
   const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
+  // Owner, 2026-10-18: a day left open since an earlier date is not "going
+  // on" — it gets a red card and asks for the real finish time
+  // (services/stale-workday.ts). The company's timezone decides the dates.
+  const companyTimezone = useBootstrapStore((state) => state.data?.timezone ?? null)
+  const finishTimeRequestable = useBootstrapStore((state) =>
+    agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))
+  const staleDay = workdayOpen && currentWorkday
+    ? workdayOpenSinceEarlierDay(currentWorkday.startedAt, new Date(), companyTimezone)
+    : null
+  // Whether the finish time for that day is already with the manager, read
+  // from the own-requests list and this phone's queue. Keyed by the agent and
+  // the day so it never speaks for another.
+  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; sent: boolean } | null>(null)
+  const staleFinishTimeSent = staleDay !== null && finishTimeSent?.key === currentWorkdayKey
+    && finishTimeSent.day === staleDay && finishTimeSent.sent
+  const readFinishTimeSent = useCallback(async () => {
+    if (!staleDay || !finishTimeRequestable) return
+    const key = currentWorkdayKey
+    let scope: string
+    try { scope = attendanceScope() } catch { return }
+    const queued = await attendanceQueued(scope).catch(() => [])
+    let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
+    try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
+    setFinishTimeSent({ key, day: staleDay, sent: staleWorkdayCorrectionSent(staleDay, requests, queued) })
+  }, [currentWorkdayKey, finishTimeRequestable, staleDay])
+  useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
+  useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
+  const openFinishTimeRequest = useCallback(() => {
+    if (!currentWorkday || !staleDay) return
+    navigation.navigate("More", {
+      screen: "AttendanceRequests",
+      params: staleFinishTimeSent ? {} : { correction: staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone) },
+      initial: false,
+    })
+  }, [companyTimezone, currentWorkday, navigation, staleDay, staleFinishTimeSent])
   useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
@@ -453,6 +502,13 @@ export default function TodayScreen() {
     else if (nextKind === "unknown") manualRefresh().catch(() => {})
   }
 
+  // «Закрыть сейчас» on a stale day says what it will write: every hour since
+  // the start goes into that one day.
+  const staleClose = staleDay && currentWorkday ? {
+    date: formatLocalizedDate(staleVisitDayDate(staleDay), i18n.language, { day: "numeric", month: "long" }),
+    time: companyClock(new Date(currentWorkday.startedAt), companyTimezone),
+    hours: Math.max(0, Math.floor((Date.now() - new Date(currentWorkday.startedAt).getTime()) / 3_600_000)),
+  } : null
   const dateLabel = new Date().toLocaleDateString(i18n.language, {
     weekday: "long",
     day: "numeric",
@@ -531,6 +587,19 @@ export default function TodayScreen() {
 
         <View style={[styles.content, twoPane && styles.contentTablet]}>
           <View style={[styles.primaryColumn, twoPane && styles.primaryColumnTablet]}>
+            {staleDay && currentWorkday ? (
+              <StaleWorkdayCard
+                day={staleDay}
+                startedAt={currentWorkday.startedAt}
+                timezone={companyTimezone}
+                mode={!finishTimeRequestable ? "closeOnly" : staleFinishTimeSent ? "sent" : "request"}
+                busy={workdayBusy || !workdayHydrated}
+                error={workdayError ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError") : null}
+                onSetFinish={openFinishTimeRequest}
+                onOpenRequest={openFinishTimeRequest}
+                onCloseNow={requestWorkdayAction}
+              />
+            ) : (
             <View style={styles.workdayPanel}>
               <View style={styles.workdayCopy}>
                 <View style={styles.workdayTitleRow}>
@@ -647,8 +716,9 @@ export default function TodayScreen() {
               </Pressable>}
               </View>
             </View>
-            {qr.available && !workdayPaused && !workdayFinishedToday && !recovery.operation && !installation.blocked && <View style={{gap:12}}><Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t('attendanceQr.optional')}</Text><Pressable testID="today-workday-qr" accessibilityRole="button" disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding} style={[styles.workdayButton,{minHeight:52}]} onPress={()=>setScan({scope:currentWorkdayKey,action:workdayOpen?'FINISH':'START',workdayId:currentWorkday?.workdayId})}><Text style={styles.workdayButtonText}>{t(workdayOpen?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable></View>}
-            {qr.available && workdayPaused && <Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t("attendanceQr.breakPrivacy")}</Text>}
+            )}
+            {qr.available && !staleDay && !workdayPaused && !workdayFinishedToday && !recovery.operation && !installation.blocked && <View style={{gap:12}}><Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t('attendanceQr.optional')}</Text><Pressable testID="today-workday-qr" accessibilityRole="button" disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding} style={[styles.workdayButton,{minHeight:52}]} onPress={()=>setScan({scope:currentWorkdayKey,action:workdayOpen?'FINISH':'START',workdayId:currentWorkday?.workdayId})}><Text style={styles.workdayButtonText}>{t(workdayOpen?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable></View>}
+            {qr.available && !staleDay && workdayPaused && <Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t("attendanceQr.breakPrivacy")}</Text>}
             <AttendanceQrReceipt receipts={qr.receipts}/>
             <AttendanceInstallationCard installation={installation} />
             <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation} refresh={async () => { await refreshRouteFieldSession(); await refresh(); await recovery.reload() }} />
@@ -878,12 +948,14 @@ export default function TodayScreen() {
       }}/>
       <ConfirmSheet
         visible={endDayConfirm}
-        icon="🌙"
-        iconColor={fieldTheme.color.primaryStrong}
-        title={t("todayV2.endDayConfirmTitle")}
-        message={t("todayV2.endDayConfirmBody")}
-        cancelText={t("todayV2.endDayConfirmCancel")}
-        confirmText={t("todayV2.endDayConfirmAction")}
+        icon={staleClose ? "⚠️" : "🌙"}
+        iconColor={staleClose ? fieldTheme.color.danger : fieldTheme.color.primaryStrong}
+        title={staleClose ? t("todayV2.staleEndConfirmTitle") : t("todayV2.endDayConfirmTitle")}
+        message={staleClose
+          ? [t("todayV2.staleEndConfirmBody", staleClose), finishTimeRequestable && !staleFinishTimeSent ? t("todayV2.staleEndConfirmHint") : ""].filter(Boolean).join(" ")
+          : t("todayV2.endDayConfirmBody")}
+        cancelText={staleClose ? t("common.cancel") : t("todayV2.endDayConfirmCancel")}
+        confirmText={staleClose ? t("todayV2.staleEndNow") : t("todayV2.endDayConfirmAction")}
         destructive
         onCancel={() => setEndDayConfirm(false)}
         onConfirm={() => {
