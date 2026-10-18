@@ -247,10 +247,10 @@ SCREENS = {
     # code», right under the field, is not in the dump at all.
     "first-typing": dump(("com.mtmobileapp:id/action_bar_root", "", {"bounds": "[0,48][720,1090]"}),
                          ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
-                           tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
-                           ("login-code-step-phone", "", {"bounds": "[82,714][638,1090]"}), ("", "WhatsApp number"),
-                           ("login-code-phone", "+994 ", {"bounds": "[159,951][635,1059]"}),
-                           ("android:id/navigationBarBackground", "", {"bounds": "[0,1552][720,1600]"})),
+                         tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
+                         ("login-code-step-phone", "", {"bounds": "[82,714][638,1090]"}), ("", "WhatsApp number"),
+                         ("login-code-phone", "+994 ", {"bounds": "[159,951][635,1059]"}),
+                         ("android:id/navigationBarBackground", "", {"bounds": "[0,1552][720,1600]"})),
     # The same screen while LoginScreen still reads the saved account, and after a press on «Sign in».
     "signin": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
                    tab("signin", True), ("", "Sign in"), tab("first", False), ("", "First sign-in"),
