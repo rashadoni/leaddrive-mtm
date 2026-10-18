@@ -2,7 +2,8 @@
 
 Всё, что Play Console спрашивает о LeadDrive Route Field (`com.mtmobileapp`), с
 ответами и тем, на чём каждый ответ стоит в коде. Сверено 2026-10-18 с main
-(3.11.30 / versionCode 1624 и 3.11.31 / 1627) и с сервером leaddrive-v2. Неверный
+(3.11.30 / versionCode 1624, 3.11.31 / 1627 и 3.11.32 / 1634) и с сервером
+leaddrive-v2. Неверный
 ответ в «Безопасности данных» Google считает нарушением политики, а не
 опечаткой: изменил приложение — сверь разделы 4–6 заново.
 
@@ -22,41 +23,57 @@ https://claude.ai/artifact/JH4tr1LGRjQurQZgKEnepL
   план.
 - С версии от 2026-09-14 приложение получило: `ACCESS_BACKGROUND_LOCATION`
   (возобновление записи после перезагрузки, `FieldTrackingResume`),
-  `RECEIVE_BOOT_COMPLETED`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, пуши Firebase,
+  `RECEIVE_BOOT_COMPLETED`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (с 3.11.32
+  снова убрано, раздел 1.2), пуши Firebase,
   подпись клиента, вход по коду из WhatsApp, учёт рабочего дня (QR через ML Kit,
   согласие на место, признак mock-location), экраны руководителя (живая карта,
   сообщения команде). Поэтому ответы ниже отличаются от сентябрьских: нужна
   декларация фонового местоположения, IARC «пользователи общаются» — Yes.
 
-## 1. Что блокирует отправку на проверку
+## 1. Что блокировало отправку на проверку — закрыто 2026-10-18
 
-1. **Нет объяснения перед первым запросом местоположения.** `runtime/AndroidApp.tsx`
-   по «Начать день» сразу зовёт `requestMultiple(ACCESS_FINE_LOCATION…)`. Сервис
-   записи пишет место и при закрытом приложении, а политика Google требует
-   prominent disclosure **до** runtime-запроса: слово «местоположение», какие
-   функции, «даже когда приложение закрыто или не используется», как
-   используется ([Google](https://support.google.com/googleplay/android-developer/answer/9799150)).
-   Карточка `todayV2.backgroundLocation*` на «Сегодня» показывается только после
-   выдачи «при использовании» и не говорит «когда приложение закрыто».
-   Нужно: диалог перед первым запросом + переписать текст карточки по шаблону
-   Google на трёх языках.
-2. **`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`** (`FieldNotificationsModule.kt`,
-   `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`). Play запрещает прямой запрос,
-   «unless the core function is adversely affected»; в списке допустимых —
-   мессенджеры без FCM, безопасность, автоматизация, компаньоны устройств
-   ([Android](https://developer.android.com/training/monitoring-device-state/doze-standby)).
-   Полевого учёта там нет. Вариант без риска уже есть в коде как запасной —
-   `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (без разрешения в манифесте).
-   Решение владельца; рекомендовано заменить.
-3. **Политика на сайте** — PR rashadoni/leaddrive-site#36 (старая говорила, что
-   фоновое местоположение не запрашивается). Мерж — после «давай».
+Загружать **3.11.32 / versionCode 1634 или новее**
+([v3.11.32-build634](https://github.com/rashadoni/leaddrive-mtm/releases/tag/v3.11.32-build634),
+branch main, коммит `8acf75a`). В более ранних сборках пункты 1 и 2 не закрыты.
+
+1. **Объяснение перед запросом местоположения** — rashadoni/leaddrive-mtm#163.
+   Перед системным запросом Android приложение показывает своё окно
+   (`services/location-disclosure.ts`, тексты `locationDisclosure.*` в
+   `i18n/mobile-resources.ts`, az/ru/en): «местоположение», запись маршрута в
+   открытый рабочий день и отметки визитов, «даже когда приложение закрыто или
+   не используется», видят руководители компании, запись останавливается по
+   «Перерыв» и «Завершить день». «Не сейчас» — системный запрос не показывается
+   ([Google](https://support.google.com/googleplay/android-developer/answer/9799150)).
+   Через окно идут запись маршрута (`runtime/AndroidApp.tsx`), отметка визита на
+   «Визитах» и на «Маршруте»; библиотеке геолокации при запуске запрещено
+   спрашивать самой (`skipPermissionRequests: true`) — раньше «Маршрут» и
+   «Визиты» поднимали системный запрос при открытии. Отметка рабочего дня
+   полевого агента системный запрос не открывает (у офисных — как раньше).
+   Список мест, откуда может открыться системный запрос местоположения, держит
+   тест `__tests__/runtime/location-disclosure-paths.test.ts`.
+   Карточка `todayV2.backgroundLocation*` («в любом режиме») переписана по
+   тому же шаблону Google.
+2. **Прямой запрос батареи убран** (решение владельца 2026-10-18: «Заменить»;
+   тот же #163). `FieldNotificationsModule.openBatteryOptimizationSettings`
+   открывает `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (запасной путь —
+   страница приложения в настройках); на «Маршруте» сначала своё окно
+   «Не сейчас» / «Открыть настройки». `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` в
+   манифесте помечено `tools:node="remove"`; в собранном .aab 1634 его нет
+   (проверено по `base/manifest/AndroidManifest.xml`).
+3. **Политика на сайте** — rashadoni/leaddrive-site#36 смержен 2026-10-18 по
+   «давай» владельца, опубликован на трёх языках, якорь `#delete` работает.
+
+Не проверено на устройстве: окно объяснения, системный запрос после него и
+экран настроек батареи видели только тесты (jest 249/249) и сборка. Видео для
+декларации (раздел 7) снимать на 1634 или новее — оно же и будет проверкой.
 
 ## 2. Подпись (Play App Signing) — свой ключ
 
 Сертификат пакета из CI: `CN=LeadDrive MTM, OU=Mobile, O=LeadDrive, L=Baku`,
 SHA-256 `d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b`, RSA 2048,
 действует до 2053-12-19. Проверено разбором `META-INF/MTM-RELE.RSA` самих .aab
-1624 и 1627 (а не со слов CI). Тот же сертификат у APK на устройствах агентов
+1624, 1627 и 1634 (а не со слов CI); у 1634 ещё и подпись CMS над `MTM-RELE.SF`,
+дайджест `MANIFEST.MF` и все 1171 файлов — совпадают, неподписанных нет. Тот же сертификат у APK на устройствах агентов
 (память «MTM: подпись релиза»), поэтому:
 
 - при первой загрузке выбрать **свой ключ** (Export and upload a key from Java
@@ -97,7 +114,7 @@ java -jar pepk.jar --keystore=/home/rashad/.leaddrive-keys/mtm-release.keystore 
 - В .aab: `targetSdk 36`, `minSdk 24` (требование Play для новых приложений —
   targetSdk 35+ — выполнено).
 
-## 4. Разрешения в собранном манифесте (.aab 1624, merged)
+## 4. Разрешения в собранном манифесте (.aab 1634, merged)
 
 | Разрешение | Откуда | Что в консоли |
 |---|---|---|
@@ -106,12 +123,12 @@ java -jar pepk.jar --keystore=/home/rashad/.leaddrive-keys/mtm-release.keystore 
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` | приложение; сервис `RNBackgroundActionsTask` с `foregroundServiceType="location"` | Foreground service permissions: описание + видео |
 | `POST_NOTIFICATIONS` | приложение | — |
 | `RECEIVE_BOOT_COMPLETED` | приложение (`FieldTrackingResumeReceiver`) | — |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | приложение | формы нет; риск — раздел 1.2 |
 | `CAMERA` | приложение (фото визита, QR через vision-camera + ML Kit) | — |
 | `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE`, `WAKE_LOCK` | приложение / библиотеки | — |
 | `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` | библиотеки; в рантайме не запрашиваются, на targetSdk 33+ не действуют | — (политика фото/видео касается `READ_MEDIA_*`, их нет) |
 | `c2dm.permission.RECEIVE`, `BIND_GET_INSTALL_REFERRER_SERVICE`, `DUMP`, `BIND_JOB_SERVICE` | Firebase / библиотеки | — |
 
+`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` нет с 3.11.32 (раздел 1.2).
 Рекламного ID (`com.google.android.gms.permission.AD_ID`) нет → Advertising ID: No.
 `USE_FULL_SCREEN_INTENT`, `SCHEDULE_EXACT_ALARM`, `READ_MEDIA_*` нет.
 `android:usesCleartextTraffic="true"` стоит, но http используется только для
@@ -194,4 +211,4 @@ Contabo — обработчики по поручению, руководите
 Видео для деклараций (≤ 30 с, YouTube по ссылке): «Начать день» → объяснение →
 системный запрос → «Разрешать всегда» → домой, шторка с уведомлением
 «LeadDrive — рабочий день» → «Перерыв» (уведомление пропало) → «Завершить день».
-Снимать после правки из раздела 1.1.
+Снимать на сборке 1634 или новее (объяснение появилось в 3.11.32).
