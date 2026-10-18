@@ -22,6 +22,7 @@ describe("screens whose header scrolls keep the status bar readable", () => {
     ["screens/route/RouteScreen.tsx", 2],
     ["screens/tasks/TasksScreen.tsx", 1],
     ["screens/visit/VisitScreen.tsx", 1],
+    ["screens/profile/ProfileScreen.tsx", 1],
   ])("renders it on %s", (file, count) => {
     const source = read(file)
     expect(source).toContain('import StatusBarBand from "../../components/StatusBarBand"')

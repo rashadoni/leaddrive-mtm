@@ -45,6 +45,8 @@ jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 jest.mock("../../src/components/NotificationBell", () => () => null)
 // The white header's status bar reads the focus, which this navigation mock leaves out.
 jest.mock("../../src/components/LightScreenStatusBar", () => () => null)
+// The profile's band under the clock reads safe-area insets this test does not provide.
+jest.mock("../../src/components/StatusBarBand", () => () => null)
 import AttendanceQrScanner from "../../src/components/AttendanceQrScanner"
 import {guardAttendanceQr} from "../../src/services/attendance-qr"
 import AttendanceWorkdayScreen from "../../src/screens/attendance/AttendanceWorkdayScreen"

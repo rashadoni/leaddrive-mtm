@@ -22,6 +22,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { hasOfficeAttendanceAccess } from "../../services/attendance-access"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
+import StatusBarBand from "../../components/StatusBarBand"
 import NotificationBell from "../../components/NotificationBell"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
@@ -235,7 +236,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
                   pressed && styles.pressed,
                 ]}
               >
-                {selected ? <Icon name="checkmark-circle" size={18} color={fieldTheme.color.onColor} /> : null}
+                {selected ? <Icon name="checkmark-circle" size={18} color={fieldTheme.color.primaryStrong} /> : null}
                 <Text style={[styles.localeText, selected && styles.localeTextSelected]}>{label}</Text>
               </Pressable>
             )
@@ -335,6 +336,8 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
         </View>
         <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
       </ScrollView>
+      {/* The header scrolls away with the page: the band keeps the clock off the cards. */}
+      <StatusBarBand tone="light" />
 
       <ConfirmSheet
         visible={confirmAction === "logout"}
@@ -448,17 +451,18 @@ const styles = StyleSheet.create({
   infoValue: { marginTop: 2, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   localeRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   localeButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, minWidth: 104, flexGrow: 1, paddingHorizontal: fieldTheme.space.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas },
-  localeButtonSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primary },
+  // The chosen language is a green edge and tick, not a green fill (owner-approved colours, 2026-10-18).
+  localeButtonSelected: { borderWidth: 2, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   localeText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
-  localeTextSelected: { color: fieldTheme.color.onColor },
+  localeTextSelected: { color: fieldTheme.color.primaryStrong },
   toggleRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   toggleCopy: { flex: 1, minWidth: 0 },
   toggleLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   toggleNote: { marginTop: 4, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   accountActions: { gap: fieldTheme.space.sm },
-  secondaryAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.primarySoft },
+  secondaryAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   secondaryActionText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
-  dangerAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#EDBEBE", backgroundColor: fieldTheme.color.dangerSoft },
+  dangerAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.danger, backgroundColor: fieldTheme.color.surface },
   dangerActionText: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
   version: { marginBottom: fieldTheme.space.lg, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "600", textAlign: "center" },
   pressed: { opacity: 0.72 },
