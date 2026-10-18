@@ -29,6 +29,7 @@ import {
 import { planningTodayKey } from "../../services/manager-planning"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
@@ -287,6 +288,7 @@ export default function ManagerPlanningCalendarScreen() {
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
           {tablet ? createButton : null}
+          <NotificationBell />
         </View>
         {tablet ? null : <View style={styles.headerActions}>{createButton}</View>}
       </View>

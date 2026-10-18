@@ -41,6 +41,8 @@ jest.mock("../../src/store/hints", () => ({ useHintsStore: (selector: (value: un
 jest.mock("../../src/i18n", () => ({ getCurrentLocale: () => "ru", setLocale: jest.fn(), SUPPORTED_LOCALES: ["az", "ru", "en"] }))
 jest.mock("../../src/components/ConfirmSheet", () => () => null)
 jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
+// The bell reads its own store and the server; these screens are tested without it.
+jest.mock("../../src/components/NotificationBell", () => () => null)
 import AttendanceQrScanner from "../../src/components/AttendanceQrScanner"
 import {guardAttendanceQr} from "../../src/services/attendance-qr"
 import AttendanceWorkdayScreen from "../../src/screens/attendance/AttendanceWorkdayScreen"

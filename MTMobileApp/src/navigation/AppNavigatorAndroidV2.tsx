@@ -85,6 +85,8 @@ export type RootStackParamList = {
   ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null }
   /** «Komandaya yaz» from «Komanda»: to the whole team or one employee (owner, 2026-10-17). */
   ManagerTeamMessage: undefined
+  /** The bell's list (owner-approved mockup, 2026-10-18), over the tabs in both shells. */
+  Notifications: undefined
   /** The agent's own planner in the field shell; the team planner in the manager shell. */
   PlanningBuilder: { initialDate?: string; initialHorizon?: 1 | 7; editPublished?: boolean; initialTarget?: RoutePlanningTargetHint } | undefined
 }
@@ -92,8 +94,8 @@ export type RootStackParamList = {
 export type MoreStackParamList = {
   AttendanceRequests: undefined
   MoreHome: undefined
-  Notifications: undefined
-  Messages: undefined
+  /** A line of the bell opens the thread it is about. */
+  Messages: { threadId?: string } | undefined
   Visits: undefined
   GpsHistory: undefined
   Profile: undefined
@@ -192,7 +194,6 @@ function MoreStackNavigator() {
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
       <MoreStack.Screen name="MoreHome" component={MoreScreen} />
       {attendanceAllowed && <MoreStack.Screen name="AttendanceRequests" component={AttendanceRequestsScreen} />}
-      <MoreStack.Screen name="Notifications" component={NotificationsScreen} />
       <MoreStack.Screen name="Messages" component={TeamMessagesScreen} />
       <MoreStack.Screen name="Visits" component={VisitScreen} />
       <MoreStack.Screen name="GpsHistory" component={GpsHistoryScreen} />
@@ -427,6 +428,7 @@ export default function AppNavigatorAndroidV2() {
         {isLoggedIn ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} />
+            {routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={NotificationsScreen} /> : null}
             {routeFieldAdmitted ? (
               <>
                 <Stack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />

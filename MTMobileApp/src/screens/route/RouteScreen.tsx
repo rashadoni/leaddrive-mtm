@@ -67,6 +67,7 @@ import SignaturePadModal from "../../components/SignaturePadModal"
 import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
@@ -2130,6 +2131,7 @@ export default function RouteScreen() {
       >
         <Icon name="add" size={22} color={fieldTheme.color.onColor} />
       </Pressable>
+      <NotificationBell />
     </View>
   )
 

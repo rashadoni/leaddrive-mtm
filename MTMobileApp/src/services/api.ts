@@ -637,6 +637,18 @@ class ApiClient {
     return this.request("/mobile/notifications", { method: "PATCH", body: JSON.stringify({ ids, isRead: true }) }, 20_000, 1, guard)
   }
 
+  /** The bell's server inbox: the caller's own rows, newest 100, with the unread count. */
+  getMobileNotifications(signal?: AbortSignal) {
+    return this.request("/mobile/notifications", { signal }, 20_000, 1)
+  }
+  /** The server takes at most 100 ids per call. */
+  markMobileNotificationsRead(ids: string[]) {
+    return this.request("/mobile/notifications", { method: "PATCH", body: JSON.stringify({ ids: ids.slice(0, 100), isRead: true }) }, 20_000, 1)
+  }
+  markAllMobileNotificationsRead() {
+    return this.request("/mobile/notifications", { method: "PATCH", body: JSON.stringify({ all: true, isRead: true }) }, 20_000, 1)
+  }
+
   // --- Legacy heartbeat ---
   // Presence is GPS/workday-led; this endpoint remains only for old app
   // versions and never represents an agent as live.

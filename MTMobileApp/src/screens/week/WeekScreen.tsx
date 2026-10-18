@@ -33,6 +33,7 @@ import {
   type WeekTaskItem,
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
@@ -743,6 +744,7 @@ function CalendarHeader({
           <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.primary : fieldTheme.color.onColor} />
           <Text style={[styles.todayButtonText, currentWeek && styles.todayButtonTextCurrent]}>{todayLabel}</Text>
         </Pressable>
+        <NotificationBell tone="light" />
       </View>
 
       <View style={styles.weekNavigation}>

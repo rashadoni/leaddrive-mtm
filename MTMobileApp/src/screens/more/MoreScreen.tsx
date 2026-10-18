@@ -21,6 +21,7 @@ import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
+import NotificationBell from "../../components/NotificationBell"
 
 type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
@@ -113,7 +114,8 @@ export default function MoreScreen() {
         navigation.navigate("AttendanceRequests")
         break
       case "Notifications":
-        navigation.navigate("Notifications")
+        // The bell's list lives over the tabs, not in this stack.
+        navigation.navigate("Notifications" as never)
         break
       case "Messages":
         navigation.navigate("Messages")
@@ -146,6 +148,7 @@ export default function MoreScreen() {
       <View style={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>{t("moreV2.title")}</Text>
+          <NotificationBell tone="light" />
         </View>
         <View style={styles.actionGrid}>
           {actions.map((action) => {
@@ -197,9 +200,13 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   heading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: fieldTheme.space.sm,
   },
   title: {
+    flex: 1,
     color: fieldTheme.color.ink,
     fontSize: 30,
     lineHeight: 36,

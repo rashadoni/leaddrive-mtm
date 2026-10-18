@@ -133,10 +133,13 @@ describe("notifications screen wiring", () => {
   const screen = fs.readFileSync(path.resolve(__dirname, "../../src/screens/more/NotificationsScreen.tsx"), "utf8")
   const more = fs.readFileSync(path.resolve(__dirname, "../../src/screens/more/MoreScreen.tsx"), "utf8")
   const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/AppNavigatorAndroidV2.tsx"), "utf8")
+  // Since the bell (2026-10-18) the list loads in its store, shared by every bell.
+  const store = fs.readFileSync(path.resolve(__dirname, "../../src/store/notification-inbox.ts"), "utf8")
 
-  it("is reachable from the More tab", () => {
+  it("is reachable from the More tab, and from the bell over the tabs", () => {
     expect(more).toContain('route: "Notifications"')
-    expect(navigator).toContain('<MoreStack.Screen name="Notifications" component={NotificationsScreen} />')
+    expect(more).toContain('navigation.navigate("Notifications" as never)')
+    expect(navigator).toContain('<Stack.Screen name="Notifications" component={NotificationsScreen} />')
   })
 
   /**
@@ -153,13 +156,16 @@ describe("notifications screen wiring", () => {
   })
 
   it("survives a source that fails instead of emptying the list", () => {
-    expect(screen).toContain("api.getMobileMessages().catch(() => null)")
-    expect(screen).toContain("api.getDoctorCreateRequests(20).catch(() => null)")
-    expect(screen).toContain("api.getTasks().catch(() => null)")
+    expect(store).toContain("api.getMobileNotifications().catch(() => null)")
+    expect(store).toContain("api.getMobileMessages().catch(() => null)")
+    expect(store).toContain("api.getDoctorCreateRequests(20).catch(() => null)")
+    expect(store).toContain("api.getTasks().catch(() => null)")
+    // A source that did not answer keeps what it said last time.
+    expect(store).toContain("server: fresh.server ?? previous.server")
   })
 
   it("remembers read state and preferences on the device", () => {
-    expect(screen).toContain('const READ_STORAGE_KEY = "@mtm_notifications_read_v1"')
-    expect(screen).toContain('const PREFERENCES_STORAGE_KEY = "@mtm_notifications_preferences_v1"')
+    expect(store).toContain('const READ_STORAGE_KEY = "@mtm_notifications_read_v1"')
+    expect(store).toContain('const PREFERENCES_STORAGE_KEY = "@mtm_notifications_preferences_v1"')
   })
 })

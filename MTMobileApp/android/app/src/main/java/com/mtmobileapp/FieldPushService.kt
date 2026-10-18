@@ -46,6 +46,9 @@ class FieldPushService : FirebaseMessagingService() {
     // A team message pops up like a chat message; the rest stay reminders.
     val channel = message.data["channel"]
       ?: if (message.data["target"] == "Messages") FieldNotificationReceiver.TEAM_MESSAGES_CHANNEL else FieldNotificationReceiver.DEFAULT_CHANNEL
+    // The bell in the open app asks the server again, whether or not the
+    // phone is allowed to draw the notification.
+    FieldPushModule.announceMessage()
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
     FieldNotificationReceiver.post(this, id, title, body, channel)
   }
@@ -76,6 +79,7 @@ class FieldPushModule(
 
   companion object {
     const val TOKEN_REFRESH_EVENT = "FieldPushTokenRefresh"
+    const val MESSAGE_EVENT = "FieldPushMessage"
     @Volatile private var active: WeakReference<ReactApplicationContext>? = null
 
     /** Best effort: with no live JS the token waits in prefs for the next start. */
@@ -88,6 +92,17 @@ class FieldPushModule(
         context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(TOKEN_REFRESH_EVENT, payload)
       } catch (error: Throwable) {
         // The pending token in prefs is still there.
+      }
+    }
+
+    /** Best effort, no payload: what arrived is read from the server under the session. */
+    fun announceMessage() {
+      val context = active?.get() ?: return
+      try {
+        if (!context.hasActiveReactInstance()) return
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(MESSAGE_EVENT, null)
+      } catch (error: Throwable) {
+        // The bell refreshes on its own at the next focus.
       }
     }
   }

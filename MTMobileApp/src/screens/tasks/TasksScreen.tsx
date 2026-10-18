@@ -29,6 +29,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import FeedbackToast from "../../components/FeedbackToast"
 import StatusBarBand from "../../components/StatusBarBand"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import { taskWorkflowStatus, type TaskWorkflowStatus } from "./tasks-workflow-state"
@@ -577,9 +578,12 @@ export default function TasksScreen() {
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={[styles.headerInner, !tablet && styles.headerInnerPhone]}>
           <View style={styles.headerCopy}>
-            <View style={styles.eyebrowRow}>
-              <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primarySoft} />
-              <Text style={styles.eyebrow}>{copy.focus}</Text>
+            <View style={styles.headerTopRow}>
+              <View style={styles.eyebrowRow}>
+                <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primarySoft} />
+                <Text style={styles.eyebrow}>{copy.focus}</Text>
+              </View>
+              <NotificationBell />
             </View>
             <Text style={styles.headerTitle}>{copy.title}</Text>
             <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
@@ -925,7 +929,8 @@ const styles = StyleSheet.create({
   // own, and a zero flex basis there collapses the title block to 0 px — the
   // phone showed an empty green band with the title missing (2026-09-14).
   headerCopy: { flexGrow: 1, flexShrink: 1 },
-  eyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  headerTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
+  eyebrowRow: { flexShrink: 1, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   eyebrow: { color: fieldTheme.color.primarySoft, fontSize: 12, fontWeight: "800" },
   headerTitle: { color: fieldTheme.color.onColor, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: fieldTheme.space.sm },
   headerSubtitle: { color: "#CDE2D9", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },

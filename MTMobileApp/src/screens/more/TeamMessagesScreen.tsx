@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useRoute } from "@react-navigation/native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
@@ -56,6 +56,9 @@ function language(value: string): keyof typeof COPY {
 
 export default function TeamMessagesScreen() {
   const navigation = useNavigation()
+  const route = useRoute()
+  /** A line of the bell names the thread it is about (2026-10-18). */
+  const openThreadId = (route.params as { threadId?: string } | undefined)?.threadId
   const { i18n } = useTranslation()
   const copy = COPY[language(i18n.language)]
   const { width } = useWindowDimensions()
@@ -115,6 +118,17 @@ export default function TeamMessagesScreen() {
     setExpanded((current) => current === thread.id ? null : thread.id)
     if (thread.unread) receipt(thread, "READ").catch(() => {})
   }
+
+  // Opened from the bell: that thread is open, and read, as if tapped here.
+  useEffect(() => {
+    if (!openThreadId || loading) return
+    const thread = threads.find((candidate) => candidate.id === openThreadId)
+    navigation.setParams({ threadId: undefined } as never)
+    if (!thread) return
+    setExpanded(thread.id)
+    if (thread.unread) receipt(thread, "READ").catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openThreadId, loading, threads])
 
   return (
     <View style={styles.screen}>
