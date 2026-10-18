@@ -147,18 +147,29 @@ export function staleWorkdayFinishRequest(
  * queued request the server refused does not count: the card offers «Закрыть
  * день» again, and the refusal is in «Мои заявки».
  */
+export type StaleWorkdayFinishSent = {
+  finish: string
+  /**
+   * Already approved — by the manager, or at once where the company lets a
+   * forgotten day's close through on its own (leaddrive-v2
+   * attendance-auto-close.ts). The day is closed on the server; the phone
+   * has only to read it again.
+   */
+  approved: boolean
+}
+
 export function staleWorkdayFinishSent(
   workDate: string,
   requests: readonly AttendanceRequest[],
   queued: readonly OutboxOperation[],
-): string | null {
+): StaleWorkdayFinishSent | null {
   const request = requests.find((row) => row.details.kind === "TIME_CORRECTION"
     && (row.status === "PENDING" || row.status === "APPROVED")
     && String(row.startDate).slice(0, 10) === workDate)
-  if (request) return request.details.endTime ?? ""
+  if (request) return { finish: request.details.endTime ?? "", approved: request.status === "APPROVED" }
   const operation = queued.find((row) => row.entity === "attendanceRequests" && row.op === "create"
     && row.status === "pending" && row.data.kind === "TIME_CORRECTION"
     && String(row.data.startDate).slice(0, 10) === workDate)
-  if (operation) return typeof operation.data.endTime === "string" ? operation.data.endTime : ""
+  if (operation) return { finish: typeof operation.data.endTime === "string" ? operation.data.endTime : "", approved: false }
   return null
 }

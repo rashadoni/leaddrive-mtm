@@ -115,8 +115,8 @@ describe("a finish time already sent is not asked for again", () => {
   })
 
   it("names the time waiting for the manager, or approved before the phone saw the day close", () => {
-    expect(staleWorkdayFinishSent("2026-10-13", [request()], [])).toBe("22:19")
-    expect(staleWorkdayFinishSent("2026-10-13", [request({ status: "APPROVED" })], [])).toBe("22:19")
+    expect(staleWorkdayFinishSent("2026-10-13", [request()], [])).toEqual({ finish: "22:19", approved: false })
+    expect(staleWorkdayFinishSent("2026-10-13", [request({ status: "APPROVED" })], [])).toEqual({ finish: "22:19", approved: true })
   })
 
   it("offers «Günü bağla» again after a refusal or a cancellation", () => {
@@ -130,7 +130,7 @@ describe("a finish time already sent is not asked for again", () => {
   })
 
   it("counts one still waiting in the phone's queue, but not one the server refused", () => {
-    expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13", endTime: "22:19" })])).toBe("22:19")
+    expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13", endTime: "22:19" })])).toEqual({ finish: "22:19", approved: false })
     expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "TIME_CORRECTION", startDate: "2026-10-13", endTime: "22:19" }, "conflict")])).toBeNull()
     expect(staleWorkdayFinishSent("2026-10-13", [], [queued({ kind: "SICK_LEAVE", startDate: "2026-10-13" })])).toBeNull()
   })
