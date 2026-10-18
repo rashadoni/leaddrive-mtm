@@ -245,8 +245,8 @@ SCREENS = {
     # The same tab with the keyboard the phone field opens (`autoFocus`), as in
     # run 39170988424, 05-sign-in-form: the window ends at y=1090 and «Get a
     # code», right under the field, is not in the dump at all.
-    "first-keyboard": dump(("com.mtmobileapp:id/action_bar_root", "", {"bounds": "[0,48][720,1090]"}),
-                           ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+    "first-typing": dump(("com.mtmobileapp:id/action_bar_root", "", {"bounds": "[0,48][720,1090]"}),
+                         ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
                            tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
                            ("login-code-step-phone", "", {"bounds": "[82,714][638,1090]"}), ("", "WhatsApp number"),
                            ("login-code-phone", "+994 ", {"bounds": "[159,951][635,1059]"}),
@@ -272,7 +272,7 @@ class Device:
 
     `focus` names the screens whose field takes the focus as they appear
     (`autoFocus`): the keyboard opens, and the dump is the screen's
-    «-keyboard» variant until BACK closes it. `backs` says what each BACK
+    «-typing» variant until BACK closes it. `backs` says what each BACK
     pressed: the keyboard, or — with none up — the screen, which a real
     phone would leave.
     """
@@ -296,7 +296,7 @@ class Device:
             return ""
         if not command.startswith("uiautomator dump"):
             return ""
-        shown = SCREENS[self.screen + "-keyboard" if self.keyboard and self.screen + "-keyboard" in SCREENS else self.screen]
+        shown = SCREENS[self.screen + "-typing" if self.keyboard and self.screen + "-typing" in SCREENS else self.screen]
         if self.screen in self.turns and not self.touched:
             self.show(self.turns[self.screen])
         return shown
@@ -391,7 +391,7 @@ class SignInTabsTests(unittest.TestCase):
     def test_a_phone_field_that_opened_the_keyboard_is_read_with_the_keyboard_closed(self):
         # Run 39170988424: «First sign-in» chosen, and still a FAIL — the
         # keyboard hid «Get a code», so the step looked unfinished for 15 s.
-        self.assertEqual(self.walk.first_sign_in_offered(self.parsed("first-keyboard"), AUTH), "")
+        self.assertEqual(self.walk.first_sign_in_offered(self.parsed("first-typing"), AUTH), "")
         for start, turns in (("first", {}), ("signin", {"signin": "first"})):
             with self.subTest(start=start):
                 self.walk.results.clear()
