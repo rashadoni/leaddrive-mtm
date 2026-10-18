@@ -390,6 +390,13 @@ def open_password_form(what, name):
     return wait_for(what, lambda seen: by_id(seen, "login-email") and "form shown", 30, name)
 
 
+def has_sign_in_tabs():
+    """The build under test has the two tabs (3.11.3 on). Its ids are written `login-tab-${key}`,
+    so the literal «login-tab-first» is nowhere in the source — looking for it skipped the
+    checks on the first run with the tabs (39164347300)."""
+    return "login-tab-" in source_of(LOGIN_SCREEN)
+
+
 def first_sign_in_offered(found, sign_in):
     """«First sign-in» is the chosen tab and asks for the WhatsApp number; a detail in the app's words, or ""."""
     tab = by_id(found, "login-tab-first")
@@ -749,7 +756,7 @@ def main(apk):
     tap(by_id(found, "tenant-continue"))
     connected = time.time()
     found = wait_for("A real company leads to the sign-in screen", lambda seen: sign_in_open(seen) and f"{time.time() - connected:.0f} s to answer", 120, "05-sign-in-form")
-    if "login-tab-first" in source_of(LOGIN_SCREEN):
+    if has_sign_in_tabs():
         first_sign_in_checks(found, sign_in)
     found = open_password_form(f"«{sign_in['tabSignIn']}» shows the email and password form", "05b-password-form")
     hide_keyboard()
