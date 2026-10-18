@@ -5,13 +5,13 @@ import type { OutboxOperation } from "./outbox"
 /**
  * A workday left open since an earlier day.
  *
- * Owner's phone, 2026-10-18 04:06: «İş günü davam edir — 13 oktyabr, 10:21-da
- * başlayıb». The day was started on 13 October and never closed; five days
+ * Owner's phone, 2026-10-18 04:06: «İş günü davam edir — 13 oktyabr,
+ * 10:21-da başlayıb». The day was started on 13 October and never closed; five days
  * later the card still read as a day at work, with «Fasilə» and «Günü bitir».
  * «Günü bitir» there writes every hour since 13 October into one workday, and
  * while that day is open the server refuses to start a new one, so the report
- * shows the days after it as absences. Asked, the owner chose: a red card, and
- * a button that asks for the real finish time — a time-correction request the
+ * shows the days after it as absences. Asked, the owner chose: a red card that
+ * closes the day with the real finish time — a time-correction request the
  * manager approves (leaddrive-v2 `applyAttendanceTimeCorrectionInTransaction`).
  * Nothing closes the day by itself: the employee closes their own shift (owner,
  * 2026-09-21).
@@ -40,8 +40,8 @@ export function workdayOpenSinceEarlierDay(
 }
 
 /**
- * "HH:mm" on the company's clock. The request form and the server both read
- * the times in the company's timezone, so the phone's own zone must not leak in.
+ * "HH:mm" on the company's clock. The request and the server both read the
+ * times in the company's timezone, so the phone's own zone must not leak in.
  */
 export function companyClock(at: Date, timezone?: string | null): string {
   if (timezone) {
@@ -62,11 +62,8 @@ export function companyClock(at: Date, timezone?: string | null): string {
   return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`
 }
 
-/** What «Указать время ухода» hands to the request form. */
+/** The day and its start, as the close-the-day sheet and the request need them. */
 export type StaleWorkdayCorrection = { workDate: string; startTime: string }
-
-/** Route params of the own-requests screen. */
-export type AttendanceRequestsParams = { correction?: StaleWorkdayCorrection }
 
 export function staleWorkdayCorrection(
   startedAt: string,
@@ -76,44 +73,92 @@ export function staleWorkdayCorrection(
   return { workDate: planningTodayKey(at, timezone), startTime: companyClock(at, timezone) }
 }
 
+/** A YYYY-MM-DD key one calendar day later. */
+export function nextDayKey(day: string): string {
+  const [year, month, date] = day.split("-").map(Number)
+  return new Date(Date.UTC(year, month - 1, date + 1)).toISOString().slice(0, 10)
+}
+
 /**
- * The request form, filled in: kind, the day and its start. The finish time is
- * left empty — only the employee knows it, and the form refuses to send
- * without it. The end date starts as the work date; a night shift moves it.
+ * What the agent typed into «Во сколько вы закончили?», as "HH:mm". The field
+ * is a number pad: "2219", "919", "22:19" and "22.19" all count.
  */
-export function staleWorkdayCorrectionDraft(
+export function normalizeClock(text: string): string | null {
+  const match = /^(\d{1,2})[:.]?(\d{2})$/.exec(text.trim())
+  if (!match) return null
+  const hour = Number(match[1])
+  if (hour > 23 || Number(match[2]) > 59) return null
+  return `${String(hour).padStart(2, "0")}:${match[2]}`
+}
+
+/** The digits as the field shows them: the colon appears once all four are in. */
+export function clockFieldText(text: string): string {
+  const digits = text.replace(/\D/g, "").slice(0, 4)
+  return digits.length === 4 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits
+}
+
+export type StaleWorkdayFinish =
+  | { ok: true; input: AttendanceInput; nextDay: boolean }
+  | { ok: false; error: "format" | "future" }
+
+/**
+ * The time-correction request that closes the day at the finish typed in.
+ * A finish at or before the start is after midnight, on the next day — the
+ * request may cross midnight once, and the server keeps it within 24 hours.
+ * A finish that has not happened yet is refused here, as the server would.
+ */
+export function staleWorkdayFinishRequest(
   correction: StaleWorkdayCorrection,
+  finishText: string,
+  now: Date,
+  timezone: string | null | undefined,
   clientRequestId: string,
   reason: string,
-): AttendanceInput {
+): StaleWorkdayFinish {
+  const endTime = normalizeClock(finishText)
+  if (!endTime) return { ok: false, error: "format" }
+  const nextDay = endTime <= correction.startTime
+  const endDate = nextDay ? nextDayKey(correction.workDate) : correction.workDate
+  const today = planningTodayKey(now, timezone)
+  if (endDate > today || (endDate === today && endTime > companyClock(now, timezone))) {
+    return { ok: false, error: "future" }
+  }
   return {
-    clientRequestId,
-    kind: "TIME_CORRECTION",
-    unit: "HOURS",
-    startDate: correction.workDate,
-    endDate: correction.workDate,
-    startTime: correction.startTime,
-    endTime: "",
-    reason,
-    attachmentIds: [],
+    ok: true,
+    nextDay,
+    input: {
+      clientRequestId,
+      kind: "TIME_CORRECTION",
+      unit: "HOURS",
+      startDate: correction.workDate,
+      endDate,
+      startTime: correction.startTime,
+      endTime,
+      reason,
+      attachmentIds: [],
+    },
   }
 }
 
 /**
- * Has the finish time for this day already been sent? A request waiting for
- * the manager, one he approved before the phone saw the day closed, or one
- * still in this phone's queue (sent or refused — the requests screen shows
- * which). The server takes one pending correction per day; offering the
- * button again would only queue a refusal.
+ * The finish time already sent for that day, or null when there is none to
+ * wait for. A request waiting for the manager, one approved before the
+ * phone saw the day closed, or one still waiting in this phone's queue. A
+ * queued request the server refused does not count: the card offers «Закрыть
+ * день» again, and the refusal is in «Мои заявки».
  */
-export function staleWorkdayCorrectionSent(
+export function staleWorkdayFinishSent(
   workDate: string,
   requests: readonly AttendanceRequest[],
   queued: readonly OutboxOperation[],
-): boolean {
-  return requests.some((request) => request.details.kind === "TIME_CORRECTION"
-    && (request.status === "PENDING" || request.status === "APPROVED")
-    && String(request.startDate).slice(0, 10) === workDate)
-    || queued.some((operation) => operation.entity === "attendanceRequests" && operation.op === "create"
-      && operation.data.kind === "TIME_CORRECTION" && String(operation.data.startDate).slice(0, 10) === workDate)
+): string | null {
+  const request = requests.find((row) => row.details.kind === "TIME_CORRECTION"
+    && (row.status === "PENDING" || row.status === "APPROVED")
+    && String(row.startDate).slice(0, 10) === workDate)
+  if (request) return request.details.endTime ?? ""
+  const operation = queued.find((row) => row.entity === "attendanceRequests" && row.op === "create"
+    && row.status === "pending" && row.data.kind === "TIME_CORRECTION"
+    && String(row.data.startDate).slice(0, 10) === workDate)
+  if (operation) return typeof operation.data.endTime === "string" ? operation.data.endTime : ""
+  return null
 }

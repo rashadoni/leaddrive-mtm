@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
-import { useNavigation, useRoute } from "@react-navigation/native"
+import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -16,7 +16,6 @@ import { ask } from "../../services/app-feedback"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { fieldTheme } from "../../theme/fieldTheme"
-import { staleWorkdayCorrectionDraft, type AttendanceRequestsParams } from "../../services/stale-workday"
 
 function today(timezone: string | null) {
   try {
@@ -31,9 +30,6 @@ function newDraft(date: string): AttendanceInput {
 export default function AttendanceRequestsScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation()
-  // «Указать время ухода» on «Bu gün» (a day left open since an earlier date)
-  // arrives here with the day and its start, to open the correction form filled in.
-  const correction = (useRoute().params as AttendanceRequestsParams | undefined)?.correction
   const headerTop = useHeaderTop()
   const bottom = useTabBarPadding()
   const agent = useAuthStore(state => state.agent)
@@ -118,16 +114,6 @@ export default function AttendanceRequestsScreen() {
     return () => { mounted.current = false; lifecycle.current += 1; epoch.current += 1; releaseDraft() }
   }, [agent?.id, agent?.organizationId, allowed, clear, releaseDraft, bootstrap?.timezone])
   useEffect(() => { setQuota(null); void loadRef.current() }, [month])
-  // After the reset above, in the same commit: the filled-in form wins. The
-  // params are then dropped, so coming back to this screen opens the list.
-  useEffect(() => {
-    if (!correction || !allowed || denied) return
-    lifecycle.current += 1; releaseDraft(); draftScope.current = getOfflineScope()
-    setDraft(staleWorkdayCorrectionDraft(correction, attendanceUuid(), t("attendanceRequests.staleWorkdayReason")))
-    setDocuments([]); setEditing(true); setErrorKey(null); setNoticeKey(null)
-    navigation.setParams({ correction: undefined } as never)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [correction?.workDate, correction?.startTime, allowed, denied])
   const change = (patch: Partial<AttendanceInput>) => { setDraft(value => ({ ...value, ...patch })); setErrorKey(null) }
   const changeKind = (kind: AttendanceKind) => {
     if (kind === draft.kind) return
@@ -250,6 +236,11 @@ export default function AttendanceRequestsScreen() {
             {!editing && button(t("attendanceRequests.new"), enter, "attendance-new", true, busy)}
             {button(t("attendanceRequests.refresh"), () => { void act(async () => {}) }, "attendance-refresh", false, busy || loading)}
           </View>
+          <View style={styles.quota} testID="attendance-quota">
+            <Text style={styles.subtitle}>{t("attendanceRequests.quotaTitle", { month })}</Text>
+            <Text style={styles.body}>{quota ? t("attendanceRequests.quotaRemaining", { hours: Math.floor(quota.remainingMinutes / 60), minutes: quota.remainingMinutes % 60, count: quota.remainingRequests }) : t("attendanceRequests.quotaUnavailable")}</Text>
+            <Text style={styles.caption}>{t("attendanceRequests.quotaHint")}</Text>
+          </View>
           {editing && <View style={styles.form} testID="attendance-form">
             <Text style={styles.subtitle}>{t("attendanceRequests.new")}</Text>
             <Text style={styles.label}>{t("attendanceRequests.kind")}</Text>
@@ -278,11 +269,6 @@ export default function AttendanceRequestsScreen() {
               {button(t("attendanceRequests.closeForm"), () => { void closeDraft() }, "attendance-close-form", false, busy)}
             </View>
           </View>}
-          <View style={styles.quota} testID="attendance-quota">
-            <Text style={styles.subtitle}>{t("attendanceRequests.quotaTitle", { month })}</Text>
-            <Text style={styles.body}>{quota ? t("attendanceRequests.quotaRemaining", { hours: Math.floor(quota.remainingMinutes / 60), minutes: quota.remainingMinutes % 60, count: quota.remainingRequests }) : t("attendanceRequests.quotaUnavailable")}</Text>
-            <Text style={styles.caption}>{t("attendanceRequests.quotaHint")}</Text>
-          </View>
           {(busy || loading) && <ActivityIndicator accessibilityLabel={t("attendanceRequests.loading")} color={fieldTheme.color.primary} />}
           <View testID="attendance-list" style={styles.list}>
             {pendingCreates.map(operation => <View key={operation.operationId} style={styles.item}>

@@ -40,7 +40,6 @@ import AttendanceInboxScreen from "../screens/attendance/AttendanceInboxScreen"
 import AttendanceExplanationsScreen from "../screens/attendance/AttendanceExplanationsScreen"
 import { hasOfficeAttendanceAccess } from "../services/attendance-access"
 import { agentMayAttendanceRequests } from "../lib/agent-permissions"
-import type { AttendanceRequestsParams } from "../services/stale-workday"
 import TeamMessagesScreen from "../screens/more/TeamMessagesScreen"
 import NotificationsScreen from "../screens/more/NotificationsScreen"
 import TodayScreen from "../screens/today/TodayScreen"
@@ -91,8 +90,7 @@ export type RootStackParamList = {
 }
 
 export type MoreStackParamList = {
-  /** «Указать время ухода» on «Bu gün» opens the correction form filled in. */
-  AttendanceRequests: AttendanceRequestsParams | undefined
+  AttendanceRequests: undefined
   MoreHome: undefined
   Notifications: undefined
   Messages: undefined
