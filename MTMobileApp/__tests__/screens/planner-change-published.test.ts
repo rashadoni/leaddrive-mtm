@@ -74,4 +74,20 @@ describe("«Planı dəyiş» on the Route tab", () => {
     expect(open).toContain('changePlanAvailability === "offline"')
     expect(open).toContain('message: t("managerShell.planEditOffline")')
   })
+
+  // Owner's phone, 2026-10-18: clients taken off and put back as they were,
+  // and «Dəyişiklikləri dərc et» stood grey — «кнопка не активна».
+  it("leads out of an edit that changed nothing instead of standing disabled", () => {
+    const action = core.slice(core.indexOf("const editAction = "), core.indexOf("const leaveUnchangedEdit = () => {"))
+    expect(action).toContain("!saving && !editChanged")
+    expect(action).toContain('label: t("managerShell.planEditDone")')
+    expect(action).toContain("disabled: false,")
+    expect(action).toContain("onPress: () => leaveUnchangedEdit(),")
+    // Publishing waits only for a valid change, never for «nothing changed».
+    expect(action).toContain("disabled: saving || editProblem !== null,")
+    const leave = core.slice(core.indexOf("const leaveUnchangedEdit = () => {"), core.indexOf("const selfNextStep"))
+    expect(leave).toContain("publishedRouteEditChanged(editSession.original, editStops)) return")
+    expect(leave).toContain("exitPublishedEdit()")
+    expect(leave).toContain("selfPlanLeavesAfterPublishedEdit({ selfPlanning, canClose: Boolean(onClose) })) onClose?.()")
+  })
 })

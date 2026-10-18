@@ -89,6 +89,39 @@ describe("the employee's day for the manager's card", () => {
     expect(day.deviations.map((item) => [item.kind, item.minutes])).toEqual([["NO_GPS", 78], ["STOP_WITHOUT_VISIT", 25]])
   })
 
+  // Owner's phone, 2026-10-18: «Vizitsiz dayanma 00:00–01:11» on an agent
+  // asleep at home before his day began.
+  it("counts nothing off plan outside work: before the workday, or before the route when there is no workday", () => {
+    const night = {
+      ...HISTORY,
+      workday: null,
+      gaps: [{ id: "g0", reason: "TELEMETRY_GAP", startedAt: "2026-10-17T19:00:00.000Z", endedAt: "2026-10-17T20:30:00.000Z", durationSeconds: 5_400 }],
+      stops: [
+        // At home from midnight; the route starts at 21:12.
+        { id: "home", startedAt: "2026-10-17T20:00:00.000Z", endedAt: "2026-10-17T21:13:00.000Z", durationSeconds: 4_380, visit: null },
+        { id: "field", startedAt: "2026-10-17T21:20:00.000Z", endedAt: "2026-10-17T21:40:00.000Z", durationSeconds: 1_200, visit: null },
+      ],
+      plannedRoutes: [{ ...HISTORY.plannedRoutes[0], startedAt: "2026-10-17T21:12:49.000Z", completedAt: null }],
+    }
+    expect(toEmployeeDay(night, true).deviations).toEqual([
+      { id: "stop-field", kind: "STOP_WITHOUT_VISIT", startedAt: "2026-10-17T21:20:00.000Z", endedAt: "2026-10-17T21:40:00.000Z", minutes: 20 },
+    ])
+    // Neither a workday nor a started route: no day to be off plan from.
+    const notStarted = { ...night, plannedRoutes: [{ ...HISTORY.plannedRoutes[0], startedAt: null }] }
+    expect(toEmployeeDay(notStarted, true).deviations).toEqual([])
+  })
+
+  it("measures a stop that began before the workday from the workday's start", () => {
+    const early = {
+      ...HISTORY,
+      gaps: [],
+      stops: [{ id: "early", startedAt: "2026-10-17T04:00:00.000Z", endedAt: "2026-10-17T05:30:00.000Z", durationSeconds: 5_400, visit: null }],
+    }
+    expect(toEmployeeDay(early, true).deviations).toEqual([
+      { id: "stop-early", kind: "STOP_WITHOUT_VISIT", startedAt: "2026-10-17T05:12:00.000Z", endedAt: "2026-10-17T05:30:00.000Z", minutes: 18 },
+    ])
+  })
+
   it("draws the line along the roads when the server matched it, else the fixes broken at the silences", () => {
     expect(toEmployeeDay(HISTORY, true).track).toEqual([
       [{ latitude: 40.40, longitude: 49.85 }, { latitude: 40.41, longitude: 49.86 }],
