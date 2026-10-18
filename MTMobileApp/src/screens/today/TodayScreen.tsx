@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import SyncStatusChip from "../../components/SyncStatusChip"
 import StatusBarBand from "../../components/StatusBarBand"
+import NotificationBell from "../../components/NotificationBell"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
@@ -602,12 +603,19 @@ export default function TodayScreen() {
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={[styles.headerInner, compactHeader && styles.headerInnerCompact]}>
             <View style={styles.headerCopy}>
-              <Text style={styles.title} numberOfLines={2}>
-                {t("todayV2.greeting", { name: agent?.name ?? "" })}
-              </Text>
+              {/* The bell sits in the top corner (owner-approved mockup, 2026-10-18):
+                  beside the greeting on a phone, above the actions on a tablet. */}
+              <View style={styles.titleRow}>
+                <Text style={styles.title} numberOfLines={2}>
+                  {t("todayV2.greeting", { name: agent?.name ?? "" })}
+                </Text>
+                {/* Pulled into the title's line: the header keeps its height. */}
+                {compactHeader ? <View style={styles.bellSlot}><NotificationBell /></View> : null}
+              </View>
               <Text style={styles.date}>{dateLabel}</Text>
             </View>
             <View style={[styles.headerActions, compactHeader && styles.headerActionsCompact]}>
+              {compactHeader ? null : <NotificationBell />}
               <SyncStatusChip inverse />
               <Pressable
                 accessibilityRole="button"
@@ -1056,10 +1064,19 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: fieldTheme.space.xs,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: fieldTheme.space.md,
+  },
+  bellSlot: {
+    marginVertical: -6,
+  },
   headerInnerCompact: {
     flexDirection: "column",
   },
   title: {
+    flex: 1,
     color: fieldTheme.color.onColor,
     fontSize: 29,
     lineHeight: 35,

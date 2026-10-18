@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -9,47 +10,52 @@ import {
   useWindowDimensions,
   View,
 } from "react-native"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useFocusEffect, useNavigation } from "@react-navigation/native"
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import { useNavigation } from "@react-navigation/native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
-import { api } from "../../services/api"
-import { useWorkdayStore } from "../../store/workday"
+import { useNotificationInbox, useNotificationUnread } from "../../store/notification-inbox"
 import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
-  buildNotifications,
-  mergeReadIds,
-  unreadCount,
-  type NotificationItem,
-  type NotificationKind,
-  type NotificationPreferences,
-} from "../../services/notification-center"
-import { toDoctorCreateRequestItem } from "../../services/doctor-create-requests"
+  feedNavigation,
+  feedTargetLabel,
+  feedTimeLabel,
+  type FeedItem,
+  type FeedKind,
+} from "../../services/notification-feed"
+import { feedCopy, feedLanguage } from "../../services/notification-feed-copy"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { lastPushStatus, registerPushToken, type PushStatus } from "../../services/push-registration"
+import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
+import StatusBarBand from "../../components/StatusBarBand"
 
-const READ_STORAGE_KEY = "@mtm_notifications_read_v1"
-const PREFERENCES_STORAGE_KEY = "@mtm_notifications_preferences_v1"
+/** While the list is open it asks again this often. */
+const NOTIFICATIONS_REFRESH_INTERVAL_MS = 60_000
 
 const COPY = {
   ru: {
     title: "Уведомления",
-    subtitle: "Сообщения, решения по заявкам, сроки задач и незакрытый день — в одном месте.",
+    newCount: (count: number) => `Новых: ${count}`,
+    allRead: "Всё прочитано",
     back: "Назад",
+    loading: "Загружаем уведомления…",
     empty: "Пока ничего нового.",
-    emptyBody: "Здесь появятся сообщения менеджера, решения по вашим заявкам и напоминания о сроках.",
+    emptyBody: "Здесь появятся сообщения менеджера, решения по вашим заявкам, маршруты и напоминания.",
+    emptyBodyManager: "Здесь появятся заявки, которые ждут вашего решения, и уведомления для вас.",
     markAll: "Отметить всё прочитанным",
     settings: "Что показывать",
+    sectionNew: "НОВЫЕ",
+    sectionEarlier: "РАНЬШЕ",
     kindMessage: "Сообщения команды",
-    kindRequest: "Заявки на врачей",
-    kindTask: "Сроки задач",
-    kindVisit: "Длинные визиты",
+    kindRequest: "Решения по заявкам",
+    kindTask: "Задачи",
+    kindVisit: "Визиты",
     kindWorkday: "Рабочий день",
-    unread: "Новое",
+    kindRoute: "Маршрут",
+    kindApproval: "Ждёт моего решения",
+    kindOther: "Прочее",
     pushNote: "Список выше приложение показывает, когда вы его открываете.",
     pushTitle: "Push с сервера",
     pushRegistered: "Адрес этого телефона у сервера есть — push придёт.",
@@ -60,30 +66,28 @@ const COPY = {
     pushUnknown: "Ещё не проверялось.",
     pushCheck: "Проверить",
     pushChecking: "Проверяем…",
-    messageFrom: (name: string) => (name ? `Сообщение от ${name}` : "Сообщение команды"),
-    requestApproved: (name: string) => `${name}: заявка одобрена`,
-    requestRejected: (name: string) => `${name}: заявка отклонена`,
-    requestNeedsInfo: (name: string) => `${name}: нужны уточнения`,
-    taskOverdue: (title: string) => `Просрочена задача: ${title}`,
-    taskToday: (title: string) => `Сегодня срок задачи: ${title}`,
-    visitLong: (minutes: number) => `Визит идёт ${minutes} мин`,
-    workdayOpen: "Рабочий день ещё не закрыт",
-    workdayOpenBody: "Закройте день, когда закончите работу.",
   },
   az: {
     title: "Bildirişlər",
-    subtitle: "Mesajlar, sorğu qərarları, tapşırıq müddətləri və bağlanmamış iş günü bir yerdə.",
+    newCount: (count: number) => `${count} yeni`,
+    allRead: "Hamısı oxunub",
     back: "Geri",
+    loading: "Bildirişlər yüklənir…",
     empty: "Hələlik yenilik yoxdur.",
-    emptyBody: "Menecerin mesajları, sorğularınız üzrə qərarlar və müddət xatırlatmaları burada görünəcək.",
+    emptyBody: "Menecerin mesajları, sorğularınız üzrə qərarlar, marşrutlar və xatırlatmalar burada görünəcək.",
+    emptyBodyManager: "Qərarınızı gözləyən sorğular və sizə gələn bildirişlər burada görünəcək.",
     markAll: "Hamısını oxunmuş et",
     settings: "Nə göstərilsin",
+    sectionNew: "YENİ",
+    sectionEarlier: "ƏVVƏLKİ",
     kindMessage: "Komanda mesajları",
-    kindRequest: "Həkim sorğuları",
-    kindTask: "Tapşırıq müddətləri",
-    kindVisit: "Uzun ziyarətlər",
+    kindRequest: "Sorğu qərarları",
+    kindTask: "Tapşırıqlar",
+    kindVisit: "Ziyarətlər",
     kindWorkday: "İş günü",
-    unread: "Yeni",
+    kindRoute: "Marşrut",
+    kindApproval: "Qərarımı gözləyənlər",
+    kindOther: "Digər",
     pushNote: "Yuxarıdakı siyahını tətbiq siz onu açanda göstərir.",
     pushTitle: "Serverdən push",
     pushRegistered: "Bu telefonun ünvanı serverdədir — push gələcək.",
@@ -94,30 +98,28 @@ const COPY = {
     pushUnknown: "Hələ yoxlanılmayıb.",
     pushCheck: "Yoxla",
     pushChecking: "Yoxlanılır…",
-    messageFrom: (name: string) => (name ? `${name} mesaj göndərdi` : "Komanda mesajı"),
-    requestApproved: (name: string) => `${name}: sorğu təsdiqləndi`,
-    requestRejected: (name: string) => `${name}: sorğu rədd edildi`,
-    requestNeedsInfo: (name: string) => `${name}: dəqiqləşdirmə lazımdır`,
-    taskOverdue: (title: string) => `Gecikmiş tapşırıq: ${title}`,
-    taskToday: (title: string) => `Bu gün müddəti bitir: ${title}`,
-    visitLong: (minutes: number) => `Ziyarət ${minutes} dəqiqədir davam edir`,
-    workdayOpen: "İş günü hələ bağlanmayıb",
-    workdayOpenBody: "İşi bitirəndə günü bağlayın.",
   },
   en: {
     title: "Notifications",
-    subtitle: "Messages, decisions on your requests, task deadlines and an open workday — in one place.",
+    newCount: (count: number) => `${count} new`,
+    allRead: "All read",
     back: "Back",
+    loading: "Loading notifications…",
     empty: "Nothing new yet.",
-    emptyBody: "Manager messages, decisions on your requests and deadline reminders will appear here.",
+    emptyBody: "Manager messages, decisions on your requests, routes and reminders will appear here.",
+    emptyBodyManager: "Requests waiting for your decision and notifications for you will appear here.",
     markAll: "Mark all as read",
     settings: "What to show",
+    sectionNew: "NEW",
+    sectionEarlier: "EARLIER",
     kindMessage: "Team messages",
-    kindRequest: "Doctor requests",
-    kindTask: "Task deadlines",
-    kindVisit: "Long visits",
+    kindRequest: "Request decisions",
+    kindTask: "Tasks",
+    kindVisit: "Visits",
     kindWorkday: "Workday",
-    unread: "New",
+    kindRoute: "Route",
+    kindApproval: "Awaiting my decision",
+    kindOther: "Other",
     pushNote: "The app shows the list above when you open it.",
     pushTitle: "Push from the server",
     pushRegistered: "The server has this phone's address — push will arrive.",
@@ -128,69 +130,80 @@ const COPY = {
     pushUnknown: "Not checked yet.",
     pushCheck: "Check",
     pushChecking: "Checking…",
-    messageFrom: (name: string) => (name ? `Message from ${name}` : "Team message"),
-    requestApproved: (name: string) => `${name}: request approved`,
-    requestRejected: (name: string) => `${name}: request declined`,
-    requestNeedsInfo: (name: string) => `${name}: more detail needed`,
-    taskOverdue: (title: string) => `Overdue task: ${title}`,
-    taskToday: (title: string) => `Due today: ${title}`,
-    visitLong: (minutes: number) => `Visit running ${minutes} min`,
-    workdayOpen: "The workday is still open",
-    workdayOpenBody: "Close the day when you finish work.",
   },
 } as const
 
-type Language = keyof typeof COPY
-
-function language(value: string): Language {
-  const normalized = value.toLowerCase()
-  if (normalized.startsWith("az")) return "az"
-  if (normalized.startsWith("en")) return "en"
-  return "ru"
-}
-
-const KIND_VISUAL: Record<NotificationKind, { icon: string; color: string; background: string }> = {
+const KIND_VISUAL: Record<FeedKind, { icon: string; color: string; background: string }> = {
   message: { icon: "chatbubble-ellipses-outline", color: fieldTheme.color.primaryStrong, background: fieldTheme.color.primarySoft },
-  request: { icon: "person-add-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
+  request: { icon: "document-text-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
   task: { icon: "alarm-outline", color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft },
-  visit: { icon: "time-outline", color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft },
-  workday: { icon: "calendar-outline", color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong },
+  visit: { icon: "time-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
+  workday: { icon: "calendar-outline", color: fieldTheme.color.primaryStrong, background: fieldTheme.color.surfaceStrong },
+  route: { icon: "map-outline", color: fieldTheme.color.blue, background: fieldTheme.color.blueSoft },
+  approval: { icon: "shield-checkmark-outline", color: fieldTheme.color.violet, background: fieldTheme.color.violetSoft },
+  other: { icon: "information-circle-outline", color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong },
+}
+const ALERT_VISUAL = { icon: "warning-outline", color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft }
+
+const FIELD_KINDS: FeedKind[] = ["message", "request", "route", "task", "visit", "workday", "other"]
+const MANAGER_KINDS: FeedKind[] = ["approval", "request", "workday", "other"]
+
+type Copy = (typeof COPY)[keyof typeof COPY]
+
+function kindLabel(kind: FeedKind, copy: Copy): string {
+  switch (kind) {
+    case "message": return copy.kindMessage
+    case "request": return copy.kindRequest
+    case "task": return copy.kindTask
+    case "visit": return copy.kindVisit
+    case "workday": return copy.kindWorkday
+    case "route": return copy.kindRoute
+    case "approval": return copy.kindApproval
+    default: return copy.kindOther
+  }
 }
 
-const KIND_ORDER: NotificationKind[] = ["message", "request", "task", "visit", "workday"]
-
+/**
+ * The list the bell opens: every line of the agent's or the manager's inbox,
+ * new ones first, each with a button that says where it leads.
+ */
 export default function NotificationsScreen() {
   const { i18n } = useTranslation()
-  const copy = COPY[language(i18n.language)]
-  const navigation = useNavigation<NativeStackNavigationProp<Record<string, undefined>>>()
+  const language = feedLanguage(i18n.language)
+  const copy = COPY[language]
+  const feed = feedCopy(language)
+  const navigation = useNavigation<any>()
   const insets = useSafeAreaInsets()
   const headerTop = useHeaderTop()
   const { width } = useWindowDimensions()
   const tablet = isTabletWidth(width)
   const touchTarget = tablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
-  const workday = useWorkdayStore((state) => state.activeWorkday)
 
-  const [items, setItems] = useState<NotificationItem[]>([])
-  const [readIds, setReadIds] = useState<string[]>([])
-  const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES)
+  const items = useNotificationInbox((state) => state.items)
+  const loading = useNotificationInbox((state) => state.loading)
+  const loadedAt = useNotificationInbox((state) => state.loadedAt)
+  const context = useNotificationInbox((state) => state.context)
+  const preferences = useNotificationInbox((state) => state.preferences)
+  const refresh = useNotificationInbox((state) => state.refresh)
+  const rebuild = useNotificationInbox((state) => state.rebuild)
+  const markRead = useNotificationInbox((state) => state.markRead)
+  const markAllRead = useNotificationInbox((state) => state.markAllRead)
+  const setPreference = useNotificationInbox((state) => state.setPreference)
+  const unread = useNotificationUnread()
+
   const [refreshing, setRefreshing] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [push, setPush] = useState<PushStatus | null>(null)
   const [pushChecking, setPushChecking] = useState(false)
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const [storedRead, storedPreferences] = await Promise.all([
-          AsyncStorage.getItem(READ_STORAGE_KEY),
-          AsyncStorage.getItem(PREFERENCES_STORAGE_KEY),
-        ])
-        if (storedRead) setReadIds(JSON.parse(storedRead))
-        if (storedPreferences) setPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...JSON.parse(storedPreferences) })
-      } catch {}
-      setPush(await lastPushStatus())
-    })()
+    void lastPushStatus().then(setPush).catch(() => {})
   }, [])
+
+  // The lines are written in the app's language: a switch rewrites them.
+  useEffect(() => { rebuild() }, [language, rebuild])
+
+  useAutoRefresh(useCallback(() => { void refresh({ force: true }).catch(() => {}) }, [refresh]), NOTIFICATIONS_REFRESH_INTERVAL_MS)
 
   /**
    * Asking again, from the agent's side. The registration itself runs on
@@ -214,231 +227,174 @@ export default function NotificationsScreen() {
     return copy.pushUnsupported
   }, [copy, push])
 
-  /**
-   * Everything here is read from what the app already has. A source that
-   * fails is simply absent: a broken task read must not empty the list of
-   * messages beside it.
-   */
-  const load = useCallback(async (current: NotificationPreferences, read: string[]) => {
-    const [messages, requests, tasks] = await Promise.all([
-      current.message ? api.getMobileMessages().catch(() => null) : null,
-      current.request ? api.getDoctorCreateRequests(20).catch(() => null) : null,
-      current.task ? api.getTasks().catch(() => null) : null,
-    ])
-
-    const threads: any[] = Array.isArray(messages?.data?.threads) ? messages.data.threads : []
-    const requestRows: any[] = Array.isArray(requests?.data?.requests) ? requests.data.requests : []
-    const taskRows: any[] = Array.isArray(tasks?.data?.tasks) ? tasks.data.tasks : []
-
-    setItems(buildNotifications({
-      copy,
-      preferences: current,
-      readIds: read,
-      sources: {
-        messages: threads.map((thread) => ({
-          id: String(thread?.id ?? ""),
-          subject: typeof thread?.title === "string" ? thread.title : undefined,
-          body: typeof thread?.lastMessage?.body === "string" ? thread.lastMessage.body : undefined,
-          createdAt: typeof thread?.lastMessageAt === "string" ? thread.lastMessageAt : undefined,
-          read: thread?.unread === false,
-          senderName: typeof thread?.lastMessage?.senderName === "string" ? thread.lastMessage.senderName : undefined,
-        })).filter((thread) => thread.id),
-        requests: requestRows
-          .map(toDoctorCreateRequestItem)
-          .filter((request): request is NonNullable<typeof request> => request !== null)
-          .map((request) => ({
-            id: request.id,
-            status: request.status,
-            displayName: request.displayName,
-            clinicName: request.clinicName,
-            decisionComment: request.decisionComment,
-            reviewedAt: request.reviewedAt,
-            submittedAt: request.submittedAt,
-          })),
-        tasks: taskRows.map((task) => ({
-          id: String(task?.id ?? ""),
-          title: String(task?.title ?? ""),
-          status: String(task?.status ?? ""),
-          dueDate: typeof task?.dueDate === "string" ? task.dueDate : undefined,
-        })).filter((task) => task.id && task.title),
-        workday: workday ? { open: !workday.paused, startedAt: workday.startedAt } : null,
-      },
-    }))
-  }, [copy, workday])
-
-  useFocusEffect(
-    useCallback(() => {
-      void load(preferences, readIds)
-    }, [load, preferences, readIds]),
-  )
-
-  const refresh = useCallback(async () => {
+  const manualRefresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      await load(preferences, readIds)
+      await refresh({ force: true })
     } finally {
       setRefreshing(false)
     }
-  }, [load, preferences, readIds])
+  }, [refresh])
 
-  const persistRead = useCallback(async (ids: string[]) => {
-    setReadIds(ids)
-    try {
-      await AsyncStorage.setItem(READ_STORAGE_KEY, JSON.stringify(ids))
-    } catch {}
-  }, [])
-
-  const markRead = useCallback((item: NotificationItem) => {
-    const next = mergeReadIds(readIds, [item.id])
-    void persistRead(next)
-    setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, read: true } : entry)))
-  }, [persistRead, readIds])
-
-  const markAllRead = useCallback(() => {
-    const next = mergeReadIds(readIds, items.map((item) => item.id))
-    void persistRead(next)
-    setItems((current) => current.map((entry) => ({ ...entry, read: true })))
-  }, [items, persistRead, readIds])
-
-  const togglePreference = useCallback((kind: NotificationKind, value: boolean) => {
-    const next = { ...preferences, [kind]: value }
-    setPreferences(next)
-    void AsyncStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(next)).catch(() => {})
-    void load(next, readIds)
-  }, [load, preferences, readIds])
-
-  const unread = useMemo(() => unreadCount(items), [items])
-
-  const openTarget = useCallback((item: NotificationItem) => {
+  const open = useCallback((item: FeedItem) => {
     markRead(item)
-    if (item.target === "Messages") navigation.navigate("Messages" as never)
+    if (!item.target) return
+    const { name, params, pop } = feedNavigation(item.target)
+    if (pop) navigation.navigate(name, params, { pop: true })
+    else navigation.navigate(name, params)
   }, [markRead, navigation])
 
-  return (
-    <View style={styles.screen}>
-      <View style={[styles.header, { paddingTop: headerTop }]}>
-        <View style={styles.headerRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={copy.back}
-            onPress={() => navigation.goBack()}
-            style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
-          >
-            <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
-          </Pressable>
-          <View style={styles.headerCopy}>
-            <Text style={styles.title} numberOfLines={1}>{copy.title}</Text>
-            <Text style={styles.subtitle} numberOfLines={2}>{copy.subtitle}</Text>
+  const now = new Date()
+  const formatDate = useCallback(
+    (iso: string) => formatLocalizedDate(iso, i18n.language, { day: "numeric", month: "short" }),
+    [i18n.language],
+  )
+  const fresh = items.filter((item) => !item.read)
+  const earlier = items.filter((item) => item.read)
+  const kinds = context?.shell === "manager" ? MANAGER_KINDS : FIELD_KINDS
+
+  const renderItem = (item: FeedItem) => {
+    const visual = item.alert ? ALERT_VISUAL : KIND_VISUAL[item.kind]
+    const when = feedTimeLabel(item.at, now, feed, formatDate)
+    return (
+      <Pressable
+        key={item.id}
+        testID={`notification-${item.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={[item.title, item.body, item.target ? feedTargetLabel(item.target, feed) : null].filter(Boolean).join(". ")}
+        onPress={() => open(item)}
+        style={({ pressed }) => [styles.item, !item.read && styles.itemUnread, pressed && styles.pressed]}
+      >
+        <View style={[styles.itemIcon, { backgroundColor: visual.background }]}>
+          <Icon name={visual.icon} size={20} color={visual.color} />
+        </View>
+        <View style={styles.itemCopy}>
+          <View style={styles.itemTitleRow}>
+            {item.read ? null : <View style={styles.unreadDot} />}
+            <Text style={styles.itemTitle}>{item.title}</Text>
           </View>
-          {unread > 0 ? (
-            <View style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>{unread}</Text>
+          {item.body ? <Text style={styles.itemBody} numberOfLines={3}>{item.body}</Text> : null}
+          {when || item.target ? (
+            <View style={styles.itemMeta}>
+              <Text style={styles.itemTime}>{when}</Text>
+              {item.target ? (
+                <View style={styles.cta}>
+                  <Text style={styles.ctaText} numberOfLines={1}>{feedTargetLabel(item.target, feed)}</Text>
+                  <Icon name="chevron-forward" size={14} color={fieldTheme.color.primary} />
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>
-      </View>
+      </Pressable>
+    )
+  }
 
+  return (
+    <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, fieldTheme.space.xxl) }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
+        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, fieldTheme.space.xxl) }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={manualRefresh} tintColor={fieldTheme.color.primary} colors={[fieldTheme.color.primary]} />}
       >
-        <View style={styles.actionRow}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={markAllRead}
-            disabled={unread === 0}
-            style={({ pressed }) => [styles.secondaryButton, unread === 0 && styles.disabled, pressed && styles.pressed]}
-          >
-            <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primary} />
-            <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.markAll}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setSettingsOpen((open) => !open)}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-            testID="notifications-settings-toggle"
-          >
-            <Icon name="options-outline" size={18} color={fieldTheme.color.primary} />
-            <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.settings}</Text>
-          </Pressable>
-        </View>
-
-        {settingsOpen ? (
-          <View style={styles.settingsCard}>
-            {KIND_ORDER.map((kind) => (
-              <View key={kind} style={styles.settingsRow}>
-                <Text style={styles.settingsLabel}>
-                  {kind === "message" ? copy.kindMessage
-                    : kind === "request" ? copy.kindRequest
-                      : kind === "task" ? copy.kindTask
-                        : kind === "visit" ? copy.kindVisit
-                          : copy.kindWorkday}
-                </Text>
-                <Switch
-                  value={preferences[kind]}
-                  onValueChange={(value) => togglePreference(kind, value)}
-                  trackColor={{ true: fieldTheme.color.primary, false: fieldTheme.color.border }}
-                />
-              </View>
-            ))}
-            {/* Said plainly, because an agent who thinks the phone will buzz
-                will stop opening the app to check. */}
-            <Text style={styles.pushNote}>{copy.pushNote}</Text>
-            <View style={styles.pushRow}>
-              <View style={styles.pushText}>
-                <Text style={styles.pushTitle}>{copy.pushTitle}</Text>
-                <Text
-                  style={[styles.pushState, push && push.state !== "registered" ? styles.pushStateBad : null]}
-                >
-                  {pushLine}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={checkPush}
-                disabled={pushChecking}
-                style={[styles.pushButton, { minHeight: touchTarget }]}
-              >
-                <Text style={styles.pushButtonText} numberOfLines={1}>
-                  {pushChecking ? copy.pushChecking : copy.pushCheck}
-                </Text>
-              </Pressable>
+        <View style={[styles.header, { paddingTop: headerTop }]}>
+          <View style={[styles.headerRow, tablet && styles.contentTablet]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.back}
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
+            >
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+            </Pressable>
+            <View style={styles.headerCopy}>
+              <Text style={styles.title} numberOfLines={1}>{copy.title}</Text>
+              <Text style={styles.subtitle} numberOfLines={1}>{unread > 0 ? copy.newCount(unread) : copy.allRead}</Text>
             </View>
           </View>
-        ) : null}
+        </View>
 
-        {items.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Icon name="notifications-outline" size={30} color={fieldTheme.color.inkMuted} />
-            <Text style={styles.emptyTitle}>{copy.empty}</Text>
-            <Text style={styles.emptyBody}>{copy.emptyBody}</Text>
-          </View>
-        ) : items.map((item) => {
-          const visual = KIND_VISUAL[item.kind]
-          return (
+        <View style={[styles.content, tablet && styles.contentTablet]}>
+          <View style={styles.actionRow}>
             <Pressable
-              key={item.id}
+              testID="notifications-mark-all"
               accessibilityRole="button"
-              accessibilityLabel={item.title}
-              onPress={() => openTarget(item)}
-              style={({ pressed }) => [styles.item, !item.read && styles.itemUnread, pressed && styles.pressed]}
+              onPress={() => { void markAllRead() }}
+              disabled={unread === 0}
+              style={({ pressed }) => [styles.secondaryButton, unread === 0 && styles.disabled, pressed && styles.pressed]}
             >
-              <View style={[styles.itemIcon, { backgroundColor: visual.background }]}>
-                <Icon name={visual.icon} size={20} color={visual.color} />
-              </View>
-              <View style={styles.itemCopy}>
-                <Text style={styles.itemTitle} numberOfLines={2}>{item.title}</Text>
-                {item.body ? <Text style={styles.itemBody} numberOfLines={2}>{item.body}</Text> : null}
-              </View>
-              {item.read ? null : (
-                <View style={styles.unreadPill}>
-                  <Text style={styles.unreadPillText}>{copy.unread}</Text>
-                </View>
-              )}
+              <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primary} />
+              <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.markAll}</Text>
             </Pressable>
-          )
-        })}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setSettingsOpen((value) => !value)}
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+              testID="notifications-settings-toggle"
+            >
+              <Icon name="options-outline" size={18} color={fieldTheme.color.primary} />
+              <Text style={styles.secondaryButtonText} numberOfLines={1}>{copy.settings}</Text>
+            </Pressable>
+          </View>
+
+          {settingsOpen ? (
+            <View style={styles.settingsCard}>
+              {kinds.map((kind) => (
+                <View key={kind} style={styles.settingsRow}>
+                  <Text style={styles.settingsLabel}>{kindLabel(kind, copy)}</Text>
+                  <Switch
+                    value={preferences[kind]}
+                    onValueChange={(value) => setPreference(kind, value)}
+                    trackColor={{ true: fieldTheme.color.primary, false: fieldTheme.color.border }}
+                  />
+                </View>
+              ))}
+              {/* Said plainly, because an agent who thinks the phone will buzz
+                  will stop opening the app to check. */}
+              <Text style={styles.pushNote}>{copy.pushNote}</Text>
+              <View style={styles.pushRow}>
+                <View style={styles.pushText}>
+                  <Text style={styles.pushTitle}>{copy.pushTitle}</Text>
+                  <Text style={[styles.pushState, push && push.state !== "registered" ? styles.pushStateBad : null]}>
+                    {pushLine}
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={checkPush}
+                  disabled={pushChecking}
+                  style={[styles.pushButton, { minHeight: touchTarget }]}
+                >
+                  <Text style={styles.pushButtonText} numberOfLines={1}>
+                    {pushChecking ? copy.pushChecking : copy.pushCheck}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          {items.length === 0 ? (
+            loading && !loadedAt ? (
+              <View style={styles.emptyCard}>
+                <ActivityIndicator color={fieldTheme.color.primary} />
+                <Text style={styles.emptyBody}>{copy.loading}</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Icon name="notifications-outline" size={30} color={fieldTheme.color.inkMuted} />
+                <Text style={styles.emptyTitle}>{copy.empty}</Text>
+                <Text style={styles.emptyBody}>{context?.shell === "manager" ? copy.emptyBodyManager : copy.emptyBody}</Text>
+              </View>
+            )
+          ) : null}
+
+          {fresh.length > 0 ? <Text style={styles.section}>{copy.sectionNew}</Text> : null}
+          {fresh.map(renderItem)}
+          {earlier.length > 0 ? <Text style={styles.section}>{copy.sectionEarlier}</Text> : null}
+          {earlier.map(renderItem)}
+        </View>
       </ScrollView>
+      {/* The green header scrolls away with the list; the band keeps the clock readable. */}
+      <StatusBarBand />
     </View>
   )
 }
@@ -446,17 +402,16 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
-  headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
   headerCopy: { flex: 1, minWidth: 0 },
   title: { color: fieldTheme.color.onColor, fontSize: 22, lineHeight: 28, fontWeight: "900" },
   subtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 18, marginTop: 2 },
-  headerBadge: { minWidth: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 15, paddingHorizontal: 8, backgroundColor: fieldTheme.color.onColor },
-  headerBadgeText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   content: { padding: fieldTheme.space.lg, gap: fieldTheme.space.sm },
+  contentTablet: { width: "100%", maxWidth: 820, alignSelf: "center" },
   actionRow: { flexDirection: "row", gap: fieldTheme.space.sm },
   secondaryButton: { flex: 1, minHeight: 46, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md },
-  secondaryButtonText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
+  secondaryButtonText: { flexShrink: 1, color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
   settingsCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   settingsRow: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   settingsLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
@@ -471,14 +426,19 @@ const styles = StyleSheet.create({
   emptyCard: { alignItems: "center", gap: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center" },
-  item: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md },
-  itemUnread: { borderColor: fieldTheme.color.primary },
+  section: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900", letterSpacing: 0.8, marginTop: fieldTheme.space.sm, marginHorizontal: 2 },
+  item: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md },
+  itemUnread: { borderColor: fieldTheme.color.primary, backgroundColor: "#F4FBF8" },
   itemIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 14 },
   itemCopy: { flex: 1, minWidth: 0 },
-  itemTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
+  itemTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: fieldTheme.color.danger },
+  itemTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   itemBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  unreadPill: { borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm, paddingVertical: 2, backgroundColor: fieldTheme.color.primarySoft },
-  unreadPillText: { color: fieldTheme.color.primaryStrong, fontSize: 11, fontWeight: "900" },
+  itemMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
+  itemTime: { flexShrink: 1, color: fieldTheme.color.inkMuted, fontSize: 11 },
+  cta: { minHeight: 30, flexDirection: "row", alignItems: "center", gap: 2, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.pill, paddingLeft: fieldTheme.space.md, paddingRight: fieldTheme.space.sm },
+  ctaText: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "900" },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.75 },
 })
