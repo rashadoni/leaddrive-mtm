@@ -414,6 +414,10 @@ def first_sign_in_checks(found, sign_in):
     offered, deadline = first_sign_in_offered(found, sign_in), time.time() + 15
     while not offered and time.time() < deadline:
         time.sleep(2)
+        # The number field takes the focus, and on a budget screen the keyboard
+        # leaves «Get a code» out of the window, so out of the dump (39170988424:
+        # the window ended at 1090 px, the field at 1059).
+        hide_keyboard()
         found, _ = nodes()
         offered = first_sign_in_offered(found, sign_in)
     chosen = next((n.get("content-desc", "") for n in found if n.get("resource-id", "").startswith("login-tab-") and n.get("selected") == "true"), "")

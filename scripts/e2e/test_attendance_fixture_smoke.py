@@ -240,6 +240,10 @@ SCREENS = {
     "signin": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
                    tab("signin", True), ("", "Sign in"), tab("first", False), ("", "First sign-in"),
                    ("login-email", ""), ("login-password", ""), ("login-submit", ""), ("", "Sign in")),
+    # «First sign-in» with the keyboard up for the number: «Get a code» is below the window (39170988424).
+    "first-typing": dump(("", "Step 2 of 2"), ("switch-tenant", ""), ("", "Sign in to the app"),
+                         tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
+                         ("login-code-step-phone", ""), ("", "WhatsApp number"), ("login-code-phone", "+994 ")),
     # Before 3.11.3 the form had no tabs.
     "old": dump(("", "Step 2 of 2"), ("login-email", ""), ("login-password", ""), ("login-submit", "")),
     "refused": dump(("", "Sign in to the app"), ("", "Rejected")),
@@ -259,6 +263,9 @@ class Device:
     def __init__(self, screen, leads=(), turns=()):
         self.screen, self.leads, self.turns = screen, dict(leads), dict(turns)
         self.taps, self.touched = [], False
+
+    def hide_keyboard(self):
+        self.screen = self.screen.removesuffix("-typing")
 
     def shell(self, command, **_):
         if not command.startswith("uiautomator dump"):
@@ -353,6 +360,14 @@ class SignInTabsTests(unittest.TestCase):
             (True, "A phone with no saved account opens on «First sign-in»", "«WhatsApp number» and «Get a code in WhatsApp»"),
         ])
         self.assertEqual(device.taps, [], "«Get a code» would send a WhatsApp message")
+
+    def test_the_keyboard_over_get_a_code_is_closed_before_the_tab_is_judged(self):
+        device = Device("first-typing")
+        with self.on(device, ("hide_keyboard", device.hide_keyboard)):
+            self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
+        self.assertEqual(self.walk.results[-1], (True, "A phone with no saved account opens on «First sign-in»",
+                                                 "«WhatsApp number» and «Get a code in WhatsApp»"))
+        self.assertEqual(device.taps, [])
 
     def test_a_phone_that_stays_on_sign_in_is_a_failure_that_names_the_tab(self):
         with self.on(Device("signin")):
