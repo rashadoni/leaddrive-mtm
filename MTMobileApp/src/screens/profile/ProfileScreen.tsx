@@ -316,7 +316,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
               {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
             </View>
             {/* «Daha çox» is one of the manager's tabs: it gets the bell too. */}
-            {managerShell ? <NotificationBell tone="light" /> : null}
+            {managerShell ? <NotificationBell /> : null}
           </View>
         </View>
 

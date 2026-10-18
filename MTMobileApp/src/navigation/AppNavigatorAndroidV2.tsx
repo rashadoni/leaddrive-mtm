@@ -1,6 +1,6 @@
 import React, { useEffect } from "react"
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native"
-import { NavigationContainer } from "@react-navigation/native"
+import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -10,7 +10,7 @@ import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldContactsEnabled } from "../lib/field-contacts-policy"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldColorScheme, fieldTheme } from "../theme/fieldTheme"
 import { NAV_RAIL_WIDTH, shouldUseNavigationRail } from "../theme/layoutBreakpoints"
 
 const RAIL_WIDTH = NAV_RAIL_WIDTH
@@ -109,6 +109,24 @@ export type ClientsStackParamList = {
   ContactChangeRequest: { id: string; name?: string }
   /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
   OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
+}
+
+/**
+ * The navigator's own surfaces (a screen's background during a transition,
+ * the stack's card) in the app's palette, day or night: without it a dark
+ * screen flashed white while the next one slid in.
+ */
+const NAVIGATION_THEME: Theme = {
+  ...(fieldColorScheme === "dark" ? DarkTheme : DefaultTheme),
+  colors: {
+    ...(fieldColorScheme === "dark" ? DarkTheme : DefaultTheme).colors,
+    primary: fieldTheme.color.primary,
+    background: fieldTheme.color.canvas,
+    card: fieldTheme.color.surface,
+    text: fieldTheme.color.ink,
+    border: fieldTheme.color.border,
+    notification: fieldTheme.color.danger,
+  },
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
@@ -417,7 +435,7 @@ export default function AppNavigatorAndroidV2() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={NAVIGATION_THEME}>
       <Stack.Navigator
         // Recreate the stack when admission changes so a revoked user cannot
         // remain on a previously-mounted detail screen with stale read data.
@@ -490,7 +508,7 @@ export default function AppNavigatorAndroidV2() {
 
 const styles = StyleSheet.create({
   tabsRoot: { flex: 1 },
-  railStatusBand: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldTheme.color.primaryStrong },
+  railStatusBand: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldColorScheme === "dark" ? fieldTheme.color.surface : fieldTheme.color.primaryStrong },
   loader: {
     flex: 1,
     justifyContent: "center",

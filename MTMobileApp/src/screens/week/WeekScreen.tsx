@@ -746,7 +746,7 @@ function CalendarHeader({
           <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
           <Text style={[styles.todayButtonText, currentWeek && styles.todayButtonTextCurrent]}>{todayLabel}</Text>
         </Pressable>
-        <NotificationBell tone="light" />
+        <NotificationBell />
       </View>
 
       <View style={styles.weekNavigation}>

@@ -361,7 +361,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
                 <Text style={styles.title}>{t(meta.titleKey)}</Text>
               </View>
-              <NotificationBell tone="light" />
+              <NotificationBell />
             </View>
             <Text style={styles.body}>{t(meta.bodyKey)}</Text>
           </View>

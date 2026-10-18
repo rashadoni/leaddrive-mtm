@@ -135,7 +135,7 @@ export default function MoreScreen() {
       <View style={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>{t("moreV2.title")}</Text>
-          <NotificationBell tone="light" />
+          <NotificationBell />
         </View>
         <View style={styles.actionGrid}>
           {actions.map((action) => {

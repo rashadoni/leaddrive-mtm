@@ -610,12 +610,12 @@ export default function TodayScreen() {
                   {t("todayV2.greeting", { name: agent?.name ?? "" })}
                 </Text>
                 {/* Pulled into the title's line: the header keeps its height. */}
-                {compactHeader ? <View style={styles.bellSlot}><NotificationBell tone="light" /></View> : null}
+                {compactHeader ? <View style={styles.bellSlot}><NotificationBell /></View> : null}
               </View>
               <Text style={styles.date}>{dateLabel}</Text>
             </View>
             <View style={[styles.headerActions, compactHeader && styles.headerActionsCompact]}>
-              {compactHeader ? null : <NotificationBell tone="light" />}
+              {compactHeader ? null : <NotificationBell />}
               <SyncStatusChip />
               <Pressable
                 accessibilityRole="button"

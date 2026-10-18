@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(10,20,16,0.45)",
+    backgroundColor: fieldTheme.color.scrim,
   },
   fill: {
     flex: 1,

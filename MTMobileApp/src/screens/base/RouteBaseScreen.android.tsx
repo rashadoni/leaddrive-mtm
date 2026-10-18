@@ -78,7 +78,7 @@ export default function RouteBaseScreen() {
             <Text style={styles.headerTitle}>{t(contactsEnabled ? "baseHub.title" : "baseHub.placesTitle")}</Text>
             <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
-          <NotificationBell tone="light" />
+          <NotificationBell />
         </View>
 
         {contactsEnabled ? (

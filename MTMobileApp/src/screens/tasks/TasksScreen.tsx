@@ -584,7 +584,7 @@ export default function TasksScreen() {
                 <Icon name="checkmark-done-outline" size={18} color={fieldTheme.color.primary} />
                 <Text style={styles.eyebrow}>{copy.focus}</Text>
               </View>
-              <NotificationBell tone="light" />
+              <NotificationBell />
             </View>
             <Text style={styles.headerTitle}>{copy.title}</Text>
             <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
   gridRow: { width: "100%", maxWidth: 1280 + fieldTheme.space.lg * 2, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg - 6 },
   // maxWidth keeps an odd last card at half width instead of stretching.
   gridCell: { flex: 1, maxWidth: "50%", paddingHorizontal: 6, marginBottom: fieldTheme.space.md },
-  focusStrip: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#B7DDCE", backgroundColor: fieldTheme.color.primarySoft, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
+  focusStrip: { minHeight: 68, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.primarySoft, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
   focusIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
   noticeCopy: { flex: 1 },
   focusLabel: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
   noticeStacked: { flexWrap: "wrap", alignItems: "flex-start" },
   noticeTitle: { fontSize: 14, fontWeight: "900" },
   noticeBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  noticeAction: { minHeight: 44, minWidth: 96, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: "rgba(19,35,31,0.16)", backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
+  noticeAction: { minHeight: 44, minWidth: 96, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
   noticeActionStacked: { width: "100%" },
   noticeActionText: { fontSize: 12, fontWeight: "900" },
   disabled: { opacity: 0.45 },
@@ -967,12 +967,12 @@ const styles = StyleSheet.create({
   tabText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, fontWeight: "800", textAlign: "center", flexShrink: 1 },
   tabTextActive: { color: fieldTheme.color.onColor },
   tabCount: { minWidth: 24, height: 24, borderRadius: 12, backgroundColor: fieldTheme.color.surfaceStrong, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
-  tabCountActive: { backgroundColor: "rgba(248,252,250,0.2)" },
+  tabCountActive: { backgroundColor: fieldTheme.color.surfaceStrong },
   tabCountText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "900" },
   tabCountTextActive: { color: fieldTheme.color.onColor },
   taskCard: { borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.lg },
   taskTapArea: { minHeight: 48 },
-  taskCardFocus: { borderColor: "#8BBFAE", backgroundColor: "#F4FAF7" },
+  taskCardFocus: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.canvas },
   taskHeadingRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
   priorityIcon: { width: 44, height: 44, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
   taskTitleWrap: { flex: 1, minHeight: 44, justifyContent: "center" },
@@ -1010,7 +1010,7 @@ const styles = StyleSheet.create({
   loadingState: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
   loadingTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900", marginTop: fieldTheme.space.lg },
   loadingBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, textAlign: "center", marginTop: fieldTheme.space.xs },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(19,35,31,0.55)", justifyContent: "center", padding: fieldTheme.space.xl },
+  modalOverlay: { flex: 1, backgroundColor: fieldTheme.color.scrim, justifyContent: "center", padding: fieldTheme.space.xl },
   modalCard: { width: "100%", maxWidth: 620, alignSelf: "center", borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
   modalIcon: { width: 52, height: 52, borderRadius: 26, backgroundColor: fieldTheme.color.primarySoft, alignItems: "center", justifyContent: "center", marginBottom: fieldTheme.space.lg },
   modalTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 25, fontWeight: "900" },

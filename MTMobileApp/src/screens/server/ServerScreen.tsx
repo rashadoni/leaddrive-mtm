@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.border,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingLeft: fieldTheme.space.lg,
