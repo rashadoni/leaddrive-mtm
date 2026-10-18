@@ -137,8 +137,9 @@ def nodes():
             # also carries a battery card with the same title in the tab
             # itself; only the sheet's ids tell them apart.
             if PKG in packages and any(re.fullmatch(r"app-choice(-button-\d+)?", n.get("resource-id", "")) for n in found):
-                # The header comes first; the icon before it is a glyph, not a word.
-                said = [n["text"] for n in found if n.get("text") in app_words()]
+                # The header comes first; the icon before it is a glyph, not a word,
+                # and the containers' empty text is a «word» too (every `""` in the sources).
+                said = [n["text"] for n in found if n.get("text") and n["text"] in app_words()]
                 asked_by_app.append(said[0] if said else "…")
                 print(f"declined a question of the app («{asked_by_app[-1]}»)", flush=True)
                 shell("input keyevent 4")

@@ -189,7 +189,9 @@ class AppQuestionTests(unittest.TestCase):
         return found, [c for c in commands if not c.startswith("uiautomator dump")], printed.getvalue()
 
     def test_sheet_is_closed_with_back_and_named_by_its_title(self):
-        words = {"Route", "Today", "The phone may fall asleep", "Open settings", "Not now"}
+        # The real app_words() holds "" too (every `""` in the sources): run 39169379126
+        # printed «» for the battery sheet, the text of the first empty container.
+        words = {"", "Route", "Today", "The phone may fall asleep", "Open settings", "Not now"}
         found, commands, printed = self.run_nodes([BATTERY_SHEET, ROUTE_TAB], words)
         # BACK resolves ask() with its dismissValue — «Not now» — and no button is tapped.
         self.assertEqual(commands, ["input keyevent 4"])
