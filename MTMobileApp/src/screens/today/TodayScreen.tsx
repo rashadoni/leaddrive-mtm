@@ -59,6 +59,7 @@ import {
   companyClock,
   staleWorkdayCorrection,
   staleWorkdayFinishSent,
+  type StaleWorkdayFinishSent,
   workdayOpenSinceEarlierDay,
 } from "../../services/stale-workday"
 import { staleVisitDayDate } from "../../services/stale-visit"
@@ -166,7 +167,7 @@ export default function TodayScreen() {
   // The finish time already with the manager for that day, read from the
   // own-requests list and this phone's queue. Keyed by the agent and the day
   // so it never speaks for another.
-  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; finish: string | null } | null>(null)
+  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; finish: StaleWorkdayFinishSent | null } | null>(null)
   const staleSentFinish = staleDay !== null && finishTimeSent?.key === currentWorkdayKey && finishTimeSent.day === staleDay
     ? finishTimeSent.finish
     : null
@@ -178,7 +179,11 @@ export default function TodayScreen() {
     const queued = await attendanceQueued(scope).catch(() => [])
     let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
     try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
-    setFinishTimeSent({ key, day: staleDay, finish: staleWorkdayFinishSent(staleDay, requests, queued) })
+    const finish = staleWorkdayFinishSent(staleDay, requests, queued)
+    setFinishTimeSent({ key, day: staleDay, finish })
+    // Approved — at once where the company allows it — means closed on the
+    // server: read the workday again, and the card gives way to «Günə başla».
+    if (finish?.approved) await refreshRouteFieldSession()
   }, [currentWorkdayKey, finishTimeRequestable, staleDay])
   useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
   useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
@@ -199,7 +204,7 @@ export default function TodayScreen() {
     setCloseFailed(false)
     try {
       await queueAttendanceRequest(attendanceScope(), input, [])
-      setFinishTimeSent({ key, day, finish: input.endTime ?? null })
+      setFinishTimeSent({ key, day, finish: { finish: input.endTime ?? "", approved: false } })
       setCloseSheetOpen(false)
       runMobileSync().then(() => readFinishTimeSent()).catch(() => {})
     } catch {
@@ -610,8 +615,8 @@ export default function TodayScreen() {
                 day={staleDay}
                 startedAt={currentWorkday.startedAt}
                 timezone={companyTimezone}
-                mode={!finishTimeRequestable ? "closeOnly" : staleSentFinish !== null ? "sent" : "request"}
-                sentFinish={staleSentFinish}
+                mode={!finishTimeRequestable ? "closeOnly" : staleSentFinish?.approved ? "approved" : staleSentFinish ? "sent" : "request"}
+                sentFinish={staleSentFinish?.finish ?? null}
                 busy={workdayBusy || !workdayHydrated || closeSending}
                 error={workdayError ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError") : null}
                 onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}

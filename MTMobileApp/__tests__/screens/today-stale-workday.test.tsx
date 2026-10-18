@@ -80,6 +80,12 @@ describe("«Bu gün» for a day left open since 13 October", () => {
     expect(button("today-stale-close-day")).toBeUndefined()
   })
 
+  it("once approved — at once where the company allows it — says the day is closed while the screen reads it again", async () => {
+    const { text, button } = await card("approved", "ru", "22:19")
+    expect(text).toContain("День закрыт: окончание в 22:19.")
+    expect(button("today-stale-close-day")).toBeUndefined()
+  })
+
   it("where the company takes no requests from the phone, says before the press what closing now means", async () => {
     const { text, button } = await card("closeOnly")
     expect(text).toContain("Если закрыть сейчас, день закроется текущим временем")
@@ -88,7 +94,7 @@ describe("«Bu gün» for a day left open since 13 October", () => {
 
   it("never leaves a key on screen", async () => {
     for (const language of ["ru", "az", "en"]) {
-      for (const mode of ["request", "sent", "closeOnly"] as const) {
+      for (const mode of ["request", "sent", "approved", "closeOnly"] as const) {
         expect((await card(mode, language, "22:19")).text).not.toContain("todayV2.")
       }
     }
@@ -175,6 +181,11 @@ describe("the Today screen wires the card and the sheet in", () => {
     expect(today).toContain("hours: Math.max(0, Math.floor((Date.now() - new Date(currentWorkday.startedAt).getTime()) / 3_600_000))")
   })
 
+  it("reads the day again once the close is approved, so the card gives way to «Günə başla»", () => {
+    expect(today).toContain("if (finish?.approved) await refreshRouteFieldSession()")
+    expect(today).toContain("runMobileSync().then(() => readFinishTimeSent())")
+  })
+
   it("offers the request only where the server takes it", () => {
     expect(today).toContain('agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))')
   })
@@ -182,7 +193,7 @@ describe("the Today screen wires the card and the sheet in", () => {
 
 describe("the words exist in all three languages with the same placeholders", () => {
   const keys = [
-    "staleDayTitle", "staleDayBody", "staleDayBodyNoRequest", "staleDaySent", "staleCloseDay",
+    "staleDayTitle", "staleDayBody", "staleDayBodyNoRequest", "staleDaySent", "staleDayApproved", "staleCloseDay",
     "staleEndNow", "staleEndConfirmTitle", "staleEndConfirmBody",
     "staleSheetTitle", "staleSheetStart", "staleSheetQuestion", "staleSheetHint", "staleSheetNextDay",
     "staleSheetSend", "staleSheetInvalid", "staleSheetFuture", "staleSheetFailed",

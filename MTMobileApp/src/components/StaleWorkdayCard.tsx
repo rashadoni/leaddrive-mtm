@@ -20,13 +20,15 @@ import { fieldTheme } from "../theme/fieldTheme"
  * - `sent`: the finish time is with the manager — the card says which time,
  *   and offers nothing: closing now would change the day under the request,
  *   and the server would refuse to approve it.
+ * - `approved`: closed on the server, by the manager or at once where the
+ *   company lets that through; the screen is reading the day again.
  * - `closeOnly`: this company takes no requests from the phone, so «Günü
  *   bağla» closes the day now, after a warning that says how many hours that
  *   writes into it.
  *
  * «Fasilə» is not offered: a break inside a day that ended days ago means nothing.
  */
-export type StaleWorkdayCardMode = "request" | "sent" | "closeOnly"
+export type StaleWorkdayCardMode = "request" | "sent" | "approved" | "closeOnly"
 
 export default function StaleWorkdayCard({
   day,
@@ -51,8 +53,8 @@ export default function StaleWorkdayCard({
   const { t, i18n } = useTranslation()
   const date = formatLocalizedDate(staleVisitDayDate(day), i18n.language, { day: "numeric", month: "long" })
   const time = companyClock(new Date(startedAt), timezone)
-  const body = mode === "sent"
-    ? t("todayV2.staleDaySent", { time: sentFinish || "—" })
+  const body = mode === "sent" || mode === "approved"
+    ? t(mode === "sent" ? "todayV2.staleDaySent" : "todayV2.staleDayApproved", { time: sentFinish || "—" })
     : t(mode === "request" ? "todayV2.staleDayBody" : "todayV2.staleDayBodyNoRequest", { date, time })
 
   return (
@@ -65,7 +67,7 @@ export default function StaleWorkdayCard({
         <Text style={styles.body}>{body}</Text>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
-      {mode === "sent" ? null : (
+      {mode === "sent" || mode === "approved" ? null : (
         <Pressable
           testID="today-stale-close-day"
           accessibilityRole="button"
