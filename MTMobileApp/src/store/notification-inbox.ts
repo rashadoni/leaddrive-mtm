@@ -61,9 +61,11 @@ interface InboxRaw {
 
 const EMPTY_RAW: InboxRaw = { server: null, threads: null, doctorRequests: null, tasks: null, approvals: null }
 
+type InboxContext = FeedContext & { scope: string }
+
 interface NotificationInboxState {
   scope: string | null
-  context: FeedContext | null
+  context: InboxContext | null
   raw: InboxRaw
   items: FeedItem[]
   unread: number
@@ -77,8 +79,6 @@ interface NotificationInboxState {
   markAllRead: () => Promise<void>
   setPreference: (kind: FeedKind, value: boolean) => void
 }
-
-type InboxContext = FeedContext & { scope: string }
 
 /** Who holds the phone and which shell they see, decided the way the navigator decides it. */
 function currentContext(): InboxContext | null {
