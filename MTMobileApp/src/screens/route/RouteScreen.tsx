@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   Linking,
   Modal,
@@ -19,7 +20,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
 import {
-  askBatterySleepExemption,
+  openBatterySleepSettings,
   batterySleepExempt,
   ensureReminderChannel,
   requestNotificationPermission,
@@ -35,6 +36,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
+import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
 import { enqueueMediaUpload } from "../../services/media-outbox"
@@ -212,8 +214,9 @@ const ROUTE_COPY = {
     workdaySyncing: "Синхронизируем рабочий день…",
     workdayStartFailed: "Не удалось начать рабочий день. Проверьте подключение и повторите.",
     batterySleepTitle: "Телефон может засыпать",
-    batterySleepBody: "Тогда маршрут запишется с пропусками. Разрешите приложению работать без ограничений батареи — это одно касание.",
-    batterySleepAction: "Разрешить",
+    batterySleepBody: "Тогда маршрут запишется с пропусками. Откройте настройки батареи, найдите в списке LeadDrive Route Field (может понадобиться выбрать «Все приложения») и отключите для него оптимизацию батареи.",
+    batterySleepAction: "Открыть настройки",
+    batterySleepLater: "Не сейчас",
     workdayPausedTitle: "Рабочий день приостановлен",
     workdayPausedBody: "Маршрут и рабочий GPS заблокированы. Возобновите рабочий день в HRM, прежде чем начинать маршрут.",
     routeStartRequiredTitle: "Маршрут ждёт запуска",
@@ -314,8 +317,9 @@ const ROUTE_COPY = {
     workdaySyncing: "İş günü sinxronlaşdırılır…",
     workdayStartFailed: "İş gününü başlatmaq alınmadı. Bağlantını yoxlayıb yenidən cəhd edin.",
     batterySleepTitle: "Telefon yuxuya gedə bilər",
-    batterySleepBody: "Onda marşrut boşluqlarla yazılacaq. Tətbiqə batareya məhdudiyyətsiz işləməyə icazə verin — bir toxunuş.",
-    batterySleepAction: "İcazə ver",
+    batterySleepBody: "Onda marşrut boşluqlarla yazılacaq. Batareya tənzimləmələrini açın, siyahıda LeadDrive Route Field tətbiqini tapın («Bütün tətbiqlər» seçmək lazım ola bilər) və onun üçün batareya optimallaşdırmasını söndürün.",
+    batterySleepAction: "Tənzimləmələri aç",
+    batterySleepLater: "İndi yox",
     workdayPausedTitle: "İş günü dayandırılıb",
     workdayPausedBody: "Marşrut və iş GPS-i bloklanıb. Marşruta başlamazdan əvvəl HRM-də iş gününü davam etdirin.",
     routeStartRequiredTitle: "Marşrutun başlanması gözlənilir",
@@ -416,8 +420,9 @@ const ROUTE_COPY = {
     workdaySyncing: "Syncing workday…",
     workdayStartFailed: "We could not start the workday. Check your connection and try again.",
     batterySleepTitle: "The phone may fall asleep",
-    batterySleepBody: "The route would then be recorded with gaps. Let the app run without battery limits — one tap.",
-    batterySleepAction: "Allow",
+    batterySleepBody: "The route would then be recorded with gaps. Open the battery settings, find LeadDrive Route Field in the list (you may need to pick «All apps») and turn battery optimization off for it.",
+    batterySleepAction: "Open settings",
+    batterySleepLater: "Not now",
     workdayPausedTitle: "Workday is paused",
     workdayPausedBody: "Route work and GPS are blocked. Resume the workday in HRM before starting the route.",
     routeStartRequiredTitle: "Route is waiting to start",
@@ -721,8 +726,10 @@ function JourneySteps({
 
 /**
  * Owner 2026-09-23: the exemption cannot be granted for the agent, so the
- * screen says plainly what is at stake and keeps the one tap in reach —
- * instead of a dialog that was dismissed once and gone for a week.
+ * screen says plainly what is at stake and keeps the way to it in reach —
+ * instead of a dialog that was dismissed once and gone for a week. Since
+ * 2026-10-18 the way is the phone's battery settings, not a system dialog
+ * (Google Play).
  */
 function BatterySleepNotice({
   visible,
@@ -1412,9 +1419,13 @@ export default function RouteScreen() {
    * late, which is enough to make the live map say an agent has stopped.
    *
    * The owner removed the card that explained this: an agent does not need a
-   * lecture about Doze. The system dialog is asked for once, silently, at the
-   * moment the workday starts — beside the permissions the app already asks
-   * for there — and never again for a week if it is declined.
+   * lecture about Doze. The app asks on the first screen and when the workday
+   * starts, at most once a day until it is granted (battery-sleep-prompt.ts).
+   *
+   * Google Play allows the system's one-tap «allow?» only to messengers,
+   * security apps and the like; the owner chose the phone's battery settings
+   * instead (2026-10-18). Sending the agent into a settings list unasked would
+   * look like the app misbehaving, so the app's own sheet says why first.
    */
   const [batteryExempt, setBatteryExempt] = useState(true)
 
@@ -1428,8 +1439,27 @@ export default function RouteScreen() {
     const [exempt, lastAskedAt] = await Promise.all([refreshBatteryExempt(), lastBatteryPromptAt()])
     if (!shouldAskBatterySleepExemption({ exempt, workdayActive, lastAskedAt, now: Date.now() })) return
     await rememberBatteryPrompt()
-    await askBatterySleepExemption()
+    const open = await ask({
+      title: copy.batterySleepTitle,
+      message: copy.batterySleepBody,
+      tone: "warning",
+      buttons: [
+        { text: copy.batterySleepLater, value: false, style: "cancel" },
+        { text: copy.batterySleepAction, value: true },
+      ],
+      dismissValue: false,
+    })
+    if (open) await openBatterySleepSettings()
     await refreshBatteryExempt()
+  }, [copy, refreshBatteryExempt])
+
+  // The agent comes back from the battery settings on their own; the line
+  // goes away once the phone says the app may stay awake.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refreshBatteryExempt()
+    })
+    return () => subscription.remove()
   }, [refreshBatteryExempt])
 
   // Setting the phone up happens once, on the first screen the agent sees.
@@ -1839,6 +1869,10 @@ export default function RouteScreen() {
     }
     setMutating(true)
     try {
+      // The library no longer asks for location by itself (AndroidApp): the
+      // check-in asks here, after the disclosure. Refused, the read below
+      // fails and the agent is told location is unavailable.
+      await ensureFieldLocation()
       let coords: { latitude: number; longitude: number } | null = null
       try {
         coords = await new Promise((resolve, reject) => {
@@ -2244,7 +2278,7 @@ export default function RouteScreen() {
             <BatterySleepNotice
               visible={!batteryExempt}
               copy={copy}
-              onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
+              onFix={() => { void openBatterySleepSettings().then(() => refreshBatteryExempt()) }}
             />
             {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
             {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
@@ -2321,7 +2355,7 @@ export default function RouteScreen() {
               <BatterySleepNotice
                 visible={!batteryExempt}
                 copy={copy}
-                onFix={() => { void askBatterySleepExemption().then(() => refreshBatteryExempt()) }}
+                onFix={() => { void openBatterySleepSettings().then(() => refreshBatteryExempt()) }}
               />
               {/* The clients come first. The stepper and the two cards that
                   stood here pushed them a whole screen down; what those cards

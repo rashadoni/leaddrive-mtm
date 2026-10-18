@@ -82,8 +82,8 @@ export const mobileResources = {
       returnNotToday: "Вернуться можно только в тот же день. Этот день уже прошёл.",
       returnLocked: "Этот день уже проверен или исправлен руководителем — вернуться к нему нельзя.",
       offlineRefresh: "Нет сети. Показываем сохранённые данные; обновление сработает, когда связь вернётся.",
-      backgroundLocationTitle: "Разрешите геопозицию «в любом режиме»",
-      backgroundLocationBody: "Во время рабочего дня приложение записывает, где вы, — чтобы руководитель видел маршрут. С этим разрешением запись сама продолжится после перезагрузки телефона или обновления приложения. Нажмите «Разрешить» и выберите «Разрешить в любом режиме».",
+      backgroundLocationTitle: "Разрешите местоположение «в любом режиме»",
+      backgroundLocationBody: "LeadDrive Route Field собирает данные о местоположении, чтобы записывать ваш маршрут в открытый рабочий день, — даже когда приложение закрыто или не используется. Маршрут видят руководители вашей компании; запись останавливается по кнопкам «Перерыв» и «Завершить день». С этим разрешением запись сама продолжится после перезагрузки телефона или обновления приложения. Нажмите «Разрешить» и выберите «Разрешить в любом режиме».",
       backgroundLocationAction: "Разрешить",
       startDay: "Начать день",
       endDay: "Завершить день",
@@ -763,9 +763,11 @@ export const mobileResources = {
       signOut: "Выйти из аккаунта",
       syncBlocked: "Синхронизация маршрутов ждёт подтверждения доступа от сервера.",
     },
-    mobilePermission: {
-      backgroundLocationTitle: "Фоновое местоположение",
-      backgroundLocationBody: "MTM использует местоположение только во время открытого рабочего дня. Выберите «Разрешить всегда».",
+    locationDisclosure: {
+      title: "Приложение использует ваше местоположение",
+      body: "LeadDrive Route Field собирает данные о местоположении, чтобы записывать ваш маршрут в открытый рабочий день и отмечать визиты к клиентам, — даже когда приложение закрыто или не используется.\n\nМаршрут и отметки визитов видят руководители вашей компании. Запись останавливается, когда вы нажимаете «Перерыв» или «Завершить день».\n\nДальше телефон спросит разрешение на доступ к местоположению.",
+      notNow: "Не сейчас",
+      continue: "Продолжить",
     },
   },
   en: {
@@ -852,7 +854,7 @@ export const mobileResources = {
       returnLocked: "A manager has already reviewed or corrected this day, so it cannot be returned to.",
       offlineRefresh: "No connection. Showing saved data; refresh will work once you are back online.",
       backgroundLocationTitle: "Allow location «all the time»",
-      backgroundLocationBody: "During the workday the app records where you are so your manager can see the route. With this permission recording resumes by itself after the phone restarts or the app updates. Tap «Allow» and choose «Allow all the time».",
+      backgroundLocationBody: "LeadDrive Route Field collects location data to record your route during an open workday, even when the app is closed or not in use. Your company's managers see the route; recording stops when you tap «Break» or «End day». With this permission recording resumes by itself after the phone restarts or the app updates. Tap «Allow» and choose «Allow all the time».",
       backgroundLocationAction: "Allow",
       startDay: "Start day",
       endDay: "End day",
@@ -1518,9 +1520,11 @@ export const mobileResources = {
       signOut: "Sign out",
       syncBlocked: "Route sync is waiting for server-confirmed access.",
     },
-    mobilePermission: {
-      backgroundLocationTitle: "Background location",
-      backgroundLocationBody: "MTM uses location only during an active workday. Choose Allow all the time.",
+    locationDisclosure: {
+      title: "The app uses your location",
+      body: "LeadDrive Route Field collects location data to record your route during an open workday and to mark your visits to clients, even when the app is closed or not in use.\n\nYour company's managers see the route and the visit marks. Recording stops when you tap «Break» or «End day».\n\nNext, your phone will ask for permission to access location.",
+      notNow: "Not now",
+      continue: "Continue",
     },
   },
   az: {
@@ -1607,7 +1611,7 @@ export const mobileResources = {
       returnLocked: "Bu günü rəhbər artıq yoxlayıb və ya düzəldib — ona qayıtmaq olmur.",
       offlineRefresh: "Bağlantı yoxdur. Yadda saxlanılan məlumatlar göstərilir; bağlantı bərpa olunanda yeniləmə işləyəcək.",
       backgroundLocationTitle: "Məkana «hər zaman» icazə verin",
-      backgroundLocationBody: "İş günü ərzində tətbiq harada olduğunuzu qeyd edir ki, rəhbər marşrutu görsün. Bu icazə ilə telefon yenidən başladıqda və ya tətbiq yeniləndikdə yazı özü davam edəcək. «İcazə ver» düyməsini basın və «Hər zaman icazə verin» seçin.",
+      backgroundLocationBody: "LeadDrive Route Field açıq iş günü ərzində marşrutunuzu yazmaq üçün məkan məlumatlarını toplayır — hətta tətbiq bağlı olduqda və ya istifadə edilmədikdə belə. Marşrutu şirkətinizin rəhbərləri görür; «Fasilə» və ya «Günü bitir» düyməsini basdıqda yazı dayanır. Bu icazə ilə telefon yenidən başladıqda və ya tətbiq yeniləndikdə yazı özü davam edəcək. «İcazə ver» düyməsini basın və «Hər zaman icazə verin» seçin.",
       backgroundLocationAction: "İcazə ver",
       startDay: "Günə başla",
       endDay: "Günü bitir",
@@ -2273,9 +2277,11 @@ export const mobileResources = {
       signOut: "Hesabdan çıx",
       syncBlocked: "Marşrut sinxronizasiyası serverin giriş təsdiqini gözləyir.",
     },
-    mobilePermission: {
-      backgroundLocationTitle: "Fon məkanı",
-      backgroundLocationBody: "MTM yalnız açıq iş günü ərzində məkanı istifadə edir. «Həmişə icazə ver» seçin.",
+    locationDisclosure: {
+      title: "Tətbiq məkanınızdan istifadə edir",
+      body: "LeadDrive Route Field açıq iş günü ərzində marşrutunuzu yazmaq və müştərilərə vizitlərinizi qeyd etmək üçün məkan məlumatlarını toplayır — hətta tətbiq bağlı olduqda və ya istifadə edilmədikdə belə.\n\nMarşrutu və vizit qeydlərini şirkətinizin rəhbərləri görür. «Fasilə» və ya «Günü bitir» düyməsini basdıqda yazı dayanır.\n\nSonra telefon məkana giriş icazəsi istəyəcək.",
+      notNow: "İndi yox",
+      continue: "Davam et",
     },
   },
 } as const

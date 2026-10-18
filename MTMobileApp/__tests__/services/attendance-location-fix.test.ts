@@ -19,6 +19,15 @@ it('does not query GPS after denied phone permission', async () => {
   ;(PermissionsAndroid.check as jest.Mock).mockResolvedValue(false); (PermissionsAndroid.request as jest.Mock).mockResolvedValue(PermissionsAndroid.RESULTS.DENIED)
   expect(await readAttendanceLocationFix(() => {})).toBeNull(); expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
 })
+it('asks a field agent nothing: without a grant no sheet, no GPS and no place', async () => {
+  ;(PermissionsAndroid.check as jest.Mock).mockResolvedValue(false)
+  expect(await readAttendanceLocationFix(() => {}, { mayAsk: false })).toBeNull()
+  expect(PermissionsAndroid.request).not.toHaveBeenCalled(); expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
+})
+it('reads a field agent\'s place when the grant is already there', async () => {
+  expect(await readAttendanceLocationFix(() => {}, { mayAsk: false })).toMatchObject({ latitude: 40, longitude: 49 })
+  expect(PermissionsAndroid.request).not.toHaveBeenCalled()
+})
 it.each([undefined, null])('never invents isMock=false when native metadata is %s', async mocked => {
   ;(Geolocation.getCurrentPosition as jest.Mock).mockImplementation(done => done({...point,mocked}))
   expect(await readAttendanceLocationFix(() => {})).toBeNull()
