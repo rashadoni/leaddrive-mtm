@@ -12,9 +12,10 @@ interface FieldAppearanceNativeModule {
 let started = false
 
 export function startColorSchemeReload(): () => void {
-  if (started) return () => {}
+  // Nothing to watch where react-native is stubbed without these (tests).
+  if (started || !Appearance?.addChangeListener || !Keyboard?.addListener) return () => {}
   started = true
-  const native = NativeModules.FieldAppearance as FieldAppearanceNativeModule | undefined
+  const native = NativeModules?.FieldAppearance as FieldAppearanceNativeModule | undefined
   let reloading = false
 
   const check = () => {
@@ -23,7 +24,7 @@ export function startColorSchemeReload(): () => void {
       started: fieldColorScheme,
       current: fieldColorSchemeOf(Appearance.getColorScheme()),
       workdayOpen: useWorkdayStore.getState().activeWorkday !== null,
-      keyboardOpen: Keyboard.isVisible(),
+      keyboardOpen: Keyboard.isVisible?.() ?? false,
     })
     if (decision !== "reload" || !native?.reload) return
     reloading = true

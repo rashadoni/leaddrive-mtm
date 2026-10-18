@@ -84,8 +84,11 @@ export function fieldColorSchemeOf(value: string | null | undefined): FieldColor
   return value === "dark" ? "dark" : "light"
 }
 
-/** The theme this run of the app was started in. */
-export const fieldColorScheme: FieldColorScheme = fieldColorSchemeOf(Appearance.getColorScheme())
+/**
+ * The theme this run of the app was started in. A test that replaces
+ * react-native without Appearance gets the light palette.
+ */
+export const fieldColorScheme: FieldColorScheme = fieldColorSchemeOf(Appearance?.getColorScheme?.())
 
 export const fieldTheme = {
   color: FIELD_PALETTES[fieldColorScheme],
