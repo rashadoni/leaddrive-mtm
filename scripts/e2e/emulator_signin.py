@@ -404,15 +404,17 @@ def has_sign_in_tabs():
 def first_sign_in_offered(found, sign_in):
     """«First sign-in» is the chosen tab and asks for the WhatsApp number; a detail in the app's words, or "".
 
-    «Get a code» counts only when it stands on screen. Under the keyboard
-    uiautomator may still list it, as a box whose top is below its bottom
-    (`[82,1074][638,1050]` in runs 39169379126 and 39172055224): that is no
-    button anyone can see, and taking it passed the check on the first look,
-    before the keyboard was ever closed.
+    «Get a code» counts only when it stands whole on screen. Under the
+    keyboard uiautomator may still list it, as a box whose top is below its
+    bottom (`[82,1074][638,1050]` in runs 39169379126 and 39172055224), or as
+    its top 44 px, cut where the scrolling view ends above the keyboard
+    (`[82,1006][638,1050]` in 39172808084). Taking either for the button
+    passed the check on the first look, before the keyboard was ever closed.
     """
     tab = by_id(found, "login-tab-first")
     send = by_id(found, "login-code-send")
-    if tab and tab.get("selected") == "true" and by_id(found, "login-code-phone") and send and send["box"][1] < send["box"][3]:
+    if (tab and tab.get("selected") == "true" and by_id(found, "login-code-phone") and send
+            and send["box"][1] < send["box"][3] and stands_whole(found, send, (), sign_in["codeStart"])):
         return f"«{sign_in['codePhoneLabel']}» and «{sign_in['codeStart']}»"
     return ""
 
@@ -424,11 +426,12 @@ def first_sign_in_checks(found, sign_in):
     # The screen turns to it once reading the saved account comes back empty.
     # Then the phone field takes the focus (`autoFocus` in LoginCodeFlow) and
     # the keyboard opens: on a 720x1600 screen the window ends at y=1090, and
-    # «Get a code», right under the field, is left out of the dump or kept as
-    # an inverted sliver. Run 39170988424 failed here with «First sign-in»
-    # chosen; 39169379126 and 39172055224 passed with the same build only
-    # because the sliver was taken for the button. Neither counts (see
-    # first_sign_in_offered), so the keyboard is closed and the screen read again,
+    # «Get a code», right under the field, is left out of the dump, kept as an
+    # inverted sliver or cut to its top. Run 39170988424 failed here with
+    # «First sign-in» chosen; 39169379126, 39172055224 and 39172808084 passed
+    # with the same build only because a sliver or a cut top was taken for the
+    # button. None counts (see first_sign_in_offered), so the keyboard is
+    # closed and the screen read again,
     # rather than taking the field alone for the step: that would stop checking
     # that the button is there at all. `hide_keyboard` presses BACK only while
     # the keyboard is shown — without one, BACK would leave the sign-in screen.
