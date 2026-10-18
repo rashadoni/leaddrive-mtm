@@ -1927,7 +1927,7 @@ const styles = StyleSheet.create({
   activeCard: {
     backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: "#A9D8C1",
+    borderColor: fieldTheme.color.primary,
     borderRadius: fieldTheme.radius.lg,
     padding: fieldTheme.space.lg,
   },
@@ -2070,7 +2070,7 @@ const styles = StyleSheet.create({
   historyCountPill: { minHeight: 32, justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.md },
   historyCount: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
   visitRow: { minHeight: 88, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
-  visitRowActive: { borderColor: "#A9D8C1" },
+  visitRowActive: { borderColor: fieldTheme.color.primary },
   visitStatusIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14 },
   visitCopy: { flex: 1, minWidth: 0 },
   visitName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },

@@ -57,7 +57,7 @@ type Employee = {
 const STOP_STYLE: Record<EmployeeDayStop["status"], { fill: string; text: string; border: string }> = {
   VISITED: { fill: fieldTheme.color.surface, text: fieldTheme.color.primaryStrong, border: fieldTheme.color.primary },
   NEXT: { fill: fieldTheme.color.surface, text: fieldTheme.color.blue, border: fieldTheme.color.blue },
-  PLANNED: { fill: "#FFFFFF", text: fieldTheme.color.inkMuted, border: fieldTheme.color.border },
+  PLANNED: { fill: fieldTheme.color.surface, text: fieldTheme.color.inkMuted, border: fieldTheme.color.border },
   SKIPPED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
   MISSED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
 }
@@ -222,7 +222,7 @@ export default function ManagerEmployeeScreen() {
               </Pressable>
               {whatsapp ? (
                 <Pressable testID="manager-employee-whatsapp" accessibilityRole="button" onPress={() => { void Linking.openURL(whatsapp) }} style={({ pressed }) => [styles.contactButton, styles.whatsappButton, pressed && styles.pressed]}>
-                  <Icon name="logo-whatsapp" size={18} color="#157A3C" />
+                  <Icon name="logo-whatsapp" size={18} color={fieldTheme.color.success} />
                   <Text style={[styles.contactText, styles.whatsappText]}>WhatsApp</Text>
                 </Pressable>
               ) : null}
@@ -431,30 +431,31 @@ const styles = StyleSheet.create({
   contactRow: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   contactButton: { flex: 1, minHeight: 46, borderRadius: fieldTheme.radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   callButton: { backgroundColor: fieldTheme.color.primary },
-  // One filled button: «Zəng et»; WhatsApp is outlined in its own green.
-  whatsappButton: { borderWidth: 1.5, borderColor: "#157A3C", backgroundColor: fieldTheme.color.surface },
-  whatsappText: { color: "#157A3C" },
+  // One filled button: «Zəng et»; WhatsApp is outlined in green, a theme
+  // colour so it reads in the night palette too.
+  whatsappButton: { borderWidth: 1.5, borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.surface },
+  whatsappText: { color: fieldTheme.color.success },
   contactText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   noPhone: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: fieldTheme.space.sm },
   body: { padding: fieldTheme.space.lg, gap: fieldTheme.space.md },
   dayRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  dayArrow: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  dayArrow: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
   dayLabel: { flex: 1, textAlign: "center", color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   todayChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.pill, borderWidth: 1.5, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 14, justifyContent: "center" },
   todayChipText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   map: { height: 240, borderRadius: fieldTheme.radius.md, overflow: "hidden", borderWidth: 1, borderColor: fieldTheme.color.border },
-  webView: { flex: 1, backgroundColor: "#DFEAE5" },
+  webView: { flex: 1, backgroundColor: fieldTheme.color.surfaceStrong },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: -4 },
   legendText: { color: fieldTheme.color.inkMuted, fontSize: 12 },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  tile: { width: "48.5%", flexGrow: 1, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md },
+  tile: { width: "48.5%", flexGrow: 1, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md },
   tileValue: { color: fieldTheme.color.ink, fontSize: 19, fontWeight: "900" },
   tileLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   section: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.5, marginTop: fieldTheme.space.sm },
   card: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   empty: { color: fieldTheme.color.inkMuted, fontSize: 14, paddingVertical: fieldTheme.space.sm },
   stop: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
-  stopDivider: { borderTopWidth: 1, borderTopColor: "#E7EEEA" },
+  stopDivider: { borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   stopNumber: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: "center", justifyContent: "center", marginTop: 1 },
   stopNumberText: { fontSize: 12, fontWeight: "900" },
   stopCopy: { flex: 1 },
