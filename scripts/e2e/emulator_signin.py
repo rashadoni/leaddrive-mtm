@@ -599,7 +599,7 @@ def signed_in_walk(server, sign_in):
     if not (AGENT_COMPANY and AGENT_EMAIL and AGENT_PASSWORD):
         print("No field account in the secrets: the walk ends at the sign-in form.", flush=True)
         return
-    profile, tabs = words("profile"), tab_captions()
+    tabs = tab_captions()
     private = True
     print("Signing in with the field account. Nothing read from the screen is kept from here on.", flush=True)
 
@@ -669,16 +669,19 @@ def signed_in_walk(server, sign_in):
         if crash_line():
             return
 
+    profile_walk(tabs["more"], list(tabs.values()))
+
+
+def profile_walk(more_caption, captions):
+    """The profile behind «More»: it offers to log out and names the build; then the walk logs out."""
+    profile = words("profile")
     found, _ = nodes()
-    tap_text(found, tabs["more"])
+    tap_text(found, more_caption)
     found = wait_for("«More» lists the profile", lambda seen: by_id(seen, "more-action-Profile") and "entry found", 30, "")
     tap(by_id(found, "more-action-Profile"))
     version = f"v{EXPECTED_VERSION}" if EXPECTED_VERSION else "Route & Field v"
 
-    def scrolled_to(text):
-        return scroll_until(lambda page: has_text(page, text))
-
-    seen = scrolled_to(profile["logout"])
+    seen = scroll_until(lambda page: has_text(page, profile["logout"]))
     record(bool(seen), "The profile opens and offers to log out")
     if not seen:
         return
@@ -687,12 +690,25 @@ def signed_in_walk(server, sign_in):
     time.sleep(1.5)
     bottom, _ = nodes()
     record(has_text(below, version) or has_text(bottom, version), "The profile names the version of this build", version)
+    logout_walk(profile, captions)
 
-    seen = scrolled_to(profile["logout"])
-    if seen and tap_text(seen, profile["logout"]):
-        found = wait_for("Logging out asks to confirm", lambda again: has_text(again, profile["logoutMessage"]) and "confirmation shown", 30, "")
-        tap_text(found, profile["logoutConfirm"])
-        wait_for("After logging out the app is back at the way in", lambda again: (sign_in_open(again) or by_id(again, "tenant-input")) and "signed out", 60, "")
+
+def logout_walk(profile, captions):
+    """«Log out», pressed whole above the tab bar; the confirmation it asks for; back at the way in."""
+    # The button is a Pressable around an icon and a label, so its words are
+    # «found» in its content-desc while the label is cut at the screen's edge.
+    # The walk used to look for the label with `tap_text` then, find nothing,
+    # and skip the logout without a word: the same trap as «Propose a change».
+    seen, button = scroll_into_view(profile["logout"], captions)
+    if not button:
+        near = button_saying(seen, profile["logout"])
+        record(False, "Logging out asks to confirm", f"«{profile['logout']}» never stood whole above the tab bar"
+               + (f": {near['box']}, page ends at {page_bounds(seen, near, captions)[1]}" if near else ": it went off the screen"))
+        return
+    tap(button)
+    found = wait_for("Logging out asks to confirm", lambda again: has_text(again, profile["logoutMessage"]) and "confirmation shown", 30, "")
+    tap_text(found, profile["logoutConfirm"])
+    wait_for("After logging out the app is back at the way in", lambda again: (sign_in_open(again) or by_id(again, "tenant-input")) and "signed out", 60, "")
 
 
 
