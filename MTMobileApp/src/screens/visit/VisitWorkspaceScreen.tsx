@@ -39,6 +39,7 @@ import {
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import ShortWindowPage from "../../components/ShortWindowPage"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
@@ -440,7 +441,7 @@ export default function VisitWorkspaceScreen() {
               pressed && styles.pressed,
             ]}
           >
-            <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+            <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
           </Pressable>
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>{visibleSection === "summary" ? copy.eyebrow : copy.activeEyebrow}</Text>
@@ -455,7 +456,7 @@ export default function VisitWorkspaceScreen() {
             ) : null}
           </View>
           {data ? (
-            <View style={[styles.headerStatus, { backgroundColor: statusVisual.background }]}>
+            <View style={styles.headerStatus}>
               <Icon name={statusVisual.icon} size={18} color={statusVisual.color} />
               <Text style={[styles.headerStatusText, { color: statusVisual.color }]}>
                 {codeLabel(data.status, copy.status)}
@@ -520,7 +521,7 @@ export default function VisitWorkspaceScreen() {
 
             {visibleSection === "summary" ? <View style={styles.overviewCard}>
               <View style={styles.sectionHeadingRow}>
-                <View style={[styles.sectionIcon, { backgroundColor: fieldTheme.color.primarySoft }]}>
+                <View style={styles.sectionIcon}>
                   <Icon name="briefcase-outline" size={22} color={fieldTheme.color.primaryStrong} />
                 </View>
                 <View style={styles.sectionHeadingCopy}>
@@ -681,7 +682,7 @@ export default function VisitWorkspaceScreen() {
                         onPress={() => navigation.navigate("TaskDetail", { task })}
                         style={({ pressed }) => [styles.taskRow, pressed && styles.pressed]}
                       >
-                        <View style={[styles.rowIcon, { backgroundColor: done ? fieldTheme.color.successSoft : fieldTheme.color.blueSoft }]}>
+                        <View style={styles.rowIcon}>
                           <Icon
                             name={done ? "checkmark" : "hourglass-outline"}
                             size={19}
@@ -689,7 +690,7 @@ export default function VisitWorkspaceScreen() {
                           />
                         </View>
                         <Text style={styles.taskTitle}>{task.title}</Text>
-                        <View style={[styles.smallPill, { backgroundColor: done ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+                        <View style={styles.smallPill}>
                           <Text style={[styles.smallPillText, { color: done ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
                             {codeLabel(task.status, copy.taskStatus)}
                           </Text>
@@ -704,7 +705,7 @@ export default function VisitWorkspaceScreen() {
                         const visual = requirementVisual(requirement, copy)
                         return (
                           <View key={requirement.actionKey} style={styles.requirementRow}>
-                            <View style={[styles.rowIcon, { backgroundColor: visual.background }]}>
+                            <View style={styles.rowIcon}>
                               <Icon name={visual.icon} size={20} color={visual.color} />
                             </View>
                             <View style={styles.requirementCopy}>
@@ -733,7 +734,8 @@ export default function VisitWorkspaceScreen() {
           </View>
         </ScrollView>
       ) : short ? header : null}
-      {short ? <StatusBarBand /> : null}
+      <LightScreenStatusBar />
+      {short ? <StatusBarBand tone="light" /> : null}
     </View>
   )
 }
@@ -848,7 +850,7 @@ function RoadmapStep({ step, last }: { step: VisitRoadmapStep; last: boolean }) 
   return (
     <View style={styles.roadmapRow} accessibilityLabel={`${step.title}: ${step.detail ?? ""}`}>
       <View style={styles.roadmapRail}>
-        <View style={[styles.roadmapDot, { backgroundColor: visual.background, borderColor: visual.color }]}>
+        <View style={[styles.roadmapDot, { borderColor: visual.color }]}>
           <Icon name={visual.icon} size={15} color={visual.color} />
         </View>
         {last ? null : <View style={styles.roadmapLine} />}
@@ -878,30 +880,31 @@ function EmptyBlock({ icon, title, body }: { icon: string; title: string; body?:
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
+  // White like the tabs' headers (owner-approved colours, 2026-10-18).
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center" },
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
-  backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
+  backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },
   headerCopy: { flex: 1, minWidth: 0 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "900", letterSpacing: 0.7 },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: 2 },
-  headerSubtitle: { color: "#D7E9E1", fontSize: 13, lineHeight: 19, marginTop: fieldTheme.space.xs, maxWidth: 720 },
-  headerStatus: { minHeight: 38, maxWidth: 150, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.md },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 12, lineHeight: 16, fontWeight: "900", letterSpacing: 0.7 },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: 2 },
+  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, marginTop: fieldTheme.space.xs, maxWidth: 720 },
+  headerStatus: { minHeight: 38, maxWidth: 150, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs },
   headerStatusText: { flexShrink: 1, fontSize: 11, lineHeight: 15, fontWeight: "900", textAlign: "center" },
   scrollContent: { paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
   // The header inside scrollContent: full bleed over its padding, which comes
   // back below it.
   headerInScroll: { marginHorizontal: -fieldTheme.space.lg, marginTop: -fieldTheme.space.lg, marginBottom: fieldTheme.space.lg },
   content: { width: "100%", maxWidth: 1180, alignSelf: "center", gap: fieldTheme.space.lg },
-  notice: { minHeight: 76, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: "#E8D69F", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, padding: fieldTheme.space.md },
+  notice: { minHeight: 76, flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md },
   noticeCopy: { flex: 1, minWidth: 190 },
   noticeTitle: { color: fieldTheme.color.amber, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   noticeBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  noticeButton: { minHeight: 44, minWidth: 116, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md },
+  noticeButton: { minHeight: 44, minWidth: 116, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md },
   noticeButtonText: { color: fieldTheme.color.amber, fontSize: 12, fontWeight: "900" },
   overviewCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.lg },
-  timeNotice: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: "#E8D69F", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
-  timeNoticeOvertime: { borderColor: "#E9B3AE", backgroundColor: fieldTheme.color.dangerSoft },
+  timeNotice: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.md },
+  timeNoticeOvertime: { borderLeftColor: fieldTheme.color.danger },
   timeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 13, lineHeight: 19, fontWeight: "900" },
   timeNoticeTextOvertime: { color: fieldTheme.color.danger },
   sectionHeadingRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
@@ -910,7 +913,7 @@ const styles = StyleSheet.create({
   sectionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 11, lineHeight: 15, fontWeight: "900", letterSpacing: 0.6 },
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 25, fontWeight: "900", marginTop: 2 },
   infoLine: { minHeight: 58, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingTop: fieldTheme.space.md, marginTop: fieldTheme.space.md },
-  infoIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 19, backgroundColor: fieldTheme.color.surfaceStrong },
+  infoIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 19 },
   infoCopy: { flex: 1 },
   infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800" },
   infoValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "800", marginTop: 2 },
@@ -920,7 +923,7 @@ const styles = StyleSheet.create({
   // a column four screens long. Three to a row, neutral like the card they
   // sit in.
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
-  stat: { minWidth: 96, flexGrow: 1, flexBasis: "45%", minHeight: 62, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
+  stat: { minWidth: 96, flexGrow: 1, flexBasis: "45%", minHeight: 62, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   statLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", marginTop: 4 },
   statValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
   pendingLine: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
@@ -930,7 +933,7 @@ const styles = StyleSheet.create({
   roadmap: { marginTop: fieldTheme.space.sm },
   roadmapRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, minHeight: 44 },
   roadmapRail: { width: 28, alignItems: "center" },
-  roadmapDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  roadmapDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 1.5, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface },
   roadmapLine: { flex: 1, width: 2, minHeight: 14, backgroundColor: fieldTheme.color.border, marginVertical: 2 },
   roadmapCopy: { flex: 1, minWidth: 0, paddingBottom: fieldTheme.space.sm },
   roadmapStepTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
@@ -941,15 +944,15 @@ const styles = StyleSheet.create({
   column: { flex: 1, gap: fieldTheme.space.lg, minWidth: 0 },
   sectionCard: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, overflow: "hidden" },
   cardHeading: { minHeight: 66, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.lg, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
-  cardHeadingIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, backgroundColor: fieldTheme.color.primarySoft },
+  cardHeadingIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20 },
   cardTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
-  cardBadge: { minHeight: 30, maxWidth: 150, justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, paddingHorizontal: fieldTheme.space.sm },
+  cardBadge: { minHeight: 30, maxWidth: 150, justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.sm },
   cardBadgeText: { color: fieldTheme.color.inkMuted, fontSize: 10, lineHeight: 14, fontWeight: "900", textAlign: "center" },
   cardBody: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
   presentationHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 18, marginTop: fieldTheme.space.md },
   presentationList: { marginTop: fieldTheme.space.sm },
   presentationRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
-  presentationIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.primarySoft },
+  presentationIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 14 },
   presentationCopy: { flex: 1, minWidth: 0 },
   presentationTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   presentationMeta: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
@@ -965,15 +968,15 @@ const styles = StyleSheet.create({
   taskRow: { minHeight: 66, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
   taskTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   requiredActionsGroup: { marginTop: fieldTheme.space.lg, paddingTop: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
-  smallPill: { minHeight: 28, maxWidth: 100, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
+  smallPill: { minHeight: 28, maxWidth: 100, alignItems: "center", justifyContent: "center" },
   smallPillText: { fontSize: 9, lineHeight: 12, fontWeight: "900", textAlign: "center" },
   emptyBlock: { minHeight: 112, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.lg },
-  emptyIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: fieldTheme.color.surfaceStrong },
+  emptyIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   emptyCopy: { flex: 1 },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
   statePanel: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xxl },
-  stateIcon: { width: 72, height: 72, alignItems: "center", justifyContent: "center", borderRadius: 24, backgroundColor: fieldTheme.color.primarySoft },
+  stateIcon: { width: 72, height: 72, alignItems: "center", justifyContent: "center", borderRadius: 24 },
   stateTitle: { color: fieldTheme.color.ink, fontSize: 19, lineHeight: 24, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.lg },
   stateBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 420, marginTop: fieldTheme.space.sm },
   stateButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },

@@ -509,10 +509,10 @@ function renderTemplate(template: string, values: Record<string, string | number
 
 function pointStatus(point: RoutePoint, copy: (typeof ROUTE_COPY)[RouteLanguage], visitingPointId?: string | null) {
   const state = routeStopState(point, visitingPointId)
-  if (state === "visiting") return { label: copy.visiting, icon: "radio-button-on" as const, color: fieldTheme.color.amber, soft: fieldTheme.color.amberSoft }
-  if (state === "visited") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success, soft: fieldTheme.color.successSoft }
-  if (state === "skipped") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger, soft: fieldTheme.color.dangerSoft }
-  return { label: copy.planned, icon: "ellipse-outline" as const, color: fieldTheme.color.inkMuted, soft: fieldTheme.color.surfaceStrong }
+  if (state === "visiting") return { label: copy.visiting, icon: "radio-button-on" as const, color: fieldTheme.color.amber }
+  if (state === "visited") return { label: copy.visited, icon: "checkmark-circle" as const, color: fieldTheme.color.success }
+  if (state === "skipped") return { label: copy.skipped, icon: "remove-circle" as const, color: fieldTheme.color.danger }
+  return { label: copy.planned, icon: "ellipse-outline" as const, color: fieldTheme.color.inkMuted }
 }
 
 function ActionButton({
@@ -578,7 +578,7 @@ function VisitActionButton({
       style={({ pressed }) => [styles.visitAction, done && styles.visitActionDone, disabled && styles.buttonDisabled, pressed && !disabled && styles.buttonPressed]}
     >
       <View style={[styles.visitActionIcon, done && styles.visitActionIconDone]}>
-        <Icon name={done ? "checkmark" : icon} size={20} color={done ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
+        <Icon name={done ? "checkmark" : icon} size={20} color={done ? fieldTheme.color.success : fieldTheme.color.primaryStrong} />
       </View>
       <View style={styles.visitActionCopy}>
         <Text style={[styles.visitActionLabel, done && styles.visitActionLabelDone]}>{label}</Text>
@@ -690,7 +690,7 @@ function JourneySteps({
               <View style={styles.stepItem}>
                 <View style={[styles.stepCircle, done && styles.stepCircleDone, current && styles.stepCircleCurrent]}>
                   {done ? (
-                    <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
+                    <Icon name="checkmark" size={14} color={fieldTheme.color.success} />
                   ) : (
                     <Text style={[styles.stepNumber, current && styles.stepNumberCurrent]}>{step}</Text>
                   )}
@@ -948,9 +948,9 @@ function StopRow({
         <View style={[styles.stopRailLine, first && styles.stopRailLineHidden, roadAbove && styles.stopRailLineDone]} />
         <View style={[styles.stopNumber, recommended && styles.stopNumberRecommended, visiting && styles.stopNumberVisiting, point.status === "VISITED" && styles.stopNumberDone]}>
           {point.status === "VISITED" ? (
-            <Icon name="checkmark" size={17} color={fieldTheme.color.onColor} />
+            <Icon name="checkmark" size={17} color={fieldTheme.color.success} />
           ) : (
-            <Text style={[styles.stopNumberText, (recommended || visiting) && styles.stopNumberTextRecommended]}>{index + 1}</Text>
+            <Text style={[styles.stopNumberText, recommended && styles.stopNumberTextRecommended, visiting && styles.stopNumberTextVisiting]}>{index + 1}</Text>
           )}
         </View>
         <View style={[styles.stopRailLine, last && styles.stopRailLineHidden, roadBelow && styles.stopRailLineDone]} />
@@ -970,7 +970,7 @@ function StopRow({
         {/* Where this client stands today, in words and in colour: visited
             (with the time), visit in progress, or still planned. */}
         <View style={styles.stopMeta}>
-          <View style={[styles.stopStatus, { backgroundColor: status.soft }]}>
+          <View style={styles.stopStatus}>
             <Icon name={status.icon} size={14} color={status.color} />
             <Text style={[styles.stopStatusText, { color: status.color }]}>
               {point.visitedAt
@@ -2443,12 +2443,15 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.coralSoft,
+    // White with a coloured edge, not a tinted box (owner-approved colours, 2026-10-18).
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: "#E9B9AC",
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.coral,
     marginTop: fieldTheme.space.md,
   },
-  connectionBannerSlow: { backgroundColor: fieldTheme.color.amberSoft, borderColor: "#E6CF97" },
+  connectionBannerSlow: { borderLeftColor: fieldTheme.color.amber },
   connectionCopy: { flex: 1 },
   connectionTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   connectionBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
@@ -2470,14 +2473,15 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: fieldTheme.color.surfaceStrong,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
     borderColor: fieldTheme.color.border,
   },
-  stepCircleDone: { backgroundColor: fieldTheme.color.success, borderColor: fieldTheme.color.success },
-  stepCircleCurrent: { backgroundColor: fieldTheme.color.primaryStrong, borderColor: fieldTheme.color.primaryStrong },
+  // Done and current are the colour of the ring and the mark, not a filled circle.
+  stepCircleDone: { borderColor: fieldTheme.color.success },
+  stepCircleCurrent: { borderWidth: 2, borderColor: fieldTheme.color.primary },
   stepNumber: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
-  stepNumberCurrent: { color: fieldTheme.color.onColor },
+  stepNumberCurrent: { color: fieldTheme.color.primaryStrong },
   stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "700", marginTop: 5, textAlign: "center" },
   stepLabelCurrent: { color: fieldTheme.color.primaryStrong },
   stepLine: { flex: 1, height: 2, backgroundColor: fieldTheme.color.border, marginTop: 14 },
@@ -2497,7 +2501,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primarySoft,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2506,7 +2509,7 @@ const styles = StyleSheet.create({
   summaryTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "800", marginTop: 2 },
   summaryDate: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700", marginTop: 3 },
   summaryBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  remainingPill: { backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 10, paddingVertical: 6 },
+  remainingPill: { paddingVertical: 6 },
   remainingText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "800" },
   progressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: fieldTheme.space.lg },
   progressText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
@@ -2541,23 +2544,23 @@ const styles = StyleSheet.create({
   actionEyebrowRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: fieldTheme.color.success },
   actionEyebrow: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900", letterSpacing: 0.7 },
-  staleVisitPanel: { borderColor: fieldTheme.color.danger, backgroundColor: fieldTheme.color.dangerSoft },
+  staleVisitPanel: { borderColor: fieldTheme.color.danger },
   staleVisitEyebrow: { flex: 1, color: fieldTheme.color.danger },
   staleVisitBody: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20 },
   actionTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 29, fontWeight: "900", letterSpacing: -0.4 },
   actionAddress: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   visitFacts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  factPill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 11, paddingVertical: 7 },
+  factPill: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 11, paddingVertical: 7 },
   factText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
-  visitTimeNotice: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.amberSoft, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
-  visitTimeNoticeOvertime: { backgroundColor: fieldTheme.color.dangerSoft },
+  visitTimeNotice: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
+  visitTimeNoticeOvertime: { borderLeftColor: fieldTheme.color.danger },
   visitTimeNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "800" },
   visitTimeNoticeTextOvertime: { color: fieldTheme.color.danger },
   visitActionsTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "900", marginTop: fieldTheme.space.xs },
   visitAction: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface },
-  visitActionDone: { borderColor: "#A9D9CA", backgroundColor: fieldTheme.color.successSoft },
-  visitActionIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
-  visitActionIconDone: { backgroundColor: fieldTheme.color.success },
+  visitActionDone: { borderColor: fieldTheme.color.success },
+  visitActionIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  visitActionIconDone: {},
   visitActionCopy: { flex: 1, minWidth: 0 },
   visitActionLabel: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
   visitActionLabelDone: { color: fieldTheme.color.success },
@@ -2566,9 +2569,9 @@ const styles = StyleSheet.create({
   detailFacts: { gap: fieldTheme.space.sm },
   detailFact: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   detailFactText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "600" },
-  recommendation: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft },
+  recommendation: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface },
   recommendationText: { flex: 1, color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, fontWeight: "600" },
-  completedState: { minHeight: 52, flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.successSoft },
+  completedState: { minHeight: 52, flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.success },
   completedStateText: { color: fieldTheme.color.success, fontSize: 15, fontWeight: "800" },
 
   actionButton: {
@@ -2582,7 +2585,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: fieldTheme.space.sm,
   },
-  actionButtonSecondary: { backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  actionButtonSecondary: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
   actionButtonDanger: { backgroundColor: fieldTheme.color.danger },
   actionButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
   actionButtonTextSecondary: { color: fieldTheme.color.primaryStrong },
@@ -2594,7 +2597,7 @@ const styles = StyleSheet.create({
   sectionCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   sectionHeadingEnd: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, flexShrink: 1 },
   planActionRow: { alignItems: "flex-start", marginBottom: fieldTheme.space.md },
-  changePlanButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  changePlanButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   changePlanText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   // One road, not a stack of cards: a row has no margin and no padding above
   // or below, so the line of one stop meets the line of the next. As separate
@@ -2609,21 +2612,23 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
     paddingHorizontal: fieldTheme.space.md,
   },
-  stopRowSelected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary },
-  stopRowVisiting: { backgroundColor: fieldTheme.color.amberSoft, borderColor: fieldTheme.color.amber },
+  stopRowSelected: { borderColor: fieldTheme.color.primary },
+  stopRowVisiting: { borderColor: fieldTheme.color.amber },
   stopRowPressed: { opacity: 0.78 },
   stopRail: { alignItems: "center", alignSelf: "stretch" },
   stopRailLine: { flex: 1, width: 3, minHeight: 12, backgroundColor: fieldTheme.color.border },
   stopRailLineDone: { backgroundColor: fieldTheme.color.success },
   stopRailLineHidden: { backgroundColor: "transparent" },
   stopNumber: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surface, borderWidth: 2, borderColor: fieldTheme.color.border },
-  stopNumberRecommended: { backgroundColor: fieldTheme.color.primaryStrong, borderColor: fieldTheme.color.primaryStrong },
-  stopNumberDone: { backgroundColor: fieldTheme.color.success, borderColor: fieldTheme.color.success },
-  stopNumberVisiting: { backgroundColor: fieldTheme.color.amber, borderColor: fieldTheme.color.amber },
-  nearestBadge: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.blueSoft },
+  // The stop's state is the colour of its ring and number, not a filled circle (owner-approved colours, 2026-10-18).
+  stopNumberRecommended: { borderColor: fieldTheme.color.primary },
+  stopNumberDone: { borderColor: fieldTheme.color.success },
+  stopNumberVisiting: { borderColor: fieldTheme.color.amber },
+  nearestBadge: { paddingVertical: 4 },
   nearestBadgeText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "900" },
   stopNumberText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "900" },
-  stopNumberTextRecommended: { color: fieldTheme.color.onColor },
+  stopNumberTextRecommended: { color: fieldTheme.color.primaryStrong },
+  stopNumberTextVisiting: { color: fieldTheme.color.amber },
   stopCopy: { flex: 1, minWidth: 0, paddingVertical: fieldTheme.space.md },
   // The name has the line to itself with the distance at its end; the status
   // stands under the address, where a narrow list never squeezed the name.
@@ -2631,36 +2636,36 @@ const styles = StyleSheet.create({
   stopName: { flexGrow: 1, flexShrink: 1, color: fieldTheme.color.ink, fontSize: 16, fontWeight: "800" },
   stopNameDone: { color: fieldTheme.color.inkMuted },
   stopDistance: { fontSize: 13, fontWeight: "800", marginTop: 2 },
-  stopStatus: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: fieldTheme.radius.pill },
+  stopStatus: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
   stopStatusText: { fontSize: 12, fontWeight: "800" },
   stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: 2 },
   stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
 
-  completeCard: { alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.successSoft, borderRadius: fieldTheme.radius.lg, padding: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
+  completeCard: { alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.success, borderRadius: fieldTheme.radius.lg, padding: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
   completeTitle: { color: fieldTheme.color.success, fontSize: 20, fontWeight: "900" },
   completeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   emptyState: { alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xxl, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, marginTop: fieldTheme.space.lg },
-  emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
-  emptyIconOffline: { backgroundColor: fieldTheme.color.coralSoft },
-  emptyIconSlow: { backgroundColor: fieldTheme.color.amberSoft },
+  emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
+  emptyIconOffline: {},
+  emptyIconSlow: {},
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 360 },
   awaitingStops: { alignSelf: "stretch", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas, paddingHorizontal: fieldTheme.space.md },
   awaitingStopRow: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm },
   awaitingStopRowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
-  awaitingStopNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  awaitingStopNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
   awaitingStopNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   awaitingStopCopy: { flex: 1, gap: 2 },
   awaitingStopName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   awaitingStopPlace: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
 
-  ownRouteCard: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, marginTop: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: "#A9D9CA" },
+  ownRouteCard: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, marginTop: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.primary },
   cardHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   cardTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   cardBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19 },
-  hint: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.blueSoft, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
+  hint: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.blue, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
   hintText: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 18 },
   hintClose: { width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: "center", justifyContent: "center" },
 

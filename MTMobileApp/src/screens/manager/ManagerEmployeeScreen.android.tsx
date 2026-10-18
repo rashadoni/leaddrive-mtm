@@ -52,12 +52,14 @@ type Employee = {
   manager: string | null
 }
 
+// A stop's state is the colour of its number and ring, never a filled circle
+// (owner-approved colours, 2026-10-18).
 const STOP_STYLE: Record<EmployeeDayStop["status"], { fill: string; text: string; border: string }> = {
-  VISITED: { fill: fieldTheme.color.primary, text: fieldTheme.color.onColor, border: fieldTheme.color.primary },
-  NEXT: { fill: fieldTheme.color.blue, text: fieldTheme.color.onColor, border: fieldTheme.color.blue },
+  VISITED: { fill: fieldTheme.color.surface, text: fieldTheme.color.primaryStrong, border: fieldTheme.color.primary },
+  NEXT: { fill: fieldTheme.color.surface, text: fieldTheme.color.blue, border: fieldTheme.color.blue },
   PLANNED: { fill: "#FFFFFF", text: fieldTheme.color.inkMuted, border: fieldTheme.color.border },
-  SKIPPED: { fill: fieldTheme.color.dangerSoft, text: fieldTheme.color.danger, border: fieldTheme.color.dangerSoft },
-  MISSED: { fill: fieldTheme.color.dangerSoft, text: fieldTheme.color.danger, border: fieldTheme.color.dangerSoft },
+  SKIPPED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
+  MISSED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
 }
 
 function toEmployee(raw: any, fallbackName: string): Employee {
@@ -220,8 +222,8 @@ export default function ManagerEmployeeScreen() {
               </Pressable>
               {whatsapp ? (
                 <Pressable testID="manager-employee-whatsapp" accessibilityRole="button" onPress={() => { void Linking.openURL(whatsapp) }} style={({ pressed }) => [styles.contactButton, styles.whatsappButton, pressed && styles.pressed]}>
-                  <Icon name="logo-whatsapp" size={18} color={fieldTheme.color.onColor} />
-                  <Text style={styles.contactText}>WhatsApp</Text>
+                  <Icon name="logo-whatsapp" size={18} color="#157A3C" />
+                  <Text style={[styles.contactText, styles.whatsappText]}>WhatsApp</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -326,7 +328,7 @@ export default function ManagerEmployeeScreen() {
                 ))}
                 {day.extraVisits.map((visit) => (
                   <View key={visit.id} style={[styles.stop, styles.stopDivider]} testID="manager-employee-extra-visit">
-                    <View style={[styles.stopNumber, { backgroundColor: fieldTheme.color.violetSoft, borderColor: fieldTheme.color.violetSoft }]}>
+                    <View style={[styles.stopNumber, { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.violet }]}>
                       <Icon name="add" size={14} color={fieldTheme.color.violet} />
                     </View>
                     <View style={styles.stopCopy}>
@@ -415,28 +417,31 @@ const styles = StyleSheet.create({
   name: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 30, fontWeight: "900" },
   sub: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: fieldTheme.space.sm },
-  pill: { borderRadius: fieldTheme.radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  // A state is the colour of its words, not a tinted pill (owner-approved colours, 2026-10-18).
+  pill: { paddingRight: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: "800" },
-  pillGreen: { backgroundColor: fieldTheme.color.primarySoft },
+  pillGreen: {},
   pillTextGreen: { color: fieldTheme.color.primaryStrong },
-  pillAmber: { backgroundColor: fieldTheme.color.amberSoft },
+  pillAmber: {},
   pillTextAmber: { color: fieldTheme.color.amber },
-  pillRed: { backgroundColor: fieldTheme.color.dangerSoft },
+  pillRed: {},
   pillTextRed: { color: fieldTheme.color.danger },
-  pillMuted: { backgroundColor: fieldTheme.color.surfaceStrong },
+  pillMuted: {},
   pillTextMuted: { color: fieldTheme.color.inkMuted },
   contactRow: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   contactButton: { flex: 1, minHeight: 46, borderRadius: fieldTheme.radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   callButton: { backgroundColor: fieldTheme.color.primary },
-  whatsappButton: { backgroundColor: "#157A3C" },
+  // One filled button: «Zəng et»; WhatsApp is outlined in its own green.
+  whatsappButton: { borderWidth: 1.5, borderColor: "#157A3C", backgroundColor: fieldTheme.color.surface },
+  whatsappText: { color: "#157A3C" },
   contactText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   noPhone: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: fieldTheme.space.sm },
   body: { padding: fieldTheme.space.lg, gap: fieldTheme.space.md },
   dayRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   dayArrow: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
   dayLabel: { flex: 1, textAlign: "center", color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  todayChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary, paddingHorizontal: 14, justifyContent: "center" },
-  todayChipText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
+  todayChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.pill, borderWidth: 1.5, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 14, justifyContent: "center" },
+  todayChipText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   map: { height: 240, borderRadius: fieldTheme.radius.md, overflow: "hidden", borderWidth: 1, borderColor: fieldTheme.color.border },
   webView: { flex: 1, backgroundColor: "#DFEAE5" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: -4 },

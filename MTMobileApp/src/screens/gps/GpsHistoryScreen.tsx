@@ -28,6 +28,7 @@ import { shiftDateKey } from "../../services/week"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import ShortWindowPage from "../../components/ShortWindowPage"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme } from "../../theme/fieldTheme"
 import {
@@ -64,9 +65,9 @@ function formatDate(dateKey: string, language: string): string {
 
 function accuracyTone(accuracy?: number): { color: string; background: string } {
   if (accuracy == null) return { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong }
-  if (accuracy <= 25) return { color: fieldTheme.color.success, background: fieldTheme.color.successSoft }
-  if (accuracy <= 75) return { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft }
-  return { color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft }
+  if (accuracy <= 25) return { color: fieldTheme.color.success }
+  if (accuracy <= 75) return { color: fieldTheme.color.amber }
+  return { color: fieldTheme.color.danger }
 }
 
 function pointKey(point: GpsTimelinePoint): string {
@@ -292,7 +293,7 @@ export default function GpsHistoryScreen() {
               onPress={() => navigation.goBack()}
               style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
             >
-              <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+              <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
             </Pressable>
           )}
           <View style={styles.titleCopy}>
@@ -309,7 +310,7 @@ export default function GpsHistoryScreen() {
             onPress={() => moveDay(-1)}
             style={({ pressed }) => [styles.navButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}
           >
-            <Icon name="chevron-back" size={22} color={fieldTheme.color.onColor} />
+            <Icon name="chevron-back" size={22} color={fieldTheme.color.ink} />
           </Pressable>
           <View style={styles.dateCopy}>
             <Text style={styles.dateLabel}>{formatDate(anchor, i18n.language)}</Text>
@@ -332,7 +333,7 @@ export default function GpsHistoryScreen() {
               pressed && !isToday && styles.pressed,
             ]}
           >
-            <Icon name="chevron-forward" size={22} color={fieldTheme.color.onColor} />
+            <Icon name="chevron-forward" size={22} color={fieldTheme.color.ink} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -348,9 +349,9 @@ export default function GpsHistoryScreen() {
             ]}
           >
             {refreshing ? (
-              <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
+              <ActivityIndicator size="small" color={fieldTheme.color.primary} />
             ) : (
-              <Icon name="refresh" size={21} color={fieldTheme.color.onColor} />
+              <Icon name="refresh" size={21} color={fieldTheme.color.ink} />
             )}
           </Pressable>
         </View>
@@ -434,7 +435,8 @@ export default function GpsHistoryScreen() {
     <View style={styles.container}>
       {short ? null : header}
       {content}
-      {short ? <StatusBarBand /> : null}
+      <LightScreenStatusBar />
+      {short ? <StatusBarBand tone="light" /> : null}
     </View>
   )
 }
@@ -773,14 +775,9 @@ function SummaryCard({ icon, value, label, tone }: {
     : tone === "blue"
       ? fieldTheme.color.blue
       : fieldTheme.color.primary
-  const background = tone === "success"
-    ? fieldTheme.color.successSoft
-    : tone === "blue"
-      ? fieldTheme.color.blueSoft
-      : fieldTheme.color.primarySoft
   return (
     <View style={styles.summaryCard}>
-      <View style={[styles.summaryIcon, { backgroundColor: background }]}>
+      <View style={styles.summaryIcon}>
         <Icon name={icon} size={21} color={color} />
       </View>
       <Text style={[styles.summaryValue, { color }]}>{value}</Text>
@@ -893,7 +890,7 @@ function PointMeta({ point, t }: { point: GpsPoint; t: Translate }) {
   return (
     <View style={styles.pointMeta}>
       {point.accuracy != null && (
-        <View style={[styles.metaChip, { backgroundColor: accuracy.background }]}>
+        <View style={styles.metaChip}>
           <Icon name="locate-outline" size={14} color={accuracy.color} />
           <Text style={[styles.metaText, { color: accuracy.color }]}>{t("gpsHistory.accuracy", { value: Math.round(point.accuracy) })}</Text>
         </View>
@@ -953,7 +950,7 @@ function PointRow({
     >
       <View style={[styles.timelineDotWrap, selected && styles.timelineDotWrapSelected]}>
         {selected ? (
-          <Icon name="navigate" size={16} color={fieldTheme.color.onColor} />
+          <Icon name="navigate" size={16} color={fieldTheme.color.primary} />
         ) : (
           <Text style={styles.timelineNumber}>{point.playbackIndex != null ? point.playbackIndex + 1 : "—"}</Text>
         )}
@@ -982,20 +979,21 @@ function PointRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: fieldTheme.space.lg, paddingHorizontal: fieldTheme.space.lg },
+  // White like the tabs' headers (owner-approved colours, 2026-10-18).
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingBottom: fieldTheme.space.lg, paddingHorizontal: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1180, alignSelf: "center" },
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
-  backButton: { borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.12)" },
+  backButton: { borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
   titleCopy: { flex: 1 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: 2 },
-  headerSubtitle: { color: "#D7E9E1", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 12, lineHeight: 16, fontWeight: "800", letterSpacing: 0.7 },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: 2 },
+  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
   dayNavigation: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
-  navButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
+  navButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },
   dateCopy: { flex: 1, alignItems: "center" },
-  dateLabel: { color: fieldTheme.color.onColor, fontSize: 16, lineHeight: 21, fontWeight: "800", textAlign: "center" },
+  dateLabel: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "800", textAlign: "center" },
   todayButton: { minHeight: 32, justifyContent: "center", paddingHorizontal: fieldTheme.space.md, marginTop: 2 },
-  todayText: { color: "#C7E6DA", fontSize: 12, fontWeight: "800" },
+  todayText: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "800" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14 },
   phoneList: { width: "100%", maxWidth: 1000, alignSelf: "center", padding: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl, flexGrow: 1 },
@@ -1008,14 +1006,14 @@ const styles = StyleSheet.create({
   summaryIcon: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   summaryValue: { fontSize: 22, lineHeight: 27, fontWeight: "900", marginTop: fieldTheme.space.sm },
   summaryLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", marginTop: 1 },
-  explainer: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.md, marginTop: fieldTheme.space.md },
+  explainer: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, marginTop: fieldTheme.space.md },
   explainerText: { flex: 1, color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 18, fontWeight: "600" },
-  coordinateNotice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.md, marginTop: fieldTheme.space.md },
+  coordinateNotice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, marginTop: fieldTheme.space.md },
   coordinateNoticeText: { flex: 1, color: fieldTheme.color.amber, fontSize: 13, lineHeight: 18, fontWeight: "700" },
   routeCard: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, padding: fieldTheme.space.md, marginTop: fieldTheme.space.md },
   routeHeading: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
-  routeHeadingIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.primarySoft },
-  sectionIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 13, backgroundColor: fieldTheme.color.primarySoft },
+  routeHeadingIcon: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderRadius: 14 },
+  sectionIcon: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderRadius: 13 },
   sectionCopy: { flex: 1 },
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 22, fontWeight: "900" },
   sectionBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
@@ -1030,7 +1028,7 @@ const styles = StyleSheet.create({
   playbackHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: fieldTheme.space.md },
   playbackEyebrow: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", letterSpacing: 0.6 },
   currentTime: { color: fieldTheme.color.ink, fontSize: 28, lineHeight: 34, fontWeight: "900", marginTop: 2 },
-  pointCounter: { minHeight: 32, justifyContent: "center", paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  pointCounter: { minHeight: 32, justifyContent: "center", paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border },
   pointCounterText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "800" },
   playbackHint: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: fieldTheme.space.sm },
   progressTrack: { height: 7, borderRadius: 4, overflow: "hidden", backgroundColor: fieldTheme.color.surfaceStrong, marginTop: fieldTheme.space.md },
@@ -1044,37 +1042,37 @@ const styles = StyleSheet.create({
   playButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   timelineHeader: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingTop: fieldTheme.space.lg, paddingBottom: fieldTheme.space.md },
   pointRow: { minHeight: 74, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },
-  pointRowSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
+  pointRowSelected: { borderColor: fieldTheme.color.primary, borderLeftWidth: 4 },
   pointRowUnavailable: { opacity: 0.72 },
   pointRowPressed: { transform: [{ scale: 0.99 }] },
-  timelineDotWrap: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
-  timelineDotWrapSelected: { backgroundColor: fieldTheme.color.primary },
+  timelineDotWrap: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
+  timelineDotWrapSelected: { borderWidth: 2, borderColor: fieldTheme.color.primary },
   timelineNumber: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   pointContent: { flex: 1 },
   pointTitleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   pointTime: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900" },
   selectedLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900", letterSpacing: 0.4 },
   pointMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
-  metaChip: { minHeight: 30, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: fieldTheme.color.surfaceStrong, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm },
+  metaChip: { minHeight: 30, flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
-  noCoordinateChip: { alignSelf: "flex-start", minHeight: 30, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: fieldTheme.color.amberSoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
+  noCoordinateChip: { alignSelf: "flex-start", minHeight: 30, flexDirection: "row", alignItems: "center", gap: 4, marginTop: fieldTheme.space.sm },
   noCoordinateText: { color: fieldTheme.color.amber, fontSize: 11, fontWeight: "800" },
-  loadNotice: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.amberSoft, marginBottom: fieldTheme.space.md },
+  loadNotice: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, marginBottom: fieldTheme.space.md },
   loadNoticeCopy: { flex: 1 },
   loadNoticeTitle: { color: fieldTheme.color.amber, fontSize: 14, lineHeight: 18, fontWeight: "900" },
   loadNoticeBody: { color: fieldTheme.color.amber, fontSize: 12, lineHeight: 17, marginTop: 2 },
-  noticeRetry: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.55)" },
+  noticeRetry: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },
   failureScroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.xl },
   shortPage: { flexGrow: 1 },
   failure: { width: "100%", maxWidth: 480, alignItems: "center", padding: fieldTheme.space.xl, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
-  failureIcon: { width: 72, height: 72, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.amberSoft },
+  failureIcon: { width: 72, height: 72, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   failureTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 26, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.lg },
   failureBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center", marginTop: fieldTheme.space.sm },
   retryButton: { minWidth: 190, minHeight: 50, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary, marginTop: fieldTheme.space.xl, paddingHorizontal: fieldTheme.space.lg },
   retryButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   emptyScroll: { width: "100%", maxWidth: 1000, alignSelf: "center", padding: fieldTheme.space.lg, flexGrow: 1 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 44 },
-  emptyIconWrap: { width: 68, height: 68, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
+  emptyIconWrap: { width: 68, height: 68, borderRadius: 23, alignItems: "center", justifyContent: "center" },
   emptyTitle: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 22, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.lg },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 440, marginTop: fieldTheme.space.sm },
   disabled: { opacity: 0.35 },
