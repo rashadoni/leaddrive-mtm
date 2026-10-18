@@ -150,5 +150,71 @@ class WalkTests(unittest.TestCase):
             self.assertFalse(Path(out, "logcat.log").exists())
 
 
+def dump(*nodes):
+    """A uiautomator dump of the app's window: (resource-id, text) per node, in tree order."""
+    rows = "".join(f'<node index="0" text="{text}" resource-id="{rid}" class="android.view.ViewGroup" '
+                   f'package="com.mtmobileapp" bounds="[0,{40 * at}][720,{40 * at + 40}]" />'
+                   for at, (rid, text) in enumerate(nodes))
+    return f"<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"0\">{rows}</hierarchy>"
+
+
+# The battery sheet as AppFeedbackHost draws it: the icon is a glyph of the
+# icon font, the buttons keep their ask() index whatever order they are drawn in.
+BATTERY_SHEET = dump(("app-choice-backdrop", ""), ("app-choice", ""), ("", "&#xf13b;"),
+                     ("", "The phone may fall asleep"), ("", "The route would then be recorded with gaps."),
+                     ("app-choice-button-1", ""), ("", "Open settings"), ("app-choice-button-0", ""), ("", "Not now"))
+# The Route tab under it carries a card with the same title: not a question.
+ROUTE_TAB = dump(("", "Route"), ("", "The phone may fall asleep"), ("", "Open settings"), ("", "Today"))
+
+
+class AppQuestionTests(unittest.TestCase):
+    """The app's own `ask()` sheet (battery since 3.11.32, location disclosure) is declined, never answered."""
+
+    def setUp(self):
+        with patch.dict(os.environ, {"E2E_SMOKE_MODE": "full"}, clear=True):
+            self.walk = importlib.reload(importlib.import_module("emulator_signin"))
+
+    def run_nodes(self, screens, words):
+        commands, screens = [], list(screens)
+
+        def shell(command, **_):
+            commands.append(command)
+            return screens.pop(0) if command.startswith("uiautomator dump") else ""
+
+        with patch.object(self.walk, "shell", shell), patch.object(self.walk.time, "sleep"), \
+                patch.object(self.walk, "app_words", return_value=frozenset(words)), \
+                contextlib.redirect_stdout(io.StringIO()) as printed:
+            found, _ = self.walk.nodes()
+        return found, [c for c in commands if not c.startswith("uiautomator dump")], printed.getvalue()
+
+    def test_sheet_is_closed_with_back_and_named_by_its_title(self):
+        words = {"Route", "Today", "The phone may fall asleep", "Open settings", "Not now"}
+        found, commands, printed = self.run_nodes([BATTERY_SHEET, ROUTE_TAB], words)
+        # BACK resolves ask() with its dismissValue — «Not now» — and no button is tapped.
+        self.assertEqual(commands, ["input keyevent 4"])
+        self.assertEqual(self.walk.asked_by_app, ["The phone may fall asleep"])
+        self.assertIn("declined a question of the app («The phone may fall asleep»)", printed)
+        self.assertTrue(self.walk.has_text(found, "Route"), "the walk goes on with the tab under the sheet")
+
+    def test_the_tab_card_with_the_same_title_is_not_a_question(self):
+        found, commands, _ = self.run_nodes([ROUTE_TAB], {"Route", "The phone may fall asleep", "Open settings"})
+        self.assertEqual(commands, [])
+        self.assertEqual(self.walk.asked_by_app, [])
+        self.assertTrue(self.walk.has_text(found, "The phone may fall asleep"))
+
+    def test_a_title_outside_the_app_words_is_never_printed(self):
+        self.walk.private = True
+        sheet = dump(("app-choice", ""), ("", "Customer 42 Ltd"), ("app-choice-button-0", ""))
+        _, commands, printed = self.run_nodes([sheet, ROUTE_TAB], {"Route"})
+        self.assertEqual(commands, ["input keyevent 4"])
+        self.assertEqual(self.walk.asked_by_app, ["…"])
+        self.assertNotIn("Customer 42", printed)
+
+    def test_a_notice_is_not_a_question(self):
+        notice = dump(("app-notice", ""), ("", "Saved"), ("", "Route"))
+        _, commands, _ = self.run_nodes([notice], {"Route", "Saved"})
+        self.assertEqual(commands, [])
+
+
 if __name__ == "__main__":
     unittest.main()

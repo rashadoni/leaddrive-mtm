@@ -73,6 +73,7 @@ APP_LABEL = "LeadDrive"
 results = []  # (ok: True/PASS, False/FAIL, None/NOT_RUN, what, detail)
 not_responding = []  # titles of the system's «isn't responding» dialogs that were dismissed
 asked_by_system = []  # packages of Android's own prompts that were declined: the walk only reads
+asked_by_app = []  # titles of the app's own questions (`ask()`) that were declined, or «…» when not its words
 
 
 def adb(*args, timeout=180, check=True):
@@ -110,8 +111,9 @@ def nodes():
             # the walk only reads, so decline and look again.
             deny = by_id(found, "permission_deny_button")
             # …and the Settings dialog «Let app always run in background?» that
-            # the Route tab raises for tracking (first signed-in run: it took
-            # the focus and every tab after it was «not on screen»).
+            # the Route tab raised for tracking before 3.11.32 (first signed-in
+            # run: it took the focus and every tab after it was «not on
+            # screen»). Kept for runs of an older release tag.
             packages = {n.get("package", "") for n in found}
             if not deny and PKG not in packages and packages & {"com.android.settings", "com.google.android.permissioncontroller", "com.android.permissioncontroller"}:
                 deny = by_id(found, "button2")
@@ -119,6 +121,25 @@ def nodes():
                 asked_by_system.append(next(iter(packages - {""}), "?"))
                 print(f"declined a system prompt ({asked_by_system[-1]})", flush=True)
                 tap(deny)
+                time.sleep(2)
+                continue
+            # Since 3.11.32 the Route tab asks about the battery in the app's
+            # own sheet instead (services/app-feedback `ask()`, drawn by
+            # AppFeedbackHost), and «Начать день» first shows the location
+            # disclosure there. The sheet is a modal window, so the dump is the
+            # sheet and not the tab under it. BACK closes it with the asker's
+            # `dismissValue` — «Не сейчас» for both — so the walk declines
+            # without knowing which button is which: the dump shows neither a
+            # button's style nor its place in ask(), and a tap on a button that
+            # has just gone would land on the screen under it. The Route tab
+            # also carries a battery card with the same title in the tab
+            # itself; only the sheet's ids tell them apart.
+            if PKG in packages and any(re.fullmatch(r"app-choice(-button-\d+)?", n.get("resource-id", "")) for n in found):
+                # The header comes first; the icon before it is a glyph, not a word.
+                said = [n["text"] for n in found if n.get("text") in app_words()]
+                asked_by_app.append(said[0] if said else "…")
+                print(f"declined a question of the app («{asked_by_app[-1]}»)", flush=True)
+                shell("input keyevent 4")
                 time.sleep(2)
                 continue
             wait_button = by_id(found, "aerr_wait")
