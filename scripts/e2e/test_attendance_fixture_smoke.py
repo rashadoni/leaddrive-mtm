@@ -238,10 +238,14 @@ def tab(name, chosen):
 # no `login-email` anywhere, which is where every run of that release stopped.
 SCREENS = {
     "company": dump(("tenant-input", ""), ("tenant-continue", ""), ("", "Connect")),
-    "first": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+    # With the keyboard closed the scrolling view reaches the navigation bar
+    # and «Get a code» stands whole in it, its label inside.
+    "first": dump(("", "", {"scrollable": "true", "bounds": "[0,48][720,1552]"}),
+                  ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
                   tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
                   ("login-code-step-phone", ""), ("", "WhatsApp number"), ("login-code-phone", "+994 "),
-                  ("login-code-send", ""), ("", "Get a code in WhatsApp")),
+                  ("login-code-send", "", {"bounds": "[82,1094][638,1190]"}),
+                  ("", "Get a code in WhatsApp", {"bounds": "[222,1124][566,1160]"})),
     # The same tab with the keyboard the phone field opens (`autoFocus`), as in
     # run 39170988424, 05-sign-in-form: the window ends at y=1090 and «Get a
     # code», right under the field, is not in the dump at all.
@@ -251,6 +255,26 @@ SCREENS = {
                          ("login-code-step-phone", "", {"bounds": "[82,714][638,1090]"}), ("", "WhatsApp number"),
                          ("login-code-phone", "+994 ", {"bounds": "[159,951][635,1059]"}),
                          ("android:id/navigationBarBackground", "", {"bounds": "[0,1552][720,1600]"})),
+    # …and as runs 39169379126 and 39172055224 dumped it: «Get a code» is
+    # there, but as an inverted sliver at the keyboard's edge (top 1074, bottom 1050).
+    "first-sliver": dump(("com.mtmobileapp:id/action_bar_root", "", {"bounds": "[0,48][720,1090]"}),
+                         ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+                         tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
+                         ("login-code-step-phone", "", {"bounds": "[82,714][638,1090]"}), ("", "WhatsApp number"),
+                         ("login-code-phone", "+994 ", {"bounds": "[159,951][635,1059]"}),
+                         ("login-code-send", "", {"bounds": "[82,1074][638,1050]"}),
+                         ("android:id/navigationBarBackground", "", {"bounds": "[0,1552][720,1600]"})),
+    # …and as 39172808084 dumped it: the page scrolled up by 88 px, and «Get a
+    # code» is its top 44 px, cut where the scrolling view ends above the keyboard.
+    "first-cut": dump(("com.mtmobileapp:id/action_bar_root", "", {"bounds": "[0,48][720,1090]"}),
+                      ("", "", {"scrollable": "true", "bounds": "[0,48][720,1050]"}),
+                      ("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
+                      tab("signin", False), ("", "Sign in"), tab("first", True), ("", "First sign-in"),
+                      ("login-code-step-phone", "", {"bounds": "[82,626][638,1050]"}), ("", "WhatsApp number"),
+                      ("login-code-phone", "+994 ", {"bounds": "[159,863][635,971]"}),
+                      ("login-code-send", "", {"bounds": "[82,1006][638,1050]"}),
+                      ("", "Get a code in WhatsApp", {"bounds": "[222,1040][566,1050]"}),
+                      ("android:id/navigationBarBackground", "", {"bounds": "[0,1552][720,1600]"})),
     # The same screen while LoginScreen still reads the saved account, and after a press on «Sign in».
     "signin": dump(("", "Step 2 of 2"), ("", "test-company"), ("switch-tenant", ""), ("", "Sign in to the app"),
                    tab("signin", True), ("", "Sign in"), tab("first", False), ("", "First sign-in"),
@@ -272,13 +296,14 @@ class Device:
 
     `focus` names the screens whose field takes the focus as they appear
     (`autoFocus`): the keyboard opens, and the dump is the screen's
-    «-typing» variant until BACK closes it. `backs` says what each BACK
-    pressed: the keyboard, or — with none up — the screen, which a real
-    phone would leave.
+    «-typing» variant until BACK closes it (`typing` picks another one,
+    «-sliver» or «-cut»). `backs` says what each BACK pressed: the keyboard, or — with
+    none up — the screen, which a real phone would leave.
     """
 
-    def __init__(self, screen, leads=(), turns=(), focus=()):
+    def __init__(self, screen, leads=(), turns=(), focus=(), typing="typing"):
         self.screen, self.leads, self.turns, self.focus = screen, dict(leads), dict(turns), set(focus)
+        self.typing = typing
         self.taps, self.touched, self.backs = [], False, []
         self.keyboard = screen in self.focus
 
@@ -296,7 +321,8 @@ class Device:
             return ""
         if not command.startswith("uiautomator dump"):
             return ""
-        shown = SCREENS[self.screen + "-typing" if self.keyboard and self.screen + "-typing" in SCREENS else self.screen]
+        typing = f"{self.screen}-{self.typing}"
+        shown = SCREENS[typing if self.keyboard and typing in SCREENS else self.screen]
         if self.screen in self.turns and not self.touched:
             self.show(self.turns[self.screen])
         return shown
@@ -396,6 +422,24 @@ class SignInTabsTests(unittest.TestCase):
             with self.subTest(start=start):
                 self.walk.results.clear()
                 device = Device(start, turns=turns, focus={"first"})
+                with self.on(device):
+                    self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
+                self.assertEqual(self.walk.results[-1], (
+                    True, "A phone with no saved account opens on «First sign-in»",
+                    "«WhatsApp number» and «Get a code in WhatsApp», read with the keyboard closed"))
+                self.assertEqual(device.backs, ["keyboard"], "one BACK, for the keyboard: with none up it leaves the screen")
+                self.assertEqual(device.taps, [], "«Get a code» would send a WhatsApp message")
+
+    def test_a_send_button_the_keyboard_left_as_a_sliver_or_a_cut_top_is_not_taken_for_the_button(self):
+        # Runs 39169379126, 39172055224 (sliver) and 39172808084 (cut top)
+        # passed on the first look, so the keyboard-closing branch never ran on a device.
+        for typing, box in (("sliver", (82, 1074, 638, 1050)), ("cut", (82, 1006, 638, 1050))):
+            with self.subTest(typing=typing):
+                self.walk.results.clear()
+                seen = self.parsed(f"first-{typing}")
+                self.assertEqual(self.walk.by_id(seen, "login-code-send")["box"], box)
+                self.assertEqual(self.walk.first_sign_in_offered(seen, AUTH), "")
+                device = Device("first", focus={"first"}, typing=typing)
                 with self.on(device):
                     self.walk.first_sign_in_checks(self.walk.nodes()[0], AUTH)
                 self.assertEqual(self.walk.results[-1], (
