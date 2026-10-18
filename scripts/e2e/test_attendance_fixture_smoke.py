@@ -385,5 +385,214 @@ class SignInTabsTests(unittest.TestCase):
             self.assertNotIn(secret, printed.getvalue())
 
 
+GLYPH = "&#xf1a2;"  # a glyph of the icon font, as uiautomator writes it
+CAPTIONS = ["Today", "Calendar", "Route", "Clients", "Tasks", "More"]
+
+
+def node_xml(box, attrs):
+    extra = "".join(f'{key}="{value}" ' for key, value in attrs.items())
+    return f'<node index="0" {extra}package="com.mtmobileapp" bounds="[{box[0]},{box[1]}][{box[2]},{box[3]}]" />'
+
+
+class ClientCard:
+    """The client list, a card and its change form on the run's 720x1600 screen, as uiautomator reports them.
+
+    The card's page scrolls between a fixed header and the tab bar — or, with
+    `overlay`, on under it. uiautomator cuts each node to the visible part of
+    the page and leaves out what is not visible at all; with `flagged` off it
+    does not say the page scrolls. The «Propose a change»
+    button is a Pressable around an icon and a label, so its content-desc is
+    «<glyph>, Propose a change» whatever part of it shows. Taps land by
+    coordinates, as `input tap` does.
+    """
+
+    TOP, TABS = 400, 1417  # the page starts under the header; the tab bar starts at 1417
+
+    def __init__(self, card, form, button_at, overlay=False, tail=True, flagged=True):
+        self.form, self.screen, self.offset, self.flagged = form, "list", 0, flagged
+        self.taps, self.swipes, self.typed = [], [], []
+        self.bottom = 1552 if overlay else self.TABS - 1
+        b = button_at  # where the button starts on the page
+        self.content = [
+            ((48, 32, 672, 152), {"text": "This app shows route information only."}, None),
+            ((48, 184, 672, 208), {"text": card["profile"]}, None),
+            ((48, 216, 672, 280), {"text": "Customer specialty"}, None),
+            ((48, b - 56, 672, b - 32), {"text": card["change"]}, None),
+            ((48, b, 672, b + 88), {"clickable": "true", "content-desc": f"{GLYPH}, {card['propose']}"}, "propose"),
+            ((250, b + 21, 290, b + 67), {"text": GLYPH}, None),
+            ((300, b + 24, 520, b + 64), {"text": card["propose"]}, None),
+            ((48, b + 104, 672, b + 170), {"text": card["proposeHint"]}, None),
+        ]
+        if tail:
+            self.content.append(((48, b + 200, 672, b + 288), {"clickable": "true", "content-desc": "Call, +994 00 000 00 00"}, "call"))
+        height = max(box[3] for box, _, _ in self.content) + 40
+        self.most = max(0, height - (self.bottom - self.TOP))
+
+    def tab_bar(self):
+        rows = []
+        for at, caption in enumerate(CAPTIONS):
+            x = at * 120
+            rows += [node_xml((x, self.TABS, x + 120, 1552), {"clickable": "true", "content-desc": f"{GLYPH}, {caption}"}),
+                     node_xml((x + 40, 1440, x + 80, 1480), {"text": GLYPH}),
+                     node_xml((x + 10, 1490, x + 110, 1520), {"text": caption})]
+        return rows
+
+    def on_page(self, box):
+        x1, y1, x2, y2 = box
+        return x1, self.TOP + y1 - self.offset, x2, self.TOP + y2 - self.offset
+
+    def dump(self):
+        rows = []
+        if self.screen == "list":
+            rows += [node_xml((16, 300, 704, 380), {"resource-id": "route-contacts-search"}),
+                     node_xml((0, 400, 720, 520), {"clickable": "true", "content-desc": "Customer 42 Ltd. Cardiology"}),
+                     node_xml((0, 520, 720, 640), {"clickable": "true", "content-desc": "Customer 43 Ltd. Surgery"})]
+        elif self.screen == "card":
+            rows += [node_xml((32, 70, 200, 158), {"clickable": "true", "content-desc": "Back"}),
+                     node_xml((100, 90, 180, 140), {"text": "Back"}),
+                     node_xml((32, 190, 688, 220), {"text": "Route contact"}),
+                     node_xml((32, 230, 688, 300), {"text": "Customer 42 Ltd"}),
+                     node_xml((0, self.TOP, 720, self.bottom), {"class": "android.widget.ScrollView", "scrollable": "true" if self.most and self.flagged else "false"})]
+            for box, attrs, _ in self.content:
+                x1, y1, x2, y2 = self.on_page(box)
+                y1, y2 = max(y1, self.TOP), min(y2, self.bottom)
+                if y1 < y2:
+                    rows.append(node_xml((x1, y1, x2, y2), attrs))
+        else:
+            rows += [node_xml((32, 200, 688, 240), {"text": self.form["title"]}),
+                     node_xml((32, 250, 688, 320), {"text": self.form["hint"]}),
+                     node_xml((32, 340, 688, 600), {"resource-id": "contact-change-classes"}),
+                     node_xml((32, 640, 688, 720), {"resource-id": "contact-change-first-name", "text": "Customer"}),
+                     node_xml((32, 740, 688, 820), {"resource-id": "contact-change-last-name", "text": "42"}),
+                     node_xml((32, 1200, 688, 1290), {"resource-id": "contact-change-submit", "clickable": "true"})]
+            if self.screen == "refused":
+                rows.append(node_xml((32, 1150, 688, 1190), {"text": self.form["nothing"]}))
+        if self.screen in ("list", "card"):
+            rows += self.tab_bar()
+        return f"<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation=\"0\">{''.join(rows)}</hierarchy>"
+
+    def hit(self, x, y):
+        """What a finger at (x, y) presses: the tab bar is drawn over everything under it."""
+        if self.screen in ("list", "card") and self.TABS <= y < 1552:
+            return f"tab {CAPTIONS[x // 120]}"
+        if self.screen == "list" and 400 <= y < 640:
+            return "row"
+        if self.screen == "card" and self.TOP <= y < self.bottom:
+            for box, _, name in self.content:
+                x1, y1, x2, y2 = self.on_page(box)
+                if name and x1 <= x < x2 and y1 <= y < y2:
+                    return name
+        if self.screen == "form" and 32 <= x < 688 and 1200 <= y < 1290:
+            return "submit"
+        return "nothing"
+
+    def shell(self, command, **_):
+        words = command.split()
+        if command.startswith("uiautomator dump"):
+            return self.dump()
+        if words[:2] == ["input", "tap"]:
+            pressed = self.hit(int(words[2]), int(words[3]))
+            self.taps.append(pressed)
+            self.screen = {"row": "card", "propose": "form", "submit": "refused"}.get(pressed, self.screen)
+        elif words[:2] == ["input", "swipe"]:
+            self.swipes.append(command)
+            if self.screen == "card":
+                self.offset = min(max(self.offset + int(words[3]) - int(words[5]), 0), self.most)
+        elif words[:2] == ["input", "text"]:
+            self.typed.append(command)
+        elif command == "input keyevent 4":
+            self.screen = {"form": "card", "refused": "card", "card": "list"}.get(self.screen, self.screen)
+        return ""
+
+
+class ProposeChangeTests(unittest.TestCase):
+    """The card's «Propose a change» is pressed whole, above the tab bar — or the walk says why it was not."""
+
+    def setUp(self):
+        with patch.dict(os.environ, {"E2E_SMOKE_MODE": "full"}, clear=True):
+            self.walk = importlib.reload(importlib.import_module("emulator_signin"))
+        self.walk.results.clear()
+        self.walk.private = True  # no screenshots from a test
+        # The app's own words, from the screens of this checkout.
+        self.card, self.form = self.walk.screen_copy(self.walk.CLIENT_CARD), self.walk.screen_copy(self.walk.CHANGE_FORM)
+        self.clock = 0.0
+
+    def tick(self):
+        self.clock += 3
+        return self.clock
+
+    def walk_card(self, device):
+        def no_adb(*args, **_):
+            raise AssertionError(f"a device-free test reached adb {args}")
+
+        known = frozenset([*CAPTIONS, *self.card.values(), *self.form.values()])
+        with contextlib.ExitStack() as stack:
+            for name, value in (("shell", device.shell), ("crash_line", lambda: ""), ("adb", no_adb),
+                                ("finish", lambda: 1), ("app_words", lambda: known)):
+                stack.enter_context(patch.object(self.walk, name, value))
+            stack.enter_context(patch.object(self.walk.time, "sleep"))
+            stack.enter_context(patch.object(self.walk.time, "time", self.tick))
+            printed = stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+            self.walk.client_card_walk("Clients", CAPTIONS)
+        self.assertNotIn("Customer", printed.getvalue(), "nothing read from the screen but the app's words")
+        self.assertEqual(device.typed, [], "the walk types nothing into the form")
+        return printed.getvalue()
+
+    def test_the_words_are_found_on_a_button_that_peeks_over_the_tab_bar_but_no_node_says_them_whole(self):
+        # Run 39167518113: the button's top 3 px over the tab bar, its icon and label under it.
+        device = ClientCard(self.card, self.form, button_at=1013)
+        device.screen = "card"
+        with patch.object(self.walk, "shell", device.shell), patch.object(self.walk.time, "sleep"):
+            found, _ = self.walk.nodes()
+            self.assertTrue(self.walk.has_text(found, self.card["propose"]))
+            self.assertFalse(self.walk.tap_text(found, self.card["propose"]))
+        self.assertEqual(device.taps, [], "this is where the walk waited 60 s for a form nobody had asked for")
+        self.assertEqual(self.walk.button_saying(found, self.card["propose"])["box"], (48, 1413, 672, 1416))
+
+    def test_a_button_at_the_tab_bar_is_scrolled_up_whole_then_pressed_and_the_form_opens(self):
+        device = ClientCard(self.card, self.form, button_at=1013)
+        self.walk_card(device)
+        self.assertEqual(device.taps, ["tab Clients", "row", "propose", "submit"])
+        self.assertTrue(device.swipes, "the button was brought up before the press")
+        self.assertEqual([row[:2] for row in self.walk.results], [
+            (True, "The client list has its search field"),
+            (True, "The list shows the clients attached to the account"),
+            (True, "A client's card opens"),
+            (True, "The card shows words, not keys or raw values"),
+            (True, "The card offers «Propose a change»"),
+            (True, "…and it opens the form"),
+            (True, "The form offers the client classes"),
+            (True, "The form starts from the client's current name"),
+            (True, f"The form has «{self.form['submit']}»"),
+            (True, "Sending with nothing changed is refused in words"),
+        ])
+        self.assertEqual(device.screen, "list", "back from the form and the card to the list")
+
+    def test_without_the_scrolling_view_the_label_must_show_before_the_press(self):
+        # Then only the tab bar marks the edge, and the 3 px over it would pass for a whole button.
+        device = ClientCard(self.card, self.form, button_at=1013, flagged=False)
+        self.walk_card(device)
+        self.assertEqual(device.taps, ["tab Clients", "row", "propose", "submit"])
+        self.assertTrue(device.swipes, "the label was brought on screen, not a 3 px edge pressed")
+
+    def test_a_button_already_whole_is_pressed_without_scrolling(self):
+        device = ClientCard(self.card, self.form, button_at=600)
+        self.walk_card(device)
+        self.assertEqual(device.taps, ["tab Clients", "row", "propose", "submit"])
+        self.assertEqual(device.swipes, [])
+        self.assertIn((True, "…and it opens the form", "form shown"), self.walk.results)
+
+    def test_a_button_left_under_a_tab_bar_drawn_over_the_page_is_a_failure_and_no_tab_is_pressed(self):
+        # The app bug this walk would have to report: the page cannot scroll the button out from under the bar.
+        device = ClientCard(self.card, self.form, button_at=1030, overlay=True, tail=False)
+        self.walk_card(device)
+        self.assertEqual(device.taps, ["tab Clients", "row"], "neither the tab bar nor the button under it was pressed")
+        ok, what, detail = self.walk.results[-1]
+        self.assertEqual((ok, what), (False, "…and it opens the form"))
+        self.assertTrue(detail.startswith("the button never stood whole above the tab bar: (48, "), detail)
+        self.assertTrue(detail.endswith("page ends at 1417"), detail)
+        self.assertEqual(device.screen, "list")
+
+
 if __name__ == "__main__":
     unittest.main()

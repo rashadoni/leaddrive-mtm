@@ -457,6 +457,64 @@ def scroll_until(check, swipes=6):
     return None
 
 
+def inside(outer, inner):
+    return outer[0] <= inner[0] and outer[1] <= inner[1] and inner[2] <= outer[2] and inner[3] <= outer[3]
+
+
+def button_saying(found, words):
+    """The pressable node that says `words`.
+
+    A Pressable holding an icon and a label has no text of its own: Android
+    gives it its children's words as one content-desc, «<glyph>, Propose a
+    change» (React Native's getTalkbackDescription), and it does so even for a
+    label scrolled out of sight. So `has_text` finds the words while only the
+    button's top pixels are on screen, and `tap_text`, which wants them whole,
+    finds nothing to tap (run 39167518113).
+    """
+    return next((n for n in found if n.get("clickable") == "true"
+                 and (n.get("text") == words or words in n.get("content-desc", ""))), None)
+
+
+def page_bounds(found, node, captions):
+    """Top and bottom of the part of the screen where `node`'s page shows.
+
+    uiautomator cuts a node's bounds to what is visible, so a button half
+    under the edge reports only its visible half and looks whole. The edge is
+    the scrolling view that holds it, and the bottom tab bar should that ever
+    be drawn over the page (uiautomator does not cut for that): a tab is a
+    pressable around a caption, reaching lower than the node's top.
+    """
+    around = [n["box"] for n in found if n.get("scrollable") == "true" and inside(n["box"], node["box"])]
+    top = max((box[1] for box in around), default=-1)
+    bottom = min((box[3] for box in around), default=10**6)
+    tabs = [n["box"][1] for n in found if n.get("clickable") == "true" and n["box"][3] > node["box"][1]
+            and any(c.get("text") in captions and inside(n["box"], c["box"]) for c in found)]
+    return top, min([bottom, *tabs])
+
+
+def stands_whole(found, node, captions, words):
+    """`node` is entirely on its page — not cut at either edge, above the tab bar — and `words` are on screen inside it."""
+    top, bottom = page_bounds(found, node, captions)
+    shown = any(n.get("text") == words and inside(node["box"], n["box"]) for n in found)
+    return top < node["box"][1] and node["box"][3] < bottom and shown
+
+
+def scroll_into_view(words, captions, swipes=8):
+    """Short, slow strokes until the button saying `words` stands whole; (nodes, button), or (nodes, None)."""
+    for stroke in range(swipes + 1):
+        seen, _ = nodes()
+        button = button_saying(seen, words)
+        if button and stands_whole(seen, button, captions, words):
+            return seen, button
+        if stroke == swipes:
+            return seen, None
+        # Cut at the top: bring the page down. Under the edge or not there: up.
+        # Slow enough not to fling the button past the other edge.
+        cut_on_top = button and button["box"][1] <= page_bounds(seen, button, captions)[0]
+        shell("input swipe 360 800 360 1100 800" if cut_on_top else "input swipe 360 1100 360 800 800")
+        time.sleep(1.5)
+
+
 def client_rows(found, captions):
     """Clients in the list. A row is announced as «name. specialty» — the only pressable thing here that is not the app's own words."""
     search = by_id(found, "route-contacts-search")
@@ -465,6 +523,29 @@ def client_rows(found, captions):
     return [n for n in found
             if n.get("clickable") == "true" and ". " in n.get("content-desc", "") and n["box"][1] >= top
             and n["content-desc"] not in known and not n["content-desc"].startswith(tuple(captions))]
+
+
+def change_form_walk(form):
+    """The «propose a change» form just asked for: it opens, offers its fields and refuses to send nothing; then back to the card."""
+    # The form opens on its classes and a long list of specialties; the
+    # name fields and the button are below them (first run with clients:
+    # the form was open and the walk looked for a field off the screen).
+    wait_for("…and it opens the form", lambda page: has_text(page, form["hint"]) and "form shown", 60, "")
+    hide_keyboard()
+    found, _ = nodes()
+    record(bool(by_id(found, "contact-change-classes")), "The form offers the client classes")
+    named = scroll_until(lambda page: by_id(page, "contact-change-first-name") and by_id(page, "contact-change-last-name"), swipes=16)
+    first, last = (by_id(named, "contact-change-first-name"), by_id(named, "contact-change-last-name")) if named else (None, None)
+    record(bool(first and first.get("text") and last and last.get("text")), "The form starts from the client's current name")
+    seen = scroll_until(lambda page: by_id(page, "contact-change-submit"), swipes=16)
+    record(bool(seen), f"The form has «{form['submit']}»")
+    if seen:
+        # Nothing was changed, so the app refuses before asking the server:
+        # the check comes first in the handler, and no request is made.
+        tap(by_id(seen, "contact-change-submit"))
+        wait_for("Sending with nothing changed is refused in words", lambda page: has_text(page, form["nothing"]) and "refused, nothing sent", 30, "")
+    shell("input keyevent 4")
+    time.sleep(2)
 
 
 def client_card_walk(clients_caption, captions):
@@ -487,26 +568,17 @@ def client_card_walk(clients_caption, captions):
     seen = scroll_until(lambda page: has_text(page, card["propose"]) or has_text(page, card["requestPending"]))
     if seen and has_text(seen, card["propose"]):
         record(True, f"The card offers «{card['propose']}»")
-        tap_text(seen, card["propose"])
-        # The form opens on its classes and a long list of specialties; the
-        # name fields and the button are below them (first run with clients:
-        # the form was open and the walk looked for a field off the screen).
-        wait_for("…and it opens the form", lambda page: has_text(page, form["hint"]) and "form shown", 60, "")
-        hide_keyboard()
-        found, _ = nodes()
-        record(bool(by_id(found, "contact-change-classes")), "The form offers the client classes")
-        named = scroll_until(lambda page: by_id(page, "contact-change-first-name") and by_id(page, "contact-change-last-name"), swipes=16)
-        first, last = (by_id(named, "contact-change-first-name"), by_id(named, "contact-change-last-name")) if named else (None, None)
-        record(bool(first and first.get("text") and last and last.get("text")), "The form starts from the client's current name")
-        seen = scroll_until(lambda page: by_id(page, "contact-change-submit"), swipes=16)
-        record(bool(seen), f"The form has «{form['submit']}»")
-        if seen:
-            # Nothing was changed, so the app refuses before asking the server:
-            # the check comes first in the handler, and no request is made.
-            tap(by_id(seen, "contact-change-submit"))
-            wait_for("Sending with nothing changed is refused in words", lambda page: has_text(page, form["nothing"]) and "refused, nothing sent", 30, "")
-        shell("input keyevent 4")
-        time.sleep(2)
+        # On a 720x1600 screen the button of a short card starts at the tab
+        # bar: its words were found, but nothing could be tapped, and the walk
+        # waited 60 s for a form it had never asked for.
+        seen, button = scroll_into_view(card["propose"], captions)
+        if button:
+            tap(button)
+            change_form_walk(form)
+        else:
+            near = button_saying(seen, card["propose"])
+            record(False, "…and it opens the form", "the button never stood whole above the tab bar"
+                   + (f": {near['box']}, page ends at {page_bounds(seen, near, captions)[1]}" if near else ": it went off the screen"))
     elif seen:
         record(True, "The card says a request is already with the manager", "no second request can be proposed")
     else:
