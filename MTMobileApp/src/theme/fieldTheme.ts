@@ -46,8 +46,12 @@ const LIGHT = {
 export type FieldPalette = { [K in keyof typeof LIGHT]: string }
 
 /**
- * The night palette: the same roles, the green accent a little brighter so it
- * reads on dark (owner's amendment: the app keeps its green).
+ * The night palette: the same roles (owner's amendment: the app keeps its
+ * green). One green is both the accent text on dark and the fill under
+ * white button text, and no green reaches 4.5:1 for both; #1A8E6A gives
+ * about 4:1 each way. The first night build used #3DB58B: bright on dark,
+ * but white «Marşrut yarat» on it read at 2.5:1 (S23, 3.11.27). Fills that
+ * are only fills take primaryStrong, white text on it at 4.6:1.
  */
 const DARK: FieldPalette = {
   canvas: "#0E1412",
@@ -56,8 +60,8 @@ const DARK: FieldPalette = {
   ink: "#E5EEEA",
   inkMuted: "#9AAAA4",
   border: "#2A3631",
-  primary: "#3DB58B",
-  primaryStrong: "#1E9672",
+  primary: "#1A8E6A",
+  primaryStrong: "#16825F",
   primarySoft: "#163A2F",
   coral: "#F08A70",
   coralSoft: "#3A231C",
@@ -67,7 +71,7 @@ const DARK: FieldPalette = {
   blueSoft: "#17283F",
   violet: "#A891EC",
   violetSoft: "#2A2440",
-  danger: "#F07A7A",
+  danger: "#D24F4F",
   dangerSoft: "#3D1E1E",
   success: "#4CC48C",
   successSoft: "#15352A",
