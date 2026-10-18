@@ -10,7 +10,10 @@ jest.mock("react-i18next", () => ({
 // No useIsFocused here: a spot then counts as on screen (GuideSpot).
 jest.mock("@react-navigation/native", () => ({}))
 const mockOpenGuideScreen = jest.fn()
-jest.mock("../../src/navigation/navigation-ref", () => ({ openGuideScreen: (screen: string) => mockOpenGuideScreen(screen) }))
+jest.mock("../../src/navigation/navigation-ref", () => ({
+  openGuideScreen: (screen: string) => mockOpenGuideScreen(screen),
+  currentRouteName: () => null,
+}))
 jest.mock("../../src/store/auth", () => ({
   useAuthStore: require("zustand").create(() => ({
     agent: { id: "agent-fixture", organizationId: "org-fixture", role: "AGENT", name: "Fictional Agent" },

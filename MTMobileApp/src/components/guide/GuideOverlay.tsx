@@ -10,7 +10,7 @@ import { guideDue, useGuideStore, type GuideRun } from "../../store/guide"
 import { offlineScopeKey } from "../../services/offline-scope"
 import { hasOfficeAttendanceAccess } from "../../services/attendance-access"
 import { mainShell } from "../../navigation/role-tabs"
-import { openGuideScreen } from "../../navigation/navigation-ref"
+import { currentRouteName, openGuideScreen } from "../../navigation/navigation-ref"
 import {
   GUIDE_HOME,
   GUIDE_PATH,
@@ -51,6 +51,17 @@ export default function GuideOverlay() {
 
   useEffect(() => {
     if (scope) useGuideStore.getState().load(scope).catch(() => {})
+  }, [scope])
+
+  // The navigator reports every change of screen; this covers the sign-in
+  // itself, when the tabs replace the login screen under a new navigator.
+  useEffect(() => {
+    const follow = () => {
+      const name = currentRouteName()
+      if (name) useGuideStore.getState().setRoute(name)
+    }
+    const timers = [0, 600, 2000].map((delay) => setTimeout(follow, delay))
+    return () => timers.forEach(clearTimeout)
   }, [scope])
 
   // A tour belongs to the person who started it.
