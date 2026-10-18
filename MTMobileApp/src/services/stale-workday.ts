@@ -98,15 +98,15 @@ export function clockFieldText(text: string): string {
 }
 
 export type StaleWorkdayFinish =
-  | { ok: true; input: AttendanceInput; nextDay: boolean }
-  | { ok: false; error: "format" | "future" | "beforeLastMark" }
+  /** `beforeLastMark`: the day has marks after this finish — they will not count as work, and stay in its history. */
+  | { ok: true; input: AttendanceInput; nextDay: boolean; beforeLastMark: boolean }
+  | { ok: false; error: "format" | "future" }
 
 /**
- * The earliest finish the day's journal takes: its latest mark, rounded up to
- * the minute the request can name (22:18:57 → 22:19). Owner's phone,
- * 2026-10-18: 18:30 for a day with a break at 22:18 sat «waiting» for an
- * approval nobody could give; the server now refuses it (leaddrive-v2 #878),
- * and the sheet says so before sending.
+ * The day's latest mark as the minute a request can name, rounded up
+ * (22:18:57 → 22:19). A finish before it is allowed — owner, 2026-10-18: «отметки
+ * после указанного окончания не считаются рабочим временем, но остаются в
+ * истории дня» (leaddrive-v2 #881) — and the sheet says what it means.
  */
 export function staleWorkdayEarliestFinish(lastMarkAt: string | null | undefined, timezone?: string | null): { day: string; clock: string } | null {
   if (!lastMarkAt) return null
@@ -140,12 +140,11 @@ export function staleWorkdayFinishRequest(
     return { ok: false, error: "future" }
   }
   const earliest = staleWorkdayEarliestFinish(lastMarkAt, timezone)
-  if (earliest && (endDate < earliest.day || (endDate === earliest.day && endTime < earliest.clock))) {
-    return { ok: false, error: "beforeLastMark" }
-  }
+  const beforeLastMark = earliest !== null && (endDate < earliest.day || (endDate === earliest.day && endTime < earliest.clock))
   return {
     ok: true,
     nextDay,
+    beforeLastMark,
     input: {
       clientRequestId,
       kind: "TIME_CORRECTION",

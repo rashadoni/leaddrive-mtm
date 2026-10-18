@@ -1118,7 +1118,7 @@
     "correctionDateHint": "Bitmə tarixi başlanğıcla eyni gün və ya növbəti gün ola bilər. Gecə növbəsi, məsələn 22:00–06:00 üçün növbəti tarixi seçin. Müddət 24 saatdan çox ola bilməz.",
     "correctionHint": "İş gününün düzgün başlanğıc və bitmə vaxtını göstərin. Qeyd yalnız təsdiqdən sonra dəyişir; ilkin qeydlər saxlanılır.",
     "correctionFailed": "Düzəliş qəbul edilmədi: iş gününün tarixlərini və qeydlərini yoxlayın, sonra siyahını yeniləyin.",
-    "correctionOutsideMarks": "Vaxt bu günün qeydlərinə ziddir: bitmə son qeyddən əvvəl, başlanğıc isə ilk qeyddən sonra ola bilməz.",
+    "correctionOutsideMarks": "Vaxtı bu günün qeydləri ilə uzlaşdırmaq olmadı. Rəhbərinizə müraciət edin.",
     "staleWorkdayReason": "İş günü vaxtında bağlanmayıb",
     "documentFailed": "Foto saxlanılmadı və ya göndərilmədi. Formatı və ölçünü yoxlayıb yenidən sınayın.",
     "failed": "Əməliyyat təsdiqlənmədi. Saxlanmış növbə telefonda qalır; siyahını yeniləyin.",
