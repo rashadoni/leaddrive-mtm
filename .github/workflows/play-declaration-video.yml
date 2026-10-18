@@ -1,0 +1,104 @@
+name: Play declaration video
+
+# Films the video Google Play asks for in the background-location declaration:
+# the app's disclosure, Android's sheet, «Allow all the time», the workday
+# notification with the app closed, «Break», «End day» — on a clean emulator,
+# with the published build of main and the demo agent of the demo company
+# (owner, 2026-10-18: not on his phone). scripts/e2e/play_declaration_video.py
+# says what is filmed and why it refuses any other company.
+#
+# By hand only: every run starts and ends one workday of the demo agent, and a
+# second run on the same day finds that day finished.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Published release tag built from main; empty takes the newest one.
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-declaration-video
+  cancel-in-progress: false
+
+jobs:
+  film:
+    name: declaration video on a clean emulator
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pick the build of main and verify its checksum
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
+          if [ -z "$tag" ]; then
+            for candidate in $(gh release list --limit 40 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName'); do
+              if gh release view "$candidate" --json body --jq .body | grep -q '(branch main)'; then
+                tag="$candidate"
+                break
+              fi
+            done
+          fi
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-build[0-9]+$ ]] || { echo "::error::no release of main to film"; exit 1; }
+          gh release view "$tag" --json body --jq .body | grep -q '(branch main)' || { echo "::error::$tag was not built from main"; exit 1; }
+          mkdir apk
+          gh release download "$tag" --dir apk --pattern '*.apk' --pattern '*.apk.sha256'
+          (cd apk && sha256sum -c ./*.apk.sha256)
+          apk=$(ls apk/*.apk)
+          [[ "$apk" =~ ^apk/[a-zA-Z0-9._-]+\.apk$ ]] || exit 1
+          {
+            echo "tag=$tag"
+            echo "apk=$apk"
+            echo "sha=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)"
+            echo "version=$(printf '%s' "$tag" | sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+)-build[0-9]+$/\1/')"
+          } >> "$GITHUB_OUTPUT"
+          echo "### Filmed build: \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: ffmpeg for joining the segments
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Film the declaration
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        env:
+          E2E_OUT: play-video
+          E2E_EXPECTED_VERSION: ${{ steps.build.outputs.version }}
+          E2E_REF: ${{ steps.build.outputs.sha }}
+          E2E_SCREEN: 720x1600@320
+          E2E_AGENT_COMPANY: ${{ secrets.E2E_COMPANY }}
+          E2E_AGENT_EMAIL: ${{ secrets.E2E_AGENT_EMAIL }}
+          E2E_AGENT_PASSWORD: ${{ secrets.E2E_AGENT_PASSWORD }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: Galaxy Nexus
+          cores: 3
+          ram-size: 4096M
+          disable-animations: true
+          script: python3 scripts/e2e/play_declaration_video.py "${{ steps.build.outputs.apk }}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: play-declaration-video-${{ steps.build.outputs.tag || 'no-build' }}
+          path: play-video
+          retention-days: 7
+          if-no-files-found: warn
