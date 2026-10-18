@@ -38,14 +38,14 @@ beforeAll(async () => {
 })
 afterEach(() => { act(() => { roots.splice(0).forEach((tree) => tree.unmount()) }) })
 
-async function card(mode: StaleWorkdayCardMode, language = "ru", sentFinish: string | null = null) {
+async function card(mode: StaleWorkdayCardMode, language = "ru", sentFinish: string | null = null, onCancelSent?: () => void) {
   await act(async () => { await locale.changeLanguage(language) })
   const onCloseDay = jest.fn()
   let tree!: TestRenderer.ReactTestRenderer
   act(() => {
     tree = TestRenderer.create(
       <I18nextProvider i18n={locale}>
-        <StaleWorkdayCard day="2026-10-13" startedAt="2026-10-13T06:21:58.533Z" timezone="Asia/Baku" mode={mode} sentFinish={sentFinish} busy={false} error={null} onCloseDay={onCloseDay} />
+        <StaleWorkdayCard day="2026-10-13" startedAt="2026-10-13T06:21:58.533Z" timezone="Asia/Baku" mode={mode} sentFinish={sentFinish} busy={false} error={null} onCloseDay={onCloseDay} onCancelSent={onCancelSent} />
       </I18nextProvider>,
     )
   })
@@ -80,6 +80,15 @@ describe("«Bu gün» for a day left open since 13 October", () => {
     expect(button("today-stale-close-day")).toBeUndefined()
   })
 
+  it("a waiting finish can be taken back right on the card, to enter another time", async () => {
+    const onCancelSent = jest.fn()
+    const { button } = await card("sent", "ru", "18:30", onCancelSent)
+    act(() => { button("today-stale-cancel-sent").props.onPress() })
+    expect(onCancelSent).toHaveBeenCalledTimes(1)
+    // Without a request to cancel (only queued on the phone) there is no button.
+    expect((await card("sent", "ru", "18:30")).button("today-stale-cancel-sent")).toBeUndefined()
+  })
+
   it("once approved — at once where the company allows it — says the day is closed while the screen reads it again", async () => {
     const { text, button } = await card("approved", "ru", "22:19")
     expect(text).toContain("День закрыт: окончание в 22:19.")
@@ -102,14 +111,14 @@ describe("«Bu gün» for a day left open since 13 October", () => {
 })
 
 describe("the close-the-day sheet: one field, the finish time", () => {
-  async function sheet(language = "ru") {
+  async function sheet(language = "ru", lastMarkAt: string | null = null) {
     await act(async () => { await locale.changeLanguage(language) })
     const onSend = jest.fn()
     let tree!: TestRenderer.ReactTestRenderer
     act(() => {
       tree = TestRenderer.create(
         <I18nextProvider i18n={locale}>
-          <StaleWorkdayCloseSheet visible correction={{ workDate: "2026-10-13", startTime: "10:21" }} timezone="Asia/Baku" sending={false} failed={false} onCancel={jest.fn()} onSend={onSend} />
+          <StaleWorkdayCloseSheet visible correction={{ workDate: "2026-10-13", startTime: "10:21" }} timezone="Asia/Baku" lastMarkAt={lastMarkAt} sending={false} failed={false} onCancel={jest.fn()} onSend={onSend} />
         </I18nextProvider>,
       )
     })
@@ -149,6 +158,20 @@ describe("the close-the-day sheet: one field, the finish time", () => {
     expect(text()).toContain("После полуночи — 14 октября")
   })
 
+  it("says how early the finish may be, and refuses a finish before the day's last mark", async () => {
+    // 13 October: a break at 22:18:57 in Baku.
+    const { type, send, onSend, text, node } = await sheet("ru", "2026-10-13T18:18:57.116Z")
+    expect(node("today-stale-last-mark")).toBeDefined()
+    expect(text()).toContain("Окончание — не раньше 22:19")
+    type("1830")
+    send()
+    expect(onSend).not.toHaveBeenCalled()
+    expect(text()).toContain("Окончание не может быть раньше 22:19")
+    type("2219")
+    send()
+    expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ endDate: "2026-10-13", endTime: "22:19" }))
+  })
+
   it("refuses what is not a time, and sends nothing", async () => {
     const { type, send, onSend, text } = await sheet()
     type("2519")
@@ -186,6 +209,13 @@ describe("the Today screen wires the card and the sheet in", () => {
     expect(today).toContain("runMobileSync().then(() => readFinishTimeSent())")
   })
 
+  it("hands the sheet the day's last mark and lets a waiting finish be cancelled here", () => {
+    expect(today).toContain("lastMarkAt={currentWorkday.lastMarkAt ?? null}")
+    expect(today).toContain("await queueAttendanceCancellation(attendanceScope(), pendingFinishRequest)")
+    expect(read("services/bootstrap.ts")).toContain("lastMarkAt: str(workday.lastMarkAt)")
+    expect(read("store/workday.ts")).toContain("...(workday!.lastMarkAt ? { lastMarkAt: workday!.lastMarkAt } : {})")
+  })
+
   it("offers the request only where the server takes it", () => {
     expect(today).toContain('agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))')
   })
@@ -197,6 +227,7 @@ describe("the words exist in all three languages with the same placeholders", ()
     "staleEndNow", "staleEndConfirmTitle", "staleEndConfirmBody",
     "staleSheetTitle", "staleSheetStart", "staleSheetQuestion", "staleSheetHint", "staleSheetNextDay",
     "staleSheetSend", "staleSheetInvalid", "staleSheetFuture", "staleSheetFailed",
+    "staleSheetLastMark", "staleSheetBeforeLastMark", "staleCancelSent",
   ] as const
   const placeholders = (text: string) => (text.match(/\{\{\w+\}\}/g) ?? []).sort().join(",")
 

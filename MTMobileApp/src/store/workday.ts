@@ -36,6 +36,11 @@ export interface ActiveWorkday {
    * `paused` is absent.
    */
   pausedAt?: string
+  /**
+   * The open day's latest mark, from the server. «Günü bağla» on a day left
+   * open since an earlier date cannot finish before it (stale-workday.ts).
+   */
+  lastMarkAt?: string
 }
 
 /**
@@ -157,6 +162,7 @@ function persistedWorkday(value: unknown): ActiveWorkday | null {
     syncState,
     ...(parsed.paused === true ? { paused: true } : {}),
     ...(parsed.paused === true && typeof parsed.pausedAt === "string" ? { pausedAt: parsed.pausedAt } : {}),
+    ...(typeof parsed.lastMarkAt === "string" ? { lastMarkAt: parsed.lastMarkAt } : {}),
   }
 }
 
@@ -319,6 +325,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
         // T3: without the moment the break began the card could only say
         // "Перерыв" — true but useless to someone deciding whether to go back.
         ...(workday!.status === "PAUSED" && workday!.pausedAt ? { pausedAt: workday!.pausedAt } : {}),
+        ...(workday!.lastMarkAt ? { lastMarkAt: workday!.lastMarkAt } : {}),
       }
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday))
       guard?.()

@@ -1,4 +1,5 @@
 import {
+  staleWorkdayEarliestFinish,
   clockFieldText,
   companyClock,
   normalizeClock,
@@ -98,6 +99,34 @@ describe("«Günü bağla» asks only for the finish time", () => {
   })
 })
 
+describe("no finish before the day's own last mark", () => {
+  // Owner's phone, 2026-10-18: 18:30 for 13 October, a day with a break at 22:18:57 (Baku).
+  const baku = "Asia/Baku"
+  const correction = { workDate: "2026-10-13", startTime: "10:21" }
+  const sunday = new Date("2026-10-18T07:00:00Z")
+  const id = "c01be938-a8bb-41e1-b08b-d1ea2394d0b3"
+  const lastMarkAt = "2026-10-13T18:18:57.116Z"
+
+  it("rounds the last mark up to the minute a request can name", () => {
+    expect(staleWorkdayEarliestFinish(lastMarkAt, baku)).toEqual({ day: "2026-10-13", clock: "22:19" })
+    expect(staleWorkdayEarliestFinish("2026-10-13T18:18:00.000Z", baku)).toEqual({ day: "2026-10-13", clock: "22:18" })
+    expect(staleWorkdayEarliestFinish(null, baku)).toBeNull()
+  })
+
+  it("refuses 18:30 and takes 22:19", () => {
+    expect(staleWorkdayFinishRequest(correction, "1830", sunday, baku, id, "r", lastMarkAt)).toEqual({ ok: false, error: "beforeLastMark" })
+    expect(staleWorkdayFinishRequest(correction, "2218", sunday, baku, id, "r", lastMarkAt)).toEqual({ ok: false, error: "beforeLastMark" })
+    expect(staleWorkdayFinishRequest(correction, "2219", sunday, baku, id, "r", lastMarkAt).ok).toBe(true)
+  })
+
+  it("compares across midnight by the date, not only the clock", () => {
+    // A mark at 01:10 on the 14th: a finish at 23:00 on the 13th is before it, 01:30 on the 14th is not.
+    const afterMidnight = "2026-10-13T21:10:00.000Z"
+    expect(staleWorkdayFinishRequest(correction, "2300", sunday, baku, id, "r", afterMidnight)).toEqual({ ok: false, error: "beforeLastMark" })
+    expect(staleWorkdayFinishRequest(correction, "0130", sunday, baku, id, "r", afterMidnight).ok).toBe(true)
+  })
+})
+
 describe("a finish time already sent is not asked for again", () => {
   const request = (patch: Partial<AttendanceRequest> & { kind?: AttendanceRequest["details"]["kind"] } = {}): AttendanceRequest => {
     const { kind = "TIME_CORRECTION", ...rest } = patch
@@ -115,7 +144,7 @@ describe("a finish time already sent is not asked for again", () => {
   })
 
   it("names the time waiting for the manager, or approved before the phone saw the day close", () => {
-    expect(staleWorkdayFinishSent("2026-10-13", [request()], [])).toEqual({ finish: "22:19", approved: false })
+    expect(staleWorkdayFinishSent("2026-10-13", [request()], [])).toEqual({ finish: "22:19", approved: false, pending: request() })
     expect(staleWorkdayFinishSent("2026-10-13", [request({ status: "APPROVED" })], [])).toEqual({ finish: "22:19", approved: true })
   })
 

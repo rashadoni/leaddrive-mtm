@@ -58,6 +58,7 @@ export function attendanceErrorKey(error: unknown): string {
   if (code?.includes("OVERLAP")) return "attendanceRequests.overlap"
   if (code?.includes("ALREADY_DECIDED") || code?.includes("CHANGED")) return "attendanceRequests.changed"
   if (code?.includes("LOCAL_TIME_INVALID")) return "attendanceRequests.localTimeInvalid"
+  if (code?.includes("CORRECTION_OUTSIDE_MARKS")) return "attendanceRequests.correctionOutsideMarks"
   if (code?.includes("CORRECTION")) return "attendanceRequests.correctionFailed"
   if (code?.includes("DOCUMENT")) return "attendanceRequests.documentFailed"
   if (code?.includes("DISABLED") || code?.includes("SELF_REQUIRED")) return "attendanceRequests.unavailable"
