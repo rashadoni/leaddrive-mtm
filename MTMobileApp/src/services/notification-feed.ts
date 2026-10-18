@@ -509,13 +509,20 @@ export function badgeLabel(count: number): string {
   return count > 9 ? "9+" : String(count)
 }
 
-/** The navigator call a line's target stands for. */
-export function feedNavigation(target: FeedTarget): { name: string; params?: Record<string, unknown> } {
+/**
+ * The navigator call a line's target stands for.
+ *
+ * The list lies over the tabs, so a tab is reached by going back to them:
+ * `pop`. In React Navigation 7 a plain navigate("Main") from here pushes a
+ * second copy of every tab (StackRouter NAVIGATE: only the focused route or
+ * `pop` reuses one). A card is pushed over the list, and back returns to it.
+ */
+export function feedNavigation(target: FeedTarget): { name: string; params?: Record<string, unknown>; pop?: true } {
   switch (target.screen) {
     case "Messages":
-      return { name: "Main", params: { screen: "More", params: { screen: "Messages", params: target.threadId ? { threadId: target.threadId } : undefined } } }
+      return { name: "Main", params: { screen: "More", params: { screen: "Messages", params: target.threadId ? { threadId: target.threadId } : undefined } }, pop: true }
     case "AttendanceRequests":
-      return { name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } } }
+      return { name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } }, pop: true }
     case "ContactDetail":
     case "OrganizationDetail":
       return { name: target.screen, params: { id: target.id } }
@@ -523,7 +530,7 @@ export function feedNavigation(target: FeedTarget): { name: string; params?: Rec
     case "OwnExplanations":
       return { name: target.screen }
     default:
-      return { name: "Main", params: { screen: target.screen } }
+      return { name: "Main", params: { screen: target.screen }, pop: true }
   }
 }
 

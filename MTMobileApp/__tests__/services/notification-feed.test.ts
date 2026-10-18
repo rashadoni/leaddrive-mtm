@@ -321,14 +321,18 @@ describe("the list itself", () => {
 })
 
 describe("where a line leads and what its button says", () => {
-  it("opens the thread inside «Daha çox», the card over the tabs, and a tab by name", () => {
+  /** A plain navigate("Main") from the list would push a second copy of every tab. */
+  it("goes back to the tabs for a tab, and pushes a card over the list", () => {
     expect(feedNavigation({ screen: "Messages", threadId: "th-1" })).toEqual({
       name: "Main",
       params: { screen: "More", params: { screen: "Messages", params: { threadId: "th-1" } } },
+      pop: true,
     })
     expect(feedNavigation({ screen: "ContactDetail", id: "c1" })).toEqual({ name: "ContactDetail", params: { id: "c1" } })
-    expect(feedNavigation({ screen: "Approvals" })).toEqual({ name: "Main", params: { screen: "Approvals" } })
-    expect(feedNavigation({ screen: "AttendanceRequests" })).toEqual({ name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } } })
+    expect(feedNavigation({ screen: "Approvals" })).toEqual({ name: "Main", params: { screen: "Approvals" }, pop: true })
+    expect(feedNavigation({ screen: "AttendanceRequests" })).toEqual({ name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } }, pop: true })
+    expect(fs.readFileSync(path.resolve(__dirname, "../../src/screens/more/NotificationsScreen.tsx"), "utf8"))
+      .toContain("if (pop) navigation.navigate(name, params, { pop: true })")
   })
 
   it("names the place with a word", () => {

@@ -239,8 +239,9 @@ export default function NotificationsScreen() {
   const open = useCallback((item: FeedItem) => {
     markRead(item)
     if (!item.target) return
-    const { name, params } = feedNavigation(item.target)
-    navigation.navigate(name, params)
+    const { name, params, pop } = feedNavigation(item.target)
+    if (pop) navigation.navigate(name, params, { pop: true })
+    else navigation.navigate(name, params)
   }, [markRead, navigation])
 
   const now = new Date()

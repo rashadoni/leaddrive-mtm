@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Pressable,
@@ -120,9 +120,18 @@ export default function TeamMessagesScreen() {
   }
 
   // Opened from the bell: that thread is open, and read, as if tapped here.
+  // A screen already open holds the list of its last load; a thread newer
+  // than that is fetched once before giving up on it.
+  const reloadedFor = useRef<string | null>(null)
   useEffect(() => {
     if (!openThreadId || loading) return
     const thread = threads.find((candidate) => candidate.id === openThreadId)
+    if (!thread && reloadedFor.current !== openThreadId) {
+      reloadedFor.current = openThreadId
+      load().catch(() => {})
+      return
+    }
+    reloadedFor.current = null
     navigation.setParams({ threadId: undefined } as never)
     if (!thread) return
     setExpanded(thread.id)

@@ -727,7 +727,9 @@ function CalendarHeader({
     <View style={[styles.header, { paddingTop: headerTop }]}>
       <View style={styles.titleRow}>
         <View style={styles.titleBlock}>
-          <Text style={styles.headerTitle}>{title}</Text>
+          {/* With «Сегодня» and the bell beside it a 360 dp phone leaves
+              «Календарь» about 140 dp: one line that shrinks, not a word cut in two. */}
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{title}</Text>
           <Text style={styles.headerSubtitle}>{subtitle}</Text>
         </View>
         <Pressable

@@ -48,6 +48,15 @@ import { feedCopy } from "../services/notification-feed-copy"
 const READ_STORAGE_KEY = "@mtm_notifications_read_v1"
 const PREFERENCES_STORAGE_KEY = "@mtm_notifications_preferences_v1"
 
+/**
+ * One phone can be signed in to by several people in turn: what one marked
+ * read or switched off is his. The keys of the list before the bell had no
+ * person in them; their values only seed a person who has none of his own.
+ */
+function scopedKey(key: string, scope: string): string {
+  return `${key}:${scope}`
+}
+
 /** A tab switch refreshes the bell; one this soon after the last does not ask the server again. */
 export const NOTIFICATION_MIN_REFRESH_MS = 15_000
 
@@ -152,16 +161,20 @@ async function loadManager(): Promise<Partial<InboxRaw>> {
 }
 
 let inFlight: { scope: string; promise: Promise<void> } | null = null
+/** A forced refresh asked for while a load was on its way: one more load after it. */
+let forcedAgain = false
 let hydratedScope: string | null = null
 
 async function hydrate(scope: string, set: (partial: Partial<NotificationInboxState>) => void) {
   if (hydratedScope === scope) return
   hydratedScope = scope
+  set({ readIds: [], preferences: DEFAULT_NOTIFICATION_PREFERENCES })
   try {
     const [storedRead, storedPreferences] = await Promise.all([
-      AsyncStorage.getItem(READ_STORAGE_KEY),
-      AsyncStorage.getItem(PREFERENCES_STORAGE_KEY),
+      AsyncStorage.getItem(scopedKey(READ_STORAGE_KEY, scope)).then((value) => value ?? AsyncStorage.getItem(READ_STORAGE_KEY)),
+      AsyncStorage.getItem(scopedKey(PREFERENCES_STORAGE_KEY, scope)).then((value) => value ?? AsyncStorage.getItem(PREFERENCES_STORAGE_KEY)),
     ])
+    if (hydratedScope !== scope) return
     const readIds = storedRead ? JSON.parse(storedRead) : []
     const preferences = storedPreferences ? JSON.parse(storedPreferences) : {}
     set({
@@ -171,8 +184,9 @@ async function hydrate(scope: string, set: (partial: Partial<NotificationInboxSt
   } catch {}
 }
 
-function persistRead(ids: string[]) {
-  void AsyncStorage.setItem(READ_STORAGE_KEY, JSON.stringify(ids)).catch(() => {})
+function persistRead(scope: string | null, ids: string[]) {
+  if (!scope) return
+  void AsyncStorage.setItem(scopedKey(READ_STORAGE_KEY, scope), JSON.stringify(ids)).catch(() => {})
 }
 
 /** The server takes 100 ids per call; a day of deviation alerts can hold more. */
@@ -203,7 +217,11 @@ export const useNotificationInbox = create<NotificationInboxState>((set, get) =>
       set({ scope: context.scope, context, raw: EMPTY_RAW, items: [], unread: 0, loadedAt: null })
     }
     await hydrate(context.scope, set)
-    if (inFlight?.scope === context.scope) return inFlight.promise
+    if (inFlight?.scope === context.scope) {
+      // A push that lands while the list is loading may be newer than that load.
+      if (force) forcedAgain = true
+      return inFlight.promise
+    }
     const loadedAt = get().loadedAt
     if (!force && loadedAt && Date.now() - loadedAt < NOTIFICATION_MIN_REFRESH_MS) {
       set({ context })
@@ -234,6 +252,10 @@ export const useNotificationInbox = create<NotificationInboxState>((set, get) =>
       await promise
     } finally {
       if (inFlight?.promise === promise) inFlight = null
+    }
+    if (forcedAgain) {
+      forcedAgain = false
+      await get().refresh({ force: true })
     }
   },
 
@@ -288,7 +310,7 @@ export const useNotificationInbox = create<NotificationInboxState>((set, get) =>
         server: state.raw.server?.map((row) => (marked.has(row.id) ? { ...row, isRead: true } : row)) ?? null,
       },
     })
-    persistRead(readIds)
+    persistRead(state.scope, readIds)
     get().rebuild()
     if (item.unreadServerIds.length > 0) markServerRead(item.unreadServerIds)
   },
@@ -308,7 +330,7 @@ export const useNotificationInbox = create<NotificationInboxState>((set, get) =>
         threads: state.raw.threads?.map((thread) => ({ ...thread, unread: false })) ?? null,
       },
     })
-    persistRead(readIds)
+    persistRead(state.scope, readIds)
     get().rebuild()
     if (unreadRows) void api.markAllMobileNotificationsRead().catch(() => {})
     // A message marked read here is read in «Komanda mesajları» too: the same
@@ -329,9 +351,10 @@ export const useNotificationInbox = create<NotificationInboxState>((set, get) =>
   },
 
   setPreference: (kind, value) => {
+    const { scope } = get()
     const preferences = { ...get().preferences, [kind]: value }
     set({ preferences })
-    void AsyncStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferences)).catch(() => {})
+    if (scope) void AsyncStorage.setItem(scopedKey(PREFERENCES_STORAGE_KEY, scope), JSON.stringify(preferences)).catch(() => {})
     get().rebuild()
   },
 }))
