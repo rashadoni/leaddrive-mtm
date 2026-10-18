@@ -22,6 +22,7 @@ import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
 import NotificationBell from "../../components/NotificationBell"
+import GuideButton from "../../components/guide/GuideButton"
 
 type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
@@ -148,6 +149,8 @@ export default function MoreScreen() {
       <View style={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>{t("moreV2.title")}</Text>
+          {/* The first-run guide again, at the top where the tour's last step points. */}
+          {role === "AGENT" ? <GuideButton tour="field" spot="more.guide" /> : null}
           <NotificationBell tone="light" />
         </View>
         <View style={styles.actionGrid}>

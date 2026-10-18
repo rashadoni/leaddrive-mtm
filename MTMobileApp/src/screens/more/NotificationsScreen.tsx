@@ -30,6 +30,7 @@ import { fieldTheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import StatusBarBand from "../../components/StatusBarBand"
+import GuideSpot from "../../components/guide/GuideSpot"
 
 /** While the list is open it asks again this often. */
 const NOTIFICATIONS_REFRESH_INTERVAL_MS = 60_000
@@ -315,6 +316,7 @@ export default function NotificationsScreen() {
 
         <View style={[styles.content, tablet && styles.contentTablet]}>
           <View style={styles.actionRow}>
+            <GuideSpot id="feed.actions" />
             <Pressable
               testID="notifications-mark-all"
               accessibilityRole="button"

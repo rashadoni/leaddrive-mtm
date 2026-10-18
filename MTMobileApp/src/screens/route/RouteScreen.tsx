@@ -68,6 +68,7 @@ import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import NotificationBell from "../../components/NotificationBell"
+import GuideSpot from "../../components/guide/GuideSpot"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
@@ -991,6 +992,8 @@ function StopRow({
         </View>
       </View>
       <Icon name="chevron-forward" size={20} color={selected ? fieldTheme.color.primary : fieldTheme.color.border} />
+      {/* The first-run guide shows how a visit goes on the first client of the day. */}
+      {first ? <GuideSpot id="route.first" /> : null}
     </Pressable>
   )
 }
@@ -2139,11 +2142,13 @@ export default function RouteScreen() {
   const emptyError = emptyMode === "offline-unavailable" || emptyMode === "slow-unavailable"
   const emptyState = emptyMode === "loading" ? (
     <View style={styles.emptyState}>
+      <GuideSpot id="route.first" />
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.emptyTitle}>{copy.loading}</Text>
     </View>
   ) : (
     <View style={styles.emptyState} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
+      <GuideSpot id="route.first" />
       <View style={[
         styles.emptyIcon,
         emptyMode === "offline-unavailable" && styles.emptyIconOffline,
