@@ -172,6 +172,20 @@ def duration(video):
         return 0.0
 
 
+def password_form(found):
+    """The email-and-password form behind the «Sign in» tab; the nodes once `login-email` is there, or None.
+
+    A phone with no saved account opens the sign-in screen on «First sign-in»
+    (3.11.3 on), and LoginScreen draws «Sign in» first and turns only later
+    unless a tab was pressed: so the tab is pressed whenever it is there, as
+    emulator_signin.open_password_form() does. Never «Get a code»: that sends
+    a WhatsApp message."""
+    tab = by_id(found, "login-tab-signin")
+    if tab:
+        tap(tab)
+    return wait("…and «Sign in» shows the email and password form", lambda seen: by_id(seen, "login-email"), 30)
+
+
 def sign_in():
     """The way in, off camera. Notifications asked on the first sign-in are allowed: the film needs the shade."""
     found = wait("First launch opens the company step", lambda seen: by_id(seen, "tenant-input"), 300)
@@ -182,7 +196,10 @@ def sign_in():
     type_text(DEMO_COMPANY)
     hide_keyboard()
     tap(by_id(dump(), "tenant-continue"))
-    found = wait("The demo company opens the sign-in form", lambda seen: by_id(seen, "login-email"), 120)
+    found = wait("The demo company opens the sign-in screen", base.sign_in_open, 120)
+    if not found:
+        return False
+    found = password_form(found)
     if not found:
         return False
     tap(by_id(found, "login-email"))
