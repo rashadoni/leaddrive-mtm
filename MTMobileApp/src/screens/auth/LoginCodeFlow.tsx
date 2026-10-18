@@ -327,6 +327,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
 }
 
 const styles = StyleSheet.create({
+  // The WhatsApp mark is white in both palettes.
   whatsappMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   whatsappButton: {
     minHeight: 56,
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.border,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingLeft: fieldTheme.space.lg,
@@ -361,7 +362,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.primary,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     color: fieldTheme.color.ink,
     fontSize: 30,
     fontWeight: "800",

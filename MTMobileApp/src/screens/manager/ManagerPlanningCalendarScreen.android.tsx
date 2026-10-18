@@ -290,7 +290,7 @@ export default function ManagerPlanningCalendarScreen() {
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
           {tablet ? createButton : null}
-          <NotificationBell tone="light" />
+          <NotificationBell />
         </View>
         {tablet ? null : <View style={styles.headerActions}>{createButton}</View>}
       </View>
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   monthGrid: { flexDirection: "row", flexWrap: "wrap" },
   monthCell: { width: "14.2857%", minHeight: 60, padding: 4, gap: 2, borderRightWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   monthCellTablet: { minHeight: 88, padding: 6 },
-  monthCellOutside: { backgroundColor: "#F3F6F4", opacity: 0.58 },
+  monthCellOutside: { backgroundColor: fieldTheme.color.canvas, opacity: 0.58 },
   monthCellSelected: { backgroundColor: fieldTheme.color.primarySoft, borderWidth: 2, borderColor: fieldTheme.color.primary },
   monthCellTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   dayNumber: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800" },

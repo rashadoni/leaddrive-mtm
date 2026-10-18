@@ -4,6 +4,9 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!-- The app draws its own night palette (src/theme/fieldTheme.ts):
+             Android must not darken it a second time on its own. -->
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 
 </resources>

@@ -31,7 +31,8 @@ import { refreshAttendanceSession } from "../services/attendance-session"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { dismissAllChoices } from "../services/app-feedback"
 import { startPushTokenRefresh } from "../services/push-lifecycle"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldColorScheme, fieldTheme } from "../theme/fieldTheme"
+import { startColorSchemeReload } from "../services/color-scheme-reload"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
 function netInfoOnline(state: { isConnected: boolean | null; isInternetReachable: boolean | null }): boolean | null {
@@ -239,9 +240,15 @@ function AppContent() {
     return () => subscription.remove()
   }, [refreshAdmissionAndSync])
 
+  // Day or night, as the phone is: a change while the app is open restarts it
+  // in the new colours when that is safe (services/color-scheme-reload.ts).
+  useEffect(() => startColorSchemeReload(), [])
+
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={fieldTheme.color.primaryStrong} />
+      {/* Light icons for the night palette and the green headers left; a white
+          header turns them dark itself (LightScreenStatusBar). */}
+      <StatusBar barStyle="light-content" backgroundColor={fieldColorScheme === "dark" ? fieldTheme.color.surface : fieldTheme.color.primaryStrong} />
       <ErrorBoundary>
         <AppNavigatorAndroidV2 />
       </ErrorBoundary>

@@ -2718,7 +2718,7 @@ const styles = StyleSheet.create({
   compactDateCopy: { flex: 1, gap: 2 },
   compactDateValue: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   compactDateHint: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "700" },
-  dateSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.45)" },
+  dateSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: fieldTheme.color.scrim },
   dateSheet: { width: "100%", maxWidth: 520, gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   dateSheetHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },

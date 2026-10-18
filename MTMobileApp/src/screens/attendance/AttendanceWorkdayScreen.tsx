@@ -118,7 +118,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
   return <View style={styles.screen}>
     {/* The manager's tab gets the bell; the office shell has its own inbox tab. */}
     <LightScreenStatusBar />
-    <View style={[styles.header, { paddingTop: top }]}><View style={styles.headerRow}><View style={styles.headerCopy}><Text style={styles.brand}>{t("officeAttendance.myAttendance")}</Text><Text style={styles.title}>{t("officeAttendance.workday")}</Text></View>{managerShell ? <NotificationBell tone="light" /> : null}</View></View>
+    <View style={[styles.header, { paddingTop: top }]}><View style={styles.headerRow}><View style={styles.headerCopy}><Text style={styles.brand}>{t("officeAttendance.myAttendance")}</Text><Text style={styles.title}>{t("officeAttendance.workday")}</Text></View>{managerShell ? <NotificationBell /> : null}</View></View>
     <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottom }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       {!allowed ? <Text testID="office-workday-unavailable" style={styles.muted}>{t("officeAttendance.unavailable")}</Text> : <>
         <View style={styles.card}>

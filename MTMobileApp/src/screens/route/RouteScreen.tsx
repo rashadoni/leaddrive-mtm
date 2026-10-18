@@ -2132,7 +2132,7 @@ export default function RouteScreen() {
       >
         <Icon name="add" size={22} color={fieldTheme.color.ink} />
       </Pressable>
-      <NotificationBell tone="light" />
+      <NotificationBell />
     </View>
   )
 

@@ -317,6 +317,7 @@ const styles = StyleSheet.create({
   },
   padCardCompact: { minHeight: 0 },
   buttonCompact: { flex: 0, minHeight: 52 },
+  // Paper: white with a dark pen in the night palette too.
   pad: { flex: 1, backgroundColor: "#FFFFFF" },
   actions: { flexDirection: "row", gap: fieldTheme.space.md },
   secondaryButton: {

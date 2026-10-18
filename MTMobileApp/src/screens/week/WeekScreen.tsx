@@ -746,7 +746,7 @@ function CalendarHeader({
           <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.primary : fieldTheme.color.onColor} />
           <Text style={[styles.todayButtonText, currentWeek && styles.todayButtonTextCurrent]}>{todayLabel}</Text>
         </Pressable>
-        <NotificationBell tone="light" />
+        <NotificationBell />
       </View>
 
       <View style={styles.weekNavigation}>
@@ -1467,7 +1467,7 @@ const styles = StyleSheet.create({
     borderRadius: fieldTheme.radius.md,
     backgroundColor: fieldTheme.color.amberSoft,
     borderWidth: 1,
-    borderColor: "#E8D69D",
+    borderColor: fieldTheme.color.amber,
     marginBottom: fieldTheme.space.lg,
   },
   offlineIcon: {

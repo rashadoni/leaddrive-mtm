@@ -144,23 +144,23 @@ export class ErrorBoundary extends React.Component<Props, State> {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F5F9" },
+  container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   content: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 32 },
   icon: { fontSize: 48, marginBottom: 16 },
-  title: { fontSize: 18, fontWeight: "700", color: "#0B0B1E", textAlign: "center", marginBottom: 8 },
-  body: { fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 20 },
+  title: { fontSize: 18, fontWeight: "700", color: fieldTheme.color.ink, textAlign: "center", marginBottom: 8 },
+  body: { fontSize: 14, color: fieldTheme.color.inkMuted, textAlign: "center", marginBottom: 20 },
   button: {
     backgroundColor: fieldTheme.color.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
-  buttonText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  buttonText: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.onColor },
   detailsToggle: { marginTop: 18, paddingVertical: 6 },
   detailsToggleText: { fontSize: 13, color: fieldTheme.color.primary, fontWeight: "600" },
   detail: {
     fontSize: 11,
-    color: "#475569",
+    color: fieldTheme.color.inkMuted,
     marginTop: 8,
     fontFamily: "monospace",
     alignSelf: "stretch",
