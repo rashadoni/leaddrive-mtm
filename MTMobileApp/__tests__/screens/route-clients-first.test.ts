@@ -98,16 +98,21 @@ describe("the clients are one road, each with its state", () => {
     expect(source).toContain("stopRail: { alignItems: \"center\", alignSelf: \"stretch\" },")
   })
 
-  it("names each client's state in words, on that state's own colour", () => {
-    expect(source).toContain("<View style={[styles.stopStatus, { backgroundColor: status.soft }]}>")
-    expect(source).toContain("label: copy.visited, icon: \"checkmark-circle\" as const, color: fieldTheme.color.success, soft: fieldTheme.color.successSoft }")
-    expect(source).toContain("label: copy.visiting, icon: \"radio-button-on\" as const, color: fieldTheme.color.amber, soft: fieldTheme.color.amberSoft }")
-    expect(source).toContain("label: copy.planned, icon: \"ellipse-outline\" as const, color: fieldTheme.color.inkMuted, soft: fieldTheme.color.surfaceStrong }")
+  // Since 2026-10-18 (owner-approved colours) the state is the colour of its
+  // words and icon, with no tinted pill under them.
+  it("names each client's state in words, in that state's own colour", () => {
+    expect(source).toContain("<View style={styles.stopStatus}>")
+    expect(source).toContain("label: copy.visited, icon: \"checkmark-circle\" as const, color: fieldTheme.color.success }")
+    expect(source).toContain("label: copy.visiting, icon: \"radio-button-on\" as const, color: fieldTheme.color.amber }")
+    expect(source).toContain("label: copy.planned, icon: \"ellipse-outline\" as const, color: fieldTheme.color.inkMuted }")
+    expect(style("stopStatus")).not.toContain("backgroundColor")
   })
 
   it("the client being visited stands out as a whole row, and a visited one carries its time", () => {
     expect(source).toContain("visiting && styles.stopRowVisiting")
-    expect(style("stopRowVisiting")).toContain("backgroundColor: fieldTheme.color.amberSoft")
+    // An amber edge round the row, not an amber fill (owner-approved colours, 2026-10-18).
+    expect(style("stopRowVisiting")).toContain("borderColor: fieldTheme.color.amber")
+    expect(style("stopRowVisiting")).not.toContain("backgroundColor")
     expect(source).toContain("? `${status.label} · ${new Date(point.visitedAt).toLocaleTimeString(language, { hour: \"2-digit\", minute: \"2-digit\" })}`")
   })
 

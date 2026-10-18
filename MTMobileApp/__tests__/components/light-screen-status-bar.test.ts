@@ -65,4 +65,41 @@ describe("light screens get dark status bar icons", () => {
     expect(green).toEqual([])
     expect(read("screens/attendance/AttendanceWorkdayScreen.tsx")).toContain("header: { backgroundColor: fieldTheme.color.surface")
   })
+
+  /**
+   * The screens opened from the tabs follow on the same day's rules: a visit,
+   * a client's and an organisation's card, a task, the GPS history, the team's
+   * messages and the manager's card of an employee.
+   */
+  const OPENED_FROM_TABS = [
+    "screens/visit/VisitScreen.tsx",
+    "screens/visit/VisitWorkspaceScreen.tsx",
+    "screens/base/RouteOrganizationDetailScreen.android.tsx",
+    "screens/base/RouteContactDetailScreen.android.tsx",
+    "screens/tasks/TaskDetailScreen.tsx",
+    "screens/gps/GpsHistoryScreen.tsx",
+    "screens/more/TeamMessagesScreen.tsx",
+    "screens/manager/ManagerEmployeeScreen.android.tsx",
+  ]
+
+  it("is used on every screen opened from a tab", () => {
+    const missing: string[] = []
+    for (const file of OPENED_FROM_TABS) {
+      const source = read(file)
+      if (!source.includes('import LightScreenStatusBar from "../../components/LightScreenStatusBar"')) missing.push(`${file}: import`)
+      if (!source.includes("<LightScreenStatusBar />")) missing.push(`${file}: render`)
+    }
+    expect(missing).toEqual([])
+  })
+
+  it("paints none of their headers green, and none of their text white", () => {
+    const green: string[] = []
+    for (const file of OPENED_FROM_TABS) {
+      const source = read(file)
+      const header = source.match(/\n  header: \{[^}]*\}/)?.[0] ?? ""
+      if (header.includes("primaryStrong")) green.push(`${file}: header`)
+      if (/\n  (headerTitle|title|backText): \{ ?(marginTop: 2, )?color: fieldTheme\.color\.onColor/.test(source)) green.push(`${file}: title`)
+    }
+    expect(green).toEqual([])
+  })
 })

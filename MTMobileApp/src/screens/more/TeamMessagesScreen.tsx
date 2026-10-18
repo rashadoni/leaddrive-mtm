@@ -17,6 +17,7 @@ import { api } from "../../services/api"
 import { enqueueOutboxOperation } from "../../services/outbox"
 import { runMobileSync } from "../../services/sync-engine"
 import { fieldTheme } from "../../theme/fieldTheme"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -141,6 +142,7 @@ export default function TeamMessagesScreen() {
 
   return (
     <View style={styles.screen}>
+      <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => navigation.goBack()} style={styles.backButton}>
           <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
@@ -171,7 +173,7 @@ export default function TeamMessagesScreen() {
             <View key={thread.id} style={[styles.card, thread.unread && styles.cardUnread]}>
               <Pressable accessibilityRole="button" onPress={() => openThread(thread)} style={({ pressed }) => [styles.cardTop, pressed && styles.pressed]}>
                 <View style={[styles.messageIcon, thread.unread && styles.messageIconUnread]}>
-                  <Icon name={thread.type === "BROADCAST" ? "megaphone-outline" : "chatbubble-outline"} size={22} color={thread.unread ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
+                  <Icon name={thread.type === "BROADCAST" ? "megaphone-outline" : "chatbubble-outline"} size={22} color={thread.unread ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />
                 </View>
                 <View style={styles.cardCopy}>
                   <View style={styles.cardTitleRow}>
@@ -194,9 +196,9 @@ export default function TeamMessagesScreen() {
                       style={({ pressed }) => [styles.ackButton, !thread.needsAcknowledgement && styles.ackButtonDone, pressed && styles.pressed]}
                     >
                       {busyMessageId === message.id
-                        ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
-                        : <Icon name={thread.needsAcknowledgement ? "checkmark-circle-outline" : "checkmark-circle"} size={19} color={fieldTheme.color.onColor} />}
-                      <Text style={styles.ackText}>{thread.needsAcknowledgement ? copy.acknowledge : copy.acknowledged}</Text>
+                        ? <ActivityIndicator size="small" color={thread.needsAcknowledgement ? fieldTheme.color.onColor : fieldTheme.color.success} />
+                        : <Icon name={thread.needsAcknowledgement ? "checkmark-circle-outline" : "checkmark-circle"} size={19} color={thread.needsAcknowledgement ? fieldTheme.color.onColor : fieldTheme.color.success} />}
+                      <Text style={[styles.ackText, !thread.needsAcknowledgement && styles.ackTextDone]}>{thread.needsAcknowledgement ? copy.acknowledge : copy.acknowledged}</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -212,9 +214,9 @@ export default function TeamMessagesScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
-  backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.surfaceStrong },
+  backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: fieldTheme.color.border },
   title: { flex: 1, color: fieldTheme.color.ink, fontSize: 21, lineHeight: 27, fontWeight: "900" },
-  unreadCount: { overflow: "hidden", borderRadius: 999, backgroundColor: fieldTheme.color.primarySoft, color: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs, fontSize: 11, lineHeight: 16, fontWeight: "900" },
+  unreadCount: { overflow: "hidden", borderRadius: 999, borderWidth: 1, borderColor: fieldTheme.color.border, color: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs, fontSize: 11, lineHeight: 16, fontWeight: "900" },
   content: { width: "100%", maxWidth: 820, alignSelf: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.lg },
   contentTablet: { padding: fieldTheme.space.xl },
   state: { minHeight: 260, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md },
@@ -224,8 +226,8 @@ const styles = StyleSheet.create({
   card: { overflow: "hidden", borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   cardUnread: { borderColor: fieldTheme.color.primary },
   cardTop: { minHeight: 96, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md },
-  messageIcon: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderRadius: 23, backgroundColor: fieldTheme.color.primarySoft },
-  messageIconUnread: { backgroundColor: fieldTheme.color.primary },
+  messageIcon: { width: 46, height: 46, alignItems: "center", justifyContent: "center", borderRadius: 23 },
+  messageIconUnread: {},
   cardCopy: { flex: 1, minWidth: 0 },
   cardTitleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   cardTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
@@ -235,7 +237,9 @@ const styles = StyleSheet.create({
   messageBody: { gap: fieldTheme.space.md, padding: fieldTheme.space.lg, paddingTop: 0 },
   bodyText: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 22 },
   ackButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
-  ackButtonDone: { backgroundColor: fieldTheme.color.success },
+  // Done is said by the green tick and words, not a second filled button (owner-approved colours, 2026-10-18).
+  ackButtonDone: { borderWidth: 1.5, borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.surface },
   ackText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  ackTextDone: { color: fieldTheme.color.success },
   pressed: { opacity: 0.76 },
 })

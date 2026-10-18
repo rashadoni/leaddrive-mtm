@@ -749,7 +749,11 @@ export default function PresentationViewerScreen() {
   )
 }
 
-/** Dark enough that a white page reads as a sheet, not as more chrome. */
+/**
+ * Dark enough that a white page reads as a sheet, not as more chrome. The
+ * stage and the white paper stay the same in the night palette: a slide is a
+ * printed page whatever the phone's theme.
+ */
 const STAGE_BACKDROP = "#111A1F"
 
 const styles = StyleSheet.create({
@@ -775,9 +779,9 @@ const styles = StyleSheet.create({
   paperFill: { width: "100%", height: "100%" },
   pageImage: { width: "100%", height: "100%" },
   chipRow: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 8 },
-  zoomChip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: "rgba(251,253,252,0.94)" },
+  zoomChip: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   zoomChipText: { color: fieldTheme.color.ink, fontSize: 12, fontWeight: "800" },
-  pageLoader: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "rgba(251,253,252,0.92)" },
+  pageLoader: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: fieldTheme.color.surface },
   pageLoadingText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   pageControls: { minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 20, paddingHorizontal: 16, paddingBottom: 8 },
   pageControlsTablet: { paddingBottom: 14 },

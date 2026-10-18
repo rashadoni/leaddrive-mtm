@@ -743,7 +743,7 @@ function CalendarHeader({
             pressed && styles.pressed,
           ]}
         >
-          <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.primary : fieldTheme.color.onColor} />
+          <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
           <Text style={[styles.todayButtonText, currentWeek && styles.todayButtonTextCurrent]}>{todayLabel}</Text>
         </Pressable>
         <NotificationBell />
@@ -1413,17 +1413,21 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.sm,
     paddingHorizontal: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.primary,
+    // Outlined: a way back to this week, not the screen's main action
+    // (owner-approved colours, 2026-10-18).
+    borderWidth: 1.5,
+    borderColor: fieldTheme.color.primary,
+    backgroundColor: fieldTheme.color.surface,
   },
-  todayButtonCurrent: { backgroundColor: fieldTheme.color.primarySoft },
-  todayButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "800" },
-  todayButtonTextCurrent: { color: fieldTheme.color.primary },
+  todayButtonCurrent: { borderWidth: 1, borderColor: fieldTheme.color.border },
+  todayButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "800" },
+  todayButtonTextCurrent: { color: fieldTheme.color.inkMuted },
   weekNavigation: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   navButton: {
     alignItems: "center",
     justifyContent: "center",
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.surfaceStrong,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
     borderColor: fieldTheme.color.border,
   },
@@ -1444,7 +1448,6 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: fieldTheme.color.primarySoft,
   },
   stateTitle: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 26, fontWeight: "800", textAlign: "center", marginTop: fieldTheme.space.lg },
   stateBody: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, textAlign: "center", maxWidth: 430, marginTop: fieldTheme.space.sm },
@@ -1465,9 +1468,11 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.amberSoft,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: fieldTheme.color.amber,
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.amber,
     marginBottom: fieldTheme.space.lg,
   },
   offlineIcon: {
@@ -1488,7 +1493,7 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.primarySoft,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
     marginBottom: fieldTheme.space.lg,
