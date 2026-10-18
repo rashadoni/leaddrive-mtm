@@ -67,6 +67,7 @@ import SignaturePadModal from "../../components/SignaturePadModal"
 import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import GuideSpot from "../../components/guide/GuideSpot"
 import { fieldTheme } from "../../theme/fieldTheme"
@@ -2119,7 +2120,7 @@ export default function RouteScreen() {
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>
       <View style={styles.headerIcon}>
-        <Icon name="navigate" size={23} color={fieldTheme.color.onColor} />
+        <Icon name="navigate" size={23} color={fieldTheme.color.primaryStrong} />
       </View>
       <View style={styles.headerCopy}>
         <Text style={styles.headerTitle}>{copy.title}</Text>
@@ -2132,9 +2133,9 @@ export default function RouteScreen() {
         onPress={() => navigation.navigate("Visits")}
         style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
       >
-        <Icon name="add" size={22} color={fieldTheme.color.onColor} />
+        <Icon name="add" size={22} color={fieldTheme.color.ink} />
       </Pressable>
-      <NotificationBell />
+      <NotificationBell tone="light" />
     </View>
   )
 
@@ -2279,7 +2280,8 @@ export default function RouteScreen() {
         />
         <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
         <SignaturePadModal visible={signature.padVisible} customerName={activeVisitWho.name || undefined} onCancel={signature.closePad} onSave={handleSignatureSave} />
-        <StatusBarBand />
+        <LightScreenStatusBar />
+        <StatusBarBand tone="light" />
       </View>
     )
   }
@@ -2381,7 +2383,8 @@ export default function RouteScreen() {
       />
       <PhotoCaptureModal visible={cameraVisible} onClose={() => setCameraVisible(false)} onPhotoTaken={handlePhotoTaken} />
       <SignaturePadModal visible={signature.padVisible} customerName={activeVisitWho.name || undefined} onCancel={signature.closePad} onSave={handleSignatureSave} />
-      <StatusBarBand />
+      <LightScreenStatusBar />
+      <StatusBarBand tone="light" />
     </View>
   )
 }
@@ -2414,8 +2417,11 @@ const styles = StyleSheet.create({
   dockRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   dockPrimary: { flex: 1 },
 
+  // White like every tab's header (owner-approved colours, 2026-10-18).
   header: {
-    backgroundColor: fieldTheme.color.primaryStrong,
+    backgroundColor: fieldTheme.color.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: fieldTheme.color.border,
     paddingHorizontal: fieldTheme.space.xl,
     paddingBottom: fieldTheme.space.xl,
     flexDirection: "row",
@@ -2426,16 +2432,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "rgba(248,252,250,0.14)",
     alignItems: "center",
     justifyContent: "center",
   },
   pressed: { opacity: 0.82 },
-  headerAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: "rgba(248,252,250,0.18)" },
+  headerAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   headerCopy: { flex: 1 },
-  headerTitle: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "800", letterSpacing: -0.4 },
-  headerSubtitle: { color: "#CFE5DD", fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
-  agentName: { color: "#AFCFC4", fontSize: 12, fontWeight: "700", marginTop: fieldTheme.space.sm },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 25, fontWeight: "800", letterSpacing: -0.4 },
+  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
+  agentName: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700", marginTop: fieldTheme.space.sm },
 
   connectionBanner: {
     flexDirection: "row",

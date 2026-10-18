@@ -147,7 +147,7 @@ describe("every control a step points at is marked on its screen", () => {
     const more = fs.readFileSync(path.join(SRC, "screens/more/MoreScreen.tsx"), "utf8")
     const profile = fs.readFileSync(path.join(SRC, "screens/profile/ProfileScreen.tsx"), "utf8")
     expect(more).toContain('<GuideButton tour="field" spot="more.guide" />')
-    expect(profile).toContain('<GuideButton tour="manager" tone="dark" spot="profile.guide" />')
+    expect(profile).toContain('<GuideButton tour="manager" spot="profile.guide" />')
     expect(profile).toContain('<GuideButton tour={guideTour} variant="card"')
   })
 })

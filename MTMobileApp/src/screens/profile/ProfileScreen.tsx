@@ -21,6 +21,8 @@ import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { hasOfficeAttendanceAccess } from "../../services/attendance-access"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
+import StatusBarBand from "../../components/StatusBarBand"
 import NotificationBell from "../../components/NotificationBell"
 import GuideButton from "../../components/guide/GuideButton"
 import ConfirmSheet from "../../components/ConfirmSheet"
@@ -237,7 +239,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
                   pressed && styles.pressed,
                 ]}
               >
-                {selected ? <Icon name="checkmark-circle" size={18} color={fieldTheme.color.onColor} /> : null}
+                {selected ? <Icon name="checkmark-circle" size={18} color={fieldTheme.color.primaryStrong} /> : null}
                 <Text style={[styles.localeText, selected && styles.localeTextSelected]}>{label}</Text>
               </Pressable>
             )
@@ -296,6 +298,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
           />
         )}
       >
+        <LightScreenStatusBar />
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={styles.headerInner}>
             {managerShell ? null : (
@@ -305,7 +308,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
                 onPress={() => office ? navigation.navigate((ownAttendance ? "OwnWorkday" : "Team") as never) : navigation.goBack()}
                 style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
               >
-                <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+                <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
               </Pressable>
             )}
             <View style={styles.avatar}>
@@ -316,10 +319,10 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
               <Text style={styles.role}>{statusLabel(t, "role", agent?.role)}</Text>
               {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
               {/* The manager's «Daha çox»: the tour's last step points here. */}
-              {managerShell ? <View style={styles.tourRow}><GuideButton tour="manager" tone="dark" spot="profile.guide" /></View> : null}
+              {managerShell ? <View style={styles.tourRow}><GuideButton tour="manager" spot="profile.guide" /></View> : null}
             </View>
             {/* «Daha çox» is one of the manager's tabs: it gets the bell too. */}
-            {managerShell ? <NotificationBell /> : null}
+            {managerShell ? <NotificationBell tone="light" /> : null}
           </View>
         </View>
 
@@ -339,6 +342,8 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
         </View>
         <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
       </ScrollView>
+      {/* The header scrolls away with the page: the band keeps the clock off the cards. */}
+      <StatusBarBand tone="light" />
 
       <ConfirmSheet
         visible={confirmAction === "logout"}
@@ -414,18 +419,19 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   loadingState: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.canvas },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "600" },
-  header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
+  // White like every tab's header (owner-approved colours, 2026-10-18).
+  header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
   headerInner: { width: "100%", maxWidth: 1120, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  backButton: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(248,252,250,0.14)" },
-  avatar: { width: 58, height: 58, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
-  avatarText: { color: fieldTheme.color.onColor, fontSize: 25, fontWeight: "900" },
+  backButton: { width: 48, height: 48, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
+  avatar: { width: 58, height: 58, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
+  avatarText: { color: fieldTheme.color.primaryStrong, fontSize: 25, fontWeight: "900" },
   identity: { flex: 1, minWidth: 0 },
-  name: { color: fieldTheme.color.onColor, fontSize: 24, lineHeight: 30, fontWeight: "900" },
-  role: { color: fieldTheme.color.primarySoft, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
-  organization: { color: "#CFE3DA", marginTop: 3, fontSize: 13, fontWeight: "600" },
-  errorBanner: { width: "100%", maxWidth: 1120, alignSelf: "center", marginTop: fieldTheme.space.lg, padding: fieldTheme.space.md, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#E7CB8A", backgroundColor: fieldTheme.color.amberSoft },
+  name: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 30, fontWeight: "900" },
+  role: { color: fieldTheme.color.primary, marginTop: 2, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
+  organization: { color: fieldTheme.color.inkMuted, marginTop: 3, fontSize: 13, fontWeight: "600" },
+  errorBanner: { width: "100%", maxWidth: 1120, alignSelf: "center", marginTop: fieldTheme.space.lg, padding: fieldTheme.space.md, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderLeftWidth: 4, borderColor: fieldTheme.color.border, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface },
   errorText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
-  retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surface },
+  retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, paddingHorizontal: fieldTheme.space.md, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   retryText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
   content: { width: "100%", maxWidth: 1120, alignSelf: "center", padding: fieldTheme.space.lg, gap: fieldTheme.space.lg },
   contentTwoColumn: { flexDirection: "row", alignItems: "flex-start", padding: fieldTheme.space.xl, gap: fieldTheme.space.xl },
@@ -452,17 +458,18 @@ const styles = StyleSheet.create({
   infoValue: { marginTop: 2, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
   localeRow: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   localeButton: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, minWidth: 104, flexGrow: 1, paddingHorizontal: fieldTheme.space.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.canvas },
-  localeButtonSelected: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primary },
+  // The chosen language is a green edge and tick, not a green fill (owner-approved colours, 2026-10-18).
+  localeButtonSelected: { borderWidth: 2, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   localeText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
-  localeTextSelected: { color: fieldTheme.color.onColor },
+  localeTextSelected: { color: fieldTheme.color.primaryStrong },
   toggleRow: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   toggleCopy: { flex: 1, minWidth: 0 },
   toggleLabel: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   toggleNote: { marginTop: 4, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   accountActions: { gap: fieldTheme.space.sm },
-  secondaryAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.primarySoft },
+  secondaryAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   secondaryActionText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "900" },
-  dangerAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#EDBEBE", backgroundColor: fieldTheme.color.dangerSoft },
+  dangerAction: { minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.danger, backgroundColor: fieldTheme.color.surface },
   dangerActionText: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
   version: { marginBottom: fieldTheme.space.lg, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "600", textAlign: "center" },
   pressed: { opacity: 0.72 },

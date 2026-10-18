@@ -89,7 +89,8 @@ const styles = StyleSheet.create({
     gap: 6,
     flexShrink: 0,
   },
-  pillLight: { backgroundColor: fieldTheme.color.primarySoft, borderColor: "#9BCBB9" },
+  // Outlined on the white headers, like «Komandaya yaz» (owner-approved colours, 2026-10-18).
+  pillLight: { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.primary },
   // The same pill as «Yenilə» on the green «Bu gün».
   pillDark: { backgroundColor: "#174F43", borderColor: "#5B8B7D" },
   pillText: { color: fieldTheme.color.primaryStrong, fontSize: 14.5, fontWeight: "900" },
@@ -108,8 +109,8 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderRadius: fieldTheme.radius.md,
     borderWidth: 1,
-    borderColor: "#9BCBB9",
-    backgroundColor: fieldTheme.color.primarySoft,
+    borderColor: fieldTheme.color.primary,
+    backgroundColor: fieldTheme.color.surface,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

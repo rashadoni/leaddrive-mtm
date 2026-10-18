@@ -337,7 +337,8 @@ function ShellTabs({ navigatorKey, initialRouteName, children }: {
           tabBarVariant: rail ? "material" : "uikit",
           tabBarActiveTintColor: fieldTheme.color.primaryStrong,
           tabBarInactiveTintColor: fieldTheme.color.inkMuted,
-          tabBarActiveBackgroundColor: fieldTheme.color.primarySoft,
+          // The active tab is said by its green icon and caption, not a
+          // filled pill (owner-approved colours, 2026-10-18).
           tabBarLabelPosition: "below-icon",
           tabBarStyle: rail
             ? {

@@ -63,7 +63,8 @@ describe("B11: one thing in one place", () => {
   it("shows the sync chip in exactly one place a field agent can reach", () => {
     // Today's header, with the sync centre behind it. The profile row and the
     // chip on every task card header are gone.
-    expect(today).toContain("<SyncStatusChip inverse />")
+    // On the white header (2026-10-18) the chip is the plain one.
+    expect(today).toContain("<SyncStatusChip />")
     expect(profile).not.toContain("SyncStatusChip")
     expect(taskDetail).not.toContain("SyncStatusChip")
   })

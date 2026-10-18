@@ -364,20 +364,18 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
       <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={[styles.headerInner, tablet && styles.headerInnerTablet]}>
-          {/* The bell in the top corner (owner-approved mockup, 2026-10-18):
-              level with the icon on a phone, at the row's end on a tablet. */}
-          <View style={styles.iconRow}>
-            <View style={[styles.icon, { backgroundColor: meta.tint }]}>
-              <Icon name={meta.icon} size={28} color={meta.color} />
-            </View>
-            {tablet ? null : <NotificationBell tone="light" />}
-          </View>
+          {/* No coloured square above the title, and the bell level with it
+              (owner-approved mockups, 2026-10-18). */}
           <View style={[styles.headerCopy, tablet && styles.headerCopyTablet]}>
-            <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
-            <Text style={styles.title}>{t(meta.titleKey)}</Text>
+            <View style={styles.iconRow}>
+              <View style={styles.titleCopy}>
+                <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
+                <Text style={styles.title}>{t(meta.titleKey)}</Text>
+              </View>
+              <NotificationBell tone="light" />
+            </View>
             <Text style={styles.body}>{t(meta.bodyKey)}</Text>
           </View>
-          {tablet ? <NotificationBell tone="light" /> : null}
         </View>
       </View>
 
@@ -397,7 +395,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
           <>
             {canTransferContacts ? (
               <Pressable accessibilityRole="button" style={styles.transferAction} onPress={() => navigation.navigate("ContactTransfer")}>
-                <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.onColor} /></View>
+                <View style={styles.transferActionIcon}><Icon name="swap-horizontal" size={22} color={fieldTheme.color.primaryStrong} /></View>
                 <View style={styles.transferActionCopy}>
                   <Text style={styles.transferActionTitle}>{t("managerShell.transferContacts")}</Text>
                   <Text style={styles.transferActionBody}>{t("managerShell.transferContactsBody")}</Text>
@@ -845,13 +843,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   iconRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: fieldTheme.space.md },
-  icon: {
-    width: 56,
-    height: 56,
-    borderRadius: fieldTheme.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  titleCopy: { flexShrink: 1, gap: fieldTheme.space.xs },
   // No `flex: 1` on a phone: in the column header it collapsed the copy to
   // zero height, and only the icon showed (2026-10-17). The tablet row grows it.
   headerCopy: { gap: fieldTheme.space.xs },
@@ -872,7 +864,11 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.primarySoft,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.primary,
+    backgroundColor: fieldTheme.color.surface,
   },
   statusIcon: {
     width: 44,
@@ -894,17 +890,19 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.md,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.amberSoft,
+    backgroundColor: fieldTheme.color.surface,
     borderWidth: 1,
-    borderColor: fieldTheme.color.amber,
+    borderColor: fieldTheme.color.border,
+    borderLeftWidth: 4,
+    borderLeftColor: fieldTheme.color.amber,
   },
   errorCopy: { flex: 1, gap: 2 },
   errorTitle: { color: fieldTheme.color.amber, fontSize: 14, fontWeight: "900" },
   errorBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   teamList: { gap: fieldTheme.space.md },
   teamListTablet: { flexDirection: "row", flexWrap: "wrap" },
-  transferAction: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.primarySoft, borderWidth: 1, borderColor: fieldTheme.color.primary },
-  transferActionIcon: { width: 46, height: 46, borderRadius: fieldTheme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primary },
+  transferAction: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  transferActionIcon: { width: 32, height: 46, alignItems: "center", justifyContent: "center" },
   transferActionCopy: { flex: 1, gap: 3 },
   transferActionTitle: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
   transferActionBody: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17 },
@@ -949,8 +947,10 @@ const styles = StyleSheet.create({
   tileHalf: { flexBasis: "45%", flexGrow: 1 },
   tileWide: { flexBasis: "100%" },
   tileTablet: { flexBasis: "22%", flexGrow: 1 },
-  tilePrimary: { borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
-  tileWarning: { borderColor: "#E8D69F", backgroundColor: fieldTheme.color.amberSoft },
+  // What needs the manager shows in the number's colour, not a filled tile
+  // (owner-approved colours, 2026-10-18).
+  tilePrimary: { borderColor: fieldTheme.color.primary },
+  tileWarning: { borderColor: fieldTheme.color.border },
   tileTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 4 },
   tileLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
   tileValue: { color: fieldTheme.color.ink, fontSize: 30, lineHeight: 36, fontWeight: "900", letterSpacing: -0.5 },
@@ -1021,14 +1021,15 @@ const styles = StyleSheet.create({
   itemTitle: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.ink },
   itemMeta: { fontSize: 12, color: fieldTheme.color.inkMuted, marginTop: 2 },
   itemDetails: { fontSize: 12, lineHeight: 17, color: fieldTheme.color.ink, marginTop: 6 },
-  itemPill: { backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
+  itemPill: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
   itemPillText: { fontSize: 10, fontWeight: "700", color: fieldTheme.color.primaryStrong },
   section: { gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
   sectionTitle: { fontSize: 12, fontWeight: "800", color: fieldTheme.color.inkMuted, letterSpacing: 0.4 },
   decisionBtns: { flexDirection: "row", gap: fieldTheme.space.xs },
-  approveBtn: { backgroundColor: fieldTheme.color.successSoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
+  // Outlined, both: a list of requests is not a wall of green and red pills.
+  approveBtn: { borderWidth: 1, borderColor: fieldTheme.color.success, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
   approveBtnText: { color: fieldTheme.color.success, fontSize: 12, fontWeight: "700" },
-  rejectBtn: { backgroundColor: fieldTheme.color.dangerSoft, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
+  rejectBtn: { borderWidth: 1, borderColor: fieldTheme.color.danger, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
   rejectBtnText: { color: fieldTheme.color.danger, fontSize: 12, fontWeight: "700" },
   btnBusy: { opacity: 0.5 },
 })
