@@ -605,36 +605,38 @@ export default function TodayScreen() {
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={[styles.headerInner, compactHeader && styles.headerInnerCompact]}>
             <View style={styles.headerCopy}>
-              {/* The bell sits in the top corner (owner-approved mockup, 2026-10-18):
-                  beside the greeting on a phone, above the actions on a tablet. */}
+              {/* The greeting has the line to itself. The bell stands beside
+                  «Yenilə» on a phone (owner, 2026-10-18: «значок уведомления
+                  надо спустить к Yenilə») and above the actions on a tablet. */}
               <View style={styles.titleRow}>
                 <Text style={styles.title} numberOfLines={2}>
                   {t("todayV2.greeting", { name: agent?.name ?? "" })}
                 </Text>
-                {/* Pulled into the title's line: the header keeps its height. */}
-                {compactHeader ? <View style={styles.bellSlot}><NotificationBell /></View> : null}
               </View>
               <Text style={styles.date}>{dateLabel}</Text>
             </View>
             <View style={[styles.headerActions, compactHeader && styles.headerActionsCompact]}>
               {compactHeader ? null : <NotificationBell />}
               <SyncStatusChip />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("todayV2.refresh")}
-                disabled={refreshing}
-                onPress={() => { manualRefresh().catch(() => {}) }}
-                style={({ pressed }) => [
-                  styles.refreshButton,
-                  pressed && styles.pressed,
-                  refreshing && styles.disabled,
-                ]}
-              >
-                {refreshing
-                  ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
-                  : <Icon name="refresh" size={20} color={fieldTheme.color.ink} />}
-                <Text style={styles.refreshText}>{t("todayV2.refresh")}</Text>
-              </Pressable>
+              <View style={styles.headerButtons}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("todayV2.refresh")}
+                  disabled={refreshing}
+                  onPress={() => { manualRefresh().catch(() => {}) }}
+                  style={({ pressed }) => [
+                    styles.refreshButton,
+                    pressed && styles.pressed,
+                    refreshing && styles.disabled,
+                  ]}
+                >
+                  {refreshing
+                    ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
+                    : <Icon name="refresh" size={20} color={fieldTheme.color.ink} />}
+                  <Text style={styles.refreshText}>{t("todayV2.refresh")}</Text>
+                </Pressable>
+                {compactHeader ? <NotificationBell /> : null}
+              </View>
             </View>
           </View>
         </View>
@@ -1074,11 +1076,17 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: fieldTheme.space.md,
   },
-  bellSlot: {
-    marginVertical: -6,
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
   },
+  // Stretched: in a column the greeting's block otherwise takes the width of
+  // its words, and with the bell pulled into its line «Salam, …» wrapped to
+  // «Sal / am…» beside it (owner's phone, 2026-10-18, since 3.11.19).
   headerInnerCompact: {
     flexDirection: "column",
+    alignItems: "stretch",
   },
   // Bold only where the eye should land: the greeting, names, numbers
   // (owner-approved mockup, 2026-10-18). Text set 800–900 everywhere made
