@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
   finishedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", alignSelf: "flex-end" },
   disabled: { opacity: 0.45 },
-  modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.55)" },
+  modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: fieldTheme.space.lg, backgroundColor: fieldTheme.color.scrim },
   modalCard: { width: "100%", maxWidth: 520, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
   modalIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
   modalTitle: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900", marginTop: fieldTheme.space.lg },
