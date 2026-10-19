@@ -42,6 +42,7 @@ import { refreshRouteFieldSession } from "../../services/field-session"
 import { canReturnToWorkday, returnToClosedWorkday } from "../../services/workday-return"
 import { fieldTheme } from "../../theme/fieldTheme"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { shiftDateKey } from "../../services/week"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
   cachedRouteAsTodaySummary,
@@ -71,13 +72,14 @@ import { staleVisitDayDate } from "../../services/stale-visit"
 
 type TodayNavigationParams = {
   Route: undefined
+  PlanningBuilder: { initialDate?: string } | undefined
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
   More: { screen: "Messages" }
 }
 
-type Destination = Exclude<keyof TodayNavigationParams, "More">
+type Destination = Exclude<keyof TodayNavigationParams, "More" | "PlanningBuilder">
 type NextKind = "route" | "awaiting" | "tasks" | "empty" | "unknown" | "loading"
 type DataSource = "live" | "cached" | "unknown"
 type TeamMessageSummary = { id: string; title: string; lastMessage?: { body?: string | null } | null }
@@ -91,6 +93,10 @@ export default function TodayScreen() {
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
   const agent = useAuthStore((state) => state.agent)
+  // The same rule as «Planı dəyiş» on the route: a field agent whose company
+  // lets agents plan their own routes.
+  const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  const canPlanOwnRoutes = String(agent?.role).toUpperCase() === "AGENT" && ownRoutePlanningPolicy
   const { stats, loading: kpiLoading, error: kpiError, fetchKpi } = useKpiStore()
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
@@ -416,6 +422,24 @@ export default function TodayScreen() {
   }, [route, t])
 
   const nextCopy = useMemo(() => {
+    // Every stop done: there is nothing left to open on today's route
+    // (owner, 2026-10-19 — the day was over and «Marşrutu aç» still called him
+    // to the one client he had already visited). The next thing an agent does
+    // is plan tomorrow, where the company allows it; otherwise nothing.
+    if (nextKind === "route" && route != null && route.totalPoints > 0 && route.remainingPoints === 0) {
+      return {
+        eyebrow: t("todayV2.routeDone"),
+        title: t("todayV2.routeTitle"),
+        body: routeSummaryText,
+        supporting: null,
+        button: canPlanOwnRoutes ? t("todayV2.planTomorrow") : null,
+        icon: "calendar-outline",
+        destination: null,
+        planTomorrow: canPlanOwnRoutes,
+        startRoute: false,
+        startWorkday: false,
+      }
+    }
     if (nextKind === "route") {
       const routeCanStart = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
       const canStartRoute = workdayActive && routeCanStart
@@ -503,7 +527,7 @@ export default function TodayScreen() {
       startRoute: false,
       startWorkday: false,
     }
-  }, [awaitingRoute, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
+  }, [awaitingRoute, canPlanOwnRoutes, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
 
   const open = (destination: Destination) => navigation.navigate(destination)
   const startRoute = async () => {
@@ -538,6 +562,10 @@ export default function TodayScreen() {
     }
   }
   const nextAction = () => {
+    if (nextCopy.planTomorrow) {
+      navigation.navigate("PlanningBuilder", { initialDate: shiftDateKey(todayKey, 1) })
+      return
+    }
     if (nextCopy.startRoute) {
       startRoute().catch(() => {})
       return
