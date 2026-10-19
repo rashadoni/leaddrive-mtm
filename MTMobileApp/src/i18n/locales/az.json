@@ -1303,5 +1303,11 @@
     "BRANCH_CHANGED": "Vaxt saxlanıldı. Filial və ya onun parametrləri dəyişib.",
     "REUSED": "Vaxt saxlanıldı. Bu kod artıq başqa belə bir qeyd üçün istifadə olunub.",
     "breakPrivacy": "Fasilə zamanı QR skan edilmir. Günü QR-siz bitirə bilərsiniz."
+  },
+  "appUpdate": {
+    "title": "Yeni versiya mövcuddur",
+    "message": "LeadDrive Route Field {{version}} hazırdır. İndi quraşdırılsın? Göndərilməmiş ziyarətlər və qaralamalar telefonda qalacaq.",
+    "update": "Yenilə",
+    "later": "Sonra"
   }
 }

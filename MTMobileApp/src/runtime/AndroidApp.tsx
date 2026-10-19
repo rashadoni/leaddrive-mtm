@@ -39,6 +39,7 @@ import { dismissAllChoices } from "../services/app-feedback"
 import { startPushTokenRefresh } from "../services/push-lifecycle"
 import { fieldColorScheme, fieldTheme } from "../theme/fieldTheme"
 import { startColorSchemeReload } from "../services/color-scheme-reload"
+import { checkFieldAppUpdate } from "../services/field-app-update"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
 function netInfoOnline(state: { isConnected: boolean | null; isInternetReachable: boolean | null }): boolean | null {
@@ -239,6 +240,18 @@ function AppContent() {
   // Day or night, as the phone is: a change while the app is open restarts it
   // in the new colours when that is safe (services/color-scheme-reload.ts).
   useEffect(() => startColorSchemeReload(), [])
+
+  // «Есть новая версия — обновить?» on every start, and on a return to the app
+  // when a newer build appeared or half a day passed (services/field-app-update.ts).
+  useEffect(() => {
+    void checkFieldAppUpdate({ coldStart: true })
+    let previous: AppStateStatus = AppState.currentState
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (previous !== "active" && next === "active") void checkFieldAppUpdate({ coldStart: false })
+      previous = next
+    })
+    return () => subscription.remove()
+  }, [])
 
   return (
     <SafeAreaProvider>
