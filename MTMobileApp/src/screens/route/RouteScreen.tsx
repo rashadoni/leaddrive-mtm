@@ -98,6 +98,7 @@ import { hasUsableCoordinates, IMPLAUSIBLE_DISTANCE_METERS } from "../visit/visi
 import { toVisitWorkspace, visitActionShown, type VisitWorkspace } from "../../services/visit-workspace"
 import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { directionsUrl } from "../../lib/directions"
 
 interface RoutePoint {
   id: string
@@ -1237,7 +1238,12 @@ function PointActionPanel({
   const isRecommended = nextPoint?.id === point.id
   const who = routeStopWho(point)
   const hasDirections = Boolean(point.customer.address || hasUsableCoordinates(point.customer))
-  const showDirections = !navigationStarted && hasDirections
+  // Inside the check-in circle the visit comes first; anywhere else the drive
+  // does. «Yolu aç» stays after a trip to the map and back — it used to vanish,
+  // leaving only «Gəldim — ziyarətə başla» to an agent still on the road
+  // (owner, 2026-10-19).
+  const nearby = point.distanceMeters != null && point.distanceMeters <= pointCheckInRadius(point)
+  const directionsFirst = hasDirections && !nearby
 
   return (
     <View style={styles.actionPanel}>
@@ -1280,18 +1286,21 @@ function PointActionPanel({
           <Icon name="remove-circle" size={27} color={fieldTheme.color.danger} />
           <Text style={styles.completedStateText}>{copy.skipped}</Text>
         </View>
-      ) : showDirections ? (
+      ) : directionsFirst ? (
         <>
           <ActionButton label={copy.openMaps} icon="navigate" onPress={() => onNavigate(point)} />
-          <ActionButton label={copy.alreadyHere} icon="location-outline" onPress={() => onCheckIn(point)} disabled={mutating} tone="secondary" />
+          <ActionButton label={navigationStarted ? copy.arrivedCheckIn : copy.alreadyHere} icon="location-outline" onPress={() => onCheckIn(point)} disabled={mutating} tone="secondary" />
         </>
       ) : (
-        <ActionButton
-          label={mutating ? copy.finishingVisit : copy.arrivedCheckIn}
-          icon={mutating ? "hourglass-outline" : "log-in-outline"}
-          onPress={() => onCheckIn(point)}
-          disabled={mutating}
-        />
+        <>
+          <ActionButton
+            label={mutating ? copy.finishingVisit : copy.arrivedCheckIn}
+            icon={mutating ? "hourglass-outline" : "log-in-outline"}
+            onPress={() => onCheckIn(point)}
+            disabled={mutating}
+          />
+          {hasDirections ? <ActionButton label={copy.openMaps} icon="navigate" onPress={() => onNavigate(point)} tone="secondary" /> : null}
+        </>
       )}
     </View>
   )
@@ -1733,17 +1742,20 @@ export default function RouteScreen() {
   }
 
   const handleNavigate = (point: RoutePoint) => {
-    // Null Island is not a destination: a 0,0 pair opens the map in the Gulf of
-    // Guinea, which reads as a real answer. Only an address or a usable pair
-    // counts, the same test the check-in uses.
-    const query = point.customer.address
-      ? point.customer.address
-      : hasUsableCoordinates(point.customer)
-        ? `${point.customer.latitude},${point.customer.longitude}`
-        : ""
-    if (!query) return
+    // «Yolu aç» builds the drive from where the phone is to the client
+    // (lib/directions.ts). The pin first — the test the check-in uses, so a 0,0
+    // pair is not a destination — and point.customer.address only without one:
+    // a search for the address text found nothing and showed the agent's own
+    // position instead of a route (owner, 2026-10-19).
+    const pin = hasUsableCoordinates(point.customer) ? point.customer : null
+    const url = directionsUrl({
+      latitude: pin?.latitude,
+      longitude: pin?.longitude,
+      address: point.customer.address,
+    })
+    if (!url) return
     setNavigationStartedFor(point.id)
-    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`).catch(() => {
+    Linking.openURL(url).catch(() => {
       setNavigationStartedFor(null)
       notify({ tone: "error", title: t("common.error"), message: copy.noAddress })
     })

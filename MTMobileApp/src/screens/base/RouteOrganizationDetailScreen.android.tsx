@@ -42,6 +42,7 @@ import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { statusLabel } from "../../lib/status-labels"
 import { upperInitial } from "../../lib/upper"
+import { directionsUrl } from "../../lib/directions"
 
 type Language = "ru" | "az" | "en"
 
@@ -377,10 +378,13 @@ export default function RouteOrganizationDetailScreen() {
   const call = (phone?: string) => {
     if (phone) void openExternal(`tel:${phone.replace(/\s/g, "")}`)
   }
-  const openDirections = () => {
-    if (address) void openExternal(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)
-  }
   const pin = detail ? usablePoint(detail) : null
+  // The drive from here to the organization's pin; its address only without a
+  // pin (lib/directions.ts — a search for the address text built no route).
+  const directions = directionsUrl({ latitude: pin?.latitude, longitude: pin?.longitude, address })
+  const openDirections = () => {
+    if (directions) void openExternal(directions)
+  }
   // «No pin» is read only from a server that says so; an older one says nothing about pins at all.
   const offer = !detail || !mayFixLocation || waiting || (!pin && !detail.pinReported)
     ? { kind: "none" as const }
@@ -515,7 +519,7 @@ export default function RouteOrganizationDetailScreen() {
         ) : null}
         <View style={styles.actions}>
           {mayPlanOwnRoutes ? <Pressable accessibilityRole="button" onPress={addToRoute} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="calendar-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{t("contacts.addToRoute")}</Text></Pressable> : null}
-          {address ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
+          {directions ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
           {mayFixLocation && !waiting && offer.kind === "none" && (pin || detail.pinReported) ? <Pressable accessibilityRole="button" onPress={openLocationFix} testID="location-fix-ask" style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="pin-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.fixAsk}</Text></Pressable> : null}
           {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.call}</Text></Pressable> : null}
         </View>
