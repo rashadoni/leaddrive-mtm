@@ -33,6 +33,7 @@ jest.mock("../../src/services/field-session", () => ({ refreshRouteFieldSession:
 jest.mock("../../src/services/app-feedback", () => ({ dismissAllChoices: jest.fn(), ask: jest.fn() }))
 jest.mock("@react-native-community/geolocation", () => ({ setRNConfiguration: jest.fn(), getCurrentPosition: jest.fn() }))
 jest.mock("../../src/services/push-lifecycle", () => ({ startPushTokenRefresh: jest.fn(() => () => {}) }))
+jest.mock("../../src/services/field-app-update", () => ({ checkFieldAppUpdate: jest.fn(async () => {}) }))
 
 import AndroidApp from "../../src/runtime/AndroidApp"
 import { useAuthStore } from "../../src/store/auth"
