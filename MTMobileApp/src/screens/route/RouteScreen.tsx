@@ -72,7 +72,7 @@ import { useActiveVisitProgress } from "../../hooks/useActiveVisitProgress"
 import type { SignatureCapture } from "../../services/visit-signature-path"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
-import NotificationBell from "../../components/NotificationBell"
+import RouteSectionHeader from "./RouteSectionHeader"
 import { DayLineStation } from "../../components/DayLine"
 import { dayStopState } from "../../components/day-line"
 import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
@@ -182,7 +182,6 @@ const ROUTE_COPY = {
     distanceAway: "До точки {{distance}}",
     noAddress: "Адрес не указан. Можно начать визит, когда вы на месте.",
     chooseStop: "Выберите точку слева, чтобы увидеть следующий шаг.",
-    openVisits: "Открыть внеплановый визит",
     planOwnRouteTitle: "Хотите составить свой маршрут?",
     planOwnRouteBody: "Выберите день, добавьте своих клиентов и сохраните план. Редактировать его можете только вы.",
     planOwnRoute: "Составить мой маршрут",
@@ -285,7 +284,6 @@ const ROUTE_COPY = {
     distanceAway: "Nöqtəyə {{distance}}",
     noAddress: "Ünvan göstərilməyib. Məkanda olduqda ziyarətə başlaya bilərsiniz.",
     chooseStop: "Növbəti addımı görmək üçün soldan nöqtə seçin.",
-    openVisits: "Plandan kənar ziyarəti aç",
     planOwnRouteTitle: "Öz marşrutunuzu qurmaq istəyirsiniz?",
     planOwnRouteBody: "Günü seçin, öz müştərilərinizi əlavə edin və planı yadda saxlayın. Onu yalnız siz redaktə edə bilərsiniz.",
     planOwnRoute: "Mənim marşrutumu qur",
@@ -388,7 +386,6 @@ const ROUTE_COPY = {
     distanceAway: "{{distance}} away",
     noAddress: "No address is saved. You can start the visit when you are there.",
     chooseStop: "Choose a stop on the left to see the next action.",
-    openVisits: "Open unplanned visit",
     planOwnRouteTitle: "Want to create your own route?",
     planOwnRouteBody: "Choose a day, add your customers and save the plan. Only you can edit it.",
     planOwnRoute: "Create my route",
@@ -2198,26 +2195,17 @@ export default function RouteScreen() {
     ? <RouteDock caption={dockCaption} action={dockAction} secondary={changePlanAction} />
     : null
 
+  // «Визиты» has its own tab now, so the grey «+» that opened it gave its
+  // place to «+ Составить маршрут» (owner-approved mockup, 2026-10-20). A new
+  // plan asks for its day after the clients, as from the empty route.
   const header = (
-    <View style={[styles.header, { paddingTop: headerTop }]}>
-      <View style={styles.headerIcon}>
-        <Icon name="navigate" size={23} color={fieldTheme.color.primaryStrong} />
-      </View>
-      <View style={styles.headerCopy}>
-        <Text style={styles.headerTitle}>{copy.title}</Text>
-        <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
-        {agent?.name ? <Text style={styles.agentName}>{agent.name}</Text> : null}
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={copy.openVisits}
-        onPress={() => navigation.navigate("Visits")}
-        style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
-      >
-        <Icon name="add" size={22} color={fieldTheme.color.ink} />
-      </Pressable>
-      <NotificationBell />
-    </View>
+    <RouteSectionHeader
+      subtitle={copy.subtitle}
+      headerTop={headerTop}
+      onPlan={canPlanOwnRoutes ? () => navigation.navigate("PlanningBuilder") : undefined}
+    >
+      {agent?.name ? <Text style={styles.agentName}>{agent.name}</Text> : null}
+    </RouteSectionHeader>
   )
 
   const emptyMode = presentation.empty ?? "no-route"
@@ -2498,30 +2486,8 @@ const styles = themed(() => StyleSheet.create({
   dockRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   dockPrimary: { flex: 1 },
 
-  // White like every tab's header (owner-approved colours, 2026-10-18).
-  header: {
-    backgroundColor: fieldTheme.color.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: fieldTheme.color.border,
-    paddingHorizontal: fieldTheme.space.xl,
-    paddingBottom: fieldTheme.space.xl,
-    flexDirection: "row",
-    gap: fieldTheme.space.md,
-    alignItems: "flex-start",
-  },
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: fieldTheme.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   pressed: { opacity: 0.82 },
-  headerAction: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
-  headerCopy: { flex: 1 },
-  headerTitle: { color: fieldTheme.color.ink, fontSize: 24, fontWeight: "700", letterSpacing: -0.3 },
-  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs, maxWidth: 620 },
-  agentName: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "400", marginTop: fieldTheme.space.sm },
+  agentName: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "400", marginTop: fieldTheme.space.xs },
 
   connectionBanner: {
     flexDirection: "row",

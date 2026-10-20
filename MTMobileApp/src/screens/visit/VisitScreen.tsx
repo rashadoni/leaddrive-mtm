@@ -38,6 +38,7 @@ import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { runMobileSync } from "../../services/sync-engine"
 import { allOutboxOperations, retryOutboxConflict } from "../../services/outbox"
 import { checkInOutcomeFromOperation, formatCheckInDistance, type CheckInOutcome } from "./check-in-outcome"
+import { toggledCustomer } from "./customer-selection"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
@@ -51,6 +52,7 @@ import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import { askLocationDisclosure } from "../../services/location-disclosure"
 import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
 import HintCard from "../../components/HintCard"
+import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
@@ -1125,7 +1127,7 @@ export default function VisitScreen() {
     touchTarget,
     onSearch: setSearchQuery,
     onClearSearch: () => setSearchQuery(""),
-    onSelectCustomer: (customer: Customer) => setSelectedCustomerId(customer.id),
+    onSelectCustomer: (customer: Customer) => setSelectedCustomerId((current) => toggledCustomer(current, customer.id)),
     onCheckIn: () => selectedCustomer && handleCheckIn(selectedCustomer),
     onPhoto: () => setCameraVisible(true),
     onOpenWorkspace: () => activeVisit && openVisitSummary(activeVisit),
@@ -1152,11 +1154,15 @@ export default function VisitScreen() {
     />
   )
 
+  // A tab of its own since 2026-10-20. A tab other than the first can «go
+  // back» (to the first one), but a tab has no back arrow; pushed over the
+  // tabs it keeps one.
+  const showBack = navigation.getState?.()?.type !== "tab" && navigation.canGoBack()
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>
       <View style={styles.headerInner}>
         <View style={styles.headerRow}>
-          {navigation.canGoBack() && (
+          {showBack && (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.back}
@@ -1175,6 +1181,8 @@ export default function VisitScreen() {
             <Text style={styles.headerTitle}>{copy.title}</Text>
             <Text style={styles.headerSubtitle}>{copy.subtitle}</Text>
           </View>
+          {/* A main tab now: the bell in its corner, as on every other one. */}
+          <NotificationBell />
         </View>
       </View>
     </View>

@@ -18,6 +18,13 @@ export const mobileResources = {
       places: "Места",
       more: "Ещё",
     },
+    routeSection: {
+      title: "Маршрут",
+      today: "Сегодня",
+      month: "Месяц",
+      plan: "Составить маршрут",
+      planHint: "Выберите клиентов и день — этот план сможете менять только вы",
+    },
     moreV2: {
       title: "Ещё",
       openHint: "Открывает выбранный раздел",
@@ -871,6 +878,13 @@ export const mobileResources = {
       places: "Places",
       more: "More",
     },
+    routeSection: {
+      title: "Route",
+      today: "Today",
+      month: "Month",
+      plan: "Plan a route",
+      planHint: "Choose the clients and the day — only you can change this plan",
+    },
     moreV2: {
       title: "More",
       openHint: "Opens the selected section",
@@ -1705,6 +1719,13 @@ export const mobileResources = {
       clients: "Müştərilər",
       places: "Məkanlar",
       more: "Daha çox",
+    },
+    routeSection: {
+      title: "Marşrut",
+      today: "Bu gün",
+      month: "Ay",
+      plan: "Marşrut qur",
+      planHint: "Müştəriləri və günü seçin — bu planı yalnız siz dəyişə bilərsiniz",
     },
     moreV2: {
       title: "Daha çox",

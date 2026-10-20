@@ -4,7 +4,7 @@ import { hasCapability, hasRouteFieldAccess, type BootstrapData, type RouteField
  * The field agent's shell. Unchanged by the manager shell below: an AGENT is
  * admitted only by the server's Route Field grant, never by a role guess.
  */
-export const AGENT_TAB_NAMES = ["Today", "Calendar", "Route", "Clients", "Tasks", "More"] as const
+export const AGENT_TAB_NAMES = ["Today", "Route", "Visits", "Clients", "Tasks", "More"] as const
 
 export type RouteFieldTabName = typeof AGENT_TAB_NAMES[number]
 

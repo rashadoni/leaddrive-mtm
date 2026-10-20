@@ -33,7 +33,7 @@ import {
   type WeekTaskItem,
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
-import NotificationBell from "../../components/NotificationBell"
+import RouteSectionHeader, { useRouteSection } from "../route/RouteSectionHeader"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
@@ -495,8 +495,11 @@ export default function WeekScreen() {
     })
   }
 
+  const routeSection = useRouteSection()
   const openTodayRoute = () => {
-    tabNavigation.navigate("Route")
+    // Inside «Маршрут» today's route is the other tab of the same screen.
+    if (routeSection) routeSection.show("today")
+    else tabNavigation.navigate("Route")
   }
 
   const openOwnRoutePlanner = () => {
@@ -522,22 +525,30 @@ export default function WeekScreen() {
     />
   )
 
+  // The month is «Маршрут» → «Месяц» since 2026-10-20 (owner-approved
+  // mockup): the route's header with «+ Составить маршрут», then the month's
+  // arrows on the canvas. Its «Сегодня» button went with it — beside a tab
+  // called «Сегодня» it read as the same thing; the month's name takes the
+  // agent back to today instead.
   const header = (
-    <CalendarHeader
-      title={copy.title}
-      subtitle={copy.subtitle}
-      range={data ? formatMonthTitle(anchor, i18n.language) : ""}
-      todayLabel={t("week.today")}
-      previousWeekLabel={copy.previousWeek}
-      nextWeekLabel={copy.nextWeek}
-      loading={loading}
-      currentWeek={currentMonth}
-      touchTarget={touchTarget}
-      headerTop={headerTop}
-      onPrevious={() => changeMonth(-1)}
-      onNext={() => changeMonth(1)}
-      onToday={returnToToday}
-    />
+    <>
+      <RouteSectionHeader
+        subtitle={copy.subtitle}
+        headerTop={headerTop}
+        onPlan={canPlanOwnRoutes ? openOwnRoutePlanner : undefined}
+      />
+      <MonthNavigation
+        range={data ? formatMonthTitle(anchor, i18n.language) : ""}
+        todayLabel={t("week.today")}
+        previousLabel={copy.previousWeek}
+        nextLabel={copy.nextWeek}
+        loading={loading}
+        touchTarget={touchTarget}
+        onPrevious={() => changeMonth(-1)}
+        onNext={() => changeMonth(1)}
+        onToday={returnToToday}
+      />
+    </>
   )
 
   return (
@@ -694,94 +705,67 @@ export default function WeekScreen() {
   )
 }
 
-function CalendarHeader({
-  title,
-  subtitle,
+function MonthNavigation({
   range,
   todayLabel,
-  previousWeekLabel,
-  nextWeekLabel,
+  previousLabel,
+  nextLabel,
   loading,
-  currentWeek,
   touchTarget,
-  headerTop,
   onPrevious,
   onNext,
   onToday,
 }: {
-  title: string
-  subtitle: string
   range: string
   todayLabel: string
-  previousWeekLabel: string
-  nextWeekLabel: string
+  previousLabel: string
+  nextLabel: string
   loading: boolean
-  currentWeek: boolean
   touchTarget: number
-  headerTop: number
   onPrevious: () => void
   onNext: () => void
   onToday: () => void
 }) {
   return (
-    <View style={[styles.header, { paddingTop: headerTop }]}>
-      <View style={styles.titleRow}>
-        <View style={styles.titleBlock}>
-          {/* With «Сегодня» and the bell beside it a 360 dp phone leaves
-              «Календарь» about 140 dp: one line that shrinks, not a word cut in two. */}
-          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{title}</Text>
-          <Text style={styles.headerSubtitle}>{subtitle}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={todayLabel}
-          onPress={onToday}
-          style={({ pressed }) => [
-            styles.todayButton,
-            currentWeek && styles.todayButtonCurrent,
-            { minHeight: touchTarget },
-            pressed && styles.pressed,
-          ]}
-        >
-          <Icon name="locate-outline" size={18} color={currentWeek ? fieldTheme.color.inkMuted : fieldTheme.color.primaryStrong} />
-          <Text style={[styles.todayButtonText, currentWeek && styles.todayButtonTextCurrent]}>{todayLabel}</Text>
-        </Pressable>
-        <NotificationBell />
-      </View>
-
-      <View style={styles.weekNavigation}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={previousWeekLabel}
-          disabled={loading || !range}
-          onPress={onPrevious}
-          style={({ pressed }) => [
-            styles.navButton,
-            { width: touchTarget, height: touchTarget },
-            (loading || !range) && styles.disabled,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Icon name="chevron-back" size={22} color={fieldTheme.color.ink} />
-        </Pressable>
-        <View style={styles.rangeBlock}>
-          <Text style={styles.rangeLabel}>{range || "—"}</Text>
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={nextWeekLabel}
-          disabled={loading || !range}
-          onPress={onNext}
-          style={({ pressed }) => [
-            styles.navButton,
-            { width: touchTarget, height: touchTarget },
-            (loading || !range) && styles.disabled,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Icon name="chevron-forward" size={22} color={fieldTheme.color.ink} />
-        </Pressable>
-      </View>
+    <View style={styles.monthNavigation}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={previousLabel}
+        disabled={loading || !range}
+        onPress={onPrevious}
+        style={({ pressed }) => [
+          styles.navButton,
+          { width: touchTarget, height: touchTarget },
+          (loading || !range) && styles.disabled,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Icon name="chevron-back" size={22} color={fieldTheme.color.ink} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={range || todayLabel}
+        accessibilityHint={todayLabel}
+        disabled={loading || !range}
+        onPress={onToday}
+        style={({ pressed }) => [styles.rangeBlock, pressed && styles.pressed]}
+      >
+        <Text style={styles.rangeLabel}>{range || "—"}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={nextLabel}
+        disabled={loading || !range}
+        onPress={onNext}
+        style={({ pressed }) => [
+          styles.navButton,
+          { width: touchTarget, height: touchTarget },
+          (loading || !range) && styles.disabled,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Icon name="chevron-forward" size={22} color={fieldTheme.color.ink} />
+      </Pressable>
     </View>
   )
 }
@@ -1395,34 +1379,14 @@ function DayOffState({ reason }: { reason: string }) {
 
 const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: {
-    backgroundColor: fieldTheme.color.surface,
-    paddingBottom: fieldTheme.space.md,
-    paddingHorizontal: fieldTheme.space.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: fieldTheme.color.border,
-  },
-  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md },
-  titleBlock: { flex: 1, paddingTop: 2 },
-  headerTitle: { color: fieldTheme.color.ink, fontSize: 28, lineHeight: 34, fontWeight: "700", letterSpacing: -0.6 },
-  headerSubtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
-  todayButton: {
+  // The month's arrows under the route's header, on the canvas like the month itself.
+  monthNavigation: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: fieldTheme.space.sm,
     paddingHorizontal: fieldTheme.space.lg,
-    borderRadius: fieldTheme.radius.pill,
-    // Outlined: a way back to this week, not the screen's main action
-    // (owner-approved colours, 2026-10-18).
-    borderWidth: 1.5,
-    borderColor: fieldTheme.color.primary,
-    backgroundColor: fieldTheme.color.surface,
+    paddingTop: fieldTheme.space.md,
   },
-  todayButtonCurrent: { borderWidth: 1, borderColor: fieldTheme.color.border },
-  todayButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "500" },
-  todayButtonTextCurrent: { color: fieldTheme.color.inkMuted },
-  weekNavigation: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   navButton: {
     alignItems: "center",
     justifyContent: "center",

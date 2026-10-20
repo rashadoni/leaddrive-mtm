@@ -23,7 +23,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useAuthStore } from "../../store/auth"
 import NotificationBell from "../../components/NotificationBell"
 
-type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
+type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
@@ -34,13 +34,8 @@ type MoreAction = {
   body?: string
 }
 
+// «Визиты» left this list for its own tab at the bottom (owner, 2026-10-20).
 const COMMON_ACTIONS: MoreAction[] = [
-  {
-    route: "Visits",
-    icon: "checkmark-circle-outline",
-    titleKey: "moreV2.visitsTitle",
-    bodyKey: "moreV2.visitsBody",
-  },
   {
     route: "GpsHistory",
     icon: "location-outline",
@@ -106,9 +101,6 @@ export default function MoreScreen() {
         break
       case "Messages":
         navigation.navigate("Messages")
-        break
-      case "Visits":
-        navigation.navigate("Visits")
         break
       case "GpsHistory":
         navigation.navigate("GpsHistory")
