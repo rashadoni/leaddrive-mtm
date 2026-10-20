@@ -55,9 +55,12 @@ import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.andro
 import type { RawTask } from "../services/task-detail"
 import type { MobileProductPresentation } from "../services/product-presentations"
 import type { RoutePlanningTargetHint } from "../services/route-planning-target"
+import type { JointVisitRow } from "../services/joint-visit"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
 import ManagerTeamMessageScreen from "../screens/manager/ManagerTeamMessageScreen.android"
+import ManagerJointVisitScreen from "../screens/manager/ManagerJointVisitScreen.android"
+import ManagerVisitEvaluationScreen from "../screens/manager/ManagerVisitEvaluationScreen.android"
 import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
 import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
@@ -92,6 +95,10 @@ export type RootStackParamList = {
   ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null }
   /** «Komandaya yaz» from «Komanda»: to the whole team or one employee (owner, 2026-10-17). */
   ManagerTeamMessage: undefined
+  /** «Совместный визит» from «Komanda»: the agent the manager is with, and his ratings (owner, 2026-10-20). */
+  ManagerJointVisit: undefined
+  /** «Оценить агента» on one joint visit. */
+  ManagerVisitEvaluation: { visit: JointVisitRow }
   /** The bell's list (owner-approved mockup, 2026-10-18), over the tabs in both shells. */
   Notifications: undefined
   /** The agent's own planner in the field shell; the team planner in the manager shell. */
@@ -482,6 +489,8 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="PlanningBuilder" component={withFieldColorScheme(ManagerPlanningBuilderScreen)} />
                 <Stack.Screen name="ManagerEmployee" component={withFieldColorScheme(ManagerEmployeeScreen)} />
                 <Stack.Screen name="ManagerTeamMessage" component={withFieldColorScheme(ManagerTeamMessageScreen)} />
+                <Stack.Screen name="ManagerJointVisit" component={withFieldColorScheme(ManagerJointVisitScreen)} />
+                <Stack.Screen name="ManagerVisitEvaluation" component={withFieldColorScheme(ManagerVisitEvaluationScreen)} />
                 {/* His own workday tab opens these by name; in the office shell they are tabs. */}
                 {office ? (
                   <>

@@ -58,6 +58,7 @@ import {
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
+import ManagerJointVisitEntry from "./ManagerJointVisitEntry.android"
 import { DayLineStrip } from "../../components/DayLine"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
@@ -424,6 +425,9 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 </Pressable>
               ) : null}
             </View>
+            {/* «Иду на визит с агентом» (owner-approved mockup, 2026-10-20): the
+                joint visit, or the button that starts one, under the pair. */}
+            {shellTabs.includes("Planning") ? <ManagerJointVisitEntry agents={teamRows.map(({ agent }) => agent)} /> : null}
             {loadError && (
               <View style={styles.errorNotice}>
                 <Icon name="cloud-offline-outline" size={21} color={fieldTheme.color.amber} />

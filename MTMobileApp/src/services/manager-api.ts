@@ -67,6 +67,34 @@ export const managerApi = {
   },
 
   /**
+   * Joint visit (owner, 2026-10-20): the manager's open session with one
+   * agent of his team, and the visits he can see or rate from it — the
+   * agent's visits since the session started, and those agents marked as
+   * joint with him whose rating window is still open.
+   */
+  getJointVisit(signal?: AbortSignal) {
+    return api.requestLegacy("/mobile/manager/joint-visit", { signal })
+  },
+
+  /** «Иду на визит с агентом»: only an active agent of his team (403 MTM_JOINT_VISIT_AGENT_FORBIDDEN otherwise). */
+  startJointVisit(agentId: string) {
+    return api.requestLegacy("/mobile/manager/joint-visit", { method: "POST", body: JSON.stringify({ agentId }) })
+  },
+
+  /** «Закончить совместный визит». */
+  endJointVisit() {
+    return api.requestLegacy("/mobile/manager/joint-visit/end", { method: "POST", body: "{}" })
+  },
+
+  /**
+   * The manager's rating of the agent on one joint visit: the rated points
+   * 1..5 and a comment. Saving again replaces it.
+   */
+  saveVisitEvaluation(visitId: string, data: { scores: Record<string, number>; comment: string | null }) {
+    return api.requestLegacy(`/mobile/manager/visits/${encodeURIComponent(visitId)}/evaluation`, { method: "PUT", body: JSON.stringify(data) })
+  },
+
+  /**
    * Legacy manager catalog. Route Field never sends team-assignment filters;
    * server-side RLS remains authoritative for every returned organization.
    */

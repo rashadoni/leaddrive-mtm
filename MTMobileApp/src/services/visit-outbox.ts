@@ -28,6 +28,8 @@ export type QueueVisitCheckInInput = {
   contactId?: string
   force?: boolean
   visitType?: string
+  /** The agent answered «together with this manager» (joint visit, owner 2026-10-20). */
+  jointManagerId?: string
 }
 
 function storageKey() {
@@ -83,6 +85,7 @@ export async function queueVisitCheckIn(input: QueueVisitCheckInInput) {
       ...(input.contactId ? { contactId: input.contactId } : {}),
       ...(input.force ? { force: true } : {}),
       ...(input.visitType ? { visitType: input.visitType } : {}),
+      ...(input.jointManagerId ? { jointManagerId: input.jointManagerId } : {}),
     },
   })
   const visit: OptimisticVisit = {

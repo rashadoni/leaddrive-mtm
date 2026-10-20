@@ -49,6 +49,7 @@ import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import { askLocationDisclosure } from "../../services/location-disclosure"
+import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
 import HintCard from "../../components/HintCard"
 import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -939,11 +940,16 @@ export default function VisitScreen() {
         }
       }
 
+      // Joint visit (owner, 2026-10-20): the same question as on the route.
+      const joint = await askJointManagerForCheckIn(t)
+      if (!joint.proceed) return
+
       const { visit, operation } = await queueVisitCheckIn({
         customer: { id: customer.id, name: customer.name, address: customer.address },
         latitude: coords.latitude,
         longitude: coords.longitude,
         force: forceCheckIn,
+        jointManagerId: joint.jointManagerId,
       })
       setActiveVisit(visit)
       setVisits((current) => [visit, ...current.filter((entry) => entry.id !== visit.id)])
