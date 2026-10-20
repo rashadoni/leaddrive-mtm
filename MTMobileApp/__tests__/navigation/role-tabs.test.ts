@@ -34,11 +34,12 @@ describe("Route Field tabs", () => {
   it("keeps the route shell focused on today's field workflow", () => {
     expect(routeFieldTabNames()).toEqual(AGENT_TAB_NAMES)
     // «Визиты» took the calendar's place; the month is «Маршрут» → «Месяц» (owner, 2026-10-20).
-    expect(AGENT_TAB_NAMES).toEqual(["Today", "Route", "Visits", "Clients", "Tasks", "More"])
+    // «Plansız ziyarətlər» went back under «Daha çox» (owner, 2026-10-20: «он путает»).
+    expect(AGENT_TAB_NAMES).toEqual(["Today", "Route", "Clients", "Tasks", "More"])
   })
 
   it("keeps clients as a first-class destination on phone and tablet", () => {
-    expect(new Set(AGENT_TAB_NAMES).size).toBe(6)
+    expect(new Set(AGENT_TAB_NAMES).size).toBe(5)
     expect(Array.from(AGENT_TAB_NAMES)).toContain("Clients")
     expect(Array.from(AGENT_TAB_NAMES)).not.toContain("Planogram")
   })

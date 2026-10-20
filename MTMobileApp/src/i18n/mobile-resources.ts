@@ -28,8 +28,8 @@ export const mobileResources = {
     moreV2: {
       title: "Ещё",
       openHint: "Открывает выбранный раздел",
-      visitsTitle: "Визиты",
-      visitsBody: "Посмотреть историю или оформить визит вручную",
+      visitsTitle: "Внеплановые визиты",
+      visitsBody: "Визит к клиенту не из маршрута и история визитов",
       baseTitle: "Клиенты",
       baseBody: "Найти человека и его место работы",
       baseTitlePlaces: "Места",
@@ -917,8 +917,8 @@ export const mobileResources = {
     moreV2: {
       title: "More",
       openHint: "Opens the selected section",
-      visitsTitle: "Visits",
-      visitsBody: "View history or record a manual visit",
+      visitsTitle: "Unplanned visits",
+      visitsBody: "A visit to a client not on your route, and visit history",
       baseTitle: "Clients",
       baseBody: "Find a person and their workplace",
       baseTitlePlaces: "Places",
@@ -1788,8 +1788,8 @@ export const mobileResources = {
     moreV2: {
       title: "Daha çox",
       openHint: "Seçilmiş bölməni açır",
-      visitsTitle: "Ziyarətlər",
-      visitsBody: "Tarixçəyə baxın və ya əl ilə ziyarət yaradın",
+      visitsTitle: "Plansız ziyarətlər",
+      visitsBody: "Marşrutda olmayan müştəriyə ziyarət və ziyarət tarixçəsi",
       baseTitle: "Müştərilər",
       baseBody: "Şəxsi və onun iş yerini tapın",
       baseTitlePlaces: "Məkanlar",

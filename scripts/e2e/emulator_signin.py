@@ -757,8 +757,9 @@ def signed_in_walk(server, sign_in):
     tap(by_id(found, "login-submit"))
 
     pressed = time.time()
-    # «Visits» took the calendar's tab on 2026-10-20; the month is «Route» → «Month» now.
-    expected = [tabs["today"], tabs["route"], tabs["visits"], tabs["tasks"], tabs["more"]]
+    # Five tabs since 2026-10-20: the month is «Route» → «Month», and the
+    # unplanned visits went back under «More».
+    expected = [tabs["today"], tabs["route"], tabs["tasks"], tabs["more"]]
     outcome, found = None, []
     while outcome is None and time.time() - pressed < 150:
         found, _ = nodes()
@@ -779,9 +780,9 @@ def signed_in_walk(server, sign_in):
     record(True, what, f"{time.time() - pressed:.0f} s after the button")
 
     clients = tabs["clients"] if has_text(found, tabs["clients"]) else tabs["places"]
-    record(has_text(found, clients), "All six tabs are there", ", ".join([tabs["today"], tabs["route"], tabs["visits"], clients, tabs["tasks"], tabs["more"]]))
+    record(has_text(found, clients), "All five tabs are there", ", ".join([tabs["today"], tabs["route"], clients, tabs["tasks"], tabs["more"]]))
 
-    for caption in (tabs["route"], tabs["visits"], clients, tabs["tasks"], tabs["more"], tabs["today"]):
+    for caption in (tabs["route"], clients, tabs["tasks"], tabs["more"], tabs["today"]):
         found, _ = nodes()
         if not tap_text(found, caption):
             record(False, f"«{caption}» opens", "its caption is not on screen")

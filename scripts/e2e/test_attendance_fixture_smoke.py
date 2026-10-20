@@ -74,7 +74,7 @@ class WalkTests(unittest.TestCase):
 
     def run_walk(self, mode):
         self.walk.SMOKE_MODE = mode
-        tabs = {name: name.title() for name in ("today", "route", "visits", "tasks", "more", "clients", "places")}
+        tabs = {name: name.title() for name in ("today", "route", "tasks", "more", "clients", "places")}
         profile = {"logout": "Log out", "logoutMessage": "Confirm logout", "logoutConfirm": "Confirm"}
         ids = ["tenant-input", "tenant-continue", "login-email", "login-password", "login-submit", "more-action-Profile"]
         found = [{"resource-id": name, "text": name, "box": (0, 0, 10, 10)} for name in ids]
@@ -108,7 +108,7 @@ class WalkTests(unittest.TestCase):
             client_called = client_walk.called
         self.assertEqual(typed, ["test-company", "test-email", "test-password"])
         self.assertEqual(set(tapped_ids), {*ids, logout})
-        self.assertEqual(set(tapped_texts), {tabs[key] for key in ("route", "visits", "clients", "tasks", "more", "today")} | {"Confirm"})
+        self.assertEqual(set(tapped_texts), {tabs[key] for key in ("route", "clients", "tasks", "more", "today")} | {"Confirm"})
         self.assertTrue(any(what == "After logging out the app is back at the way in" and ok for ok, what, _ in self.walk.results))
         return client_called
 
@@ -472,7 +472,7 @@ class SignInTabsTests(unittest.TestCase):
             typed.append((device.screen, value))
 
         with self.on(device, ("type_text", type_text), ("hide_keyboard", lambda: None),
-                     ("words", lambda _: {}), ("tab_captions", lambda: {k: k for k in ("today", "route", "visits", "tasks", "more")})) as stack:
+                     ("words", lambda _: {}), ("tab_captions", lambda: {k: k for k in ("today", "route", "tasks", "more")})) as stack:
             printed = stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
             walk.signed_in_walk({}, AUTH)
         self.assertEqual(device.taps, ["tenant-input", "tenant-continue", "login-tab-signin", "login-email", "login-password", "login-submit"])
@@ -487,7 +487,7 @@ class SignInTabsTests(unittest.TestCase):
 
 
 GLYPH = "&#xf1a2;"  # a glyph of the icon font, as uiautomator writes it
-CAPTIONS = ["Today", "Route", "Visits", "Clients", "Tasks", "More"]
+CAPTIONS = ["Today", "Route", "Clients", "Tasks", "More"]
 
 
 def node_xml(box, attrs):

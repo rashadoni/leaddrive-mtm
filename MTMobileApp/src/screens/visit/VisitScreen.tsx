@@ -112,7 +112,7 @@ type CheckInIssue =
 const VISIT_COPY = {
   ru: {
     eyebrow: "Работа в поле",
-    title: "Визиты",
+    title: "Внеплановые визиты",
     subtitle: "Плановые визиты начинайте из Маршрута. Здесь — внеплановый визит и история.",
     helpFlow: "Как провести визит:\n1. Плановый — откройте «Маршрут» и выберите точку.\n2. Внеплановый — найдите клиента ниже.\n3. Начните визит, добавьте нужные фото и нажмите «Завершить».",
     back: "Назад",
@@ -185,7 +185,7 @@ const VISIT_COPY = {
   },
   az: {
     eyebrow: "Sahə işi",
-    title: "Ziyarətlər",
+    title: "Plansız ziyarətlər",
     subtitle: "Planlı ziyarətləri Marşrutdan başladın. Burada plansız ziyarət və tarixçə var.",
     helpFlow: "Ziyarəti necə aparmalı:\n1. Planlıdırsa «Marşrut»u açıb nöqtəni seçin.\n2. Plansızdırsa müştərini aşağıda tapın.\n3. Ziyarətə başlayın, lazım olan fotoları əlavə edib «Bitir» düyməsinə toxunun.",
     back: "Geri",
@@ -258,7 +258,7 @@ const VISIT_COPY = {
   },
   en: {
     eyebrow: "Field work",
-    title: "Visits",
+    title: "Unplanned visits",
     subtitle: "Start planned visits from Route. This screen is for an unplanned visit and history.",
     helpFlow: "How to complete a visit:\n1. For a planned visit, open Route and choose the stop.\n2. For an unplanned visit, find the client below.\n3. Start the visit, add required photos, then tap Finish.",
     back: "Back",
