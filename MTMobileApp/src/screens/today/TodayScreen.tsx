@@ -1231,9 +1231,9 @@ const styles = themed(() => StyleSheet.create({
   // «Müraciətlərim» right under the workday card: white with a hairline, like the card.
   requestsRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   requestsCopy: { flex: 1 },
-  requestsTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  requestsTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "600" },
   requestsBody: { color: fieldTheme.color.inkMuted, fontSize: 12.5, lineHeight: 17, marginTop: 1 },
-  requestsBodyWaiting: { color: fieldTheme.color.amber, fontWeight: "800" },
+  requestsBodyWaiting: { color: fieldTheme.color.amber, fontWeight: "600" },
   workdayPanel: {
     minHeight: 126,
     padding: fieldTheme.space.lg,
