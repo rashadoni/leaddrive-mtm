@@ -36,6 +36,8 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
+import { refreshJointManagers } from "../../services/joint-visit"
+import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
 import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
@@ -1619,6 +1621,8 @@ export default function RouteScreen() {
       fetchRoute()
       fetchActiveVisit().catch(() => {}).then(() => setActiveVisitKnown(true))
       fetchActiveWorkspace(activeVisit?.id).catch(() => {})
+      // Who is in the field with this agent, kept for an offline check-in (joint visit).
+      refreshJointManagers(() => api.getJointVisitManagers()).catch(() => {})
     }, [activeVisit?.id, fetchRoute, fetchActiveVisit, fetchActiveWorkspace]),
   )
 
@@ -1983,6 +1987,14 @@ export default function RouteScreen() {
         forceCheckIn = canOverride
       }
 
+      // Joint visit (owner, 2026-10-20): while a manager is in the field
+      // with this agent, the agent says whether he is on this visit.
+      const joint = await askJointManagerForCheckIn(t)
+      if (!joint.proceed) {
+        setMutating(false)
+        return
+      }
+
       const { visit } = await queueVisitCheckIn({
         customer: point.customer,
         latitude: coords?.latitude,
@@ -1990,6 +2002,7 @@ export default function RouteScreen() {
         force: forceCheckIn,
         routeId: route?.id,
         routePointId: point.id,
+        jointManagerId: joint.jointManagerId,
       })
       setActiveVisit(visit)
       setPhonePanelVisible(false)

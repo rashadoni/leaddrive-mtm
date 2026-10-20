@@ -885,6 +885,15 @@ class ApiClient {
     return this.request(`/visits${qs ? `?${qs}` : ""}`)
   }
 
+  /**
+   * Joint visit: the managers in the field with this agent right now. Short
+   * timeout — it is asked at «Я приехал — начать визит», and without an
+   * answer the app falls back to what it knew last.
+   */
+  async getJointVisitManagers(signal?: AbortSignal) {
+    return this.request("/mobile/joint-visit", { signal }, 6_000)
+  }
+
   // --- Tasks ---
 
   async getTasks(status?: string) {
