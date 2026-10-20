@@ -39,7 +39,7 @@ describe("Route Field tabs", () => {
   })
 
   it("keeps clients as a first-class destination on phone and tablet", () => {
-    expect(new Set(AGENT_TAB_NAMES).size).toBe(6)
+    expect(new Set(AGENT_TAB_NAMES).size).toBe(5)
     expect(Array.from(AGENT_TAB_NAMES)).toContain("Clients")
     expect(Array.from(AGENT_TAB_NAMES)).not.toContain("Planogram")
   })
