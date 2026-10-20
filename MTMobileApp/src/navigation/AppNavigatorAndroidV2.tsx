@@ -25,8 +25,7 @@ import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
 
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"
-import RouteScreen from "../screens/route/RouteScreen"
-import WeekScreen from "../screens/week/WeekScreen"
+import RouteSectionScreen from "../screens/route/RouteSectionScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import TaskDetailScreen from "../screens/tasks/TaskDetailScreen"
@@ -110,7 +109,6 @@ export type MoreStackParamList = {
   MoreHome: undefined
   /** A line of the bell opens the thread it is about. */
   Messages: { threadId?: string } | undefined
-  Visits: undefined
   GpsHistory: undefined
   Profile: undefined
 }
@@ -154,8 +152,8 @@ const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
   Today: { active: "today", inactive: "today-outline" },
-  Calendar: { active: "calendar-number", inactive: "calendar-number-outline" },
   Route: { active: "navigate", inactive: "navigate-outline" },
+  Visits: { active: "radio-button-on", inactive: "radio-button-off" },
   Clients: { active: "people", inactive: "people-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
   More: { active: "ellipsis-horizontal-circle", inactive: "ellipsis-horizontal-circle-outline" },
@@ -231,7 +229,6 @@ function MoreStackNavigator() {
       <MoreStack.Screen name="MoreHome" component={withFieldColorScheme(MoreScreen)} />
       {attendanceAllowed && <MoreStack.Screen name="AttendanceRequests" component={withFieldColorScheme(AttendanceRequestsScreen)} />}
       <MoreStack.Screen name="Messages" component={withFieldColorScheme(TeamMessagesScreen)} />
-      <MoreStack.Screen name="Visits" component={withFieldColorScheme(VisitScreen)} />
       <MoreStack.Screen name="GpsHistory" component={withFieldColorScheme(GpsHistoryScreen)} />
       <MoreStack.Screen name="Profile" component={withFieldColorScheme(ProfileScreen)} />
     </MoreStack.Navigator>
@@ -253,8 +250,9 @@ function ClientsStackNavigator() {
 
 const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
   Today: TodayScreen,
-  Calendar: WeekScreen,
-  Route: RouteScreen,
+  // Today's route and, under «Месяц», the calendar that was its own tab (2026-10-20).
+  Route: RouteSectionScreen,
+  Visits: VisitScreen,
   Clients: ClientsStackNavigator,
   Tasks: TasksScreen,
   More: MoreStackNavigator,
@@ -262,8 +260,8 @@ const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
 
 const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {
   Today: "navV2.today",
-  Calendar: "navV2.calendar",
   Route: "navV2.route",
+  Visits: "navV2.visits",
   Clients: "navV2.clients",
   Tasks: "navV2.tasks",
   More: "navV2.more",

@@ -78,11 +78,11 @@ describe("B18: tab captions can be read", () => {
     expect(navigator).toContain(": { paddingHorizontal: 2 },")
   })
 
-  it("still has all five captions in every language", () => {
+  it("still has every caption of the agent's bar in every language", () => {
     const missing: string[] = []
     for (const locale of ["ru", "en", "az"] as const) {
       const nav = mobileResources[locale].navV2 as Record<string, string>
-      for (const key of ["today", "calendar", "route", "tasks", "more"]) {
+      for (const key of ["today", "route", "visits", "clients", "tasks", "more"]) {
         if (typeof nav[key] !== "string" || !nav[key].trim()) missing.push(`${locale}.${key}`)
       }
     }

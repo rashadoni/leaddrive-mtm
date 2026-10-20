@@ -71,8 +71,9 @@ import {
 import { staleVisitDayDate } from "../../services/stale-visit"
 
 type TodayNavigationParams = {
-  Route: undefined
+  Route: { view?: "today" | "month" } | undefined
   PlanningBuilder: { initialDate?: string } | undefined
+  /** «Маршрут» → «Месяц»: the calendar is a tab of the route since 2026-10-20. */
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
@@ -529,7 +530,10 @@ export default function TodayScreen() {
     }
   }, [awaitingRoute, canPlanOwnRoutes, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
 
-  const open = (destination: Destination) => navigation.navigate(destination)
+  const open = (destination: Destination) => {
+    if (destination === "Calendar") navigation.navigate("Route", { view: "month" })
+    else navigation.navigate(destination)
+  }
   const startRoute = async () => {
     if (startingRoute || !workdayActive || !route || todayRoutePrimaryAction(route, routeSource) !== "start") return
     setStartingRoute(true)

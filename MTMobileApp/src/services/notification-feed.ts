@@ -523,6 +523,9 @@ export function feedNavigation(target: FeedTarget): { name: string; params?: Rec
       return { name: "Main", params: { screen: "More", params: { screen: "Messages", params: target.threadId ? { threadId: target.threadId } : undefined } }, pop: true }
     case "AttendanceRequests":
       return { name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } }, pop: true }
+    case "Calendar":
+      // The calendar is «Маршрут» → «Месяц» since 2026-10-20.
+      return { name: "Main", params: { screen: "Route", params: { view: "month" } }, pop: true }
     case "ContactDetail":
     case "OrganizationDetail":
       return { name: target.screen, params: { id: target.id } }
