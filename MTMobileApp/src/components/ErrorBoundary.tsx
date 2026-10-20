@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Sentry } from "../services/sentry"
 import { i18n } from "../i18n"
 // A plain object with no imports of its own: it cannot make the boundary throw.
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 /**
  * App-wide error boundary.
@@ -143,7 +143,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   content: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 32 },
   icon: { fontSize: 48, marginBottom: 16 },
@@ -165,4 +165,4 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
     alignSelf: "stretch",
   },
-})
+}))

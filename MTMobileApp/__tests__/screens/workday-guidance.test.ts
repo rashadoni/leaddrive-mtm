@@ -100,9 +100,9 @@ describe("Route Field product boundary", () => {
     expect(navigatorSource).toContain("RouteSelfPlanningWorkspace")
     // The team planner is registered only under `managerShell`.
     const managerBlock = navigatorSource.slice(navigatorSource.indexOf("{managerShell ? ("))
-    expect(managerBlock).toContain('<Stack.Screen name="PlanningBuilder" component={ManagerPlanningBuilderScreen} />')
+    expect(managerBlock).toContain('<Stack.Screen name="PlanningBuilder" component={withFieldColorScheme(ManagerPlanningBuilderScreen)} />')
     const fieldBlock = navigatorSource.slice(navigatorSource.indexOf("{routeFieldAdmitted ? ("), navigatorSource.indexOf("{managerShell ? ("))
-    expect(fieldBlock).toContain('<Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />')
+    expect(fieldBlock).toContain('<Stack.Screen name="PlanningBuilder" component={withFieldColorScheme(PlanningBuilderScreen)} />')
     expect(fieldBlock).not.toContain("ManagerPlanning")
     expect(navigatorSource).not.toContain('mode="self"')
     expect(selfPlannerSource).not.toContain("manager-api")

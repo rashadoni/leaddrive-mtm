@@ -73,7 +73,7 @@ import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import { DayLineStation } from "../../components/DayLine"
 import { dayStopState } from "../../components/day-line"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
   awaitingRouteStops,
@@ -1307,6 +1307,7 @@ function PointActionPanel({
 }
 
 export default function RouteScreen() {
+  const colorScheme = useFieldColorScheme()
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const agent = useAuthStore((state) => state.agent)
@@ -2355,6 +2356,8 @@ export default function RouteScreen() {
   return (
     <View style={styles.container}>
       <FlatList
+        // Rows are drawn again when the phone switches day and night.
+        extraData={colorScheme}
         data={displayedPoints}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.phoneContent, { paddingBottom: tabBarPadding }]}
@@ -2456,7 +2459,7 @@ export default function RouteScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   phoneContent: { flexGrow: 1 },
   phoneMain: { paddingHorizontal: fieldTheme.space.lg },
@@ -2764,4 +2767,4 @@ const styles = StyleSheet.create({
   sheetHandle: { width: 42, height: 5, borderRadius: 3, backgroundColor: fieldTheme.color.border },
   sheetClose: { position: "absolute", right: fieldTheme.space.md, top: 4, width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   sheetContent: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl },
-})
+}))

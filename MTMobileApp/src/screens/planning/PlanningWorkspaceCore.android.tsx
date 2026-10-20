@@ -33,7 +33,7 @@ import {
   type SelfPlanDayMode,
 } from "./self-plan-day"
 import { useHintsStore } from "../../store/hints"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
 import { fieldContactsEnabled, plannableTargetTypes } from "../../lib/field-contacts-policy"
 import { isExpandedTabletWidth, isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -2648,7 +2648,7 @@ function PlannerActionDock({ top, action, backLabel, backIcon = "arrow-back", sh
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   workspaceScroll: { flex: 1 },
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.sm },
@@ -2908,4 +2908,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   disabled: { opacity: 0.48 },
   disabledText: { opacity: 0.5 },
-})
+}))

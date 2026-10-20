@@ -8,7 +8,7 @@ import {
   Animated,
   Platform,
 } from "react-native"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 interface ConfirmSheetProps {
   visible: boolean
@@ -98,7 +98,7 @@ export default function ConfirmSheet({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: fieldTheme.color.scrim,
@@ -174,4 +174,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   confirmText: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.onColor },
-})
+}))

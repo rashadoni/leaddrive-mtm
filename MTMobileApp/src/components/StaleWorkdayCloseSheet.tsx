@@ -15,7 +15,7 @@ import {
   staleWorkdayFinishRequest,
   type StaleWorkdayCorrection,
 } from "../services/stale-workday"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 /**
  * «Günü bağla» on «Bu gün» for a day left open since an earlier date: one
@@ -149,7 +149,7 @@ function CloseSheetCard({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: "flex-end",
@@ -252,4 +252,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-})
+}))

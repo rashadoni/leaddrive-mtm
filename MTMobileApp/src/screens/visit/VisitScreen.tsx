@@ -50,7 +50,7 @@ import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import { askLocationDisclosure } from "../../services/location-disclosure"
 import HintCard from "../../components/HintCard"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
@@ -382,6 +382,7 @@ function formatVisitClock(value: string | undefined, language: string): string {
 }
 
 export default function VisitScreen() {
+  const colorScheme = useFieldColorScheme()
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<any>()
   // The same row in the organization card opens "Итог визита"; the screen that
@@ -1203,6 +1204,8 @@ export default function VisitScreen() {
         <>
           {header}
           <FlatList
+            // Rows are drawn again when the phone switches day and night.
+            extraData={colorScheme}
             data={visits}
             keyExtractor={(visit) => visit.id}
             keyboardShouldPersistTaps="handled"
@@ -1858,7 +1861,7 @@ function MetaPill({ icon, text }: { icon: string; text: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like the tabs' headers (owner-approved colours, 2026-10-18): green
   // stays the accent, the screen's one fill is its main button.
@@ -2101,4 +2104,4 @@ const styles = StyleSheet.create({
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 430, marginTop: fieldTheme.space.sm },
   disabled: { opacity: 0.42 },
   pressed: { opacity: 0.72 },
-})
+}))

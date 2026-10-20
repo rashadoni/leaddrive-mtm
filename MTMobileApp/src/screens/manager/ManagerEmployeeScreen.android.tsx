@@ -31,7 +31,7 @@ import {
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { statusLabel } from "../../lib/status-labels"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildEmployeeDayDocument, employeeDayHasMap } from "./employee-day-map"
@@ -54,13 +54,13 @@ type Employee = {
 
 // A stop's state is the colour of its number and ring, never a filled circle
 // (owner-approved colours, 2026-10-18).
-const STOP_STYLE: Record<EmployeeDayStop["status"], { fill: string; text: string; border: string }> = {
+const STOP_STYLE: Record<EmployeeDayStop["status"], { fill: string; text: string; border: string }> = themed(() => ({
   VISITED: { fill: fieldTheme.color.surface, text: fieldTheme.color.primaryStrong, border: fieldTheme.color.primary },
   NEXT: { fill: fieldTheme.color.surface, text: fieldTheme.color.blue, border: fieldTheme.color.blue },
   PLANNED: { fill: fieldTheme.color.surface, text: fieldTheme.color.inkMuted, border: fieldTheme.color.border },
   SKIPPED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
   MISSED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
-}
+}))
 
 function toEmployee(raw: any, fallbackName: string): Employee {
   const data = raw?.data ?? {}
@@ -408,7 +408,7 @@ function Line({ label, value }: { label: string; value: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   content: { paddingBottom: fieldTheme.space.xxl },
   top: { backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.md, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
@@ -476,4 +476,4 @@ const styles = StyleSheet.create({
   loading: { paddingVertical: fieldTheme.space.xxl, alignItems: "center" },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.72 },
-})
+}))

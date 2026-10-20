@@ -20,7 +20,7 @@ import { readLocationFix } from "../../services/location-fix"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useLocationFixStore } from "../../store/location-fixes"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildLocationFixMapDocument } from "./organization-location-fix-map"
 import {
@@ -471,7 +471,7 @@ export default function RouteOrganizationLocationFixScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.md, backgroundColor: fieldTheme.color.primaryStrong },
   backButton: { alignSelf: "flex-start", minHeight: 44, flexDirection: "row", alignItems: "center", gap: 7, paddingRight: fieldTheme.space.md },
@@ -510,4 +510,4 @@ const styles = StyleSheet.create({
   submitText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.8 },
-})
+}))

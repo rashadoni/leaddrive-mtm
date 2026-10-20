@@ -1,7 +1,7 @@
 import React from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from "react-native"
 import { useHintsStore } from "../store/hints"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 /**
  * Dismissible inline hint. Renders nothing when the hint was dismissed or
@@ -38,7 +38,7 @@ export default function HintCard({ id, text, style }: { id: string; text: string
 // on the visit screen among green buttons. Found in the sweep after the
 // check-out note dialog on the Galaxy S23 (2026-09-14). A hint is guidance, so
 // it takes the brand's soft green, not the semantic violet.
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -55,4 +55,4 @@ const styles = StyleSheet.create({
   bulb: { fontSize: 14 },
   text: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18 },
   close: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "700", paddingHorizontal: 4 },
-})
+}))

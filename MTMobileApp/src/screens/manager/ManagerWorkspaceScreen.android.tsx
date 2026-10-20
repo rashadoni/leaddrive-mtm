@@ -20,7 +20,7 @@ import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { managerApi } from "../../services/manager-api"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -68,7 +68,7 @@ type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange" | "doct
 const SCREEN_META: Record<
   ManagerWorkspaceKind,
   { titleKey: string; bodyKey: string; icon: string; color: string; tint: string }
-> = {
+> = themed(() => ({
   team: {
     titleKey: "managerShell.teamTitle",
     bodyKey: "managerShell.teamBody",
@@ -90,7 +90,7 @@ const SCREEN_META: Record<
     color: fieldTheme.color.amber,
     tint: fieldTheme.color.amberSoft,
   },
-}
+}))
 
 /**
  * `contactTransfer` opens the «transfer contacts» door; only a navigator that
@@ -822,7 +822,7 @@ function ApprovalSection({ title, items, t, busyId, onApprove, onReject, approve
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
     backgroundColor: fieldTheme.color.surface,
@@ -1031,4 +1031,4 @@ const styles = StyleSheet.create({
   rejectBtn: { borderWidth: 1, borderColor: fieldTheme.color.danger, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
   rejectBtnText: { color: fieldTheme.color.danger, fontSize: 12, fontWeight: "700" },
   btnBusy: { opacity: 0.5 },
-})
+}))

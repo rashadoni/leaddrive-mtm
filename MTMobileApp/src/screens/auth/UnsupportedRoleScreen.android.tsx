@@ -4,7 +4,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuthStore } from "../../store/auth"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 
 export default function UnsupportedRoleScreen() {
   const { t } = useTranslation()
@@ -32,7 +32,7 @@ export default function UnsupportedRoleScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: {
     flex: 1,
     alignItems: "center",
@@ -85,4 +85,4 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   pressed: { opacity: 0.8 },
-})
+}))

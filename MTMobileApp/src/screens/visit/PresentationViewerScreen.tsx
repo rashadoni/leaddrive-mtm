@@ -31,7 +31,7 @@ import {
   setPresentationImmersive,
   type RenderedPdfPage,
 } from "../../services/presentation-file"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import {
   PRESENTATION_DOUBLE_TAP_MS,
@@ -756,7 +756,7 @@ export default function PresentationViewerScreen() {
  */
 const STAGE_BACKDROP = "#111A1F"
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   containerImmersive: { backgroundColor: STAGE_BACKDROP },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
@@ -796,4 +796,4 @@ const styles = StyleSheet.create({
   externalHint: { maxWidth: 520, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   retryButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 14, paddingHorizontal: 20, backgroundColor: fieldTheme.color.primary },
   retryText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "800" },
-})
+}))

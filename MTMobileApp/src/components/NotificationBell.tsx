@@ -7,7 +7,7 @@ import { useAutoRefresh } from "../hooks/useAutoRefresh"
 import { listenForPushRefresh, useNotificationInbox, useNotificationUnread } from "../store/notification-inbox"
 import { badgeLabel } from "../services/notification-feed"
 import { feedLanguage } from "../services/notification-feed-copy"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 /**
  * How often a bell on the screen in front asks again by itself. A push that
@@ -60,7 +60,7 @@ export default function NotificationBell() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   bell: {
     width: 46,
     height: 46,
@@ -88,4 +88,4 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: fieldTheme.color.onColor, fontSize: 11, lineHeight: 14, fontWeight: "900" },
   pressed: { opacity: 0.75 },
-})
+}))

@@ -17,7 +17,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuthStore } from "../../store/auth"
 import { api, REVOKED_REASON } from "../../services/api"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import LoginCodeFlow from "./LoginCodeFlow"
 
@@ -348,7 +348,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   scrollContent: {
     flexGrow: 1,
@@ -513,4 +513,4 @@ const styles = StyleSheet.create({
   forgotText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "800" },
   helpText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center", marginTop: fieldTheme.space.md },
   pressed: { opacity: 0.72 },
-})
+}))

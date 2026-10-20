@@ -29,7 +29,7 @@ import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } 
 import { useHintsStore } from "../../store/hints"
 import { version as APP_VERSION } from "../../../package.json"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
 import { statusLabel } from "../../lib/status-labels"
@@ -409,7 +409,7 @@ function severityTint(category?: string) {
   return fieldTheme.color.blueSoft
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   loadingState: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.canvas },
   loadingText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "600" },
@@ -466,4 +466,4 @@ const styles = StyleSheet.create({
   dangerActionText: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
   version: { marginBottom: fieldTheme.space.lg, color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "600", textAlign: "center" },
   pressed: { opacity: 0.72 },
-})
+}))

@@ -5,7 +5,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { formatLocalizedDate } from "../lib/format-localized-date"
 import { staleVisitDayDate } from "../services/stale-visit"
 import { companyClock } from "../services/stale-workday"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 /**
  * «Bu gün» for a workday left open since an earlier day (`stale-workday.ts`).
@@ -98,7 +98,7 @@ export default function StaleWorkdayCard({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   panel: {
     padding: fieldTheme.space.lg,
     gap: fieldTheme.space.lg,
@@ -162,4 +162,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-})
+}))

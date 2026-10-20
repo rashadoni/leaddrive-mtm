@@ -31,7 +31,7 @@ import FeedbackToast from "../../components/FeedbackToast"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import { taskWorkflowStatus, type TaskWorkflowStatus } from "./tasks-workflow-state"
 
@@ -381,6 +381,7 @@ function priorityVisual(priority?: string) {
 }
 
 export default function TasksScreen() {
+  const colorScheme = useFieldColorScheme()
   const { t, i18n } = useTranslation()
   const copy = useMemo(() => copyFor(i18n.language), [i18n.language])
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -674,6 +675,8 @@ export default function TasksScreen() {
   return (
     <View style={styles.container}>
       <FlatList
+        // Rows are drawn again when the phone switches day and night.
+        extraData={colorScheme}
         key={tablet ? "tasks-grid" : "tasks-list"}
         data={loading && tasks.length === 0 ? [] : filtered}
         keyExtractor={(task) => task.id}
@@ -922,7 +925,7 @@ function CompletionModal({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like every tab's header (owner-approved colours, 2026-10-18).
   header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingBottom: fieldTheme.space.xl, paddingHorizontal: fieldTheme.space.lg },
@@ -1021,4 +1024,4 @@ const styles = StyleSheet.create({
   modalCancelText: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "900" },
   modalSubmitButton: { minHeight: 48, flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.md },
   modalSubmitText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900", textAlign: "center", flexShrink: 1 },
-})
+}))

@@ -37,7 +37,7 @@ import {
 } from "./organization-location-fix-model"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useLocationFixStore } from "../../store/location-fixes"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { statusLabel } from "../../lib/status-labels"
@@ -586,7 +586,7 @@ export default function RouteOrganizationDetailScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
@@ -647,4 +647,4 @@ const styles = StyleSheet.create({
   expandButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border },
   expandText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   pressed: { opacity: 0.72 },
-})
+}))

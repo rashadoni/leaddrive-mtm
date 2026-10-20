@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { ActivityIndicator, Linking, PermissionsAndroid, Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { managerApi } from "../../services/manager-api"
 import { hasCapability } from "../../services/bootstrap"
 import { captureOneShotLocation } from "../../services/self-location-share"
@@ -127,7 +127,7 @@ export default function ManagerSelfLocationShare() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   // A white card; its button is the one fill (owner-approved colours, 2026-10-18).
   card: {
     gap: fieldTheme.space.md,
@@ -168,4 +168,4 @@ const styles = StyleSheet.create({
   settingsLinkText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900", textDecorationLine: "underline" },
   pressed: { opacity: 0.72 },
   disabled: { opacity: 0.55 },
-})
+}))

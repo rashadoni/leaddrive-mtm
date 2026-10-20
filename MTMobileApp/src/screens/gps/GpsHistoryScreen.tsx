@@ -30,7 +30,7 @@ import ShortWindowPage from "../../components/ShortWindowPage"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import {
   isExpandedTabletWidth,
   isShortWindow,
@@ -76,6 +76,7 @@ function pointKey(point: GpsTimelinePoint): string {
 }
 
 export default function GpsHistoryScreen() {
+  const colorScheme = useFieldColorScheme()
   const { t, i18n } = useTranslation()
   const navigation = useNavigation()
   const { width, height } = useWindowDimensions()
@@ -409,6 +410,8 @@ export default function GpsHistoryScreen() {
     // SE, 2026-09-14) that was 332 points in a 720 px frame.
     content = (
       <FlatList
+        // Rows are drawn again when the phone switches day and night.
+        extraData={colorScheme}
         data={model.timelinePoints}
         keyExtractor={pointKey}
         renderItem={renderPoint}
@@ -978,7 +981,7 @@ function PointRow({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingBottom: fieldTheme.space.lg, paddingHorizontal: fieldTheme.space.lg },
@@ -1078,4 +1081,4 @@ const styles = StyleSheet.create({
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center", maxWidth: 440, marginTop: fieldTheme.space.sm },
   disabled: { opacity: 0.35 },
   pressed: { opacity: 0.72 },
-})
+}))

@@ -404,7 +404,7 @@ describe("the bell is in the corner of every main screen", () => {
 
   it("opens one list over the tabs, in both shells", () => {
     const navigator = read("navigation/AppNavigatorAndroidV2.tsx")
-    expect(navigator).toContain('{routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={NotificationsScreen} /> : null}')
+    expect(navigator).toContain('{routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={withFieldColorScheme(NotificationsScreen)} /> : null}')
     expect(navigator).not.toContain('<MoreStack.Screen name="Notifications"')
     expect(read("components/NotificationBell.tsx")).toContain('navigation.navigate("Notifications")')
   })

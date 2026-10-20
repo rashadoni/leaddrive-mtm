@@ -34,7 +34,7 @@ import {
 } from "../../services/week"
 import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import NotificationBell from "../../components/NotificationBell"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -1393,7 +1393,7 @@ function DayOffState({ reason }: { reason: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
     backgroundColor: fieldTheme.color.surface,
@@ -1696,4 +1696,4 @@ const styles = StyleSheet.create({
   dayOffNoticeText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   dayOffState: { minHeight: 180, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, marginTop: fieldTheme.space.xl, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
   dayOffStateText: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, fontWeight: "700" },
-})
+}))

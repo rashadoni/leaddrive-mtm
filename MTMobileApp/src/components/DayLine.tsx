@@ -1,7 +1,7 @@
 import React from "react"
 import { StyleSheet, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { dayStripStops, type DayStopState } from "./day-line"
 
 export type { DayStopState } from "./day-line"
@@ -79,7 +79,7 @@ export function DayLineStrip({ visited, planned, label }: { visited: number; pla
 
 const LINE = 4
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   rail: { width: 34, alignItems: "center", alignSelf: "stretch" },
   segment: { flex: 1, width: LINE, minHeight: 8, backgroundColor: fieldTheme.color.line },
   segmentFilled: { backgroundColor: fieldTheme.color.success },
@@ -95,4 +95,4 @@ const styles = StyleSheet.create({
   ringCompact: { width: 12, height: 12, borderRadius: 6, borderWidth: 3 },
   strip: { flex: 1, minHeight: 20, flexDirection: "row", alignItems: "center" },
   stripSegment: { flex: 1, height: LINE, marginHorizontal: -1, backgroundColor: fieldTheme.color.line },
-})
+}))

@@ -16,7 +16,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { enqueueOutboxOperation } from "../../services/outbox"
 import { runMobileSync } from "../../services/sync-engine"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
@@ -211,7 +211,7 @@ export default function TeamMessagesScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, borderWidth: 1, borderColor: fieldTheme.color.border },
@@ -242,4 +242,4 @@ const styles = StyleSheet.create({
   ackText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   ackTextDone: { color: fieldTheme.color.success },
   pressed: { opacity: 0.76 },
-})
+}))

@@ -12,7 +12,7 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import type { BrandPotential, BrandPotentialEligibleVisit } from "../services/contact-detail"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { isTabletWidth } from "../theme/layoutBreakpoints"
 
 export interface BrandPotentialFields {
@@ -151,7 +151,7 @@ export default function BrandPotentialModal({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { minHeight: 84, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
   headerAction: { minWidth: 72, minHeight: 48, justifyContent: "center" }, cancel: { color: "#64748b", fontSize: 14, fontWeight: "700" },
@@ -164,4 +164,4 @@ const styles = StyleSheet.create({
   evidencePanel: { padding: 16, borderRadius: 16, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0" }, sectionTitle: { color: "#13231F", fontSize: 14, fontWeight: "900" }, sectionHint: { color: "#64748b", fontSize: 12, lineHeight: 18, marginTop: 3, marginBottom: 10 }, empty: { color: "#94a3b8", fontSize: 13, paddingVertical: 8 },
   visit: { minHeight: 58, flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", marginTop: 8 }, visitSelected: { borderColor: "#08705A", backgroundColor: "#F1F6F3" }, checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }, checkboxSelected: { borderColor: "#08705A", backgroundColor: "#08705A" }, check: { color: "#fff", fontSize: 14, fontWeight: "900" }, visitCopy: { flex: 1 }, visitTitle: { color: "#13231F", fontSize: 13, fontWeight: "800" }, visitMeta: { color: "#64748b", fontSize: 11, marginTop: 3 },
   error: { borderRadius: 12, borderWidth: 1, borderColor: "#EDB9AD", backgroundColor: "#FDE6DF", padding: 13 }, errorText: { color: "#A43B25", fontSize: 13, fontWeight: "800" },
-})
+}))

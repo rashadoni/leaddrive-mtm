@@ -15,7 +15,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import { commercialApi } from "../../services/commercial-api"
 import { managerApi } from "../../services/manager-api"
@@ -425,7 +425,7 @@ function Stat({ value, label, tone }: { value: number; label: string; tone: "suc
   return <View style={styles.stat}><Text style={[styles.statValue, { color }]}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, maxWidth: 1180 },
@@ -506,4 +506,4 @@ const styles = StyleSheet.create({
   emptyText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
   messageBand: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   messageText: { flex: 1, fontSize: 13, fontWeight: "700", lineHeight: 18 },
-})
+}))

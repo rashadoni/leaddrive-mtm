@@ -23,7 +23,7 @@ import { useSyncStatusStore } from "../../store/sync-status"
 import { useAuthStore } from "../../store/auth"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import MobileWorkflowGuide from "../../components/MobileWorkflowGuide"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
 import { contactClassColors } from "../../lib/contact-classes"
@@ -35,6 +35,7 @@ const TYPE_KEY: Record<string, string> = {
 }
 
 export default function ContactsList() {
+  const colorScheme = useFieldColorScheme()
   const { t } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
@@ -161,6 +162,8 @@ export default function ContactsList() {
       </View>
 
       <FlatList
+        // Rows are drawn again when the phone switches day and night.
+        extraData={colorScheme}
         key={tablet ? "contacts-tablet" : "contacts-phone"}
         data={contacts}
         numColumns={tablet ? 2 : 1}
@@ -270,7 +273,7 @@ export default function ContactsList() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   wrap: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   searchArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg },
   guideWrap: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.md },
@@ -335,4 +338,4 @@ const styles = StyleSheet.create({
   retryButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
   retryButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   pressed: { opacity: 0.72 },
-})
+}))

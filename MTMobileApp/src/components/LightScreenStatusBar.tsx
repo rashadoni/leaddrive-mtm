@@ -2,7 +2,7 @@ import React from "react"
 import { StatusBar, useWindowDimensions } from "react-native"
 import { useIsFocused } from "@react-navigation/native"
 import { shouldUseNavigationRail } from "../theme/layoutBreakpoints"
-import { fieldColorScheme } from "../theme/fieldTheme"
+import { useFieldColorScheme } from "../theme/fieldTheme"
 
 /**
  * Dark status bar icons for a screen whose top is light.
@@ -22,8 +22,9 @@ import { fieldColorScheme } from "../theme/fieldTheme"
 export default function LightScreenStatusBar() {
   const focused = useIsFocused()
   const { width, height } = useWindowDimensions()
+  const colorScheme = useFieldColorScheme()
   if (shouldUseNavigationRail(width, height)) return null
   // In the night palette the top is dark: the app-wide light icons already fit.
-  if (fieldColorScheme === "dark") return null
+  if (colorScheme === "dark") return null
   return focused ? <StatusBar barStyle="dark-content" /> : null
 }

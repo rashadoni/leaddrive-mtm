@@ -13,7 +13,7 @@ import {
 } from "react-native"
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { NOTES_ACTION_MIN_HEIGHT, notesModalLayout } from "./notes-modal-layout"
 
 interface Props {
@@ -174,7 +174,7 @@ function NotesCard({ title, message, text, onChangeText, onCancel, onSubmit }: C
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   // Ink at 55% (alpha 8C): a dim of the app's own dark, not a neutral black,
   // built from the token so it follows fieldTheme if ink changes.
   scrim: { flex: 1, backgroundColor: fieldTheme.color.ink + "8C" },
@@ -226,4 +226,4 @@ const styles = StyleSheet.create({
   submitButton: { flex: 1.5, backgroundColor: fieldTheme.color.primary },
   submitText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "800" },
   pressed: { opacity: 0.8 },
-})
+}))

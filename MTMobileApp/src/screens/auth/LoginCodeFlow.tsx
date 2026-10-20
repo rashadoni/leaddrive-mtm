@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 /**
@@ -326,7 +326,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   // The WhatsApp mark is white in both palettes.
   whatsappMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   whatsappButton: {
@@ -403,4 +403,4 @@ const styles = StyleSheet.create({
   primaryText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
   disabled: { opacity: 0.65 },
   pressed: { opacity: 0.72 },
-})
+}))

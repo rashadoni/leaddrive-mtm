@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { photoWatermarkPipeline } from "../lib/photo-watermark"
 import { useBootstrapStore } from "../store/bootstrap"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { FEEDBACK_TONE_COLORS } from "./feedback-tone"
 
 /**
@@ -386,7 +386,7 @@ function PhotoCapture({ onClose, onPhotoTaken, watermark }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: VIEWFINDER_BLACK,
@@ -520,4 +520,4 @@ const styles = StyleSheet.create({
   },
   primaryText: { fontSize: 17, fontWeight: "800", color: fieldTheme.color.onColor },
   pressed: { opacity: 0.8 },
-})
+}))

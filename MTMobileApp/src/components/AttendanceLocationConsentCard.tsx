@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 're
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import { useBootstrapStore } from '../store/bootstrap'
-import { fieldTheme } from '../theme/fieldTheme'
+import { fieldTheme, themed } from '../theme/fieldTheme'
 import { attendanceLocationScope, readAttendanceLocation, pendingAttendanceConsent, beginAttendanceConsent, sendAttendanceConsent } from '../services/attendance-location'
 import type { OwnAttendanceLocation } from '../services/attendance-location-contract'
 import type { OutboxOperation } from '../services/outbox'
@@ -99,10 +99,10 @@ export default function AttendanceLocationConsentCard({ hideUntilEnabled = false
     </>}
   </View>
 }
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: { backgroundColor: fieldTheme.color.surface, borderRadius: 20, borderWidth: 1, borderColor: fieldTheme.color.border, padding: 20, gap: 12 },
   title: { fontSize: 20, fontWeight: '700', color: fieldTheme.color.ink }, status: { fontSize: 16, fontWeight: '600', color: fieldTheme.color.primaryStrong },
   copy: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.inkMuted }, legal: { fontSize: 16, lineHeight: 25, color: fieldTheme.color.ink },
   warning: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.amber }, button: { minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 12 },
   buttonText: { fontSize: 16, color: fieldTheme.color.primaryStrong, fontWeight: '600', textAlign: 'center' }, primary: { backgroundColor: fieldTheme.color.primaryStrong }, white: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: '600', textAlign: 'center' }, disabled: { opacity: 0.45 }, checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, grow: { flex: 1 },
-})
+}))

@@ -13,7 +13,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { useTranslation } from "react-i18next"
 import { useStore } from "zustand"
 import Icon from "react-native-vector-icons/Ionicons"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import {
   answerChoice,
   appFeedbackStore,
@@ -237,7 +237,7 @@ function ChoiceCard({ choice }: { choice: AppChoice }) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   noticeFrame: { position: "absolute", alignItems: "center", zIndex: 1000, elevation: 12 },
   noticeMotion: { width: "100%", maxWidth: APP_CHOICE_MAX_WIDTH },
   notice: {
@@ -293,19 +293,19 @@ const styles = StyleSheet.create({
   buttonRow: { flex: 1 },
   buttonText: { fontSize: 16, fontWeight: "700", textAlign: "center" },
   pressed: { opacity: 0.8 },
-})
+}))
 
 // Keyed by AppChoiceButtonLook: choiceButtonLook() picks one per button.
-const BUTTON_LOOK = StyleSheet.create({
+const BUTTON_LOOK = themed(() => StyleSheet.create({
   quiet: { backgroundColor: fieldTheme.color.surfaceStrong },
   primary: { backgroundColor: fieldTheme.color.primary },
   danger: { backgroundColor: fieldTheme.color.danger },
   outline: { backgroundColor: fieldTheme.color.surface, borderWidth: 1.5, borderColor: fieldTheme.color.primary },
-})
+}))
 
-const BUTTON_TEXT = StyleSheet.create({
+const BUTTON_TEXT = themed(() => StyleSheet.create({
   quiet: { color: fieldTheme.color.ink },
   primary: { color: fieldTheme.color.onColor, fontWeight: "800" },
   danger: { color: fieldTheme.color.onColor, fontWeight: "800" },
   outline: { color: fieldTheme.color.primary },
-})
+}))

@@ -24,7 +24,7 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { isManagerRole } from "../../auth/roles"
 import SyncStatusChip from "../../components/SyncStatusChip"
 import ConfirmSheet from "../../components/ConfirmSheet"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { upperFirst } from "../../lib/upper"
 import {
   LAYOUT_TOUCH_TARGETS,
@@ -806,7 +806,7 @@ function DashboardWidget({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
     backgroundColor: fieldTheme.color.primaryStrong,
@@ -970,4 +970,4 @@ const styles = StyleSheet.create({
   backButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, alignSelf: "flex-start" },
   backText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "800" },
   focusBody: { flex: 1, padding: fieldTheme.space.lg },
-})
+}))
