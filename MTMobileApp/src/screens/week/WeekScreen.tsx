@@ -1559,7 +1559,7 @@ const styles = themed(() => StyleSheet.create({
   monthCellSelected: { backgroundColor: fieldTheme.color.primarySoft },
   monthCellTop: { minHeight: 30, alignItems: "center", justifyContent: "center" },
   monthNumberTile: { width: 28, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 14 },
-  monthNumberToday: { backgroundColor: fieldTheme.color.coral },
+  monthNumberToday: { backgroundColor: fieldTheme.color.coralFill },
   monthNumberSelected: { backgroundColor: fieldTheme.color.primary },
   monthNumber: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 18, fontWeight: "700" },
   monthNumberEmphasis: { color: fieldTheme.color.onColor },

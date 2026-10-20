@@ -1042,7 +1042,7 @@ const styles = themed(() => StyleSheet.create({
   currentCoordinateText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
   playbackControls: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   playbackButton: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
-  playButton: { flex: 1, minHeight: 50, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.coral },
+  playButton: { flex: 1, minHeight: 50, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.coralFill },
   playButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   timelineHeader: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingTop: fieldTheme.space.lg, paddingBottom: fieldTheme.space.md },
   pointRow: { minHeight: 74, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.sm },

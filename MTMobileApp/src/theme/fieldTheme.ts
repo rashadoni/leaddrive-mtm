@@ -61,6 +61,19 @@ const LIGHT = {
   onDangerSoft: "#762A2A",
   success: "#1C7A50",
   successSoft: "#DAEFE4",
+  /**
+   * The fill under onColor text and icons, one per accent: a button, a
+   * badge, a stop on the day line. By day it is the accent itself. At night
+   * the accents are light, to read as text on the dark ground, and white on
+   * them read at about 2:1 — the night «Connect» on the first screen
+   * (3.11.37) was white on #F08A70 — so the night fill is a deeper shade of
+   * the same accent.
+   */
+  coralFill: "#A43B25",
+  amberFill: "#8B5A00",
+  blueFill: "#2E73D2",
+  violetFill: "#7155B7",
+  successFill: "#1C7A50",
   /** Text and icons on a filled colour: light in both palettes. */
   onColor: "#F8FCFA",
   /** A dimmed layer under a sheet or a dialog. */
@@ -77,7 +90,8 @@ export type FieldPalette = { [K in keyof typeof LIGHT]: string }
  * white button text, and no green reaches 4.5:1 for both; #1A8E6A gives
  * about 4:1 each way. The first night build used #3DB58B: bright on dark,
  * but white «Marşrut yarat» on it read at 2.5:1 (S23, 3.11.27). Fills that
- * are only fills take primaryStrong, white text on it at 4.6:1.
+ * are only fills take primaryStrong, white text on it at 4.6:1. The other
+ * accents have their own fill under white, about 4.8:1 at night.
  */
 const DARK: FieldPalette = {
   canvas: "#0E1412",
@@ -102,6 +116,11 @@ const DARK: FieldPalette = {
   onDangerSoft: "#F2B8B8",
   success: "#4CC48C",
   successSoft: "#15352A",
+  coralFill: "#C2482A",
+  amberFill: "#8F6A22",
+  blueFill: "#2C6FC8",
+  violetFill: "#7A5BD0",
+  successFill: "#2A7F57",
   onColor: "#F8FCFA",
   scrim: "rgba(0,0,0,0.6)",
   line: "#33423C",

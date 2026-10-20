@@ -396,7 +396,7 @@ const styles = themed(() => StyleSheet.create({
     borderColor: "#7E9F94",
   },
   stepNumberDone: { backgroundColor: fieldTheme.color.onColor, borderColor: fieldTheme.color.onColor },
-  stepNumberActive: { backgroundColor: fieldTheme.color.coral, borderColor: fieldTheme.color.coral },
+  stepNumberActive: { backgroundColor: fieldTheme.color.coralFill, borderColor: fieldTheme.color.coralFill },
   stepNumberTextActive: { color: fieldTheme.color.onColor, fontWeight: "900" },
   stepCopy: { flex: 1, marginLeft: fieldTheme.space.md },
   stepTitle: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "800" },
@@ -485,7 +485,7 @@ const styles = themed(() => StyleSheet.create({
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.coral,
+    backgroundColor: fieldTheme.color.coralFill,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

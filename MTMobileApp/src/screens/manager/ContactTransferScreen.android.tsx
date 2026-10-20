@@ -499,7 +499,7 @@ const styles = themed(() => StyleSheet.create({
   excludedRow: { gap: 3, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.amberSoft },
   excludedName: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800" },
   excludedReason: { color: fieldTheme.color.amber, fontSize: 11, lineHeight: 16 },
-  executeButton: { minHeight: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.coral, paddingHorizontal: fieldTheme.space.lg },
+  executeButton: { minHeight: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.coralFill, paddingHorizontal: fieldTheme.space.lg },
   executeButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   reasonHelp: { color: fieldTheme.color.inkMuted, fontSize: 11, textAlign: "center" },
   emptyLine: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
