@@ -78,6 +78,14 @@ describe("B18: tab captions can be read", () => {
     expect(navigator).toContain(": { paddingHorizontal: 2 },")
   })
 
+  it("shrinks a caption that does not fit instead of cutting it to «Ziyarətl…»", () => {
+    // Six tabs on the S948B (384 dp, 3.11.43) cut three Azerbaijani captions.
+    const caption = navigator.slice(navigator.indexOf("function BottomTabCaption("), navigator.indexOf("function tabOptions("))
+    expect(caption).toContain("numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}")
+    expect(caption).toContain("styles.tabLabel, styles.tabCaption")
+    expect(navigator).toContain("...(rail ? {} : { tabBarLabel: BottomTabCaption }),")
+  })
+
   it("still has every caption of the agent's bar in every language", () => {
     const missing: string[] = []
     for (const locale of ["ru", "en", "az"] as const) {
