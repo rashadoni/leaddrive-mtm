@@ -18,12 +18,9 @@ import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
-import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { useBootstrapStore } from "../../store/bootstrap"
-import { useAuthStore } from "../../store/auth"
 import NotificationBell from "../../components/NotificationBell"
 
-type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
+type MoreRoute = "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
@@ -76,13 +73,9 @@ export default function MoreScreen() {
     : i18n.language.toLowerCase().startsWith("en")
       ? { title: "Notifications", body: "Messages, request decisions and deadline reminders" }
       : { title: "Уведомления", body: "Сообщения, решения по заявкам и напоминания о сроках" }
-  const policies = useBootstrapStore(state => state.data?.policies)
-  const role = useAuthStore(state => state.agent?.role)
   const actions: MoreAction[] = [
-    ...(role === "AGENT" && agentMayAttendanceRequests(policies) ? [{
-      route: "AttendanceRequests" as const, icon: "document-text-outline",
-      titleKey: "attendanceRequests.title", bodyKey: "attendanceRequests.menuBody",
-    }] : []),
+    // «Müraciətlərim» moved under the workday card on «Bu gün» (owner,
+    // 2026-10-20: «это нужно, чтоб отображалось в модуле учёта, а не здесь»).
     {
       route: "Notifications",
       icon: "notifications-outline",
@@ -100,9 +93,6 @@ export default function MoreScreen() {
 
   const open = (route: MoreRoute) => {
     switch (route) {
-      case "AttendanceRequests":
-        navigation.navigate("AttendanceRequests")
-        break
       case "Notifications":
         // The bell's list lives over the tabs, not in this stack.
         navigation.navigate("Notifications" as never)

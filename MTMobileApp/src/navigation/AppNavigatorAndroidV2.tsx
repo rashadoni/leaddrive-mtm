@@ -66,6 +66,8 @@ import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspac
 import { AGENT_TAB_NAMES, hasManagerShellAccess, mainShell, type ManagerTabName } from "./role-tabs"
 
 export type RootStackParamList = {
+  /** «Müraciətlərim» from the workday card on «Bu gün» (owner, 2026-10-20). */
+  AttendanceRequests: undefined
   Main: undefined
   Login: undefined
   Server: undefined
@@ -493,6 +495,8 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />
                 <Stack.Screen name="TaskDetail" component={withFieldColorScheme(TaskDetailScreen)} />
                 <Stack.Screen name="Visits" component={withFieldColorScheme(VisitScreen)} />
+                {/* Over the tabs, so «Geri» returns to «Bu gün», where the row is. */}
+                {agentMayAttendanceRequests(bootstrap?.policies) ? <Stack.Screen name="AttendanceRequests" component={withFieldColorScheme(AttendanceRequestsScreen)} /> : null}
                 <Stack.Screen name="Base" component={withFieldColorScheme(RouteBaseScreen)} />
                 <Stack.Screen name="GpsHistory" component={withFieldColorScheme(GpsHistoryScreen)} />
                 <Stack.Screen name="Profile" component={withFieldColorScheme(ProfileScreen)} />

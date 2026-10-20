@@ -69,6 +69,7 @@ import {
   workdayOpenSinceEarlierDay,
 } from "../../services/stale-workday"
 import { staleVisitDayDate } from "../../services/stale-visit"
+import { requestsWaitingCount } from "./requests-waiting"
 
 type TodayNavigationParams = {
   Route: { view?: "today" | "month" } | undefined
@@ -78,6 +79,7 @@ type TodayNavigationParams = {
   Tasks: undefined
   Visits: undefined
   More: { screen: "Messages" }
+  AttendanceRequests: undefined
 }
 
 type Destination = Exclude<keyof TodayNavigationParams, "More" | "PlanningBuilder">
@@ -198,6 +200,22 @@ export default function TodayScreen() {
     if (finish?.approved) await refreshRouteFieldSession()
   }, [currentWorkdayKey, finishTimeRequestable, staleDay])
   useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
+
+  // «Müraciətlərim» lives under the workday card since 2026-10-20 (owner:
+  // «это нужно, чтоб отображалось в модуле учёта»). The row says how many of
+  // the agent's requests still wait for the manager: the saved list, the
+  // server's answer when there is one, and what this phone has not sent yet.
+  const [requestsWaiting, setRequestsWaiting] = useState(0)
+  const readRequestsWaiting = useCallback(async () => {
+    if (!finishTimeRequestable) return
+    let scope: string
+    try { scope = attendanceScope() } catch { return }
+    const queued = await attendanceQueued(scope).catch(() => [])
+    let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
+    try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
+    setRequestsWaiting(requestsWaitingCount(requests, queued))
+  }, [finishTimeRequestable])
+  useAutoRefresh(() => { readRequestsWaiting().catch(() => {}) })
   useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
   const [closeSheetOpen, setCloseSheetOpen] = useState(false)
   const [closeSending, setCloseSending] = useState(false)
@@ -805,6 +823,23 @@ export default function TodayScreen() {
               </View>
             </View>
             )}
+            {finishTimeRequestable ? (
+              <Pressable
+                testID="today-my-requests"
+                accessibilityRole="button"
+                onPress={() => navigation.navigate("AttendanceRequests")}
+                style={({ pressed }) => [styles.requestsRow, pressed && styles.pressed]}
+              >
+                <Icon name="document-text-outline" size={20} color={fieldTheme.color.primaryStrong} />
+                <View style={styles.requestsCopy}>
+                  <Text style={styles.requestsTitle}>{t("attendanceRequests.title")}</Text>
+                  <Text style={[styles.requestsBody, requestsWaiting > 0 && styles.requestsBodyWaiting]}>
+                    {requestsWaiting > 0 ? t("todayV2.requestsWaiting", { count: requestsWaiting }) : t("attendanceRequests.menuBody")}
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} />
+              </Pressable>
+            ) : null}
             {qr.available && !staleDay && !workdayPaused && !workdayFinishedToday && !recovery.operation && !installation.blocked && <View style={{gap:12}}><Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t('attendanceQr.optional')}</Text><Pressable testID="today-workday-qr" accessibilityRole="button" disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding} style={[styles.workdayButton,{minHeight:52}]} onPress={()=>setScan({scope:currentWorkdayKey,action:workdayOpen?'FINISH':'START',workdayId:currentWorkday?.workdayId})}><Text style={styles.workdayButtonText}>{t(workdayOpen?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable></View>}
             {qr.available && !staleDay && workdayPaused && <Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t("attendanceQr.breakPrivacy")}</Text>}
             <AttendanceQrReceipt receipts={qr.receipts}/>
@@ -1193,6 +1228,12 @@ const styles = themed(() => StyleSheet.create({
   // Buttons under the text on a tablet too. Beside it, «Fasilə» and «Günü
   // bitir» left the text 130 dp and «İş günü 11 sentyabr, 20:57-da başlayıb»
   // ran to three lines (Redmi Pad SE in landscape, 2026-09-14).
+  // «Müraciətlərim» right under the workday card: white with a hairline, like the card.
+  requestsRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
+  requestsCopy: { flex: 1 },
+  requestsTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "600" },
+  requestsBody: { color: fieldTheme.color.inkMuted, fontSize: 12.5, lineHeight: 17, marginTop: 1 },
+  requestsBodyWaiting: { color: fieldTheme.color.amber, fontWeight: "600" },
   workdayPanel: {
     minHeight: 126,
     padding: fieldTheme.space.lg,
