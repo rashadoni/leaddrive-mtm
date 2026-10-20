@@ -35,6 +35,7 @@ import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildEmployeeDayDocument, employeeDayHasMap } from "./employee-day-map"
+import ManagerGiveTaskSheet from "./ManagerGiveTaskSheet.android"
 
 /**
  * One employee, opened from «Komanda» (owner, 2026-10-17: «при нажатии
@@ -84,7 +85,7 @@ export default function ManagerEmployeeScreen() {
   const language = i18n.language
   const navigation = useNavigation()
   const route = useRoute<RouteProp<RootStackParamList, "ManagerEmployee">>()
-  const { agentId, name: initialName, isOnline } = route.params
+  const { agentId, name: initialName, isOnline, pushReady } = route.params
   const headerTop = useHeaderTop()
   const timezone = useBootstrapStore((state) => state.data?.timezone)
   const tileApiKey = useBootstrapStore((state) => state.data?.maps?.cartoBasemapsApiKey ?? null)
@@ -97,6 +98,7 @@ export default function ManagerEmployeeScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<"forbidden" | "failed" | null>(null)
   const [mapFailed, setMapFailed] = useState(false)
+  const [giveTaskOpen, setGiveTaskOpen] = useState(false)
   const requestId = useRef(0)
 
   const load = useCallback(async (mode: "initial" | "manual" | "silent", forDate: string) => {
@@ -230,6 +232,13 @@ export default function ManagerEmployeeScreen() {
           ) : employee ? (
             <Text style={styles.noPhone}>{t("managerEmployee.noPhone")}</Text>
           ) : null}
+          {/* Owner, 2026-10-20: «чтоб была возможность создавать задачи
+              менеджерам через приложение». Outlined: «Zəng et» stays the one
+              filled button of the card. */}
+          <Pressable testID="manager-employee-give-task" accessibilityRole="button" onPress={() => setGiveTaskOpen(true)} style={({ pressed }) => [styles.giveTask, pressed && styles.pressed]}>
+            <Icon name="add-circle-outline" size={19} color={fieldTheme.color.primaryStrong} />
+            <Text style={styles.giveTaskText}>{t("managerTask.giveButton")}</Text>
+          </Pressable>
         </View>
 
         <View style={styles.body}>
@@ -374,6 +383,7 @@ export default function ManagerEmployeeScreen() {
           ) : null}
         </View>
       </ScrollView>
+      <ManagerGiveTaskSheet visible={giveTaskOpen} agentId={agentId} agentName={name} pushReady={pushReady} onClose={() => setGiveTaskOpen(false)} />
     </View>
   )
 }
@@ -437,6 +447,8 @@ const styles = themed(() => StyleSheet.create({
   whatsappText: { color: fieldTheme.color.success },
   contactText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   noPhone: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: fieldTheme.space.sm },
+  giveTask: { minHeight: 46, marginTop: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  giveTaskText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900" },
   body: { padding: fieldTheme.space.lg, gap: fieldTheme.space.md },
   dayRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   dayArrow: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
