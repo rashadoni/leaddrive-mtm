@@ -975,7 +975,7 @@
     "role": {
       "ADMIN": "İnzibatçı",
       "MANAGER": "Menecer",
-      "SUPERVISOR": "Supervayzer",
+      "SUPERVISOR": "Admin",
       "AGENT": "Sahə əməkdaşı",
       "EMPLOYEE": "Əməkdaş"
     },

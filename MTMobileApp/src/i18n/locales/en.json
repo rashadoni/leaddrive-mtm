@@ -975,7 +975,7 @@
     "role": {
       "ADMIN": "Administrator",
       "MANAGER": "Manager",
-      "SUPERVISOR": "Supervisor",
+      "SUPERVISOR": "Admin",
       "AGENT": "Field agent",
       "EMPLOYEE": "Employee"
     },
