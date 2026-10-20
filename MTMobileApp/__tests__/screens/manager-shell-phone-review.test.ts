@@ -36,7 +36,10 @@ describe("manager shell: what the phone review found", () => {
   it("3. says the role in words, never MANAGER", () => {
     const translate = (dictionary: Record<string, any>) => (key: string): string => key.split(".").reduce<any>((node, part) => node?.[part], dictionary)
     expect(statusLabel(translate(az), "role", "MANAGER")).toBe("Menecer")
-    expect(statusLabel(translate(az), "role", "SUPERVISOR")).toBe("Supervayzer")
+    // Owner, 2026-10-20: «поменяй название супервайзера на админ» — Administrator (İnzibatçı) stays.
+    expect(statusLabel(translate(az), "role", "SUPERVISOR")).toBe("Admin")
+    expect(statusLabel(translate(ru), "role", "SUPERVISOR")).toBe("Админ")
+    expect(statusLabel(translate(az), "role", "ADMIN")).toBe("İnzibatçı")
     expect(statusLabel(translate(ru), "role", "MANAGER")).toBe("Менеджер")
     expect(statusLabel(translate(en), "role", "AGENT")).toBe("Field agent")
     expect(workspace).toContain('{statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}')
