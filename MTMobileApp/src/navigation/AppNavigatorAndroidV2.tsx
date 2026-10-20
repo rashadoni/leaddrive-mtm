@@ -1,5 +1,5 @@
 import React, { useEffect } from "react"
-import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native"
+import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
@@ -267,6 +267,21 @@ const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {
   More: "navV2.more",
 }
 
+/**
+ * A caption of the bottom bar, whole. Six tabs on a 384 dp phone leave a
+ * caption about 60 dp, and «Ziyarətlər», «Müştərilər», «Tapşırıqlar» at 12 px
+ * bold need more: the bar showed «Ziyarətl…», «Müştər…», «Tapşırı…» (S948B,
+ * 3.11.43). A caption that does not fit gets a size smaller instead of an
+ * ellipsis; the short ones stay at 12 px.
+ */
+function BottomTabCaption({ color, children }: { color: string; children: string }) {
+  return (
+    <Text style={[styles.tabLabel, styles.tabCaption, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+      {children}
+    </Text>
+  )
+}
+
 function tabOptions(name: string, label: string, iconOverride?: { active: string; inactive: string }) {
   return {
     title: label,
@@ -406,6 +421,8 @@ function ShellTabs({ navigatorKey, initialRouteName, children }: {
               }
             : { paddingHorizontal: 2 },
           tabBarLabelStyle: styles.tabLabel,
+          // The rail beside the screen has room for the library's own caption.
+          ...(rail ? {} : { tabBarLabel: BottomTabCaption }),
         }}
       >
         {children}
@@ -539,4 +556,5 @@ const styles = themed(() => StyleSheet.create({
     lineHeight: 15,
     fontWeight: "700",
   },
+  tabCaption: { alignSelf: "stretch", textAlign: "center", backgroundColor: "transparent" },
 }))
