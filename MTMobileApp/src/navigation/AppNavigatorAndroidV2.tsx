@@ -91,7 +91,7 @@ export type RootStackParamList = {
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
   /** One employee from «Komanda»: the day on a map, the route, the workday (owner, 2026-10-17). */
-  ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null }
+  ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null; pushReady?: boolean }
   /** «Komandaya yaz» from «Komanda»: to the whole team or one employee (owner, 2026-10-17). */
   ManagerTeamMessage: undefined
   /** «Совместный визит» from «Komanda»: the agent the manager is with, and his ratings (owner, 2026-10-20). */

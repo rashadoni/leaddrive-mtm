@@ -249,6 +249,10 @@ export function classifyServerNotification(
   const threadId = str(m.threadId)
   if (threadId) return as("message", row.title || copy.messageFrom(""), row.body, { screen: "Messages", threadId })
 
+  // A task given to the agent (2026-10-20): the server writes it in his
+  // language — who gave it and what — and the line opens his tasks.
+  if (m.event === "task_assigned" || str(m.assignedTaskId)) return as("task", undefined, row.body, { screen: "Tasks" })
+
   const deviationMeters = num(m.deviationMeters)
   if (deviationMeters !== undefined) {
     return {

@@ -452,7 +452,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                     t={t}
                     language={i18n.language}
                     tablet={expandedTablet}
-                    onOpen={() => navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline })}
+                    onOpen={() => navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline, pushReady: agent.pushReady })}
                   />
                 ))}
               </View>

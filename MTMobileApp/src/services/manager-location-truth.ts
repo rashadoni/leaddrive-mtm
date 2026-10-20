@@ -17,6 +17,8 @@ export interface ManagerTeamAgent {
   routeToday?: { planned: number; visited: number; skipped: number } | null
   /** Check-in of a visit still open from an earlier day of the company; absent from an older server. */
   openVisitSince?: string | null
+  /** Whether a pop-up can reach his phone («Дать задачу» says so before sending); absent from an older server. */
+  pushReady?: boolean
 }
 
 export interface ManagerLocationEvidence {
