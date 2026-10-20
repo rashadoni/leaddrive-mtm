@@ -30,7 +30,8 @@ describe("the route reads as a road that fills in", () => {
     expect(wired.length).toBe(2)
   })
 
+  /** The finished stop is DayLineStation's `done`, on successFill (night-fill-contrast.test.tsx). */
   it("keeps the finished stop's checkmark and the green rail in one colour", () => {
-    expect(routeScreen).toMatch(/stopRailLineDone: \{ backgroundColor: fieldTheme\.color\.success \}/)
+    expect(routeScreen).toMatch(/stopRailLineDone: \{ backgroundColor: fieldTheme\.color\.successFill \}/)
   })
 })

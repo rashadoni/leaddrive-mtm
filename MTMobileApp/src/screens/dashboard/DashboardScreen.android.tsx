@@ -704,7 +704,7 @@ export default function DashboardScreen() {
         message={t("todayV2.endDayConfirmBody")}
         cancelText={t("todayV2.endDayConfirmCancel")}
         confirmText={t("todayV2.endDayConfirmAction")}
-        confirmColor={fieldTheme.color.amber}
+        confirmColor={fieldTheme.color.amberFill}
         onCancel={() => setEndDayConfirmVisible(false)}
         onConfirm={confirmEndDay}
       />
@@ -836,9 +836,9 @@ const styles = themed(() => StyleSheet.create({
     alignItems: "center",
     gap: fieldTheme.space.sm,
     borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.coral,
+    backgroundColor: fieldTheme.color.coralFill,
   },
-  workdayButtonActive: { backgroundColor: fieldTheme.color.amber },
+  workdayButtonActive: { backgroundColor: fieldTheme.color.amberFill },
   workdayText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "800" },
   customizeButton: {
     minHeight: 44,

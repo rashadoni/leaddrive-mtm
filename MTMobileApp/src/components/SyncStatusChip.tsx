@@ -458,7 +458,7 @@ const styles = themed(() => StyleSheet.create({
   actionRow: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 8 },
   secondaryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.coral },
   secondaryText: { color: fieldTheme.color.coral, fontSize: 12, fontWeight: "800" },
-  forceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: fieldTheme.color.coral },
+  forceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: fieldTheme.color.coralFill },
   forceText: { color: fieldTheme.color.onColor, fontSize: 12, fontWeight: "800" },
   syncCentreNotice: {
     paddingHorizontal: 4,

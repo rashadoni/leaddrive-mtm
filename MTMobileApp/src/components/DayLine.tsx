@@ -82,9 +82,9 @@ const LINE = 4
 const styles = themed(() => StyleSheet.create({
   rail: { width: 34, alignItems: "center", alignSelf: "stretch" },
   segment: { flex: 1, width: LINE, minHeight: 8, backgroundColor: fieldTheme.color.line },
-  segmentFilled: { backgroundColor: fieldTheme.color.success },
+  segmentFilled: { backgroundColor: fieldTheme.color.successFill },
   segmentHidden: { backgroundColor: "transparent" },
-  done: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.success },
+  done: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.successFill },
   doneCompact: { width: 16, height: 16, borderRadius: 8 },
   halo: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.amberSoft },
   haloCompact: { width: 20, height: 20, borderRadius: 10 },
