@@ -2715,7 +2715,7 @@ const styles = themed(() => StyleSheet.create({
   stopRail: { alignItems: "center", alignSelf: "stretch" },
   stopRailWidth: { width: 34 },
   stopRailLine: { flex: 1, width: 4, minHeight: 8, backgroundColor: fieldTheme.color.line },
-  stopRailLineDone: { backgroundColor: fieldTheme.color.success },
+  stopRailLineDone: { backgroundColor: fieldTheme.color.successFill },
   stopRailLineHidden: { backgroundColor: "transparent" },
   nearestBadge: { paddingVertical: 4 },
   nearestBadgeText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "500" },

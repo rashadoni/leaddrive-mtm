@@ -26,7 +26,10 @@ only the app's own words (those found in its dictionaries) and test ids; the
 company, the email and the password are replaced wherever they would appear.
 
 Every check is read from the device (`uiautomator dump`, `dumpsys`, the crash
-log), not from a screenshot. Screenshots are kept as evidence only.
+log), not from a screenshot. Screenshots are kept as evidence only — except for
+day and night, which only the pixels show: on the company step, before anything
+of an account is typed, the phone is switched to night and back and the app's
+brightness is read from the framebuffer (`night_mode_walk`).
 
 Usage: emulator_signin.py <apk>
   E2E_OUT               evidence directory (default e2e-out)
@@ -48,6 +51,7 @@ import json
 import os
 import re
 import shlex
+import struct
 import subprocess
 import sys
 import tempfile
@@ -244,6 +248,90 @@ def crash_line():
     reason = (lines[at + 1] if at + 1 < len(lines) else lines[at]).split("AndroidRuntime:", 1)[-1].strip()
     # Once the account is in use, name the exception and leave its message out.
     return redact(reason.split(":", 1)[0] if private else reason)[:200]
+
+
+def screen_brightness(bottom=None):
+    """Mean luminance, 0 (black) to 1 (white), of the screen between the status bar and `bottom`.
+
+    Raw framebuffer (`screencap` without -p): a 12- or 16-byte header of
+    width, height and format, then RGBA_8888 rows. Every 12th pixel is enough
+    to tell a white screen from a black one.
+    """
+    raw = subprocess.run(["adb", "exec-out", "screencap"], capture_output=True, timeout=60).stdout
+    if len(raw) < 16:
+        return None
+    width, height, _ = struct.unpack_from("<III", raw, 0)
+    header = len(raw) - width * height * 4
+    if width <= 0 or height <= 0 or header not in (12, 16):
+        return None
+    top, last = height // 16, min(bottom or height, height)
+    total = count = 0
+    for y in range(top, last, 12):
+        row = header + y * width * 4
+        for x in range(0, width, 12):
+            at = row + x * 4
+            total += 0.2126 * raw[at] + 0.7152 * raw[at + 1] + 0.0722 * raw[at + 2]
+            count += 1
+    return total / count / 255 if count else None
+
+
+NIGHT_PROBE = "e2e-night-check"
+
+
+def night_mode_walk():
+    """The phone switches day and night with the app open (owner, 2026-10-20:
+    «если я меняю тему на телефоне на светлую, то приложение не меняется на
+    светлую тему»).
+
+    Until 3.11.37 the colours were fixed when the JS started and a switch was
+    taken by restarting the JS — never during a workday and never with the
+    keyboard up, so the screen kept its old theme. Here the company field has
+    text in it and the keyboard is up (when the emulator shows one): the open
+    screen must turn dark within seconds and light again, with the text still
+    in the field — a restart would have emptied it. Only the part of the
+    screen above the field is measured: the keyboard follows the system theme
+    by itself. No account is typed yet, so the screenshots are kept.
+    """
+    shell("cmd uimode night no", check=False)
+    time.sleep(3)
+    found, _ = nodes()
+    field = by_id(found, "tenant-input")
+    if not field:
+        record(False, "Day and night: the company field is there to type into")
+        return
+    tap(field)
+    type_text(NIGHT_PROBE)
+    time.sleep(1)
+    typing = "keyboard up" if keyboard_shown() else "no on-screen keyboard"
+    process = shell(f"pidof {PKG}", check=False).strip()
+    bottom = field["box"][1]
+    before = screen_brightness(bottom)
+    evidence("00a-day")
+    for mode, dark, name in (("yes", True, "00b-night"), ("no", False, "00c-day-again")):
+        shell(f"cmd uimode night {mode}", check=False)
+        started, now = time.time(), None
+        while time.time() - started < 15:
+            now = screen_brightness(bottom)
+            if now is not None and (now < 0.3 if dark else now > 0.6):
+                break
+            time.sleep(1)
+        took = time.time() - started
+        seen, _ = nodes()
+        kept = (by_id(seen, "tenant-input") or {}).get("text", "")
+        same = shell(f"pidof {PKG}", check=False).strip() == process
+        evidence(name)
+        turned = now is not None and (now < 0.3 if dark else now > 0.6)
+        theme = "night" if dark else "day"
+        shown = "?" if now is None else f"{now:.2f}"
+        record(turned, f"The phone switched to {theme}: the open screen follows it at once",
+               f"brightness {before if before is None else round(before, 2)} → {shown} in {took:.0f} s, {typing}")
+        record(kept == NIGHT_PROBE and same, f"…in {theme} the typed text is still in the field, the app not restarted",
+               f"the field reads «{kept}», same process: {same}")
+    seen, _ = nodes()
+    field = by_id(seen, "tenant-input")
+    if field:
+        clear_field(field, len(NIGHT_PROBE))
+    hide_keyboard()
 
 
 def unpack_handset_code(apk, device_abis):
@@ -827,6 +915,8 @@ def main(apk):
     found = wait_for("First launch opens the company step", lambda seen: by_id(seen, "tenant-input") and f"{time.time() - started:.0f} s after the tap", 300, "01-company-step")
     for key in ("stepProgress", "companyTitle"):
         record(has_text(found, server[key]), f"Company step says «{server[key]}»")
+    night_mode_walk()
+    found, _ = nodes()
 
     # An empty company is refused in words, without a request.
     tap(by_id(found, "tenant-input"))
