@@ -1,4 +1,4 @@
-import { createElement, useSyncExternalStore, type ComponentType } from "react"
+import { createElement, useSyncExternalStore, type ComponentType, type ReactElement } from "react"
 import { Appearance } from "react-native"
 
 /**
@@ -161,10 +161,12 @@ const followingScreens = new WeakMap<ComponentType<any>, ComponentType<any>>()
  * `component=` there goes through this. The same screen gets the same
  * wrapper every time, or the navigator would mount it afresh.
  */
-export function withFieldColorScheme<P extends object>(Screen: ComponentType<P>): ComponentType<P> {
+export function withFieldColorScheme<P extends object>(Screen: ComponentType<P>): (props: P) => ReactElement {
   const known = followingScreens.get(Screen)
-  if (known) return known as ComponentType<P>
-  function FollowsPhoneColorScheme(props: P) {
+  if (known) return known as (props: P) => ReactElement
+  // A plain function component, as the screens themselves are: the navigator
+  // types its `component` from the screen's props, and a class would not fit.
+  function FollowsPhoneColorScheme(props: P): ReactElement {
     useFieldColorScheme()
     return createElement(Screen as ComponentType<any>, props)
   }
