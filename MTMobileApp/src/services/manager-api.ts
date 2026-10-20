@@ -77,6 +77,15 @@ export const managerApi = {
   },
 
   /** «Иду на визит с агентом»: only an active agent of his team (403 MTM_JOINT_VISIT_AGENT_FORBIDDEN otherwise). */
+  /**
+   * «Дать задачу»: whom, what, and the day — "today", "tomorrow", "none" or a
+   * YYYY-MM-DD (src/services/manager-task.ts). The server answers with the
+   * task and whether the pop-up could reach the agent's phone.
+   */
+  giveTask(agentId: string, title: string, due: string) {
+    return api.requestLegacy("/mobile/manager/tasks", { method: "POST", body: JSON.stringify({ agentId, title, due }) })
+  },
+
   startJointVisit(agentId: string) {
     return api.requestLegacy("/mobile/manager/joint-visit", { method: "POST", body: JSON.stringify({ agentId }) })
   },
