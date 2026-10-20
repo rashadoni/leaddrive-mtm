@@ -42,7 +42,9 @@ describe("B19: one answer to what a tablet is", () => {
     expect(tabContentWidth(823) >= 720).toBe(false)
     expect(tabContentWidth(1097) >= 720).toBe(true)
     expect(tabContentWidth(686) >= 720).toBe(false)
-    expect(tasks).toContain("const tablet = isTwoPaneTabWidth(width)")
+    // Tasks left the two-column grid for one column of rows, like the CRM's
+    // boards (owner, 2026-10-20: «бери из досок»), so it asks no width question.
+    expect(tasks).not.toContain("isTwoPaneTabWidth")
     // The old gate must not linger beside the new one.
     expect(week).not.toContain("isExpandedTabletWidth")
     expect(tasks).not.toContain("isExpandedTabletWidth")
@@ -66,8 +68,7 @@ describe("B19: one answer to what a tablet is", () => {
   it("gives the seven-column month the full tablet content width", () => {
     expect(read("screens/week/WeekScreen.tsx")).toContain('monthPane: { width: "100%" }')
     expect(read("screens/week/WeekScreen.tsx")).toContain("minWidth: 0,\n    minHeight: 460,")
-    // Tasks no longer has a master pane: on a tablet it is one page with two
-    // columns of cards (see tasks-one-page.test.ts).
+    // Tasks has no master pane: one page, one column of rows (see tasks-one-page.test.ts).
   })
 })
 

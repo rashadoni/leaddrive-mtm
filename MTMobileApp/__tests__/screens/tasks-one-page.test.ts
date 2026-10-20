@@ -10,7 +10,7 @@ import path from "path"
 const source = fs.readFileSync(path.resolve(__dirname, "../../src/screens/tasks/TasksScreen.tsx"), "utf8")
 
 describe("Tasks is one scrolling page", () => {
-  it("puts the header, focus strip and tabs inside the list", () => {
+  it("puts the header, notices and filter inside the list", () => {
     expect(source).toContain("ListHeaderComponent={listHeader}")
     expect(source.match(/<FlatList\b/g)).toHaveLength(1)
     expect(source).not.toContain("<ScrollView")
@@ -21,10 +21,11 @@ describe("Tasks is one scrolling page", () => {
     expect(source).toContain("onPress={() => openTask(item)}")
   })
 
-  it("lays cards in two columns on a tablet, half width each", () => {
-    expect(source).toContain("numColumns={tablet ? 2 : 1}")
-    expect(source).toContain('key={tablet ? "tasks-grid" : "tasks-list"}')
-    expect(source).toContain('gridCell: { flex: 1, maxWidth: "50%"')
+  it("is one column of rows on the phone and on the tablet, like the boards' list", () => {
+    // Owner, 2026-10-20: «бери из досок». Group headers run across the list,
+    // so the two-column tablet grid of cards is gone.
+    expect(source).not.toContain("numColumns")
+    expect(source).toContain('listCell: { width: "100%", maxWidth: 1280, alignSelf: "center"')
   })
 
   it("does not let the top of the page collapse", () => {
@@ -32,8 +33,8 @@ describe("Tasks is one scrolling page", () => {
     expect(bodyTop).not.toContain("flex: 1")
   })
 
-  it("does not repeat the all-done message above an empty list", () => {
-    expect(source).toContain("{recommendedTab ? (")
-    expect(source).toContain("<EmptyState copy={copy} status={activeTab}")
+  it("says, when the list is empty, what is empty for the chosen filter", () => {
+    expect(source).not.toContain("recommendedTab")
+    expect(source).toContain("<EmptyState copy={copy} filter={filter}")
   })
 })
