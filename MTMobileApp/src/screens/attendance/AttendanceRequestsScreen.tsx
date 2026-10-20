@@ -223,7 +223,7 @@ export default function AttendanceRequestsScreen() {
       <LightScreenStatusBar />
       <View style={styles.content}>
         <View style={styles.heading}>
-          {button(t("attendanceRequests.back"), () => agent?.role === "AGENT" ? navigation.goBack() : navigation.navigate("OwnWorkday" as never), "attendance-back")}
+          {button(t("attendanceRequests.back"), () => navigation.navigate("OwnWorkday" as never), "attendance-back")}
           <Text style={styles.title}>{t("attendanceRequests.title")}</Text>
         </View>
         {!allowed || denied ? <Text testID="attendance-unavailable" style={styles.body}>{t("attendanceRequests.unavailable")}</Text> : <>

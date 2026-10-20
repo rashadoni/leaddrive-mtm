@@ -99,7 +99,8 @@ function currentContext(): InboxContext | null {
   const office = hasOfficeAttendanceAccess(data, agent)
   const shell = mainShell({ agent, data, routeFieldAccess: boot.routeFieldAccess, office })
   if (shell.kind === "field") {
-    return { scope, shell: "field", selfId: agent.id, attendanceRequests: agentMayAttendanceRequests(data?.policies), ownWorkday: false }
+    // A field agent has no own requests (attendance-access.ts): no line opens them.
+    return { scope, shell: "field", selfId: agent.id, attendanceRequests: false, ownWorkday: false }
   }
   if (shell.kind === "manager") {
     return {

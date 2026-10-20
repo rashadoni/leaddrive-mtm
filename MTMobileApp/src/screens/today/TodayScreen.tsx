@@ -55,21 +55,11 @@ import {
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { askBackgroundLocation, backgroundLocationMissing } from "../../services/background-location"
 import StaleWorkdayCard from "../../components/StaleWorkdayCard"
-import StaleWorkdayCloseSheet from "../../components/StaleWorkdayCloseSheet"
-import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from "../../services/attendance-requests"
-import { ask } from "../../services/app-feedback"
-import type { AttendanceInput } from "../../services/attendance-contract"
-import { runMobileSync } from "../../services/sync-engine"
 import {
   companyClock,
-  staleWorkdayCorrection,
-  staleWorkdayFinishSent,
-  type StaleWorkdayFinishSent,
   workdayOpenSinceEarlierDay,
 } from "../../services/stale-workday"
 import { staleVisitDayDate } from "../../services/stale-visit"
-import { requestsWaitingCount } from "./requests-waiting"
 
 type TodayNavigationParams = {
   Route: { view?: "today" | "month" } | undefined
@@ -79,7 +69,6 @@ type TodayNavigationParams = {
   Tasks: undefined
   Visits: undefined
   More: { screen: "Messages" }
-  AttendanceRequests: undefined
 }
 
 type Destination = Exclude<keyof TodayNavigationParams, "More" | "PlanningBuilder">
@@ -170,99 +159,15 @@ export default function TodayScreen() {
   const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
   const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
   // Owner, 2026-10-18: a day left open since an earlier date is not "going
-  // on" — it gets a red card and «Günü bağla», which asks only for the finish
-  // time (services/stale-workday.ts). The company's timezone decides the dates.
+  // on" — it gets a red card and «Günü bağla». A field agent is outside HR
+  // accounting (owner, 2026-10-14 and 2026-10-20: «у полевого агента всё
+  // кадровое убрать совсем»): the card closes the day now, after saying how
+  // many hours go into it; no time-correction request goes to the manager.
+  // The company's timezone decides the dates.
   const companyTimezone = useBootstrapStore((state) => state.data?.timezone ?? null)
-  const finishTimeRequestable = useBootstrapStore((state) =>
-    agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))
   const staleDay = workdayOpen && currentWorkday
     ? workdayOpenSinceEarlierDay(currentWorkday.startedAt, new Date(), companyTimezone)
     : null
-  // The finish time already with the manager for that day, read from the
-  // own-requests list and this phone's queue. Keyed by the agent and the day
-  // so it never speaks for another.
-  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; finish: StaleWorkdayFinishSent | null } | null>(null)
-  const staleSentFinish = staleDay !== null && finishTimeSent?.key === currentWorkdayKey && finishTimeSent.day === staleDay
-    ? finishTimeSent.finish
-    : null
-  const readFinishTimeSent = useCallback(async () => {
-    if (!staleDay || !finishTimeRequestable) return
-    const key = currentWorkdayKey
-    let scope: string
-    try { scope = attendanceScope() } catch { return }
-    const queued = await attendanceQueued(scope).catch(() => [])
-    let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
-    try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
-    const finish = staleWorkdayFinishSent(staleDay, requests, queued)
-    setFinishTimeSent({ key, day: staleDay, finish })
-    // Approved — at once where the company allows it — means closed on the
-    // server: read the workday again, and the card gives way to «Günə başla».
-    if (finish?.approved) await refreshRouteFieldSession()
-  }, [currentWorkdayKey, finishTimeRequestable, staleDay])
-  useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
-
-  // «Müraciətlərim» lives under the workday card since 2026-10-20 (owner:
-  // «это нужно, чтоб отображалось в модуле учёта»). The row says how many of
-  // the agent's requests still wait for the manager: the saved list, the
-  // server's answer when there is one, and what this phone has not sent yet.
-  const [requestsWaiting, setRequestsWaiting] = useState(0)
-  const readRequestsWaiting = useCallback(async () => {
-    if (!finishTimeRequestable) return
-    let scope: string
-    try { scope = attendanceScope() } catch { return }
-    const queued = await attendanceQueued(scope).catch(() => [])
-    let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
-    try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
-    setRequestsWaiting(requestsWaitingCount(requests, queued))
-  }, [finishTimeRequestable])
-  useAutoRefresh(() => { readRequestsWaiting().catch(() => {}) })
-  useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
-  const [closeSheetOpen, setCloseSheetOpen] = useState(false)
-  const [closeSending, setCloseSending] = useState(false)
-  const [closeFailed, setCloseFailed] = useState(false)
-  const openCloseSheet = useCallback(() => {
-    setCloseFailed(false)
-    setCloseSheetOpen(true)
-  }, [])
-  // The request is written to the phone's queue first, so no signal is needed
-  // to send it; the card says «sent» from that moment, and the sync pushes it.
-  const sendFinishTime = useCallback(async (input: AttendanceInput) => {
-    if (!staleDay || closeSending) return
-    const key = currentWorkdayKey
-    const day = staleDay
-    setCloseSending(true)
-    setCloseFailed(false)
-    try {
-      await queueAttendanceRequest(attendanceScope(), input, [])
-      setFinishTimeSent({ key, day, finish: { finish: input.endTime ?? "", approved: false } })
-      setCloseSheetOpen(false)
-      runMobileSync().then(() => readFinishTimeSent()).catch(() => {})
-    } catch {
-      setCloseFailed(true)
-    } finally {
-      setCloseSending(false)
-    }
-  }, [closeSending, currentWorkdayKey, readFinishTimeSent, staleDay])
-  // A finish sent and still waiting can be taken back, here: «Mənim
-  // müraciətlərim» is a long screen to look for it in (owner, 2026-10-18).
-  const pendingFinishRequest = staleSentFinish?.pending ?? null
-  const cancelSentFinish = useCallback(async () => {
-    if (!pendingFinishRequest || closeSending) return
-    const confirmed = await ask({ title: t("attendanceRequests.cancelTitle"), message: t("attendanceRequests.cancelBody"), tone: "warning", dismissValue: false,
-      buttons: [{ text: t("attendanceRequests.keep"), value: false, style: "cancel" }, { text: t("attendanceRequests.cancel"), value: true, style: "destructive" }] })
-    if (!confirmed) return
-    setCloseSending(true)
-    setCloseFailed(false)
-    try {
-      await queueAttendanceCancellation(attendanceScope(), pendingFinishRequest)
-      await runMobileSync()
-      await readFinishTimeSent()
-    } catch {
-      setCloseFailed(true)
-    } finally {
-      setCloseSending(false)
-    }
-  }, [closeSending, pendingFinishRequest, readFinishTimeSent, t])
   useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
@@ -698,12 +603,10 @@ export default function TodayScreen() {
                 day={staleDay}
                 startedAt={currentWorkday.startedAt}
                 timezone={companyTimezone}
-                mode={!finishTimeRequestable ? "closeOnly" : staleSentFinish?.approved ? "approved" : staleSentFinish ? "sent" : "request"}
-                sentFinish={staleSentFinish?.finish ?? null}
-                busy={workdayBusy || !workdayHydrated || closeSending}
+                mode="closeOnly"
+                busy={workdayBusy || !workdayHydrated}
                 error={workdayError ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError") : null}
-                onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}
-                onCancelSent={pendingFinishRequest ? () => { cancelSentFinish().catch(() => {}) } : undefined}
+                onCloseDay={requestWorkdayAction}
               />
             ) : (
             <View style={styles.workdayPanel}>
@@ -823,23 +726,6 @@ export default function TodayScreen() {
               </View>
             </View>
             )}
-            {finishTimeRequestable ? (
-              <Pressable
-                testID="today-my-requests"
-                accessibilityRole="button"
-                onPress={() => navigation.navigate("AttendanceRequests")}
-                style={({ pressed }) => [styles.requestsRow, pressed && styles.pressed]}
-              >
-                <Icon name="document-text-outline" size={20} color={fieldTheme.color.primaryStrong} />
-                <View style={styles.requestsCopy}>
-                  <Text style={styles.requestsTitle}>{t("attendanceRequests.title")}</Text>
-                  <Text style={[styles.requestsBody, requestsWaiting > 0 && styles.requestsBodyWaiting]}>
-                    {requestsWaiting > 0 ? t("todayV2.requestsWaiting", { count: requestsWaiting }) : t("attendanceRequests.menuBody")}
-                  </Text>
-                </View>
-                <Icon name="chevron-forward" size={18} color={fieldTheme.color.inkMuted} />
-              </Pressable>
-            ) : null}
             {qr.available && !staleDay && !workdayPaused && !workdayFinishedToday && !recovery.operation && !installation.blocked && <View style={{gap:12}}><Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t('attendanceQr.optional')}</Text><Pressable testID="today-workday-qr" accessibilityRole="button" disabled={workdayBusy || !workdayHydrated || workdayStarting || workdayEnding} style={[styles.workdayButton,{minHeight:52}]} onPress={()=>setScan({scope:currentWorkdayKey,action:workdayOpen?'FINISH':'START',workdayId:currentWorkday?.workdayId})}><Text style={styles.workdayButtonText}>{t(workdayOpen?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable></View>}
             {qr.available && !staleDay && workdayPaused && <Text style={{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted}}>{t("attendanceQr.breakPrivacy")}</Text>}
             <AttendanceQrReceipt receipts={qr.receipts}/>
@@ -1067,18 +953,6 @@ export default function TodayScreen() {
         if(!scan || scan.scope!==currentWorkdayKey || (scan.action==='FINISH' && currentWorkday?.workdayId!==scan.workdayId) || (scan.action==='START' && currentWorkday))throw new Error('ATTENDANCE_QR_CHANGED')
         guardAttendanceQr(currentWorkdayKey);await syncWorkday(token);setScan(null)
       }}/>
-      {staleDay && currentWorkday ? (
-        <StaleWorkdayCloseSheet
-          visible={closeSheetOpen}
-          correction={staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone)}
-          timezone={companyTimezone}
-          lastMarkAt={currentWorkday.lastMarkAt ?? null}
-          sending={closeSending}
-          failed={closeFailed}
-          onCancel={() => setCloseSheetOpen(false)}
-          onSend={(input) => { sendFinishTime(input).catch(() => {}) }}
-        />
-      ) : null}
       <ConfirmSheet
         visible={endDayConfirm}
         icon={staleClose ? "⚠️" : "🌙"}
@@ -1228,12 +1102,6 @@ const styles = themed(() => StyleSheet.create({
   // Buttons under the text on a tablet too. Beside it, «Fasilə» and «Günü
   // bitir» left the text 130 dp and «İş günü 11 sentyabr, 20:57-da başlayıb»
   // ran to three lines (Redmi Pad SE in landscape, 2026-09-14).
-  // «Müraciətlərim» right under the workday card: white with a hairline, like the card.
-  requestsRow: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
-  requestsCopy: { flex: 1 },
-  requestsTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "600" },
-  requestsBody: { color: fieldTheme.color.inkMuted, fontSize: 12.5, lineHeight: 17, marginTop: 1 },
-  requestsBodyWaiting: { color: fieldTheme.color.amber, fontWeight: "600" },
   workdayPanel: {
     minHeight: 126,
     padding: fieldTheme.space.lg,

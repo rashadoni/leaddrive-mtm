@@ -191,34 +191,28 @@ describe("the Today screen wires the card and the sheet in", () => {
     expect(today).toContain("qr.available && !staleDay && !workdayPaused")
   })
 
-  it("closes the day on this screen, not in «Мои заявки»", () => {
-    expect(today).toContain("onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}")
-    expect(today).toContain("<StaleWorkdayCloseSheet")
-    expect(today).toContain("await queueAttendanceRequest(attendanceScope(), input, [])")
-    expect(today).not.toContain('screen: "AttendanceRequests"')
+  it("closes the day on this screen, straight away: a field agent sends no finish-time request", () => {
+    // Own requests are HR accounting, and a field agent is outside it (owner,
+    // 2026-10-20: «у полевого агента всё кадровое убрать совсем»).
+    const card = today.slice(today.indexOf("<StaleWorkdayCard"), today.indexOf("/>", today.indexOf("<StaleWorkdayCard")))
+    expect(card).toContain('mode="closeOnly"')
+    expect(card).toContain("onCloseDay={requestWorkdayAction}")
+    expect(today).not.toContain("<StaleWorkdayCloseSheet")
+    expect(today).not.toContain("queueAttendanceRequest")
+    expect(today).not.toContain("attendanceScope")
+    expect(today).not.toContain("AttendanceRequests")
   })
 
-  it("asks before closing now where no request can be sent, saying how many hours go into that day", () => {
+  it("asks before closing now, saying how many hours go into that day", () => {
     const dialog = today.slice(today.indexOf("visible={endDayConfirm}"), today.indexOf("visible={notice !== null}"))
     expect(dialog).toContain('t("todayV2.staleEndConfirmBody", staleClose)')
     expect(dialog).toContain('t("todayV2.staleEndNow")')
     expect(today).toContain("hours: Math.max(0, Math.floor((Date.now() - new Date(currentWorkday.startedAt).getTime()) / 3_600_000))")
   })
 
-  it("reads the day again once the close is approved, so the card gives way to «Günə başla»", () => {
-    expect(today).toContain("if (finish?.approved) await refreshRouteFieldSession()")
-    expect(today).toContain("runMobileSync().then(() => readFinishTimeSent())")
-  })
-
-  it("hands the sheet the day's last mark and lets a waiting finish be cancelled here", () => {
-    expect(today).toContain("lastMarkAt={currentWorkday.lastMarkAt ?? null}")
-    expect(today).toContain("await queueAttendanceCancellation(attendanceScope(), pendingFinishRequest)")
+  it("still reads the day's last mark from the server", () => {
     expect(read("services/bootstrap.ts")).toContain("lastMarkAt: str(workday.lastMarkAt)")
     expect(read("store/workday.ts")).toContain("...(workday!.lastMarkAt ? { lastMarkAt: workday!.lastMarkAt } : {})")
-  })
-
-  it("offers the request only where the server takes it", () => {
-    expect(today).toContain('agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))')
   })
 })
 

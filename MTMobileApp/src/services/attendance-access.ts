@@ -1,5 +1,4 @@
 import type { BootstrapData, RouteFieldAccess } from "./bootstrap"
-import { hasRouteFieldAccess } from "./bootstrap"
 import { agentMayAttendanceRequests } from "../lib/agent-permissions"
 
 export type AttendancePrincipal = { id: string; organizationId: string; role: string } | null | undefined
@@ -19,7 +18,14 @@ export function hasOfficeAttendanceAccess(data: BootstrapData | null | undefined
     && data.policies.attendanceMarkVersion === 1
     && data.policies.agentPermissions?.attendanceWorkday === true
 }
-export function mayUseOwnAttendanceRequests(data: BootstrapData | null | undefined, agent: AttendancePrincipal, fieldAccess: RouteFieldAccess): boolean {
-  return agentMayAttendanceRequests(data?.policies)
-    && ((agent?.role === "AGENT" && hasRouteFieldAccess(fieldAccess)) || hasOfficeAttendanceAccess(data, agent))
+/**
+ * Own requests — leave, absence, time correction — are HR accounting, and a
+ * field agent is outside it (owner, 2026-10-14: «агент — полевой, его учёт не
+ * ведётся»; 2026-10-20: «у полевого агента всё кадровое убрать совсем:
+ * заявки остаются только в «Mənim uçotum» у сотрудников, которых ведёт отдел
+ * кадров»). So only the office shell gets them, whatever the tenant's switch
+ * says for agents. `_fieldAccess` stays in the signature for the callers.
+ */
+export function mayUseOwnAttendanceRequests(data: BootstrapData | null | undefined, agent: AttendancePrincipal, _fieldAccess: RouteFieldAccess): boolean {
+  return agentMayAttendanceRequests(data?.policies) && hasOfficeAttendanceAccess(data, agent)
 }

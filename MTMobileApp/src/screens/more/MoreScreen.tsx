@@ -74,8 +74,9 @@ export default function MoreScreen() {
       ? { title: "Notifications", body: "Messages, request decisions and deadline reminders" }
       : { title: "Уведомления", body: "Сообщения, решения по заявкам и напоминания о сроках" }
   const actions: MoreAction[] = [
-    // «Müraciətlərim» moved under the workday card on «Bu gün» (owner,
-    // 2026-10-20: «это нужно, чтоб отображалось в модуле учёта, а не здесь»).
+    // No «Müraciətlərim» for a field agent: leave, absence and time
+    // correction are HR accounting and live only in «Mənim uçotum» for the
+    // employees HR keeps (owner, 2026-10-20).
     {
       route: "Notifications",
       icon: "notifications-outline",

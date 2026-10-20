@@ -114,6 +114,22 @@ describe("all the agent's tasks in one list", () => {
     expect(ids(tree, "task-row-")).toEqual(["t-done"])
   })
 
+  it("keeps the four filters on one line, shrinking a long label instead of wrapping it", async () => {
+    // Owner, 2026-10-20: «Tamamlanıb падает на вторую строку… сделай, чтоб был на одной строке».
+    const tree = await open()
+    const flat = (style: unknown): Record<string, unknown> =>
+      Array.isArray(style) ? Object.assign({}, ...style.map(flat)) : ((style as Record<string, unknown>) ?? {})
+    expect(flat(one(tree, "tasks-filters").props.style)).toMatchObject({ flexDirection: "row", flexWrap: "nowrap" })
+    for (const value of ["ALL", "PENDING", "IN_PROGRESS", "COMPLETED"]) {
+      const chip = one(tree, `tasks-filter-${value}`)
+      const style = typeof chip.props.style === "function" ? chip.props.style({ pressed: false }) : chip.props.style
+      expect(flat(style)).toMatchObject({ flexGrow: 1, flexShrink: 1, minWidth: 0 })
+      const label = chip.findAll((node) => node.props.adjustsFontSizeToFit === true)
+      expect(label.length).toBeGreaterThan(0)
+      expect(label[0].props.numberOfLines).toBe(1)
+    }
+  })
+
   it("changes a status from the row: a tap on it, then the new one", async () => {
     const tree = await open()
     await press(tree, "task-status-t-overdue")
