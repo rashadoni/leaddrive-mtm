@@ -2051,7 +2051,7 @@ const styles = themed(() => StyleSheet.create({
     marginTop: fieldTheme.space.md,
     paddingHorizontal: fieldTheme.space.lg,
   },
-  finishButton: { backgroundColor: fieldTheme.color.coral },
+  finishButton: { backgroundColor: fieldTheme.color.coralFill },
   primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "700" },
   activeMeta: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   visitTimeNotice: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.md, marginTop: fieldTheme.space.md },

@@ -316,7 +316,7 @@ const styles = themed(() => StyleSheet.create({
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.coral,
+    backgroundColor: fieldTheme.color.coralFill,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
