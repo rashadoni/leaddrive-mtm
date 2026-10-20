@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -71,6 +72,14 @@ const COPY = {
     noAgents: "В вашей зоне управления нет активных полевых агентов.",
     currentMonth: "Текущий месяц",
     currentWeek: "Текущая неделя",
+    agentLabel: "Сотрудник",
+    allAgents: "Все сотрудники",
+    clearAgent: "Все",
+    clearAgentHint: "Показать маршруты всей команды",
+    pickerTitle: "Чьи маршруты показать",
+    pickerHintMonth: "Число — маршрутов в этом месяце",
+    pickerHintWeek: "Число — маршрутов на этой неделе",
+    close: "Закрыть",
   },
   az: {
     eyebrow: "Komanda planı",
@@ -104,6 +113,14 @@ const COPY = {
     noAgents: "İdarəetmə dairənizdə aktiv sahə agenti yoxdur.",
     currentMonth: "Cari ay",
     currentWeek: "Cari həftə",
+    agentLabel: "Əməkdaş",
+    allAgents: "Bütün əməkdaşlar",
+    clearAgent: "Hamısı",
+    clearAgentHint: "Bütün komandanın marşrutlarını göstər",
+    pickerTitle: "Kimin marşrutlarını göstərək",
+    pickerHintMonth: "Rəqəm — bu aydakı marşrutların sayı",
+    pickerHintWeek: "Rəqəm — bu həftədəki marşrutların sayı",
+    close: "Bağla",
   },
   en: {
     eyebrow: "Team plan",
@@ -137,6 +154,14 @@ const COPY = {
     noAgents: "There are no active field agents in your management scope.",
     currentMonth: "Current month",
     currentWeek: "Current week",
+    agentLabel: "Employee",
+    allAgents: "All employees",
+    clearAgent: "All",
+    clearAgentHint: "Show the whole team's routes",
+    pickerTitle: "Whose routes to show",
+    pickerHintMonth: "The number is routes this month",
+    pickerHintWeek: "The number is routes this week",
+    close: "Close",
   },
 } as const
 
@@ -199,6 +224,11 @@ export default function ManagerPlanningCalendarScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [loadError, setLoadError] = useState(false)
+  // One agent's routes only (owner, 2026-10-20, on the tablet: «чтоб можно было
+  // отдельно выбирать в фильтре агента, чтоб видеть в календаре его
+  // маршруты»; the picture was approved). Kept while the period changes.
+  const [agentId, setAgentId] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const window = useMemo(() => managerCalendarWindow(anchor, mode), [anchor, mode])
   const tablet = isTabletWidth(width)
   const expandedTablet = isExpandedTabletWidth(width)
@@ -247,8 +277,20 @@ export default function ManagerPlanningCalendarScreen() {
   }, [anchor, mode, selectedDate, today, window])
 
   const dates = useMemo(() => calendarDateKeys(window.from, window.to), [window])
-  const routes = useMemo(() => data?.routes ?? [], [data?.routes])
-  const agents = data?.agents ?? []
+  const allRoutes = useMemo(() => data?.routes ?? [], [data?.routes])
+  const allAgents = useMemo(() => data?.agents ?? [], [data?.agents])
+  // An agent who left the team is not kept as a filter that shows nothing.
+  const pickedAgent = agentId ? allAgents.find((agent) => agent.id === agentId) ?? null : null
+  useEffect(() => {
+    if (agentId && data && !pickedAgent) setAgentId(null)
+  }, [agentId, data, pickedAgent])
+  const routes = useMemo(() => (pickedAgent ? allRoutes.filter((route) => route.agentId === pickedAgent.id) : allRoutes), [allRoutes, pickedAgent])
+  const agents = useMemo(() => (pickedAgent ? [pickedAgent] : allAgents), [allAgents, pickedAgent])
+  const routeCountByAgent = useMemo(() => {
+    const counts = new Map<string, number>()
+    allRoutes.forEach((route) => counts.set(route.agentId, (counts.get(route.agentId) ?? 0) + 1))
+    return counts
+  }, [allRoutes])
   const routesByDate = useMemo(() => {
     const grouped = new Map<string, ManagerCalendarRoute[]>()
     routes.forEach((route) => grouped.set(route.date, [...(grouped.get(route.date) ?? []), route]))
@@ -314,6 +356,34 @@ export default function ManagerPlanningCalendarScreen() {
               </Pressable>
             ))}
           </View>
+          <View style={[styles.agentField, pickedAgent && styles.agentFieldActive, tablet && styles.agentFieldTablet]} testID="planning-agent-filter">
+            <Pressable
+              testID="planning-agent-open"
+              accessibilityRole="button"
+              accessibilityLabel={`${copy.agentLabel}: ${pickedAgent?.name ?? copy.allAgents}`}
+              onPress={() => setPickerOpen(true)}
+              style={({ pressed }) => [styles.agentFieldMain, pressed && styles.pressed]}
+            >
+              <Icon name="person-outline" size={19} color={pickedAgent ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
+              <View style={styles.agentFieldCopy}>
+                <Text style={styles.agentFieldLabel}>{upper(copy.agentLabel)}</Text>
+                <Text style={[styles.agentFieldValue, pickedAgent && styles.agentFieldValueActive]} numberOfLines={1} testID="planning-agent-value">{pickedAgent?.name ?? copy.allAgents}</Text>
+              </View>
+              {pickedAgent ? null : <Icon name="chevron-down" size={18} color={fieldTheme.color.inkMuted} />}
+            </Pressable>
+            {pickedAgent ? (
+              <Pressable
+                testID="planning-agent-clear"
+                accessibilityRole="button"
+                accessibilityLabel={copy.clearAgentHint}
+                onPress={() => setAgentId(null)}
+                style={({ pressed }) => [styles.agentClear, pressed && styles.pressed]}
+              >
+                <Icon name="close" size={16} color={fieldTheme.color.primary} />
+                <Text style={styles.agentClearText}>{copy.clearAgent}</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <View style={styles.periodNavigator}>
             <Pressable accessibilityRole="button" accessibilityLabel={copy.previous} onPress={() => setAnchor(shiftManagerCalendarAnchor(anchor, mode, -1))} style={styles.squareButton}>
               <Icon name="chevron-back" size={24} color={fieldTheme.color.primaryStrong} />
@@ -329,9 +399,9 @@ export default function ManagerPlanningCalendarScreen() {
         </View>
 
         <View style={styles.summaryRow}>
-          <SummaryCard icon="map-outline" value={routes.length} label={copy.routes} />
-          <SummaryCard icon="people-outline" value={activeAgents} label={copy.agents} />
-          <SummaryCard icon="location-outline" value={stopCount} label={copy.stops} />
+          <SummaryCard testID="planning-summary-routes" icon="map-outline" value={routes.length} label={copy.routes} />
+          <SummaryCard testID="planning-summary-agents" icon="people-outline" value={activeAgents} label={copy.agents} />
+          <SummaryCard testID="planning-summary-stops" icon="location-outline" value={stopCount} label={copy.stops} />
         </View>
 
         {loadError ? (
@@ -384,13 +454,47 @@ export default function ManagerPlanningCalendarScreen() {
           onCreate={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
         />
       </ScrollView>
+
+      <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
+        <Pressable style={styles.scrim} onPress={() => setPickerOpen(false)} accessibilityLabel={copy.close}>
+          <Pressable style={[styles.sheet, tablet && styles.sheetTablet]} onPress={() => undefined} testID="planning-agent-sheet">
+            <Text style={styles.sheetTitle}>{copy.pickerTitle}</Text>
+            <Text style={styles.sheetHint}>{mode === "month" ? copy.pickerHintMonth : copy.pickerHintWeek}</Text>
+            <ScrollView style={styles.sheetList}>
+              {[{ id: null as string | null, name: copy.allAgents, count: allRoutes.length }, ...allAgents.map((agent) => ({ id: agent.id as string | null, name: agent.name, count: routeCountByAgent.get(agent.id) ?? 0 }))].map((option) => {
+                const selected = (option.id ?? null) === (pickedAgent?.id ?? null)
+                return (
+                  <Pressable
+                    key={option.id ?? "all"}
+                    testID={`planning-agent-option-${option.id ?? "all"}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => { setAgentId(option.id); setPickerOpen(false) }}
+                    style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && styles.pressed]}
+                  >
+                    <View style={styles.optionAvatar}>
+                      {option.id ? <Text style={styles.optionAvatarText}>{upper(option.name.slice(0, 2))}</Text> : <Icon name="people-outline" size={17} color={fieldTheme.color.primaryStrong} />}
+                    </View>
+                    <Text style={[styles.optionName, selected && styles.optionNameSelected]} numberOfLines={1}>{option.name}</Text>
+                    <Text style={styles.optionCount}>{option.count}</Text>
+                    {selected ? <Icon name="checkmark" size={19} color={fieldTheme.color.primary} /> : <View style={styles.optionTickSpace} />}
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+            <Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={({ pressed }) => [styles.sheetClose, pressed && styles.pressed]}>
+              <Text style={styles.sheetCloseText}>{copy.close}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }
 
-function SummaryCard({ icon, value, label }: { icon: string; value: number; label: string }) {
+function SummaryCard({ icon, value, label, testID }: { icon: string; value: number; label: string; testID?: string }) {
   return (
-    <View style={styles.summaryCard}>
+    <View style={styles.summaryCard} testID={testID}>
       <View style={styles.summaryIcon}><Icon name={icon} size={19} color={fieldTheme.color.primaryStrong} /></View>
       <Text style={styles.summaryValue}>{value}</Text>
       <Text style={styles.summaryLabel}>{label}</Text>
@@ -589,6 +693,32 @@ const styles = StyleSheet.create({
   segmentText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "800" },
   segmentTextActive: { color: fieldTheme.color.primaryStrong },
   periodNavigator: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm },
+  agentField: { minHeight: 52, flexDirection: "row", alignItems: "center", borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  agentFieldActive: { borderColor: fieldTheme.color.primary },
+  agentFieldTablet: { flex: 1, maxWidth: 360, marginHorizontal: fieldTheme.space.md },
+  agentFieldMain: { flex: 1, minHeight: 50, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md },
+  agentFieldCopy: { flex: 1, minWidth: 0 },
+  agentFieldLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "800", letterSpacing: 0.4 },
+  agentFieldValue: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
+  agentFieldValueActive: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
+  agentClear: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: fieldTheme.space.md },
+  agentClearText: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "900" },
+  scrim: { flex: 1, justifyContent: "flex-end", backgroundColor: fieldTheme.color.scrim },
+  sheet: { maxHeight: "80%", backgroundColor: fieldTheme.color.surface, borderTopLeftRadius: fieldTheme.radius.lg, borderTopRightRadius: fieldTheme.radius.lg, padding: fieldTheme.space.lg, gap: 4 },
+  sheetTablet: { width: "100%", maxWidth: 520, alignSelf: "center", marginBottom: fieldTheme.space.xl, borderRadius: fieldTheme.radius.lg },
+  sheetTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900" },
+  sheetHint: { color: fieldTheme.color.inkMuted, fontSize: 12, marginBottom: fieldTheme.space.sm },
+  sheetList: { flexGrow: 0 },
+  option: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md },
+  optionSelected: { backgroundColor: fieldTheme.color.primarySoft },
+  optionAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.surfaceStrong },
+  optionAvatarText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  optionName: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "700" },
+  optionNameSelected: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
+  optionCount: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "700" },
+  optionTickSpace: { width: 19 },
+  sheetClose: { minHeight: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", marginTop: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border },
+  sheetCloseText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "800" },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   periodCopy: { minHeight: LAYOUT_TOUCH_TARGETS.compact, minWidth: 160, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm },
   periodTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900", textAlign: "center" },
