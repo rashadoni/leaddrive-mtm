@@ -52,6 +52,13 @@ const LIGHT = {
   violetSoft: "#ECE6F7",
   danger: "#C73B3B",
   dangerSoft: "#F8E1E1",
+  /**
+   * Text on dangerSoft: what went wrong, under the red title of an error
+   * box. By day the dark red the boxes always had. It was a literal in
+   * the screens, so at night it stayed #762A2A on the night #3D1E1E, about
+   * 1.5:1 — «could not connect» on the first screen unreadable.
+   */
+  onDangerSoft: "#762A2A",
   success: "#1C7A50",
   successSoft: "#DAEFE4",
   /**
@@ -106,6 +113,7 @@ const DARK: FieldPalette = {
   violetSoft: "#2A2440",
   danger: "#D24F4F",
   dangerSoft: "#3D1E1E",
+  onDangerSoft: "#F2B8B8",
   success: "#4CC48C",
   successSoft: "#15352A",
   coralFill: "#C2482A",
