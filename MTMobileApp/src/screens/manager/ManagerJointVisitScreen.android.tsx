@@ -93,7 +93,11 @@ export default function ManagerJointVisitScreen() {
     ? state.visits.filter((visit) => visit.agent.id === session.agent.id && visit.id !== current?.id && visit.checkInAt >= session.startedAt)
     : []
   const shown = new Set([current?.id, ...together.map((visit) => visit.id)])
-  const waiting = state ? state.visits.filter((visit) => !shown.has(visit.id) && visit.joint && visit.canEvaluate && !visit.evaluation) : []
+  // Every joint visit still within its rating window, rated or not: a rating
+  // can be changed until the end of the next day, also after the manager has
+  // ended the joint visit (seen on the S23, 2026-10-20 — a rated visit left
+  // the screen with «Закончить», and with it the way to change the rating).
+  const otherJoint = state ? state.visits.filter((visit) => !shown.has(visit.id) && visit.joint && visit.canEvaluate) : []
 
   const header = (
     <View style={[styles.header, { paddingTop: headerTop }]}>
@@ -198,14 +202,14 @@ export default function ManagerJointVisitScreen() {
             </>
           ) : null}
 
-          {waiting.length > 0 ? (
+          {otherJoint.length > 0 ? (
             <>
               <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>{t("jointVisit.waitingRating")}</Text>
-                <Text style={styles.sectionCount}>{t("jointVisit.visitsCount", { count: waiting.length })}</Text>
+                <Text style={styles.sectionTitle}>{t("jointVisit.jointVisits")}</Text>
+                <Text style={styles.sectionCount}>{t("jointVisit.visitsCount", { count: otherJoint.length })}</Text>
               </View>
-              <View style={styles.list}>
-                {waiting.map((visit, index) => (
+              <View style={styles.list} testID="manager-joint-visit-other">
+                {otherJoint.map((visit, index) => (
                   <VisitRow key={visit.id} visit={visit} first={index === 0} language={i18n.language} onRate={rate} showAgent />
                 ))}
               </View>
