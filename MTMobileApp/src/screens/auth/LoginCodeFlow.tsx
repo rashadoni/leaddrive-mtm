@@ -387,7 +387,7 @@ const styles = themed(() => StyleSheet.create({
     padding: fieldTheme.space.md,
     marginTop: fieldTheme.space.md,
   },
-  errorText: { flex: 1, color: "#762A2A", fontSize: 14, lineHeight: 20 },
+  errorText: { flex: 1, color: fieldTheme.color.onDangerSoft, fontSize: 14, lineHeight: 20 },
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,

@@ -334,6 +334,26 @@ def night_mode_walk():
     hide_keyboard()
 
 
+def night_evidence(name):
+    """The screen as it stands, once more at night, then day again.
+
+    The night walk sees the company step before anything is refused. A
+    refusal is a red box whose words were a fixed dark red until 3.11.40:
+    on the night box about 1.5:1, unreadable. How the box reads at night only
+    the pixels show, so it is kept for the eye.
+    """
+    for mode, dark in (("yes", True), ("no", False)):
+        shell(f"cmd uimode night {mode}", check=False)
+        started = time.time()
+        while time.time() - started < 15:
+            now = screen_brightness()
+            if now is not None and (now < 0.3 if dark else now > 0.6):
+                break
+            time.sleep(1)
+        if dark:
+            evidence(name)
+
+
 def unpack_handset_code(apk, device_abis):
     """Let a handset APK start on an Intel emulator, without touching the APK.
 
@@ -947,6 +967,7 @@ def main(apk):
         wait_for("…and the form lets the agent go back to choose again", lambda again: by_id(again, "tenant-input") and "back on step 1", 60, "03b-company-again")
     elif outcome:
         record(True, what, outcome)
+        night_evidence("03-company-unknown-night")
     else:
         record(False, what, "neither a refusal nor the sign-in form in 120 s")
         return finish()

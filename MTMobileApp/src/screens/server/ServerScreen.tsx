@@ -312,7 +312,7 @@ const styles = themed(() => StyleSheet.create({
   },
   errorCopy: { flex: 1 },
   errorTitle: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
-  errorText: { color: "#762A2A", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  errorText: { color: fieldTheme.color.onDangerSoft, fontSize: 13, lineHeight: 18, marginTop: 2 },
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,
