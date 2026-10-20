@@ -613,7 +613,10 @@ export default function TasksScreen() {
           />
         ) : null}
 
-        {/* A filter narrows the list; it does not hide where a task is: «Все» is the default. */}
+        {/* A filter narrows the list; it does not hide where a task is: «Все» is the default.
+            One line on any phone or tablet (owner, 2026-10-20: «Tamamlanıb падает на вторую
+            строку»): the four share the row, and a label too long for its share gets a smaller
+            font rather than a second line. */}
         <View style={styles.filters} testID="tasks-filters">
           {TASK_FILTERS.map((value) => {
             const chosen = filter === value
@@ -626,8 +629,15 @@ export default function TasksScreen() {
                 accessibilityState={{ selected: chosen }}
                 testID={`tasks-filter-${value}`}
               >
-                <Text style={[styles.filterText, chosen && styles.filterTextOn]}>{copy.filters[value]}</Text>
-                <Text style={styles.filterCount}>{counts[value]}</Text>
+                <Text
+                  style={[styles.filterText, chosen && styles.filterTextOn]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {copy.filters[value]}
+                </Text>
+                <Text style={styles.filterCount} numberOfLines={1}>{counts[value]}</Text>
               </Pressable>
             )
           })}
@@ -950,12 +960,12 @@ const styles = themed(() => StyleSheet.create({
   noticeActionText: { fontSize: 12, fontWeight: "900" },
   disabled: { opacity: 0.45 },
   // A chosen filter is outlined dark, never filled (owner-approved colours, 2026-10-18).
-  filters: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  filterChip: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 12 },
+  filters: { width: "100%", maxWidth: 640, flexDirection: "row", flexWrap: "nowrap", gap: 4 },
+  filterChip: { minHeight: 40, minWidth: 0, flexGrow: 1, flexShrink: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 8 },
   filterChipOn: { borderWidth: 2, borderColor: fieldTheme.color.primaryStrong },
-  filterText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
+  filterText: { flexShrink: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
   filterTextOn: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
-  filterCount: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
+  filterCount: { flexShrink: 0, color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   orderButton: { minHeight: 40, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2, marginTop: 4 },
   orderLabel: { color: fieldTheme.color.inkMuted, fontSize: 13 },
   orderValue: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
