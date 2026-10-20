@@ -18,7 +18,7 @@ describe("Tasks is one scrolling page", () => {
 
   it("has no side pane scrolling beside the list", () => {
     expect(["TaskDetailPanel", "detailPane", "tabletWorkspace", "focusedTaskId"].filter((name) => source.includes(name))).toEqual([])
-    expect(source).toContain("onPress={() => openTask(item)}")
+    expect(source).toContain("onOpen={() => openTask(item.task)}")
   })
 
   it("is one column of rows on the phone and on the tablet, like the boards' list", () => {
