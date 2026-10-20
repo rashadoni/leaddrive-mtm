@@ -50,7 +50,7 @@ describe("other doors into contacts", () => {
     const navigator = fs.readFileSync(path.resolve(__dirname, "../../src/navigation/AppNavigatorAndroidV2.tsx"), "utf8")
     const base = read("base/RouteBaseScreen.android.tsx")
     expect(navigator).toContain('function ClientsStackNavigator()')
-    expect(navigator).toContain('<ClientsStack.Screen name="ClientsHome" component={RouteBaseScreen} />')
+    expect(navigator).toContain('<ClientsStack.Screen name="ClientsHome" component={withFieldColorScheme(RouteBaseScreen)} />')
     expect(navigator).toContain('Clients: ClientsStackNavigator')
     expect(navigator).toContain('name === "Clients" && !contactsEnabled ? "navV2.places"')
     expect(base).toContain("const canGoBack = (navigation.getState()?.index ?? 0) > 0")

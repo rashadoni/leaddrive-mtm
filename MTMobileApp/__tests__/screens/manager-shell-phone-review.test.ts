@@ -16,7 +16,7 @@ const liveMap = read("screens/manager/ManagerLiveMap.android.tsx")
 /** Owner's phone, build 488, Zeytun, manager in Azerbaijani (2026-10-17). */
 describe("manager shell: what the phone review found", () => {
   it("1. keeps the header title visible on a phone: the copy is not collapsed by flex in a column", () => {
-    const styles = workspace.slice(workspace.indexOf("const styles = StyleSheet.create"))
+    const styles = workspace.slice(workspace.indexOf("const styles = themed(() => StyleSheet.create"))
     expect(styles).toContain("headerCopy: { gap: fieldTheme.space.xs },")
     expect(styles).toContain("headerCopyTablet: { flex: 1 },")
     expect(workspace).toContain("<View style={[styles.headerCopy, tablet && styles.headerCopyTablet]}>")

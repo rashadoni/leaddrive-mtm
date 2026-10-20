@@ -27,7 +27,7 @@ import {
   type DoctorCreateRequestItem,
 } from "../../services/doctor-create-requests"
 import { useTabBarPadding } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { upperInitial } from "../../lib/upper"
 import { contactClassColors } from "../../lib/contact-classes"
@@ -70,12 +70,12 @@ const COPY = {
   },
 } as const
 
-const REQUEST_TONE = {
+const REQUEST_TONE = themed(() => ({
   waiting: { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong },
   attention: { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft },
   done: { color: fieldTheme.color.success, background: fieldTheme.color.successSoft },
   refused: { color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft },
-} as const
+} as const))
 
 const TYPE_KEY: Record<string, string> = {
   DOCTOR: "contacts.typeDoctor",
@@ -103,6 +103,7 @@ function mergeUnique(current: RouteContactListItem[], next: RouteContactListItem
  * They are elements, not components, so the search keeps focus while typing.
  */
 export default function RouteContactsList({ header }: { header?: React.ReactNode }) {
+  const colorScheme = useFieldColorScheme()
   const { t, i18n } = useTranslation()
   const copy = COPY[languageFor(i18n.language)]
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -346,6 +347,8 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
       {header ? null : topArea}
 
       <FlatList
+        // Rows are drawn again when the phone switches day and night.
+        extraData={colorScheme}
         key={tablet ? "route-contacts-tablet" : "route-contacts-phone"}
         data={rows}
         numColumns={tablet ? 2 : 1}
@@ -402,7 +405,7 @@ export default function RouteContactsList({ header }: { header?: React.ReactNode
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   topArea: { width: "100%", maxWidth: 1100, alignSelf: "center", paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, gap: fieldTheme.space.md },
   requestsInList: { marginBottom: fieldTheme.space.md },
@@ -455,4 +458,4 @@ const styles = StyleSheet.create({
   retryText: { color: fieldTheme.color.onColor, fontWeight: "900" },
   footerLoader: { marginVertical: fieldTheme.space.lg },
   pressed: { opacity: 0.72 },
-})
+}))

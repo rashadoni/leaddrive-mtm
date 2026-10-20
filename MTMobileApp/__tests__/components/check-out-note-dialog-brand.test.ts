@@ -32,7 +32,7 @@ function styleBlock(name: string): string {
 
 describe("check-out note dialog wears the app's colours", () => {
   it("takes every colour from fieldTheme, none written by hand", () => {
-    expect(dialog).toContain('import { fieldTheme } from "../theme/fieldTheme"')
+    expect(dialog).toContain('import { fieldTheme, themed } from "../theme/fieldTheme"')
     expect(dialog.match(GENERIC_PURPLE)).toBeNull()
     expect(dialog.match(/#[0-9a-f]{3,8}\b/gi)).toBeNull()
     // A hand-typed rgb()/rgba() copy of a token passes the hex check and stays

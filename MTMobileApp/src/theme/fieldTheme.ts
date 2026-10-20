@@ -1,3 +1,4 @@
+import { createElement, useSyncExternalStore, type ComponentType } from "react"
 import { Appearance } from "react-native"
 
 /**
@@ -5,14 +6,25 @@ import { Appearance } from "react-native"
  * адаптироваться должен под режим смартфонов и планшетов, ночной режим»;
  * mockup approved the same day).
  *
- * The palette is the phone's own theme, read once when the app's JS starts:
- * every screen builds its StyleSheet from `fieldTheme.color` at import, so
- * the colours are fixed for that run. A change while the app is open is
- * picked up by `color-scheme-reload.ts`, which restarts the JS when that
- * cannot cut off a recorded workday or a half-typed field.
+ * The palette is the phone's own theme, and it follows the phone while the
+ * app is open (owner, 2026-10-20: «если я меняю тему на телефоне на светлую,
+ * то приложение не меняется на светлую тему»). The first night build fixed
+ * the colours when the JS started and restarted the JS on a switch — but not
+ * during a workday, since the day's GPS runs in that JS, so an agent's phone
+ * kept the old theme all day. Now nothing restarts:
+ *
+ *  - `fieldTheme.color` and `fieldTheme.card` answer for the theme the phone
+ *    is in at the moment they are read;
+ *  - a sheet built at import is built for both themes by `themed()`, and
+ *    hands out the one the phone is in;
+ *  - `services/follow-phone-color-scheme.ts` tells `setFieldColorScheme()`
+ *    when the phone switches, and every screen draws itself again, with what
+ *    is typed, the open visit and the day's track left as they were.
  *
  * Every colour on a screen comes from here. A literal `#xxxxxx` in a
- * StyleSheet stays light in the night palette.
+ * StyleSheet stays light in the night palette; a colour read from
+ * `fieldTheme.color` at import outside `themed()` stays in the theme the app
+ * started in.
  */
 
 const LIGHT = {
@@ -96,11 +108,113 @@ export function fieldColorSchemeOf(value: string | null | undefined): FieldColor
   return value === "dark" ? "dark" : "light"
 }
 
+const SCHEMES: readonly FieldColorScheme[] = ["light", "dark"]
+
 /**
- * The theme this run of the app was started in. A test that replaces
+ * The theme on the screen now. It starts as the phone's; a test that replaces
  * react-native without Appearance gets the light palette.
  */
-export const fieldColorScheme: FieldColorScheme = fieldColorSchemeOf(Appearance?.getColorScheme?.())
+let activeScheme: FieldColorScheme = fieldColorSchemeOf(Appearance?.getColorScheme?.())
+/** Set only while `themedVariants()` builds a value for one of the themes. */
+let buildingScheme: FieldColorScheme | null = null
+const schemeListeners = new Set<() => void>()
+
+/**
+ * The theme a colour read now belongs to: the one on the screen, or, inside
+ * a `themed()` builder, the one being built.
+ */
+export function currentFieldColorScheme(): FieldColorScheme {
+  return buildingScheme ?? activeScheme
+}
+
+/** The phone switched day and night: every subscribed screen draws itself again. */
+export function setFieldColorScheme(next: FieldColorScheme): void {
+  if (next === activeScheme) return
+  activeScheme = next
+  for (const listener of [...schemeListeners]) listener()
+}
+
+export function subscribeFieldColorScheme(listener: () => void): () => void {
+  schemeListeners.add(listener)
+  return () => {
+    schemeListeners.delete(listener)
+  }
+}
+
+const activeFieldColorScheme = () => activeScheme
+
+/**
+ * The theme on the screen, for a component that must draw itself again when
+ * it changes. A screen registered in the navigator gets this from
+ * `withFieldColorScheme`, and whatever it renders follows.
+ */
+export function useFieldColorScheme(): FieldColorScheme {
+  return useSyncExternalStore(subscribeFieldColorScheme, activeFieldColorScheme, activeFieldColorScheme)
+}
+
+const followingScreens = new WeakMap<ComponentType<any>, ComponentType<any>>()
+
+/**
+ * A screen as the navigator registers it, drawn again when the phone
+ * switches day and night. The navigator does not draw a screen again on its
+ * own (it holds each one still unless its route changes), so every
+ * `component=` there goes through this. The same screen gets the same
+ * wrapper every time, or the navigator would mount it afresh.
+ */
+export function withFieldColorScheme<P extends object>(Screen: ComponentType<P>): ComponentType<P> {
+  const known = followingScreens.get(Screen)
+  if (known) return known as ComponentType<P>
+  function FollowsPhoneColorScheme(props: P) {
+    useFieldColorScheme()
+    return createElement(Screen as ComponentType<any>, props)
+  }
+  FollowsPhoneColorScheme.displayName = `FollowsPhoneColorScheme(${Screen.displayName ?? Screen.name ?? "Screen"})`
+  followingScreens.set(Screen, FollowsPhoneColorScheme)
+  return FollowsPhoneColorScheme
+}
+
+/** One value built for each theme: `build` reads `fieldTheme.color` as that theme's. */
+export function themedVariants<T>(build: () => T): Readonly<Record<FieldColorScheme, T>> {
+  const variants = {} as Record<FieldColorScheme, T>
+  for (const scheme of SCHEMES) {
+    const outer = buildingScheme
+    buildingScheme = scheme
+    try {
+      variants[scheme] = build()
+    } finally {
+      buildingScheme = outer
+    }
+  }
+  return variants
+}
+
+/**
+ * A sheet or a colour map made at import, in both themes:
+ * `const styles = themed(() => StyleSheet.create({ ... }))`. `styles.card`
+ * is the night card while the phone is dark, the day card otherwise, read at
+ * the moment a screen draws.
+ */
+export function themed<T extends object>(build: () => T): T {
+  const variants = themedVariants(build)
+  const live = {} as T
+  const keys = new Set([...Object.keys(variants.light), ...Object.keys(variants.dark)])
+  for (const key of keys) {
+    Object.defineProperty(live, key, {
+      enumerable: true,
+      get: () => (variants[currentFieldColorScheme()] as Record<string, unknown>)[key],
+    })
+  }
+  return live
+}
+
+/** `fieldTheme.color`: each colour of the theme on the screen at the moment it is read. */
+const LIVE_COLOR = {} as FieldPalette
+for (const key of Object.keys(LIGHT) as (keyof FieldPalette)[]) {
+  Object.defineProperty(LIVE_COLOR, key, {
+    enumerable: true,
+    get: () => FIELD_PALETTES[currentFieldColorScheme()][key],
+  })
+}
 
 /**
  * A card raised off the ground. By day a soft shadow lifts it (Material
@@ -126,9 +240,19 @@ export const FIELD_CARDS = {
   },
 } as const
 
-export const fieldTheme = {
-  color: FIELD_PALETTES[fieldColorScheme],
-  card: FIELD_CARDS[fieldColorScheme],
-  space: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
-  radius: { sm: 10, md: 16, lg: 22, pill: 999 },
-} as const
+const SPACE = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const
+const RADIUS = { sm: 10, md: 16, lg: 22, pill: 999 } as const
+
+export const fieldTheme: {
+  readonly color: Readonly<FieldPalette>
+  readonly card: (typeof FIELD_CARDS)[FieldColorScheme]
+  readonly space: typeof SPACE
+  readonly radius: typeof RADIUS
+} = {
+  color: LIVE_COLOR,
+  get card() {
+    return FIELD_CARDS[currentFieldColorScheme()]
+  },
+  space: SPACE,
+  radius: RADIUS,
+}

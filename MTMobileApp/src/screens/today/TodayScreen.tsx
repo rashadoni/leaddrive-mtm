@@ -40,7 +40,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
 import { canReturnToWorkday, returnToClosedWorkday } from "../../services/workday-return"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { shiftDateKey } from "../../services/week"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -1072,7 +1072,7 @@ export default function TodayScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: fieldTheme.color.canvas,
@@ -1463,4 +1463,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-})
+}))

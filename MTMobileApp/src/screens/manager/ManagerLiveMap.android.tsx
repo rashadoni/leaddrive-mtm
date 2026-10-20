@@ -4,7 +4,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { WebView } from "react-native-webview"
 import { useTranslation } from "react-i18next"
 import { formatManagerEvidenceAge } from "../../services/manager-location-truth"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { api } from "../../services/api"
@@ -249,7 +249,7 @@ function MapNotice({ icon, color, tint, title, body }: { icon: string; color: st
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   section: {
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.lg,
@@ -331,4 +331,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: fieldTheme.space.sm,
   },
   noCoordinatesText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
-})
+}))

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { OutboxOperation } from '../services/outbox'
 import { attendanceMarkRejection, canReplaceAttendanceMark } from '../services/attendance-mark-recovery'
 import { useWorkdayStore } from '../store/workday'
-import { fieldTheme } from '../theme/fieldTheme'
+import { fieldTheme, themed } from '../theme/fieldTheme'
 
 export default function AttendanceMarkRecoveryCard({ operation, refresh, installationBlocked = false }: { installationBlocked?: boolean; operation: OutboxOperation | null; refresh: () => Promise<unknown> }) {
   const { t } = useTranslation(), [busy, setBusy] = useState(false), [failed, setFailed] = useState(false)
@@ -31,9 +31,9 @@ export default function AttendanceMarkRecoveryCard({ operation, refresh, install
     {replace && !awaitingInstallation && <Pressable testID="attendance-mark-retry" accessibilityRole="button" disabled={busy} onPress={() => void retry()} style={[styles.button, busy && styles.disabled]}><Text style={styles.buttonText}>{t('attendanceLocation.retryMark')}</Text></Pressable>}
   </View>
 }
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: { backgroundColor: fieldTheme.color.surface, borderRadius: 20, borderWidth: 1, borderColor: fieldTheme.color.border, padding: 20, gap: 12 },
   title: { fontSize: 20, fontWeight: '700', color: fieldTheme.color.ink }, copy: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.inkMuted },
   warning: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.amber }, button: { minHeight: 50, padding: 14, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: fieldTheme.color.primaryStrong },
   buttonText: { fontSize: 16, color: fieldTheme.color.onColor, fontWeight: '600', textAlign: 'center' }, disabled: { opacity: 0.45 },
-})
+}))

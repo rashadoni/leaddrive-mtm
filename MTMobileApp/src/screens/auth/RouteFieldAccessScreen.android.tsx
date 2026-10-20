@@ -7,7 +7,7 @@ import type { RouteFieldAccess } from "../../services/bootstrap"
 import { useAuthStore } from "../../store/auth"
 import { redial } from "../../services/connection-health"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 
 type BlockedAccess = Exclude<RouteFieldAccess, "enabled" | "legacy">
 
@@ -143,7 +143,7 @@ export default function RouteFieldAccessScreen({ access, attendance = false }: {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: {
     flex: 1,
     alignItems: "center",
@@ -209,4 +209,4 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.8 },
   disabled: { opacity: 0.5 },
-})
+}))

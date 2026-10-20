@@ -12,7 +12,7 @@ import { answerAttendanceExplanation, attendanceExplanationSections, readAttenda
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 
 const keyOf = (date: string, kind: AttendanceExplanationKind) => `${date}:${kind}`
 
@@ -106,7 +106,7 @@ export default function AttendanceExplanationsScreen() {
       </>}
     </ScrollView></View>
 }
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas }, header: { backgroundColor: fieldTheme.color.primaryStrong, padding: 24, gap: 8 },
   title: { fontSize: 26, fontWeight: "700", color: fieldTheme.color.onColor }, subtitle: { fontSize: 15, lineHeight: 22, color: fieldTheme.color.onColor },
   content: { padding: 20, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
@@ -120,4 +120,4 @@ const styles = StyleSheet.create({
   button: { minHeight: 48, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: fieldTheme.color.border, justifyContent: "center", alignItems: "center", backgroundColor: fieldTheme.color.surface },
   primary: { backgroundColor: fieldTheme.color.primaryStrong, borderColor: fieldTheme.color.primaryStrong }, primaryText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "700" },
   action: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "600" },
-})
+}))

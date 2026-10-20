@@ -32,7 +32,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import NotificationBell from "../../components/NotificationBell"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upper, upperFirst } from "../../lib/upper"
@@ -667,7 +667,7 @@ function DayAgenda({ date, routes, language, copy, onCreate }: {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like every tab's header; «Marşrut yarat» is the screen's one
   // filled button (owner-approved colours, 2026-10-18).
@@ -804,4 +804,4 @@ const styles = StyleSheet.create({
   emptyCreate: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
   emptyCreateText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] },
-})
+}))

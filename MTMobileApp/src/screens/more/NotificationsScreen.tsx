@@ -26,7 +26,7 @@ import { feedCopy, feedLanguage } from "../../services/notification-feed-copy"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { lastPushStatus, registerPushToken, type PushStatus } from "../../services/push-registration"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import StatusBarBand from "../../components/StatusBarBand"
@@ -135,7 +135,7 @@ const COPY = {
 } as const
 
 /** Grey icons with no square under them; only an alert keeps its amber (owner-approved colours, 2026-10-18). */
-const KIND_VISUAL: Record<FeedKind, { icon: string; color: string }> = {
+const KIND_VISUAL: Record<FeedKind, { icon: string; color: string }> = themed(() => ({
   message: { icon: "chatbubble-ellipses-outline", color: fieldTheme.color.inkMuted },
   request: { icon: "document-text-outline", color: fieldTheme.color.inkMuted },
   task: { icon: "alarm-outline", color: fieldTheme.color.inkMuted },
@@ -144,8 +144,8 @@ const KIND_VISUAL: Record<FeedKind, { icon: string; color: string }> = {
   route: { icon: "map-outline", color: fieldTheme.color.inkMuted },
   approval: { icon: "shield-checkmark-outline", color: fieldTheme.color.inkMuted },
   other: { icon: "information-circle-outline", color: fieldTheme.color.inkMuted },
-}
-const ALERT_VISUAL = { icon: "warning-outline", color: fieldTheme.color.amber }
+}))
+const ALERT_VISUAL = themed(() => ({ icon: "warning-outline", color: fieldTheme.color.amber }))
 
 const FIELD_KINDS: FeedKind[] = ["message", "request", "route", "task", "visit", "workday", "other"]
 const MANAGER_KINDS: FeedKind[] = ["approval", "request", "workday", "other"]
@@ -402,7 +402,7 @@ export default function NotificationsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
   headerRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
@@ -446,4 +446,4 @@ const styles = StyleSheet.create({
   ctaText: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "900" },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.75 },
-})
+}))

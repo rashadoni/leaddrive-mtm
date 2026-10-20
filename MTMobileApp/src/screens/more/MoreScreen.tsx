@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
@@ -173,7 +173,7 @@ export default function MoreScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: fieldTheme.color.canvas,
@@ -249,4 +249,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
-})
+}))

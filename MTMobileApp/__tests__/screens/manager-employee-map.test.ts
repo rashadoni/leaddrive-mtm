@@ -55,7 +55,7 @@ describe("«Komanda» opens the employee", () => {
 
   it("registers the card in the manager's navigator only", () => {
     const managerBlock = navigator.slice(navigator.indexOf("{managerShell ? ("), navigator.indexOf("{managerShell ? (") + 900)
-    expect(managerBlock).toContain('<Stack.Screen name="ManagerEmployee" component={ManagerEmployeeScreen} />')
+    expect(managerBlock).toContain('<Stack.Screen name="ManagerEmployee" component={withFieldColorScheme(ManagerEmployeeScreen)} />')
     expect(navigator.match(/name="ManagerEmployee"/g)).toHaveLength(1)
   })
 })

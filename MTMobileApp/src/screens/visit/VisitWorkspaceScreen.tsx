@@ -40,7 +40,7 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import ShortWindowPage from "../../components/ShortWindowPage"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -839,11 +839,11 @@ function Stat({ icon, label, value }: { icon: string; label: string; value: stri
   )
 }
 
-const ROADMAP_STATE = {
+const ROADMAP_STATE = themed(() => ({
   done: { color: fieldTheme.color.success, background: fieldTheme.color.successSoft, icon: "checkmark" },
   missing: { color: fieldTheme.color.danger, background: fieldTheme.color.dangerSoft, icon: "close" },
   skipped: { color: fieldTheme.color.inkMuted, background: fieldTheme.color.surfaceStrong, icon: "remove" },
-} as const
+} as const))
 
 function RoadmapStep({ step, last }: { step: VisitRoadmapStep; last: boolean }) {
   const visual = ROADMAP_STATE[step.state]
@@ -878,7 +878,7 @@ function EmptyBlock({ icon, title, body }: { icon: string; title: string; body?:
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg },
@@ -982,4 +982,4 @@ const styles = StyleSheet.create({
   stateButton: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl, marginTop: fieldTheme.space.lg },
   stateButtonText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "700" },
   pressed: { opacity: 0.72 },
-})
+}))

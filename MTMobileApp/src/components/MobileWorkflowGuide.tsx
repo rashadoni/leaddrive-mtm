@@ -1,7 +1,7 @@
 import React from "react"
 import { StyleSheet, Text, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 type MobileWorkflowGuideStep = {
   icon: string
@@ -40,7 +40,7 @@ export default function MobileWorkflowGuide({ title, body, steps }: MobileWorkfl
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 1100,
@@ -80,4 +80,4 @@ const styles = StyleSheet.create({
   // hiding the last action in a three-step workflow.
   stepLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "800", marginTop: 4, flexShrink: 1 },
   stepLabelActive: { color: fieldTheme.color.primaryStrong },
-})
+}))

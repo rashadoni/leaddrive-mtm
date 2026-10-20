@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react"
 import { View, Text, StyleSheet, Animated } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Icon from "react-native-vector-icons/Ionicons"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import type { FeedbackTone } from "../services/app-feedback"
 import { FEEDBACK_TONE_COLORS } from "./feedback-tone"
 
@@ -86,7 +86,7 @@ export default function FeedbackToast({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     position: "absolute",
     flexDirection: "row",
@@ -107,4 +107,4 @@ const styles = StyleSheet.create({
   textWrap: { flex: 1, gap: 2 },
   title: { fontSize: 16, lineHeight: 21, fontWeight: "800", color: fieldTheme.color.ink },
   message: { fontSize: 15, lineHeight: 20, color: fieldTheme.color.ink },
-})
+}))

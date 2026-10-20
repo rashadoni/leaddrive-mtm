@@ -1,4 +1,4 @@
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import type { FeedbackTone } from "../services/app-feedback"
 
 export interface FeedbackToneColors {
@@ -19,7 +19,7 @@ export interface FeedbackToneColors {
  * Text on every tone is `ink`: the accents are for the icon, since blue and
  * red on their soft fills stay under 4.5:1 for body text.
  */
-export const FEEDBACK_TONE_COLORS: Record<FeedbackTone, FeedbackToneColors> = {
+export const FEEDBACK_TONE_COLORS: Record<FeedbackTone, FeedbackToneColors> = themed(() => ({
   success: {
     background: fieldTheme.color.primarySoft,
     accent: fieldTheme.color.primary,
@@ -44,4 +44,4 @@ export const FEEDBACK_TONE_COLORS: Record<FeedbackTone, FeedbackToneColors> = {
     border: fieldTheme.color.blue + "55",
     icon: "information-circle",
   },
-}
+}))

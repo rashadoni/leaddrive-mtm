@@ -1,7 +1,7 @@
 import React from "react"
 import { StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 /**
  * A green strip under the status bar for screens whose header scrolls away.
@@ -18,9 +18,9 @@ export default function StatusBarBand({ tone = "green" }: { tone?: "green" | "li
   return <View pointerEvents="none" style={[styles.band, tone === "light" && styles.light, { height: insets.top }]} />
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   band: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldTheme.color.primaryStrong },
   // The white tab headers (owner-approved colours, 2026-10-18): the band is
   // white too, and the screen's LightScreenStatusBar turns the icons dark.
   light: { backgroundColor: fieldTheme.color.surface },
-})
+}))

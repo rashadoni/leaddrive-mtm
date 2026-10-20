@@ -1,7 +1,7 @@
 import React from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { fieldTheme } from '../theme/fieldTheme'
+import { fieldTheme, themed } from '../theme/fieldTheme'
 import type { useAttendanceInstallation } from '../hooks/useAttendanceInstallation'
 export default function AttendanceInstallationCard({installation}:{installation:ReturnType<typeof useAttendanceInstallation>}) {
   const {t,i18n}=useTranslation(),{visible,own,pending,busy,failed}=installation
@@ -24,4 +24,4 @@ export default function AttendanceInstallationCard({installation}:{installation:
     <Text style={styles.copy}>{t('attendanceInstallation.newMark')}</Text>
   </View>
 }
-const styles=StyleSheet.create({card:{backgroundColor:fieldTheme.color.surface,borderRadius:20,borderWidth:1,borderColor:fieldTheme.color.border,padding:20,gap:12},title:{fontSize:20,fontWeight:'700',color:fieldTheme.color.ink},copy:{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted},state:{fontSize:16,fontWeight:'600',color:fieldTheme.color.primaryStrong},warning:{fontSize:15,lineHeight:23,color:fieldTheme.color.amber},button:{minHeight:50,padding:14,alignItems:'center',justifyContent:'center',borderRadius:12,borderWidth:1,borderColor:fieldTheme.color.border},primary:{backgroundColor:fieldTheme.color.primaryStrong},buttonText:{fontSize:16,fontWeight:'600',color:fieldTheme.color.primaryStrong,textAlign:'center'},primaryText:{fontSize:16,fontWeight:'600',color:fieldTheme.color.onColor,textAlign:'center'},disabled:{opacity:0.45}})
+const styles=themed(() => StyleSheet.create({card:{backgroundColor:fieldTheme.color.surface,borderRadius:20,borderWidth:1,borderColor:fieldTheme.color.border,padding:20,gap:12},title:{fontSize:20,fontWeight:'700',color:fieldTheme.color.ink},copy:{fontSize:15,lineHeight:23,color:fieldTheme.color.inkMuted},state:{fontSize:16,fontWeight:'600',color:fieldTheme.color.primaryStrong},warning:{fontSize:15,lineHeight:23,color:fieldTheme.color.amber},button:{minHeight:50,padding:14,alignItems:'center',justifyContent:'center',borderRadius:12,borderWidth:1,borderColor:fieldTheme.color.border},primary:{backgroundColor:fieldTheme.color.primaryStrong},buttonText:{fontSize:16,fontWeight:'600',color:fieldTheme.color.primaryStrong,textAlign:'center'},primaryText:{fontSize:16,fontWeight:'600',color:fieldTheme.color.onColor,textAlign:'center'},disabled:{opacity:0.45}}))

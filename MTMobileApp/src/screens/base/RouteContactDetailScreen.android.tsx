@@ -25,7 +25,7 @@ import {
   type RouteContactChangeTone,
 } from "../../services/route-contact-change"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
@@ -33,11 +33,11 @@ type Language = "ru" | "az" | "en"
 type DetailRow = { icon: string; label: string; value: string | undefined }
 
 /** The agent's last change request: waiting, approved or declined. */
-const REQUEST_TONE: Record<RouteContactChangeTone, { color: string; title: "requestPending" | "requestApproved" | "requestDeclined" }> = {
+const REQUEST_TONE: Record<RouteContactChangeTone, { color: string; title: "requestPending" | "requestApproved" | "requestDeclined" }> = themed(() => ({
   pending: { color: fieldTheme.color.amber, title: "requestPending" },
   approved: { color: fieldTheme.color.success, title: "requestApproved" },
   declined: { color: fieldTheme.color.danger, title: "requestDeclined" },
-}
+}))
 
 const COPY = {
   ru: {
@@ -374,7 +374,7 @@ function ActionRow({ icon, label, value, touchTarget, onPress }: { icon: string;
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl, backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
@@ -427,4 +427,4 @@ const styles = StyleSheet.create({
   proposeText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "700" },
   proposeHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   pressed: { opacity: 0.72 },
-})
+}))

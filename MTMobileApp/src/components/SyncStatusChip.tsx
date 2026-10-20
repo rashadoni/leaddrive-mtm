@@ -34,7 +34,7 @@ import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
 import { syncCentreState } from "../lib/sync-centre-availability"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { syncChipLabel } from "./sync-chip-label"
 
 type Props = {
@@ -407,7 +407,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   chip: { minHeight: 44, maxWidth: 190, paddingHorizontal: 12, borderRadius: 22, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1 },
   // Outlined on the white header like «Yenilə» beside it: a canvas fill read
   // as a tinted pill once the ground got its tint (2026-10-18).
@@ -471,4 +471,4 @@ const styles = StyleSheet.create({
   syncButton: { minHeight: 50, marginTop: 16, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.primary },
   syncText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   disabled: { opacity: 0.5 },
-})
+}))

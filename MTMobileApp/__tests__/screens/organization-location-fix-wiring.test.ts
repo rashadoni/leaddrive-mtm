@@ -25,8 +25,8 @@ describe("«Клиент здесь» is reachable", () => {
   it("is a screen of both stacks it is opened from", () => {
     expect(navigator).toContain('import RouteOrganizationLocationFixScreen from "../screens/base/RouteOrganizationLocationFixScreen.android"')
     expect(navigator.match(/OrganizationLocationFix: \{ id: string; name\?: string; latitude\?: number; longitude\?: number \}/g)).toHaveLength(2)
-    expect(navigator).toContain('<ClientsStack.Screen name="OrganizationLocationFix" component={RouteOrganizationLocationFixScreen} />')
-    expect(navigator).toContain('<Stack.Screen name="OrganizationLocationFix" component={RouteOrganizationLocationFixScreen} />')
+    expect(navigator).toContain('<ClientsStack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />')
+    expect(navigator).toContain('<Stack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />')
   })
 
   it("is offered on the customer's card only where the organization lets its agents ask", () => {

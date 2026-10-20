@@ -37,8 +37,8 @@ import { refreshAttendanceSession } from "../services/attendance-session"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { dismissAllChoices } from "../services/app-feedback"
 import { startPushTokenRefresh } from "../services/push-lifecycle"
-import { fieldColorScheme, fieldTheme } from "../theme/fieldTheme"
-import { startColorSchemeReload } from "../services/color-scheme-reload"
+import { fieldTheme, themed, useFieldColorScheme } from "../theme/fieldTheme"
+import { followPhoneColorScheme } from "../services/follow-phone-color-scheme"
 import { checkFieldAppUpdate } from "../services/field-app-update"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
@@ -68,6 +68,7 @@ const foregroundLocationPermission = createForegroundLocationPermission({
 })
 
 function AppContent() {
+  const colorScheme = useFieldColorScheme()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   const authLoading = useAuthStore((state) => state.isLoading)
   const agent = useAuthStore((state) => state.agent)
@@ -237,10 +238,6 @@ function AppContent() {
     return () => subscription.remove()
   }, [refreshAdmissionAndSync])
 
-  // Day or night, as the phone is: a change while the app is open restarts it
-  // in the new colours when that is safe (services/color-scheme-reload.ts).
-  useEffect(() => startColorSchemeReload(), [])
-
   // «Есть новая версия — обновить?» on every start, and on a return to the app
   // when a newer build appeared or half a day passed (services/field-app-update.ts).
   useEffect(() => {
@@ -257,7 +254,7 @@ function AppContent() {
     <SafeAreaProvider>
       {/* Light icons for the night palette and the green headers left; a white
           header turns them dark itself (LightScreenStatusBar). */}
-      <StatusBar barStyle="light-content" backgroundColor={fieldColorScheme === "dark" ? fieldTheme.color.surface : fieldTheme.color.primaryStrong} />
+      <StatusBar barStyle="light-content" backgroundColor={colorScheme === "dark" ? fieldTheme.color.surface : fieldTheme.color.primaryStrong} />
       <ErrorBoundary>
         <AppNavigatorAndroidV2 />
       </ErrorBoundary>
@@ -274,6 +271,12 @@ function AppContent() {
 
 export default function AndroidApp() {
   const [i18nReady, setI18nReady] = useState(false)
+  useFieldColorScheme()
+
+  // Day or night, as the phone is, and at once when the phone switches — in
+  // the middle of a workday too: nothing restarts, every screen draws itself
+  // again in the new palette (services/follow-phone-color-scheme.ts).
+  useEffect(() => followPhoneColorScheme(), [])
 
   useEffect(() => {
     // Before any screen reads a position: the library's own sheet has no
@@ -299,11 +302,11 @@ export default function AndroidApp() {
   return <AppContent />
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: fieldTheme.color.primaryStrong,
   },
-})
+}))

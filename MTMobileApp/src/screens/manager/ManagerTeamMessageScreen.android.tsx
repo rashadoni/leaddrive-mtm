@@ -28,7 +28,7 @@ import {
   type TeamMessageRecipient,
   type TeamMessageTarget,
 } from "../../services/team-message"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 const FAILURE_COPY: Record<Exclude<TeamMessageFailure, "session">, string> = {
@@ -295,7 +295,7 @@ export default function ManagerTeamMessageScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.surfaceStrong },
@@ -343,4 +343,4 @@ const styles = StyleSheet.create({
   stateText: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
   reload: { minHeight: 44, justifyContent: "center", paddingHorizontal: fieldTheme.space.lg, borderRadius: 14, backgroundColor: fieldTheme.color.primary },
   pressed: { opacity: 0.78 },
-})
+}))

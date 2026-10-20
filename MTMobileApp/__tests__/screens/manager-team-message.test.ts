@@ -47,7 +47,7 @@ describe("the manager writes to the team", () => {
 
   it("is a screen of the manager's stack only", () => {
     const managerBlock = navigator.slice(navigator.indexOf("{managerShell ? ("), navigator.indexOf(") : hasServer ? ("))
-    expect(managerBlock).toContain('<Stack.Screen name="ManagerTeamMessage" component={ManagerTeamMessageScreen} />')
+    expect(managerBlock).toContain('<Stack.Screen name="ManagerTeamMessage" component={withFieldColorScheme(ManagerTeamMessageScreen)} />')
     expect(navigator.match(/name="ManagerTeamMessage"/g)).toHaveLength(1)
   })
 

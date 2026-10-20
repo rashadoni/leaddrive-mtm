@@ -127,7 +127,7 @@ describe("the notice", () => {
 })
 
 describe("the choice sheet", () => {
-  const sheet = host.slice(host.indexOf("function AppChoiceSheet()"), host.indexOf("const styles = StyleSheet.create("))
+  const sheet = host.slice(host.indexOf("function AppChoiceSheet()"), host.indexOf("const styles = themed(() => StyleSheet.create("))
 
   it("measures insets of its own window, where the navigation bar can be on the side", () => {
     const modal = sheet.slice(sheet.indexOf("<Modal"), sheet.indexOf("</Modal>"))

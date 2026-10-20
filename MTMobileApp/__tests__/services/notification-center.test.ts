@@ -139,7 +139,7 @@ describe("notifications screen wiring", () => {
   it("is reachable from the More tab, and from the bell over the tabs", () => {
     expect(more).toContain('route: "Notifications"')
     expect(more).toContain('navigation.navigate("Notifications" as never)')
-    expect(navigator).toContain('<Stack.Screen name="Notifications" component={NotificationsScreen} />')
+    expect(navigator).toContain('<Stack.Screen name="Notifications" component={withFieldColorScheme(NotificationsScreen)} />')
   })
 
   /**

@@ -27,7 +27,7 @@ import { flushRouteFieldOutbox, refreshSyncStatusCounts } from "../../services/s
 import { useAuthStore } from "../../store/auth"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import FeedbackToast from "../../components/FeedbackToast"
@@ -1068,7 +1068,7 @@ function ActionNoteModal({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: {
@@ -1192,4 +1192,4 @@ const styles = StyleSheet.create({
   modalCancelText: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
   modalSubmit: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary },
   modalSubmitText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
-})
+}))
