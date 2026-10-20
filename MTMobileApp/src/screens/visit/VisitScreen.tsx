@@ -38,6 +38,7 @@ import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { runMobileSync } from "../../services/sync-engine"
 import { allOutboxOperations, retryOutboxConflict } from "../../services/outbox"
 import { checkInOutcomeFromOperation, formatCheckInDistance, type CheckInOutcome } from "./check-in-outcome"
+import { toggledCustomer } from "./customer-selection"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import NotesModal from "../../components/NotesModal"
@@ -1125,7 +1126,7 @@ export default function VisitScreen() {
     touchTarget,
     onSearch: setSearchQuery,
     onClearSearch: () => setSearchQuery(""),
-    onSelectCustomer: (customer: Customer) => setSelectedCustomerId(customer.id),
+    onSelectCustomer: (customer: Customer) => setSelectedCustomerId((current) => toggledCustomer(current, customer.id)),
     onCheckIn: () => selectedCustomer && handleCheckIn(selectedCustomer),
     onPhoto: () => setCameraVisible(true),
     onOpenWorkspace: () => activeVisit && openVisitSummary(activeVisit),
