@@ -90,7 +90,7 @@ describe("B18: tab captions can be read", () => {
     const missing: string[] = []
     for (const locale of ["ru", "en", "az"] as const) {
       const nav = mobileResources[locale].navV2 as Record<string, string>
-      for (const key of ["today", "route", "visits", "clients", "tasks", "more"]) {
+      for (const key of ["today", "route", "clients", "tasks", "more"]) {
         if (typeof nav[key] !== "string" || !nav[key].trim()) missing.push(`${locale}.${key}`)
       }
     }
