@@ -50,7 +50,7 @@ describe("«Komanda» opens the employee", () => {
     expect(card).toContain("<Pressable\n      testID={`manager-agent-card-${agent.id}`}")
     expect(card).toContain("onPress={onOpen}")
     expect(card).toContain('t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })')
-    expect(workspace).toContain('navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline })')
+    expect(workspace).toContain('navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline, pushReady: agent.pushReady })')
   })
 
   it("registers the card in the manager's navigator only", () => {
