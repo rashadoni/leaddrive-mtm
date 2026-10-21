@@ -351,7 +351,7 @@
   },
   "pending": [
     "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture",
-    "Synthetic future-date full-shift timesheet: NOT_PASS due to frozen Asia/Baku rule; current-day supplementary HR calculation PASS. No history rewritten."
+    "24-hour physical offline soak: NOT_RUN; the real-date full sequence is a short bounded test"
   ],
   "credentials": "Not included",
   "deviceSerial": "Not included",
@@ -734,7 +734,8 @@
   "supersededPending": [
     "Full offline shift: FAIL at cold-start admission; implementation required",
     "Optical decoding and verified physical QR mark: NOT_RUN; camera UI does not prove a decoded code",
-    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture"
+    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture",
+    "Synthetic future-date full-shift timesheet: NOT_PASS due to frozen Asia/Baku rule; current-day supplementary HR calculation PASS. No history rewritten."
   ],
   "offlineBuild": {
     "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
@@ -893,5 +894,25 @@
       "docs/evidence/attendance-offline-completed-1016.png",
       "docs/evidence/attendance-offline-synced-1016.png"
     ]
+  },
+  "freshRealDateOfflineAcceptance1016": {
+    "status": "PASS",
+    "workDate": "2026-10-22",
+    "timezone": "Asia/Baku",
+    "maestroSeconds": 70.36,
+    "factsState": "VALID",
+    "newEvents": 4,
+    "priorAdminEventsUnchanged": 2,
+    "otherOfficeEventsUnchanged": 24,
+    "requestCountsUnchanged": {
+      "admin": 0,
+      "office": 10
+    },
+    "backendArtifactSha": "de44f2a3325dbdc9a89e5fe14b266010cd84dff4",
+    "report": "docs/evidence/attendance-fresh-day-full-cycle-20261022.json",
+    "postAcceptanceCleanup": "PASS",
+    "originalOfficeAccountRestored": true,
+    "initialSyntheticFailureRetained": true,
+    "syntheticOfficeProjectionNow": "VALID after the real date arrived, with unchanged events; does not retroactively pass the earlier attempt"
   }
 }
