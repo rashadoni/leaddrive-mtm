@@ -23,6 +23,11 @@ name: Entire offline shift survives process restarts and stays provisional
 - assertNotVisible:
     id: office-workday-pending
 - assertVisible: "${output.copy.notStarted}"
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: office-workday-action
 - assertVisible:
@@ -38,8 +43,18 @@ name: Entire offline shift survives process restarts and stays provisional
     visible:
       id: office-workday-pending
     timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: office-workday-break
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.paused}"
+    direction: UP
+    timeout: 60000
 - assertVisible: "${output.copy.paused}"
 - stopApp
 - launchApp:
@@ -52,8 +67,18 @@ name: Entire offline shift survives process restarts and stays provisional
     visible:
       id: office-workday-pending
     timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: office-workday-break
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}"
+    direction: UP
+    timeout: 60000
 - assertVisible: "${output.copy.running}"
 - stopApp
 - launchApp:
@@ -66,11 +91,21 @@ name: Entire offline shift survives process restarts and stays provisional
     visible:
       id: office-workday-pending
     timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    timeout: 60000
 - tapOn:
     id: office-workday-action
 - assertVisible: "${output.copy.finishTitle}"
 - tapOn:
     id: app-choice-button-1
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.completed}"
+    direction: UP
+    timeout: 60000
 - assertVisible: "${output.copy.completed}"
 - stopApp
 - launchApp:

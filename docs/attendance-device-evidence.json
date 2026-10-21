@@ -301,23 +301,49 @@
           "status": "PASS"
         }
       ]
+    },
+    {
+      "flow": "journeys/offline-access.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "flowSha256": "5e3be0e23a08c9e7b9a0a72fe513e7f46a29a68e0e28fe5549aa1ec4169891fe",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedSeconds": 15.012
+    },
+    {
+      "flow": "journeys/offline-shift.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "flowSha256": "a3c4bd7cb3fd5d9adc49fd18c0e4f88eae71274efb73f07e0cd3921b9548772d",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedSeconds": 85.017
+    },
+    {
+      "flow": "journeys/offline-existing-shift.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "flowSha256": "6f1e9eefe186aa8c2e4e35133a9bf656b920e0c4e20632335ad91f81fe5a8feb",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedSeconds": 64.56
     }
   ],
   "installedIdentity": {
     "package": "com.leaddrive.attendance",
     "version": "1.0.0",
-    "versionCode": 1012,
+    "versionCode": 1016,
+    "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+    "apkSha256": "64d06cc49a5881de80688ff339fc06dc2d6d9f9e9e03e2585e1699e06d40407a",
+    "separateAndroidUid": true,
     "mtmVersion": "3.11.49",
     "mtmVersionCode": "1710",
-    "separateAndroidUid": true,
-    "backgroundLocationPermissionPresent": false,
-    "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
-    "apkSha256": "36080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118"
+    "backgroundLocationPermissionPresent": false
   },
   "pending": [
-    "Full offline shift: FAIL at cold-start admission; implementation required",
-    "Optical decoding and verified physical QR mark: NOT_RUN; camera UI does not prove a decoded code",
-    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture"
+    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture",
+    "Synthetic future-date full-shift timesheet: NOT_PASS due to frozen Asia/Baku rule; current-day supplementary HR calculation PASS. No history rewritten."
   ],
   "credentials": "Not included",
   "deviceSerial": "Not included",
@@ -376,7 +402,8 @@
     "networkSettingsRestored": true,
     "onlineRecovery": "PASS",
     "historicalDataUnchanged": true,
-    "fullOfflineShift": "NOT_RUN: admission unavailable after offline cold start"
+    "fullOfflineShift": "NOT_RUN: admission unavailable after offline cold start",
+    "supersededBy": "offlineAcceptance1016.coldStart; historical failure retained"
   },
   "qrVisibilityBuild": {
     "status": "PASS",
@@ -682,5 +709,181 @@
     },
     "visibleReceiptScreenshot": "docs/evidence/attendance-qr-verified-1012.png",
     "verifiedBranchReceiptVisibleAfterAppRestart": true
+  },
+  "installedIdentityHistory": [
+    {
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": 1012,
+      "mtmVersion": "3.11.49",
+      "mtmVersionCode": "1710",
+      "separateAndroidUid": true,
+      "backgroundLocationPermissionPresent": false,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "apkSha256": "36080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118"
+    }
+  ],
+  "supersededPending": [
+    "Full offline shift: FAIL at cold-start admission; implementation required",
+    "Optical decoding and verified physical QR mark: NOT_RUN; camera UI does not prove a decoded code",
+    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture"
+  ],
+  "offlineBuild": {
+    "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+    "ciRunId": 39638977894,
+    "standaloneRunId": 39638966536,
+    "ordinaryMtmRunId": 39638977857,
+    "status": "PASS",
+    "jestSuites": 275,
+    "jestPassed": 2431,
+    "jestTodo": 1,
+    "fullTypecheck": "PASS"
+  },
+  "offlineAcceptance1016": {
+    "coldStart": {
+      "flow": "journeys/offline-access",
+      "exit": 0,
+      "apkVersionCode": 1016,
+      "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "flowSha256": "5e3be0e23a08c9e7b9a0a72fe513e7f46a29a68e0e28fe5549aa1ec4169891fe",
+      "tests": [
+        {
+          "name": "Previously authenticated employee retains workday access after offline cold start",
+          "seconds": "15.012",
+          "status": "PASS"
+        }
+      ]
+    },
+    "fullShiftMaestro": {
+      "flow": "journeys/offline-shift",
+      "exit": 0,
+      "apkVersionCode": 1016,
+      "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "flowSha256": "a3c4bd7cb3fd5d9adc49fd18c0e4f88eae71274efb73f07e0cd3921b9548772d",
+      "tests": [
+        {
+          "name": "Entire offline shift survives process restarts and stays provisional",
+          "seconds": "85.017",
+          "status": "PASS"
+        }
+      ]
+    },
+    "fullShiftServerDelivery": {
+      "status": "PASS",
+      "scope": "offline capture and ordered server delivery; separate from timesheet calculation",
+      "apkVersionCode": 1016,
+      "newEventTypes": [
+        "START",
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "claimTimes": [
+        "2026-10-21T17:09:13.883Z",
+        "2026-10-21T17:09:21.755Z",
+        "2026-10-21T17:09:35.757Z",
+        "2026-10-21T17:09:54.877Z"
+      ],
+      "receiptTimes": [
+        "2026-10-21T17:10:34.342Z",
+        "2026-10-21T17:10:35.018Z",
+        "2026-10-21T17:10:35.488Z",
+        "2026-10-21T17:10:36.163Z"
+      ],
+      "requestsUnchanged": true,
+      "priorEventsUnchanged": 15,
+      "radioStatesRestored": true,
+      "timezoneRestored": true,
+      "timesheet": "NOT PASS: synthetic future workdate2026-10-22; immutable baseline rule uses Asia/Baku"
+    },
+    "initialCombinedHarness": {
+      "status": "FAIL",
+      "mode": "physical Maestro, no clock or token injection",
+      "startedAt": "2026-10-21T17:06:59.181Z",
+      "fixtureTimezone": "Pacific/Kiritimati",
+      "syntheticWorkDate": "2026-10-22",
+      "offlineAt": "2026-10-21T17:07:43.054Z",
+      "accessFlowExit": 0,
+      "shiftFlowExit": 0,
+      "noServerEventsBeforeReconnect": true,
+      "networkReturnStartedAt": "2026-10-21T17:10:26.383Z",
+      "radioStatesRestored": true,
+      "networkRestoredAt": "2026-10-21T17:10:32.443Z",
+      "failureType": "AssertionError",
+      "failure": "",
+      "timezoneRestored": true,
+      "finishedAt": "2026-10-21T17:10:41.513Z"
+    },
+    "currentDaySupplementaryMaestro": {
+      "flow": "journeys/offline-existing-shift",
+      "exit": 0,
+      "apkVersionCode": 1016,
+      "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "flowSha256": "6f1e9eefe186aa8c2e4e35133a9bf656b920e0c4e20632335ad91f81fe5a8feb",
+      "tests": [
+        {
+          "name": "Existing current-day shift pauses, resumes and finishes offline across restarts",
+          "seconds": "64.56",
+          "status": "PASS"
+        }
+      ]
+    },
+    "currentDayHrReceipt": {
+      "status": "PASS",
+      "startedAt": "2026-10-21T17:14:07.912Z",
+      "workDate": "2026-10-21",
+      "fixtureTimezone": "Asia/Baku",
+      "reopenTypes": [
+        "REOPEN",
+        "RESUME"
+      ],
+      "offlineAt": "2026-10-21T17:14:42.839Z",
+      "flowExit": 0,
+      "noServerEventsBeforeReconnect": true,
+      "networkReturnStartedAt": "2026-10-21T17:16:21.113Z",
+      "radioStatesRestored": true,
+      "factsState": "VALID",
+      "serverEventTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "claimTimes": [
+        "2026-10-21T17:15:29.112Z",
+        "2026-10-21T17:15:44.733Z",
+        "2026-10-21T17:16:03.046Z"
+      ],
+      "receiptTimes": [
+        "2026-10-21T17:16:29.099Z",
+        "2026-10-21T17:16:29.713Z",
+        "2026-10-21T17:16:30.343Z"
+      ],
+      "priorEventsUnchanged": 21,
+      "requestsUnchanged": true,
+      "noDuplicateAfterRestart": true,
+      "onlinePendingBannerGone": true,
+      "finishedAt": "2026-10-21T17:16:51.218Z"
+    },
+    "cleanup": {
+      "status": "PASS",
+      "settingsRestored": true,
+      "radiosRestored": true,
+      "originalPermissionGrantsRestored": true,
+      "workdayStatus": "COMPLETED",
+      "currentDayFactsState": "VALID",
+      "historicalEventsUnchanged": 15,
+      "eventsRetained": 24,
+      "requestsUnchanged": 10,
+      "noAdditionalPolicyOrUserCreated": true,
+      "mtmVersion": "3.11.49",
+      "mtmVersionCode": "1710"
+    },
+    "offlineWindowHours": 24,
+    "serverDelayedClaimReviewMinutes": 15,
+    "serverApprovalNotImpliedByLocalCapture": true,
+    "screenshots": [
+      "docs/evidence/attendance-offline-completed-1016.png",
+      "docs/evidence/attendance-offline-synced-1016.png"
+    ]
   }
 }
