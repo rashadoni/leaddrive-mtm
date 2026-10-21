@@ -19,6 +19,7 @@ import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 import NotificationBell from "../../components/NotificationBell"
+import GuideButton from "../../components/guide/GuideButton"
 
 type MoreRoute = "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
@@ -129,6 +130,9 @@ export default function MoreScreen() {
       <View style={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>{t("moreV2.title")}</Text>
+          {/* The first-run guide again, at the top where the tour's last step points.
+              «Daha çox» is the field agent's tab only. */}
+          <GuideButton tour="field" spot="more.guide" />
           <NotificationBell />
         </View>
         <View style={styles.actionGrid}>

@@ -2,7 +2,7 @@ import React, { useEffect } from "react"
 import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
+import { createBottomTabNavigator, type BottomTabBarButtonProps } from "@react-navigation/bottom-tabs"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
@@ -63,6 +63,10 @@ import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCal
 import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
 import { AGENT_TAB_NAMES, hasManagerShellAccess, mainShell, type ManagerTabName } from "./role-tabs"
+import { currentRouteName, navigationRef } from "./navigation-ref"
+import GuideOverlay from "../components/guide/GuideOverlay"
+import GuideTabButton from "../components/guide/GuideTabButton"
+import { useGuideStore } from "../store/guide"
 
 export type RootStackParamList = {
   Main: undefined
@@ -283,8 +287,13 @@ function tabOptions(name: string, label: string, iconOverride?: { active: string
       const icon = iconOverride ?? ICONS[name] ?? ICONS.Today
       return <Icon name={focused ? icon.active : icon.inactive} size={22} color={color} />
     },
+    // The first-run guide lights the tab itself and counts a real press on it.
+    tabBarButton: (props: BottomTabBarButtonProps) => <GuideTabButton {...props} spot={`tab.${name}`} />,
   }
 }
+
+/** The first-run guide follows the focused screen: a tap step is done when its screen opens. */
+const followRoute = () => useGuideStore.getState().setRoute(currentRouteName())
 
 function OfficeTabs() {
   const { t } = useTranslation(), insets = useSafeAreaInsets()
@@ -463,7 +472,7 @@ export default function AppNavigatorAndroidV2() {
   }
 
   return (
-    <NavigationContainer theme={NAVIGATION_THEMES[colorScheme]}>
+    <NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ref={navigationRef} onReady={followRoute} onStateChange={followRoute}>
       <Stack.Navigator
         // Recreate the stack when admission changes so a revoked user cannot
         // remain on a previously-mounted detail screen with stale read data.
@@ -532,6 +541,8 @@ export default function AppNavigatorAndroidV2() {
           </Stack.Screen>
         )}
       </Stack.Navigator>
+      {/* Over every tab and stack screen; the app's notices come after the navigator and stay above it. */}
+      {isLoggedIn ? <GuideOverlay /> : null}
     </NavigationContainer>
   )
 }

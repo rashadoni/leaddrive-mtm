@@ -40,6 +40,7 @@ jest.mock("../../src/services/api", () => ({
 import { api } from "../../src/services/api"
 import { useAuthStore } from "../../src/store/auth"
 import { useKpiStore } from "../../src/store/kpi"
+import { useGuideStore } from "../../src/store/guide"
 
 // Typed helpers
 const mockLogin = api.login as jest.Mock
@@ -290,5 +291,36 @@ describe("useAuthStore — checkAuth", () => {
     expect(hasServer).toBe(false)
     expect(agent).toBeNull()
     expect(isLoading).toBe(false)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// the first-run guide (owner, 2026-10-18)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("useAuthStore — the first-run guide", () => {
+  beforeEach(() => {
+    useGuideStore.setState({ scope: null, record: {}, loaded: false, armedScope: null, run: null })
+  })
+
+  it("arms the guide for the person who signed in", async () => {
+    mockLogin.mockResolvedValue({ success: true, data: { agent: SAMPLE_AGENT } })
+    await useAuthStore.getState().login("rauf@pilot.example", "password")
+    expect(useGuideStore.getState().armedScope).toBe("org-1:ag-1")
+  })
+
+  it("leaves it alone for a session restored at start: an update does not replay the tour", async () => {
+    mockGetStoredServer.mockResolvedValue("guven.leaddrivecrm.org")
+    mockIsLoggedIn.mockResolvedValue(true)
+    mockGetStoredAgent.mockResolvedValue(SAMPLE_AGENT)
+    await useAuthStore.getState().checkAuth()
+    expect(useAuthStore.getState().isLoggedIn).toBe(true)
+    expect(useGuideStore.getState().armedScope).toBeNull()
+  })
+
+  it("does not arm it when the sign-in is refused", async () => {
+    mockLogin.mockResolvedValue({ success: false, error: "Invalid credentials" })
+    await expect(useAuthStore.getState().login("rauf@pilot.example", "wrong")).rejects.toThrow("Invalid credentials")
+    expect(useGuideStore.getState().armedScope).toBeNull()
   })
 })

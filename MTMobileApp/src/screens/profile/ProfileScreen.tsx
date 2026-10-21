@@ -24,6 +24,7 @@ import { useTabBarPadding, useHeaderTop } from "../../hooks/useTabBarHeight"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import StatusBarBand from "../../components/StatusBarBand"
 import NotificationBell from "../../components/NotificationBell"
+import GuideButton from "../../components/guide/GuideButton"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { setLocale, getCurrentLocale, SUPPORTED_LOCALES, type SupportedLocale } from "../../i18n"
 import { useHintsStore } from "../../store/hints"
@@ -87,6 +88,8 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
   const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(getCurrentLocale())
   const hintsEnabled = useHintsStore((state) => state.enabled)
   const setHintsEnabled = useHintsStore((state) => state.setEnabled)
+  // The first-run guide of the shell this profile is in; office staff have none.
+  const guideTour = managerShell ? "manager" as const : agent?.role === "AGENT" ? "field" as const : null
   const alertGroups = useMemo(() => {
     const groups: Array<{ alert: MtmAlert; count: number }> = []
     const byKind = new Map<string, number>()
@@ -257,6 +260,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
             thumbColor={hintsEnabled ? fieldTheme.color.primary : fieldTheme.color.inkMuted}
           />
         </View>
+        {guideTour ? <GuideButton tour={guideTour} variant="card" onBeforeStart={managerShell ? undefined : () => navigation.popToTop()} /> : null}
       </SectionCard>
 
 
@@ -314,6 +318,8 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
               <Text style={styles.name}>{agent?.name || agent?.email}</Text>
               <Text style={styles.role}>{statusLabel(t, "role", agent?.role)}</Text>
               {agent?.organizationName ? <Text style={styles.organization}>{agent.organizationName}</Text> : null}
+              {/* The manager's «Daha çox»: the tour's last step points here. */}
+              {managerShell ? <View style={styles.tourRow}><GuideButton tour="manager" spot="profile.guide" /></View> : null}
             </View>
             {/* «Daha çox» is one of the manager's tabs: it gets the bell too. */}
             {managerShell ? <NotificationBell /> : null}
@@ -429,6 +435,7 @@ const styles = themed(() => StyleSheet.create({
   retryText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
   content: { width: "100%", maxWidth: 1120, alignSelf: "center", padding: fieldTheme.space.lg, gap: fieldTheme.space.lg },
   contentTwoColumn: { flexDirection: "row", alignItems: "flex-start", padding: fieldTheme.space.xl, gap: fieldTheme.space.xl },
+  tourRow: { flexDirection: "row", marginTop: fieldTheme.space.sm },
   column: { flex: 1, minWidth: 0, gap: fieldTheme.space.lg },
   card: { padding: fieldTheme.space.lg, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   cardHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.lg },
