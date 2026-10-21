@@ -487,5 +487,32 @@
     "Standalone background push is not configured; in-app inbox is tested",
     "Physical journeys retain their own APK/source bindings; not all ran on one build",
     "Earlier Maestro launch without an explicit permission map granted OS permissions; explicit deny was restored and policy remained disabled"
-  ]
+  ],
+  "qrWorkplaceSetup": {
+    "date": "2026-10-21",
+    "status": "PASS",
+    "tenant": "owned fictional phone fixture",
+    "configurationTransport": "authenticated administration API",
+    "enableTransport": "actual HR browser UI",
+    "branchCount": 1,
+    "branchName": "Тестовое рабочее место QR",
+    "coordinates": "synthetic; location collection disabled",
+    "assignedTo": "fictional office employee",
+    "qrPolicyEnabled": true,
+    "phoneButtonEnabled": true,
+    "installedVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "preflightWorkdayStatus": "PAUSED",
+    "currentWorkdayStatus": "STARTED",
+    "newEvents": [
+      "RESUME"
+    ],
+    "priorEventsUnchanged": 7,
+    "requestsUnchanged": 10,
+    "newFlow": "MTMobileApp/.maestro/attendance/journeys/qr-optical-mark.yaml",
+    "syntaxCheck": "PASS",
+    "opticalScan": "NOT RUN: waiting for physical camera aiming by user",
+    "serverVerifiedQrMark": "NOT RUN",
+    "desiredFinalPolicy": "QR remains enabled per user instruction"
+  }
 }
