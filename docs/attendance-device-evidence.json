@@ -514,5 +514,46 @@
     "opticalScan": "NOT RUN: waiting for physical camera aiming by user",
     "serverVerifiedQrMark": "NOT RUN",
     "desiredFinalPolicy": "QR remains enabled per user instruction"
+  },
+  "qrOpticalMaestroAttempts": [
+    {
+      "attempt": "qr-optical-mark-1012",
+      "flow": "journeys/qr-optical-mark",
+      "exit": 143,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "6f848b0fdfadd2f224a5f2973e53f3f8f892eb7152459268208042a5e04b62b6",
+      "acceptance": "NOT RUN: interrupted during instrumentation or setup before optical scan",
+      "classifiedAsProductFailure": false
+    },
+    {
+      "attempt": "qr-optical-mark-retry-1012",
+      "flow": "journeys/qr-optical-mark",
+      "exit": 143,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "6f848b0fdfadd2f224a5f2973e53f3f8f892eb7152459268208042a5e04b62b6",
+      "acceptance": "NOT RUN: interrupted during instrumentation or setup before optical scan",
+      "classifiedAsProductFailure": false
+    },
+    {
+      "attempt": "qr-optical-mark-specific-permissions-1012",
+      "flow": "journeys/qr-optical-mark",
+      "exit": 143,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "9fe9778d5244b0081339449660d48c2bccdcca3d41ecbd86d015d7b483130d03",
+      "acceptance": "NOT RUN: interrupted during instrumentation or setup before optical scan",
+      "classifiedAsProductFailure": false
+    }
+  ],
+  "qrOpticalDirectUi": {
+    "status": "IN_PROGRESS",
+    "transport": "actual Android UI via ADB, camera aiming by user",
+    "cameraOpened": true,
+    "osPermissionDialogAccepted": true,
+    "decodedTokenInjected": false,
+    "serverMarkSent": false,
+    "note": "Awaiting physical aiming at a fresh short-lived QR; no PASS claimed"
   }
 }

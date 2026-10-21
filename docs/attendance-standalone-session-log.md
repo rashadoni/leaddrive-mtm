@@ -263,3 +263,25 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - UI hierarchy подтверждает office-workday-qr enabled=true; screenshot qr-enabled-ready-1012.png просмотрен: зелёная QR-кнопка наверху, день идёт, правильный fictional employee. QR-настройка остаётся включённой, площадка назначена. Камера и FINISH в этой фазе ещё не запускались.
 - Новый assisted optical flow сохранён в checkpoint8516ada, syntaxPASS. Сборка APK/полный E2E NOT RUN: runtime не изменялся; нужная проверка здесь — реальная оптика. Код выдаётся с TTL60с, поэтому свежая картинка будет создана только после готовности пользователя.
 - Точная остановка: ожидается ответ на async запрос о физическом наведении задней камеры на экран Mac. Это действие невозможно выполнить удалёнными инструментами. Следующее действие: preflight текущего дня → Maestro qr-optical-mark → свежий QR → optical scan → независимая проверка ровно 1 FINISH, VERIFIED QR и неизменности истории. Нельзя считать этот шаг пройденным по успешному открытию камеры.
+
+## 2026-10-21 — запуск optical acceptance после готовности пользователя
+
+- Пользователь ответил «начинай», затем восстановил подключение Mac новым tunnel35039. Прежний35038 принимал TCP, но не отвечал ADB;5037 был закрыт. После ограниченных повторов35039 подтвердил1 authorized device. Private transport helpers переключены на проверенныйпорт; собственный loopback relay5037 поднят для Maestro.
+- Server preflight PASS: QRenabled, назначенная площадка, тот же STARTED день, ровно8 прежних событий, все неизменны иfactsVALID. FINISH ещё не отправлен. Пользователь готов физически навести телефон; запускается qr-optical-mark на установленном1012.
+
+## 2026-10-21 — восстановление служебного Maestro после обрыва
+
+- Первый запуск qr-optical-mark-1012 остановлен exit143: gRPC view hierarchy завис, приложение оказалось за launcher; optical/FINISH не выполнялись. Это инфраструктурная остановка, не доказанный product FAIL. Собственный Java process group завершён, force-stop выполнен только для dev.mobile.maestro/dev.mobile.maestro.test.
+- После перезапуска служебного процесса UI hierarchy снова доступна: правильный fictional employee и QR control; экранAwake, keyguardshowing=false. Запущен отдельный qr-optical-mark-retry-1012 с прежним sourceabb8a45 и flow hash6f848b0fdfadd2f224a5f2973e53f3f8f892eb7152459268208042a5e04b62b6. Тесты не подменяются manual token injection.
+
+## 2026-10-21 — узкая подготовка разрешений для remote ADB
+
+- Второй запуск qr-optical-mark-retry-1012 остановлен exit143 до QR: Java stack показал AndroidDriver.setAllPermissions → AndroidAppFiles.getApkFile → Dadb.pull. Открытый временный APK содержал только9.37MB после длительного ожидания; это медленная пересылка APK, не product failure.
+- Optical flow теперь задаёт явный permissions map CAMERA/FINE_LOCATION/COARSE_LOCATION=deny вместо общего all=deny. Остальные grants не меняет; map не опускается. Семантика specific permissions сверена с официальными https://docs.maestro.dev/reference/commands-available/launchapp и https://docs.maestro.dev/maestro-flows/flow-control-and-logic/permissions . SyntaxPASS.
+- Третий отдельный запуск qr-optical-mark-specific-permissions-1012 начат. Во время Maestro не запускаем параллельный uiautomator dump, способный конфликтовать с UI automation; готовность камеры проверяется screenshot. Полный результат ещё не получен.
+
+## 2026-10-21 — переход к прямому physical UI acceptance
+
+- Третий Maestro запуск specific-permissions остановлен exit143 после повторной задержки driver/device-info. Ни один из этих трёх запусков не доказал optical scan или FINISH. Причина первой задержки не установлена окончательно; конфликт отдельного UIAutomator dump был гипотезой, не подтверждённым диагнозом. Второй APK pull подтверждён stack/файлом.
+- Через прямой Android UI automation после закрытия instrumentation подтверждён fictional account, нажата активная QR-кнопка, выполнено настоящее OS разрешение камеры. Camera view visible=true, confirmation=false. API/clipboard/test-hook подстановки QR нет.
+- Запущен bounded240s private watcher: ждёт реальный Kod oxundu/attendance-qr-confirm, нажимает подтверждение один раз, затем требует ровно1 новыйFINISH/VERIFIED QR в независимом HR report. Свежий QR сTTL59с выдан штатным API и показан пользователю в чате для физического наведения телефона. Результат пока ожидается; это directUI E2E, не MaestroPASS.

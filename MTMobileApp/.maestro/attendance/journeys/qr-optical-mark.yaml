@@ -4,7 +4,26 @@ name: Read a real branch QR with the camera and verify the finish receipt
 # owned fictional tenant, preserve HR event baselines, and display a live QR on
 # another screen. A person must aim the physical camera; never inject a token.
 ---
-- runFlow: ../shared/open-fixture.yaml
+- runScript: ../shared/labels.js
+# Explicit permission IDs avoid transferring the entire APK over remote ADB
+# for Maestro's "all" permission enumeration. No default permission grant.
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 30000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "Fictional office employee"
+- assertNotVisible:
+    id: office-workday-unavailable
+- assertNotVisible:
+    id: office-workday-conflict
 - runFlow:
     when:
       visible: ${output.copy.paused}
