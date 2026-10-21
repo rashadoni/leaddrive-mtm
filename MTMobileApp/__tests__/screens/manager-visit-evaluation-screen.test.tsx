@@ -165,7 +165,9 @@ describe("the company's own questions (owner, 2026-10-21)", () => {
   it("takes the new list when the office changed it while the sheet was open, keeping the points still asked", async () => {
     mockParams = { visit: VISIT, questions: [RAPPORT, { id: "OBJECTIONS", labels: null }] }
     mockSave.mockRejectedValueOnce(Object.assign(new Error("changed"), { code: "MTM_VISIT_EVALUATION_QUESTIONS_CHANGED" }))
-    mockGetJointVisit.mockResolvedValueOnce({ success: true, data: { session: null, visits: [], questions: [RAPPORT, SAMPLES] } })
+    // The server always sends a question with its words.
+    const rapportFromServer = { id: "RAPPORT", labels: { az: "Müştəri ilə ünsiyyət", ru: "Контакт с клиентом", en: "Rapport with the client" } }
+    mockGetJointVisit.mockResolvedValueOnce({ success: true, data: { session: null, visits: [], questions: [rapportFromServer, SAMPLES] } })
     const tree = await render()
     await press(tree, "manager-visit-evaluation-RAPPORT-4")
     await press(tree, "manager-visit-evaluation-OBJECTIONS-2")
@@ -177,6 +179,7 @@ describe("the company's own questions (owner, 2026-10-21)", () => {
     expect(mockGoBack).not.toHaveBeenCalled()
     expect(byTestId(tree, "manager-visit-evaluation-OBJECTIONS-2")).toBeUndefined()
     expect(byTestId(tree, "manager-visit-evaluation-RAPPORT-4").props.accessibilityState).toEqual({ checked: true })
+    expect(byTestId(tree, "manager-visit-evaluation-q-samples-4")).toBeDefined()
 
     await press(tree, "manager-visit-evaluation-save")
     expect(mockSave).toHaveBeenLastCalledWith("visit-joint-1", { scores: { RAPPORT: 4 }, comment: null })
