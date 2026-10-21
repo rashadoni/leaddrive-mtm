@@ -294,3 +294,37 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 
 - Cleanup подтверждён PASS: камера закрыта, исходный CAMERA grantfalse восстановлен, QR policytrue и кнопкаenabled=true. ДеньSTARTED, все8 событий и10 заявок неизменны, новыхFINISH0. Собственный loopback relay оставлен доступным для продолжения; активных Maestro/watchers нет.
 - Последняя фиксация содержит только test/docs/evidence; приложение1012 и production не изменялись. Full build/полный E2E NOT RUN: нет runtime изменения, physical optical остаётся отдельной незавершённой приёмкой. Следующий шаг — ответ пользователя о видимости кода/наведении, затем fresh QR и подтверждение.
+
+## 2026-10-21 — реальное считывание с истёкшим QR; подготовка живого экрана
+
+- Пользователь подтвердил «Камера направлена на QR». Transport35039 и8 событий baseline подтверждены. Direct UI ready retry реально увидел Kod oxundu в16:07:54.970Z и нажал confirmation один раз. HR подтвердил ровно1 новыйFINISH, прежние8 событий/10 заявок неизменны, factsVALID, деньCOMPLETED.
+- QR evidence=EXPIRED, геоNO_CONSENT. Positive VERIFIED acceptance не пройдена. Показанный новый QR имел окно16:07:41–16:08:41Z; claimedAt16:07:55.413Z иserverReceivedAt16:08:11.514Z входят в это окно. По контракту EXPIRED означает выход времени получения за окно реально считанного кода; это указывает на считывание прежней картинки. Raw scanned token не читается/не сохраняется, точное соответствие картинке не утверждаем.
+- Negative result сохранён, история не переписывается. Пользователю явно сообщено о возврате fictional дня в работу для повторной проверки через живой экран. Reopen должен оставить FINISH в журнале, а не стереть неудачную попытку.
+- Для устранения статичной устаревшей картинки подготовлен временный QR-only viewer на loopback Contabo; только owned fictional branch. Официальный cloudflared2026.10.3 скачан в private tmp, SHA256053b80b0a23031a038fdbf3c073f59f82b8f1f152aa67971d7383ffafc0dbab0 сверён с GitHub asset digest. Quick Tunnel только для временной приёмки, не production deployment; срок20мин, закрыть после теста. Непредсказуемый путь, no-store/no-referrer, backend credentials остаются на сервере; браузеру выдаётся только короткоживущий QR. Политика TTL60с не меняется.
+
+## 2026-10-21 — повтор через автоматически обновляемый QR
+
+- HTTPS viewer проверен HTTP200 + PNG data URL; открытие Codex browser panel вернуло queued, поэтому пользователю также дана прямая ссылка. Нельзя считать queued подтверждением видимости. Временный URL и ключ не сохраняются в Git.
+- На физическом телефоне нажата штатная кнопка возврата в работу. Независимый HR report подтверждает прежние9 событий неизменными и ровно2 новых REOPEN/RESUME, factsVALID, деньSTARTED. Новая неизменяемая baseline содержит11 событий; исходная baseline8 не перезаписана.
+- Запущен ограниченный240с direct UI optical watcher для свежей страницы. Это самостоятельный physical E2E, не MaestroPASS. Ожидается реальное Kod oxundu, одно подтверждение и независимая VERIFIED квитанция; никакой подстановки token.
+
+## 2026-10-21 — свежая optical попытка дала INVALID, диагностика продолжается
+
+- Пользователь подтвердил «Вижу QR в камере». Android camera service ACTIVE и PreviewView STREAMING без camera errors; чёрное поле в удалённом screenshot не доказывает чёрную картинку на физическом дисплее.
+- Direct UI watcher увидел реальное считывание в16:19:36.239Z и подтвердил один раз. НовыйFINISH claimedAt16:19:36.703Z, received16:19:38.536Z, QRstateINVALID, геоNO_CONSENT. Серверная VERIFIED приёмка по-прежнему не пройдена. Старые11 событий сохраняются; источник считанного token не захватывался, нельзя утверждать его тождественность живому viewer.
+- Bounded Chromium проверка viewer PASS: PNG реально декодирован браузером, visible=true, naturalWidth>200; собственный context закрыт. Независимый ZXing декодер PNG текущего viewer подтверждает mtmq1, длину326, формат подписи, нужный branchId, TTL60сек. Это проверка display-format, не серверной подписи и не opticalPASS телефона.
+- Read-only SSH к зарегистрированному leaddrive-prod отклонён publickey; маршруты и ключи других проектов не использовались. Диагностика продолжается штатными fixture API.
+- Для разделения серверной и optical причин подготовлена одна bounded API проверка на другом существующем fictional office principal (admin mobile EMPLOYEE), у которого bootstrap.workday=null. ЦельSTART/FINISH свежим QR, оставить завершённый synthetic день и все события. Это явно NOT optical.
+
+## 2026-10-21 — полный physical QR → VERIFIED PASS
+
+- Backend diagnostic: первая synthetic API START отклонена до записи из-за ошибки private harness — installationId без обязательного rf-. Исправленная отдельная попытка на другом fictional EMPLOYEE дала START/FINISH QR=VERIFIED, finalCOMPLETED. Это API evidence, не optical; записанные2 события сохранены. Сотрудник на телефоне не подменялся.
+- Повторный штатный UI возврат основного fictional дня оставил12 прежних событий и добавил REOPEN/RESUME. Baseline14 сохранена отдельно. Третий actual optical scan наблюдался16:25:47.613Z; одно нажатие confirmation, FINISH claimed16:25:48.076Z, received16:25:50.749Z, QR=VERIFIED, филиал «Тестовое рабочее место QR».
+- Независимый HR report: ровно1 новыйFINISH, все14 предыдущих событий идентичны, factsVALID, completedAt совпадает с bootstrap; все10 заявок неизменны. Final15 событий сохраняют обе предыдущие попытки EXPIRED/INVALID. Phone UI hierarchy содержит Gün tamamlanıb и Filial QR ilə təsdiqləndi. Токен не подставлялся через API/clipboard/hooks в physical попытке.
+- Причина прежнего INVALID точно не установлена: raw scanned token не захватывался. Успех свежего physical сканирования и API диагностики не доказывает, какую картинку считал предыдущий раз. Не записываем неподтверждённую причину как исправленный product defect.
+- InstalledAPK1012/runtimeabb8a45 не менялся. Direct physical UI E2E PASS; отдельный Maestro optical flow остаётся NOT RUN (3 ранее прерванных инфраструктурных запуска). Предыдущий Maestro qr-camera PASS229.611s остаётся самостоятельным результатом.
+- Cleanup PASS: QR-only viewer и собственный tunnel закрыты, loopback38765 не слушает; CAMERA возвращён к исходному grantfalse, Wi-Fi/mobile-data/airplane1/1/0 подтверждены. QR policytrue и тестовая площадка остаются по поручению пользователя. Основной fictional деньCOMPLETED, поэтому QR-кнопка disabled по правилу завершённого дня; это не возврат к policyfalse. Собственный ADB relay оставлен для дальнейшей работы.
+- Full build/полный E2E NOT RUN: runtime не менялся; heavyweight проверки на Contabo запрещены. Сохраняется ранее доказанный offline coldstartFAIL и physicalGPS NOT RUN (нет опубликованной проверенной политики). App1012 не считается готовым к полноценной offline смене.
+- Точная остановка: текущая physical QR приёмка завершена успешно и временный доступ закрыт. Следующее предметное направление общей задачи — offline admission + ordered full-workday queue, затем known-failing offline flow; GPS требует корректной политики и реальной площадки.
+
+- После восстановления CAMERA grant приложение открыто заново. Прокрутка до квитанции и просмотр screenshot подтверждают видимые Filial QR ilə təsdiqləndi + имя тестовой площадки. Sanitized screenshot безQR/token/serial сохранён docs/evidence/attendance-qr-verified-1012.png. JSON validation и git diff --check PASS; checkpoint содержит только docs/evidence, приложение не пересобиралось.

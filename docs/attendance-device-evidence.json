@@ -571,5 +571,116 @@
     "eventsUnchanged": 8,
     "requestsUnchanged": 10,
     "newFinishEvents": 0
+  },
+  "qrOpticalExpiredAttempt": {
+    "apkVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "transport": "actual Android UI via ADB; person aims camera",
+    "opticalScan": "PASS",
+    "tokenInjection": false,
+    "confirmationTapped": true,
+    "serverQrState": "EXPIRED",
+    "verifiedTimeMark": "NOT_PASS",
+    "claimedAtUtc": "2026-10-21T16:07:55.413Z",
+    "serverReceivedAtUtc": "2026-10-21T16:08:11.514Z",
+    "priorEventsUnchanged": 8,
+    "newEvents": [
+      "FINISH"
+    ],
+    "requestsUnchanged": 10,
+    "factsState": "VALID",
+    "scannedImageIdentity": "Not captured; older displayed code suspected, not proven"
+  },
+  "qrLiveRetryPreparation": {
+    "status": "PASS",
+    "reopenTransport": "actual phone UI",
+    "priorEventsUnchanged": 9,
+    "newEvents": [
+      "REOPEN",
+      "RESUME"
+    ],
+    "baselineEvents": 11,
+    "workdayStatus": "STARTED",
+    "factsState": "VALID",
+    "liveViewerHttp": "PASS",
+    "opticalResult": "FAIL: optical decoded; server QR INVALID; superseded by qrFinalAcceptance",
+    "cameraService": "ACTIVE; preview STREAMING; no camera error reported",
+    "physicalPreviewContent": "User confirmed QR visible in physical camera; remote screenshot black was not evidence of preview failure"
+  },
+  "qrLiveInvalidAttempt": {
+    "transport": "actual Android UI via ADB; person aims camera",
+    "tokenInjection": false,
+    "opticalScan": "PASS",
+    "confirmationTapped": true,
+    "serverVerifiedMark": "FAIL",
+    "scanObservedAtUtc": "2026-10-21T16:19:36.239948+00:00",
+    "status": "INCOMPLETE",
+    "reason": "AssertionError",
+    "serverQrState": "INVALID",
+    "priorEventsUnchanged": 11,
+    "newEvents": [
+      "FINISH"
+    ],
+    "claimedAtUtc": "2026-10-21T16:19:36.703Z",
+    "serverReceivedAtUtc": "2026-10-21T16:19:38.536Z",
+    "scannedImageIdentity": "Not captured; do not attribute INVALID to live viewer token without proof"
+  },
+  "qrBackendDiagnostic": {
+    "transport": "authenticated API; NOT optical",
+    "syntheticOtherEmployee": true,
+    "states": [
+      "VERIFIED",
+      "VERIFIED"
+    ],
+    "newEvents": [
+      "START",
+      "FINISH"
+    ],
+    "finalStatus": "COMPLETED",
+    "status": "PASS",
+    "initialHarnessError": "First request rejected before write: synthetic installation ID omitted required rf- prefix. Corrected in a new recorded attempt; no app defect implied."
+  },
+  "qrFinalAcceptance": {
+    "transport": "actual Android UI via ADB; person aims camera",
+    "tokenInjection": false,
+    "opticalScan": "PASS",
+    "confirmationTapped": true,
+    "serverVerifiedMark": "PASS",
+    "scanObservedAtUtc": "2026-10-21T16:25:47.613201+00:00",
+    "completedPhoneText": true,
+    "verifiedReceiptText": true,
+    "status": "PASS",
+    "apkVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "hrReceipt": {
+      "status": "PASS",
+      "qrState": "VERIFIED",
+      "branchName": "Тестовое рабочее место QR",
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "oldEventsUnchanged": 14,
+      "requestsUnchanged": true,
+      "factsState": "VALID",
+      "phoneBootstrapMatchesHrReport": true
+    },
+    "claimedAtUtc": "2026-10-21T16:25:48.076Z",
+    "serverReceivedAtUtc": "2026-10-21T16:25:50.749Z",
+    "maestroOptical": "NOT RUN: earlier instrumentation attempts interrupted before optical; this PASS is direct physical UI E2E",
+    "cleanup": {
+      "status": "PASS",
+      "temporaryQrViewerStopped": true,
+      "temporaryTunnelStopped": true,
+      "originalCameraGrantRestored": true,
+      "radiosRestored": true,
+      "qrPolicyEnabled": true,
+      "workdayStatus": "COMPLETED",
+      "eventsRetained": 15,
+      "requestsUnchanged": 10,
+      "lastQrState": "VERIFIED",
+      "historicalExpiredAndInvalidRetained": true
+    },
+    "visibleReceiptScreenshot": "docs/evidence/attendance-qr-verified-1012.png",
+    "verifiedBranchReceiptVisibleAfterAppRestart": true
   }
 }
