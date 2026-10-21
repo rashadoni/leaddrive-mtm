@@ -1,0 +1,62 @@
+appId: com.leaddrive.attendance
+name: Read a real branch QR with the camera and verify the finish receipt
+# Explicit write journey, outside default smoke. The harness must verify the
+# owned fictional tenant, preserve HR event baselines, and display a live QR on
+# another screen. A person must aim the physical camera; never inject a token.
+---
+- runFlow: ../shared/open-fixture.yaml
+- runFlow:
+    when:
+      visible: ${output.copy.paused}
+    commands:
+      - tapOn:
+          id: office-workday-break
+- extendedWaitUntil:
+    visible: ${output.copy.running}
+    timeout: 60000
+- assertNotVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-qr-reason
+- tapOn:
+    id: office-workday-qr
+- scrollUntilVisible:
+    element:
+      id: attendance-qr-permission
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-qr-permission
+- extendedWaitUntil:
+    visible:
+      id: ".*:id/permission_allow_foreground_only_button"
+    timeout: 15000
+- tapOn:
+    id: ".*:id/permission_allow_foreground_only_button"
+- scrollUntilVisible:
+    element:
+      id: attendance-qr-camera
+    direction: DOWN
+    visibilityPercentage: 10
+    timeout: 30000
+# Give the operator time to aim at a fresh, server-issued QR on another screen.
+- extendedWaitUntil:
+    visible:
+      id: attendance-qr-confirm
+    timeout: 300000
+- tapOn:
+    id: attendance-qr-confirm
+- extendedWaitUntil:
+    visible: ${output.copy.completed}
+    timeout: 60000
+- assertNotVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-conflict
+- scrollUntilVisible:
+    element:
+      id: attendance-qr-receipt
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${QR_VERIFIED_TEXT}
+- assertVisible: ${QR_BRANCH_NAME}
