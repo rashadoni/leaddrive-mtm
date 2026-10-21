@@ -1,0 +1,17 @@
+appId: com.leaddrive.attendance
+name: The configured company survives restart and can be changed before sign-in
+---
+- launchApp:
+    clearState: false
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible:
+      id: login-tab-signin
+    timeout: 30000
+- hideKeyboard
+- assertVisible: LeadDrive Time
+- assertVisible: mtm-attendance-phone.leaddrivecrm.org
+- tapOn:
+    id: switch-tenant
+- runFlow: first-launch.yaml
