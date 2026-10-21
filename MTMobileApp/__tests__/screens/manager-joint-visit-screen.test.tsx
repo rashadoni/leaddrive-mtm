@@ -37,6 +37,7 @@ jest.mock("@react-navigation/native", () => {
 })
 
 import ManagerJointVisitScreen from "../../src/screens/manager/ManagerJointVisitScreen.android"
+import { DEFAULT_EVALUATION_QUESTIONS } from "../../src/services/joint-visit"
 
 type Tree = TestRenderer.ReactTestRenderer
 const all = (tree: Tree, testID: string) => tree.root.findAll((node) => node.props.testID === testID, { deep: false })
@@ -76,7 +77,11 @@ describe("the joint visit after the manager ended it", () => {
     const change = all(tree, "manager-joint-visit-rate-visit-rated")[0]
     expect(texts(change).join(" ")).toBe("jointVisit.change")
     await act(async () => { change.props.onPress() })
-    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-rated" }) })
+    // The sheet gets the company's questions as this screen read them: here an older server, so the six.
+    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", {
+      visit: expect.objectContaining({ id: "visit-rated" }),
+      questions: DEFAULT_EVALUATION_QUESTIONS,
+    })
   })
 
   it("shows nothing to rate once the window is over", async () => {

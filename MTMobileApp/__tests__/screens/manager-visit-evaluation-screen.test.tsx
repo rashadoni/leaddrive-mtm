@@ -6,6 +6,7 @@ import React from "react"
 import TestRenderer, { act } from "react-test-renderer"
 
 const mockSave = jest.fn()
+const mockGetJointVisit = jest.fn()
 const mockGoBack = jest.fn()
 const mockNotify = jest.fn()
 
@@ -25,7 +26,10 @@ jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 0 }))
 jest.mock("../../src/services/app-feedback", () => ({ notify: (...args: unknown[]) => mockNotify(...args) }))
 jest.mock("../../src/services/api", () => ({ api: {} }))
 jest.mock("../../src/services/manager-api", () => ({
-  managerApi: { saveVisitEvaluation: (...args: unknown[]) => mockSave(...args) },
+  managerApi: {
+    saveVisitEvaluation: (...args: unknown[]) => mockSave(...args),
+    getJointVisit: (...args: unknown[]) => mockGetJointVisit(...args),
+  },
 }))
 
 const VISIT = {
@@ -42,7 +46,8 @@ const VISIT = {
   evaluateUntil: "2026-10-21T20:00:00.000Z",
   evaluation: null as null | { scores: Record<string, number>; average: number | null; comment: string | null; updatedAt: string },
 }
-let mockParams: { visit: typeof VISIT } = { visit: VISIT }
+type Question = { id: string; labels: { az: string; ru: string; en: string } | null }
+let mockParams: { visit: typeof VISIT; questions?: Question[] } = { visit: VISIT }
 
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({ goBack: mockGoBack, navigate: jest.fn() }),
@@ -71,6 +76,7 @@ async function press(tree: Tree, testID: string) {
 beforeEach(() => {
   mockParams = { visit: VISIT }
   mockSave.mockReset().mockResolvedValue({ success: true })
+  mockGetJointVisit.mockReset().mockResolvedValue({ success: true, data: { session: null, visits: [] } })
   mockGoBack.mockReset()
   mockNotify.mockReset()
 })
@@ -116,5 +122,66 @@ describe("the manager rates the agent on a joint visit", () => {
     await press(tree, "manager-visit-evaluation-save")
     expect(textOf(tree, "manager-visit-evaluation-error")).toContain("jointVisit.errorClosed")
     expect(mockGoBack).not.toHaveBeenCalled()
+  })
+
+  it("names the agent large at the top, and the visit on the line under it", async () => {
+    const tree = await render()
+    expect(textOf(tree, "manager-visit-evaluation-agent")).toBe("Fictional Elvin")
+    expect(textOf(tree, "manager-visit-evaluation-visit")).toContain("jointVisit.evalVisit")
+    expect(textOf(tree, "manager-visit-evaluation-visit")).toContain("Dr. Fictional")
+  })
+})
+
+describe("the company's own questions (owner, 2026-10-21)", () => {
+  const SAMPLES: Question = { id: "q-samples", labels: { az: "Nümunələrlə iş", ru: "Работа с образцами", en: "Working with samples" } }
+  const RAPPORT: Question = { id: "RAPPORT", labels: null }
+  const RENAMED: Question = { id: "PREPARATION", labels: { az: "Hazırlıq", ru: "Подготовка и материалы", en: "Preparation" } }
+
+  it("asks the questions the joint-visit screen passed, in their words, and sends their ids", async () => {
+    mockParams = { visit: VISIT, questions: [RENAMED, SAMPLES] }
+    const tree = await render()
+    const shown = texts(byTestId(tree, "manager-visit-evaluation-criteria")).join(" | ")
+    expect(shown).toContain("Подготовка и материалы")
+    expect(shown).toContain("Работа с образцами")
+    expect(shown).not.toContain("jointVisit.criteria.OBJECTIONS")
+    expect(byTestId(tree, "manager-visit-evaluation-OBJECTIONS-2")).toBeUndefined()
+
+    await press(tree, "manager-visit-evaluation-q-samples-4")
+    await press(tree, "manager-visit-evaluation-save")
+    expect(mockSave).toHaveBeenCalledWith("visit-joint-1", { scores: { "q-samples": 4 }, comment: null })
+  })
+
+  it("opens a rating given against an older list with only the points still asked", async () => {
+    mockParams = {
+      visit: { ...VISIT, evaluation: { scores: { OBJECTIONS: 3, RAPPORT: 5 }, average: 4, comment: null, updatedAt: "2026-10-20T07:00:00.000Z" } },
+      questions: [RAPPORT, SAMPLES],
+    }
+    const tree = await render()
+    expect(byTestId(tree, "manager-visit-evaluation-RAPPORT-5").props.accessibilityState).toEqual({ checked: true })
+    await press(tree, "manager-visit-evaluation-save")
+    expect(mockSave).toHaveBeenCalledWith("visit-joint-1", { scores: { RAPPORT: 5 }, comment: null })
+  })
+
+  it("takes the new list when the office changed it while the sheet was open, keeping the points still asked", async () => {
+    mockParams = { visit: VISIT, questions: [RAPPORT, { id: "OBJECTIONS", labels: null }] }
+    mockSave.mockRejectedValueOnce(Object.assign(new Error("changed"), { code: "MTM_VISIT_EVALUATION_QUESTIONS_CHANGED" }))
+    // The server always sends a question with its words.
+    const rapportFromServer = { id: "RAPPORT", labels: { az: "Müştəri ilə ünsiyyət", ru: "Контакт с клиентом", en: "Rapport with the client" } }
+    mockGetJointVisit.mockResolvedValueOnce({ success: true, data: { session: null, visits: [], questions: [rapportFromServer, SAMPLES] } })
+    const tree = await render()
+    await press(tree, "manager-visit-evaluation-RAPPORT-4")
+    await press(tree, "manager-visit-evaluation-OBJECTIONS-2")
+    await press(tree, "manager-visit-evaluation-save")
+    // The refusal, then the fresh list: two answers in a row.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
+    expect(mockGetJointVisit).toHaveBeenCalledTimes(1)
+    expect(textOf(tree, "manager-visit-evaluation-error")).toContain("jointVisit.errorQuestionsChanged")
+    expect(mockGoBack).not.toHaveBeenCalled()
+    expect(byTestId(tree, "manager-visit-evaluation-OBJECTIONS-2")).toBeUndefined()
+    expect(byTestId(tree, "manager-visit-evaluation-RAPPORT-4").props.accessibilityState).toEqual({ checked: true })
+    expect(byTestId(tree, "manager-visit-evaluation-q-samples-4")).toBeDefined()
+
+    await press(tree, "manager-visit-evaluation-save")
+    expect(mockSave).toHaveBeenLastCalledWith("visit-joint-1", { scores: { RAPPORT: 4 }, comment: null })
   })
 })
