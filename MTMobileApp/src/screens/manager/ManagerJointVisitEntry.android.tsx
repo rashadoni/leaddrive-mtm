@@ -28,6 +28,7 @@ const FAILURE_COPY = {
   notJoint: "jointVisit.errorNotJoint",
   closed: "jointVisit.errorClosed",
   invalid: "jointVisit.errorInvalid",
+  questionsChanged: "jointVisit.errorQuestionsChanged",
   failed: "jointVisit.errorFailed",
 } as const
 
