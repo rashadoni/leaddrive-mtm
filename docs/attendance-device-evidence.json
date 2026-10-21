@@ -49,6 +49,32 @@
         "owned fixture discovered",
         "empty login rejected"
       ]
+    },
+    {
+      "flow": "smoke/employee.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 106.704,
+      "cause": "Existing backend office authentication denies explanations with 401; bootstrap and requests return 200 for the same valid principal. Fix e8af4fab3 prepared in CRM, not deployed."
+    },
+    {
+      "flow": "journeys/request-validation.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 260.137,
+      "cause": "Remote scrolling hit 20-second test timeout; screenshot shows the close-form button already visible. No request created."
+    },
+    {
+      "flow": "journeys/request-validation.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "PASS",
+      "elapsedSeconds": 221.86,
+      "serverRequestCountBefore": 8,
+      "serverRequestCountAfter": 8,
+      "historicalRequestsUnchanged": true
     }
   ],
   "installedIdentity": {
@@ -63,10 +89,10 @@
     "apkSha256": "92725d779703771513f32d88aafeee12889b502f384cb3381f69de902682487c"
   },
   "pending": [
-    "signed-in physical acceptance",
+    "employee smoke after backend explanations fix",
     "employee workday journey",
-    "employee request validation and submission",
-    "HR decision observed on phone"
+    "employee request submission",
+    "HR browser decision observed on phone"
   ],
   "credentials": "Not included",
   "deviceSerial": "Not included"

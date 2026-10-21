@@ -14,6 +14,7 @@ name: An empty reason is refused and closing the draft submits nothing
     element:
       id: attendance-reason
     direction: DOWN
+    timeout: 60000
 - tapOn:
     id: attendance-reason
 - eraseText: 200
@@ -22,6 +23,7 @@ name: An empty reason is refused and closing the draft submits nothing
     element:
       id: attendance-submit
     direction: DOWN
+    timeout: 60000
 - tapOn:
     id: attendance-submit
 # The refusal must be visible; an unchanged form by itself is not evidence.
@@ -29,11 +31,13 @@ name: An empty reason is refused and closing the draft submits nothing
     element:
       text: ${output.copy.invalid}
     direction: UP
+    timeout: 60000
 - assertVisible: ${output.copy.invalid}
 - scrollUntilVisible:
     element:
       id: attendance-close-form
     direction: DOWN
+    timeout: 60000
 - assertVisible:
     id: attendance-close-form
 - tapOn:
@@ -44,5 +48,6 @@ name: An empty reason is refused and closing the draft submits nothing
     element:
       id: attendance-new
     direction: UP
+    timeout: 60000
 - assertVisible:
     id: attendance-new

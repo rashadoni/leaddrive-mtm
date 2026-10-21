@@ -16,7 +16,7 @@ name: The employee sees the exact request and the HR decision
     element:
       id: attendance-request-${REQUEST_ID}
     direction: DOWN
-    timeout: 30000
+    timeout: 60000
 - assertVisible:
     text: ${RUN_ID}
     childOf:
