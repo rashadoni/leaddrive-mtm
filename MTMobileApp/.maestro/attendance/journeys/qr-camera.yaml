@@ -33,6 +33,10 @@ name: QR camera opens only after explicit permission and closes when backgrounde
 - pressKey: Home
 - launchApp:
     clearState: false
+    stopApp: false
+    permissions:
+      all: deny
+      camera: allow
 - extendedWaitUntil:
     visible:
       id: time-tab-OwnWorkday

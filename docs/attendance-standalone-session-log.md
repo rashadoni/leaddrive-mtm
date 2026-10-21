@@ -207,3 +207,30 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Пока шли проверки, origin/main продвинулся доf1bcdcb2 (обычныйMTM3.11.51/first-run guide). PR196 сталCONFLICTING; GitHub не запускал pull_request gates. Это не отказ тестов.
 - Сохранёнcheckpointab213f0 с отдельной privacy-gate Maestro проверкой. Выполнен merge актуальногоmain в dedicated feature branch, без переписывания истории и без публикации ordinaryMTM. Единственный конфликтbuild.gradle разрешён сохранением MTM default3.11.51/99 и standalone conditional1.0.0/собственногоmanifest/resources. Автоматический mergeProfile сохраняет обе стороны; field guide не предлагается office shell.
 - Ветка6fb27ff содержит camera-permissionfix, targeted51PASS, hosted39581953484 в работе; после integration требуется новая полная CI сборка актуального объединённого дерева. Не dispatch обычного build-apk наfeaturebranch: workflow_dispatch публикует prerelease; нужный ordinary gate должен прийти от pull_request после устранения конфликта.
+
+## 2026-10-21 — QR visibility и privacy gate на устройстве
+
+- qr-unavailable1009 PASS60.558s: верхняя QR-кнопка и причина недоступности видны без поиска по странице, actualAZ.
+- location-policy-off1009 PASS127.602s: загруженное отсутствие опубликованной политики, нет возможности принять несуществующее согласие. Это negative privacy UI gate; не actualGPS/inside-outside measurement.
+- Integration checkpointabb8a45f7f63dc5142276415d28a9627a1006bdc опубликован; PR196 сноваMERGEABLE. CI39582556141SUCCESS; standalone39582549024 и ordinaryMTM39582556235 build running. Предыдущие39581263749/39581953484 автоматически отменены собственным concurrency при новомpush, не являются failed product gates.
+
+## 2026-10-21 — уточнение Maestro permissions и foreground проверки
+
+- Official Maestro reference подтверждает: launchApp без permissions автоматически выдаёт все grants; это не «сохранение permissions». Предыдущий вспомогательный open-fixture-preserving-permissions назван неверно, запись superseded. Его callers вернулись к explicitall:deny, helper удалён. PASS устройства/QRvisibility/location-policyoff остаются фактическими при тогдашнихOS grants; коллекцияGPS всё время была закрыта отсутствующей serverpolicy. Не утверждаем сохранение всехOS grants в тех прогонах.
+- Camera test послеHome теперь использует stopApp:false и явные permissionsall:deny,camera:allow: это возврат существующего процесса, а не cold restart, который сам уничтожил бы модалку. Будущий PASS должен доказать реальное AppState закрытие. Offline acceptance также задаёт explicitdeny.
+- До нового camera run восстанавливаем известный тестовый baseline runtime grants только com.leaddrive.attendance; обычныйMTM и глобальные разрешения не меняем.
+
+## 2026-10-21 — camera fix APK1012 установлен
+
+- Merge sourceabb8a45 exact hosted gatesPASS: standalone39582549024, ordinaryMTM39582556235, CI39582556141.274 Jest suites/2410 PASS/1todo, TypeScript/Android/signature/manifest gatesPASS.
+- APK1012/sourceabb8a45 установлен update толькоcom.leaddrive.attendance, SHA25636080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118. StandaloneUID прежний, identityMTM совпадает до/после установки, backgroundlocationpermission отсутствует.
+- Изменённые5Maestro flows check-syntaxPASS. Camera retry1012 выполняется среальнымOSpermission иstopApp:false при возвратеизHome. Private wrapper сохраняет hashflow и ограничиваетcleanupтаймаут дочернегоMaestro, чтобыfinally могвосстановитьpolicy/grant дажеприtimeout.
+
+## 2026-10-21 — camera retry1012 PASS и итоговая точка
+
+- Camera flow1012/sourceabb8a45 PASS229.611s: заметная QR-кнопка, явный запрос OSpermission, настоящий native camera preview, Home, foregroundlaunch соstopApp:false, scanner/confirmation отсутствуют после возврата. Перед этим на1009 был воспроизведён реальный дефект; старыйFAIL сохранён.
+- finally вернул QRfalse и исходныйcamera grantfalse. Currentworkday и10 requests идентичны before snapshot. Installationrequiredfalse restored, ownedHRbrowsercontext closed; ordinaryMTM не переустанавливался.
+- Installed APK1.0.0/1012 sourceabb8a45;274 suites/2410PASS/1todo и обаAPK gatesPASS. Последующие локальные изменения толькоMaestro/evidence/docs; runtime source и подпись APK остаются прежними.
+- NOT RUN: opticalQR/verifiedphysicalQRmark, actualGPS/branch measurement (нетreviewedpolicy), full offline shift (blocked by proven offlinecoldstartFAIL). Привязка account+installation approval проверена сapprove/revoke, но это неhardwareattestation/one-device enforcement.
+- Пользовательское ожидаемоеoffline поведение документировано: вся смена сохраняетсялокально какpending, неизменные времена/ID, бездублейпослесвязи, серверотдельнопроверяетQR/GPS/device и показываетконфликты. Втекущемприложении полноценныйoffline не реализован; guards не ослаблялись.
+- Precise stopping point: исходныйserverrelease подтверждён, QR visibility иpermissiondefect исправлены и проверены, device approval/revocation иnegative location gate прошли; остаётся реализацииoffline и отдельныйphysicaloptical/GPS acceptance. Следующее предметное действие: offline admission/ordered workday queue design and implementation, затем повтор known-failingflow.

@@ -6,6 +6,8 @@ name: Previously authenticated employee retains workday access after offline col
 - stopApp
 - launchApp:
     clearState: false
+    permissions:
+      all: deny
 - extendedWaitUntil:
     visible:
       id: time-tab-OwnWorkday

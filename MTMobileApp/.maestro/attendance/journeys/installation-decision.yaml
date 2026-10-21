@@ -2,7 +2,7 @@ appId: com.leaddrive.attendance
 name: Employee sees the actual HR installation decision
 ---
 - evalScript: ${if (EXPECTED_STATE !== 'APPROVED' && EXPECTED_STATE !== 'REVOKED') throw new Error('Explicit decision required')}
-- runFlow: ../shared/open-fixture-preserving-permissions.yaml
+- runFlow: ../shared/open-fixture.yaml
 - scrollUntilVisible:
     element:
       id: attendance-installation-refresh

@@ -2,7 +2,7 @@ appId: com.leaddrive.attendance
 name: Employee cannot enable location collection without a published policy
 # Owned fixture has no location policy. This is a privacy gate, not a GPS accuracy test.
 ---
-- runFlow: ../shared/open-fixture-preserving-permissions.yaml
+- runFlow: ../shared/open-fixture.yaml
 - scrollUntilVisible:
     element:
       id: attendance-consent-refresh

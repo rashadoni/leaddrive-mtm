@@ -258,24 +258,66 @@
         }
       ],
       "reason": "OS camera permission activity closes scanner via AppState; actual defect, native preview not reached"
+    },
+    {
+      "label": "qr-unavailable-1009",
+      "flow": "journeys/qr-unavailable",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "QR action stays visible when the company has not enabled scanning",
+          "seconds": "60.558",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "location-policy-off-1009",
+      "flow": "journeys/location-policy-off",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee cannot enable location collection without a published policy",
+          "seconds": "127.602",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "qr-camera-1012",
+      "flow": "journeys/qr-camera",
+      "exit": 0,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "5f4af5f0b8281406a4ef1d58fd6418714193a089807c40de044b3b55ee18dfe8",
+      "tests": [
+        {
+          "name": "QR camera opens only after explicit permission and closes when backgrounded",
+          "seconds": "229.611",
+          "status": "PASS"
+        }
+      ]
     }
   ],
   "installedIdentity": {
     "package": "com.leaddrive.attendance",
     "version": "1.0.0",
-    "versionCode": 1009,
+    "versionCode": 1012,
     "mtmVersion": "3.11.49",
     "mtmVersionCode": "1710",
     "separateAndroidUid": true,
     "backgroundLocationPermissionPresent": false,
-    "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
-    "apkSha256": "e3ff29d677c3d9e5b65de365b76afe113e4afd5704b76dabb6624e5d0c6b5719"
+    "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "apkSha256": "36080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118"
   },
   "pending": [
-    "QR visibility on new APK and camera exercise",
-    "Physical installation request and HR decision",
-    "Physical GPS: no reviewed location policy in fictional tenant",
-    "Full offline shift: blocked by missing offline admission"
+    "Full offline shift: FAIL at cold-start admission; implementation required",
+    "Optical decoding and verified physical QR mark: NOT_RUN; camera UI does not prove a decoded code",
+    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture"
   ],
   "credentials": "Not included",
   "deviceSerial": "Not included",
@@ -307,6 +349,14 @@
       "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
       "versionCode": 1009,
       "apkSha256": "e3ff29d677c3d9e5b65de365b76afe113e4afd5704b76dabb6624e5d0c6b5719",
+      "separateAndroidUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    {
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "versionCode": 1012,
+      "apkSha256": "36080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118",
       "separateAndroidUid": true,
       "mtmIdentityUnchangedDuringUpdate": true,
       "backgroundLocationPermissionPresent": false
@@ -361,14 +411,81 @@
     "originalRuleRestored": true
   },
   "qrCamera": {
-    "status": "FAIL",
-    "versionCode": 1009,
-    "osPermissionDialog": "PASS",
-    "nativePreview": "FAIL",
+    "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "versionCode": 1012,
+    "transportSetup": "authenticated-http",
+    "originalQrEnabled": false,
+    "originalCameraPermission": false,
+    "cameraFlow": "PASS",
     "opticalDecode": "NOT_RUN",
     "verifiedTimeMark": "NOT_RUN",
+    "cameraFlowExit": 0,
     "qrPolicyRestored": true,
     "cameraPermissionRestored": true,
-    "workdayAndRequestsUnchanged": true
-  }
+    "workdayAndRequestsUnchanged": true,
+    "status": "PASS",
+    "physicalFlow": {
+      "flow": "journeys/qr-camera",
+      "exit": 0,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "5f4af5f0b8281406a4ef1d58fd6418714193a089807c40de044b3b55ee18dfe8",
+      "tests": [
+        {
+          "name": "QR camera opens only after explicit permission and closes when backgrounded",
+          "seconds": "229.611",
+          "status": "PASS"
+        }
+      ]
+    },
+    "osPermissionDialog": "PASS",
+    "nativePreview": "PASS",
+    "backgroundAndForeground": "PASS",
+    "foregroundLaunchStopApp": false
+  },
+  "qrVisibilityPhysical": {
+    "status": "PASS",
+    "versionCode": 1009,
+    "locale": "az",
+    "scanActionVisibleWithoutScrolling": true,
+    "disabledReasonVisible": true
+  },
+  "locationPolicyOffPhysical": {
+    "status": "PASS",
+    "versionCode": 1009,
+    "noPublishedPolicy": true,
+    "consentCannotBeAccepted": true,
+    "actualGpsComparison": "NOT_RUN"
+  },
+  "cameraFixBuild": {
+    "status": "PASS",
+    "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "standaloneRunId": 39582549024,
+    "ordinaryMtmRunId": 39582556235,
+    "ciRunId": 39582556141,
+    "jestSuites": 274,
+    "jestPassed": 2410,
+    "jestTodo": 1,
+    "fullTypecheck": "PASS",
+    "targetedBeforeBaseMerge": 51
+  },
+  "qrCameraHistory": [
+    {
+      "status": "FAIL",
+      "versionCode": 1009,
+      "osPermissionDialog": "PASS",
+      "nativePreview": "FAIL",
+      "opticalDecode": "NOT_RUN",
+      "verifiedTimeMark": "NOT_RUN",
+      "qrPolicyRestored": true,
+      "cameraPermissionRestored": true,
+      "workdayAndRequestsUnchanged": true
+    }
+  ],
+  "limitations": [
+    "Installation approval binds account plus app installation ID, not hardware attestation or one phone per account",
+    "Standalone background push is not configured; in-app inbox is tested",
+    "Physical journeys retain their own APK/source bindings; not all ran on one build",
+    "Earlier Maestro launch without an explicit permission map granted OS permissions; explicit deny was restored and policy remained disabled"
+  ]
 }
