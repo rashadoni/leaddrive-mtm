@@ -1,5 +1,5 @@
 appId: com.leaddrive.attendance
-name: Employee submits one dated request for the HR browser review
+name: Employee submits one dated request for HR review
 ---
 - runFlow: ../shared/open-fixture.yaml
 - assertTrue: ${/^maestro-[a-z0-9-]+$/.test(RUN_ID)}

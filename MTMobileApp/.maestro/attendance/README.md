@@ -6,11 +6,21 @@ Target package: `com.leaddrive.attendance`. These flows never install, clear or 
 
 1. Build `.github/workflows/build-attendance.yml` on the candidate branch. Require green Jest, TypeScript, signed APK identity and manifest checks. Download its SHA-bound artifact and verify the APK checksum.
 2. Install the separate package beside MTM. Record both installed package versions before and after acceptance.
-3. Sign in through the UI to the marker-owned `mtm-attendance-phone` fixture as `office@mtm-attendance-phone.example.invalid`. Obtain its credential through the existing recipient-encrypted access workflow. Never commit passwords, use real employee accounts or capture login secrets in screenshots/logs.
-4. Select the UI locale, then pass `LOCALE=az`, `ru` or `en`. Every journey checks the fictional employee name before it can write. This UI guard supplements fixture ownership verification; it is not a substitute for it.
-5. Record API baselines for the employee's day, requests and inbox. For write flows, confirm no other operator is using this fixture and that the requested date is free of overlapping requests. Never reset historical facts to make a test pass.
+3. Before entering credentials, run `journeys/first-launch.yaml` from the company selector. It rejects empty/unknown companies and empty credentials. From an already configured signed-out login, run `journeys/company-switch.yaml` instead; it also verifies company persistence after restart. Neither flow clears app data.
+4. Sign in through the UI to the marker-owned `mtm-attendance-phone` fixture as `office@mtm-attendance-phone.example.invalid`. Obtain its credential through the existing recipient-encrypted access workflow. Never commit passwords, use real employee accounts or capture login secrets in screenshots/logs.
+5. Select the UI locale, then pass `LOCALE=az`, `ru` or `en`. Every journey checks the fictional employee name before it can write. This UI guard supplements fixture ownership verification; it is not a substitute for it.
+6. Record API baselines for the employee's day, requests and inbox. For write flows, confirm no other operator is using this fixture and that the requested date is free of overlapping requests. Never reset historical facts to make a test pass.
 
-From `MTMobileApp`, with the official Maestro CLI on PATH:
+From `MTMobileApp`, with the official Maestro CLI on PATH (use `LOCALE=ru` on a Russian phone):
+
+```sh
+# Choose the flow that matches the signed-out screen.
+maestro test -e LOCALE=ru .maestro/attendance/journeys/first-launch.yaml
+# Or, from the configured company login:
+maestro test -e LOCALE=ru .maestro/attendance/journeys/company-switch.yaml
+```
+
+After signing into the verified fixture:
 
 ```sh
 maestro test -e LOCALE=az .maestro/attendance/smoke/employee.yaml
