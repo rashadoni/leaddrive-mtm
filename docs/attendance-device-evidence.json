@@ -548,12 +548,28 @@
     }
   ],
   "qrOpticalDirectUi": {
-    "status": "IN_PROGRESS",
-    "transport": "actual Android UI via ADB, camera aiming by user",
+    "transport": "actual Android UI via ADB; person aims camera",
+    "tokenInjection": false,
+    "opticalScan": "NOT_RUN",
+    "confirmationTapped": false,
+    "serverVerifiedMark": "NOT_RUN",
+    "status": "INCOMPLETE",
+    "reason": "TimeoutError",
+    "apkVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
     "cameraOpened": true,
     "osPermissionDialogAccepted": true,
-    "decodedTokenInjected": false,
-    "serverMarkSent": false,
-    "note": "Awaiting physical aiming at a fresh short-lived QR; no PASS claimed"
+    "observation": "No decoded QR observed during bounded 240-second physical aiming window; physical alignment/display visibility unconfirmed"
+  },
+  "qrOpticalPauseCleanup": {
+    "status": "PASS",
+    "cameraClosed": true,
+    "originalCameraGrantRestored": true,
+    "qrRuleEnabled": true,
+    "qrButtonEnabled": true,
+    "workdayStatus": "STARTED",
+    "eventsUnchanged": 8,
+    "requestsUnchanged": 10,
+    "newFinishEvents": 0
   }
 }
