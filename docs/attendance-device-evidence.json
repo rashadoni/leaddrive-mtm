@@ -120,6 +120,25 @@
       "elapsedSeconds": 154.061,
       "cause": "Samsung landscape full-screen keyboard concealed the date field from the assertion; exact date was entered, submission had not been pressed.",
       "requestCreated": false
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 319.233,
+      "cause": "Submission succeeded once, but closing the long form retained its scroll offset. The final downward search skipped the newest row above. Test now returns to the refresh control before looking for the server row.",
+      "serverSubmission": "PASS",
+      "oneRequestForMarker": true,
+      "historicalRequestsUnchanged": 8
+    },
+    {
+      "flow": "journeys/request-decision.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 165.149,
+      "cause": "Android accessibility flattens card children into sibling nodes, so childOf does not identify the exact request despite its reason and approved status being visible. Added exact request-bound text/status test IDs for the next APK."
     }
   ],
   "installedIdentity": {
@@ -139,5 +158,17 @@
     "HR browser decision observed on phone"
   ],
   "credentials": "Not included",
-  "deviceSerial": "Not included"
+  "deviceSerial": "Not included",
+  "hrRequestDecision": {
+    "status": "PASS",
+    "transport": "browser-ui",
+    "ownFictionalTenant": true,
+    "exactPhoneCreatedRequest": true,
+    "decision": "APPROVED",
+    "visibleSavedConfirmation": true,
+    "independentServerReceipt": true,
+    "matchingInboxNotices": 1,
+    "historicalRequestsUnchanged": 8,
+    "phoneObservation": "PASS through guarded UI inspection and screenshot; Maestro retry awaits updated APK"
+  }
 }

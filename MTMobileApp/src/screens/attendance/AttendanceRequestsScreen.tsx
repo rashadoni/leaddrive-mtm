@@ -281,10 +281,10 @@ export default function AttendanceRequestsScreen() {
             {items.map(request => {
               const cancellation = queued.find(operation => operation.op === "update" && operation.data.id === request.id)
               return <View key={request.id} style={styles.item} testID={`attendance-request-${request.id}`}>
-                <View style={styles.itemHeading}><Text style={styles.subtitle}>{requestName(request)}</Text><Text style={styles.status}>{t(`attendanceRequests.statuses.${request.status}`)}</Text></View>
+                <View style={styles.itemHeading}><Text style={styles.subtitle}>{requestName(request)}</Text><Text testID={`attendance-request-status-${request.id}`} style={styles.status}>{t(`attendanceRequests.statuses.${request.status}`)}</Text></View>
                 {request.details.kind === "HR_RECORD" && <Text style={styles.caption}>{t("attendanceRequests.hrRecord")}</Text>}
                 <Text style={styles.body}>{request.startDate} — {request.endDate}{request.details.unit === "HOURS" ? ` · ${request.details.startTime}–${request.details.endTime}` : ""}</Text>
-                <Text style={styles.body}>{request.reason}</Text>
+                <Text testID={`attendance-request-reason-${request.id}`} style={styles.body}>{request.reason}</Text>
                 <Text style={styles.caption}>{t("attendanceRequests.submitted", { date: clock(request.submittedAt) })}</Text>
                 {request.details.attachmentIds.length > 0 && <Text style={styles.caption}>{t("attendanceRequests.documentCount", { count: request.details.attachmentIds.length })}</Text>}
                 {request.decisionNote && <Text style={styles.reply}>{t("attendanceRequests.reply", { reply: request.decisionNote })}</Text>}

@@ -14,14 +14,19 @@ name: The employee sees the exact request and the HR decision
     id: attendance-refresh
 - scrollUntilVisible:
     element:
-      id: attendance-request-${REQUEST_ID}
+      text: ${RUN_ID}
+      id: attendance-request-reason-${REQUEST_ID}
     direction: DOWN
     timeout: 60000
 - assertVisible:
     text: ${RUN_ID}
-    childOf:
-      id: attendance-request-${REQUEST_ID}
+    id: attendance-request-reason-${REQUEST_ID}
+- scrollUntilVisible:
+    element:
+      text: ${EXPECTED_STATUS}
+      id: attendance-request-status-${REQUEST_ID}
+    direction: UP
+    timeout: 60000
 - assertVisible:
     text: ${EXPECTED_STATUS}
-    childOf:
-      id: attendance-request-${REQUEST_ID}
+    id: attendance-request-status-${REQUEST_ID}

@@ -68,12 +68,20 @@ name: Employee submits one dated request for HR review
     notVisible:
       id: attendance-form
     timeout: 60000
+# Closing the long form retains its scroll offset. Return above the newest row.
+- scrollUntilVisible:
+    element:
+      id: attendance-refresh
+    direction: UP
+    timeout: 60000
+- tapOn:
+    id: attendance-refresh
 - scrollUntilVisible:
     element:
       text: ${RUN_ID}
+      id: attendance-request-reason-.*
     direction: DOWN
     timeout: 60000
 - assertVisible:
     text: ${RUN_ID}
-    childOf:
-      id: attendance-request-.*
+    id: attendance-request-reason-.*
