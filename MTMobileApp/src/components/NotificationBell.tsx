@@ -8,6 +8,7 @@ import { listenForPushRefresh, useNotificationInbox, useNotificationUnread } fro
 import { badgeLabel } from "../services/notification-feed"
 import { feedLanguage } from "../services/notification-feed-copy"
 import { fieldTheme, themed } from "../theme/fieldTheme"
+import GuideSpot from "./guide/GuideSpot"
 
 /**
  * How often a bell on the screen in front asks again by itself. A push that
@@ -56,6 +57,8 @@ export default function NotificationBell() {
           <Text style={styles.badgeText} numberOfLines={1}>{badgeLabel(unread)}</Text>
         </View>
       ) : null}
+      {/* The first-run guide's «Zəngə bas»: the bell of the screen in front. */}
+      <GuideSpot id="bell" />
     </Pressable>
   )
 }

@@ -298,7 +298,8 @@ describe("the wiring", () => {
     const registered = navigator.match(/component=\{[^}]*\}/g) ?? []
     expect(registered.length).toBeGreaterThan(30)
     expect(registered.filter((entry) => !entry.startsWith("component={withFieldColorScheme("))).toEqual([])
-    expect(navigator).toContain("<NavigationContainer theme={NAVIGATION_THEMES[colorScheme]}>")
+    // The first-run guide follows the navigator through its ref and state callbacks after the theme.
+    expect(navigator).toContain("<NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ")
     expect(navigator).toContain("background: fieldTheme.color.canvas")
   })
 

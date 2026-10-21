@@ -76,6 +76,7 @@ import RouteSectionHeader from "./RouteSectionHeader"
 import { DayLineStation } from "../../components/DayLine"
 import { dayStopState } from "../../components/day-line"
 import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
+import GuideSpot from "../../components/guide/GuideSpot"
 import { LAYOUT_TOUCH_TARGETS, isTwoPaneTabWidth } from "../../theme/layoutBreakpoints"
 import {
   awaitingRouteStops,
@@ -1021,6 +1022,8 @@ function StopRow({
         </View>
         {done ? null : <Icon name="chevron-forward" size={20} color={selected || visiting ? fieldTheme.color.primary : fieldTheme.color.inkMuted} />}
       </View>
+      {/* The first-run guide shows how a visit goes on the first client of the day. */}
+      {first ? <GuideSpot id="route.first" /> : null}
     </Pressable>
   )
 }
@@ -2212,11 +2215,13 @@ export default function RouteScreen() {
   const emptyError = emptyMode === "offline-unavailable" || emptyMode === "slow-unavailable"
   const emptyState = emptyMode === "loading" ? (
     <View style={styles.emptyState}>
+      <GuideSpot id="route.first" />
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.emptyTitle}>{copy.loading}</Text>
     </View>
   ) : (
     <View style={styles.emptyState} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
+      <GuideSpot id="route.first" />
       <View style={[
         styles.emptyIcon,
         emptyMode === "offline-unavailable" && styles.emptyIconOffline,

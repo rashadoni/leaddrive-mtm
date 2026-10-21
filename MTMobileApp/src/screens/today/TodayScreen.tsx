@@ -26,6 +26,7 @@ import SyncStatusChip from "../../components/SyncStatusChip"
 import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
+import GuideSpot from "../../components/guide/GuideSpot"
 import { DayLineRail } from "../../components/DayLine"
 import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
@@ -610,6 +611,7 @@ export default function TodayScreen() {
               />
             ) : (
             <View style={styles.workdayPanel}>
+              <GuideSpot id="today.workday" />
               <View style={styles.workdayCopy}>
                 <View style={styles.workdayTitleRow}>
                   <View style={[styles.statusDot, workdayActive && styles.statusDotActive]} />

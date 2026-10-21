@@ -4,6 +4,7 @@ import { registerPushToken, unregisterPushToken } from "../services/push-registr
 import { kpiScopeKey, useKpiStore } from "./kpi"
 import { useBootstrapStore } from "./bootstrap"
 import { clearOfflineScope, setOfflineScope } from "../services/offline-scope"
+import { armGuideAfterSignIn } from "./guide"
 import { useSyncStatusStore } from "./sync-status"
 
 interface Agent {
@@ -50,7 +51,9 @@ interface AuthState {
 /** What every way in does once the server says yes: the password form, or a code from WhatsApp. */
 function signedIn(result: any, set: (state: Partial<AuthState>) => void) {
   if (!result?.success) throw new Error(result?.error || "Login failed")
-  setOfflineScope(result.data.agent?.organizationId, result.data.agent?.id)
+  const scope = setOfflineScope(result.data.agent?.organizationId, result.data.agent?.id)
+  // A sign-in, not a restored session, opens the first-run guide (once per person).
+  armGuideAfterSignIn(scope)
   useKpiStore.getState().setScope(
     kpiScopeKey(result.data.agent?.organizationId, result.data.agent?.id),
   )

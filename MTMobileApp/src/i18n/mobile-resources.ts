@@ -889,6 +889,115 @@ export const mobileResources = {
       notNow: "Не сейчас",
       continue: "Продолжить",
     },
+    // The first-run guide (owner-approved mockup, 2026-10-18): src/guide/tour.ts.
+    guide: {
+      open: "Гид",
+      openTitle: "Гид по приложению",
+      openNote: "Шаг за шагом: что для чего и куда нажимать · 1 мин",
+      openAction: "Пройти гид",
+      welcomeTitle: "Добро пожаловать, {{name}}!",
+      welcomeTitleNoName: "Добро пожаловать!",
+      welcomeBody: "Давай познакомимся с приложением. На каждом шаге подсветим нужную кнопку — нажимать будешь сам.",
+      welcomeLength_one: "{{count}} шаг · около минуты",
+      welcomeLength_few: "{{count}} шага · около минуты",
+      welcomeLength_many: "{{count}} шагов · около минуты",
+      welcomeLength_other: "{{count}} шага · около минуты",
+      start: "Начнём",
+      skip: "Пропустить",
+      next: "Дальше",
+      finish: "Готово, закончить",
+      stepOf: "Шаг {{step}} из {{total}}",
+      pathVisit: "Визит",
+      pathBell: "Уведомления",
+      missing: "Этой кнопки сейчас нет на экране — нажми «Дальше», и пойдём дальше.",
+      field: {
+        workday: {
+          title: "Рабочий день начинается здесь",
+          body: "Вышел на работу — нажми «Начать день». Перерыв и конец дня тоже здесь. GPS пишется, только пока день открыт.",
+        },
+        routeTab: {
+          title: "Маршрут — клиенты на сегодня",
+          body: "К кому и в каком порядке идти — всё во вкладке «Маршрут».",
+          tap: "Нажми «Маршрут»",
+        },
+        visit: {
+          title: "Как проходит визит",
+          body: "Клиенты стоят здесь по порядку. Нажми на клиента, затем:",
+          line1: "«Я приехал — начать визит» — проверяется, где ты",
+          line2: "«Сделать фото» — полка, стенд, документ",
+          line3: "«Завершить визит»",
+        },
+        tasksTab: {
+          title: "Задачи",
+          body: "Задачи от руководителя и сроки. Взялся — «Начать», сделал — «Завершить».",
+          tap: "Нажми «Задачи»",
+        },
+        bell: {
+          title: "Всё в одном месте",
+          body: "Колокольчик — сообщения, задачи и решения. Красная цифра — новое. Он в углу каждого экрана.",
+          tap: "Нажми на колокольчик",
+        },
+        feed: {
+          title: "Уведомления",
+          body: "Нажми на строку — откроется то, о чём она. «Отметить всё прочитанным» очищает список, в «Что показывать» выбери, что видеть.",
+        },
+        moreTab: {
+          title: "Ещё",
+          body: "История визитов, GPS, профиль и язык.",
+          tap: "Нажми «Ещё»",
+        },
+        again: {
+          title: "Гид всегда здесь",
+          body: "Если что-то забудешь — нажми «Гид», и тур начнётся заново. Он есть и в профиле. Удачного рабочего дня!",
+        },
+      },
+      manager: {
+        tiles: {
+          title: "Команда сегодня",
+          body: "Кто на работе, сколько визитов, что ждёт решения. Нажми на плитку — откроется подробно.",
+        },
+        writeTeam: {
+          title: "Написать команде",
+          body: "Сообщение всем или одному сотруднику — он увидит его уведомлением на телефоне.",
+        },
+        approvalsTab: {
+          title: "Согласования",
+          body: "Черновики маршрутов, новые врачи, заявки по рабочему времени — всё ждёт твоего решения.",
+          tap: "Нажми «Согласования»",
+        },
+        approvals: {
+          title: "Решение в одно касание",
+          body: "«Согласовать» или «Отклонить» — сотрудник сразу видит ответ. Если здесь пусто, пока ничего не ждёт.",
+        },
+        planningTab: {
+          title: "Планирование",
+          body: "Маршруты команды в календаре — по месяцам или неделям.",
+          tap: "Нажми «Планирование»",
+        },
+        createRoute: {
+          title: "Создать маршрут",
+          body: "Выбери сотрудника и день, расставь клиентов — сотрудник увидит маршрут на своём телефоне.",
+        },
+        bell: {
+          title: "Всё в одном месте",
+          body: "Колокольчик — сообщения, согласования и предупреждения. Красная цифра — новое. Он в углу каждого экрана.",
+          tap: "Нажми на колокольчик",
+        },
+        feed: {
+          title: "Уведомления",
+          body: "Нажми на строку — откроется то, о чём она. «Отметить всё прочитанным» очищает список, в «Что показывать» выбери, что видеть.",
+        },
+        moreTab: {
+          title: "Ещё",
+          body: "Профиль, язык и этот гид.",
+          tap: "Нажми «Ещё»",
+        },
+        again: {
+          title: "Гид всегда здесь",
+          body: "Если что-то забудешь — нажми «Гид», и тур начнётся заново. Он есть и в профиле. Удачного рабочего дня!",
+        },
+      },
+    },
   },
   en: {
     navV2: {
@@ -1762,6 +1871,113 @@ export const mobileResources = {
       notNow: "Not now",
       continue: "Continue",
     },
+    // The first-run guide (owner-approved mockup, 2026-10-18): src/guide/tour.ts.
+    guide: {
+      open: "Guide",
+      openTitle: "App guide",
+      openNote: "Step by step: what each part is for and where to tap · 1 min",
+      openAction: "Take the tour",
+      welcomeTitle: "Welcome, {{name}}!",
+      welcomeTitleNoName: "Welcome!",
+      welcomeBody: "Let's get to know the app. At every step we light up the button you need — and you press it yourself.",
+      welcomeLength_one: "{{count}} step · about a minute",
+      welcomeLength_other: "{{count}} steps · about a minute",
+      start: "Let's go",
+      skip: "Skip",
+      next: "Next",
+      finish: "Done",
+      stepOf: "Step {{step}} of {{total}}",
+      pathVisit: "Visit",
+      pathBell: "Notifications",
+      missing: "This button isn't on the screen right now — tap “Next” to go on.",
+      field: {
+        workday: {
+          title: "Your working day starts here",
+          body: "When you start work, press “Start day”. Break and end of day are here too. GPS is recorded only while the day is open.",
+        },
+        routeTab: {
+          title: "Route — today's clients",
+          body: "Who to visit and in what order — it's all under “Route”.",
+          tap: "Tap “Route”",
+        },
+        visit: {
+          title: "How a visit goes",
+          body: "Your clients are listed here in order. Tap a client, then:",
+          line1: "“I've arrived — start visit” — your location is checked",
+          line2: "“Take a photo” — shelf, stand, document",
+          line3: "“Finish visit”",
+        },
+        tasksTab: {
+          title: "Tasks",
+          body: "Tasks from your manager, with deadlines. “Start Task” when you begin, “Complete” when done.",
+          tap: "Tap “Tasks”",
+        },
+        bell: {
+          title: "Everything in one place",
+          body: "The bell gathers messages, tasks and decisions. The red number is what's new. It's in the corner of every screen.",
+          tap: "Tap the bell",
+        },
+        feed: {
+          title: "Notifications",
+          body: "Tap a line to open what it's about. “Mark all as read” clears the list; “What to show” picks what you see.",
+        },
+        moreTab: {
+          title: "More",
+          body: "Visit history, GPS, your profile and language.",
+          tap: "Tap “More”",
+        },
+        again: {
+          title: "The guide is always here",
+          body: "Forgot something? Tap “Guide” and the tour starts again. It's in your profile too. Have a good working day!",
+        },
+      },
+      manager: {
+        tiles: {
+          title: "Your team today",
+          body: "Who is at work, how many visits, what waits for your decision. Tap a tile for the details.",
+        },
+        writeTeam: {
+          title: "Message the team",
+          body: "Write to everyone or to one person — it reaches their phone as a notification.",
+        },
+        approvalsTab: {
+          title: "Approvals",
+          body: "Route drafts, new doctors, working-time requests — they all wait for your decision.",
+          tap: "Tap “Approvals”",
+        },
+        approvals: {
+          title: "Decide in one tap",
+          body: "“Approve” or “Reject” — the employee sees the answer at once. Empty here means nothing is waiting yet.",
+        },
+        planningTab: {
+          title: "Planning",
+          body: "Your team's routes on a calendar, by month or by week.",
+          tap: "Tap “Planning”",
+        },
+        createRoute: {
+          title: "Create a route",
+          body: "Pick the employee and the day, line up the clients — they will see the route on their phone.",
+        },
+        bell: {
+          title: "Everything in one place",
+          body: "The bell gathers messages, approvals and alerts. The red number is what's new. It's in the corner of every screen.",
+          tap: "Tap the bell",
+        },
+        feed: {
+          title: "Notifications",
+          body: "Tap a line to open what it's about. “Mark all as read” clears the list; “What to show” picks what you see.",
+        },
+        moreTab: {
+          title: "More",
+          body: "Your profile, language and this guide.",
+          tap: "Tap “More”",
+        },
+        again: {
+          title: "The guide is always here",
+          body: "Forgot something? Tap “Guide” and the tour starts again. It's in your profile too. Have a good working day!",
+        },
+      },
+    },
   },
   az: {
     navV2: {
@@ -2634,6 +2850,113 @@ export const mobileResources = {
       body: "LeadDrive Route Field açıq iş günü ərzində marşrutunuzu yazmaq və müştərilərə vizitlərinizi qeyd etmək üçün məkan məlumatlarını toplayır — hətta tətbiq bağlı olduqda və ya istifadə edilmədikdə belə.\n\nMarşrutu və vizit qeydlərini şirkətinizin rəhbərləri görür. «Fasilə» və ya «Günü bitir» düyməsini basdıqda yazı dayanır.\n\nSonra telefon məkana giriş icazəsi istəyəcək.",
       notNow: "İndi yox",
       continue: "Davam et",
+    },
+    // The first-run guide (owner-approved mockup, 2026-10-18): src/guide/tour.ts.
+    guide: {
+      open: "Bələdçi",
+      openTitle: "Tətbiq bələdçisi",
+      openNote: "Addım-addım: nə nə üçündür və hara basmaq lazımdır · 1 dəq",
+      openAction: "Bələdçini başlat",
+      welcomeTitle: "Xoş gəldin, {{name}}!",
+      welcomeTitleNoName: "Xoş gəldin!",
+      welcomeBody: "Gəl, tətbiqlə tanış olaq. Hər addımda lazım olan düyməni işıqlandıracağıq — sən özün basacaqsan.",
+      welcomeLength_one: "{{count}} addım · təxminən 1 dəqiqə",
+      welcomeLength_other: "{{count}} addım · təxminən 1 dəqiqə",
+      start: "Başlayaq",
+      skip: "Keç",
+      next: "Növbəti",
+      finish: "Hazırdır, bitir",
+      stepOf: "Addım {{step}} / {{total}}",
+      pathVisit: "Ziyarət",
+      pathBell: "Bildirişlər",
+      missing: "Bu düymə indi ekranda yoxdur — «Növbəti» bas, davam edək.",
+      field: {
+        workday: {
+          title: "İş günü buradan başlayır",
+          body: "İşə çıxanda «Günə başla» bas. Fasilə və günün sonu da buradadır. GPS yalnız iş günü açıq olanda yazılır.",
+        },
+        routeTab: {
+          title: "Marşrut — bugünkü müştərilər",
+          body: "Kimə və hansı ardıcıllıqla gedirsən — hamısı «Marşrut»-dadır.",
+          tap: "«Marşrut»-a bas",
+        },
+        visit: {
+          title: "Ziyarət belə keçir",
+          body: "Müştərilər burada ardıcıllıqla görünür. Müştəriyə toxun, sonra:",
+          line1: "«Gəldim — ziyarətə başla» — yerin yoxlanır",
+          line2: "«Foto çək» — rəf, stend, sənəd",
+          line3: "«Ziyarəti bitir»",
+        },
+        tasksTab: {
+          title: "Tapşırıqlar",
+          body: "Rəhbərin tapşırıqları və müddətləri. Başlayanda «Başla», bitirəndə «Tamamla».",
+          tap: "«Tapşırıqlar»-a bas",
+        },
+        bell: {
+          title: "Hamısı bir yerdə",
+          body: "Zəng — mesajlar, tapşırıqlar və qərarlar. Qırmızı rəqəm — yenilər. Zəng hər ekranın küncündədir.",
+          tap: "Zəngə bas",
+        },
+        feed: {
+          title: "Bildirişlər",
+          body: "Sətrə bas — aid olduğu yer açılacaq. «Hamısını oxunmuş et» siyahını təmizləyir, «Nə göstərilsin»-də nəyi görmək istədiyini seç.",
+        },
+        moreTab: {
+          title: "Daha çox",
+          body: "Ziyarətlər tarixçəsi, GPS, profil və dil.",
+          tap: "«Daha çox»-a bas",
+        },
+        again: {
+          title: "Bələdçi həmişə burada",
+          body: "Nəyisə unutsan — «Bələdçi»-yə bas, tur yenidən başlayacaq. Profildə də var. Uğurlu iş günü!",
+        },
+      },
+      manager: {
+        tiles: {
+          title: "Komanda bu gün",
+          body: "Kim işdədir, neçə vizit olub, nə qərar gözləyir. Plitkaya bas — ətraflı açılır.",
+        },
+        writeTeam: {
+          title: "Komandaya yaz",
+          body: "Hamıya və ya bir əməkdaşa mesaj — o, onu telefonunda bildiriş kimi görəcək.",
+        },
+        approvalsTab: {
+          title: "Təsdiqlər",
+          body: "Marşrut qaralamaları, yeni həkimlər, iş vaxtı sorğuları — hamısı sənin qərarını gözləyir.",
+          tap: "«Təsdiqlər»-ə bas",
+        },
+        approvals: {
+          title: "Qərar bir toxunuşla",
+          body: "«Təsdiq et» və ya «Rədd et» — əməkdaş cavabı dərhal görür. Burada boşdursa, hələ heç nə gözləmir.",
+        },
+        planningTab: {
+          title: "Planlama",
+          body: "Komandanın marşrutları təqvimdə — ay və ya həftə üzrə.",
+          tap: "«Planlama»-ya bas",
+        },
+        createRoute: {
+          title: "Marşrut yarat",
+          body: "Əməkdaşı və günü seç, müştəriləri düz — əməkdaş marşrutu öz telefonunda görəcək.",
+        },
+        bell: {
+          title: "Hamısı bir yerdə",
+          body: "Zəng — mesajlar, təsdiqlər və xəbərdarlıqlar. Qırmızı rəqəm — yenilər. Zəng hər ekranın küncündədir.",
+          tap: "Zəngə bas",
+        },
+        feed: {
+          title: "Bildirişlər",
+          body: "Sətrə bas — aid olduğu yer açılacaq. «Hamısını oxunmuş et» siyahını təmizləyir, «Nə göstərilsin»-də nəyi görmək istədiyini seç.",
+        },
+        moreTab: {
+          title: "Daha çox",
+          body: "Profil, dil və bu bələdçi.",
+          tap: "«Daha çox»-a bas",
+        },
+        again: {
+          title: "Bələdçi həmişə burada",
+          body: "Nəyisə unutsan — «Bələdçi»-yə bas, tur yenidən başlayacaq. Profildə də var. Uğurlu iş günü!",
+        },
+      },
     },
   },
 } as const
