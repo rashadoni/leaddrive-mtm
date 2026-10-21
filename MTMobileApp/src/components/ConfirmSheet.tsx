@@ -8,7 +8,7 @@ import {
   Animated,
   Platform,
 } from "react-native"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 
 interface ConfirmSheetProps {
   visible: boolean
@@ -98,23 +98,23 @@ export default function ConfirmSheet({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: fieldTheme.color.scrim,
   },
   sheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: fieldTheme.color.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
     paddingBottom: Platform.OS === "ios" ? 44 : 28,
     alignItems: "center",
-    shadowColor: "#000",
+    shadowColor: fieldTheme.color.ink,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#e2e8f0",
+    backgroundColor: fieldTheme.color.surfaceStrong,
     marginTop: 12,
     marginBottom: 24,
   },
@@ -140,13 +140,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#0B0B1E",
+    color: fieldTheme.color.ink,
     textAlign: "center",
     marginBottom: 8,
   },
   message: {
     fontSize: 14,
-    color: "#64748b",
+    color: fieldTheme.color.inkMuted,
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 24,
@@ -161,17 +161,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     borderRadius: 14,
-    backgroundColor: "#f8fafc",
+    backgroundColor: fieldTheme.color.canvas,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: fieldTheme.color.border,
   },
-  cancelText: { fontSize: 15, fontWeight: "600", color: "#64748b" },
+  cancelText: { fontSize: 15, fontWeight: "600", color: fieldTheme.color.inkMuted },
   confirmBtn: {
     flex: 1.5,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
   },
-  confirmText: { fontSize: 15, fontWeight: "700", color: "#fff" },
-})
+  confirmText: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.onColor },
+}))

@@ -71,6 +71,19 @@ it('retains both field admission gates for an AGENT even when its attendance gra
   ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ data, routeFieldAccess: 'offline' }))
   expect(attendanceMarkAvailable()).toBe(false)
 })
+// Google Play, 2026-10-18: a field agent's location is recorded with the app
+// closed, so Android's sheet may open only after the app's disclosure — never
+// from inside this eight-second mark. Office staff are asked here, as before.
+it('lets the mark ask office staff for the phone grant, and never a field agent', async () => {
+  await captureAttendanceMark(scope, timestamp, false)
+  expect((readAttendanceLocationFix as jest.Mock).mock.calls.map(call => call[1])).toEqual([{ mayAsk: true }])
+  ;(readAttendanceLocationFix as jest.Mock).mockClear()
+  data = officeBootstrap('AGENT'); data.policies.agentPermissions!.attendanceLocation = true
+  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ isLoggedIn: true, agent: { ...officeAgent, role: 'AGENT' } })
+  ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ data, routeFieldAccess: 'enabled' }))
+  await captureAttendanceMark(scope, timestamp, false)
+  expect((readAttendanceLocationFix as jest.Mock).mock.calls.map(call => call[1])).toEqual([{ mayAsk: false }])
+})
 it.each([null, { ...accepted.policy!, enabled: false }])('keeps collection off without an enabled reviewed policy', async policy => {
   ;(api.getAttendanceLocationConsent as jest.Mock).mockResolvedValue({ success: true, data: { policy, consent: null, maySendLocation: false } })
   expect(await captureAttendanceMark(scope, timestamp, false)).toMatchObject({ locationState: 'NO_CONSENT', location: null, consentRevisionId: null })

@@ -17,7 +17,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useAuthStore } from "../../store/auth"
 import { api, REVOKED_REASON } from "../../services/api"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import LoginCodeFlow from "./LoginCodeFlow"
 
@@ -348,7 +348,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   scrollContent: {
     flexGrow: 1,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     borderColor: "#7E9F94",
   },
   stepNumberDone: { backgroundColor: fieldTheme.color.onColor, borderColor: fieldTheme.color.onColor },
-  stepNumberActive: { backgroundColor: fieldTheme.color.coral, borderColor: fieldTheme.color.coral },
+  stepNumberActive: { backgroundColor: fieldTheme.color.coralFill, borderColor: fieldTheme.color.coralFill },
   stepNumberTextActive: { color: fieldTheme.color.onColor, fontWeight: "900" },
   stepCopy: { flex: 1, marginLeft: fieldTheme.space.md },
   stepTitle: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "800" },
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.border,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingLeft: fieldTheme.space.lg,
@@ -481,11 +481,11 @@ const styles = StyleSheet.create({
   },
   errorCopy: { flex: 1 },
   errorTitle: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
-  errorText: { color: "#762A2A", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  errorText: { color: fieldTheme.color.onDangerSoft, fontSize: 13, lineHeight: 18, marginTop: 2 },
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.coral,
+    backgroundColor: fieldTheme.color.coralFill,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -506,11 +506,11 @@ const styles = StyleSheet.create({
     marginBottom: fieldTheme.space.md,
   },
   tab: { flex: 1, minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: 12, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm },
-  tabOn: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  tabOn: { backgroundColor: fieldTheme.color.surface, shadowColor: fieldTheme.color.ink, shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
   tabText: { color: fieldTheme.color.inkMuted, fontSize: 15, fontWeight: "800" },
   tabTextOn: { color: fieldTheme.color.ink },
   forgot: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", alignSelf: "flex-end", gap: 6, marginTop: 4 },
   forgotText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "800" },
   helpText: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, textAlign: "center", marginTop: fieldTheme.space.md },
   pressed: { opacity: 0.72 },
-})
+}))

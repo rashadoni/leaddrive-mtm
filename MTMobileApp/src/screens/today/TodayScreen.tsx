@@ -27,6 +27,8 @@ import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import GuideSpot from "../../components/guide/GuideSpot"
+import { DayLineRail } from "../../components/DayLine"
+import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
@@ -39,8 +41,9 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
 import { canReturnToWorkday, returnToClosedWorkday } from "../../services/workday-return"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
+import { shiftDateKey } from "../../services/week"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
   cachedRouteAsTodaySummary,
@@ -53,30 +56,23 @@ import {
 import { submitRouteCommand } from "../../services/route-command-journal"
 import { askBackgroundLocation, backgroundLocationMissing } from "../../services/background-location"
 import StaleWorkdayCard from "../../components/StaleWorkdayCard"
-import StaleWorkdayCloseSheet from "../../components/StaleWorkdayCloseSheet"
-import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from "../../services/attendance-requests"
-import { ask } from "../../services/app-feedback"
-import type { AttendanceInput } from "../../services/attendance-contract"
-import { runMobileSync } from "../../services/sync-engine"
 import {
   companyClock,
-  staleWorkdayCorrection,
-  staleWorkdayFinishSent,
-  type StaleWorkdayFinishSent,
   workdayOpenSinceEarlierDay,
 } from "../../services/stale-workday"
 import { staleVisitDayDate } from "../../services/stale-visit"
 
 type TodayNavigationParams = {
-  Route: undefined
+  Route: { view?: "today" | "month" } | undefined
+  PlanningBuilder: { initialDate?: string } | undefined
+  /** «Маршрут» → «Месяц»: the calendar is a tab of the route since 2026-10-20. */
   Calendar: undefined
   Tasks: undefined
   Visits: undefined
   More: { screen: "Messages" }
 }
 
-type Destination = Exclude<keyof TodayNavigationParams, "More">
+type Destination = Exclude<keyof TodayNavigationParams, "More" | "PlanningBuilder">
 type NextKind = "route" | "awaiting" | "tasks" | "empty" | "unknown" | "loading"
 type DataSource = "live" | "cached" | "unknown"
 type TeamMessageSummary = { id: string; title: string; lastMessage?: { body?: string | null } | null }
@@ -90,6 +86,10 @@ export default function TodayScreen() {
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
   const agent = useAuthStore((state) => state.agent)
+  // The same rule as «Planı dəyiş» on the route: a field agent whose company
+  // lets agents plan their own routes.
+  const ownRoutePlanningPolicy = useBootstrapStore((state) => state.data?.policies.canPlanOwnRoutes === true)
+  const canPlanOwnRoutes = String(agent?.role).toUpperCase() === "AGENT" && ownRoutePlanningPolicy
   const { stats, loading: kpiLoading, error: kpiError, fetchKpi } = useKpiStore()
   const activeWorkday = useWorkdayStore((state) => state.activeWorkday)
   const workdayHydrated = useWorkdayStore((state) => state.hydrated)
@@ -160,83 +160,15 @@ export default function TodayScreen() {
   const workdayReturnable = workdayFinishedToday && serverReturnsWorkdays && !workdayReturnRefused
   const workdayClosedForGood = workdayFinishedToday && !workdayReturnable
   // Owner, 2026-10-18: a day left open since an earlier date is not "going
-  // on" — it gets a red card and «Günü bağla», which asks only for the finish
-  // time (services/stale-workday.ts). The company's timezone decides the dates.
+  // on" — it gets a red card and «Günü bağla». A field agent is outside HR
+  // accounting (owner, 2026-10-14 and 2026-10-20: «у полевого агента всё
+  // кадровое убрать совсем»): the card closes the day now, after saying how
+  // many hours go into it; no time-correction request goes to the manager.
+  // The company's timezone decides the dates.
   const companyTimezone = useBootstrapStore((state) => state.data?.timezone ?? null)
-  const finishTimeRequestable = useBootstrapStore((state) =>
-    agent?.role === "AGENT" && agentMayAttendanceRequests(state.data?.policies))
   const staleDay = workdayOpen && currentWorkday
     ? workdayOpenSinceEarlierDay(currentWorkday.startedAt, new Date(), companyTimezone)
     : null
-  // The finish time already with the manager for that day, read from the
-  // own-requests list and this phone's queue. Keyed by the agent and the day
-  // so it never speaks for another.
-  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; finish: StaleWorkdayFinishSent | null } | null>(null)
-  const staleSentFinish = staleDay !== null && finishTimeSent?.key === currentWorkdayKey && finishTimeSent.day === staleDay
-    ? finishTimeSent.finish
-    : null
-  const readFinishTimeSent = useCallback(async () => {
-    if (!staleDay || !finishTimeRequestable) return
-    const key = currentWorkdayKey
-    let scope: string
-    try { scope = attendanceScope() } catch { return }
-    const queued = await attendanceQueued(scope).catch(() => [])
-    let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
-    try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
-    const finish = staleWorkdayFinishSent(staleDay, requests, queued)
-    setFinishTimeSent({ key, day: staleDay, finish })
-    // Approved — at once where the company allows it — means closed on the
-    // server: read the workday again, and the card gives way to «Günə başla».
-    if (finish?.approved) await refreshRouteFieldSession()
-  }, [currentWorkdayKey, finishTimeRequestable, staleDay])
-  useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
-  useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
-  const [closeSheetOpen, setCloseSheetOpen] = useState(false)
-  const [closeSending, setCloseSending] = useState(false)
-  const [closeFailed, setCloseFailed] = useState(false)
-  const openCloseSheet = useCallback(() => {
-    setCloseFailed(false)
-    setCloseSheetOpen(true)
-  }, [])
-  // The request is written to the phone's queue first, so no signal is needed
-  // to send it; the card says «sent» from that moment, and the sync pushes it.
-  const sendFinishTime = useCallback(async (input: AttendanceInput) => {
-    if (!staleDay || closeSending) return
-    const key = currentWorkdayKey
-    const day = staleDay
-    setCloseSending(true)
-    setCloseFailed(false)
-    try {
-      await queueAttendanceRequest(attendanceScope(), input, [])
-      setFinishTimeSent({ key, day, finish: { finish: input.endTime ?? "", approved: false } })
-      setCloseSheetOpen(false)
-      runMobileSync().then(() => readFinishTimeSent()).catch(() => {})
-    } catch {
-      setCloseFailed(true)
-    } finally {
-      setCloseSending(false)
-    }
-  }, [closeSending, currentWorkdayKey, readFinishTimeSent, staleDay])
-  // A finish sent and still waiting can be taken back, here: «Mənim
-  // müraciətlərim» is a long screen to look for it in (owner, 2026-10-18).
-  const pendingFinishRequest = staleSentFinish?.pending ?? null
-  const cancelSentFinish = useCallback(async () => {
-    if (!pendingFinishRequest || closeSending) return
-    const confirmed = await ask({ title: t("attendanceRequests.cancelTitle"), message: t("attendanceRequests.cancelBody"), tone: "warning", dismissValue: false,
-      buttons: [{ text: t("attendanceRequests.keep"), value: false, style: "cancel" }, { text: t("attendanceRequests.cancel"), value: true, style: "destructive" }] })
-    if (!confirmed) return
-    setCloseSending(true)
-    setCloseFailed(false)
-    try {
-      await queueAttendanceCancellation(attendanceScope(), pendingFinishRequest)
-      await runMobileSync()
-      await readFinishTimeSent()
-    } catch {
-      setCloseFailed(true)
-    } finally {
-      setCloseSending(false)
-    }
-  }, [closeSending, pendingFinishRequest, readFinishTimeSent, t])
   useEffect(()=>{if(workdayPaused || installation.blocked || recovery.operation || workdayStarting || workdayEnding || workdayFinishedToday || !qr.available || (scan && scan.scope!==currentWorkdayKey))setScan(null)},[workdayPaused,installation.blocked,recovery.operation,workdayStarting,workdayEnding,workdayFinishedToday,qr.available,currentWorkdayKey,scan])
 
   const refresh = useCallback(async () => {
@@ -415,6 +347,24 @@ export default function TodayScreen() {
   }, [route, t])
 
   const nextCopy = useMemo(() => {
+    // Every stop done: there is nothing left to open on today's route
+    // (owner, 2026-10-19 — the day was over and «Marşrutu aç» still called him
+    // to the one client he had already visited). The next thing an agent does
+    // is plan tomorrow, where the company allows it; otherwise nothing.
+    if (nextKind === "route" && route != null && route.totalPoints > 0 && route.remainingPoints === 0) {
+      return {
+        eyebrow: t("todayV2.routeDone"),
+        title: t("todayV2.routeTitle"),
+        body: routeSummaryText,
+        supporting: null,
+        button: canPlanOwnRoutes ? t("todayV2.planTomorrow") : null,
+        icon: "calendar-outline",
+        destination: null,
+        planTomorrow: canPlanOwnRoutes,
+        startRoute: false,
+        startWorkday: false,
+      }
+    }
     if (nextKind === "route") {
       const routeCanStart = route != null && todayRoutePrimaryAction(route, routeSource) === "start"
       const canStartRoute = workdayActive && routeCanStart
@@ -502,9 +452,12 @@ export default function TodayScreen() {
       startRoute: false,
       startWorkday: false,
     }
-  }, [awaitingRoute, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
+  }, [awaitingRoute, canPlanOwnRoutes, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
 
-  const open = (destination: Destination) => navigation.navigate(destination)
+  const open = (destination: Destination) => {
+    if (destination === "Calendar") navigation.navigate("Route", { view: "month" })
+    else navigation.navigate(destination)
+  }
   const startRoute = async () => {
     if (startingRoute || !workdayActive || !route || todayRoutePrimaryAction(route, routeSource) !== "start") return
     setStartingRoute(true)
@@ -537,6 +490,10 @@ export default function TodayScreen() {
     }
   }
   const nextAction = () => {
+    if (nextCopy.planTomorrow) {
+      navigation.navigate("PlanningBuilder", { initialDate: shiftDateKey(todayKey, 1) })
+      return
+    }
     if (nextCopy.startRoute) {
       startRoute().catch(() => {})
       return
@@ -604,36 +561,38 @@ export default function TodayScreen() {
         <View style={[styles.header, { paddingTop: headerTop }]}>
           <View style={[styles.headerInner, compactHeader && styles.headerInnerCompact]}>
             <View style={styles.headerCopy}>
-              {/* The bell sits in the top corner (owner-approved mockup, 2026-10-18):
-                  beside the greeting on a phone, above the actions on a tablet. */}
+              {/* The greeting has the line to itself. The bell stands beside
+                  «Yenilə» on a phone (owner, 2026-10-18: «значок уведомления
+                  надо спустить к Yenilə») and above the actions on a tablet. */}
               <View style={styles.titleRow}>
                 <Text style={styles.title} numberOfLines={2}>
                   {t("todayV2.greeting", { name: agent?.name ?? "" })}
                 </Text>
-                {/* Pulled into the title's line: the header keeps its height. */}
-                {compactHeader ? <View style={styles.bellSlot}><NotificationBell tone="light" /></View> : null}
               </View>
               <Text style={styles.date}>{dateLabel}</Text>
             </View>
             <View style={[styles.headerActions, compactHeader && styles.headerActionsCompact]}>
-              {compactHeader ? null : <NotificationBell tone="light" />}
+              {compactHeader ? null : <NotificationBell />}
               <SyncStatusChip />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("todayV2.refresh")}
-                disabled={refreshing}
-                onPress={() => { manualRefresh().catch(() => {}) }}
-                style={({ pressed }) => [
-                  styles.refreshButton,
-                  pressed && styles.pressed,
-                  refreshing && styles.disabled,
-                ]}
-              >
-                {refreshing
-                  ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
-                  : <Icon name="refresh" size={20} color={fieldTheme.color.ink} />}
-                <Text style={styles.refreshText}>{t("todayV2.refresh")}</Text>
-              </Pressable>
+              <View style={styles.headerButtons}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("todayV2.refresh")}
+                  disabled={refreshing}
+                  onPress={() => { manualRefresh().catch(() => {}) }}
+                  style={({ pressed }) => [
+                    styles.refreshButton,
+                    pressed && styles.pressed,
+                    refreshing && styles.disabled,
+                  ]}
+                >
+                  {refreshing
+                    ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
+                    : <Icon name="refresh" size={20} color={fieldTheme.color.ink} />}
+                  <Text style={styles.refreshText}>{t("todayV2.refresh")}</Text>
+                </Pressable>
+                {compactHeader ? <NotificationBell /> : null}
+              </View>
             </View>
           </View>
         </View>
@@ -645,12 +604,10 @@ export default function TodayScreen() {
                 day={staleDay}
                 startedAt={currentWorkday.startedAt}
                 timezone={companyTimezone}
-                mode={!finishTimeRequestable ? "closeOnly" : staleSentFinish?.approved ? "approved" : staleSentFinish ? "sent" : "request"}
-                sentFinish={staleSentFinish?.finish ?? null}
-                busy={workdayBusy || !workdayHydrated || closeSending}
+                mode="closeOnly"
+                busy={workdayBusy || !workdayHydrated}
                 error={workdayError ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : "todayV2.workdayError") : null}
-                onCloseDay={finishTimeRequestable ? openCloseSheet : requestWorkdayAction}
-                onCancelSent={pendingFinishRequest ? () => { cancelSentFinish().catch(() => {}) } : undefined}
+                onCloseDay={requestWorkdayAction}
               />
             ) : (
             <View style={styles.workdayPanel}>
@@ -849,39 +806,45 @@ export default function TodayScreen() {
                 {nextKind === "route" && route && route.points.length > 0 ? (
                   <>
                     <View style={styles.routeSummaryHeader}>
-                      <View style={[styles.nextIcon, styles.routeSummaryIcon]}>
-                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.primaryStrong} />
+                      <View style={styles.routeSummaryIcon}>
+                        <Icon name={nextCopy.icon} size={22} color={fieldTheme.color.primary} />
                       </View>
                       <View style={styles.routeSummaryCopy}>
                         <Text style={styles.routeSummaryTitle}>{t("todayV2.routeTitle")}</Text>
                         <Text style={styles.routeSummaryMeta}>{routeSummaryText}</Text>
                       </View>
+                      {route.totalPoints > 0 ? (
+                        <Text style={styles.routeSummaryCount}>
+                          {route.visitedPoints}
+                          <Text style={styles.routeSummaryTotal}>{` / ${route.totalPoints}`}</Text>
+                        </Text>
+                      ) : null}
                     </View>
+                    {/* The day as a line with its stops on it: the stops
+                        behind the agent filled, the next one ringed. */}
                     <View style={styles.routeClients}>
                       {route.points.map((point, index) => {
                         const done = point.status === "VISITED"
                         const isNext = point.id === route.nextPoint?.id
+                        const visitedAt = done && point.visitedAt
+                          ? new Date(point.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })
+                          : null
                         return (
-                          <View
-                            key={point.id}
-                            style={[
-                              styles.routeClientRow,
-                              index < route.points.length - 1 && styles.routeClientRowDivider,
-                            ]}
-                          >
-                            <View style={[styles.routeClientNumber, done && styles.routeClientNumberDone]}>
-                              {done
-                                ? <Icon name="checkmark" size={14} color={fieldTheme.color.onColor} />
-                                : <Text style={styles.routeClientNumberText}>{index + 1}</Text>}
+                          <View key={point.id} style={styles.routeClientRow}>
+                            <DayLineRail
+                              state={dayStopState(point.status, false, isNext)}
+                              first={index === 0}
+                              last={index === route.points.length - 1}
+                              filledAbove={index > 0 && route.points[index - 1].status === "VISITED"}
+                              filledBelow={done}
+                            />
+                            <View style={[styles.routeClientCopy, isNext && styles.routeClientCopyNext]}>
+                              <Text style={[styles.routeClientName, done && styles.routeClientNameDone, isNext && styles.routeClientNameNext]} numberOfLines={1}>
+                                {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
+                              </Text>
+                              {isNext ? <Text style={styles.routeClientNextText}>{t("todayV2.nextStopShort")}</Text> : null}
                             </View>
-                            <Text style={[styles.routeClientName, done && styles.routeClientNameDone]} numberOfLines={1}>
-                              {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
-                            </Text>
-                            {isNext ? (
-                              <View style={styles.routeClientNextBadge}>
-                                <Text style={styles.routeClientNextText}>{t("todayV2.nextStopShort")}</Text>
-                              </View>
-                            ) : null}
+                            {visitedAt ? <Text style={styles.routeClientTime}>{visitedAt}</Text> : null}
                           </View>
                         )
                       })}
@@ -890,8 +853,8 @@ export default function TodayScreen() {
                 ) : nextKind === "awaiting" && awaitingRoute ? (
                   <>
                     <View style={styles.routeSummaryHeader}>
-                      <View style={[styles.nextIcon, styles.routeSummaryIcon]}>
-                        <Icon name={nextCopy.icon} size={20} color={fieldTheme.color.primaryStrong} />
+                      <View style={styles.routeSummaryIcon}>
+                        <Icon name={nextCopy.icon} size={22} color={fieldTheme.color.primary} />
                       </View>
                       <View style={styles.routeSummaryCopy}>
                         <Text style={styles.routeSummaryTitle}>{nextCopy.eyebrow}</Text>
@@ -902,19 +865,19 @@ export default function TodayScreen() {
                         unapproved one cannot have: nothing is done, nothing is next. */}
                     <View style={styles.routeClients}>
                       {awaitingRoute.points.map((point, index) => (
-                        <View
-                          key={point.id}
-                          style={[
-                            styles.routeClientRow,
-                            index < awaitingRoute.points.length - 1 && styles.routeClientRowDivider,
-                          ]}
-                        >
-                          <View style={styles.routeClientNumber}>
-                            <Text style={styles.routeClientNumberText}>{index + 1}</Text>
+                        <View key={point.id} style={styles.routeClientRow}>
+                          <DayLineRail
+                            state="planned"
+                            first={index === 0}
+                            last={index === awaitingRoute.points.length - 1}
+                            filledAbove={false}
+                            filledBelow={false}
+                          />
+                          <View style={styles.routeClientCopy}>
+                            <Text style={styles.routeClientName} numberOfLines={1}>
+                              {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
+                            </Text>
                           </View>
-                          <Text style={styles.routeClientName} numberOfLines={1}>
-                            {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
-                          </Text>
                         </View>
                       ))}
                     </View>
@@ -992,18 +955,6 @@ export default function TodayScreen() {
         if(!scan || scan.scope!==currentWorkdayKey || (scan.action==='FINISH' && currentWorkday?.workdayId!==scan.workdayId) || (scan.action==='START' && currentWorkday))throw new Error('ATTENDANCE_QR_CHANGED')
         guardAttendanceQr(currentWorkdayKey);await syncWorkday(token);setScan(null)
       }}/>
-      {staleDay && currentWorkday ? (
-        <StaleWorkdayCloseSheet
-          visible={closeSheetOpen}
-          correction={staleWorkdayCorrection(currentWorkday.startedAt, companyTimezone)}
-          timezone={companyTimezone}
-          lastMarkAt={currentWorkday.lastMarkAt ?? null}
-          sending={closeSending}
-          failed={closeFailed}
-          onCancel={() => setCloseSheetOpen(false)}
-          onSend={(input) => { sendFinishTime(input).catch(() => {}) }}
-        />
-      ) : null}
       <ConfirmSheet
         visible={endDayConfirm}
         icon={staleClose ? "⚠️" : "🌙"}
@@ -1036,7 +987,7 @@ export default function TodayScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: fieldTheme.color.canvas,
@@ -1068,25 +1019,34 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: fieldTheme.space.md,
   },
-  bellSlot: {
-    marginVertical: -6,
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: fieldTheme.space.sm,
   },
+  // Stretched: in a column the greeting's block otherwise takes the width of
+  // its words, and with the bell pulled into its line «Salam, …» wrapped to
+  // «Sal / am…» beside it (owner's phone, 2026-10-18, since 3.11.19).
   headerInnerCompact: {
     flexDirection: "column",
+    alignItems: "stretch",
   },
+  // Bold only where the eye should land: the greeting, names, numbers
+  // (owner-approved mockup, 2026-10-18). Text set 800–900 everywhere made
+  // nothing stand out.
   title: {
     flex: 1,
     color: fieldTheme.color.ink,
-    fontSize: 29,
-    lineHeight: 35,
-    fontWeight: "900",
-    letterSpacing: -0.45,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   date: {
     color: fieldTheme.color.inkMuted,
     fontSize: 15,
     lineHeight: 21,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   headerActions: {
     alignItems: "flex-end",
@@ -1113,7 +1073,7 @@ const styles = StyleSheet.create({
   refreshText: {
     color: fieldTheme.color.ink,
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   content: {
     width: "100%",
@@ -1121,7 +1081,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingHorizontal: fieldTheme.space.lg,
     paddingTop: fieldTheme.space.lg,
-    gap: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
   },
   contentTablet: {
     flexDirection: "row",
@@ -1131,7 +1091,7 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.xl,
   },
   primaryColumn: {
-    gap: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
   },
   primaryColumnTablet: {
     flex: 1,
@@ -1149,11 +1109,11 @@ const styles = StyleSheet.create({
     padding: fieldTheme.space.lg,
     flexDirection: "column",
     alignItems: "stretch",
-    gap: fieldTheme.space.lg,
+    gap: fieldTheme.space.md,
+    // A white card on the tinted ground, lifted by a shadow instead of a
+    // green outline (owner-approved mockup, 2026-10-18).
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.primary,
-    backgroundColor: fieldTheme.color.surface,
   },
   workdayCopy: {
     flex: 1,
@@ -1175,15 +1135,15 @@ const styles = StyleSheet.create({
   },
   workdayTitle: {
     color: fieldTheme.color.ink,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: "900",
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: "700",
   },
   workdayBody: {
     color: fieldTheme.color.inkMuted,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   inlineError: {
     color: fieldTheme.color.danger,
@@ -1218,15 +1178,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
   },
+  // «Günü bitir» is outlined like «Fasilə»: the screen's one filled button is
+  // the route's (owner's rule, 2026-10-18).
   workdayButtonActive: {
     borderWidth: 1,
     borderColor: fieldTheme.color.primary,
-    backgroundColor: fieldTheme.color.primarySoft,
+    backgroundColor: fieldTheme.color.surface,
   },
   workdayButtonText: {
     color: fieldTheme.color.onColor,
     fontSize: 15,
-    fontWeight: "900",
+    fontWeight: "500",
   },
   workdayButtonTextActive: {
     color: fieldTheme.color.primaryStrong,
@@ -1234,24 +1196,21 @@ const styles = StyleSheet.create({
   nextPanel: {
     padding: fieldTheme.space.lg,
     alignItems: "flex-start",
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
   },
   // A new message is said by a green edge, not a green card.
   messageBanner: { minHeight: 78, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md, borderWidth: 1, borderLeftWidth: 4, borderColor: fieldTheme.color.border, borderLeftColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   messageBannerIcon: { width: 28, alignItems: "center", justifyContent: "center" },
   messageBannerCopy: { flex: 1, minWidth: 0 },
-  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900", letterSpacing: 0.5 },
-  messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900", marginTop: 1 },
+  messageBannerLabel: { color: fieldTheme.color.primaryStrong, fontSize: 11, lineHeight: 14, fontWeight: "500", letterSpacing: 0.3 },
+  messageBannerTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700", marginTop: 1 },
   messageBannerBody: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 2 },
   // The next step is a white card for every kind (owner-approved colours,
-  // 2026-10-18): its kind shows in the edge, the one fill is its button.
-  nextPanelRoute: {
-    borderLeftWidth: 4,
-    borderLeftColor: fieldTheme.color.primary,
-  },
+  // 2026-10-18): its kind shows in the edge, the one fill is its button. The
+  // route's card has no edge: the day line is its colour (mockup approved
+  // the same evening).
+  nextPanelRoute: {},
   nextPanelTasks: {
     borderLeftWidth: 4,
     borderLeftColor: fieldTheme.color.blue,
@@ -1267,10 +1226,8 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.md,
     paddingHorizontal: fieldTheme.space.lg,
     paddingVertical: fieldTheme.space.sm,
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
   },
   nextEmptyIcon: {
     width: 40,
@@ -1280,8 +1237,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   nextEmptyCopy: { flex: 1, minWidth: 0 },
-  nextEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
-  nextEmptyAction: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17, fontWeight: "800", marginTop: 2 },
+  nextEmptyTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "700" },
+  nextEmptyAction: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17, fontWeight: "500", marginTop: 2 },
   nextIcon: {
     width: 40,
     height: 40,
@@ -1294,47 +1251,49 @@ const styles = StyleSheet.create({
     color: fieldTheme.color.primaryStrong,
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: "800",
-    letterSpacing: 0.45,
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
   nextTitle: {
     marginTop: fieldTheme.space.sm,
     color: fieldTheme.color.ink,
-    fontSize: 27,
-    lineHeight: 33,
-    fontWeight: "900",
-    letterSpacing: -0.4,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   nextBody: {
     marginTop: fieldTheme.space.sm,
     maxWidth: 560,
     color: fieldTheme.color.inkMuted,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: "500",
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: "400",
   },
   nextSupporting: {
     marginTop: fieldTheme.space.xs,
     color: fieldTheme.color.inkMuted,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  routeSummaryIcon: { width: 36, height: 36, marginBottom: 0 },
+  routeSummaryIcon: { width: 34, alignItems: "center" },
   routeSummaryCopy: { flex: 1, minWidth: 0 },
-  routeSummaryTitle: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 21, fontWeight: "900" },
-  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, fontWeight: "700" },
+  routeSummaryTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "700" },
+  routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, fontWeight: "400" },
+  routeSummaryCount: { color: fieldTheme.color.primary, fontSize: 17, fontWeight: "700" },
+  routeSummaryTotal: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
   routeClients: { alignSelf: "stretch", marginTop: fieldTheme.space.sm },
-  routeClientRow: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.xs },
-  routeClientRowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: fieldTheme.color.border },
-  routeClientNumber: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.border },
-  routeClientNumberDone: { borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.success },
-  routeClientNumberText: { color: fieldTheme.color.ink, fontSize: 11, fontWeight: "900" },
-  routeClientName: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "800" },
-  routeClientNameDone: { opacity: 0.7, textDecorationLine: "line-through" },
-  routeClientNextBadge: { minHeight: 24, paddingHorizontal: fieldTheme.space.sm, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary },
-  routeClientNextText: { color: fieldTheme.color.primaryStrong, fontSize: 10, lineHeight: 14, fontWeight: "900" },
+  // No padding above or below a row: the line of one stop meets the next.
+  routeClientRow: { minHeight: 44, flexDirection: "row", alignItems: "stretch", gap: fieldTheme.space.md },
+  routeClientCopy: { flex: 1, minWidth: 0, justifyContent: "center", paddingVertical: fieldTheme.space.xs },
+  routeClientCopyNext: { paddingVertical: fieldTheme.space.sm },
+  routeClientName: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "400" },
+  routeClientNameDone: { color: fieldTheme.color.inkMuted },
+  routeClientNameNext: { fontSize: 17, lineHeight: 22, fontWeight: "700" },
+  routeClientNextText: { color: fieldTheme.color.primary, fontSize: 13, lineHeight: 17, fontWeight: "500" },
+  routeClientTime: { alignSelf: "center", color: fieldTheme.color.success, fontSize: 13, fontWeight: "500" },
   cachedBadge: {
     minHeight: 30,
     marginTop: fieldTheme.space.md,
@@ -1349,7 +1308,7 @@ const styles = StyleSheet.create({
   cachedBadgeText: {
     color: fieldTheme.color.amber,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   alwaysNotice: {
     marginTop: fieldTheme.space.md,
@@ -1365,7 +1324,7 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.surface,
   },
   alwaysNoticeCopy: { flex: 1, minWidth: 0 },
-  alwaysNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  alwaysNoticeTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700" },
   alwaysNoticeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   alwaysNoticeAction: {
     alignSelf: "flex-start",
@@ -1376,10 +1335,12 @@ const styles = StyleSheet.create({
     borderRadius: fieldTheme.radius.pill,
     backgroundColor: fieldTheme.color.primaryStrong,
   },
-  alwaysNoticeActionText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
+  alwaysNoticeActionText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "500" },
+  // Across the card: the screen's one filled button, as wide as the line above it.
   nextButton: {
+    alignSelf: "stretch",
     minHeight: LAYOUT_TOUCH_TARGETS.expandedTablet,
-    marginTop: "auto",
+    marginTop: fieldTheme.space.md,
     paddingHorizontal: fieldTheme.space.lg,
     flexDirection: "row",
     alignItems: "center",
@@ -1391,27 +1352,24 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: fieldTheme.color.onColor,
     fontSize: 15,
-    fontWeight: "900",
+    fontWeight: "500",
   },
+  // Overdue tasks: a white card said in coral — icon, words, arrow.
   attentionRow: {
-    minHeight: LAYOUT_TOUCH_TARGETS.compact,
-    paddingHorizontal: fieldTheme.space.md,
+    minHeight: 52,
+    paddingHorizontal: fieldTheme.space.lg,
     flexDirection: "row",
     alignItems: "center",
     gap: fieldTheme.space.sm,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    borderLeftWidth: 4,
-    borderLeftColor: fieldTheme.color.coral,
-    backgroundColor: fieldTheme.color.surface,
+    ...fieldTheme.card,
+    borderRadius: fieldTheme.radius.lg,
   },
   attentionText: {
     flex: 1,
     color: fieldTheme.color.coral,
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: "700",
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "500",
   },
   pressed: {
     opacity: 0.82,
@@ -1420,4 +1378,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-})
+}))

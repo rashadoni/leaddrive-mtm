@@ -90,9 +90,12 @@ describe("GPS tarixçəm: the header and day switcher scroll with the day", () =
     expect(gps.match(/<WebView\b/g)).toHaveLength(1)
   })
 
-  it("keeps the status bar readable once the green header has gone", () => {
+  // The header is white since 2026-10-18 (owner-approved colours): the band is
+  // white and the clock is dark.
+  it("keeps the status bar readable once the header has gone", () => {
     expect(gps).toContain('import StatusBarBand from "../../components/StatusBarBand"')
-    expect(gps).toContain("{short ? <StatusBarBand /> : null}")
+    expect(gps).toContain('{short ? <StatusBarBand tone="light" /> : null}')
+    expect(gps).toContain("<LightScreenStatusBar />")
   })
 })
 
@@ -111,9 +114,10 @@ describe("Ziyarətin yekunu: the header scrolls with the summary", () => {
     expect(visit).toContain(") : short ? header : null}")
   })
 
-  it("keeps the status bar readable once the green header has gone", () => {
+  it("keeps the status bar readable once the header has gone", () => {
     expect(visit).toContain('import StatusBarBand from "../../components/StatusBarBand"')
-    expect(visit).toContain("{short ? <StatusBarBand /> : null}")
+    expect(visit).toContain('{short ? <StatusBarBand tone="light" /> : null}')
+    expect(visit).toContain("<LightScreenStatusBar />")
   })
 })
 

@@ -31,10 +31,11 @@ import {
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { statusLabel } from "../../lib/status-labels"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildEmployeeDayDocument, employeeDayHasMap } from "./employee-day-map"
+import ManagerGiveTaskSheet from "./ManagerGiveTaskSheet.android"
 
 /**
  * One employee, opened from «Komanda» (owner, 2026-10-17: «при нажатии
@@ -52,13 +53,15 @@ type Employee = {
   manager: string | null
 }
 
-const STOP_STYLE: Record<EmployeeDayStop["status"], { fill: string; text: string; border: string }> = {
-  VISITED: { fill: fieldTheme.color.primary, text: fieldTheme.color.onColor, border: fieldTheme.color.primary },
-  NEXT: { fill: fieldTheme.color.blue, text: fieldTheme.color.onColor, border: fieldTheme.color.blue },
-  PLANNED: { fill: "#FFFFFF", text: fieldTheme.color.inkMuted, border: fieldTheme.color.border },
-  SKIPPED: { fill: fieldTheme.color.dangerSoft, text: fieldTheme.color.danger, border: fieldTheme.color.dangerSoft },
-  MISSED: { fill: fieldTheme.color.dangerSoft, text: fieldTheme.color.danger, border: fieldTheme.color.dangerSoft },
-}
+// A stop's state is the colour of its number and ring, never a filled circle
+// (owner-approved colours, 2026-10-18).
+const STOP_STYLE: Record<EmployeeDayStop["status"], { fill: string; text: string; border: string }> = themed(() => ({
+  VISITED: { fill: fieldTheme.color.surface, text: fieldTheme.color.primaryStrong, border: fieldTheme.color.primary },
+  NEXT: { fill: fieldTheme.color.surface, text: fieldTheme.color.blue, border: fieldTheme.color.blue },
+  PLANNED: { fill: fieldTheme.color.surface, text: fieldTheme.color.inkMuted, border: fieldTheme.color.border },
+  SKIPPED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
+  MISSED: { fill: fieldTheme.color.surface, text: fieldTheme.color.danger, border: fieldTheme.color.danger },
+}))
 
 function toEmployee(raw: any, fallbackName: string): Employee {
   const data = raw?.data ?? {}
@@ -82,7 +85,7 @@ export default function ManagerEmployeeScreen() {
   const language = i18n.language
   const navigation = useNavigation()
   const route = useRoute<RouteProp<RootStackParamList, "ManagerEmployee">>()
-  const { agentId, name: initialName, isOnline } = route.params
+  const { agentId, name: initialName, isOnline, pushReady } = route.params
   const headerTop = useHeaderTop()
   const timezone = useBootstrapStore((state) => state.data?.timezone)
   const tileApiKey = useBootstrapStore((state) => state.data?.maps?.cartoBasemapsApiKey ?? null)
@@ -95,6 +98,7 @@ export default function ManagerEmployeeScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<"forbidden" | "failed" | null>(null)
   const [mapFailed, setMapFailed] = useState(false)
+  const [giveTaskOpen, setGiveTaskOpen] = useState(false)
   const requestId = useRef(0)
 
   const load = useCallback(async (mode: "initial" | "manual" | "silent", forDate: string) => {
@@ -220,14 +224,21 @@ export default function ManagerEmployeeScreen() {
               </Pressable>
               {whatsapp ? (
                 <Pressable testID="manager-employee-whatsapp" accessibilityRole="button" onPress={() => { void Linking.openURL(whatsapp) }} style={({ pressed }) => [styles.contactButton, styles.whatsappButton, pressed && styles.pressed]}>
-                  <Icon name="logo-whatsapp" size={18} color={fieldTheme.color.onColor} />
-                  <Text style={styles.contactText}>WhatsApp</Text>
+                  <Icon name="logo-whatsapp" size={18} color={fieldTheme.color.success} />
+                  <Text style={[styles.contactText, styles.whatsappText]}>WhatsApp</Text>
                 </Pressable>
               ) : null}
             </View>
           ) : employee ? (
             <Text style={styles.noPhone}>{t("managerEmployee.noPhone")}</Text>
           ) : null}
+          {/* Owner, 2026-10-20: «чтоб была возможность создавать задачи
+              менеджерам через приложение». Outlined: «Zəng et» stays the one
+              filled button of the card. */}
+          <Pressable testID="manager-employee-give-task" accessibilityRole="button" onPress={() => setGiveTaskOpen(true)} style={({ pressed }) => [styles.giveTask, pressed && styles.pressed]}>
+            <Icon name="add-circle-outline" size={19} color={fieldTheme.color.primaryStrong} />
+            <Text style={styles.giveTaskText}>{t("managerTask.giveButton")}</Text>
+          </Pressable>
         </View>
 
         <View style={styles.body}>
@@ -326,7 +337,7 @@ export default function ManagerEmployeeScreen() {
                 ))}
                 {day.extraVisits.map((visit) => (
                   <View key={visit.id} style={[styles.stop, styles.stopDivider]} testID="manager-employee-extra-visit">
-                    <View style={[styles.stopNumber, { backgroundColor: fieldTheme.color.violetSoft, borderColor: fieldTheme.color.violetSoft }]}>
+                    <View style={[styles.stopNumber, { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.violet }]}>
                       <Icon name="add" size={14} color={fieldTheme.color.violet} />
                     </View>
                     <View style={styles.stopCopy}>
@@ -372,6 +383,7 @@ export default function ManagerEmployeeScreen() {
           ) : null}
         </View>
       </ScrollView>
+      <ManagerGiveTaskSheet visible={giveTaskOpen} agentId={agentId} agentName={name} pushReady={pushReady} onClose={() => setGiveTaskOpen(false)} />
     </View>
   )
 }
@@ -406,7 +418,7 @@ function Line({ label, value }: { label: string; value: string }) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   content: { paddingBottom: fieldTheme.space.xxl },
   top: { backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.md, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
@@ -415,41 +427,47 @@ const styles = StyleSheet.create({
   name: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 30, fontWeight: "900" },
   sub: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: fieldTheme.space.sm },
-  pill: { borderRadius: fieldTheme.radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  // A state is the colour of its words, not a tinted pill (owner-approved colours, 2026-10-18).
+  pill: { paddingRight: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: "800" },
-  pillGreen: { backgroundColor: fieldTheme.color.primarySoft },
+  pillGreen: {},
   pillTextGreen: { color: fieldTheme.color.primaryStrong },
-  pillAmber: { backgroundColor: fieldTheme.color.amberSoft },
+  pillAmber: {},
   pillTextAmber: { color: fieldTheme.color.amber },
-  pillRed: { backgroundColor: fieldTheme.color.dangerSoft },
+  pillRed: {},
   pillTextRed: { color: fieldTheme.color.danger },
-  pillMuted: { backgroundColor: fieldTheme.color.surfaceStrong },
+  pillMuted: {},
   pillTextMuted: { color: fieldTheme.color.inkMuted },
   contactRow: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   contactButton: { flex: 1, minHeight: 46, borderRadius: fieldTheme.radius.md, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   callButton: { backgroundColor: fieldTheme.color.primary },
-  whatsappButton: { backgroundColor: "#157A3C" },
+  // One filled button: «Zəng et»; WhatsApp is outlined in green, a theme
+  // colour so it reads in the night palette too.
+  whatsappButton: { borderWidth: 1.5, borderColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.surface },
+  whatsappText: { color: fieldTheme.color.success },
   contactText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   noPhone: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: fieldTheme.space.sm },
+  giveTask: { minHeight: 46, marginTop: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  giveTaskText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900" },
   body: { padding: fieldTheme.space.lg, gap: fieldTheme.space.md },
   dayRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  dayArrow: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  dayArrow: { width: LAYOUT_TOUCH_TARGETS.compact, height: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.md, borderWidth: 1.5, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, alignItems: "center", justifyContent: "center" },
   dayLabel: { flex: 1, textAlign: "center", color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  todayChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary, paddingHorizontal: 14, justifyContent: "center" },
-  todayChipText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
+  todayChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.pill, borderWidth: 1.5, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 14, justifyContent: "center" },
+  todayChipText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   map: { height: 240, borderRadius: fieldTheme.radius.md, overflow: "hidden", borderWidth: 1, borderColor: fieldTheme.color.border },
-  webView: { flex: 1, backgroundColor: "#DFEAE5" },
+  webView: { flex: 1, backgroundColor: fieldTheme.color.surfaceStrong },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: -4 },
   legendText: { color: fieldTheme.color.inkMuted, fontSize: 12 },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
-  tile: { width: "48.5%", flexGrow: 1, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md },
+  tile: { width: "48.5%", flexGrow: 1, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md },
   tileValue: { color: fieldTheme.color.ink, fontSize: 19, fontWeight: "900" },
   tileLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   section: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.5, marginTop: fieldTheme.space.sm },
   card: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
   empty: { color: fieldTheme.color.inkMuted, fontSize: 14, paddingVertical: fieldTheme.space.sm },
   stop: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.sm },
-  stopDivider: { borderTopWidth: 1, borderTopColor: "#E7EEEA" },
+  stopDivider: { borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   stopNumber: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: "center", justifyContent: "center", marginTop: 1 },
   stopNumberText: { fontSize: 12, fontWeight: "900" },
   stopCopy: { flex: 1 },
@@ -470,4 +488,4 @@ const styles = StyleSheet.create({
   loading: { paddingVertical: fieldTheme.space.xxl, alignItems: "center" },
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.72 },
-})
+}))

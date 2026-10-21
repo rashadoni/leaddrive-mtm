@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import { FIELD_PALETTES } from "../../src/theme/fieldTheme"
 
 /**
  * On the phone (2026-09-13) the owner pointed at the chip under the date on
@@ -9,8 +10,9 @@ import path from "path"
  */
 const chip = fs.readFileSync(path.resolve(__dirname, "../../src/components/SyncStatusChip.tsx"), "utf8")
 
-function hex(name: string): string {
-  const m = chip.match(new RegExp(`  ${name}: \\{[^}]*?(?:color|backgroundColor): "(#[0-9a-f]{6})"`))
+/** The palette token a style takes its colour from (the chip has no literal colours since night mode). */
+function token(name: string, property: "color" | "backgroundColor"): string {
+  const m = chip.match(new RegExp(`  ${name}: \\{[^}]*?${property}: fieldTheme\\.color\\.(\\w+)`))
   return m ? m[1] : ""
 }
 
@@ -33,14 +35,13 @@ describe("sync chip stays readable during a conflict", () => {
     expect(label.indexOf("styles.conflictLabel")).toBeGreaterThan(label.indexOf("styles.inverseText"))
   })
 
-  it("meets 4.5:1 against the conflict background", () => {
-    const background = hex("chipConflict")
-    const ratios = {
-      label: contrast(hex("conflictLabel"), background),
-      icon: contrast(hex("conflictIcon"), background),
+  it("meets 4.5:1 against the conflict background, by day and at night", () => {
+    const background = token("chipConflict", "backgroundColor")
+    expect(background).toBe("coralSoft")
+    expect(token("conflictLabel", "color")).toBe("coral")
+    expect(token("conflictIcon", "color")).toBe("coral")
+    for (const palette of [FIELD_PALETTES.light, FIELD_PALETTES.dark]) {
+      expect(contrast(palette.coral, palette.coralSoft)).toBeGreaterThanOrEqual(4.5)
     }
-    expect(background).toBe("#fff7ed")
-    expect(ratios.label).toBeGreaterThanOrEqual(4.5)
-    expect(ratios.icon).toBeGreaterThanOrEqual(4.5)
   })
 })

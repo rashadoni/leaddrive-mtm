@@ -4,7 +4,7 @@ import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import OrganizationsList from "./OrganizationsList"
 import ContactsList from "./ContactsList"
@@ -102,7 +102,7 @@ export default function BaseScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
     backgroundColor: fieldTheme.color.primaryStrong,
@@ -158,4 +158,4 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: fieldTheme.color.primaryStrong },
   content: { flex: 1 },
   pressed: { opacity: 0.72 },
-})
+}))

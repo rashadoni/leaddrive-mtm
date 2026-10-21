@@ -9,7 +9,7 @@ import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
 import { setOfflineScope } from "../../src/services/offline-scope"
 import { allOutboxOperations, enqueueOutboxOperation, flushOutbox, retryOutboxConflict } from "../../src/services/outbox"
-import { cachedAttendanceRequests, discardAttendanceDraftDocuments, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, pushAttendanceAndLegacy, queueAttendanceCancellation, queueAttendanceRequest } from "../../src/services/attendance-requests"
+import { attendanceScope, cachedAttendanceRequests, discardAttendanceDraftDocuments, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, pushAttendanceAndLegacy, queueAttendanceCancellation, queueAttendanceRequest } from "../../src/services/attendance-requests"
 import { attendanceUuid, validAttendanceInput, type AttendanceInput, type AttendanceRequest } from "../../src/services/attendance-contract"
 import { agentMayAttendanceRequests } from "../../src/lib/agent-permissions"
 
@@ -20,12 +20,13 @@ const record = (value: AttendanceInput, status: AttendanceRequest["status"] = "P
   submittedAt: "2026-10-13T08:00:00Z", decidedAt: null, decisionNote: null, cancelledAt: null, version: "2026-10-13T08:00:00Z",
   details: { kind: value.kind, unit: value.unit, startTime: value.startTime ?? null, endTime: value.endTime ?? null, timezone: "Asia/Baku", attachmentIds: value.attachmentIds },
 })
-const boot = (enabled = true) => ({ routeFieldAccess: "enabled", data: { policies: { agentPermissions: { attendanceRequests: enabled } } } })
+// Own requests belong to «Mənim uçotum», the employees HR keeps; a field agent has none (owner, 2026-10-20).
+const boot = (enabled = true) => ({ routeFieldAccess: "disabled", data: { tenant: { id: "fictional-org" }, principal: { id: "fictional-agent", role: "EMPLOYEE" }, manifest: { tenant: { id: "fictional-org" }, principal: { id: "fictional-agent", role: "EMPLOYEE" } }, policies: { attendanceMarkVersion: 1, agentPermissions: { attendanceRequests: enabled, attendanceWorkday: true } } } })
 beforeEach(async () => {
   jest.clearAllMocks()
   await AsyncStorage.clear()
   setOfflineScope("fictional-org", "fictional-agent")
-  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ agent: { id: "fictional-agent", organizationId: "fictional-org", role: "AGENT" } })
+  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ agent: { id: "fictional-agent", organizationId: "fictional-org", role: "EMPLOYEE" } })
   ;(useBootstrapStore.getState as jest.Mock).mockReturnValue(boot())
   ;(api.submitAttendanceRequest as jest.Mock).mockImplementation(async value => ({ success: true, data: { request: record(value), idempotent: false } }))
   ;(api.getAttendanceRequests as jest.Mock).mockResolvedValue({ success: true, data: { items: [], nextCursor: null } })
@@ -36,6 +37,11 @@ it("requires an explicit new permission; retained permissions and missing values
   const missingOrDisabled: Parameters<typeof agentMayAttendanceRequests>[0][] = [undefined, null, {}, { agentPermissions: { hrmRequests: true } }, { agentPermissions: { attendanceRequests: false } }]
   for (const value of missingOrDisabled) expect(agentMayAttendanceRequests(value)).toBe(false)
   expect(agentMayAttendanceRequests({ agentPermissions: { attendanceRequests: true } })).toBe(true)
+})
+it("gives a field agent no own requests, even with the tenant's switch on", () => {
+  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ agent: { id: "fictional-agent", organizationId: "fictional-org", role: "AGENT" } })
+  ;(useBootstrapStore.getState as jest.Mock).mockReturnValue({ routeFieldAccess: "enabled", data: { policies: { agentPermissions: { attendanceRequests: true } } } })
+  expect(() => attendanceScope()).toThrow("ATTENDANCE_ACCESS_UNAVAILABLE")
 })
 it("validates full same-day correction clock pairs and real calendar dates", () => {
   expect(validAttendanceInput(input())).toBe(true)

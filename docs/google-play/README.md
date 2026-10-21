@@ -1,0 +1,214 @@
+# Google Play: всё для консоли
+
+Всё, что Play Console спрашивает о LeadDrive Route Field (`com.mtmobileapp`), с
+ответами и тем, на чём каждый ответ стоит в коде. Сверено 2026-10-18 с main
+(3.11.30 / versionCode 1624, 3.11.31 / 1627 и 3.11.32 / 1634) и с сервером
+leaddrive-v2. Неверный
+ответ в «Безопасности данных» Google считает нарушением политики, а не
+опечаткой: изменил приложение — сверь разделы 4–6 заново.
+
+Страница для владельца (по-русски, с кнопками «Скопировать»):
+https://claude.ai/artifact/JH4tr1LGRjQurQZgKEnepL
+
+Папка лежит в корневом `docs/`, а не в `MTMobileApp/`: правка внутри
+`MTMobileApp/**` запускает `build-apk.yml` и публикует лишний pre-release.
+
+## 0. Аккаунт и что изменилось с сентября
+
+- **Аккаунт — организации** (решение владельца 2026-10-18; создаёт он сам:
+  D-U-N-S, $25, проверка личности). Обязательный закрытый тест «12
+  тестировщиков × 14 дней» касается только *личных* аккаунтов, созданных после
+  2023-11-13 ([Google](https://support.google.com/googleplay/android-developer/answer/14151465)).
+  Прежний личный аккаунт `LeadDrive Solutions` (ID 7529947756576280791) больше не
+  план.
+- С версии от 2026-09-14 приложение получило: `ACCESS_BACKGROUND_LOCATION`
+  (возобновление записи после перезагрузки, `FieldTrackingResume`),
+  `RECEIVE_BOOT_COMPLETED`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (с 3.11.32
+  снова убрано, раздел 1.2), пуши Firebase,
+  подпись клиента, вход по коду из WhatsApp, учёт рабочего дня (QR через ML Kit,
+  согласие на место, признак mock-location), экраны руководителя (живая карта,
+  сообщения команде). Поэтому ответы ниже отличаются от сентябрьских: нужна
+  декларация фонового местоположения, IARC «пользователи общаются» — Yes.
+
+## 1. Что блокировало отправку на проверку — закрыто 2026-10-18
+
+Загружать **3.11.32 / versionCode 1634 или новее**
+([v3.11.32-build634](https://github.com/rashadoni/leaddrive-mtm/releases/tag/v3.11.32-build634),
+branch main, коммит `8acf75a`). В более ранних сборках пункты 1 и 2 не закрыты.
+
+1. **Объяснение перед запросом местоположения** — rashadoni/leaddrive-mtm#163.
+   Перед системным запросом Android приложение показывает своё окно
+   (`services/location-disclosure.ts`, тексты `locationDisclosure.*` в
+   `i18n/mobile-resources.ts`, az/ru/en): «местоположение», запись маршрута в
+   открытый рабочий день и отметки визитов, «даже когда приложение закрыто или
+   не используется», видят руководители компании, запись останавливается по
+   «Перерыв» и «Завершить день». «Не сейчас» — системный запрос не показывается
+   ([Google](https://support.google.com/googleplay/android-developer/answer/9799150)).
+   Через окно идут запись маршрута (`runtime/AndroidApp.tsx`), отметка визита на
+   «Визитах» и на «Маршруте»; библиотеке геолокации при запуске запрещено
+   спрашивать самой (`skipPermissionRequests: true`) — раньше «Маршрут» и
+   «Визиты» поднимали системный запрос при открытии. Отметка рабочего дня
+   полевого агента системный запрос не открывает (у офисных — как раньше).
+   Список мест, откуда может открыться системный запрос местоположения, держит
+   тест `__tests__/runtime/location-disclosure-paths.test.ts`.
+   Карточка `todayV2.backgroundLocation*` («в любом режиме») переписана по
+   тому же шаблону Google.
+2. **Прямой запрос батареи убран** (решение владельца 2026-10-18: «Заменить»;
+   тот же #163). `FieldNotificationsModule.openBatteryOptimizationSettings`
+   открывает `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (запасной путь —
+   страница приложения в настройках); на «Маршруте» сначала своё окно
+   «Не сейчас» / «Открыть настройки». `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` в
+   манифесте помечено `tools:node="remove"`; в собранном .aab 1634 его нет
+   (проверено по `base/manifest/AndroidManifest.xml`).
+3. **Политика на сайте** — rashadoni/leaddrive-site#36 смержен 2026-10-18 по
+   «давай» владельца, опубликован на трёх языках, якорь `#delete` работает.
+
+Не проверено на устройстве: окно объяснения, системный запрос после него и
+экран настроек батареи видели только тесты (jest 249/249) и сборка. Видео для
+декларации (раздел 7) снимать на 1634 или новее — оно же и будет проверкой.
+
+## 2. Подпись (Play App Signing) — свой ключ
+
+Сертификат пакета из CI: `CN=LeadDrive MTM, OU=Mobile, O=LeadDrive, L=Baku`,
+SHA-256 `d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b`, RSA 2048,
+действует до 2053-12-19. Проверено разбором `META-INF/MTM-RELE.RSA` самих .aab
+1624, 1627 и 1634 (а не со слов CI); у 1634 ещё и подпись CMS над `MTM-RELE.SF`,
+дайджест `MANIFEST.MF` и все 1171 файлов — совпадают, неподписанных нет. Тот же сертификат у APK на устройствах агентов
+(память «MTM: подпись релиза»), поэтому:
+
+- при первой загрузке выбрать **свой ключ** (Export and upload a key from Java
+  keystore, PEPK), а не ключ Google — иначе версия из Play не встанет поверх
+  APK, и агенты потеряют неотправленную очередь;
+- отдельный upload key не регистрировать: CI подписывает .aab тем же ключом
+  (`bundleRelease`, `signingConfigs.release`), а шаг «Verify package, version and
+  release signature» в `build-apk.yml` сверяет отпечаток и APK, и .aab;
+- с 2027 года Android ставит APK в обход магазина только от проверенных
+  разработчиков; один ключ в Play и в APK покрывает и это.
+
+**PEPK.** Ключ лежит на dev-боксе: `/home/rashad/.leaddrive-keys/mtm-release.keystore`
+(PKCS12, alias `mtm-release`, пароли в `MTMobileApp/android/app/build.gradle`).
+Java на боксе нет; брать переносной JDK 21 в scratchpad (на системной Java PEPK
+падает с `Cannot find any provider supporting RSA/NONE/OAEPWithSHA1AndMGF1Padding`).
+Владелец скачивает в консоли `encryption_public_key.pem` и присылает текст;
+дальше:
+
+```
+java -jar pepk.jar --keystore=/home/rashad/.leaddrive-keys/mtm-release.keystore \
+  --alias=mtm-release --output=mtm-signing-key.zip --include-cert \
+  --rsa-aes-encryption --encryption-key-path=encryption_public_key.pem
+```
+
+`pepk.jar` — по ссылке из той же страницы консоли. Получившийся zip зашифрован
+открытым ключом Google; его отдают владельцу, он загружает в «Upload private key».
+
+## 3. Пакет и номер версии
+
+- `.aab` публикуется в каждом релизе `build-apk.yml`:
+  `leaddrive-mtm-v<версия>-<versionCode>.aab`. Загружать только релизы с
+  `(branch main)` в описании — ветки `claude/**` публикуют такие же pre-release.
+- `versionCode = 1000 + github.run_number` workflow `build-apk.yml`: растёт с
+  каждым прогоном, общий счётчик для main и веток. Сбросится, если переименовать
+  файл workflow (у нового файла свой счётчик с 1) — тогда Play откажет в
+  загрузке. Локальная сборка без `MTM_VERSION_CODE` получает 87 — в Play её не
+  грузить.
+- В .aab: `targetSdk 36`, `minSdk 24` (требование Play для новых приложений —
+  targetSdk 35+ — выполнено).
+
+## 4. Разрешения в собранном манифесте (.aab 1634, merged)
+
+| Разрешение | Откуда | Что в консоли |
+|---|---|---|
+| `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` | приложение | Data safety → Location |
+| `ACCESS_BACKGROUND_LOCATION` | приложение | Sensitive permissions → Location: декларация + видео |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` | приложение; сервис `RNBackgroundActionsTask` с `foregroundServiceType="location"` | Foreground service permissions: описание + видео |
+| `POST_NOTIFICATIONS` | приложение | — |
+| `RECEIVE_BOOT_COMPLETED` | приложение (`FieldTrackingResumeReceiver`) | — |
+| `CAMERA` | приложение (фото визита, QR через vision-camera + ML Kit) | — |
+| `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE`, `WAKE_LOCK` | приложение / библиотеки | — |
+| `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` | библиотеки; в рантайме не запрашиваются, на targetSdk 33+ не действуют | — (политика фото/видео касается `READ_MEDIA_*`, их нет) |
+| `c2dm.permission.RECEIVE`, `BIND_GET_INSTALL_REFERRER_SERVICE`, `DUMP`, `BIND_JOB_SERVICE` | Firebase / библиотеки | — |
+
+`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` нет с 3.11.32 (раздел 1.2).
+Рекламного ID (`com.google.android.gms.permission.AD_ID`) нет → Advertising ID: No.
+`USE_FULL_SCREEN_INTENT`, `SCHEDULE_EXACT_ALARM`, `READ_MEDIA_*` нет.
+`android:usesCleartextTraffic="true"` стоит, но http используется только для
+`localhost`/`10.0.2.2`/`127.*`/`192.168.*` (`services/api.ts → protocol`); код
+компании резолвится в `https://<код>.leaddrivecrm.org`.
+
+## 5. Тексты и ответы
+
+Все тексты витрины (az основной, ru, en), «Что нового», App access, IARC,
+целевая аудитория, Foreground service и декларация фонового местоположения —
+на странице владельца, по шагам 3–5, и в `listing.json` рядом (витрина). Длины:
+название 21/30; краткое az 71, ru 70, en 67 из 80; полное ≤ 1824 из 4000.
+
+Опорные факты для текстов (не добавлять обещаний сверх них): подпись —
+`services/visit-signature.ts`; презентации — `PresentationViewerScreen`; заявки
+на врача и изменение карточки — `DoctorCreateRequest`, `RouteContactChangeRequest`
+(агент не правит базу сам); QR-отметки — `AttendanceQrScannerNative`;
+руководитель — `ManagerLiveMap`, `ManagerTeamMessageScreen`, планирование;
+офлайн — outbox + центр синхронизации.
+
+Вход для проверяющего: компания `leaddrive` (демо-тенант LeadDrive Inc.,
+`leaddrive.leaddrivecrm.org`), логин и пароль демо-агента — **вписывает
+владелец**. Клиентский тенант (Zeytun и др.) не давать.
+
+## 6. Безопасность данных (Data safety)
+
+Общее: собирает — Yes; шифрование в пути — Yes; аккаунты — «My app does not
+allow users to create an account» (их создаёт компания; политика удаления
+аккаунта Google касается приложений с созданием аккаунта); удаление по запросу —
+Yes, ссылка `https://leaddrivecrm.org/privacy/field-app#delete` (раздел с
+`id: 'delete'` в leaddrive-site). Shared — No для всех: Sentry, Firebase, ML Kit,
+Contabo — обработчики по поручению, руководители клиента — пользователи того же
+сервиса. Ephemeral — No.
+
+| Тип Play | Основание в коде | Purposes | Required |
+|---|---|---|---|
+| Location → Precise, Approximate | `location.android.ts` (точка ~30 с, fused/GPS ≤ 50 м, сеть ≤ 200 м), координаты визита, `attendance-location.ts` + `isMock` | App functionality; Fraud prevention, security, and compliance | Required |
+| Personal info → Name | аккаунт; контакты; `signerName` подписи | App functionality; Account management | Required |
+| Personal info → Email address | вход (`LoginScreen`) | Account management | Required |
+| Personal info → Phone number | вход по номеру и код в WhatsApp (`LoginCodeFlow`); телефоны контактов | App functionality; Account management | Required |
+| Photos and videos → Photos | фото визита (`media-outbox`, водяной знак) | App functionality | Optional |
+| Messages → Other in-app messages | `ManagerTeamMessageScreen` → `TeamMessagesScreen` | App functionality | Optional |
+| App activity → App interactions | хлебные крошки и трассировки Sentry (`tracesSampleRate` 0.1) | Analytics | Required |
+| App activity → Other UGC | заметки, подпись (`svgPath`), итоги задач, объяснения | App functionality | Optional |
+| App info and performance → Crash logs, Diagnostics | Sentry (EU, `sendDefaultPii: false`); ML Kit diagnostics | Analytics | Required |
+| Device or other IDs | `field-device-id.ts` (`rf-…`), FCM-токен + `deviceId` (`push-registration.ts`), Firebase Installation ID, ID ML Kit | App functionality; Analytics; Fraud prevention, security, and compliance | Required |
+
+Не собирается: контакты телефона, SMS, звонки, календарь, микрофон, файлы,
+история браузера, финансы, здоровье.
+
+## 7. Графика
+
+| Что | Требование Play | Статус |
+|---|---|---|
+| Иконка | 512×512 PNG | `icon-512.png` — совпадает с `ic_launcher` (метка на `#6C63FF`) |
+| Баннер | 1024×500 | `feature-graphic.png` — пересобран 2026-10-18 из экрана «Bu gün» 3.11.31 |
+| Скриншоты телефона | 2–8, сторона не длиннее двух других | `screenshots/phone-{az,ru,en}/` — 1080×1920 с подписью на языке витрины; `screenshots/phone-plain/` — те же кадры без рамки, 1080×2073 |
+| Скриншоты планшета | по желанию | не сняты |
+
+Откуда кадры (2026-10-18). Тестовый S23 остаётся под руководителем Zeytun Pharma —
+владелец: «оставь тенант не трогай». Снято на рабочем S26 (SM-S948B) владельца под
+агентом клиентского тенанта, только переключением вкладок (рабочий день не
+начинался, сообщения и уведомления не открывались), и по его же указанию
+(«заменишь просто название клиентов») все настоящие имена на картинках заменены
+вымышленными: сотрудник → Orxan Bayramov, руководитель → Farid Aliyev, клиники →
+«Mərkəzi Ailə Klinikası», «Yaşıl Bağ Tibb Mərkəzi», врачи → Həsənov Rauf, Nərmin
+Əliyeva, адреса — вымышленные. Исходные снимки с настоящими данными удалены, в
+репозиторий не попадали.
+
+Как переснять: `tools/redact.py` (находит текст по `uiautomator dump`, подбирает
+размер и насыщенность по шрифту телефона `/system/fonts/OneUISans-VF.ttf`,
+закрашивает фоном и вписывает замену), затем `tools/compose.py` (обрезка
+строки состояния и навигации — Play не берёт 1080×2340, это 2,17:1; подписи;
+баннер). Перед публикацией сверить разметку каждого кадра со списком настоящих
+имён — ни одного оставшегося.
+
+Не годятся в витрину: карточка врача показывает сырые значения `DOCTOR` и
+`ACTIVE` вместо перевода; вкладка задач у агента пустая.
+
+Видео для деклараций (≤ 30 с, YouTube по ссылке): «Начать день» → объяснение →
+системный запрос → «Разрешать всегда» → домой, шторка с уведомлением
+«LeadDrive — рабочий день» → «Перерыв» (уведомление пропало) → «Завершить день».
+Снимать на сборке 1634 или новее (объяснение появилось в 3.11.32).

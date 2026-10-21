@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { api } from "../../services/api"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 interface Props {
@@ -222,7 +222,7 @@ export default function ServerScreen({ onServerSelected }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   scrollContent: {
     flexGrow: 1,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.border,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingLeft: fieldTheme.space.lg,
@@ -312,11 +312,11 @@ const styles = StyleSheet.create({
   },
   errorCopy: { flex: 1 },
   errorTitle: { color: fieldTheme.color.danger, fontSize: 14, fontWeight: "900" },
-  errorText: { color: "#762A2A", fontSize: 13, lineHeight: 18, marginTop: 2 },
+  errorText: { color: fieldTheme.color.onDangerSoft, fontSize: 13, lineHeight: 18, marginTop: 2 },
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: fieldTheme.color.coral,
+    backgroundColor: fieldTheme.color.coralFill,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -330,4 +330,4 @@ const styles = StyleSheet.create({
   safetyHint: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
   safetyText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   pressed: { opacity: 0.72 },
-})
+}))

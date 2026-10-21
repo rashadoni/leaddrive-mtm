@@ -6,7 +6,8 @@ jest and tsc never install anything, and the device checklist
 (MTMobileApp/docs/e2e-adb-checklist.md) needs the owner's phone on a cable. This
 is the part of that acceptance a machine can do alone: take the APK an agent
 downloads, install it on a device that has never seen the app, and walk the way
-in — company step, sign-in form, their refusals — against the production server.
+in — company step, the «First sign-in» tab a new phone opens on, the sign-in
+form, their refusals — against the production server.
 
 With a field account in the repository's secrets it goes on: signs in, opens
 every tab, a client's card and the «propose a change» form, the profile, and
@@ -25,7 +26,10 @@ only the app's own words (those found in its dictionaries) and test ids; the
 company, the email and the password are replaced wherever they would appear.
 
 Every check is read from the device (`uiautomator dump`, `dumpsys`, the crash
-log), not from a screenshot. Screenshots are kept as evidence only.
+log), not from a screenshot. Screenshots are kept as evidence only — except for
+day and night, which only the pixels show: on the company step, before anything
+of an account is typed, the phone is switched to night and back and the app's
+brightness is read from the framebuffer (`night_mode_walk`).
 
 Usage: emulator_signin.py <apk>
   E2E_OUT               evidence directory (default e2e-out)
@@ -47,6 +51,7 @@ import json
 import os
 import re
 import shlex
+import struct
 import subprocess
 import sys
 import tempfile
@@ -64,6 +69,7 @@ RESOURCES_FILE = "MTMobileApp/src/i18n/mobile-resources.ts"
 SCREENS_DIR = "MTMobileApp/src/screens"
 CLIENT_CARD = "MTMobileApp/src/screens/base/RouteContactDetailScreen.android.tsx"
 CHANGE_FORM = "MTMobileApp/src/screens/base/RouteContactChangeRequestScreen.android.tsx"
+LOGIN_SCREEN = "MTMobileApp/src/screens/auth/LoginScreen.tsx"
 SMOKE_MODE = smoke_mode(os.environ)
 AGENT_COMPANY, AGENT_EMAIL, AGENT_PASSWORD = account_settings(os.environ)
 SECRETS = [value for value in (AGENT_PASSWORD, AGENT_EMAIL, AGENT_COMPANY) if value]
@@ -73,6 +79,7 @@ APP_LABEL = "LeadDrive"
 results = []  # (ok: True/PASS, False/FAIL, None/NOT_RUN, what, detail)
 not_responding = []  # titles of the system's «isn't responding» dialogs that were dismissed
 asked_by_system = []  # packages of Android's own prompts that were declined: the walk only reads
+asked_by_app = []  # titles of the app's own questions (`ask()`) that were declined, or «…» when not its words
 
 
 def adb(*args, timeout=180, check=True):
@@ -110,8 +117,9 @@ def nodes():
             # the walk only reads, so decline and look again.
             deny = by_id(found, "permission_deny_button")
             # …and the Settings dialog «Let app always run in background?» that
-            # the Route tab raises for tracking (first signed-in run: it took
-            # the focus and every tab after it was «not on screen»).
+            # the Route tab raised for tracking before 3.11.32 (first signed-in
+            # run: it took the focus and every tab after it was «not on
+            # screen»). Kept for runs of an older release tag.
             packages = {n.get("package", "") for n in found}
             if not deny and PKG not in packages and packages & {"com.android.settings", "com.google.android.permissioncontroller", "com.android.permissioncontroller"}:
                 deny = by_id(found, "button2")
@@ -119,6 +127,26 @@ def nodes():
                 asked_by_system.append(next(iter(packages - {""}), "?"))
                 print(f"declined a system prompt ({asked_by_system[-1]})", flush=True)
                 tap(deny)
+                time.sleep(2)
+                continue
+            # Since 3.11.32 the Route tab asks about the battery in the app's
+            # own sheet instead (services/app-feedback `ask()`, drawn by
+            # AppFeedbackHost), and «Начать день» first shows the location
+            # disclosure there. The sheet is a modal window, so the dump is the
+            # sheet and not the tab under it. BACK closes it with the asker's
+            # `dismissValue` — «Не сейчас» for both — so the walk declines
+            # without knowing which button is which: the dump shows neither a
+            # button's style nor its place in ask(), and a tap on a button that
+            # has just gone would land on the screen under it. The Route tab
+            # also carries a battery card with the same title in the tab
+            # itself; only the sheet's ids tell them apart.
+            if PKG in packages and any(re.fullmatch(r"app-choice(-button-\d+)?", n.get("resource-id", "")) for n in found):
+                # The header comes first; the icon before it is a glyph, not a word,
+                # and the containers' empty text is a «word» too (every `""` in the sources).
+                said = [n["text"] for n in found if n.get("text") and n["text"] in app_words()]
+                asked_by_app.append(said[0] if said else "…")
+                print(f"declined a question of the app («{asked_by_app[-1]}»)", flush=True)
+                shell("input keyevent 4")
                 time.sleep(2)
                 continue
             wait_button = by_id(found, "aerr_wait")
@@ -222,6 +250,110 @@ def crash_line():
     return redact(reason.split(":", 1)[0] if private else reason)[:200]
 
 
+def screen_brightness(bottom=None):
+    """Mean luminance, 0 (black) to 1 (white), of the screen between the status bar and `bottom`.
+
+    Raw framebuffer (`screencap` without -p): a 12- or 16-byte header of
+    width, height and format, then RGBA_8888 rows. Every 12th pixel is enough
+    to tell a white screen from a black one.
+    """
+    raw = subprocess.run(["adb", "exec-out", "screencap"], capture_output=True, timeout=60).stdout
+    if len(raw) < 16:
+        return None
+    width, height, _ = struct.unpack_from("<III", raw, 0)
+    header = len(raw) - width * height * 4
+    if width <= 0 or height <= 0 or header not in (12, 16):
+        return None
+    top, last = height // 16, min(bottom or height, height)
+    total = count = 0
+    for y in range(top, last, 12):
+        row = header + y * width * 4
+        for x in range(0, width, 12):
+            at = row + x * 4
+            total += 0.2126 * raw[at] + 0.7152 * raw[at + 1] + 0.0722 * raw[at + 2]
+            count += 1
+    return total / count / 255 if count else None
+
+
+NIGHT_PROBE = "e2e-night-check"
+
+
+def night_mode_walk():
+    """The phone switches day and night with the app open (owner, 2026-10-20:
+    «если я меняю тему на телефоне на светлую, то приложение не меняется на
+    светлую тему»).
+
+    Until 3.11.37 the colours were fixed when the JS started and a switch was
+    taken by restarting the JS — never during a workday and never with the
+    keyboard up, so the screen kept its old theme. Here the company field has
+    text in it and the keyboard is up (when the emulator shows one): the open
+    screen must turn dark within seconds and light again, with the text still
+    in the field — a restart would have emptied it. Only the part of the
+    screen above the field is measured: the keyboard follows the system theme
+    by itself. No account is typed yet, so the screenshots are kept.
+    """
+    shell("cmd uimode night no", check=False)
+    time.sleep(3)
+    found, _ = nodes()
+    field = by_id(found, "tenant-input")
+    if not field:
+        record(False, "Day and night: the company field is there to type into")
+        return
+    tap(field)
+    type_text(NIGHT_PROBE)
+    time.sleep(1)
+    typing = "keyboard up" if keyboard_shown() else "no on-screen keyboard"
+    process = shell(f"pidof {PKG}", check=False).strip()
+    bottom = field["box"][1]
+    before = screen_brightness(bottom)
+    evidence("00a-day")
+    for mode, dark, name in (("yes", True, "00b-night"), ("no", False, "00c-day-again")):
+        shell(f"cmd uimode night {mode}", check=False)
+        started, now = time.time(), None
+        while time.time() - started < 15:
+            now = screen_brightness(bottom)
+            if now is not None and (now < 0.3 if dark else now > 0.6):
+                break
+            time.sleep(1)
+        took = time.time() - started
+        seen, _ = nodes()
+        kept = (by_id(seen, "tenant-input") or {}).get("text", "")
+        same = shell(f"pidof {PKG}", check=False).strip() == process
+        evidence(name)
+        turned = now is not None and (now < 0.3 if dark else now > 0.6)
+        theme = "night" if dark else "day"
+        shown = "?" if now is None else f"{now:.2f}"
+        record(turned, f"The phone switched to {theme}: the open screen follows it at once",
+               f"brightness {before if before is None else round(before, 2)} → {shown} in {took:.0f} s, {typing}")
+        record(kept == NIGHT_PROBE and same, f"…in {theme} the typed text is still in the field, the app not restarted",
+               f"the field reads «{kept}», same process: {same}")
+    seen, _ = nodes()
+    field = by_id(seen, "tenant-input")
+    if field:
+        clear_field(field, len(NIGHT_PROBE))
+    hide_keyboard()
+
+
+def night_evidence(name):
+    """The screen as it stands, once more at night, then day again.
+
+    The night walk sees the company step before anything is refused. A
+    refusal is a red box whose words were a fixed dark red until 3.11.40:
+    on the night box about 1.5:1, unreadable. How the box reads at night only
+    the pixels show, so it is kept for the eye.
+    """
+    for mode, dark in (("yes", True), ("no", False)):
+        shell(f"cmd uimode night {mode}", check=False)
+        started = time.time()
+        while time.time() - started < 15:
+            now = screen_brightness()
+            if now is not None and (now < 0.3 if dark else now > 0.6):
+                break
+            time.sleep(1)
+        if dark:
+            evidence(name)
+
+
 def unpack_handset_code(apk, device_abis):
     """Let a handset APK start on an Intel emulator, without touching the APK.
 
@@ -301,10 +433,13 @@ def keyboard_shown():
 
 
 def hide_keyboard():
+    """Close the keyboard if it is up; True when it was."""
     # BACK closes the keyboard — and leaves the app when there is none.
     if keyboard_shown():
         shell("input keyevent 4")
         time.sleep(1)
+        return True
+    return False
 
 
 def clear_field(node, length):
@@ -337,6 +472,87 @@ def tap_text(found, text):
         return False
     tap(max(matches, key=lambda n: n["box"][1]))
     return True
+
+
+def sign_in_open(found):
+    """The sign-in screen is up, on either of its tabs.
+
+    Since 3.11.3 it has two: «Sign in» (email and password) and «First sign-in»
+    (a code from WhatsApp, LoginCodeFlow). A phone that remembers no account
+    opens on «First sign-in», so `login-email` alone is not the screen (every
+    run of 3.11.32 stopped there: «not seen in 120 s»). Builds before the tabs
+    have the form alone.
+    """
+    return bool(by_id(found, "login-tab-signin") or by_id(found, "login-email"))
+
+
+def open_password_form(what, name):
+    """The email-and-password form behind the «Sign in» tab; the nodes once `login-email` is there.
+
+    LoginScreen first draws «Sign in» and turns to «First sign-in» only when
+    reading the saved account comes back empty — unless a tab was pressed
+    before (`tabTouched`). So the tab is pressed whenever it is there, not only
+    when the form is missing: a form seen a moment too early would otherwise go
+    from under the walk's next tap.
+    """
+    found, _ = nodes()
+    tab = by_id(found, "login-tab-signin")
+    if tab:
+        tap(tab)
+    return wait_for(what, lambda seen: by_id(seen, "login-email") and "form shown", 30, name)
+
+
+def has_sign_in_tabs():
+    """The build under test has the two tabs (3.11.3 on). Its ids are written `login-tab-${key}`,
+    so the literal «login-tab-first» is nowhere in the source — looking for it skipped the
+    checks on the first run with the tabs (39164347300)."""
+    return "login-tab-" in source_of(LOGIN_SCREEN)
+
+
+def first_sign_in_offered(found, sign_in):
+    """«First sign-in» is the chosen tab and asks for the WhatsApp number; a detail in the app's words, or "".
+
+    «Get a code» counts only when it stands whole on screen. Under the
+    keyboard uiautomator may still list it, as a box whose top is below its
+    bottom (`[82,1074][638,1050]` in runs 39169379126 and 39172055224), or as
+    its top 44 px, cut where the scrolling view ends above the keyboard
+    (`[82,1006][638,1050]` in 39172808084). Taking either for the button
+    passed the check on the first look, before the keyboard was ever closed.
+    """
+    tab = by_id(found, "login-tab-first")
+    send = by_id(found, "login-code-send")
+    if (tab and tab.get("selected") == "true" and by_id(found, "login-code-phone") and send
+            and send["box"][1] < send["box"][3] and stands_whole(found, send, (), sign_in["codeStart"])):
+        return f"«{sign_in['codePhoneLabel']}» and «{sign_in['codeStart']}»"
+    return ""
+
+
+def first_sign_in_checks(found, sign_in):
+    """Owner, 2026-10-17: a new phone opens on «First sign-in». Only its first step is read: «Get a code» would send a WhatsApp message."""
+    record(has_text(found, sign_in["tabSignIn"]) and has_text(found, sign_in["tabFirst"]),
+           f"The sign-in screen has the tabs «{sign_in['tabSignIn']}» and «{sign_in['tabFirst']}»")
+    # The screen turns to it once reading the saved account comes back empty.
+    # Then the phone field takes the focus (`autoFocus` in LoginCodeFlow) and
+    # the keyboard opens: on a 720x1600 screen the window ends at y=1090, and
+    # «Get a code», right under the field, is left out of the dump, kept as an
+    # inverted sliver or cut to its top. Run 39170988424 failed here with
+    # «First sign-in» chosen; 39169379126, 39172055224 and 39172808084 passed
+    # with the same build only because a sliver or a cut top was taken for the
+    # button. None counts (see first_sign_in_offered), so the keyboard is
+    # closed and the screen read again,
+    # rather than taking the field alone for the step: that would stop checking
+    # that the button is there at all. `hide_keyboard` presses BACK only while
+    # the keyboard is shown — without one, BACK would leave the sign-in screen.
+    offered, deadline, closed = first_sign_in_offered(found, sign_in), time.time() + 15, False
+    while not offered and time.time() < deadline:
+        time.sleep(2)
+        closed = hide_keyboard() or closed
+        found, _ = nodes()
+        offered = first_sign_in_offered(found, sign_in)
+    chosen = next((n.get("content-desc", "") for n in found if n.get("resource-id", "").startswith("login-tab-") and n.get("selected") == "true"), "")
+    record(bool(offered), f"A phone with no saved account opens on «{sign_in['tabFirst']}»",
+           (offered + (", read with the keyboard closed" if closed else "")) if offered
+           else f"chosen tab: «{chosen or 'none'}»; on screen: {own_words(found) or 'nothing readable'}")
 
 
 KEY_LIKE = re.compile(r"^([a-z][A-Za-z0-9]*)(\.[A-Za-z0-9_]+)+$")
@@ -376,6 +592,64 @@ def scroll_until(check, swipes=6):
     return None
 
 
+def inside(outer, inner):
+    return outer[0] <= inner[0] and outer[1] <= inner[1] and inner[2] <= outer[2] and inner[3] <= outer[3]
+
+
+def button_saying(found, words):
+    """The pressable node that says `words`.
+
+    A Pressable holding an icon and a label has no text of its own: Android
+    gives it its children's words as one content-desc, «<glyph>, Propose a
+    change» (React Native's getTalkbackDescription), and it does so even for a
+    label scrolled out of sight. So `has_text` finds the words while only the
+    button's top pixels are on screen, and `tap_text`, which wants them whole,
+    finds nothing to tap (run 39167518113).
+    """
+    return next((n for n in found if n.get("clickable") == "true"
+                 and (n.get("text") == words or words in n.get("content-desc", ""))), None)
+
+
+def page_bounds(found, node, captions):
+    """Top and bottom of the part of the screen where `node`'s page shows.
+
+    uiautomator cuts a node's bounds to what is visible, so a button half
+    under the edge reports only its visible half and looks whole. The edge is
+    the scrolling view that holds it, and the bottom tab bar should that ever
+    be drawn over the page (uiautomator does not cut for that): a tab is a
+    pressable around a caption, reaching lower than the node's top.
+    """
+    around = [n["box"] for n in found if n.get("scrollable") == "true" and inside(n["box"], node["box"])]
+    top = max((box[1] for box in around), default=-1)
+    bottom = min((box[3] for box in around), default=10**6)
+    tabs = [n["box"][1] for n in found if n.get("clickable") == "true" and n["box"][3] > node["box"][1]
+            and any(c.get("text") in captions and inside(n["box"], c["box"]) for c in found)]
+    return top, min([bottom, *tabs])
+
+
+def stands_whole(found, node, captions, words):
+    """`node` is entirely on its page — not cut at either edge, above the tab bar — and `words` are on screen inside it."""
+    top, bottom = page_bounds(found, node, captions)
+    shown = any(n.get("text") == words and inside(node["box"], n["box"]) for n in found)
+    return top < node["box"][1] and node["box"][3] < bottom and shown
+
+
+def scroll_into_view(words, captions, swipes=8):
+    """Short, slow strokes until the button saying `words` stands whole; (nodes, button), or (nodes, None)."""
+    for stroke in range(swipes + 1):
+        seen, _ = nodes()
+        button = button_saying(seen, words)
+        if button and stands_whole(seen, button, captions, words):
+            return seen, button
+        if stroke == swipes:
+            return seen, None
+        # Cut at the top: bring the page down. Under the edge or not there: up.
+        # Slow enough not to fling the button past the other edge.
+        cut_on_top = button and button["box"][1] <= page_bounds(seen, button, captions)[0]
+        shell("input swipe 360 800 360 1100 800" if cut_on_top else "input swipe 360 1100 360 800 800")
+        time.sleep(1.5)
+
+
 def client_rows(found, captions):
     """Clients in the list. A row is announced as «name. specialty» — the only pressable thing here that is not the app's own words."""
     search = by_id(found, "route-contacts-search")
@@ -384,6 +658,29 @@ def client_rows(found, captions):
     return [n for n in found
             if n.get("clickable") == "true" and ". " in n.get("content-desc", "") and n["box"][1] >= top
             and n["content-desc"] not in known and not n["content-desc"].startswith(tuple(captions))]
+
+
+def change_form_walk(form):
+    """The «propose a change» form just asked for: it opens, offers its fields and refuses to send nothing; then back to the card."""
+    # The form opens on its classes and a long list of specialties; the
+    # name fields and the button are below them (first run with clients:
+    # the form was open and the walk looked for a field off the screen).
+    wait_for("…and it opens the form", lambda page: has_text(page, form["hint"]) and "form shown", 60, "")
+    hide_keyboard()
+    found, _ = nodes()
+    record(bool(by_id(found, "contact-change-classes")), "The form offers the client classes")
+    named = scroll_until(lambda page: by_id(page, "contact-change-first-name") and by_id(page, "contact-change-last-name"), swipes=16)
+    first, last = (by_id(named, "contact-change-first-name"), by_id(named, "contact-change-last-name")) if named else (None, None)
+    record(bool(first and first.get("text") and last and last.get("text")), "The form starts from the client's current name")
+    seen = scroll_until(lambda page: by_id(page, "contact-change-submit"), swipes=16)
+    record(bool(seen), f"The form has «{form['submit']}»")
+    if seen:
+        # Nothing was changed, so the app refuses before asking the server:
+        # the check comes first in the handler, and no request is made.
+        tap(by_id(seen, "contact-change-submit"))
+        wait_for("Sending with nothing changed is refused in words", lambda page: has_text(page, form["nothing"]) and "refused, nothing sent", 30, "")
+    shell("input keyevent 4")
+    time.sleep(2)
 
 
 def client_card_walk(clients_caption, captions):
@@ -406,26 +703,17 @@ def client_card_walk(clients_caption, captions):
     seen = scroll_until(lambda page: has_text(page, card["propose"]) or has_text(page, card["requestPending"]))
     if seen and has_text(seen, card["propose"]):
         record(True, f"The card offers «{card['propose']}»")
-        tap_text(seen, card["propose"])
-        # The form opens on its classes and a long list of specialties; the
-        # name fields and the button are below them (first run with clients:
-        # the form was open and the walk looked for a field off the screen).
-        wait_for("…and it opens the form", lambda page: has_text(page, form["hint"]) and "form shown", 60, "")
-        hide_keyboard()
-        found, _ = nodes()
-        record(bool(by_id(found, "contact-change-classes")), "The form offers the client classes")
-        named = scroll_until(lambda page: by_id(page, "contact-change-first-name") and by_id(page, "contact-change-last-name"), swipes=16)
-        first, last = (by_id(named, "contact-change-first-name"), by_id(named, "contact-change-last-name")) if named else (None, None)
-        record(bool(first and first.get("text") and last and last.get("text")), "The form starts from the client's current name")
-        seen = scroll_until(lambda page: by_id(page, "contact-change-submit"), swipes=16)
-        record(bool(seen), f"The form has «{form['submit']}»")
-        if seen:
-            # Nothing was changed, so the app refuses before asking the server:
-            # the check comes first in the handler, and no request is made.
-            tap(by_id(seen, "contact-change-submit"))
-            wait_for("Sending with nothing changed is refused in words", lambda page: has_text(page, form["nothing"]) and "refused, nothing sent", 30, "")
-        shell("input keyevent 4")
-        time.sleep(2)
+        # On a 720x1600 screen the button of a short card starts at the tab
+        # bar: its words were found, but nothing could be tapped, and the walk
+        # waited 60 s for a form it had never asked for.
+        seen, button = scroll_into_view(card["propose"], captions)
+        if button:
+            tap(button)
+            change_form_walk(form)
+        else:
+            near = button_saying(seen, card["propose"])
+            record(False, "…and it opens the form", "the button never stood whole above the tab bar"
+                   + (f": {near['box']}, page ends at {page_bounds(seen, near, captions)[1]}" if near else ": it went off the screen"))
     elif seen:
         record(True, "The card says a request is already with the manager", "no second request can be proposed")
     else:
@@ -445,7 +733,7 @@ def signed_in_walk(server, sign_in):
     if not (AGENT_COMPANY and AGENT_EMAIL and AGENT_PASSWORD):
         print("No field account in the secrets: the walk ends at the sign-in form.", flush=True)
         return
-    profile, tabs = words("profile"), tab_captions()
+    tabs = tab_captions()
     private = True
     print("Signing in with the field account. Nothing read from the screen is kept from here on.", flush=True)
 
@@ -455,7 +743,9 @@ def signed_in_walk(server, sign_in):
     hide_keyboard()
     found, _ = nodes()
     tap(by_id(found, "tenant-continue"))
-    found = wait_for("The account's company opens the sign-in form", lambda seen: by_id(seen, "login-email") and "form shown", 120, "")
+    wait_for("The account's company opens the sign-in screen", lambda seen: sign_in_open(seen) and "screen shown", 120, "")
+    # The screen was just remounted, so it turns to «First sign-in» again.
+    found = open_password_form("…and «Sign in» shows the email and password form", "")
     tap(by_id(found, "login-email"))
     type_text(AGENT_EMAIL)
     hide_keyboard()
@@ -467,7 +757,9 @@ def signed_in_walk(server, sign_in):
     tap(by_id(found, "login-submit"))
 
     pressed = time.time()
-    expected = [tabs["today"], tabs["calendar"], tabs["route"], tabs["tasks"], tabs["more"]]
+    # Five tabs since 2026-10-20: the month is «Route» → «Month», and the
+    # unplanned visits went back under «More».
+    expected = [tabs["today"], tabs["route"], tabs["tasks"], tabs["more"]]
     outcome, found = None, []
     while outcome is None and time.time() - pressed < 150:
         found, _ = nodes()
@@ -488,9 +780,9 @@ def signed_in_walk(server, sign_in):
     record(True, what, f"{time.time() - pressed:.0f} s after the button")
 
     clients = tabs["clients"] if has_text(found, tabs["clients"]) else tabs["places"]
-    record(has_text(found, clients), "All six tabs are there", ", ".join([tabs["today"], tabs["calendar"], tabs["route"], clients, tabs["tasks"], tabs["more"]]))
+    record(has_text(found, clients), "All five tabs are there", ", ".join([tabs["today"], tabs["route"], clients, tabs["tasks"], tabs["more"]]))
 
-    for caption in (tabs["calendar"], tabs["route"], clients, tabs["tasks"], tabs["more"], tabs["today"]):
+    for caption in (tabs["route"], clients, tabs["tasks"], tabs["more"], tabs["today"]):
         found, _ = nodes()
         if not tap_text(found, caption):
             record(False, f"«{caption}» opens", "its caption is not on screen")
@@ -513,16 +805,19 @@ def signed_in_walk(server, sign_in):
         if crash_line():
             return
 
+    profile_walk(tabs["more"], list(tabs.values()))
+
+
+def profile_walk(more_caption, captions):
+    """The profile behind «More»: it offers to log out and names the build; then the walk logs out."""
+    profile = words("profile")
     found, _ = nodes()
-    tap_text(found, tabs["more"])
+    tap_text(found, more_caption)
     found = wait_for("«More» lists the profile", lambda seen: by_id(seen, "more-action-Profile") and "entry found", 30, "")
     tap(by_id(found, "more-action-Profile"))
     version = f"v{EXPECTED_VERSION}" if EXPECTED_VERSION else "Route & Field v"
 
-    def scrolled_to(text):
-        return scroll_until(lambda page: has_text(page, text))
-
-    seen = scrolled_to(profile["logout"])
+    seen = scroll_until(lambda page: has_text(page, profile["logout"]))
     record(bool(seen), "The profile opens and offers to log out")
     if not seen:
         return
@@ -531,12 +826,25 @@ def signed_in_walk(server, sign_in):
     time.sleep(1.5)
     bottom, _ = nodes()
     record(has_text(below, version) or has_text(bottom, version), "The profile names the version of this build", version)
+    logout_walk(profile, captions)
 
-    seen = scrolled_to(profile["logout"])
-    if seen and tap_text(seen, profile["logout"]):
-        found = wait_for("Logging out asks to confirm", lambda again: has_text(again, profile["logoutMessage"]) and "confirmation shown", 30, "")
-        tap_text(found, profile["logoutConfirm"])
-        wait_for("After logging out the app is back at the way in", lambda again: (by_id(again, "login-email") or by_id(again, "tenant-input")) and "signed out", 60, "")
+
+def logout_walk(profile, captions):
+    """«Log out», pressed whole above the tab bar; the confirmation it asks for; back at the way in."""
+    # The button is a Pressable around an icon and a label, so its words are
+    # «found» in its content-desc while the label is cut at the screen's edge.
+    # The walk used to look for the label with `tap_text` then, find nothing,
+    # and skip the logout without a word: the same trap as «Propose a change».
+    seen, button = scroll_into_view(profile["logout"], captions)
+    if not button:
+        near = button_saying(seen, profile["logout"])
+        record(False, "Logging out asks to confirm", f"«{profile['logout']}» never stood whole above the tab bar"
+               + (f": {near['box']}, page ends at {page_bounds(seen, near, captions)[1]}" if near else ": it went off the screen"))
+        return
+    tap(button)
+    found = wait_for("Logging out asks to confirm", lambda again: has_text(again, profile["logoutMessage"]) and "confirmation shown", 30, "")
+    tap_text(found, profile["logoutConfirm"])
+    wait_for("After logging out the app is back at the way in", lambda again: (sign_in_open(again) or by_id(again, "tenant-input")) and "signed out", 60, "")
 
 
 
@@ -629,6 +937,8 @@ def main(apk):
     found = wait_for("First launch opens the company step", lambda seen: by_id(seen, "tenant-input") and f"{time.time() - started:.0f} s after the tap", 300, "01-company-step")
     for key in ("stepProgress", "companyTitle"):
         record(has_text(found, server[key]), f"Company step says «{server[key]}»")
+    night_mode_walk()
+    found, _ = nodes()
 
     # An empty company is refused in words, without a request.
     tap(by_id(found, "tenant-input"))
@@ -644,7 +954,7 @@ def main(apk):
     outcome, deadline = None, time.time() + 120
     while outcome is None and time.time() < deadline:
         seen, _ = nodes()
-        outcome = next((text for text in refusals if has_text(seen, text)), None) or ("accepted" if by_id(seen, "login-email") else None)
+        outcome = next((text for text in refusals if has_text(seen, text)), None) or ("accepted" if sign_in_open(seen) else None)
         if outcome is None:
             time.sleep(2)
     evidence("03-company-unknown")
@@ -659,6 +969,7 @@ def main(apk):
         wait_for("…and the form lets the agent go back to choose again", lambda again: by_id(again, "tenant-input") and "back on step 1", 60, "03b-company-again")
     elif outcome:
         record(True, what, outcome)
+        night_evidence("03-company-unknown-night")
     else:
         record(False, what, "neither a refusal nor the sign-in form in 120 s")
         return finish()
@@ -672,7 +983,10 @@ def main(apk):
     record(has_text(found, server["connectButton"]), f"The button says «{server['connectButton']}»")
     tap(by_id(found, "tenant-continue"))
     connected = time.time()
-    found = wait_for("A real company leads to the sign-in form", lambda seen: by_id(seen, "login-email") and f"{time.time() - connected:.0f} s to answer", 120, "05-sign-in-form")
+    found = wait_for("A real company leads to the sign-in screen", lambda seen: sign_in_open(seen) and f"{time.time() - connected:.0f} s to answer", 120, "05-sign-in-form")
+    if has_sign_in_tabs():
+        first_sign_in_checks(found, sign_in)
+    found = open_password_form(f"«{sign_in['tabSignIn']}» shows the email and password form", "05b-password-form")
     hide_keyboard()
     found, _ = nodes()
     domain = f"{COMPANY}.leaddrivecrm.org"

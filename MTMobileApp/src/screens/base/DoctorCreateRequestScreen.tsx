@@ -17,7 +17,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { ask } from "../../services/app-feedback"
 import { isAgentPermissionDisabled } from "../../lib/agent-permissions"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 const COPY = {
@@ -172,7 +172,7 @@ export default function DoctorCreateRequestScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.surfaceStrong },
@@ -192,4 +192,4 @@ const styles = StyleSheet.create({
   submitText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   pressed: { opacity: 0.82 },
   disabled: { opacity: 0.6 },
-})
+}))

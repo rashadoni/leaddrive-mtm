@@ -6,7 +6,7 @@ import { useAuthStore } from "../../store/auth"
 import { useGuideStore } from "../../store/guide"
 import { offlineScopeKey } from "../../services/offline-scope"
 import type { GuideTourId } from "../../guide/tour"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import GuideSpot from "./GuideSpot"
 
 /**
@@ -14,24 +14,23 @@ import GuideSpot from "./GuideSpot"
  * 2026-10-18: «запускается заново из профиля или „Daha çox"»). A word on the
  * button, not an icon alone.
  *
- * - `pill` sits in a screen's heading: `light` on white, `dark` on green.
+ * - `pill` sits in a screen's heading.
  * - `card` is a row of the profile's hints card, with what it is and how long.
  */
 export default function GuideButton({
   tour,
   variant = "pill",
-  tone = "light",
   spot,
   onBeforeStart,
 }: {
   tour: GuideTourId
   variant?: "pill" | "card"
-  tone?: "light" | "dark"
   spot?: string
   /** E.g. back to the top of «Daha çox», so the tour's way back finds it there. */
   onBeforeStart?: () => void
 }) {
   const { t } = useTranslation()
+  useFieldColorScheme()
   const organizationId = useAuthStore((state) => state.agent?.organizationId)
   const agentId = useAuthStore((state) => state.agent?.id)
   const scope = offlineScopeKey(organizationId, agentId)
@@ -62,23 +61,22 @@ export default function GuideButton({
     )
   }
 
-  const dark = tone === "dark"
   return (
     <Pressable
       accessibilityRole="button"
       testID="guide-open"
       hitSlop={6}
       onPress={open}
-      style={({ pressed }) => [styles.pill, dark ? styles.pillDark : styles.pillLight, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
     >
-      <Icon name="compass-outline" size={19} color={dark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
-      <Text style={[styles.pillText, dark && styles.pillTextDark]} numberOfLines={1}>{t("guide.open")}</Text>
+      <Icon name="compass-outline" size={19} color={fieldTheme.color.primaryStrong} />
+      <Text style={styles.pillText} numberOfLines={1}>{t("guide.open")}</Text>
       {spot ? <GuideSpot id={spot} /> : null}
     </Pressable>
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   pill: {
     minHeight: 44,
     paddingHorizontal: 13,
@@ -88,13 +86,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     flexShrink: 0,
+    // Outlined, like «Komandaya yaz» (owner-approved colours, 2026-10-18).
+    backgroundColor: fieldTheme.color.surface,
+    borderColor: fieldTheme.color.primary,
   },
-  // Outlined on the white headers, like «Komandaya yaz» (owner-approved colours, 2026-10-18).
-  pillLight: { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.primary },
-  // The same pill as «Yenilə» on the green «Bu gün».
-  pillDark: { backgroundColor: "#174F43", borderColor: "#5B8B7D" },
   pillText: { color: fieldTheme.color.primaryStrong, fontSize: 14.5, fontWeight: "900" },
-  pillTextDark: { color: fieldTheme.color.onColor },
   card: {
     marginTop: fieldTheme.space.md,
     paddingTop: fieldTheme.space.md,
@@ -119,4 +115,4 @@ const styles = StyleSheet.create({
   },
   cardButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900" },
   pressed: { opacity: 0.8 },
-})
+}))

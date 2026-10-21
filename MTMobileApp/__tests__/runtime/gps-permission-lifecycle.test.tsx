@@ -30,13 +30,17 @@ jest.mock("../../src/services/sentry", () => ({ initSentry: jest.fn() }))
 jest.mock("../../src/services/connection-health", () => ({ dropIdleConnections: jest.fn() }))
 jest.mock("../../src/services/attendance-session", () => ({ refreshAttendanceSession: jest.fn(async () => {}) }))
 jest.mock("../../src/services/field-session", () => ({ refreshRouteFieldSession: jest.fn(async () => {}) }))
-jest.mock("../../src/services/app-feedback", () => ({ dismissAllChoices: jest.fn() }))
+jest.mock("../../src/services/app-feedback", () => ({ dismissAllChoices: jest.fn(), ask: jest.fn() }))
+jest.mock("@react-native-community/geolocation", () => ({ setRNConfiguration: jest.fn(), getCurrentPosition: jest.fn() }))
 jest.mock("../../src/services/push-lifecycle", () => ({ startPushTokenRefresh: jest.fn(() => () => {}) }))
+jest.mock("../../src/services/field-app-update", () => ({ checkFieldAppUpdate: jest.fn(async () => {}) }))
 
 import AndroidApp from "../../src/runtime/AndroidApp"
 import { useAuthStore } from "../../src/store/auth"
 import { useWorkdayStore } from "../../src/store/workday"
 import { startTracking } from "../../src/services/location.android"
+import { ask } from "../../src/services/app-feedback"
+import Geolocation from "@react-native-community/geolocation"
 
 const callbacks = new Set<(state: string) => void>()
 const check = PermissionsAndroid.check as jest.Mock
@@ -59,6 +63,7 @@ beforeEach(() => {
   ;(AppState.addEventListener as jest.Mock).mockImplementation((_event, callback) => { callbacks.add(callback); return { remove: () => callbacks.delete(callback) } })
   check.mockImplementation(async (permission: string) => permission === "notifications" || granted)
   request.mockResolvedValue({ fine: "denied", coarse: "denied" })
+  ;(ask as jest.Mock).mockResolvedValue(true)
   const id = `fictional-field-${++principal}`
   useAuthStore.setState({ isLoggedIn: true, isLoading: false, serverDomain: "fictional.invalid", agent: { id, organizationId: "fictional-tenant", role: "AGENT" } as never })
   useWorkdayStore.setState({ hydrated: true, hydrate: async () => {}, activeWorkday: { key: `fictional-tenant:${id}`, workdayId: "fictional-day", startedAt: "2026-10-14T03:35:00.000Z", syncState: "CONFIRMED" } })
@@ -113,4 +118,33 @@ it("logout fences a late permission answer and office attendance never requests 
   await foreground(); expect(startTracking).not.toHaveBeenCalled()
   await act(async () => { useAuthStore.setState({ isLoggedIn: true, agent: { id: "fictional-office", organizationId: "fictional-tenant", role: "EMPLOYEE" } as never }) })
   await foreground(); expect(request).toHaveBeenCalledTimes(1)
+})
+
+// Google Play, 2026-10-18: the app's own disclosure before Android's location sheet.
+it("shows the disclosure before Android's sheet, and «Не сейчас» opens no sheet and starts no tracking", async () => {
+  ;(ask as jest.Mock).mockResolvedValue(false)
+  await mount()
+  expect(ask).toHaveBeenCalledTimes(1)
+  // Closing it without a button is «Не сейчас» too (its words: location-disclosure.test.ts).
+  expect((ask as jest.Mock).mock.calls[0][0]).toMatchObject({ dismissValue: false })
+  for (let i = 0; i < 6; i++) await foreground()
+  expect(ask).toHaveBeenCalledTimes(1)
+  expect(request).not.toHaveBeenCalled(); expect(startTracking).not.toHaveBeenCalled()
+})
+
+it("«Продолжить» leads to Android's sheet, after the disclosure", async () => {
+  await mount()
+  expect(ask).toHaveBeenCalledTimes(1); expect(request).toHaveBeenCalledTimes(1)
+  expect((ask as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(request.mock.invocationCallOrder[0])
+})
+
+it("a grant already given asks nothing", async () => {
+  granted = true
+  await mount()
+  expect(ask).not.toHaveBeenCalled(); expect(request).not.toHaveBeenCalled(); expect(startTracking).toHaveBeenCalledTimes(1)
+})
+
+it("tells the geolocation library at launch never to bring up the sheet by itself", async () => {
+  await mount()
+  expect(Geolocation.setRNConfiguration).toHaveBeenCalledWith({ skipPermissionRequests: true, locationProvider: "android" })
 })

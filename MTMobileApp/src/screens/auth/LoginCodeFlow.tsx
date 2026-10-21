@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"
 import { useAuthStore } from "../../store/auth"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 /**
@@ -326,7 +326,8 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
+  // The WhatsApp mark is white in both palettes.
   whatsappMark: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   whatsappButton: {
     minHeight: 56,
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.border,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     flexDirection: "row",
     alignItems: "center",
     paddingLeft: fieldTheme.space.lg,
@@ -361,7 +362,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: fieldTheme.color.primary,
     borderRadius: fieldTheme.radius.md,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: fieldTheme.color.surface,
     color: fieldTheme.color.ink,
     fontSize: 30,
     fontWeight: "800",
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     padding: fieldTheme.space.md,
     marginTop: fieldTheme.space.md,
   },
-  errorText: { flex: 1, color: "#762A2A", fontSize: 14, lineHeight: 20 },
+  errorText: { flex: 1, color: fieldTheme.color.onDangerSoft, fontSize: 14, lineHeight: 20 },
   primaryButton: {
     minHeight: 56,
     borderRadius: fieldTheme.radius.md,
@@ -402,4 +403,4 @@ const styles = StyleSheet.create({
   primaryText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
   disabled: { opacity: 0.65 },
   pressed: { opacity: 0.72 },
-})
+}))

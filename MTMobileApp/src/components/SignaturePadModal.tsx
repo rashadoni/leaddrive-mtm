@@ -13,7 +13,7 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview"
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import {
   SIGNATURE_MIN_INK_PX,
   signatureCaptureFromStrokes,
@@ -271,7 +271,7 @@ function SignaturePad({ visible, customerName, onCancel, onSave }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: fieldTheme.color.canvas,
@@ -317,6 +317,7 @@ const styles = StyleSheet.create({
   },
   padCardCompact: { minHeight: 0 },
   buttonCompact: { flex: 0, minHeight: 52 },
+  // Paper: white with a dark pen in the night palette too.
   pad: { flex: 1, backgroundColor: "#FFFFFF" },
   actions: { flexDirection: "row", gap: fieldTheme.space.md },
   secondaryButton: {
@@ -346,4 +347,4 @@ const styles = StyleSheet.create({
   tooShort: { fontSize: 14, color: fieldTheme.color.amber, textAlign: "center" },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.8 },
-})
+}))

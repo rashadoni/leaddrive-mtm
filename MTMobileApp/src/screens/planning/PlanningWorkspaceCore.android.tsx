@@ -33,7 +33,7 @@ import {
   type SelfPlanDayMode,
 } from "./self-plan-day"
 import { useHintsStore } from "../../store/hints"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { fieldEligibilityReasonKey, type FieldEligibilityReason } from "../../lib/field-eligibility-reason"
 import { fieldContactsEnabled, plannableTargetTypes } from "../../lib/field-contacts-policy"
 import { isExpandedTabletWidth, isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -2648,7 +2648,7 @@ function PlannerActionDock({ top, action, backLabel, backIcon = "arrow-back", sh
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   workspaceScroll: { flex: 1 },
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.sm },
@@ -2687,7 +2687,7 @@ const styles = StyleSheet.create({
   plannerCoachDismissText: { color: fieldTheme.color.blue, fontSize: 12, fontWeight: "900" },
   stepBody: { gap: 10 },
   sectionIntro: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
-  sectionNumber: { width: 34, height: 34, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.blue },
+  sectionNumber: { width: 34, height: 34, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.blueFill },
   sectionNumberText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   sectionIntroCopy: { flex: 1, gap: 3 },
   sectionTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 22, fontWeight: "900" },
@@ -2718,7 +2718,7 @@ const styles = StyleSheet.create({
   compactDateCopy: { flex: 1, gap: 2 },
   compactDateValue: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   compactDateHint: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 15, fontWeight: "700" },
-  dateSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: "rgba(19,35,31,0.45)" },
+  dateSheetBackdrop: { flex: 1, alignItems: "center", justifyContent: "center", padding: fieldTheme.space.lg, backgroundColor: fieldTheme.color.scrim },
   dateSheet: { width: "100%", maxWidth: 520, gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface },
   dateSheetHeader: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   squareButton: { width: LAYOUT_TOUCH_TARGETS.expandedTablet, height: LAYOUT_TOUCH_TARGETS.expandedTablet, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.blue },
@@ -2838,7 +2838,7 @@ const styles = StyleSheet.create({
   targetOptionInRoute: { borderColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.amberSoft },
   targetMark: { width: 36, height: 36, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.primarySoft },
   targetMarkSelected: { backgroundColor: fieldTheme.color.primary },
-  targetMarkInRoute: { backgroundColor: fieldTheme.color.amber },
+  targetMarkInRoute: { backgroundColor: fieldTheme.color.amberFill },
   targetCopy: { flex: 1, gap: 2 },
   targetName: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
   targetMeta: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
@@ -2908,4 +2908,4 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   disabled: { opacity: 0.48 },
   disabledText: { opacity: 0.5 },
-})
+}))

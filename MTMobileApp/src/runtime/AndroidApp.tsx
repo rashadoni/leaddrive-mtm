@@ -24,6 +24,12 @@ import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
 import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
 import { createForegroundLocationPermission } from "../services/foreground-location-permission"
+import {
+  discloseFieldLocation,
+  fieldLocationGranted,
+  requestFieldLocationSheet,
+  stopLibraryLocationPrompts,
+} from "../services/field-location-permission"
 import { initI18n } from "../i18n/index.android"
 import { initSentry } from "../services/sentry"
 import { dropIdleConnections } from "../services/connection-health"
@@ -31,7 +37,9 @@ import { refreshAttendanceSession } from "../services/attendance-session"
 import { refreshRouteFieldSession } from "../services/field-session"
 import { dismissAllChoices } from "../services/app-feedback"
 import { startPushTokenRefresh } from "../services/push-lifecycle"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../theme/fieldTheme"
+import { followPhoneColorScheme } from "../services/follow-phone-color-scheme"
+import { checkFieldAppUpdate } from "../services/field-app-update"
 import { ROUTE_FIELD_PROFILE } from "./route-field-profile"
 
 function netInfoOnline(state: { isConnected: boolean | null; isInternetReachable: boolean | null }): boolean | null {
@@ -49,27 +57,18 @@ function trackingPrincipalScope(): string | null {
 }
 
 // Module lifetime: a tracking effect cleanup or component remount must not
-// reopen the sheet for the same principal after Android returns a refusal.
+// reopen the sheet for the same principal after Android returns a refusal,
+// nor the disclosure after «Не сейчас».
 const foregroundLocationPermission = createForegroundLocationPermission({
-  check: async () => {
-    if (Platform.OS !== "android") return true
-    const [fine, coarse] = await Promise.all([
-      PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION),
-      PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION),
-    ])
-    return fine || coarse
-  },
-  request: async () => {
-    const result = await PermissionsAndroid.requestMultiple([
-      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-    ])
-    return result[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED ||
-      result[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED
-  },
+  check: fieldLocationGranted,
+  // Google Play: the app says what it records, and that it does so with the
+  // app closed, before Android's sheet (services/location-disclosure.ts).
+  disclose: discloseFieldLocation,
+  request: requestFieldLocationSheet,
 })
 
 function AppContent() {
+  const colorScheme = useFieldColorScheme()
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn)
   const authLoading = useAuthStore((state) => state.isLoading)
   const agent = useAuthStore((state) => state.agent)
@@ -239,9 +238,23 @@ function AppContent() {
     return () => subscription.remove()
   }, [refreshAdmissionAndSync])
 
+  // «Есть новая версия — обновить?» on every start, and on a return to the app
+  // when a newer build appeared or half a day passed (services/field-app-update.ts).
+  useEffect(() => {
+    void checkFieldAppUpdate({ coldStart: true })
+    let previous: AppStateStatus = AppState.currentState
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (previous !== "active" && next === "active") void checkFieldAppUpdate({ coldStart: false })
+      previous = next
+    })
+    return () => subscription.remove()
+  }, [])
+
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="light-content" backgroundColor={fieldTheme.color.primaryStrong} />
+      {/* Light icons for the night palette and the green headers left; a white
+          header turns them dark itself (LightScreenStatusBar). */}
+      <StatusBar barStyle="light-content" backgroundColor={colorScheme === "dark" ? fieldTheme.color.surface : fieldTheme.color.primaryStrong} />
       <ErrorBoundary>
         <AppNavigatorAndroidV2 />
       </ErrorBoundary>
@@ -258,8 +271,17 @@ function AppContent() {
 
 export default function AndroidApp() {
   const [i18nReady, setI18nReady] = useState(false)
+  useFieldColorScheme()
+
+  // Day or night, as the phone is, and at once when the phone switches — in
+  // the middle of a workday too: nothing restarts, every screen draws itself
+  // again in the new palette (services/follow-phone-color-scheme.ts).
+  useEffect(() => followPhoneColorScheme(), [])
 
   useEffect(() => {
+    // Before any screen reads a position: the library's own sheet has no
+    // disclosure in front of it.
+    stopLibraryLocationPrompts()
     useHintsStore.getState().hydrate().catch(() => {})
     useWorkdayStore.getState().hydrate().catch(() => {})
     // «Клиент здесь»: the places waiting for a manager, remembered across restarts.
@@ -280,11 +302,11 @@ export default function AndroidApp() {
   return <AppContent />
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   loader: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: fieldTheme.color.primaryStrong,
   },
-})
+}))

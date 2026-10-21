@@ -4,8 +4,14 @@ import type { AttendanceMark } from './attendance-location-contract'
 
 /** One bounded foreground reading after application consent. No watch,
  * background permission or cached-position fallback. Missing provenance is
- * unavailable rather than a fabricated non-mock fix. */
-export async function readAttendanceLocationFix(guard: () => void): Promise<AttendanceMark['location']> {
+ * unavailable rather than a fabricated non-mock fix.
+ *
+ * `mayAsk: false` for a field agent: their location is recorded with the app
+ * closed, so Android's sheet may open only after the app's disclosure
+ * (field-location-permission.ts), which this eight-second window cannot hold.
+ * Without a grant their mark goes without a place; the workday's own GPS
+ * start asks, after the disclosure. */
+export async function readAttendanceLocationFix(guard: () => void, options: { mayAsk?: boolean } = {}): Promise<AttendanceMark['location']> {
   let expired = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const current = () => { guard(); if (expired) throw new Error('ATTENDANCE_LOCATION_TIMEOUT') }
@@ -15,6 +21,7 @@ export async function readAttendanceLocationFix(guard: () => void): Promise<Atte
       const permission = PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
       const allowed = await PermissionsAndroid.check(permission); current()
       if (!allowed) {
+        if (options.mayAsk === false) return null
         const answer = await PermissionsAndroid.request(permission); current()
         if (answer !== PermissionsAndroid.RESULTS.GRANTED) return null
       }

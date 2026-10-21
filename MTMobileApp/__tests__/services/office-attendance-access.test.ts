@@ -59,6 +59,7 @@ it("does not infer requests from a workday grant or office access from the old f
   expect(hasOfficeAttendanceAccess(data, officeAgent)).toBe(false)
   const agent = { ...officeAgent, role: "AGENT" }, field = officeBootstrap("AGENT")
   expect(hasOfficeAttendanceAccess(field, agent)).toBe(false); expect(field.routeFieldAccess).toBe("enabled")
-  expect(mayUseOwnAttendanceRequests(field, agent, "enabled")).toBe(true)
+  // A field agent is outside HR accounting: no own requests even with the switch on (owner, 2026-10-20).
+  expect(mayUseOwnAttendanceRequests(field, agent, "enabled")).toBe(false)
   expect(mayUseOwnAttendanceRequests(field, agent, "offline")).toBe(false)
 })

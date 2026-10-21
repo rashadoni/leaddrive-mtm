@@ -31,7 +31,7 @@ import {
   type RouteContactChangeOffer,
 } from "../../services/route-contact-change"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 /** A longer list gets a search field; a short one is quicker to read than to search. */
@@ -372,7 +372,7 @@ export default function RouteContactChangeRequestScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.lg, backgroundColor: fieldTheme.color.primaryStrong },
   backButton: { alignSelf: "flex-start", minHeight: 44, flexDirection: "row", alignItems: "center", gap: 7, paddingRight: fieldTheme.space.md },
@@ -404,4 +404,4 @@ const styles = StyleSheet.create({
   submitText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
   pressed: { opacity: 0.82 },
   disabled: { opacity: 0.6 },
-})
+}))

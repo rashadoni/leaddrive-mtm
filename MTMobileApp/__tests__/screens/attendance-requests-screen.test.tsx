@@ -7,11 +7,12 @@ import { I18nextProvider } from "react-i18next"
 import ru from "../../src/i18n/locales/ru.json"
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
-const mockAuth = { agent: { id: "fictional-agent", organizationId: "fictional-org", role: "AGENT" } }
-const mockBootstrap = { routeFieldAccess: "enabled", data: { timezone: "Asia/Baku", policies: { agentPermissions: { attendanceRequests: true } } } }
-const mockGoBack = jest.fn()
+// «Mənim uçotum»: an employee HR keeps. A field agent has no own requests (owner, 2026-10-20).
+const mockAuth = { agent: { id: "fictional-agent", organizationId: "fictional-org", role: "EMPLOYEE" } }
+const mockBootstrap = { routeFieldAccess: "disabled", data: { timezone: "Asia/Baku", tenant: { id: "fictional-org" }, principal: { id: "fictional-agent", role: "EMPLOYEE" }, manifest: { tenant: { id: "fictional-org" }, principal: { id: "fictional-agent", role: "EMPLOYEE" } }, policies: { attendanceMarkVersion: 1, agentPermissions: { attendanceRequests: true, attendanceWorkday: true } } } }
+const mockNavigate = jest.fn()
 const mockAsk = jest.fn().mockResolvedValue(true)
-jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ goBack: mockGoBack }) }))
+jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ navigate: mockNavigate }) }))
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 12, useTabBarPadding: () => 24 }))
 jest.mock("../../src/hooks/useAutoRefresh", () => ({ useAutoRefresh: () => {} }))
 jest.mock("../../src/store/auth", () => ({ useAuthStore: (selector: (state: unknown) => unknown) => selector(mockAuth) }))
@@ -206,7 +207,8 @@ it("releases an unsubmitted private photo on Back/unmount", async () => {
   const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
   expect(node(tree, "attendance-remove-0")).toBeDefined()
   await press(tree, "attendance-back")
-  expect(mockGoBack).toHaveBeenCalled()
+  // Office only: «Geri» returns to the own workday tab.
+  expect(mockNavigate).toHaveBeenCalledWith("OwnWorkday")
   await act(async () => { tree.unmount() }); await settle()
   expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
 })

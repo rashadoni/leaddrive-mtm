@@ -249,6 +249,10 @@ export function classifyServerNotification(
   const threadId = str(m.threadId)
   if (threadId) return as("message", row.title || copy.messageFrom(""), row.body, { screen: "Messages", threadId })
 
+  // A task given to the agent (2026-10-20): the server writes it in his
+  // language — who gave it and what — and the line opens his tasks.
+  if (m.event === "task_assigned" || str(m.assignedTaskId)) return as("task", undefined, row.body, { screen: "Tasks" })
+
   const deviationMeters = num(m.deviationMeters)
   if (deviationMeters !== undefined) {
     return {
@@ -523,6 +527,9 @@ export function feedNavigation(target: FeedTarget): { name: string; params?: Rec
       return { name: "Main", params: { screen: "More", params: { screen: "Messages", params: target.threadId ? { threadId: target.threadId } : undefined } }, pop: true }
     case "AttendanceRequests":
       return { name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } }, pop: true }
+    case "Calendar":
+      // The calendar is «Маршрут» → «Месяц» since 2026-10-20.
+      return { name: "Main", params: { screen: "Route", params: { view: "month" } }, pop: true }
     case "ContactDetail":
     case "OrganizationDetail":
       return { name: target.screen, params: { id: target.id } }

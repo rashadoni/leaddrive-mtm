@@ -36,14 +36,16 @@ describe("B9: the route screen without a route", () => {
   })
 
   it("keeps an unplanned visit one press away without a card that points sideways", () => {
-    // The card and Visits' own card described each other; the header action
-    // does the same job in the space of an icon.
+    // The card and Visits' own card described each other. Since 2026-10-20
+    // «Визиты» is a tab of its own, one press from anywhere, and the header's
+    // place for an action holds «+ Составить маршрут» (owner-approved mockup).
     expect(source).not.toContain("UnplannedVisitCard")
     expect(source).not.toContain("unplannedTitle")
     expect(source).not.toContain("unplannedBody")
     const header = source.slice(source.indexOf("  const header = ("), source.indexOf("  if (tablet) {"))
-    expect(header).toContain("accessibilityLabel={copy.openVisits}")
-    expect(header).toContain('navigation.navigate("Visits")')
+    expect(header).toContain("<RouteSectionHeader")
+    expect(header).toContain('onPlan={canPlanOwnRoutes ? () => navigation.navigate("PlanningBuilder") : undefined}')
+    expect(header).not.toContain('navigation.navigate("Visits")')
   })
 
   it("still explains itself when the route is genuinely missing", () => {

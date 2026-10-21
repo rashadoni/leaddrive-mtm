@@ -22,7 +22,7 @@ import {
   guideTourForShell,
   type GuideRect,
 } from "../../guide/tour"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 
 /** The tour opens once the first screen has settled, not over a loading one. */
 const AUTO_START_MS = 1200
@@ -88,6 +88,8 @@ type Box = { x: number; y: number; width: number; height: number }
 
 function GuideLayer({ run, route, name }: { run: GuideRun; route: string | null; name: string }) {
   const { t } = useTranslation()
+  // Drawn again when the phone switches day and night.
+  useFieldColorScheme()
   const insets = useSafeAreaInsets()
   const rootRef = useRef<View>(null)
   const [box, setBox] = useState<Box | null>(null)
@@ -420,18 +422,19 @@ function Bubble({
   )
 }
 
-const styles = StyleSheet.create({
+// Built for the day and the night palette; the dim and the white ring read on both.
+const styles = themed(() => StyleSheet.create({
   dim: { backgroundColor: DIM },
   block: { position: "absolute" },
   ring: {
     position: "absolute",
     borderWidth: 3,
-    borderColor: fieldTheme.color.primarySoft,
+    borderColor: fieldTheme.color.onColor,
   },
   pulse: {
     position: "absolute",
     borderWidth: 3,
-    borderColor: fieldTheme.color.primarySoft,
+    borderColor: fieldTheme.color.onColor,
   },
   finger: {
     position: "absolute",
@@ -573,4 +576,4 @@ const styles = StyleSheet.create({
   },
   tapNoteText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 14.5, fontWeight: "900", textAlign: "center" },
   pressed: { opacity: 0.8 },
-})
+}))

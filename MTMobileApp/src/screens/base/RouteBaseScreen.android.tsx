@@ -9,7 +9,7 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import NotificationBell from "../../components/NotificationBell"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import RouteContactsList from "./RouteContactsList.android"
 import RouteOrganizationExplorerScreen from "./RouteOrganizationExplorerScreen.android"
@@ -78,7 +78,7 @@ export default function RouteBaseScreen() {
             <Text style={styles.headerTitle}>{t(contactsEnabled ? "baseHub.title" : "baseHub.placesTitle")}</Text>
             <Text style={styles.headerSubtitle}>{t(active.bodyKey)}</Text>
           </View>
-          <NotificationBell tone="light" />
+          <NotificationBell />
         </View>
 
         {contactsEnabled ? (
@@ -122,7 +122,7 @@ export default function RouteBaseScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   // White like every tab's header; the two lists are tabs with an underline,
   // not a second filled menu (owner-approved colours, 2026-10-18).
@@ -144,4 +144,4 @@ const styles = StyleSheet.create({
   segmentTextActive: { color: fieldTheme.color.primaryStrong },
   content: { flex: 1 },
   pressed: { opacity: 0.72 },
-})
+}))

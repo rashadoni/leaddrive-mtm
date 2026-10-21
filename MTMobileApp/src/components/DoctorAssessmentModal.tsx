@@ -12,7 +12,7 @@ import {
 } from "react-native"
 import { useTranslation } from "react-i18next"
 import { commercialApi } from "../services/commercial-api"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { isTabletWidth } from "../theme/layoutBreakpoints"
 
 type Formula = { id: string; version: string; name: string; status: string; signedAt?: string }
@@ -185,7 +185,7 @@ export default function DoctorAssessmentModal({
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: { minHeight: 84, paddingHorizontal: fieldTheme.space.lg, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
   headerAction: { minWidth: 72, minHeight: 48, justifyContent: "center" },
@@ -222,4 +222,4 @@ const styles = StyleSheet.create({
   kolLevel: { width: "100%" },
   error: { borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: "#EDB9AD", backgroundColor: fieldTheme.color.coralSoft, padding: fieldTheme.space.md },
   errorText: { color: fieldTheme.color.coral, fontSize: 13, fontWeight: "800" },
-})
+}))

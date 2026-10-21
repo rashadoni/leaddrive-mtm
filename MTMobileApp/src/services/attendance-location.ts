@@ -114,7 +114,8 @@ export async function captureAttendanceMark(scope: string, occurredAt: string, p
     guard()
     const { readAttendanceLocationFix } = require('./attendance-location-fix') as typeof import('./attendance-location-fix')
     guard()
-    const fix = await readAttendanceLocationFix(guard)
+    // A field agent is asked after the app's disclosure, not inside this mark.
+    const fix = await readAttendanceLocationFix(guard, { mayAsk: useAuthStore.getState().agent?.role !== 'AGENT' })
     guard()
     if (!fix || Date.parse(fix.capturedAt) < Date.parse(receipt.createdAt)
       || Date.parse(fix.capturedAt) < Date.parse(occurredAt) || Date.parse(fix.capturedAt) > Date.now() + 1000) {

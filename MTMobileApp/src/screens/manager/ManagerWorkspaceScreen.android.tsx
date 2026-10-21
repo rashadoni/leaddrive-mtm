@@ -21,7 +21,7 @@ import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { managerApi } from "../../services/manager-api"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -59,6 +59,8 @@ import {
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
+import ManagerJointVisitEntry from "./ManagerJointVisitEntry.android"
+import { DayLineStrip } from "../../components/DayLine"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -68,7 +70,7 @@ type ApprovalKind = "hrm" | "routeChange" | "customer" | "contactChange" | "doct
 const SCREEN_META: Record<
   ManagerWorkspaceKind,
   { titleKey: string; bodyKey: string; icon: string; color: string; tint: string }
-> = {
+> = themed(() => ({
   team: {
     titleKey: "managerShell.teamTitle",
     bodyKey: "managerShell.teamBody",
@@ -90,7 +92,7 @@ const SCREEN_META: Record<
     color: fieldTheme.color.amber,
     tint: fieldTheme.color.amberSoft,
   },
-}
+}))
 
 /**
  * `contactTransfer` opens the «transfer contacts» door; only a navigator that
@@ -372,7 +374,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 <Text style={styles.eyebrow}>{t("dashboardV2.managerWorkspace")}</Text>
                 <Text style={styles.title}>{t(meta.titleKey)}</Text>
               </View>
-              <NotificationBell tone="light" />
+              <NotificationBell />
             </View>
             <Text style={styles.body}>{t(meta.bodyKey)}</Text>
           </View>
@@ -435,6 +437,9 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 </Pressable>
               ) : null}
             </View>
+            {/* «Иду на визит с агентом» (owner-approved mockup, 2026-10-20): the
+                joint visit, or the button that starts one, under the pair. */}
+            {shellTabs.includes("Planning") ? <ManagerJointVisitEntry agents={teamRows.map(({ agent }) => agent)} /> : null}
             {loadError && (
               <View style={styles.errorNotice}>
                 <Icon name="cloud-offline-outline" size={21} color={fieldTheme.color.amber} />
@@ -444,8 +449,12 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 </View>
               </View>
             )}
-            <ManagerLiveMap rows={teamRows} loading={loading} loadError={loadError} />
+            {/* The team, each with the line of his day, comes before the map
+                (owner-approved mockup, 2026-10-18): it was a 360 dp map and a
+                scroll away. */}
             {teamRows.length > 0 ? (
+              <View style={styles.teamSection}>
+              <Text style={styles.teamNowTitle}>{t("managerShell.teamNow")}</Text>
               <View style={[styles.teamList, expandedTablet && styles.teamListTablet]} onLayout={(event) => { teamListY.current = event.nativeEvent.layout.y }}>
                 {teamRows.map(({ agent, truth }) => (
                   <AgentTruthCard
@@ -455,9 +464,10 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                     t={t}
                     language={i18n.language}
                     tablet={expandedTablet}
-                    onOpen={() => navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline })}
+                    onOpen={() => navigation.navigate("ManagerEmployee", { agentId: agent.id, name: agent.name, isOnline: truth.isOnline, pushReady: agent.pushReady })}
                   />
                 ))}
+              </View>
               </View>
             ) : (
               <StatusPanel
@@ -467,6 +477,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 body={loadError ? t("managerShell.pullToRetry", { defaultValue: "Pull down or tap Refresh to try again." }) : t(meta.bodyKey)}
               />
             )}
+            <ManagerLiveMap rows={teamRows} loading={loading} loadError={loadError} />
           </>
         ) : kind === "planning" ? (
           planning.length > 0 ? (
@@ -654,13 +665,13 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
   const currentPosition = truth.isOnline && truth.gpsFreshness === "FRESH"
   const gpsConfig = truth.gpsFreshness === "FRESH"
     ? currentPosition
-      ? { icon: "locate", color: fieldTheme.color.success, tint: fieldTheme.color.successSoft, label: t("managerShell.gpsFresh", { defaultValue: "GPS current" }) }
-      : { icon: "time", color: fieldTheme.color.blue, tint: fieldTheme.color.blueSoft, label: t("managerShell.gpsRecent", { defaultValue: "Recent GPS point" }) }
+      ? { icon: "locate", color: fieldTheme.color.success, label: t("managerShell.gpsFresh", { defaultValue: "GPS current" }) }
+      : { icon: "time", color: fieldTheme.color.blue, label: t("managerShell.gpsRecent", { defaultValue: "Recent GPS point" }) }
     : truth.gpsFreshness === "DELAYED"
-      ? { icon: "time", color: fieldTheme.color.blue, tint: fieldTheme.color.blueSoft, label: t("managerShell.gpsDelayed", { defaultValue: "GPS delayed" }) }
+      ? { icon: "time", color: fieldTheme.color.blue, label: t("managerShell.gpsDelayed", { defaultValue: "GPS delayed" }) }
       : truth.gpsFreshness === "STALE"
-        ? { icon: "time-outline", color: fieldTheme.color.amber, tint: fieldTheme.color.amberSoft, label: t("managerShell.gpsStale", { defaultValue: "Old GPS point" }) }
-        : { icon: "location-outline", color: fieldTheme.color.inkMuted, tint: fieldTheme.color.surfaceStrong, label: t("managerShell.noCoordinates", { defaultValue: "No GPS position" }) }
+        ? { icon: "time-outline", color: fieldTheme.color.amber, label: t("managerShell.gpsStale", { defaultValue: "Old GPS point" }) }
+        : { icon: "location-outline", color: fieldTheme.color.inkMuted, label: t("managerShell.noCoordinates", { defaultValue: "No GPS position" }) }
   const lastSeen = truth.lastSeenAt
     ? t("managerShell.lastSeenAt", { defaultValue: "Last app activity: {{time}}", time: formatLocalizedDateTime(truth.lastSeenAt, language) })
     : t("managerShell.neverSeen", { defaultValue: "No app activity recorded" })
@@ -683,8 +694,8 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
       style={({ pressed }) => [styles.agentCard, tablet && styles.agentCardTablet, pressed && styles.buttonPressed]}
     >
       <View style={styles.agentHeader}>
-        <View style={[styles.agentAvatar, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
-          <Icon name="person" size={22} color={truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted} />
+        <View style={styles.agentAvatar}>
+          <Icon name="person" size={22} color={fieldTheme.color.inkMuted} />
         </View>
         <View style={styles.agentCopy}>
           <Text style={styles.agentName}>{agent.name}</Text>
@@ -694,13 +705,10 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
               {t("managerShell.openVisitLeft", { date: formatLocalizedDate(agent.openVisitSince, language, { day: "numeric", month: "long" }) })}
             </Text>
           ) : null}
-          {route ? (
-            <Text style={styles.agentRoute} testID={`manager-agent-route-${agent.id}`}>
-              {t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
-            </Text>
-          ) : null}
         </View>
-        <View style={[styles.presencePill, { backgroundColor: truth.isOnline ? fieldTheme.color.successSoft : fieldTheme.color.surfaceStrong }]}>
+        {/* Online or not: a dot and the word in its colour, no tinted pill
+            (owner's rule, 2026-10-18). */}
+        <View style={styles.presencePill}>
           <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
           <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
             {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
@@ -708,12 +716,26 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
         </View>
       </View>
 
+      {route ? (
+        <View style={styles.agentDay} testID={`manager-agent-route-${agent.id}`}>
+          <DayLineStrip
+            visited={route.visited}
+            planned={route.planned}
+            label={t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
+          />
+          <Text style={styles.agentDayCount}>
+            {route.visited}
+            <Text style={styles.agentDayTotal}>{` / ${route.planned}`}</Text>
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.presenceEvidence}>
         <Icon name="phone-portrait-outline" size={17} color={fieldTheme.color.inkMuted} />
         <Text style={styles.presenceEvidenceText}>{lastSeen}</Text>
       </View>
 
-      <View style={[styles.locationPanel, { backgroundColor: gpsConfig.tint }]}>
+      <View style={styles.locationPanel}>
         <View style={styles.locationHeading}>
           <View style={styles.locationTitleRow}>
             <Icon name={gpsConfig.icon} size={19} color={gpsConfig.color} />
@@ -825,7 +847,7 @@ function ApprovalSection({ title, items, t, busyId, onApprove, onReject, approve
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   header: {
     backgroundColor: fieldTheme.color.surface,
@@ -851,10 +873,10 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: fieldTheme.color.primary,
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.8,
+    fontWeight: "500",
+    letterSpacing: 0.5,
   },
-  title: { color: fieldTheme.color.ink, fontSize: 30, fontWeight: "800", letterSpacing: -0.7 },
+  title: { color: fieldTheme.color.ink, fontSize: 28, fontWeight: "700", letterSpacing: -0.4 },
   body: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 22, maxWidth: 680 },
   content: { padding: fieldTheme.space.lg, gap: fieldTheme.space.xl },
   contentTablet: { width: "100%", padding: fieldTheme.space.xl, maxWidth: 1180, alignSelf: "center" },
@@ -879,7 +901,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statusCopy: { flex: 1, gap: 3 },
-  statusTitle: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
+  statusTitle: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "700" },
   statusBody: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 19 },
   buttonPressed: { opacity: 0.72 },
   buttonDisabled: { opacity: 0.55 },
@@ -897,41 +919,44 @@ const styles = StyleSheet.create({
     borderLeftColor: fieldTheme.color.amber,
   },
   errorCopy: { flex: 1, gap: 2 },
-  errorTitle: { color: fieldTheme.color.amber, fontSize: 14, fontWeight: "900" },
+  errorTitle: { color: fieldTheme.color.amber, fontSize: 14, fontWeight: "700" },
   errorBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   teamList: { gap: fieldTheme.space.md },
   teamListTablet: { flexDirection: "row", flexWrap: "wrap" },
   transferAction: { minHeight: 76, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   transferActionIcon: { width: 32, height: 46, alignItems: "center", justifyContent: "center" },
   transferActionCopy: { flex: 1, gap: 3 },
-  transferActionTitle: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "900" },
+  transferActionTitle: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "700" },
   transferActionBody: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17 },
   agentCard: {
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.lg,
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.surface,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
   },
+  teamSection: { gap: fieldTheme.space.sm },
+  teamNowTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "600", paddingHorizontal: 4 },
+  agentDay: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
+  agentDayCount: { color: fieldTheme.color.primary, fontSize: 16, fontWeight: "700" },
+  agentDayTotal: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
   agentCardTablet: { width: "48%" },
   agentHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   agentAvatar: {
-    width: 46,
-    height: 46,
-    borderRadius: fieldTheme.radius.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: fieldTheme.color.surfaceStrong,
   },
   presenceDot: { width: 10, height: 10, borderRadius: fieldTheme.radius.pill },
   agentCopy: { flex: 1, gap: 2 },
-  agentName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
-  agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
-  agentRoute: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "800", marginTop: 2 },
-  agentOpenVisit: { color: fieldTheme.color.danger, fontSize: 13, fontWeight: "900", marginTop: 2 },
+  agentName: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "600" },
+  agentMeta: { color: fieldTheme.color.inkMuted, fontSize: 12.5, lineHeight: 17 },
+  agentOpenVisit: { color: fieldTheme.color.danger, fontSize: 13, fontWeight: "500", marginTop: 2 },
   today: { gap: fieldTheme.space.sm },
   todayHeading: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: fieldTheme.space.sm, paddingHorizontal: 4 },
-  todayTitle: { color: fieldTheme.color.inkMuted, fontSize: 14, fontWeight: "900" },
+  todayTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "600" },
   todayUpdated: { flexShrink: 1, color: fieldTheme.color.inkMuted, fontSize: 12, textAlign: "right" },
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   tile: {
@@ -939,21 +964,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: fieldTheme.space.xs,
     padding: fieldTheme.space.md,
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    backgroundColor: fieldTheme.color.surface,
   },
   tileHalf: { flexBasis: "45%", flexGrow: 1 },
   tileWide: { flexBasis: "100%" },
   tileTablet: { flexBasis: "22%", flexGrow: 1 },
   // What needs the manager shows in the number's colour, not a filled tile
   // (owner-approved colours, 2026-10-18).
-  tilePrimary: { borderColor: fieldTheme.color.primary },
-  tileWarning: { borderColor: fieldTheme.color.border },
+  // Since the cards stand on the tinted ground the number's colour alone
+  // carries it; the green outline went with the borders (mockup, 2026-10-18).
+  tilePrimary: {},
+  tileWarning: {},
   tileTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 4 },
-  tileLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "900" },
-  tileValue: { color: fieldTheme.color.ink, fontSize: 30, lineHeight: 36, fontWeight: "900", letterSpacing: -0.5 },
+  tileLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 14, fontWeight: "500" },
+  tileValue: { color: fieldTheme.color.ink, fontSize: 32, lineHeight: 38, fontWeight: "700", letterSpacing: -0.5 },
   tileHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16 },
   homeActions: { flexDirection: "row", gap: fieldTheme.space.sm },
   homeAction: {
@@ -971,20 +996,18 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.primary,
   },
   writeTeam: { backgroundColor: fieldTheme.color.surface },
-  writeTeamText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  writeTeamText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "500", textAlign: "center" },
   createRoute: { backgroundColor: fieldTheme.color.primary },
-  createRouteText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900", textAlign: "center" },
+  createRouteText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "500", textAlign: "center" },
   openRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2, marginTop: fieldTheme.space.sm, minHeight: 28 },
-  openText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "900" },
+  openText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "500" },
   presencePill: {
     minHeight: 32,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 10,
-    borderRadius: fieldTheme.radius.pill,
   },
-  presenceText: { fontSize: 11, fontWeight: "900" },
+  presenceText: { fontSize: 12.5, fontWeight: "500" },
   presenceEvidence: {
     minHeight: 28,
     flexDirection: "row",
@@ -992,12 +1015,13 @@ const styles = StyleSheet.create({
     gap: fieldTheme.space.sm,
   },
   presenceEvidenceText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
-  locationPanel: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md },
+  // Under a hairline, not on a tint: the GPS state is the colour of its icon and words.
+  locationPanel: { gap: fieldTheme.space.sm, paddingTop: fieldTheme.space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
   locationHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   locationTitleRow: { flex: 1, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  locationTitle: { flex: 1, fontSize: 14, fontWeight: "900" },
+  locationTitle: { flex: 1, fontSize: 14, fontWeight: "600" },
   gpsPill: { minHeight: 28, justifyContent: "center", paddingHorizontal: 9, borderRadius: fieldTheme.radius.pill, borderWidth: 1 },
-  gpsPillText: { fontSize: 10, fontWeight: "900" },
+  gpsPillText: { fontSize: 11, fontWeight: "500" },
   locationDescription: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19 },
   locationDetails: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
   mapButton: {
@@ -1014,7 +1038,7 @@ const styles = StyleSheet.create({
     borderColor: fieldTheme.color.primary,
   },
   mapButtonTablet: { minHeight: 48 },
-  mapButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
+  mapButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "500" },
   itemList: { gap: fieldTheme.space.sm },
   itemCard: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.md, padding: fieldTheme.space.md, borderWidth: 1, borderColor: fieldTheme.color.border },
   itemMain: { flex: 1 },
@@ -1024,7 +1048,7 @@ const styles = StyleSheet.create({
   itemPill: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
   itemPillText: { fontSize: 10, fontWeight: "700", color: fieldTheme.color.primaryStrong },
   section: { gap: fieldTheme.space.sm, marginBottom: fieldTheme.space.md },
-  sectionTitle: { fontSize: 12, fontWeight: "800", color: fieldTheme.color.inkMuted, letterSpacing: 0.4 },
+  sectionTitle: { fontSize: 12, fontWeight: "600", color: fieldTheme.color.inkMuted, letterSpacing: 0.4 },
   decisionBtns: { flexDirection: "row", gap: fieldTheme.space.xs },
   // Outlined, both: a list of requests is not a wall of green and red pills.
   approveBtn: { borderWidth: 1, borderColor: fieldTheme.color.success, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
@@ -1032,4 +1056,4 @@ const styles = StyleSheet.create({
   rejectBtn: { borderWidth: 1, borderColor: fieldTheme.color.danger, borderRadius: fieldTheme.radius.sm, paddingHorizontal: 12, paddingVertical: 8 },
   rejectBtnText: { color: fieldTheme.color.danger, fontSize: 12, fontWeight: "700" },
   btnBusy: { opacity: 0.5 },
-})
+}))

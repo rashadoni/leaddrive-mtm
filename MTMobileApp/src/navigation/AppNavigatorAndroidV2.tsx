@@ -1,6 +1,6 @@
 import React, { useEffect } from "react"
-import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native"
-import { NavigationContainer } from "@react-navigation/native"
+import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator, type BottomTabBarButtonProps } from "@react-navigation/bottom-tabs"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -10,7 +10,14 @@ import { useAuthStore } from "../store/auth"
 import { useBootstrapStore } from "../store/bootstrap"
 import { hasRouteFieldAccess } from "../services/bootstrap"
 import { fieldContactsEnabled } from "../lib/field-contacts-policy"
-import { fieldTheme } from "../theme/fieldTheme"
+import {
+  currentFieldColorScheme,
+  fieldTheme,
+  themed,
+  themedVariants,
+  useFieldColorScheme,
+  withFieldColorScheme,
+} from "../theme/fieldTheme"
 import { NAV_RAIL_WIDTH, shouldUseNavigationRail } from "../theme/layoutBreakpoints"
 
 const RAIL_WIDTH = NAV_RAIL_WIDTH
@@ -18,8 +25,7 @@ import { TAB_BAR_BASE_HEIGHT } from "../theme/tabBarMetrics"
 
 import ServerScreen from "../screens/server/ServerScreen"
 import LoginScreen from "../screens/auth/LoginScreen"
-import RouteScreen from "../screens/route/RouteScreen"
-import WeekScreen from "../screens/week/WeekScreen"
+import RouteSectionScreen from "../screens/route/RouteSectionScreen"
 import VisitScreen from "../screens/visit/VisitScreen"
 import TasksScreen from "../screens/tasks/TasksScreen"
 import TaskDetailScreen from "../screens/tasks/TaskDetailScreen"
@@ -39,7 +45,6 @@ import AttendanceWorkdayScreen from "../screens/attendance/AttendanceWorkdayScre
 import AttendanceInboxScreen from "../screens/attendance/AttendanceInboxScreen"
 import AttendanceExplanationsScreen from "../screens/attendance/AttendanceExplanationsScreen"
 import { hasOfficeAttendanceAccess } from "../services/attendance-access"
-import { agentMayAttendanceRequests } from "../lib/agent-permissions"
 import TeamMessagesScreen from "../screens/more/TeamMessagesScreen"
 import NotificationsScreen from "../screens/more/NotificationsScreen"
 import TodayScreen from "../screens/today/TodayScreen"
@@ -48,9 +53,12 @@ import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.andro
 import type { RawTask } from "../services/task-detail"
 import type { MobileProductPresentation } from "../services/product-presentations"
 import type { RoutePlanningTargetHint } from "../services/route-planning-target"
+import type { JointVisitRow } from "../services/joint-visit"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
 import ManagerTeamMessageScreen from "../screens/manager/ManagerTeamMessageScreen.android"
+import ManagerJointVisitScreen from "../screens/manager/ManagerJointVisitScreen.android"
+import ManagerVisitEvaluationScreen from "../screens/manager/ManagerVisitEvaluationScreen.android"
 import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
 import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
@@ -86,9 +94,13 @@ export type RootStackParamList = {
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
   /** One employee from «Komanda»: the day on a map, the route, the workday (owner, 2026-10-17). */
-  ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null }
+  ManagerEmployee: { agentId: string; name?: string; isOnline?: boolean | null; pushReady?: boolean }
   /** «Komandaya yaz» from «Komanda»: to the whole team or one employee (owner, 2026-10-17). */
   ManagerTeamMessage: undefined
+  /** «Совместный визит» from «Komanda»: the agent the manager is with, and his ratings (owner, 2026-10-20). */
+  ManagerJointVisit: undefined
+  /** «Оценить агента» on one joint visit. */
+  ManagerVisitEvaluation: { visit: JointVisitRow }
   /** The bell's list (owner-approved mockup, 2026-10-18), over the tabs in both shells. */
   Notifications: undefined
   /** The agent's own planner in the field shell; the team planner in the manager shell. */
@@ -96,10 +108,10 @@ export type RootStackParamList = {
 }
 
 export type MoreStackParamList = {
-  AttendanceRequests: undefined
   MoreHome: undefined
   /** A line of the bell opens the thread it is about. */
   Messages: { threadId?: string } | undefined
+  /** «Plansız ziyarətlər»: back under «Daha çox» (owner, 2026-10-20). */
   Visits: undefined
   GpsHistory: undefined
   Profile: undefined
@@ -115,6 +127,28 @@ export type ClientsStackParamList = {
   OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
 }
 
+/**
+ * The navigator's own surfaces (a screen's background during a transition,
+ * the stack's card) in the app's palette, day or night: without it a dark
+ * screen flashed white while the next one slid in. One theme object per
+ * palette, so a switch hands the navigator a new one and it redraws.
+ */
+const NAVIGATION_THEMES = themedVariants((): Theme => {
+  const base = currentFieldColorScheme() === "dark" ? DarkTheme : DefaultTheme
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: fieldTheme.color.primary,
+      background: fieldTheme.color.canvas,
+      card: fieldTheme.color.surface,
+      text: fieldTheme.color.ink,
+      border: fieldTheme.color.border,
+      notification: fieldTheme.color.danger,
+    },
+  }
+})
+
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const MoreStack = createNativeStackNavigator<MoreStackParamList>()
 const ClientsStack = createNativeStackNavigator<ClientsStackParamList>()
@@ -122,7 +156,6 @@ const Tab = createBottomTabNavigator()
 
 const ICONS: Record<string, { active: string; inactive: string }> = {
   Today: { active: "today", inactive: "today-outline" },
-  Calendar: { active: "calendar-number", inactive: "calendar-number-outline" },
   Route: { active: "navigate", inactive: "navigate-outline" },
   Clients: { active: "people", inactive: "people-outline" },
   Tasks: { active: "checkbox", inactive: "checkbox-outline" },
@@ -191,17 +224,13 @@ const MANAGER_TAB_LABEL_KEYS: Record<ManagerTabName, string> = {
 }
 
 function MoreStackNavigator() {
-  const policies = useBootstrapStore(state => state.data?.policies)
-  const role = useAuthStore(state => state.agent?.role)
-  const attendanceAllowed = role === "AGENT" && agentMayAttendanceRequests(policies)
   return (
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
-      <MoreStack.Screen name="MoreHome" component={MoreScreen} />
-      {attendanceAllowed && <MoreStack.Screen name="AttendanceRequests" component={AttendanceRequestsScreen} />}
-      <MoreStack.Screen name="Messages" component={TeamMessagesScreen} />
-      <MoreStack.Screen name="Visits" component={VisitScreen} />
-      <MoreStack.Screen name="GpsHistory" component={GpsHistoryScreen} />
-      <MoreStack.Screen name="Profile" component={ProfileScreen} />
+      <MoreStack.Screen name="MoreHome" component={withFieldColorScheme(MoreScreen)} />
+      <MoreStack.Screen name="Messages" component={withFieldColorScheme(TeamMessagesScreen)} />
+      <MoreStack.Screen name="Visits" component={withFieldColorScheme(VisitScreen)} />
+      <MoreStack.Screen name="GpsHistory" component={withFieldColorScheme(GpsHistoryScreen)} />
+      <MoreStack.Screen name="Profile" component={withFieldColorScheme(ProfileScreen)} />
     </MoreStack.Navigator>
   )
 }
@@ -209,20 +238,20 @@ function MoreStackNavigator() {
 function ClientsStackNavigator() {
   return (
     <ClientsStack.Navigator screenOptions={{ headerShown: false }}>
-      <ClientsStack.Screen name="ClientsHome" component={RouteBaseScreen} />
-      <ClientsStack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
-      <ClientsStack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
-      <ClientsStack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
-      <ClientsStack.Screen name="ContactChangeRequest" component={RouteContactChangeRequestScreen} />
-      <ClientsStack.Screen name="OrganizationLocationFix" component={RouteOrganizationLocationFixScreen} />
+      <ClientsStack.Screen name="ClientsHome" component={withFieldColorScheme(RouteBaseScreen)} />
+      <ClientsStack.Screen name="OrganizationDetail" component={withFieldColorScheme(RouteOrganizationDetailScreen)} />
+      <ClientsStack.Screen name="ContactDetail" component={withFieldColorScheme(RouteContactDetailScreen)} />
+      <ClientsStack.Screen name="DoctorCreateRequest" component={withFieldColorScheme(DoctorCreateRequestScreen)} />
+      <ClientsStack.Screen name="ContactChangeRequest" component={withFieldColorScheme(RouteContactChangeRequestScreen)} />
+      <ClientsStack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />
     </ClientsStack.Navigator>
   )
 }
 
 const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
   Today: TodayScreen,
-  Calendar: WeekScreen,
-  Route: RouteScreen,
+  // Today's route and, under «Месяц», the calendar that was its own tab (2026-10-20).
+  Route: RouteSectionScreen,
   Clients: ClientsStackNavigator,
   Tasks: TasksScreen,
   More: MoreStackNavigator,
@@ -230,11 +259,25 @@ const TAB_COMPONENTS: Record<RouteFieldTabName, React.ComponentType<any>> = {
 
 const TAB_LABEL_KEYS: Record<RouteFieldTabName, string> = {
   Today: "navV2.today",
-  Calendar: "navV2.calendar",
   Route: "navV2.route",
   Clients: "navV2.clients",
   Tasks: "navV2.tasks",
   More: "navV2.more",
+}
+
+/**
+ * A caption of the bottom bar, whole. Six tabs on a 384 dp phone leave a
+ * caption about 60 dp, and «Ziyarətlər», «Müştərilər», «Tapşırıqlar» at 12 px
+ * bold need more: the bar showed «Ziyarətl…», «Müştər…», «Tapşırı…» (S948B,
+ * 3.11.43). A caption that does not fit gets a size smaller instead of an
+ * ellipsis; the short ones stay at 12 px.
+ */
+function BottomTabCaption({ color, children }: { color: string; children: string }) {
+  return (
+    <Text style={[styles.tabLabel, styles.tabCaption, { color }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+      {children}
+    </Text>
+  )
 }
 
 function tabOptions(name: string, label: string, iconOverride?: { active: string; inactive: string }) {
@@ -256,11 +299,11 @@ function OfficeTabs() {
   const { t } = useTranslation(), insets = useSafeAreaInsets()
   const requests = useBootstrapStore(state => state.data?.policies.agentPermissions?.attendanceRequests === true)
   return <Tab.Navigator key="own-attendance-tabs" initialRouteName="OwnWorkday" screenOptions={{ headerShown: false, tabBarActiveTintColor: fieldTheme.color.primaryStrong, tabBarInactiveTintColor: fieldTheme.color.inkMuted, tabBarStyle: { minHeight: TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8), paddingBottom: Math.max(insets.bottom, 8) }, tabBarLabelStyle: styles.tabLabel }}>
-    <Tab.Screen name="OwnWorkday" component={AttendanceWorkdayScreen} options={tabOptions("OwnWorkday", t("officeAttendance.workday"), { active: "time", inactive: "time-outline" })} />
-    {requests && <Tab.Screen name="OwnRequests" component={AttendanceRequestsScreen} options={tabOptions("OwnRequests", t("attendanceRequests.title"), { active: "document-text", inactive: "document-text-outline" })} />}
-    <Tab.Screen name="OwnExplanations" component={AttendanceExplanationsScreen} options={tabOptions("OwnExplanations", t("explanations.tab"), { active: "chatbox-ellipses", inactive: "chatbox-ellipses-outline" })} />
-    <Tab.Screen name="OwnInbox" component={AttendanceInboxScreen} options={tabOptions("OwnInbox", t("officeAttendance.inbox"), { active: "notifications", inactive: "notifications-outline" })} />
-    <Tab.Screen name="OwnProfile" component={ProfileScreen} options={tabOptions("OwnProfile", t("officeAttendance.profile"), { active: "person", inactive: "person-outline" })} />
+    <Tab.Screen name="OwnWorkday" component={withFieldColorScheme(AttendanceWorkdayScreen)} options={tabOptions("OwnWorkday", t("officeAttendance.workday"), { active: "time", inactive: "time-outline" })} />
+    {requests && <Tab.Screen name="OwnRequests" component={withFieldColorScheme(AttendanceRequestsScreen)} options={tabOptions("OwnRequests", t("attendanceRequests.title"), { active: "document-text", inactive: "document-text-outline" })} />}
+    <Tab.Screen name="OwnExplanations" component={withFieldColorScheme(AttendanceExplanationsScreen)} options={tabOptions("OwnExplanations", t("explanations.tab"), { active: "chatbox-ellipses", inactive: "chatbox-ellipses-outline" })} />
+    <Tab.Screen name="OwnInbox" component={withFieldColorScheme(AttendanceInboxScreen)} options={tabOptions("OwnInbox", t("officeAttendance.inbox"), { active: "notifications", inactive: "notifications-outline" })} />
+    <Tab.Screen name="OwnProfile" component={withFieldColorScheme(ProfileScreen)} options={tabOptions("OwnProfile", t("officeAttendance.profile"), { active: "person", inactive: "person-outline" })} />
   </Tab.Navigator>
 }
 
@@ -286,7 +329,7 @@ function MainTabs() {
           <Tab.Screen
             key={name}
             name={name}
-            component={MANAGER_TAB_COMPONENTS[name]}
+            component={withFieldColorScheme(MANAGER_TAB_COMPONENTS[name])}
             options={tabOptions(name, t(MANAGER_TAB_LABEL_KEYS[name]))}
           />
         ))}
@@ -300,7 +343,7 @@ function MainTabs() {
         <Tab.Screen
           key={name}
           name={name}
-          component={TAB_COMPONENTS[name]}
+          component={withFieldColorScheme(TAB_COMPONENTS[name])}
           options={tabOptions(
             name,
             t(name === "Clients" && !contactsEnabled ? "navV2.places" : TAB_LABEL_KEYS[name]),
@@ -381,6 +424,8 @@ function ShellTabs({ navigatorKey, initialRouteName, children }: {
               }
             : { paddingHorizontal: 2 },
           tabBarLabelStyle: styles.tabLabel,
+          // The rail beside the screen has room for the library's own caption.
+          ...(rail ? {} : { tabBarLabel: BottomTabCaption }),
         }}
       >
         {children}
@@ -412,6 +457,7 @@ export default function AppNavigatorAndroidV2() {
   const office = hasOfficeAttendanceAccess(bootstrap, agent)
   const managerShell = hasManagerShellAccess(bootstrap, agent)
   const ownRequests = bootstrap?.policies.agentPermissions?.attendanceRequests === true
+  const colorScheme = useFieldColorScheme()
 
   useEffect(() => {
     checkAuth()
@@ -426,7 +472,7 @@ export default function AppNavigatorAndroidV2() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} onReady={followRoute} onStateChange={followRoute}>
+    <NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ref={navigationRef} onReady={followRoute} onStateChange={followRoute}>
       <Stack.Navigator
         // Recreate the stack when admission changes so a revoked user cannot
         // remain on a previously-mounted detail screen with stale read data.
@@ -437,37 +483,39 @@ export default function AppNavigatorAndroidV2() {
       >
         {isLoggedIn ? (
           <>
-            <Stack.Screen name="Main" component={MainTabs} />
-            {routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={NotificationsScreen} /> : null}
+            <Stack.Screen name="Main" component={withFieldColorScheme(MainTabs)} />
+            {routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={withFieldColorScheme(NotificationsScreen)} /> : null}
             {routeFieldAdmitted ? (
               <>
-                <Stack.Screen name="OrganizationDetail" component={RouteOrganizationDetailScreen} />
-                <Stack.Screen name="ContactDetail" component={RouteContactDetailScreen} />
-                <Stack.Screen name="VisitWorkspace" component={VisitWorkspaceScreen} />
-                <Stack.Screen name="PresentationViewer" component={PresentationViewerScreen} />
-                <Stack.Screen name="DoctorCreateRequest" component={DoctorCreateRequestScreen} />
-                <Stack.Screen name="ContactChangeRequest" component={RouteContactChangeRequestScreen} />
-                <Stack.Screen name="OrganizationLocationFix" component={RouteOrganizationLocationFixScreen} />
-                <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
-                <Stack.Screen name="Visits" component={VisitScreen} />
-                <Stack.Screen name="Base" component={RouteBaseScreen} />
-                <Stack.Screen name="GpsHistory" component={GpsHistoryScreen} />
-                <Stack.Screen name="Profile" component={ProfileScreen} />
-                <Stack.Screen name="PlanningBuilder" component={PlanningBuilderScreen} />
+                <Stack.Screen name="OrganizationDetail" component={withFieldColorScheme(RouteOrganizationDetailScreen)} />
+                <Stack.Screen name="ContactDetail" component={withFieldColorScheme(RouteContactDetailScreen)} />
+                <Stack.Screen name="VisitWorkspace" component={withFieldColorScheme(VisitWorkspaceScreen)} />
+                <Stack.Screen name="PresentationViewer" component={withFieldColorScheme(PresentationViewerScreen)} />
+                <Stack.Screen name="DoctorCreateRequest" component={withFieldColorScheme(DoctorCreateRequestScreen)} />
+                <Stack.Screen name="ContactChangeRequest" component={withFieldColorScheme(RouteContactChangeRequestScreen)} />
+                <Stack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />
+                <Stack.Screen name="TaskDetail" component={withFieldColorScheme(TaskDetailScreen)} />
+                <Stack.Screen name="Visits" component={withFieldColorScheme(VisitScreen)} />
+                <Stack.Screen name="Base" component={withFieldColorScheme(RouteBaseScreen)} />
+                <Stack.Screen name="GpsHistory" component={withFieldColorScheme(GpsHistoryScreen)} />
+                <Stack.Screen name="Profile" component={withFieldColorScheme(ProfileScreen)} />
+                <Stack.Screen name="PlanningBuilder" component={withFieldColorScheme(PlanningBuilderScreen)} />
               </>
             ) : null}
             {managerShell ? (
               <>
-                <Stack.Screen name="PlanningBuilder" component={ManagerPlanningBuilderScreen} />
-                <Stack.Screen name="ManagerEmployee" component={ManagerEmployeeScreen} />
-                <Stack.Screen name="ManagerTeamMessage" component={ManagerTeamMessageScreen} />
+                <Stack.Screen name="PlanningBuilder" component={withFieldColorScheme(ManagerPlanningBuilderScreen)} />
+                <Stack.Screen name="ManagerEmployee" component={withFieldColorScheme(ManagerEmployeeScreen)} />
+                <Stack.Screen name="ManagerTeamMessage" component={withFieldColorScheme(ManagerTeamMessageScreen)} />
+                <Stack.Screen name="ManagerJointVisit" component={withFieldColorScheme(ManagerJointVisitScreen)} />
+                <Stack.Screen name="ManagerVisitEvaluation" component={withFieldColorScheme(ManagerVisitEvaluationScreen)} />
                 {/* His own workday tab opens these by name; in the office shell they are tabs. */}
                 {office ? (
                   <>
-                    {ownRequests ? <Stack.Screen name="OwnRequests" component={AttendanceRequestsScreen} /> : null}
-                    <Stack.Screen name="OwnExplanations" component={AttendanceExplanationsScreen} />
-                    <Stack.Screen name="OwnInbox" component={AttendanceInboxScreen} />
-                    <Stack.Screen name="OwnProfile" component={ProfileScreen} />
+                    {ownRequests ? <Stack.Screen name="OwnRequests" component={withFieldColorScheme(AttendanceRequestsScreen)} /> : null}
+                    <Stack.Screen name="OwnExplanations" component={withFieldColorScheme(AttendanceExplanationsScreen)} />
+                    <Stack.Screen name="OwnInbox" component={withFieldColorScheme(AttendanceInboxScreen)} />
+                    <Stack.Screen name="OwnProfile" component={withFieldColorScheme(ProfileScreen)} />
                   </>
                 ) : null}
               </>
@@ -499,9 +547,9 @@ export default function AppNavigatorAndroidV2() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   tabsRoot: { flex: 1 },
-  railStatusBand: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: fieldTheme.color.primaryStrong },
+  railStatusBand: { position: "absolute", top: 0, left: 0, right: 0, backgroundColor: currentFieldColorScheme() === "dark" ? fieldTheme.color.surface : fieldTheme.color.primaryStrong },
   loader: {
     flex: 1,
     justifyContent: "center",
@@ -513,4 +561,5 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: "700",
   },
-})
+  tabCaption: { alignSelf: "stretch", textAlign: "center", backgroundColor: "transparent" },
+}))

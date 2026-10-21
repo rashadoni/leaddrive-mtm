@@ -78,7 +78,7 @@ describe("where the ask lives", () => {
     expect(screen).not.toContain("batteryCard:")
     expect(screen).toContain("function BatterySleepNotice(")
     expect(screen).toContain("visible={!batteryExempt}")
-    for (const key of ["batterySleepTitle", "batterySleepBody", "batterySleepAction"]) {
+    for (const key of ["batterySleepTitle", "batterySleepBody", "batterySleepAction", "batterySleepLater"]) {
       expect(screen.match(new RegExp(`${key}: "`, "g"))).toHaveLength(3)
     }
   })

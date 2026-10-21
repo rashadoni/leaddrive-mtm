@@ -1,6 +1,7 @@
 import React from "react"
 import { Pressable, type PressableProps } from "react-native"
 import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs"
+import { useFieldColorScheme } from "../../theme/fieldTheme"
 import GuideSpot from "./GuideSpot"
 
 /**
@@ -25,11 +26,13 @@ export default function GuideTabButton({ spot, ...props }: BottomTabBarButtonPro
     ref: _ref,
     ...rest
   } = props as BottomTabBarButtonProps & { ref?: unknown }
+  // The navigator's own ripple: dark by day, light on the night palette.
+  const ripple = useFieldColorScheme() === "dark" ? "rgba(255, 255, 255, .32)" : "rgba(0, 0, 0, .32)"
   return (
     <Pressable
       {...(rest as PressableProps)}
       onPress={onPress as PressableProps["onPress"]}
-      android_ripple={{ color: "rgba(0, 0, 0, .32)", ...(android_ripple ?? {}) }}
+      android_ripple={{ color: ripple, ...(android_ripple ?? {}) }}
       style={style}
     >
       {children}

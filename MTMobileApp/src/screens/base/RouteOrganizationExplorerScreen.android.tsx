@@ -24,7 +24,7 @@ import { useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
 import { contactClassColors } from "../../lib/contact-classes"
 import { useBootstrapStore } from "../../store/bootstrap"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
 import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 type Language = "ru" | "az" | "en"
@@ -80,6 +80,7 @@ function mergeUnique(current: RouteOrganizationListItem[], next: RouteOrganizati
  * They are elements, not components, so the search keeps focus while typing.
  */
 export default function RouteOrganizationExplorerScreen({ header }: { header?: React.ReactNode }) {
+  const colorScheme = useFieldColorScheme()
   const { t, i18n } = useTranslation()
   const copy = COPY[languageFor(i18n.language)]
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -222,6 +223,8 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
       {header ? null : topArea}
 
       <FlatList
+        // Rows are drawn again when the phone switches day and night.
+        extraData={colorScheme}
         key={tablet ? "route-organizations-tablet" : "route-organizations-phone"}
         data={rows}
         numColumns={tablet ? 2 : 1}
@@ -276,7 +279,7 @@ export default function RouteOrganizationExplorerScreen({ header }: { header?: R
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   topArea: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, paddingBottom: fieldTheme.space.sm },
   scopeNote: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "flex-start", padding: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
@@ -307,4 +310,4 @@ const styles = StyleSheet.create({
   retryButton: { minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   retryText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
   pressed: { opacity: 0.72 },
-})
+}))

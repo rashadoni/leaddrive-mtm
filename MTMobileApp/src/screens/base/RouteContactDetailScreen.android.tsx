@@ -25,18 +25,19 @@ import {
   type RouteContactChangeTone,
 } from "../../services/route-contact-change"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 
 type Language = "ru" | "az" | "en"
 type DetailRow = { icon: string; label: string; value: string | undefined }
 
 /** The agent's last change request: waiting, approved or declined. */
-const REQUEST_TONE: Record<RouteContactChangeTone, { color: string; title: "requestPending" | "requestApproved" | "requestDeclined" }> = {
+const REQUEST_TONE: Record<RouteContactChangeTone, { color: string; title: "requestPending" | "requestApproved" | "requestDeclined" }> = themed(() => ({
   pending: { color: fieldTheme.color.amber, title: "requestPending" },
   approved: { color: fieldTheme.color.success, title: "requestApproved" },
   declined: { color: fieldTheme.color.danger, title: "requestDeclined" },
-}
+}))
 
 const COPY = {
   ru: {
@@ -242,7 +243,7 @@ export default function RouteContactDetailScreen() {
           style={({ pressed }) => [styles.backButton, { minHeight: touchTarget }, pressed && styles.pressed]}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back" size={21} color={fieldTheme.color.onColor} />
+          <Icon name="arrow-back" size={21} color={fieldTheme.color.ink} />
           <Text style={styles.backText}>{copy.back}</Text>
         </Pressable>
         <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
@@ -350,6 +351,7 @@ export default function RouteContactDetailScreen() {
           </Section>
         </ScrollView>
       )}
+      <LightScreenStatusBar />
     </View>
   )
 }
@@ -372,54 +374,57 @@ function ActionRow({ icon, label, value, touchTarget, onPress }: { icon: string;
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl, backgroundColor: fieldTheme.color.primaryStrong },
+  // White like the tabs' headers (owner-approved colours, 2026-10-18).
+  header: { paddingHorizontal: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl, backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
   backButton: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, paddingRight: fieldTheme.space.md },
-  backText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "800" },
-  eyebrow: { color: fieldTheme.color.primarySoft, fontSize: 11, fontWeight: "900", letterSpacing: 0.8, marginTop: fieldTheme.space.lg },
-  title: { color: fieldTheme.color.onColor, fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: 5 },
-  subtitle: { color: fieldTheme.color.primarySoft, fontSize: 14, lineHeight: 20, marginTop: 4 },
+  backText: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "500" },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "700", letterSpacing: 0.8, marginTop: fieldTheme.space.lg },
+  title: { color: fieldTheme.color.ink, fontSize: 25, lineHeight: 31, fontWeight: "700", marginTop: 5 },
+  subtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: 4 },
   centerState: { flex: 1, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.xl },
-  stateTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "900", textAlign: "center", marginTop: fieldTheme.space.sm },
+  stateTitle: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "700", textAlign: "center", marginTop: fieldTheme.space.sm },
   stateBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
   retryButton: { marginTop: fieldTheme.space.md, minHeight: 44, justifyContent: "center", paddingHorizontal: fieldTheme.space.lg, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
-  retryText: { color: fieldTheme.color.onColor, fontWeight: "900" },
+  retryText: { color: fieldTheme.color.onColor, fontWeight: "700" },
   scroll: { padding: fieldTheme.space.lg, gap: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xxl },
   scrollTablet: { alignSelf: "center", width: "100%", maxWidth: 820 },
-  boundaryNotice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  boundaryNotice: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   boundaryText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   section: { gap: fieldTheme.space.sm },
-  sectionTitle: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.7 },
-  card: { gap: 1, overflow: "hidden", borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
+  sectionTitle: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700", letterSpacing: 0.7 },
+  // A white card on the tinted ground (2026-10-18). Its rows are white and
+  // stand a hairline apart, so the card's own colour between them is the divider.
+  card: { ...fieldTheme.card, backgroundColor: fieldTheme.color.border, gap: StyleSheet.hairlineWidth, overflow: "hidden", borderRadius: fieldTheme.radius.lg },
   row: { minHeight: 65, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
-  rowIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: fieldTheme.color.primarySoft },
+  rowIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18 },
   rowCopy: { flex: 1, minWidth: 0 },
-  rowLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
-  rowValue: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "800", marginTop: 2 },
+  rowLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "500" },
+  rowValue: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "600", marginTop: 2 },
   actionRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
-  actionValue: { color: fieldTheme.color.primaryStrong, fontSize: 15, lineHeight: 20, fontWeight: "900", marginTop: 2 },
+  actionValue: { color: fieldTheme.color.primaryStrong, fontSize: 15, lineHeight: 20, fontWeight: "700", marginTop: 2 },
   workplace: { minHeight: 78, flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
-  workplaceIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: fieldTheme.color.primarySoft },
+  workplaceIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18 },
   workplaceCopy: { flex: 1, minWidth: 0 },
   workplaceTitleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  workplaceTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
-  primaryPill: { color: fieldTheme.color.primaryStrong, backgroundColor: fieldTheme.color.primarySoft, borderRadius: fieldTheme.radius.pill, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" },
+  workplaceTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "700" },
+  primaryPill: { color: fieldTheme.color.primaryStrong, paddingVertical: 3, fontSize: 10, fontWeight: "700" },
   workplaceMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: 3 },
-  phoneLink: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 18, fontWeight: "900", marginTop: 5 },
+  phoneLink: { color: fieldTheme.color.primaryStrong, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 5 },
   workplaceOpen: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.primarySoft },
   workplaceOpenCopy: { flex: 1, minWidth: 0, paddingVertical: 6 },
-  workplaceOpenText: { color: fieldTheme.color.primaryStrong, fontSize: 14, lineHeight: 19, fontWeight: "900" },
+  workplaceOpenText: { color: fieldTheme.color.primaryStrong, fontSize: 14, lineHeight: 19, fontWeight: "700" },
   workplaceOpenHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16 },
   empty: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, padding: fieldTheme.space.md },
   requestRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
   requestDot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
-  requestTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
+  requestTitle: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "700" },
   requestMeta: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 3 },
   requestAnswer: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 5 },
   proposeBlock: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface },
   proposeButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
-  proposeText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "900" },
+  proposeText: { color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "700" },
   proposeHint: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 17 },
   pressed: { opacity: 0.72 },
-})
+}))

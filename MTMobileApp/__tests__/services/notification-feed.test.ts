@@ -331,6 +331,8 @@ describe("where a line leads and what its button says", () => {
     expect(feedNavigation({ screen: "ContactDetail", id: "c1" })).toEqual({ name: "ContactDetail", params: { id: "c1" } })
     expect(feedNavigation({ screen: "Approvals" })).toEqual({ name: "Main", params: { screen: "Approvals" }, pop: true })
     expect(feedNavigation({ screen: "AttendanceRequests" })).toEqual({ name: "Main", params: { screen: "More", params: { screen: "AttendanceRequests" } }, pop: true })
+    // A route for another day opens the month, which is a tab of «Маршрут» now.
+    expect(feedNavigation({ screen: "Calendar" })).toEqual({ name: "Main", params: { screen: "Route", params: { view: "month" } }, pop: true })
     expect(fs.readFileSync(path.resolve(__dirname, "../../src/screens/more/NotificationsScreen.tsx"), "utf8"))
       .toContain("if (pop) navigation.navigate(name, params, { pop: true })")
   })
@@ -383,8 +385,9 @@ describe("the bell is in the corner of every main screen", () => {
   it("is on each tab of the agent and of the manager", () => {
     const missing = [
       "screens/today/TodayScreen.tsx",
-      "screens/week/WeekScreen.tsx",
-      "screens/route/RouteScreen.tsx",
+      // «Маршрут» and its «Месяц» share one header, and the bell is in it.
+      "screens/route/RouteSectionHeader.tsx",
+      "screens/visit/VisitScreen.tsx",
       "screens/base/RouteBaseScreen.android.tsx",
       "screens/tasks/TasksScreen.tsx",
       "screens/more/MoreScreen.tsx",
@@ -404,7 +407,7 @@ describe("the bell is in the corner of every main screen", () => {
 
   it("opens one list over the tabs, in both shells", () => {
     const navigator = read("navigation/AppNavigatorAndroidV2.tsx")
-    expect(navigator).toContain('{routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={NotificationsScreen} /> : null}')
+    expect(navigator).toContain('{routeFieldAdmitted || managerShell ? <Stack.Screen name="Notifications" component={withFieldColorScheme(NotificationsScreen)} /> : null}')
     expect(navigator).not.toContain('<MoreStack.Screen name="Notifications"')
     expect(read("components/NotificationBell.tsx")).toContain('navigation.navigate("Notifications")')
   })

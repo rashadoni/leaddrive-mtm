@@ -7,7 +7,7 @@ import { useAutoRefresh } from "../hooks/useAutoRefresh"
 import { listenForPushRefresh, useNotificationInbox, useNotificationUnread } from "../store/notification-inbox"
 import { badgeLabel } from "../services/notification-feed"
 import { feedLanguage } from "../services/notification-feed-copy"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import GuideSpot from "./guide/GuideSpot"
 
 /**
@@ -25,10 +25,11 @@ const LABEL = {
 
 /**
  * The bell in the top corner of every main screen (owner-approved mockup,
- * 2026-10-18): a red number for what is unread, the one list on a tap.
- * `dark` sits on the green headers, `light` on the white ones.
+ * 2026-10-18): a red number for what is unread, the one list on a tap. Every
+ * header is white since the same day — or dark in the night palette — so the
+ * bell has one look, in the palette's colours.
  */
-export default function NotificationBell({ tone = "dark" }: { tone?: "dark" | "light" }) {
+export default function NotificationBell() {
   const navigation = useNavigation<any>()
   const { i18n } = useTranslation()
   const unread = useNotificationUnread()
@@ -37,7 +38,6 @@ export default function NotificationBell({ tone = "dark" }: { tone?: "dark" | "l
   useEffect(() => { listenForPushRefresh() }, [])
   useAutoRefresh(useCallback(() => { void refresh().catch(() => {}) }, [refresh]), NOTIFICATION_BELL_REFRESH_MS)
 
-  const dark = tone === "dark"
   return (
     <Pressable
       testID="notification-bell"
@@ -45,15 +45,15 @@ export default function NotificationBell({ tone = "dark" }: { tone?: "dark" | "l
       accessibilityLabel={LABEL[feedLanguage(i18n.language)](unread)}
       hitSlop={6}
       onPress={() => navigation.navigate("Notifications")}
-      style={({ pressed }) => [styles.bell, dark ? styles.bellDark : styles.bellLight, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.bell, pressed && styles.pressed]}
     >
       <Icon
         name={unread > 0 ? "notifications" : "notifications-outline"}
         size={23}
-        color={dark ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong}
+        color={fieldTheme.color.primaryStrong}
       />
       {unread > 0 ? (
-        <View testID="notification-bell-badge" style={[styles.badge, dark ? styles.badgeOnDark : styles.badgeOnLight]}>
+        <View testID="notification-bell-badge" style={styles.badge}>
           <Text style={styles.badgeText} numberOfLines={1}>{badgeLabel(unread)}</Text>
         </View>
       ) : null}
@@ -63,7 +63,7 @@ export default function NotificationBell({ tone = "dark" }: { tone?: "dark" | "l
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   bell: {
     width: 46,
     height: 46,
@@ -72,10 +72,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    backgroundColor: fieldTheme.color.surfaceStrong,
+    borderColor: fieldTheme.color.border,
   },
-  // The same pill colours as «Yenilə» beside it on «Bu gün».
-  bellDark: { backgroundColor: "#174F43", borderColor: "#5B8B7D" },
-  bellLight: { backgroundColor: fieldTheme.color.surfaceStrong, borderColor: fieldTheme.color.border },
   badge: {
     position: "absolute",
     top: -5,
@@ -88,9 +87,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: fieldTheme.color.danger,
+    borderColor: fieldTheme.color.surface,
   },
-  badgeOnDark: { borderColor: fieldTheme.color.primaryStrong },
-  badgeOnLight: { borderColor: fieldTheme.color.surface },
-  badgeText: { color: "#FFFFFF", fontSize: 11, lineHeight: 14, fontWeight: "900" },
+  badgeText: { color: fieldTheme.color.onColor, fontSize: 11, lineHeight: 14, fontWeight: "900" },
   pressed: { opacity: 0.75 },
-})
+}))

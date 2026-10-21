@@ -107,28 +107,35 @@ class FieldNotificationsModule(
   }
 
   /**
-   * Opens the system dialog. The decision is the agent's — the app asks once
-   * per shift at most and never pretends the answer was yes.
+   * Opens the phone's battery optimisation list, where the agent turns it off
+   * for this app. The decision is the agent's and is not assumed: true means
+   * only that a screen opened.
+   *
+   * Not the one-tap «allow?» dialog (ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS):
+   * Google Play allows it, and the REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+   * permission it needs, only to messengers, security apps and the like —
+   * field tracking is not on that list. The owner chose this list on
+   * 2026-10-18, before the app goes to Play.
    */
   @ReactMethod
-  fun requestIgnoreBatteryOptimizations(promise: Promise) {
+  fun openBatteryOptimizationSettings(promise: Promise) {
     try {
       if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
         promise.resolve(false)
         return
       }
       val activity = reactContext.currentActivity
-      val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-        data = Uri.parse("package:" + reactContext.packageName)
+      val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
         if (activity == null) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
       (activity ?: reactContext).startActivity(intent)
       promise.resolve(true)
     } catch (error: Throwable) {
-      // Some builds hide the dialog. Fall back to the settings list rather
-      // than leaving a button that does nothing.
+      // Some builds hide the list. The app's own settings page has the
+      // battery entry there instead of a button that does nothing.
       try {
-        val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+          .setData(Uri.parse("package:" + reactContext.packageName))
           .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         reactContext.startActivity(fallback)
         promise.resolve(true)

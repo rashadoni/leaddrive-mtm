@@ -15,7 +15,7 @@ import { runMobileSync } from "../../services/sync-engine"
 import { ask } from "../../services/app-feedback"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 
 function today(timezone: string | null) {
   try {
@@ -223,7 +223,7 @@ export default function AttendanceRequestsScreen() {
       <LightScreenStatusBar />
       <View style={styles.content}>
         <View style={styles.heading}>
-          {button(t("attendanceRequests.back"), () => agent?.role === "AGENT" ? navigation.goBack() : navigation.navigate("OwnWorkday" as never), "attendance-back")}
+          {button(t("attendanceRequests.back"), () => navigation.navigate("OwnWorkday" as never), "attendance-back")}
           <Text style={styles.title}>{t("attendanceRequests.title")}</Text>
         </View>
         {!allowed || denied ? <Text testID="attendance-unavailable" style={styles.body}>{t("attendanceRequests.unavailable")}</Text> : <>
@@ -305,7 +305,7 @@ export default function AttendanceRequestsScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas }, scroll: { paddingHorizontal: 20 }, content: { width: "100%", maxWidth: 900, alignSelf: "center", gap: 16 },
   heading: { gap: 14, alignItems: "flex-start" }, title: { fontSize: 30, fontWeight: "800", color: fieldTheme.color.ink }, subtitle: { fontSize: 19, fontWeight: "700", color: fieldTheme.color.ink, flexShrink: 1 },
   body: { fontSize: 16, lineHeight: 23, color: fieldTheme.color.ink }, caption: { fontSize: 14, lineHeight: 20, color: fieldTheme.color.inkMuted }, label: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.ink },
@@ -315,4 +315,4 @@ const styles = StyleSheet.create({
   choices: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, choice: { minHeight: 48, padding: 12, justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: fieldTheme.color.border }, selected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary }, choiceText: { fontSize: 15, color: fieldTheme.color.ink, fontWeight: "600" },
   fields: { flexDirection: "row", flexWrap: "wrap", gap: 16 }, field: { flexGrow: 1, flexBasis: 180, gap: 8 }, input: { minHeight: 50, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 10, padding: 12, fontSize: 17, color: fieldTheme.color.ink, backgroundColor: fieldTheme.color.canvas }, reason: { minHeight: 100, textAlignVertical: "top" },
   notice: { color: fieldTheme.color.amber, fontSize: 15, lineHeight: 22 }, error: { color: fieldTheme.color.danger, fontSize: 15, lineHeight: 22 }, list: { gap: 0 }, item: { paddingVertical: 22, borderBottomWidth: 1, borderColor: fieldTheme.color.border, gap: 10 }, itemHeading: { flexDirection: "row", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between" }, status: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "700" }, reply: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 23, padding: 14, backgroundColor: fieldTheme.color.surfaceStrong, borderRadius: 10 }, empty: { color: fieldTheme.color.inkMuted, fontSize: 17, lineHeight: 25, paddingVertical: 32 }, document: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "center" }, thumbnail: { width: 72, height: 90, borderRadius: 8 },
-})
+}))

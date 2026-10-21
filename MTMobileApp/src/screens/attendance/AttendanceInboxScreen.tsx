@@ -9,7 +9,7 @@ import { readAttendanceInbox, markAttendanceInboxRead, type AttendanceNotice } f
 import { attendanceAccessDenied } from "../../services/attendance-requests"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { useNavigation } from "@react-navigation/native"
 export default function AttendanceInboxScreen() {
   const { t, i18n } = useTranslation(), top = useHeaderTop(), bottom = useTabBarPadding(), navigation = useNavigation()
@@ -53,4 +53,4 @@ export default function AttendanceInboxScreen() {
       </>}
     </ScrollView></View>
 }
-const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: fieldTheme.color.canvas }, header: { backgroundColor: fieldTheme.color.primaryStrong, padding: 24, gap: 8 }, title: { fontSize: 26, fontWeight: "700", color: fieldTheme.color.onColor }, subtitle: { fontSize: 15, lineHeight: 22, color: fieldTheme.color.onColor }, content: { padding: 20, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" }, card: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 18, backgroundColor: fieldTheme.color.surface, padding: 20, gap: 12 }, name: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "600" }, body: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 23 }, error: { color: fieldTheme.color.danger, fontSize: 15 }, button: { minHeight: 48, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: fieldTheme.color.border, justifyContent: "center", alignItems: "center", backgroundColor: fieldTheme.color.surface }, action: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "600" } })
+const styles = themed(() => StyleSheet.create({ screen: { flex: 1, backgroundColor: fieldTheme.color.canvas }, header: { backgroundColor: fieldTheme.color.primaryStrong, padding: 24, gap: 8 }, title: { fontSize: 26, fontWeight: "700", color: fieldTheme.color.onColor }, subtitle: { fontSize: 15, lineHeight: 22, color: fieldTheme.color.onColor }, content: { padding: 20, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" }, card: { borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 18, backgroundColor: fieldTheme.color.surface, padding: 20, gap: 12 }, name: { color: fieldTheme.color.ink, fontSize: 18, fontWeight: "600" }, body: { color: fieldTheme.color.inkMuted, fontSize: 15, lineHeight: 23 }, error: { color: fieldTheme.color.danger, fontSize: 15 }, button: { minHeight: 48, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: fieldTheme.color.border, justifyContent: "center", alignItems: "center", backgroundColor: fieldTheme.color.surface }, action: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "600" } }))

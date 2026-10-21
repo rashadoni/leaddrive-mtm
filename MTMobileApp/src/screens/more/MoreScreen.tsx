@@ -15,16 +15,13 @@ import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import type { MoreStackParamList } from "../../navigation/AppNavigatorAndroidV2"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
-import { agentMayAttendanceRequests } from "../../lib/agent-permissions"
-import { useBootstrapStore } from "../../store/bootstrap"
-import { useAuthStore } from "../../store/auth"
 import NotificationBell from "../../components/NotificationBell"
 import GuideButton from "../../components/guide/GuideButton"
 
-type MoreRoute = "AttendanceRequests" | "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
+type MoreRoute = "Notifications" | "Messages" | "Visits" | "GpsHistory" | "Profile"
 
 type MoreAction = {
   route: MoreRoute
@@ -35,6 +32,9 @@ type MoreAction = {
   body?: string
 }
 
+// «Plansız ziyarətlər» came back here from the bottom bar, renamed (owner,
+// 2026-10-20: «ziyarətlər убери в daha çox и переименуй — он путает, так как
+// там неплановые визиты»).
 const COMMON_ACTIONS: MoreAction[] = [
   {
     route: "Visits",
@@ -74,13 +74,10 @@ export default function MoreScreen() {
     : i18n.language.toLowerCase().startsWith("en")
       ? { title: "Notifications", body: "Messages, request decisions and deadline reminders" }
       : { title: "Уведомления", body: "Сообщения, решения по заявкам и напоминания о сроках" }
-  const policies = useBootstrapStore(state => state.data?.policies)
-  const role = useAuthStore(state => state.agent?.role)
   const actions: MoreAction[] = [
-    ...(role === "AGENT" && agentMayAttendanceRequests(policies) ? [{
-      route: "AttendanceRequests" as const, icon: "document-text-outline",
-      titleKey: "attendanceRequests.title", bodyKey: "attendanceRequests.menuBody",
-    }] : []),
+    // No «Müraciətlərim» for a field agent: leave, absence and time
+    // correction are HR accounting and live only in «Mənim uçotum» for the
+    // employees HR keeps (owner, 2026-10-20).
     {
       route: "Notifications",
       icon: "notifications-outline",
@@ -98,9 +95,6 @@ export default function MoreScreen() {
 
   const open = (route: MoreRoute) => {
     switch (route) {
-      case "AttendanceRequests":
-        navigation.navigate("AttendanceRequests")
-        break
       case "Notifications":
         // The bell's list lives over the tabs, not in this stack.
         navigation.navigate("Notifications" as never)
@@ -136,9 +130,10 @@ export default function MoreScreen() {
       <View style={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>{t("moreV2.title")}</Text>
-          {/* The first-run guide again, at the top where the tour's last step points. */}
-          {role === "AGENT" ? <GuideButton tour="field" spot="more.guide" /> : null}
-          <NotificationBell tone="light" />
+          {/* The first-run guide again, at the top where the tour's last step points.
+              «Daha çox» is the field agent's tab only. */}
+          <GuideButton tour="field" spot="more.guide" />
+          <NotificationBell />
         </View>
         <View style={styles.actionGrid}>
           {actions.map((action) => {
@@ -176,7 +171,7 @@ export default function MoreScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: fieldTheme.color.canvas,
@@ -252,4 +247,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
-})
+}))

@@ -13,6 +13,7 @@ class PresentationFilesPackage : ReactPackage {
       FieldPushModule(reactContext),
       FieldLocationModule(reactContext),
       FieldNetworkModule(reactContext),
+      FieldAppearanceModule(reactContext),
     )
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> =

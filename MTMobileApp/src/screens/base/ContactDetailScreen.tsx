@@ -28,7 +28,7 @@ import DoctorAssessmentModal, { type DoctorAssessmentFields } from "../../compon
 import BrandPotentialModal, { type BrandPotentialFields } from "../../components/BrandPotentialModal"
 import { queueBrandPotentialCreate, queueBrandPotentialEnd } from "../../services/brand-potential-outbox"
 import { runMobileSync } from "../../services/sync-engine"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -958,7 +958,7 @@ function History({ detail, t, locale }: { detail: ContactDetail; t: (key: string
 function Field({ label, value }: { label: string; value?: string }) { if (!value) return null; return <View style={styles.field}><Text style={styles.fieldLabel}>{label}</Text><Text style={styles.fieldValue}>{value}</Text></View> }
 function Stat({ value, label, accent }: { value: number | string; label: string; accent?: boolean }) { return <View style={styles.potentialStat}><Text style={[styles.potentialValue, accent && styles.accent]}>{typeof value === "number" ? value.toLocaleString() : value}</Text><Text style={styles.potentialLabel}>{label}</Text></View> }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: { backgroundColor: fieldTheme.color.primaryStrong, paddingBottom: 14, paddingHorizontal: fieldTheme.space.md, borderBottomLeftRadius: fieldTheme.radius.lg, borderBottomRightRadius: fieldTheme.radius.lg },
@@ -1084,4 +1084,4 @@ const styles = StyleSheet.create({
   reviewActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 }, rejectButton: { minHeight: 48, minWidth: 104, alignItems: "center", justifyContent: "center", paddingHorizontal: 14, borderRadius: 11, borderWidth: 1, borderColor: "#EDB9AD", backgroundColor: "#FBFDFC" }, rejectButtonText: { color: "#A43B25", fontSize: 13, fontWeight: "900" }, verifyButton: { minHeight: 48, minWidth: 120, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: 11, backgroundColor: "#08705A" }, verifyButtonText: { color: "#F8FCFA", fontSize: 13, fontWeight: "900" },
   brandStack: { gap: 14 }, brandHero: { padding: 18, borderRadius: 20, backgroundColor: "#ECE6F7", borderWidth: 1, borderColor: "#D7C8ED", gap: 14 }, brandHeroCopy: { minWidth: 210 }, brandEyebrow: { color: "#7155B7", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }, brandHeroTitle: { color: "#241A38", fontSize: 22, fontWeight: "900", marginTop: 5 }, brandHeroBody: { color: "#6D607E", fontSize: 12, lineHeight: 18, marginTop: 5 }, brandHeroMetrics: { flexDirection: "row", backgroundColor: "rgba(255,255,255,0.7)", borderRadius: 14, overflow: "hidden" },
   brandGrid: { gap: 12 }, brandGridTablet: { flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" }, brandCard: { padding: 16, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e2e8f0", gap: 12 }, brandCardTablet: { width: "49%" }, brandTop: { flexDirection: "row", alignItems: "center", gap: 10 }, brandMark: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#ECE6F7" }, brandMarkText: { color: "#7155B7", fontSize: 13, fontWeight: "900" }, brandIdentity: { flex: 1 }, brandName: { color: "#13231F", fontSize: 16, fontWeight: "900" }, brandProduct: { color: "#64748b", fontSize: 11, marginTop: 3 }, brandNumbers: { flexDirection: "row", backgroundColor: "#F8FAFC", borderRadius: 13, overflow: "hidden" }, coverageTrack: { height: 7, borderRadius: 99, backgroundColor: "#E8EDF2", overflow: "hidden" }, coverageFill: { height: "100%", borderRadius: 99, backgroundColor: "#7155B7" }, brandMeta: { color: "#64748b", fontSize: 11, lineHeight: 16 }, evidenceList: { gap: 7 }, evidenceTitle: { color: "#33443E", fontSize: 11, fontWeight: "900" }, evidenceLink: { minHeight: 48, flexDirection: "row", alignItems: "center", gap: 7, borderRadius: 10, backgroundColor: "#F1F6F3", paddingHorizontal: 10 }, evidenceLinkText: { flex: 1, color: "#08705A", fontSize: 12, fontWeight: "800" }, brandActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 8 }, brandActionSecondary: { minHeight: 48, justifyContent: "center", paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#D7C8ED", backgroundColor: "#FBF9FE" }, brandActionSecondaryText: { color: "#7155B7", fontSize: 12, fontWeight: "900" },
-})
+}))

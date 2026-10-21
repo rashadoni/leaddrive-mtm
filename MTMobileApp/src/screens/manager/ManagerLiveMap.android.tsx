@@ -4,7 +4,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import { WebView } from "react-native-webview"
 import { useTranslation } from "react-i18next"
 import { formatManagerEvidenceAge } from "../../services/manager-location-truth"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { api } from "../../services/api"
@@ -249,14 +249,12 @@ function MapNotice({ icon, color, tint, title, body }: { icon: string; color: st
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   section: {
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.lg,
+    ...fieldTheme.card,
     borderRadius: fieldTheme.radius.lg,
-    backgroundColor: fieldTheme.color.surface,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
   },
   heading: { gap: fieldTheme.space.md },
   headingTablet: { flexDirection: "row", alignItems: "center" },
@@ -268,8 +266,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headingCopy: { flex: 1, gap: 3 },
-  eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "900", letterSpacing: 0.7 },
-  title: { color: fieldTheme.color.ink, fontSize: 21, lineHeight: 26, fontWeight: "900" },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "500", letterSpacing: 0.5 },
+  title: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 25, fontWeight: "700" },
   body: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, maxWidth: 680 },
   counts: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm },
   countsTablet: { maxWidth: 390, justifyContent: "flex-end" },
@@ -279,12 +277,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 10,
+    // Outlined, not filled: the counts are words with a dot (owner's rule, 2026-10-18).
     borderRadius: fieldTheme.radius.pill,
-    backgroundColor: fieldTheme.color.canvas,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    backgroundColor: fieldTheme.color.surface,
   },
   dot: { width: 8, height: 8, borderRadius: fieldTheme.radius.pill },
-  countValue: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
-  countLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800" },
+  countValue: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "700" },
+  countLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "400" },
   mapFrame: {
     minHeight: 320,
     overflow: "hidden",
@@ -304,12 +305,12 @@ const styles = StyleSheet.create({
     backgroundColor: fieldTheme.color.canvas,
   },
   emptyTablet: { minHeight: 390 },
-  emptyTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "900", textAlign: "center" },
+  emptyTitle: { color: fieldTheme.color.ink, fontSize: 17, fontWeight: "700", textAlign: "center" },
   emptyBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, maxWidth: 520, textAlign: "center" },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md },
   legendItem: { minHeight: 32, flexDirection: "row", alignItems: "center", gap: 7 },
   legendDot: { width: 11, height: 11, borderRadius: fieldTheme.radius.pill, borderWidth: 2, borderColor: fieldTheme.color.surface },
-  legendText: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, fontWeight: "700" },
+  legendText: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, fontWeight: "400" },
   notice: {
     minHeight: 64,
     flexDirection: "row",
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   noticeCopy: { flex: 1, gap: 2 },
-  noticeTitle: { fontSize: 13, fontWeight: "900" },
+  noticeTitle: { fontSize: 13, fontWeight: "700" },
   noticeBody: { color: fieldTheme.color.ink, fontSize: 12, lineHeight: 17 },
   noCoordinatesNote: {
     minHeight: 44,
@@ -330,4 +331,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: fieldTheme.space.sm,
   },
   noCoordinatesText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16 },
-})
+}))

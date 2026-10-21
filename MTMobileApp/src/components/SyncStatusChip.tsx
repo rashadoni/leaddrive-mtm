@@ -34,7 +34,7 @@ import { refreshSyncStatusCounts, runMobileSync } from "../services/sync-engine"
 import { useBootstrapStore } from "../store/bootstrap"
 import { useSyncStatusStore, type SyncPipelineId, type SyncPipelineStatus } from "../store/sync-status"
 import { syncCentreState } from "../lib/sync-centre-availability"
-import { fieldTheme } from "../theme/fieldTheme"
+import { fieldTheme, themed } from "../theme/fieldTheme"
 import { syncChipLabel } from "./sync-chip-label"
 
 type Props = {
@@ -407,57 +407,59 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   chip: { minHeight: 44, maxWidth: 190, paddingHorizontal: 12, borderRadius: 22, flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1 },
-  chipDefault: { backgroundColor: "#f8fafc", borderColor: "#e2e8f0" },
+  // Outlined on the white header like «Yenilə» beside it: a canvas fill read
+  // as a tinted pill once the ground got its tint (2026-10-18).
+  chipDefault: { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.border },
   chipInverse: { backgroundColor: "rgba(255,255,255,0.13)", borderColor: "rgba(255,255,255,0.24)" },
   // The conflict chip is always light, so its text must be dark even on the
   // green header. With `inverse` the label stayed white on #fff7ed and could
   // not be read — the owner pointed at it on the phone, 2026-09-13.
-  chipConflict: { backgroundColor: "#fff7ed", borderColor: "#fb923c" },
-  conflictIcon: { color: "#c2410c" },
-  conflictLabel: { color: "#9a3412" },
-  chipIcon: { color: "#0f766e", fontSize: 15, fontWeight: "900" },
-  chipLabel: { flexShrink: 1, color: "#334155", fontSize: 12, fontWeight: "800" },
-  inverseText: { color: "#fff" },
+  chipConflict: { backgroundColor: fieldTheme.color.coralSoft, borderColor: fieldTheme.color.coral },
+  conflictIcon: { color: fieldTheme.color.coral },
+  conflictLabel: { color: fieldTheme.color.coral },
+  chipIcon: { color: fieldTheme.color.primary, fontSize: 15, fontWeight: "900" },
+  chipLabel: { flexShrink: 1, color: fieldTheme.color.ink, fontSize: 12, fontWeight: "800" },
+  inverseText: { color: fieldTheme.color.onColor },
   pressed: { opacity: 0.76 },
-  overlay: { flex: 1, justifyContent: "center", backgroundColor: "rgba(15,23,42,0.56)", padding: 18 },
-  sheet: { maxHeight: "88%", borderRadius: 22, backgroundColor: "#fff", padding: 20 },
+  overlay: { flex: 1, justifyContent: "center", backgroundColor: fieldTheme.color.scrim, padding: 18 },
+  sheet: { maxHeight: "88%", borderRadius: 22, backgroundColor: fieldTheme.color.surface, padding: 20 },
   headingRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   headingCopy: { flex: 1 },
-  heading: { color: "#0f172a", fontSize: 21, fontWeight: "900" },
-  subtitle: { marginTop: 4, color: "#64748b", fontSize: 13, lineHeight: 18 },
-  closeButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 22, backgroundColor: "#f1f5f9" },
-  closeText: { color: "#475569", fontSize: 28, lineHeight: 30 },
+  heading: { color: fieldTheme.color.ink, fontSize: 21, fontWeight: "900" },
+  subtitle: { marginTop: 4, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
+  closeButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 22, backgroundColor: fieldTheme.color.surfaceStrong },
+  closeText: { color: fieldTheme.color.inkMuted, fontSize: 28, lineHeight: 30 },
   summary: { marginTop: 18, flexDirection: "row", gap: 10 },
-  metric: { flex: 1, minHeight: 70, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#f8fafc" },
-  metricValue: { color: "#0f766e", fontSize: 22, fontWeight: "900" },
-  metricLabel: { marginTop: 3, color: "#64748b", fontSize: 10, fontWeight: "700", textAlign: "center" },
-  danger: { color: "#dc2626" },
-  lastSync: { marginTop: 14, color: "#475569", fontSize: 12 },
-  errorText: { marginTop: 6, color: "#b91c1c", fontSize: 12 },
+  metric: { flex: 1, minHeight: 70, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.canvas },
+  metricValue: { color: fieldTheme.color.primary, fontSize: 22, fontWeight: "900" },
+  metricLabel: { marginTop: 3, color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "700", textAlign: "center" },
+  danger: { color: fieldTheme.color.danger },
+  lastSync: { marginTop: 14, color: fieldTheme.color.inkMuted, fontSize: 12 },
+  errorText: { marginTop: 6, color: fieldTheme.color.danger, fontSize: 12 },
   pipelineSection: { marginTop: 14, gap: 7 },
-  pipelineHeading: { color: "#475569", fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
-  pipelineRow: { minHeight: 36, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "#f8fafc", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  pipelineName: { flex: 1, color: "#334155", fontSize: 12, fontWeight: "700" },
-  pipelineState: { color: "#0f766e", fontSize: 11, fontWeight: "800", textAlign: "right" },
-  pipelineBackoff: { color: "#b45309" },
-  pipelineError: { color: "#b91c1c" },
+  pipelineHeading: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
+  pipelineRow: { minHeight: 36, paddingHorizontal: 10, borderRadius: 10, backgroundColor: fieldTheme.color.canvas, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  pipelineName: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, fontWeight: "700" },
+  pipelineState: { color: fieldTheme.color.primary, fontSize: 11, fontWeight: "800", textAlign: "right" },
+  pipelineBackoff: { color: fieldTheme.color.amber },
+  pipelineError: { color: fieldTheme.color.danger },
   list: { flexGrow: 0, marginTop: 12 },
   listContent: { paddingBottom: 4, gap: 10 },
   empty: { alignItems: "center", paddingVertical: 24, paddingHorizontal: 12 },
-  emptyIcon: { color: "#0f766e", fontSize: 26, fontWeight: "900" },
-  emptyTitle: { marginTop: 8, color: "#0f172a", fontSize: 15, fontWeight: "800" },
-  emptyBody: { marginTop: 4, color: "#64748b", fontSize: 12, textAlign: "center", lineHeight: 17 },
-  conflictCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: "#fed7aa", backgroundColor: "#fff7ed" },
-  conflictTitle: { color: "#9a3412", fontSize: 14, fontWeight: "800" },
-  conflictCode: { marginTop: 3, color: "#c2410c", fontSize: 10, fontWeight: "700" },
-  conflictBody: { marginTop: 7, color: "#7c2d12", fontSize: 12, lineHeight: 17 },
+  emptyIcon: { color: fieldTheme.color.primary, fontSize: 26, fontWeight: "900" },
+  emptyTitle: { marginTop: 8, color: fieldTheme.color.ink, fontSize: 15, fontWeight: "800" },
+  emptyBody: { marginTop: 4, color: fieldTheme.color.inkMuted, fontSize: 12, textAlign: "center", lineHeight: 17 },
+  conflictCard: { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: fieldTheme.color.coral, backgroundColor: fieldTheme.color.coralSoft },
+  conflictTitle: { color: fieldTheme.color.coral, fontSize: 14, fontWeight: "800" },
+  conflictCode: { marginTop: 3, color: fieldTheme.color.coral, fontSize: 10, fontWeight: "700" },
+  conflictBody: { marginTop: 7, color: fieldTheme.color.coral, fontSize: 12, lineHeight: 17 },
   actionRow: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  secondaryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: "#fff", borderWidth: 1, borderColor: "#fdba74" },
-  secondaryText: { color: "#9a3412", fontSize: 12, fontWeight: "800" },
-  forceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: "#c2410c" },
-  forceText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  secondaryButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.coral },
+  secondaryText: { color: fieldTheme.color.coral, fontSize: 12, fontWeight: "800" },
+  forceButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 13, borderRadius: 12, backgroundColor: fieldTheme.color.coralFill },
+  forceText: { color: fieldTheme.color.onColor, fontSize: 12, fontWeight: "800" },
   syncCentreNotice: {
     paddingHorizontal: 4,
     paddingBottom: 8,
@@ -466,7 +468,7 @@ const styles = StyleSheet.create({
     color: fieldTheme.color.inkMuted,
     textAlign: "center",
   },
-  syncButton: { minHeight: 50, marginTop: 16, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#0f766e" },
-  syncText: { color: "#fff", fontSize: 14, fontWeight: "900" },
+  syncButton: { minHeight: 50, marginTop: 16, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.primary },
+  syncText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
   disabled: { opacity: 0.5 },
-})
+}))

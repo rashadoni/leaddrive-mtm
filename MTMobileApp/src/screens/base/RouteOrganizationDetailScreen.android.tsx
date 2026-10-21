@@ -37,10 +37,12 @@ import {
 } from "./organization-location-fix-model"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useLocationFixStore } from "../../store/location-fixes"
-import { fieldTheme } from "../../theme/fieldTheme"
+import { fieldTheme, themed } from "../../theme/fieldTheme"
+import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { statusLabel } from "../../lib/status-labels"
 import { upperInitial } from "../../lib/upper"
+import { directionsUrl } from "../../lib/directions"
 
 type Language = "ru" | "az" | "en"
 
@@ -376,10 +378,13 @@ export default function RouteOrganizationDetailScreen() {
   const call = (phone?: string) => {
     if (phone) void openExternal(`tel:${phone.replace(/\s/g, "")}`)
   }
-  const openDirections = () => {
-    if (address) void openExternal(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`)
-  }
   const pin = detail ? usablePoint(detail) : null
+  // The drive from here to the organization's pin; its address only without a
+  // pin (lib/directions.ts — a search for the address text built no route).
+  const directions = directionsUrl({ latitude: pin?.latitude, longitude: pin?.longitude, address })
+  const openDirections = () => {
+    if (directions) void openExternal(directions)
+  }
   // «No pin» is read only from a server that says so; an older one says nothing about pins at all.
   const offer = !detail || !mayFixLocation || waiting || (!pin && !detail.pinReported)
     ? { kind: "none" as const }
@@ -498,10 +503,10 @@ export default function RouteOrganizationDetailScreen() {
               accessibilityRole="button"
               onPress={openLocationFix}
               testID="location-fix-open"
-              style={({ pressed }) => [styles.fixButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}
             >
-              <Icon name="pin" size={18} color={fieldTheme.color.onColor} />
-              <Text style={styles.actionText}>{offer.kind === "no-pin" ? copy.fixNoPinButton : copy.fixFarButton}</Text>
+              <Icon name="pin" size={18} color={fieldTheme.color.primaryStrong} />
+              <Text style={styles.routeActionText}>{offer.kind === "no-pin" ? copy.fixNoPinButton : copy.fixFarButton}</Text>
             </Pressable>
           </View>
         ) : locationRequest?.mine && locationRequest.status !== "SUBMITTED" ? (
@@ -514,9 +519,9 @@ export default function RouteOrganizationDetailScreen() {
         ) : null}
         <View style={styles.actions}>
           {mayPlanOwnRoutes ? <Pressable accessibilityRole="button" onPress={addToRoute} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="calendar-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{t("contacts.addToRoute")}</Text></Pressable> : null}
-          {address ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
+          {directions ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
           {mayFixLocation && !waiting && offer.kind === "none" && (pin || detail.pinReported) ? <Pressable accessibilityRole="button" onPress={openLocationFix} testID="location-fix-ask" style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="pin-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.fixAsk}</Text></Pressable> : null}
-          {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.call}</Text></Pressable> : null}
+          {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.call}</Text></Pressable> : null}
         </View>
       </Section>
 
@@ -562,7 +567,7 @@ export default function RouteOrganizationDetailScreen() {
     <View style={styles.root}>
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={copy.back} onPress={() => navigation.goBack()} style={({ pressed }) => [styles.backButton, { width: touchTarget, height: touchTarget }, pressed && styles.pressed]}>
-          <Icon name="arrow-back" size={23} color={fieldTheme.color.onColor} />
+          <Icon name="arrow-back" size={23} color={fieldTheme.color.ink} />
         </Pressable>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>{copy.eyebrow}</Text>
@@ -576,18 +581,20 @@ export default function RouteOrganizationDetailScreen() {
       >
         {body}
       </ScrollView>
+      <LightScreenStatusBar />
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: fieldTheme.color.canvas },
-  header: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.md, backgroundColor: fieldTheme.color.primaryStrong },
-  backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: "rgba(255,255,255,0.12)" },
+  // White like the tabs' headers (owner-approved colours, 2026-10-18).
+  header: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.md, paddingBottom: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
+  backButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border },
   headerCopy: { flex: 1, paddingTop: 2 },
-  eyebrow: { color: "#BBD6CB", fontSize: 12, fontWeight: "800", letterSpacing: 0.7 },
-  headerTitle: { marginTop: 2, color: fieldTheme.color.onColor, fontSize: 22, lineHeight: 28, fontWeight: "900" },
-  headerSubtitle: { marginTop: 2, color: "#D7E9E1", fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  eyebrow: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "800", letterSpacing: 0.7 },
+  headerTitle: { marginTop: 2, color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "900" },
+  headerSubtitle: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, fontWeight: "700" },
   scrollContent: { flexGrow: 1, padding: fieldTheme.space.md },
   content: { gap: fieldTheme.space.md, width: "100%", maxWidth: 880, alignSelf: "center" },
   centerState: { flex: 1, minHeight: 320, alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, paddingHorizontal: fieldTheme.space.xl },
@@ -595,30 +602,29 @@ const styles = StyleSheet.create({
   stateBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
   retryButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   retryText: { color: fieldTheme.color.onColor, fontSize: 14, fontWeight: "900" },
-  scopeNote: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  scopeNote: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
   scopeText: { flex: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, fontWeight: "700" },
   section: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   sectionHeading: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm },
   sectionTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 17, lineHeight: 23, fontWeight: "900" },
-  countPill: { minWidth: 28, minHeight: 28, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primarySoft },
+  countPill: { minWidth: 28, minHeight: 28, alignItems: "center", justifyContent: "center", paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border },
   countText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   dataRow: { flexDirection: "row", gap: fieldTheme.space.sm, alignItems: "flex-start", paddingVertical: fieldTheme.space.xs },
-  dataIcon: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primarySoft },
+  dataIcon: { width: 32, height: 32, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm },
   dataCopy: { flex: 1, gap: 1 },
   dataLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "800", letterSpacing: 0.35 },
   dataValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "700" },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
-  fixOffer: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#ECD9A6", backgroundColor: fieldTheme.color.amberSoft },
-  fixWaiting: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: "#ECD9A6", backgroundColor: fieldTheme.color.amberSoft },
+  fixOffer: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface },
+  fixWaiting: { gap: fieldTheme.space.sm, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.amber, backgroundColor: fieldTheme.color.surface },
   fixHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   fixWaitingTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "900" },
   fixBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19 },
-  fixButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   fixGhostButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   fixGhostText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   fixError: { color: fieldTheme.color.danger, fontSize: 13, lineHeight: 18 },
-  fixAnswer: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
-  fixAnswerGood: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  fixAnswer: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.danger, backgroundColor: fieldTheme.color.surface },
+  fixAnswerGood: { padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.surface },
   disabled: { opacity: 0.5 },
   actionButton: { flexGrow: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primary },
   actionText: { color: fieldTheme.color.onColor, fontSize: 13, fontWeight: "900" },
@@ -637,8 +643,8 @@ const styles = StyleSheet.create({
   primaryText: { color: fieldTheme.color.primaryStrong, fontSize: 10, fontWeight: "900" },
   callButton: { alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm },
   visitRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingVertical: fieldTheme.space.sm },
-  visitIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.blueSoft },
-  expandButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
+  visitIcon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm },
+  expandButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border },
   expandText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
   pressed: { opacity: 0.72 },
-})
+}))

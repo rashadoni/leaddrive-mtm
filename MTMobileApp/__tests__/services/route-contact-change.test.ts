@@ -171,7 +171,7 @@ describe("the form is wired into the Route Field app", () => {
   })
 
   it("is reachable from the client card in both places the card lives", () => {
-    expect(navigator.split('name="ContactChangeRequest" component={RouteContactChangeRequestScreen}').length - 1).toBe(2)
+    expect(navigator.split('name="ContactChangeRequest" component={withFieldColorScheme(RouteContactChangeRequestScreen)}').length - 1).toBe(2)
     expect(card).toContain('navigation.navigate("ContactChangeRequest", { id, name: detail.name })')
   })
 
