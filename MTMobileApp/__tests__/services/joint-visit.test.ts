@@ -7,6 +7,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 
 import { setOfflineScope } from "../../src/services/offline-scope"
 import {
+  DEFAULT_EVALUATION_QUESTIONS,
   EVALUATION_CRITERIA,
   JOINT_ANSWER_ALONE,
   cachedJointManagers,
@@ -16,6 +17,8 @@ import {
   jointManagersForCheckIn,
   jointVisitFailure,
   personInitials,
+  questionLabel,
+  readQuestions,
   readScores,
   refreshJointManagers,
   scoresAverage,
@@ -74,7 +77,15 @@ describe("what the manager's phone reads of a joint visit", () => {
     const state = toJointVisitState(SERVER_STATE)
     expect(state.session).toEqual({ id: "session-1", startedAt: "2026-10-20T05:05:00.000Z", agent: { id: "agent-elvin", name: "Fictional Elvin" } })
     expect(state.visits.map((visit) => visit.id)).toEqual(["visit-1", "visit-2"])
-    expect(state.visits[0].evaluation).toEqual({ scores: { PREPARATION: 4, RAPPORT: 5 }, average: 4.5, comment: "Good", updatedAt: "2026-10-20T05:50:00.000Z" })
+    expect(state.visits[0].evaluation).toEqual({
+      questions: DEFAULT_EVALUATION_QUESTIONS,
+      scores: { PREPARATION: 4, RAPPORT: 5 },
+      average: 4.5,
+      comment: "Good",
+      updatedAt: "2026-10-20T05:50:00.000Z",
+    })
+    // A server from before the company lists sends no questions: the sheet asks the six.
+    expect(state.questions).toEqual(DEFAULT_EVALUATION_QUESTIONS)
     expect(currentJointVisit(state)?.id).toBe("visit-2")
     expect(unratedJointVisits(state).map((visit) => visit.id)).toEqual(["visit-2"])
   })
@@ -88,8 +99,45 @@ describe("what the manager's phone reads of a joint visit", () => {
   })
 
   it("reads an empty or broken answer as no session and no visits", () => {
-    expect(toJointVisitState(null)).toEqual({ session: null, visits: [] })
-    expect(toJointVisitState({ data: { session: { id: "s" }, visits: "x" } })).toEqual({ session: null, visits: [] })
+    expect(toJointVisitState(null)).toEqual({ session: null, visits: [], questions: DEFAULT_EVALUATION_QUESTIONS })
+    expect(toJointVisitState({ data: { session: { id: "s" }, visits: "x" } })).toEqual({ session: null, visits: [], questions: DEFAULT_EVALUATION_QUESTIONS })
+  })
+})
+
+describe("the company's own questions (owner, 2026-10-21)", () => {
+  const SAMPLES = { id: "q-samples", labels: { az: "Nümunələrlə iş", ru: "Работа с образцами", en: "Working with samples" } }
+  const RENAMED = { id: "PREPARATION", labels: { az: "Hazırlıq", ru: "Подготовка и материалы", en: "Preparation" } }
+  const t = ((key: string) => `t:${key}`) as unknown as TFunction
+
+  it("asks the company's list of today, in its order", () => {
+    const state = toJointVisitState({ data: { ...SERVER_STATE.data, questions: [RENAMED, SAMPLES, { id: "", labels: { ru: "x" } }, { id: "q-empty", labels: {} }] } })
+    expect(state.questions).toEqual([RENAMED, SAMPLES])
+  })
+
+  it("reads a rating by the list it was given against, not by today's", () => {
+    const visit = {
+      ...SERVER_STATE.data.visits[0],
+      evaluation: { scores: { "q-samples": 4, PREPARATION: 5, OBJECTIONS: 3 }, questions: [RENAMED, SAMPLES], comment: null, updatedAt: "2026-10-20T05:50:00.000Z" },
+    }
+    const state = toJointVisitState({ data: { session: null, visits: [visit], questions: [SAMPLES] } })
+    expect(state.visits[0].evaluation).toMatchObject({ questions: [RENAMED, SAMPLES], scores: { "q-samples": 4, PREPARATION: 5 }, average: 4.5 })
+  })
+
+  it("fills a language the office left empty from one it wrote", () => {
+    expect(readQuestions([{ id: "q-1", labels: { ru: "Образцы", az: "", en: "" } }])).toEqual([{ id: "q-1", labels: { az: "Образцы", ru: "Образцы", en: "Образцы" } }])
+    expect(readQuestions("nope")).toBeNull()
+    expect(readQuestions([])).toBeNull()
+  })
+
+  it("names a question in the phone's language, and one of the six in the app's own words", () => {
+    expect(questionLabel(SAMPLES, "az", t)).toBe("Nümunələrlə iş")
+    expect(questionLabel(SAMPLES, "en", t)).toBe("Working with samples")
+    expect(questionLabel(SAMPLES, "ru", t)).toBe("Работа с образцами")
+    expect(questionLabel({ id: "NEEDS", labels: null }, "ru", t)).toBe("t:jointVisit.criteria.NEEDS")
+  })
+
+  it("scores only the questions of the list it is read against", () => {
+    expect(readScores({ "q-samples": 4, CHARM: 5, PREPARATION: 6 }, [SAMPLES, RENAMED])).toEqual({ "q-samples": 4 })
   })
 })
 
@@ -116,6 +164,7 @@ describe("the rating", () => {
     expect(jointVisitFailure(coded("MTM_JOINT_VISIT_AGENT_FORBIDDEN"))).toBe("notInTeam")
     expect(jointVisitFailure(coded("MTM_VISIT_EVALUATION_NOT_JOINT"))).toBe("notJoint")
     expect(jointVisitFailure(coded("MTM_VISIT_EVALUATION_CLOSED"))).toBe("closed")
+    expect(jointVisitFailure(coded("MTM_VISIT_EVALUATION_QUESTIONS_CHANGED"))).toBe("questionsChanged")
     expect(jointVisitFailure(new Error("Network request failed"))).toBe("offline")
     expect(jointVisitFailure(new Error("SESSION_EXPIRED"))).toBe("session")
     expect(jointVisitFailure(new Error("boom"))).toBe("failed")

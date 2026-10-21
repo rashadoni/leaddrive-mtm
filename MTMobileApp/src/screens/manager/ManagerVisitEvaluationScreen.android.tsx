@@ -20,13 +20,17 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { managerApi } from "../../services/manager-api"
 import { notify } from "../../services/app-feedback"
 import {
+  DEFAULT_EVALUATION_QUESTIONS,
   EVALUATION_COMMENT_MAX,
-  EVALUATION_CRITERIA,
+  clockTime,
   formatScore,
   jointVisitFailure,
+  questionLabel,
+  readScores,
   scoresAverage,
+  toJointVisitState,
   visitTitle,
-  type EvaluationCriterion,
+  type EvaluationQuestion,
   type EvaluationScores,
   type JointVisitFailure,
 } from "../../services/joint-visit"
@@ -39,16 +43,21 @@ const FAILURE_COPY: Record<Exclude<JointVisitFailure, "session">, string> = {
   notJoint: "jointVisit.errorNotJoint",
   closed: "jointVisit.errorClosed",
   invalid: "jointVisit.errorInvalid",
+  questionsChanged: "jointVisit.errorQuestionsChanged",
   failed: "jointVisit.errorFailed",
 }
 
 const SCALE = [1, 2, 3, 4, 5] as const
 
 /**
- * «Оценка агента» (owner-approved mockup, 2026-10-20): six points, 1 — poor,
- * 5 — excellent; a point that did not come up on the visit is left out, and a
- * second tap on a number takes it back. A comment. Given during the visit or
- * after it, changed until the end of the next day. The agent does not see it.
+ * «Оценка агента» (owner-approved mockup, 2026-10-20): the company's questions
+ * (2026-10-21; the six until it edits them), 1 — poor, 5 — excellent; a point
+ * that did not come up on the visit is left out, and a second tap on a number
+ * takes it back. A comment. Given during the visit or after it, changed until
+ * the end of the next day. The agent does not see it.
+ *
+ * The agent is the large name at the top, the visit a line under it (owner,
+ * 2026-10-21: «видно что оценивается аптека а не агент»).
  */
 export default function ManagerVisitEvaluationScreen() {
   const navigation = useNavigation()
@@ -59,7 +68,10 @@ export default function ManagerVisitEvaluationScreen() {
   const insets = useSafeAreaInsets()
   const headerTop = useHeaderTop()
   const tablet = isTabletWidth(width)
-  const [scores, setScores] = useState<EvaluationScores>(() => ({ ...(visit.evaluation?.scores ?? {}) }))
+  // The company's list as the joint-visit screen last read it. A rating given
+  // against an older list opens with the points that are still asked.
+  const [questions, setQuestions] = useState<EvaluationQuestion[]>(() => (route.params.questions?.length ? route.params.questions : DEFAULT_EVALUATION_QUESTIONS))
+  const [scores, setScores] = useState<EvaluationScores>(() => readScores(visit.evaluation?.scores ?? {}, questions))
   const [comment, setComment] = useState(visit.evaluation?.comment ?? "")
   const [saving, setSaving] = useState(false)
   const [failure, setFailure] = useState<JointVisitFailure | null>(null)
@@ -70,7 +82,7 @@ export default function ManagerVisitEvaluationScreen() {
     return () => { alive.current = false }
   }, [])
 
-  const toggle = (criterion: EvaluationCriterion, score: number) => {
+  const toggle = (criterion: string, score: number) => {
     setFailure(null)
     setScores((current) => {
       const next = { ...current }
@@ -80,7 +92,7 @@ export default function ManagerVisitEvaluationScreen() {
     })
   }
 
-  const rated = EVALUATION_CRITERIA.filter((criterion) => typeof scores[criterion] === "number")
+  const rated = questions.map((question) => question.id).filter((id) => typeof scores[id] === "number")
   const average = scoresAverage(scores)
   const canSave = rated.length > 0 && !saving
 
@@ -97,7 +109,18 @@ export default function ManagerVisitEvaluationScreen() {
       notify({ tone: "success", title: t("jointVisit.saved") })
       navigation.goBack()
     } catch (error) {
-      if (alive.current) setFailure(jointVisitFailure(error))
+      if (!alive.current) return
+      const reason = jointVisitFailure(error)
+      setFailure(reason)
+      // The office changed the questions while the sheet was open: take the
+      // list as it is now and keep the points that are still asked.
+      if (reason === "questionsChanged") {
+        const fresh = toJointVisitState(await managerApi.getJointVisit().catch(() => null)).questions
+        if (alive.current) {
+          setQuestions(fresh)
+          setScores((current) => readScores(current, fresh))
+        }
+      }
     } finally {
       if (alive.current) setSaving(false)
     }
@@ -117,8 +140,11 @@ export default function ManagerVisitEvaluationScreen() {
               <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
             </Pressable>
             <View style={styles.headerCopy}>
-              <Text style={styles.eyebrow} numberOfLines={1}>{t("jointVisit.evalEyebrow", { name: visit.agent.name })}</Text>
-              <Text style={styles.title} numberOfLines={2}>{visitTitle(visit)}</Text>
+              <Text style={styles.eyebrow} numberOfLines={1}>{t("jointVisit.evalEyebrow")}</Text>
+              <Text style={styles.title} numberOfLines={2} testID="manager-visit-evaluation-agent">{visit.agent.name}</Text>
+              <Text style={styles.visitLine} numberOfLines={2} testID="manager-visit-evaluation-visit">
+                {t("jointVisit.evalVisit", { place: visitTitle(visit), time: clockTime(visit.checkInAt) })}
+              </Text>
             </View>
           </View>
           <Text style={styles.body}>{t("jointVisit.evalHint")}</Text>
@@ -126,8 +152,9 @@ export default function ManagerVisitEvaluationScreen() {
 
         <View style={[styles.content, tablet && styles.contentTablet]}>
           <View style={styles.card} testID="manager-visit-evaluation-criteria">
-            {EVALUATION_CRITERIA.map((criterion, index) => {
-              const label = t(`jointVisit.criteria.${criterion}`)
+            {questions.map((question, index) => {
+              const criterion = question.id
+              const label = questionLabel(question, i18n.language, t)
               return (
                 <View key={criterion} style={[styles.criterion, index > 0 && styles.criterionDivider]}>
                   <Text style={styles.criterionLabel}>{label}</Text>
@@ -220,6 +247,7 @@ const styles = themed(() => StyleSheet.create({
   headerCopy: { flex: 1, minWidth: 0 },
   eyebrow: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "500" },
   title: { color: fieldTheme.color.ink, fontSize: 22, lineHeight: 28, fontWeight: "700", letterSpacing: -0.3 },
+  visitLine: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   body: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: fieldTheme.space.sm },
   content: { width: "100%", maxWidth: 760, alignSelf: "center", padding: fieldTheme.space.lg },
   contentTablet: { padding: fieldTheme.space.xl },
