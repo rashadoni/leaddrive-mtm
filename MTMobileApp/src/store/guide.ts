@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import { GUIDE_TOURS, guideStep, type GuideRect, type GuideTourId } from "../guide/tour"
 
 /**
@@ -45,6 +44,21 @@ interface GuideState {
   dropSpot: (id: string, owner: number) => void
 }
 
+type GuideStorage = {
+  getItem: (key: string) => Promise<string | null>
+  setItem: (key: string, value: string) => Promise<void>
+}
+
+/**
+ * Taken when the guide reads or writes, not at import: every screen with a
+ * spot imports this store, and a screen loaded without the native storage
+ * (a component test) must still load. A missing storage reads as no record.
+ */
+function guideStorage(): GuideStorage {
+  const loaded = require("@react-native-async-storage/async-storage")
+  return (loaded.default ?? loaded) as GuideStorage
+}
+
 function storageKey(scope: string): string {
   return `${STORAGE_KEY}:${scope}`
 }
@@ -67,7 +81,7 @@ function parseRecord(raw: string | null | undefined): GuideRecord {
 
 async function readRecord(scope: string): Promise<GuideRecord> {
   try {
-    return parseRecord(await AsyncStorage.getItem(storageKey(scope)))
+    return parseRecord(await guideStorage().getItem(storageKey(scope)))
   } catch {
     return {}
   }
@@ -75,7 +89,7 @@ async function readRecord(scope: string): Promise<GuideRecord> {
 
 async function writeRecord(scope: string, record: GuideRecord): Promise<void> {
   try {
-    await AsyncStorage.setItem(storageKey(scope), JSON.stringify(record))
+    await guideStorage().setItem(storageKey(scope), JSON.stringify(record))
   } catch {
     // Not critical: the worst case is the guide offered once more.
   }
