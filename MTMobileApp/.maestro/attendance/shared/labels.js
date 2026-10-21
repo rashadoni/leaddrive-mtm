@@ -69,21 +69,24 @@ var deviceCopy = {
     "PENDING": "Qərar gözlənilir",
     "APPROVED": "Quraşdırma təsdiqlənib",
     "REVOKED": "İcazə geri götürülüb",
-    "scan": "QR kodu skan et"
+    "scan": "QR kodu skan et",
+    "noLocationPolicy": "Təşkilat təsdiqlənmiş mətnlə məkan toplanmasını hələ aktivləşdirməyib."
   },
   "ru": {
     "request": "Запросить разрешение",
     "PENDING": "Ждём решения",
     "APPROVED": "Установка подтверждена",
     "REVOKED": "Разрешение отозвано",
-    "scan": "Сканировать QR"
+    "scan": "Сканировать QR",
+    "noLocationPolicy": "Организация пока не включила сбор места с утверждённым текстом."
   },
   "en": {
     "request": "Request approval",
     "PENDING": "Awaiting a decision",
     "APPROVED": "Installation approved",
     "REVOKED": "Approval withdrawn",
-    "scan": "Scan QR code"
+    "scan": "Scan QR code",
+    "noLocationPolicy": "The organisation has not enabled collection with an approved text."
   }
 };
 output.device = deviceCopy[LOCALE];
