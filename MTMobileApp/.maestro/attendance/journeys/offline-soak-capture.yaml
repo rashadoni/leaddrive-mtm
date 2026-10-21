@@ -1,0 +1,103 @@
+appId: com.leaddrive.attendance
+name: Capture three offline actions before a real 24-hour hold
+# Requires a running owned fixture day, fresh admission, approved test consent and
+# existing precise-location permission. The host holds only this package offline
+# for a real day, verifies expiry, restores access and checks delayed HR receipts.
+---
+- runScript: ../shared/labels.js
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: allow
+      android.permission.ACCESS_COARSE_LOCATION: allow
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 45000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "Fictional office employee"
+- assertVisible:
+    id: office-workday-offline
+- assertVisible: "${output.copy.running}"
+- assertNotVisible:
+    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-break
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.paused}"
+    direction: UP
+    timeout: 60000
+- assertVisible: "${output.copy.paused}"
+- assertVisible:
+    id: office-workday-pending
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: allow
+      android.permission.ACCESS_COARSE_LOCATION: allow
+- extendedWaitUntil:
+    visible: "${output.copy.paused}"
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-break
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}"
+    direction: UP
+    timeout: 60000
+- assertVisible: "${output.copy.running}"
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: allow
+      android.permission.ACCESS_COARSE_LOCATION: allow
+- extendedWaitUntil:
+    visible: "${output.copy.running}"
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-action
+- assertVisible: "${output.copy.finishTitle}"
+- tapOn:
+    id: app-choice-button-1
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.completed}"
+    direction: UP
+    timeout: 60000
+- assertVisible: "${output.copy.completed}"
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: allow
+      android.permission.ACCESS_COARSE_LOCATION: allow
+- extendedWaitUntil:
+    visible: "${output.copy.completed}"
+    timeout: 45000
+- assertVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-action

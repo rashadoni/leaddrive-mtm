@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "testDate": "2026-10-22",
+  "timezone": "Asia/Baku",
+  "scope": "owned fictional tenant; actual phone; no raw coordinates in public evidence",
+  "privacyGate": {
+    "flow": "journeys/location-policy-off",
+    "exit": 0,
+    "apkVersionCode": 1016,
+    "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+    "flowSha256": "3f647a989f01689760a430d04b113ec4325c383cdad2495fec3ba7f5c85dd14a",
+    "tests": [
+      {
+        "name": "Employee cannot enable location collection without a published policy",
+        "seconds": "129.343",
+        "status": "PASS"
+      }
+    ]
+  },
+  "packageNetworkProbe": {
+    "status": "PASS",
+    "method": "Android package firewall; radios unchanged",
+    "writesAttendanceEvents": false,
+    "recoveryWatchdogArmed": true,
+    "firewallApplied": true,
+    "offlineAdmissionVisible": true,
+    "ordinaryMtmNetworkAllowed": true,
+    "radiosUnchanged": true,
+    "firewallRestored": true,
+    "radiosRestored": true,
+    "permissionsUnchanged": true
+  },
+  "testBranch": {
+    "status": "PASS",
+    "checkedAt": "2026-10-21T20:33:09.309962+00:00",
+    "fixtureVerified": true,
+    "branchName": "GPS test — 22.10.2026",
+    "radiusMeters": 100,
+    "branchCountBefore": 1,
+    "branchCountAfter": 2,
+    "existingBranchesUnchanged": true,
+    "coordinateSource": "latest non-mock Android location cache",
+    "referenceFixAgeSeconds": 357.5,
+    "referenceFixAccuracyMeters": 100.0,
+    "liveAppGpsMeasurement": "NOT_RUN",
+    "coordinates": "private; not published in evidence"
+  },
+  "userConfirmedTestNotice": true,
+  "attempts": [
+    {
+      "status": "FAIL",
+      "startedAt": "2026-10-21T20:35:30.998746+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "flowExit": 143,
+      "newEventTypes": [],
+      "priorEventsUnchanged": 24,
+      "requestsUnchanged": true,
+      "locationMarks": [],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": false,
+        "ACCESS_COARSE_LOCATION": false
+      },
+      "maestro": {
+        "flow": "journeys/location-finish",
+        "exit": 143,
+        "apkVersionCode": 1016,
+        "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+        "flowSha256": "d39ec3522ec0782ede39d5d3b4aceccb593661a65ebdfe612ec4f82f9abe34a9"
+      },
+      "failureType": "AssertionError",
+      "finishedAt": "2026-10-21T20:36:34.984306+00:00"
+    },
+    {
+      "status": "FAIL",
+      "startedAt": "2026-10-21T20:37:11.304601+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "flowExit": 1,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME"
+      ],
+      "priorEventsUnchanged": 24,
+      "requestsUnchanged": true,
+      "locationMarks": [],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": false,
+        "ACCESS_COARSE_LOCATION": false
+      },
+      "maestro": {
+        "flow": "journeys/location-finish",
+        "exit": 1,
+        "apkVersionCode": 1016,
+        "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+        "flowSha256": "4668c99b5d3d189bdf8d9a41be0817c8176abef62683106c3077dbcf10152a03",
+        "tests": [
+          {
+            "name": "Employee accepts the reviewed test policy and records a real foreground GPS finish",
+            "seconds": "138.613",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "finishedAt": "2026-10-21T20:40:35.331432+00:00"
+    },
+    {
+      "status": "FAIL",
+      "startedAt": "2026-10-21T20:41:34.551620+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "flowExit": 0,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 26,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "UNAVAILABLE",
+          "distanceMeters": null,
+          "branchName": null
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-running",
+        "exit": 0,
+        "apkVersionCode": 1016,
+        "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+        "flowSha256": "d0424a326cee4342e50652d42bfbbc02c352c3ad7a6c9c9e3b5e8630452309b2",
+        "tests": [
+          {
+            "name": "Finish an admitted running fixture day using the actual Android location permission",
+            "seconds": "34.986",
+            "status": "PASS"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "finishedAt": "2026-10-21T20:43:15.689145+00:00"
+    },
+    {
+      "status": "PASS",
+      "startedAt": "2026-10-21T20:44:42.536473+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 27,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "INSIDE",
+          "distanceMeters": 28,
+          "branchName": "GPS test — 22.10.2026"
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1016,
+        "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+        "flowSha256": "cee7ce0b18980b61c3bf9745074d3fb6d2ba3f0071dafa6b169a8b29fa1c916c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "56.305",
+            "status": "PASS"
+          }
+        ]
+      },
+      "finishedAt": "2026-10-21T20:46:43.984812+00:00"
+    }
+  ],
+  "firstPermissionFix": "CANDIDATE; physical confirmation on a new APK still required",
+  "physical24HourSoak": "NOT_RUN; awaiting corrected APK"
+}

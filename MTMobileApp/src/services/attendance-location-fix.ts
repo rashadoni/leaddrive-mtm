@@ -7,13 +7,19 @@ import type { AttendanceMark } from './attendance-location-contract'
  * unavailable rather than a fabricated non-mock fix.
  *
  * `mayAsk: false` for a field agent: their location is recorded with the app
- * closed, so Android's sheet may open only after the app's disclosure
- * (field-location-permission.ts), which this eight-second window cannot hold.
+ * closed, so Android's sheet may open only through the app's disclosure
+ * coordinator (field-location-permission.ts).
  * Without a grant their mark goes without a place; the workday's own GPS
  * start asks, after the disclosure. */
 export async function readAttendanceLocationFix(guard: () => void, options: { mayAsk?: boolean } = {}): Promise<AttendanceMark['location']> {
   let expired = false
   let timer: ReturnType<typeof setTimeout> | undefined
+  let finishTimeout!: (value: null) => void
+  const timeout = new Promise<null>(resolve => { finishTimeout = resolve })
+  const deadline = (milliseconds: number) => {
+    if (timer !== undefined) clearTimeout(timer)
+    timer = setTimeout(() => { expired = true; finishTimeout(null) }, milliseconds)
+  }
   const current = () => { guard(); if (expired) throw new Error('ATTENDANCE_LOCATION_TIMEOUT') }
   const read = async (): Promise<AttendanceMark['location']> => {
     current()
@@ -22,12 +28,16 @@ export async function readAttendanceLocationFix(guard: () => void, options: { ma
       const allowed = await PermissionsAndroid.check(permission); current()
       if (!allowed) {
         if (options.mayAsk === false) return null
+        // Reading/answering Android's sheet is not time spent acquiring GPS.
+        // Keep a separate bound so an abandoned sheet cannot hold a mark forever.
+        deadline(60_000)
         const answer = await PermissionsAndroid.request(permission); current()
         if (answer !== PermissionsAndroid.RESULTS.GRANTED) return null
       }
       Geolocation.setRNConfiguration({ skipPermissionRequests: true, locationProvider: 'android' })
     }
     current()
+    deadline(8_000)
     return new Promise(resolve => {
       Geolocation.getCurrentPosition(position => {
         try { current() } catch { resolve(null); return }
@@ -40,6 +50,7 @@ export async function readAttendanceLocationFix(guard: () => void, options: { ma
     })
   }
   try {
-    return await Promise.race([read().catch(() => null), new Promise<null>(resolve => { timer = setTimeout(() => { expired = true; resolve(null) }, 8_000) })])
-  } finally { expired = true; if (timer) clearTimeout(timer) }
+    deadline(8_000)
+    return await Promise.race([read().catch(() => null), timeout])
+  } finally { expired = true; if (timer !== undefined) clearTimeout(timer) }
 }

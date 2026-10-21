@@ -51,3 +51,41 @@ it('bounds a silent native bridge and discards a late fix', async () => {
   const pending = readAttendanceLocationFix(() => {}); await jest.advanceTimersByTimeAsync(8001)
   expect(await pending).toBeNull(); callback(point)
 })
+it('gives the employee time to answer the OS sheet before starting the GPS budget', async () => {
+  let grant!: (value: string) => void
+  let fix!: (value: typeof point) => void
+  ;(PermissionsAndroid.check as jest.Mock).mockResolvedValue(false)
+  ;(PermissionsAndroid.request as jest.Mock).mockImplementation(() => new Promise(resolve => { grant = resolve }))
+  ;(Geolocation.getCurrentPosition as jest.Mock).mockImplementation(done => { fix = done })
+  const pending = readAttendanceLocationFix(() => {})
+  let settled = false; void pending.then(() => { settled = true })
+  await jest.advanceTimersByTimeAsync(12000)
+  expect(settled).toBe(false)
+  expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
+  grant(PermissionsAndroid.RESULTS.GRANTED)
+  await jest.advanceTimersByTimeAsync(6000)
+  expect(settled).toBe(false)
+  fix(point)
+  expect(await pending).toMatchObject({ latitude: 40, longitude: 49, isMock: false })
+})
+it('bounds an unanswered OS sheet separately and ignores a late permission grant', async () => {
+  let grant!: (value: string) => void
+  ;(PermissionsAndroid.check as jest.Mock).mockResolvedValue(false)
+  ;(PermissionsAndroid.request as jest.Mock).mockImplementation(() => new Promise(resolve => { grant = resolve }))
+  const pending = readAttendanceLocationFix(() => {})
+  await jest.advanceTimersByTimeAsync(60001)
+  expect(await pending).toBeNull()
+  grant(PermissionsAndroid.RESULTS.GRANTED)
+  await jest.advanceTimersByTimeAsync(0)
+  expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
+})
+it('does not collect after consent or account access changes while the OS sheet is open', async () => {
+  let allowed = true, grant!: (value: string) => void
+  ;(PermissionsAndroid.check as jest.Mock).mockResolvedValue(false)
+  ;(PermissionsAndroid.request as jest.Mock).mockImplementation(() => new Promise(resolve => { grant = resolve }))
+  const pending = readAttendanceLocationFix(() => { if (!allowed) throw new Error('revoked') })
+  await jest.advanceTimersByTimeAsync(1000)
+  allowed = false; grant(PermissionsAndroid.RESULTS.GRANTED)
+  expect(await pending).toBeNull()
+  expect(Geolocation.getCurrentPosition).not.toHaveBeenCalled()
+})

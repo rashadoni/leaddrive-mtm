@@ -1,0 +1,65 @@
+appId: com.leaddrive.attendance
+name: Employee accepts the reviewed test policy and records a real foreground GPS finish
+# Explicit physical write journey. The host must verify the owned fixture,
+# reviewed policy, current closed day and empty queue, then independently check
+# the HR location receipt. A completed UI flow alone does not prove GPS INSIDE.
+---
+- runScript: ../shared/labels.js
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 45000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "Fictional office employee"
+- assertVisible: ${output.copy.completed}
+- assertNotVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-offline
+- scrollUntilVisible:
+    element:
+      id: attendance-consent-refresh
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-consent-refresh
+- scrollUntilVisible:
+    element:
+      id: attendance-consent-disclosure
+    direction: UP
+    timeout: 60000
+- tapOn:
+    id: attendance-consent-disclosure
+- scrollUntilVisible:
+    element:
+      id: attendance-consent-check
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-consent-check
+- scrollUntilVisible:
+    element:
+      id: attendance-consent-accept
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-consent-accept
+- extendedWaitUntil:
+    visible:
+      id: attendance-consent-revoke
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: office-workday-return
+    direction: UP
+    timeout: 60000
+- tapOn:
+    id: office-workday-return
+- runFlow: location-finish-running.yaml
