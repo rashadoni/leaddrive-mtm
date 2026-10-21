@@ -144,13 +144,13 @@
   "installedIdentity": {
     "package": "com.leaddrive.attendance",
     "version": "1.0.0",
-    "versionCode": "1004",
+    "versionCode": "1007",
     "mtmVersion": "3.11.49",
     "mtmVersionCode": "1710",
     "separateAndroidUid": true,
     "backgroundLocationPermissionPresent": false,
-    "sourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
-    "apkSha256": "92725d779703771513f32d88aafeee12889b502f384cb3381f69de902682487c"
+    "sourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+    "apkSha256": "4f245e69546de884461391124943e8e953fee9625701cc90efafb32ec0222040"
   },
   "pending": [
     "employee smoke after backend explanations fix",
@@ -170,5 +170,18 @@
     "matchingInboxNotices": 1,
     "historicalRequestsUnchanged": 8,
     "phoneObservation": "PASS through guarded UI inspection and screenshot; Maestro retry awaits updated APK"
-  }
+  },
+  "installationHistory": [
+    {
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": "1004",
+      "mtmVersion": "3.11.49",
+      "mtmVersionCode": "1710",
+      "separateAndroidUid": true,
+      "backgroundLocationPermissionPresent": false,
+      "sourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkSha256": "92725d779703771513f32d88aafeee12889b502f384cb3381f69de902682487c"
+    }
+  ]
 }
