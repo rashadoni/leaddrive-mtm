@@ -155,6 +155,8 @@ export const DEFAULT_MOBILE_ROUTE_TARGET_TYPES: MobileRouteTargetType[] = [
 ]
 
 export interface BootstrapData {
+  /** Local provisional capture only; never taken from a server payload. */
+  attendanceOffline?: import('./attendance-offline-policy').AttendanceOffline
   tenant: { id: string; name: string; slug: string } | null
   principal: { id: string; name: string; email: string; role: string } | null
   capabilities: MobileCapability[]

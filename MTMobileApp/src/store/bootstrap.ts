@@ -1,6 +1,8 @@
 import { create } from "zustand"
 import { api } from "../services/api"
 import { getOfflineScope } from "../services/offline-scope"
+import { forgetAttendanceOffline, rememberAttendanceOnline, restoreAttendanceOffline } from '../services/attendance-offline'
+import { useSyncStatusStore } from './sync-status'
 let bootstrapGeneration = 0
 import {
   toBootstrap,
@@ -56,6 +58,7 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
     const current = () => generation === bootstrapGeneration && scope === getOfflineScope()
     set({ loading: true })
     try {
+      if (useSyncStatusStore.getState().online === false) throw new Error('NETWORK_OFFLINE')
       const res = await bootstrapWithStoredServer()
       if (!current()) return "unavailable"
       if (res?.success && res.data) {
@@ -66,6 +69,8 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
           routeFieldAccess: data.routeFieldAccess,
           loading: false,
         })
+        await rememberAttendanceOnline(data, scope, current)
+        if (!current()) return 'unavailable'
         // Retired HRM routes remain closed. New own attendance requests
         // require their explicit permission and use a separate API. The app
         // reconciles the server-owned workday as its own minimal Route
@@ -74,16 +79,21 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
         return data.routeFieldAccess
       } else {
         set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable" })
+        await forgetAttendanceOffline().catch(() => {})
         return "unavailable"
       }
     } catch (error) {
       if (!current()) return "unavailable"
       // A request that never got an answer says nothing about entitlement.
       const access = isTransportFailure(error as { status?: number; message?: string }) ? "offline" : "unavailable"
-      set({ data: null, capabilities: [], loading: false, routeFieldAccess: access })
+      const data = access === 'offline' ? await restoreAttendanceOffline(scope, current) : null
+      if (!current()) return 'unavailable'
+      if (access !== 'offline') await forgetAttendanceOffline().catch(() => {})
+      if (!current()) return 'unavailable'
+      set({ data, capabilities: [], loading: false, routeFieldAccess: access })
       return access
     }
   },
 
-  clear: () => { bootstrapGeneration += 1; set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false }) },
+  clear: () => { bootstrapGeneration += 1; void forgetAttendanceOffline().catch(() => {}); set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false }) },
 }))

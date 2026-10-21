@@ -1,6 +1,7 @@
 jest.mock("@react-native-async-storage/async-storage", () => require("@react-native-async-storage/async-storage/jest/async-storage-mock"))
 jest.mock("../../src/services/sentry", () => ({ setAgentContext: jest.fn(), clearAgentContext: jest.fn() }))
 jest.mock("../../src/services/field-device-id", () => ({ getFieldDeviceId: jest.fn().mockResolvedValue("rf-fictional-device") }))
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { api } from "../../src/services/api"
 import { getFieldDeviceId } from "../../src/services/field-device-id"
 import { attendanceUuid, type AttendanceInput } from "../../src/services/attendance-contract"
@@ -121,4 +122,20 @@ it('does not transform an idempotency mismatch into an uncommitted request',asyn
   global.fetch=jest.fn().mockResolvedValue({status:409,ok:false,json:async()=>({code:'MTM_ATTENDANCE_INSTALLATION_IDEMPOTENCY_MISMATCH',data:{committed:false}})})
   const result=await api.requestAttendanceInstallation({requestId:attendanceUuid()},()=>{}).catch(error=>error)
   expect(result.committed).toBeUndefined()
+})
+
+it('binds offline snapshots to this server and login, keeping restoration stable but rotating on a new login', async () => {
+  const storage = AsyncStorage
+  await storage.setItem('@mtm_server', 'fictional.invalid')
+  await storage.removeItem('@mtm_attendance_login_v1')
+  expect(await api.getAttendanceOfflineContext()).toBeNull()
+  const first = await api.getAttendanceOfflineContext(true)
+  expect(first?.server).toBe('fictional.invalid')
+  expect(await api.getAttendanceOfflineContext()).toEqual(first)
+  const internal = api as unknown as { acceptSession: (value: unknown) => Promise<void> }
+  await internal.acceptSession({ data: { token: 'new-fictional-token', agent: { id: 'office', organizationId: 'fictional', role: 'EMPLOYEE' } } })
+  expect((await api.getAttendanceOfflineContext())?.session).not.toBe(first?.session)
+  await api.logout()
+  expect(await api.getAttendanceOfflineContext()).toBeNull()
+  expect(await storage.getItem('@mtm_attendance_login_v1')).toBeNull()
 })

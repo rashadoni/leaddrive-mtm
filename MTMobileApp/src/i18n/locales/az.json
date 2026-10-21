@@ -1206,7 +1206,7 @@
     "resume": "Günə davam et",
     "closeHint": "İşi bitirəndə günü tamamlayın. Bağlanmamış gün açıq qalacaq.",
     "noTracking": "Bu iş günündə məkanın fasiləsiz izlənməsi istifadə edilmir.",
-    "pendingHint": "Qeyd telefonda saxlanılıb. Serverlə əlaqə qurulduqdan sonra vəziyyəti təsdiqlənəcək.",
+    "pendingHint": "Telefonda saxlanılıb · göndərilməni gözləyir. Kadrlar şöbəsi qeydləri bağlantı bərpa olunandan sonra görəcək.",
     "conflict": "Server qeydi qəbul etmədi. Məlumatı yeniləyib günü yoxlayın; lazım olsa düzəliş müraciəti göndərin.",
     "failed": "Günün vəziyyətini təsdiqləmək olmadı. Saxlanmış qeydlər telefonda qalır. Yeniləmək üçün ekranı aşağı çəkin.",
     "unavailable": "İş vaxtı uçotu hazırda əlçatan deyil. Girişi yeniləyin və ya inzibatçı ilə əlaqə saxlayın.",
@@ -1220,7 +1220,9 @@
     "markRead": "Oxunmuş qeyd et",
     "read": "Oxunub",
     "unread": "Yeni",
-    "saving": "Saxlanılır…"
+    "saving": "Saxlanılır…",
+    "offlineHint": "Bağlantı yoxdur. Son giriş yoxlamasından sonra 24 saat ərzində iş gününü qeyd edə bilərsiniz. Qeydlər telefonda göndərilməni gözləyir.",
+    "dependentConflict": "Bu iş gününün sonrakı qeydləri növbədədir. Onlar yoxlama üçün saxlanılır: vaxt düzəlişi müraciəti göndərin və ya kadrlar şöbəsinə müraciət edin."
   },
   "attendanceInstallation": {
     "title": "Tətbiq quraşdırmasının təsdiqi",

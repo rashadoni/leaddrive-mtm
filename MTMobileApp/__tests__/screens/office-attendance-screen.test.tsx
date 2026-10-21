@@ -89,10 +89,11 @@ it.each(["ru","az","en"])("renders actual %s office day and sends the canonical 
   capture(tree, `workday-${language}`)
   await press(tree,"office-workday-action"); expect(changeAttendanceWorkday).toHaveBeenCalledWith("start")
 })
-it("does not allow a pending start to masquerade as confirmed or queue another action", async () => {
+it("keeps a pending start visibly provisional while allowing the next shift action", async () => {
   mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-13T08:00:00Z", syncState: "START_PENDING" }
-  const tree = await render(AttendanceWorkdayScreen); expect(node(tree,"office-workday-pending")).toBeDefined(); expect(node(tree,"office-workday-action").props.disabled).toBe(true)
-  await press(tree,"office-workday-action"); expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+  const tree = await render(AttendanceWorkdayScreen); expect(node(tree,"office-workday-pending")).toBeDefined(); expect(node(tree,"office-workday-action").props.disabled).toBe(false)
+  await press(tree,"office-workday-break"); expect(changeAttendanceWorkday).toHaveBeenCalledWith("pause")
+  await press(tree,"office-workday-action"); expect(changeAttendanceWorkday).toHaveBeenCalledWith("end")
 })
 it("uses pause/resume and requires an explicit finish confirmation", async () => {
   mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-13T08:00:00Z", syncState: "CONFIRMED" }

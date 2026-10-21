@@ -86,3 +86,68 @@ it("rejects a scope change while persisting START before the new account can rec
   await expect(useWorkdayStore.getState().start(scope, () => guardOfficeAttendance(scope))).rejects.toThrow()
   expect(await allOutboxOperations()).toEqual([])
 })
+
+it("records an entire disconnected shift, reconstructs after a lost UI snapshot and drains one event at a time", async () => {
+  const store = useWorkdayStore.getState()
+  data.attendanceOffline = { verifiedAt: Date.now(), lastSeenAt: Date.now(), validUntil: Date.now() + 86400000, installation: null, location: null }
+  // Use one timestamp for the exact policy duration.
+  data.attendanceOffline.validUntil = data.attendanceOffline.verifiedAt + 86400000
+  await store.start(scope, () => guardOfficeAttendance(scope))
+  await store.pause(scope, () => guardOfficeAttendance(scope))
+  await store.resume(scope, () => guardOfficeAttendance(scope))
+  await store.end(scope, () => guardOfficeAttendance(scope))
+  const original = await allOutboxOperations()
+  expect(original.map(row => row.data.action)).toEqual(['START', 'PAUSE', 'RESUME', 'FINISH'])
+  await runMobileSync(); expect(api.syncPush).not.toHaveBeenCalled()
+  // Crash after durable enqueue but before saving the separate view projection.
+  await AsyncStorage.removeItem('@mtm_active_workday_v1')
+  useWorkdayStore.setState({ activeWorkday: null, hydrated: false })
+  await store.hydrate(); await store.reconcileFromServer(scope, null, () => guardOfficeAttendance(scope))
+  expect(useWorkdayStore.getState().activeWorkday).toMatchObject({ workdayId: original[0].data.id, syncState: 'FINISH_PENDING' })
+  await store.start(scope, () => guardOfficeAttendance(scope)); await store.end(scope, () => guardOfficeAttendance(scope))
+  expect(await allOutboxOperations()).toEqual(original)
+  delete data.attendanceOffline
+  expect((await runMobileSync()).sent).toBe(4)
+  expect((api.syncPush as jest.Mock).mock.calls.map(call => call[0].length)).toEqual([1, 1, 1, 1])
+  expect((api.syncPush as jest.Mock).mock.calls.map(call => call[0][0].operationId)).toEqual(original.map(row => row.operationId))
+  expect((api.syncPush as jest.Mock).mock.calls.map(call => call[0][0].data)).toEqual(original.map(row => row.data))
+  expect(await allOutboxOperations()).toEqual([])
+})
+it("a lost START response blocks dependent events until exact replay, then sends each just once", async () => {
+  jest.useFakeTimers(); jest.setSystemTime(new Date('2026-10-21T08:00:00Z'))
+  try {
+    const store = useWorkdayStore.getState()
+    await store.start(scope, () => guardOfficeAttendance(scope)); await store.pause(scope, () => guardOfficeAttendance(scope))
+    await store.resume(scope, () => guardOfficeAttendance(scope)); await store.end(scope, () => guardOfficeAttendance(scope))
+    const original = await allOutboxOperations(), accepted = new Set<string>()
+    let loseReply = true
+    ;(api.syncPush as jest.Mock).mockImplementation(async operations => {
+      expect(operations).toHaveLength(1); const op = operations[0]
+      accepted.add(op.operationId)
+      if (loseReply) { loseReply = false; throw new Error('accepted, response lost') }
+      return { results: [{ operationId: op.operationId, status: 'ok' }] }
+    })
+    expect((await runMobileSync()).deferred).toBe(4)
+    expect(api.syncPush).toHaveBeenCalledTimes(1)
+    await runMobileSync(); expect(api.syncPush).toHaveBeenCalledTimes(1)
+    expect((await allOutboxOperations()).map(row => row.data)).toEqual(original.map(row => row.data))
+    jest.setSystemTime(Date.now() + 120000)
+    expect((await runMobileSync()).sent).toBe(4)
+    expect(accepted.size).toBe(4)
+    expect((api.syncPush as jest.Mock).mock.calls.map(call => call[0][0].data.action)).toEqual(['START', 'START', 'PAUSE', 'RESUME', 'FINISH'])
+    expect(await allOutboxOperations()).toEqual([])
+  } finally { jest.useRealTimers() }
+})
+it("retains the full claimed sequence and stops after a rejected predecessor", async () => {
+  const store = useWorkdayStore.getState()
+  await store.start(scope, () => guardOfficeAttendance(scope)); await store.pause(scope, () => guardOfficeAttendance(scope))
+  await store.resume(scope, () => guardOfficeAttendance(scope)); await store.end(scope, () => guardOfficeAttendance(scope))
+  const original = await allOutboxOperations()
+  ;(api.syncPush as jest.Mock).mockImplementation(async operations => ({ results: [{ operationId: operations[0].operationId, status: 'conflict', error: 'MTM_WORKDAY_ALREADY_EXISTS' }] }))
+  expect((await runMobileSync()).conflicted).toBe(1); expect(api.syncPush).toHaveBeenCalledTimes(1)
+  await runMobileSync(); expect(api.syncPush).toHaveBeenCalledTimes(1)
+  await store.reconcileFromServer(scope, null, () => guardOfficeAttendance(scope))
+  expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe('FINISH_PENDING')
+  expect((await allOutboxOperations()).map(row => row.data)).toEqual(original.map(row => row.data))
+  await expect(store.start(scope, () => guardOfficeAttendance(scope))).rejects.toThrow('ATTENDANCE_QUEUE_CONFLICT')
+})

@@ -1,0 +1,90 @@
+appId: com.leaddrive.attendance
+name: Entire offline shift survives process restarts and stays provisional
+# Explicit write journey: the harness verifies a fresh owned fixture workdate,
+# captures the server baseline, disables/restores radios, and verifies replay.
+# This flow never sets device time or supplies a QR token.
+---
+- runScript: ../shared/labels.js
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 45000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "Fictional office employee"
+- assertVisible:
+    id: office-workday-offline
+- assertNotVisible:
+    id: office-workday-pending
+- assertVisible: "${output.copy.notStarted}"
+- tapOn:
+    id: office-workday-action
+- assertVisible:
+    id: office-workday-pending
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: office-workday-pending
+    timeout: 45000
+- tapOn:
+    id: office-workday-break
+- assertVisible: "${output.copy.paused}"
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: office-workday-pending
+    timeout: 45000
+- tapOn:
+    id: office-workday-break
+- assertVisible: "${output.copy.running}"
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: office-workday-pending
+    timeout: 45000
+- tapOn:
+    id: office-workday-action
+- assertVisible: "${output.copy.finishTitle}"
+- tapOn:
+    id: app-choice-button-1
+- assertVisible: "${output.copy.completed}"
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible: "${output.copy.completed}"
+    timeout: 45000
+- assertVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-action
+- assertNotVisible:
+    id: office-workday-break

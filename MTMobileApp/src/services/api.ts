@@ -66,6 +66,12 @@ async function readJsonBody(res: Response): Promise<any> {
 }
 
 class ApiClient {
+  private attendanceContextWrites: Promise<unknown> = Promise.resolve()
+  private mutateAttendanceContext<T>(write: () => Promise<T>): Promise<T> {
+    const next = this.attendanceContextWrites.then(write)
+    this.attendanceContextWrites = next.catch(() => {})
+    return next
+  }
   private token: string | null = null
   private agentId: string | null = null
   /**
@@ -577,6 +583,12 @@ class ApiClient {
     this._agentCode = data.data.agent?.code || null
     await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
     await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
+    // A restored login retains this nonce; every new login gets a new one.
+    // It is an identity binding, never a credential or offline entitlement.
+    const loginToken = data.data.token
+    await this.mutateAttendanceContext(async () => {
+      if (this.token === loginToken) await AsyncStorage.setItem('@mtm_attendance_login_v1', `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    })
     // M1-3: surface agent identity to Sentry so field crashes can be
     // filtered per-rep and per-org. Org id isn't returned by login
     // (it's bound on the server side via subdomain), so we attach
@@ -591,6 +603,9 @@ class ApiClient {
     this._agentName = null
     this._agentCode = null
     await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT])
+    await this.mutateAttendanceContext(async () => {
+      if (!this.token) await AsyncStorage.removeItem('@mtm_attendance_login_v1')
+    })
     // M1-3: wipe Sentry scope so anonymous post-logout traces aren't
     // misattributed to the previous user.
     clearAgentContext()
@@ -622,6 +637,20 @@ class ApiClient {
 
   async getBootstrap(signal?: AbortSignal) {
     return this.request("/mobile/bootstrap", { signal })
+  }
+
+  async getAttendanceOfflineContext(create = false): Promise<{ server: string; session: string } | null> {
+    const token = this.token
+    if (!token) return null
+    return this.mutateAttendanceContext(async () => {
+      const server = await this.getStoredServer()
+      let session = await AsyncStorage.getItem('@mtm_attendance_login_v1')
+      if (!session && create && this.token === token) {
+        session = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        await AsyncStorage.setItem('@mtm_attendance_login_v1', session)
+      }
+      return server && session && this.token === token ? { server, session } : null
+    })
   }
 
   // --- Profile ---

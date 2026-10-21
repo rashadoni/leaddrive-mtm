@@ -1206,7 +1206,7 @@
     "resume": "Resume day",
     "closeHint": "Finish the day when you stop working. An unfinished day stays open.",
     "noTracking": "This workday does not use continuous location tracking.",
-    "pendingHint": "The event is saved on this phone. Its status will be confirmed after reconnecting.",
+    "pendingHint": "Saved on this phone · waiting to send. HR will see the entries after reconnection.",
     "conflict": "The server did not accept the event. Refresh and check the day; submit a correction request if needed.",
     "failed": "The day could not be confirmed. Saved events remain on this phone. Pull down to refresh.",
     "unavailable": "Attendance is currently unavailable. Refresh access or contact your administrator.",
@@ -1220,7 +1220,9 @@
     "markRead": "Mark as read",
     "read": "Read",
     "unread": "New",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "offlineHint": "No connection. You can record your shift for 24 hours after the last access check. Entries are waiting on this phone.",
+    "dependentConflict": "Later entries for this shift are waiting. They are preserved for review: request a time correction or contact HR."
   },
   "attendanceInstallation": {
     "title": "App installation approval",
