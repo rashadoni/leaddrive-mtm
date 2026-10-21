@@ -1,0 +1,19 @@
+appId: com.leaddrive.attendance
+name: Previously authenticated employee retains workday access after offline cold start
+# Run only through a host harness that restores the exact Wi-Fi/mobile-data state.
+# Current build is expected to fail: bootstrap clears all admission on transport failure.
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 30000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "Fictional office employee"
+- assertNotVisible:
+    id: office-workday-unavailable
+- assertNotVisible:
+    id: login-email

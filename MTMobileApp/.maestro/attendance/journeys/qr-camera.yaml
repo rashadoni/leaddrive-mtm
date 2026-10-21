@@ -1,0 +1,43 @@
+appId: com.leaddrive.attendance
+name: QR camera opens only after explicit permission and closes when backgrounded
+# Fictional tenant QR policy ON, active/fresh day, installation permitted.
+# This exercises the actual camera UI; it does not claim optical decoding or a verified mark.
+---
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible:
+    id: office-workday-qr
+- assertVisible: ${output.device.scan}
+- tapOn:
+    id: office-workday-qr
+- scrollUntilVisible:
+    element:
+      id: attendance-qr-permission
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-qr-permission
+- extendedWaitUntil:
+    visible:
+      id: ".*:id/permission_allow_foreground_only_button"
+    timeout: 15000
+- tapOn:
+    id: ".*:id/permission_allow_foreground_only_button"
+- scrollUntilVisible:
+    element:
+      id: attendance-qr-camera
+    direction: DOWN
+    visibilityPercentage: 10
+    timeout: 60000
+- assertNotVisible:
+    id: attendance-qr-confirm
+- pressKey: Home
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 30000
+- assertNotVisible:
+    id: attendance-qr-camera
+- assertNotVisible:
+    id: attendance-qr-confirm

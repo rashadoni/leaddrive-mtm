@@ -158,21 +158,109 @@
       "exactlyOneNewServerRequest": true,
       "previousRequestsUnchanged": 9,
       "fullCorrectedFlow": true
+    },
+    {
+      "label": "employee-smoke-post-release-1007",
+      "flow": "smoke/employee",
+      "exit": 0,
+      "apkVersionCode": 1007,
+      "sourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "tests": [
+        {
+          "name": "Employee reads only own attendance and survives a restart",
+          "seconds": "137.761",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "offline-access-airplane-1007",
+      "flow": "journeys/offline-access",
+      "exit": 1,
+      "apkVersionCode": 1007,
+      "sourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "tests": [
+        {
+          "name": "Previously authenticated employee retains workday access after offline cold start",
+          "seconds": "78.722",
+          "status": "FAIL"
+        }
+      ]
+    },
+    {
+      "label": "installation-request-1009",
+      "flow": "journeys/installation-request",
+      "exit": 1,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee requests approval for this installation without creating a time mark",
+          "seconds": "144.928",
+          "status": "FAIL"
+        }
+      ],
+      "reason": "App locale AZ, flow expected RU; no request was submitted"
+    },
+    {
+      "label": "installation-request-az-1009",
+      "flow": "journeys/installation-request",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee requests approval for this installation without creating a time mark",
+          "seconds": "81.743",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "installation-approved-1009",
+      "flow": "journeys/installation-decision",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee sees the actual HR installation decision",
+          "seconds": "64.718",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "installation-revoked-1009",
+      "flow": "journeys/installation-decision",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee sees the actual HR installation decision",
+          "seconds": "75.05",
+          "status": "PASS"
+        }
+      ]
     }
   ],
   "installedIdentity": {
     "package": "com.leaddrive.attendance",
     "version": "1.0.0",
-    "versionCode": "1007",
+    "versionCode": 1009,
     "mtmVersion": "3.11.49",
     "mtmVersionCode": "1710",
     "separateAndroidUid": true,
     "backgroundLocationPermissionPresent": false,
-    "sourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
-    "apkSha256": "4f245e69546de884461391124943e8e953fee9625701cc90efafb32ec0222040"
+    "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+    "apkSha256": "e3ff29d677c3d9e5b65de365b76afe113e4afd5704b76dabb6624e5d0c6b5719"
   },
   "pending": [
-    "strict employee smoke after authorized server rollout"
+    "QR visibility on new APK and camera exercise",
+    "Physical installation request and HR decision",
+    "Physical GPS: no reviewed location policy in fictional tenant",
+    "Full offline shift: blocked by missing offline admission"
   ],
   "credentials": "Not included",
   "deviceSerial": "Not included",
@@ -199,6 +287,62 @@
       "backgroundLocationPermissionPresent": false,
       "sourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
       "apkSha256": "92725d779703771513f32d88aafeee12889b502f384cb3381f69de902682487c"
+    },
+    {
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "versionCode": 1009,
+      "apkSha256": "e3ff29d677c3d9e5b65de365b76afe113e4afd5704b76dabb6624e5d0c6b5719",
+      "separateAndroidUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
     }
-  ]
+  ],
+  "serverRelease": {
+    "artifactSha": "19b27dcccdfad3e311d5f231c31ea9caebe02d47",
+    "deploymentRunId": 39573591774,
+    "status": "PASS",
+    "authenticatedExplanations": "PASS",
+    "physicalEmployeeSmoke": "PASS",
+    "historicalRequestsUnchanged": 10
+  },
+  "offlineColdStart": {
+    "status": "FAIL",
+    "workdayTabVisible": false,
+    "networkSettingsRestored": true,
+    "onlineRecovery": "PASS",
+    "historicalDataUnchanged": true,
+    "fullOfflineShift": "NOT_RUN: admission unavailable after offline cold start"
+  },
+  "qrVisibilityBuild": {
+    "status": "PASS",
+    "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+    "standaloneRunId": 39578059050,
+    "ordinaryMtmRunId": 39578065585,
+    "ciRunId": 39578065878,
+    "jestSuites": 271,
+    "jestPassed": 2362,
+    "jestTodo": 1,
+    "targetedScreenTests": 41,
+    "fullTypecheck": "PASS"
+  },
+  "securityContractChecks": {
+    "status": "PASS",
+    "runner": "Vitest",
+    "tests": 46,
+    "files": 3,
+    "physicalLocation": "NOT_RUN: no reviewed location policy in owned fixture",
+    "hardwareAttestation": "NOT_IMPLEMENTED: installation ID approval only"
+  },
+  "installationApproval": {
+    "physicalRequest": "PASS",
+    "hrDecision": "PASS",
+    "hrTransport": "browser-ui",
+    "phoneApprovalObservation": "PASS",
+    "scope": "Owned fictional office account plus this installation",
+    "hardwareAttestation": false,
+    "onePhonePerEmployeeEnforced": false,
+    "hrRevoke": "PASS",
+    "phoneRevocationObservation": "PASS",
+    "originalRuleRestored": true
+  }
 }

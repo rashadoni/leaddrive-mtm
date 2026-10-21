@@ -1,0 +1,11 @@
+appId: com.leaddrive.attendance
+name: QR action stays visible when the company has not enabled scanning
+---
+- runFlow: ../shared/open-fixture-preserving-permissions.yaml
+- assertVisible:
+    id: office-workday-qr
+- assertVisible: ${output.device.scan}
+- assertVisible:
+    id: office-workday-qr-reason
+- assertNotVisible:
+    id: attendance-qr-camera

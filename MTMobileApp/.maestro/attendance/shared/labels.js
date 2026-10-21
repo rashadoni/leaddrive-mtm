@@ -62,3 +62,29 @@ function escapeSelector(value) {
 }
 Object.keys(output.copy).forEach(function(key) { output.copy[key] = escapeSelector(output.copy[key]); });
 Object.keys(output.login).forEach(function(key) { output.login[key] = escapeSelector(output.login[key]); });
+
+var deviceCopy = {
+  "az": {
+    "request": "İcazə istə",
+    "PENDING": "Qərar gözlənilir",
+    "APPROVED": "Quraşdırma təsdiqlənib",
+    "REVOKED": "İcazə geri götürülüb",
+    "scan": "QR kodu skan et"
+  },
+  "ru": {
+    "request": "Запросить разрешение",
+    "PENDING": "Ждём решения",
+    "APPROVED": "Установка подтверждена",
+    "REVOKED": "Разрешение отозвано",
+    "scan": "Сканировать QR"
+  },
+  "en": {
+    "request": "Request approval",
+    "PENDING": "Awaiting a decision",
+    "APPROVED": "Installation approved",
+    "REVOKED": "Approval withdrawn",
+    "scan": "Scan QR code"
+  }
+};
+output.device = deviceCopy[LOCALE];
+Object.keys(output.device).forEach(function(key) { output.device[key] = escapeSelector(output.device[key]); });
