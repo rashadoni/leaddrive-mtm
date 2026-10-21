@@ -5,6 +5,7 @@ name: Entire offline shift survives process restarts and stays provisional
 # This flow never sets device time or supplies a QR token.
 ---
 - runScript: ../shared/labels.js
+- runScript: ../shared/offline-fixture.js
 - launchApp:
     clearState: false
     permissions:
@@ -17,7 +18,7 @@ name: Entire offline shift survives process restarts and stays provisional
     timeout: 45000
 - tapOn:
     id: time-tab-OwnWorkday
-- assertVisible: "Fictional office employee"
+- assertVisible: "${output.offlineFixtureName}"
 - assertVisible:
     id: office-workday-offline
 - assertNotVisible:

@@ -328,6 +328,14 @@
       "exitCode": 0,
       "status": "PASS",
       "elapsedSeconds": 64.56
+    },
+    {
+      "flow": "journeys/offline-shift.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "status": "NOT_RUN",
+      "cause": "Fresh-day preflight: both owned office principals already have a completed current day in Asia/Baku. No clocks, timezone, roles or history changed.",
+      "preflightEvidence": "docs/evidence/attendance-fresh-day-preflight-20261021.json"
     }
   ],
   "installedIdentity": {
