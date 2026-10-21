@@ -32,6 +32,7 @@ import { useBootstrapStore } from "../../store/bootstrap"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import NotificationBell from "../../components/NotificationBell"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
+import GuideSpot from "../../components/guide/GuideSpot"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
@@ -314,6 +315,7 @@ export default function ManagerPlanningCalendarScreen() {
     >
       <Icon name="add-circle" size={21} color={fieldTheme.color.onColor} />
       <Text style={styles.createButtonText}>{copy.create}</Text>
+      <GuideSpot id="planning.create" />
     </Pressable>
   )
 

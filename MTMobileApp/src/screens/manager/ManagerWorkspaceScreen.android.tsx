@@ -14,6 +14,7 @@ import NotesModal from "../../components/NotesModal"
 import FeedbackToast from "../../components/FeedbackToast"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
+import GuideSpot from "../../components/guide/GuideSpot"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useNavigation } from "@react-navigation/native"
@@ -301,6 +302,16 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
     reason: item.reason,
   }))
   const approvalsTotal = (approvals?.total ?? 0) + draftItems.length + doctorItems.length + attendanceItems.length
+  // The first-run guide points at the first card of the first queue on screen.
+  const guideQueue = ([
+    ["drafts", draftItems.length],
+    ["doctors", doctorItems.length],
+    ["attendance", attendanceItems.length],
+    ["hrm", approvals?.hrm.length ?? 0],
+    ["routeChanges", approvals?.routeChanges.length ?? 0],
+    ["customers", approvals?.customers.length ?? 0],
+    ["contactChanges", approvals?.contactChanges.length ?? 0],
+  ] as const).find(([, count]) => count > 0)?.[0] ?? null
 
   // «Bu gün» (owner-approved mockup, 2026-10-17): four live numbers where a
   // memo of the tab bar and «share my location» stood. A tile opens the tab
@@ -412,6 +423,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
               >
                 <Icon name="chatbox-outline" size={21} color={fieldTheme.color.primaryStrong} />
                 <Text style={styles.writeTeamText} numberOfLines={2}>{t("managerShell.writeTeam")}</Text>
+                <GuideSpot id="team.write" />
               </Pressable>
               {shellTabs.includes("Planning") ? (
                 <Pressable
@@ -487,6 +499,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
           approvalsTotal > 0 ? (
             <View style={styles.itemList}>
               <ApprovalSection
+                spot={guideQueue === "drafts"}
                 title={t("managerShell.approvalsRouteDrafts")}
                 items={draftItems}
                 t={t}
@@ -495,6 +508,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 onApprove={(id) => { const draft = routeDrafts.find((item) => item.id === id); if (draft) void publishDraft(draft) }}
               />
               <ApprovalSection
+                spot={guideQueue === "doctors"}
                 title={t("managerShell.approvalsDoctors")}
                 items={doctorItems}
                 t={t}
@@ -503,6 +517,7 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
                 onReject={(id) => setRejectTarget({ kind: "doctorRequest", id })}
               />
               <ApprovalSection
+                spot={guideQueue === "attendance"}
                 title={t("managerShell.approvalsAttendance")}
                 items={attendanceItems}
                 t={t}
@@ -512,15 +527,16 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
               />
               {approvals ? (
                 <>
-              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide("hrm", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "hrm", id })} />
-              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} busyId={busyId} onApprove={(id) => decide("routeChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "routeChange", id })} />
-              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} busyId={busyId} onApprove={(id) => decide("customer", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "customer", id })} />
-              <ApprovalSection title={t("managerShell.approvalsContactChanges")} items={approvals.contactChanges} t={t} busyId={busyId} onApprove={(id) => decide("contactChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "contactChange", id })} />
+              <ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm} t={t} busyId={busyId} onApprove={(id) => decide("hrm", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "hrm", id })} spot={guideQueue === "hrm"} />
+              <ApprovalSection title={t("managerShell.approvalsRouteChanges")} items={approvals.routeChanges} t={t} busyId={busyId} onApprove={(id) => decide("routeChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "routeChange", id })} spot={guideQueue === "routeChanges"} />
+              <ApprovalSection title={t("managerShell.approvalsCustomers")} items={approvals.customers} t={t} busyId={busyId} onApprove={(id) => decide("customer", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "customer", id })} spot={guideQueue === "customers"} />
+              <ApprovalSection title={t("managerShell.approvalsContactChanges")} items={approvals.contactChanges} t={t} busyId={busyId} onApprove={(id) => decide("contactChange", id, "APPROVED")} onReject={(id) => setRejectTarget({ kind: "contactChange", id })} spot={guideQueue === "contactChanges"} />
                 </>
               ) : null}
             </View>
           ) : (
             <StatusPanel
+              spot="approvals.first"
               icon={loadError ? "cloud-offline-outline" : "checkmark-done-outline"}
               color={loadError ? fieldTheme.color.amber : meta.color}
               title={loading ? t("common.loading") : loadError ? t("managerShell.approvalsLoadError") : t("managerShell.approvalsEmpty")}
@@ -595,6 +611,7 @@ type TodayTile = { key: string; label: string; value: string; hint: string; tone
 function TodayTiles({ tiles, title, updated, tablet }: { tiles: TodayTile[]; title: string; updated: string; tablet: boolean }) {
   return (
     <View style={styles.today} testID="manager-today-tiles">
+      <GuideSpot id="team.tiles" />
       <View style={styles.todayHeading}>
         <Text style={styles.todayTitle}>{title}</Text>
         <Text style={styles.todayUpdated}>{updated}</Text>
@@ -774,9 +791,10 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
   )
 }
 
-function StatusPanel({ icon, color, title, body }: { icon: string; color: string; title: string; body: string }) {
+function StatusPanel({ icon, color, title, body, spot }: { icon: string; color: string; title: string; body: string; spot?: string }) {
   return (
     <View style={styles.statusPanel}>
+      {spot ? <GuideSpot id={spot} /> : null}
       <View style={styles.statusIcon}><Icon name={icon} size={22} color={color} /></View>
       <View style={styles.statusCopy}>
         <Text style={styles.statusTitle}>{title}</Text>
@@ -786,7 +804,9 @@ function StatusPanel({ icon, color, title, body }: { icon: string; color: string
   )
 }
 
-function ApprovalSection({ title, items, t, busyId, onApprove, onReject, approveLabel }: {
+function ApprovalSection({ title, items, t, busyId, onApprove, onReject, approveLabel, spot = false }: {
+  /** The first-run guide's «Qərar bir toxunuşla» lights this queue's first card. */
+  spot?: boolean
   title: string
   items: ApprovalItem[]
   t: (k: string) => string
@@ -801,8 +821,9 @@ function ApprovalSection({ title, items, t, busyId, onApprove, onReject, approve
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title} · {items.length}</Text>
-      {items.map((it) => (
+      {items.map((it, index) => (
         <View key={it.id} style={styles.itemCard}>
+          {spot && index === 0 ? <GuideSpot id="approvals.first" /> : null}
           <View style={styles.itemMain}>
             <Text style={styles.itemTitle}>{it.primary}</Text>
             <Text style={styles.itemMeta} numberOfLines={2}>{it.agentName}{it.reason ? ` · ${it.reason}` : ""}</Text>
