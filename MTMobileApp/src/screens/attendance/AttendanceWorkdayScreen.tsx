@@ -9,6 +9,7 @@ import AttendanceMarkRecoveryCard from '../../components/AttendanceMarkRecoveryC
 import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery'
 import { canReturnToWorkday, returnToClosedWorkday } from '../../services/workday-return'
 import React, { useCallback, useEffect, useRef, useState } from "react"
+import Icon from "react-native-vector-icons/Ionicons"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native"
 import { useNavigation } from "@react-navigation/native"
 import { useTranslation } from "react-i18next"
@@ -59,6 +60,10 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
   const returnable = !installation.blocked && completed && canReturnToWorkday(bootstrap?.policies) && !refused
   const open = current?.syncState === "CONFIRMED"
   const paused = open && current.paused
+  const qrReason = !qr.available ? "attendanceQr.notEnabled" : completed ? "attendanceQr.dayCompleted"
+    : paused ? "attendanceQr.breakPrivacy" : installation.blocked ? "attendanceQr.installationRequired"
+    : recovery.operation || conflict ? "attendanceQr.resolveMark" : pending ? "officeAttendance.pendingHint" : null
+  const qrDisabled = !!qrReason || busy || !hydrated
   useEffect(()=>{if(paused || installation.blocked || recovery.operation || pending || conflict || !allowed || !qr.available || (scan && scan.scope!==key))setScan(null)},[paused,installation.blocked,recovery.operation,pending,conflict,allowed,qr.available,key,scan])
   const loadQueue = useCallback(async () => {
     const scope = officeAttendanceScope()
@@ -119,6 +124,15 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
     {/* The manager's tab gets the bell; the office shell has its own inbox tab. */}
     <LightScreenStatusBar />
     <View style={[styles.header, { paddingTop: top }]}><View style={styles.headerRow}><View style={styles.headerCopy}><Text style={styles.brand}>{t("officeAttendance.myAttendance")}</Text><Text style={styles.title}>{t("officeAttendance.workday")}</Text></View>{managerShell ? <NotificationBell /> : null}</View></View>
+    {allowed && <View style={styles.qrAction}>
+      <Pressable testID="office-workday-qr" accessibilityRole="button" accessibilityState={{ disabled: qrDisabled }} disabled={qrDisabled}
+        style={[styles.button, styles.qrButton, qrDisabled && styles.disabled]}
+        onPress={() => { if (!qrDisabled) setScan({ scope: key, action: open ? 'FINISH' : 'START', workdayId: current?.workdayId }) }}>
+        <Icon name="qr-code-outline" size={23} color={fieldTheme.color.onColor} />
+        <Text style={styles.buttonText}>{t("attendanceQr.scan")}</Text>
+      </Pressable>
+      {qrReason && <Text testID="office-workday-qr-reason" style={styles.qrReason}>{t(qrReason)}</Text>}
+    </View>}
     <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottom }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       {!allowed ? <Text testID="office-workday-unavailable" style={styles.muted}>{t("officeAttendance.unavailable")}</Text> : <>
         <View style={styles.card}>
@@ -135,7 +149,6 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
           {busy && <ActivityIndicator color={fieldTheme.color.primary} />}
           {qr.available && !completed && <Text style={styles.muted}>{t(paused?'attendanceQr.breakPrivacy':'attendanceQr.optional')}</Text>}
           <View style={styles.actions}>
-            {qr.available && !paused && !completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-qr" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} style={styles.button} onPress={()=>setScan({scope:key,action:open?'FINISH':'START',workdayId:current?.workdayId})}><Text style={styles.buttonText}>{t(open?'attendanceQr.finishWithQr':'attendanceQr.startWithQr')}</Text></Pressable>}
             {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || pending || conflict} onPress={() => void change(paused ? "resume" : "pause")} style={[styles.button, styles.secondary, (busy || pending || conflict) && styles.disabled]}><Text style={styles.secondaryText}>{t(paused ? "officeAttendance.resume" : "officeAttendance.pause")}</Text></Pressable>}
             {!completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || pending || conflict} onPress={() => void change(open ? "end" : "start")} style={[styles.button, qr.available && styles.secondary, (busy || !hydrated || pending || conflict) && styles.disabled]}><Text style={qr.available?styles.secondaryText:styles.buttonText}>{t(qr.available ? (open?"attendanceQr.finishWithoutQr":"attendanceQr.startWithoutQr") : (open ? "officeAttendance.finish" : "officeAttendance.start"))}</Text></Pressable>}
             {returnable && <Pressable testID="office-workday-return" accessibilityRole="button" disabled={busy || !hydrated || pending} onPress={() => void returnToWork()} style={[styles.button, (busy || !hydrated || pending) && styles.disabled]}><Text style={styles.buttonText}>{t('officeAttendance.returnToWork')}</Text></Pressable>}
@@ -160,5 +173,6 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
 }
 const styles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas }, header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, padding: 24 }, headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 }, headerCopy: { flex: 1, gap: 8 }, brand: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "700" }, title: { color: fieldTheme.color.ink, fontSize: 27, fontWeight: "700" }, content: { padding: 20, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
+  qrAction: { paddingHorizontal: 20, paddingVertical: 12, gap: 6, maxWidth: 720, width: "100%", alignSelf: "center" }, qrButton: { flexDirection: "row", gap: 10, flexGrow: 0 }, qrReason: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   card: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 22, padding: 22, gap: 16 }, status: { color: fieldTheme.color.primary, fontSize: 15, fontWeight: "700" }, name: { fontSize: 20, color: fieldTheme.color.ink, fontWeight: "600" }, clock: { fontSize: 27, fontWeight: "700", color: fieldTheme.color.primaryStrong }, muted: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.inkMuted }, notice: { color: fieldTheme.color.amber, lineHeight: 22 }, error: { color: fieldTheme.color.danger, lineHeight: 22 }, actions: { flexDirection: "row", flexWrap: "wrap", gap: 12 }, button: { minHeight: 50, padding: 14, justifyContent: "center", alignItems: "center", backgroundColor: fieldTheme.color.primaryStrong, borderRadius: 12, flexGrow: 1 }, buttonText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "700", textAlign: "center" }, secondary: { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.border, borderWidth: 1 }, secondaryText: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "600", textAlign: "center" }, disabled: { opacity: 0.45 },
 }))

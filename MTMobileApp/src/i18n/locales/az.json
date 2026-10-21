@@ -1273,6 +1273,11 @@
     "refresh": "Vəziyyəti yenilə"
   },
   "attendanceQr": {
+    "scan": "QR kodu skan et",
+    "notEnabled": "Hesabınız üçün QR qeydləri aktiv deyil. Kadrlar şöbəsinə müraciət edin.",
+    "dayCompleted": "İş günü tamamlanıb. İşə başlayarkən və işi bitirərkən skan edə bilərsiniz.",
+    "installationRequired": "Əvvəlcə kadrlar şöbəsi bu telefonu təsdiqləməlidir.",
+    "resolveMark": "Əvvəlcə əvvəlki vaxt qeydini yoxlayın.",
     "optional": "Filialı təsdiqləmək üçün onun ekranındakı QR kodu skan edin. Kod olmadan da vaxt saxlanılır.",
     "startWithQr": "Filial QR-i ilə başla",
     "finishWithQr": "Filial QR-i ilə bitir",

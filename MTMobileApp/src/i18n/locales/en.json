@@ -1273,6 +1273,11 @@
     "refresh": "Refresh state"
   },
   "attendanceQr": {
+    "scan": "Scan QR code",
+    "notEnabled": "QR attendance is not enabled for your account. Contact HR.",
+    "dayCompleted": "Your workday is complete. Scan when starting or finishing work.",
+    "installationRequired": "HR must approve this phone first.",
+    "resolveMark": "Review your previous time mark first.",
     "optional": "Scan the code on the branch display to confirm the branch. Time is also saved without a code.",
     "startWithQr": "Start with branch QR",
     "finishWithQr": "Finish with branch QR",

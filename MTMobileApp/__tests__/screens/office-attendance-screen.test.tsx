@@ -217,7 +217,7 @@ it("never opens the QR camera while paused and finishes without QR",async()=>{
   mockQr.available=true
   mockWorkday.activeWorkday={key:'org-fixture:office-fixture',workdayId:'wd',startedAt:'2026-10-13T08:00:00Z',syncState:'CONFIRMED',paused:true}
   const tree=await render(AttendanceWorkdayScreen)
-  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(node(tree,'office-workday-qr').props.disabled).toBe(true)
   expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
   expect(text(tree)).toContain(ru.attendanceQr.breakPrivacy)
   await press(tree,'office-workday-action')
@@ -237,7 +237,7 @@ it("closes an open QR scanner when the day moves into a break",async()=>{
 it("does not offer QR for a completed day or revoked attendance",async()=>{
   mockQr.available=true;completedToday()
   const tree=await render(AttendanceWorkdayScreen)
-  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(node(tree,'office-workday-qr').props.disabled).toBe(true)
   mockBootstrap.data.policies.agentPermissions!.attendanceWorkday=false
   await act(async()=>tree.update(<I18nextProvider i18n={locale}><AttendanceWorkdayScreen/></I18nextProvider>))
   expect(node(tree,'office-workday-qr')).toBeUndefined()
@@ -252,6 +252,34 @@ it('closes the QR scanner when current installation approval becomes blocked',as
   mockInstallation.blocked=true
   await act(async()=>tree.update(<I18nextProvider i18n={locale}><AttendanceWorkdayScreen/></I18nextProvider>))
   expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
-  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(node(tree,'office-workday-qr').props.disabled).toBe(true)
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+
+
+it.each(["ru", "az", "en"])("keeps a discoverable QR control and explains missing access in %s", async language => {
+  const tree = await render(AttendanceWorkdayScreen, language)
+  const copy = { ru, az, en }[language as "ru" | "az" | "en"].attendanceQr
+  expect(text(tree)).toContain(copy.scan)
+  expect(text(tree)).toContain(copy.notEnabled)
+  expect(node(tree, 'office-workday-qr').props.disabled).toBe(true)
+  await press(tree, 'office-workday-qr')
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+it("explains why QR cannot start a new mark after completion", async () => {
+  mockQr.available = true; completedToday()
+  const tree = await render(AttendanceWorkdayScreen)
+  expect(text(tree)).toContain(ru.attendanceQr.dayCompleted)
+  expect(node(tree, 'office-workday-qr').props.disabled).toBe(true)
+  await press(tree, 'office-workday-qr')
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+})
+it("keeps QR visible but blocked while the phone awaits approval", async () => {
+  mockQr.available = true; mockInstallation.blocked = true
+  const tree = await render(AttendanceWorkdayScreen)
+  expect(text(tree)).toContain(ru.attendanceQr.installationRequired)
+  await press(tree, 'office-workday-qr')
+  expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
   expect(changeAttendanceWorkday).not.toHaveBeenCalled()
 })
