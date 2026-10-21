@@ -18,6 +18,10 @@ name: Employee reads only own attendance and survives a restart
     id: office-inbox-unavailable
 - tapOn:
     id: time-tab-OwnExplanations
+- extendedWaitUntil:
+    visible:
+      id: "explanations-empty|explanation-(asked|open|written)-.*"
+    timeout: 30000
 - assertNotVisible:
     id: explanations-unavailable
 - stopApp
