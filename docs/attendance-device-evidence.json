@@ -102,6 +102,24 @@
         "cancelFinishCreatedNoEvent": true,
         "bootstrapMatchesHrReport": true
       }
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 77.193,
+      "cause": "Maestro expression parser rejected the date guard containing brace quantifiers; stopped before form creation.",
+      "requestCreated": false
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 154.061,
+      "cause": "Samsung landscape full-screen keyboard concealed the date field from the assertion; exact date was entered, submission had not been pressed.",
+      "requestCreated": false
     }
   ],
   "installedIdentity": {

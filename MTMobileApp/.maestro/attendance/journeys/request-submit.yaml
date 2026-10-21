@@ -3,7 +3,8 @@ name: Employee submits one dated request for HR review
 ---
 - runFlow: ../shared/open-fixture.yaml
 - assertTrue: ${/^maestro-[a-z0-9-]+$/.test(RUN_ID)}
-- assertTrue: ${/^\d{4}-\d{2}-\d{2}$/.test(REQUEST_DATE)}
+# Avoid brace quantifiers inside Maestro's ${...} expression parser.
+- assertTrue: ${/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/.test(REQUEST_DATE)}
 - tapOn:
     id: time-tab-OwnRequests
 - extendedWaitUntil:
@@ -29,10 +30,10 @@ name: Employee submits one dated request for HR review
     point: "95%,50%"
 - eraseText: 100
 - inputText: ${REQUEST_DATE}
+- hideKeyboard
 - assertVisible:
     id: attendance-startDate
     text: ${REQUEST_DATE}
-- hideKeyboard
 - scrollUntilVisible:
     element:
       id: attendance-endDate
@@ -43,10 +44,10 @@ name: Employee submits one dated request for HR review
     point: "95%,50%"
 - eraseText: 100
 - inputText: ${REQUEST_DATE}
+- hideKeyboard
 - assertVisible:
     id: attendance-endDate
     text: ${REQUEST_DATE}
-- hideKeyboard
 - scrollUntilVisible:
     element:
       id: attendance-reason
