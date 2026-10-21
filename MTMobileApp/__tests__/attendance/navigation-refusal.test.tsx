@@ -30,7 +30,7 @@ import { useBootstrapStore } from "../../src/store/bootstrap"
 import { officeAgent } from "../../test-support/office-attendance"
 
 let tree: ReactTestRenderer | undefined
-const fetchBootstrap = jest.fn(async () => {})
+const fetchBootstrap = jest.fn(async () => "disabled" as const)
 beforeEach(() => {
   jest.clearAllMocks()
   useAuthStore.setState({ isLoading: false, isLoggedIn: true, agent: officeAgent as never, logout: async () => {} })
