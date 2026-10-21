@@ -139,6 +139,25 @@
       "status": "FAIL",
       "elapsedSeconds": 165.149,
       "cause": "Android accessibility flattens card children into sibling nodes, so childOf does not identify the exact request despite its reason and approved status being visible. Added exact request-bound text/status test IDs for the next APK."
+    },
+    {
+      "flow": "journeys/request-decision.yaml",
+      "apkSourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "apkVersionCode": 1007,
+      "status": "PASS",
+      "elapsedSeconds": 122.617,
+      "exactRequestIdReasonAndApprovedStatus": true,
+      "transport": "physical-maestro"
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "apkVersionCode": 1007,
+      "status": "PASS",
+      "elapsedSeconds": 234.456,
+      "exactlyOneNewServerRequest": true,
+      "previousRequestsUnchanged": 9,
+      "fullCorrectedFlow": true
     }
   ],
   "installedIdentity": {
@@ -153,9 +172,7 @@
     "apkSha256": "4f245e69546de884461391124943e8e953fee9625701cc90efafb32ec0222040"
   },
   "pending": [
-    "employee smoke after backend explanations fix",
-    "employee request submission",
-    "HR browser decision observed on phone"
+    "strict employee smoke after authorized server rollout"
   ],
   "credentials": "Not included",
   "deviceSerial": "Not included",
@@ -169,7 +186,7 @@
     "independentServerReceipt": true,
     "matchingInboxNotices": 1,
     "historicalRequestsUnchanged": 8,
-    "phoneObservation": "PASS through guarded UI inspection and screenshot; Maestro retry awaits updated APK"
+    "phoneObservation": "PASS physical Maestro on APK1007; exact request ID, reason and approved status"
   },
   "installationHistory": [
     {
