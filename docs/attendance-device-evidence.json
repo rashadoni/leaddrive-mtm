@@ -75,6 +75,33 @@
       "serverRequestCountBefore": 8,
       "serverRequestCountAfter": 8,
       "historicalRequestsUnchanged": true
+    },
+    {
+      "flow": "journeys/workday.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "NOT_RUN",
+      "cause": "Maestro driver installation failed before any flow command; bounded retry used the restored connection."
+    },
+    {
+      "flow": "journeys/workday.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "PASS",
+      "elapsedSeconds": 316.893,
+      "hrJournal": {
+        "transport": "authenticated-http",
+        "factsState": "VALID",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH"
+        ],
+        "uniqueEvents": 4,
+        "cancelFinishCreatedNoEvent": true,
+        "bootstrapMatchesHrReport": true
+      }
     }
   ],
   "installedIdentity": {
@@ -90,7 +117,6 @@
   },
   "pending": [
     "employee smoke after backend explanations fix",
-    "employee workday journey",
     "employee request submission",
     "HR browser decision observed on phone"
   ],
