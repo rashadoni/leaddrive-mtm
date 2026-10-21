@@ -246,7 +246,76 @@
     }
   ],
   "firstPermissionFix": "PASS on physical APK 1019; genuine Android permission and HR INSIDE at 45 metres",
-  "physical24HourSoak": "PREPARED; not started yet",
+  "physical24HourSoak": {
+    "status": "RUNNING",
+    "startedPreparationAt": "2026-10-21T21:06:02.121+00:00",
+    "sourceSha": "5a8807041988a51b96a55d7936f9d91bb6276cbd",
+    "scope": "package-only real 24h outage; original clocks and other apps preserved",
+    "updatedAt": "2026-10-21T21:09:25.034+00:00",
+    "samplesObserved": 2,
+    "backendArtifactShaBefore": "de44f2a3325dbdc9a89e5fe14b266010cd84dff4",
+    "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+    "deviceRecoveryDeadline": "2026-10-23T01:26:59+04:00",
+    "offlineAt": "2026-10-21T21:07:02.633+00:00",
+    "apkVersionCode": 1019,
+    "apkSha256": "c49b591e6e18a7ce8d9e5248af395c3e72ee4becaa962895bf67f7b2b71fa661",
+    "earliestCompletion": "2026-10-23T01:09:02.633000+04:00",
+    "capture": {
+      "flow": "journeys/offline-soak-capture",
+      "exit": 0,
+      "apkVersionCode": 1019,
+      "sourceSha": "5a8807041988a51b96a55d7936f9d91bb6276cbd",
+      "flowSha256": "080d1d2f4520b087375e3693ae4a8f96ad392f0ffb0674c54b118acf8eefd0f3",
+      "tests": [
+        {
+          "name": "Capture three offline actions before a real 24-hour hold",
+          "seconds": "79.233",
+          "status": "PASS"
+        }
+      ]
+    },
+    "queueCaptured": true,
+    "asOf": "2026-10-21T21:09:25.034+00:00",
+    "samplesSnapshot": [
+      {
+        "checkedAt": "2026-10-21T21:07:08.218+00:00",
+        "hostElapsedSeconds": 5.585,
+        "deviceElapsedSeconds": 5.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-21T21:09:19.800+00:00",
+        "hostElapsedSeconds": 137.167,
+        "deviceElapsedSeconds": 137.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true,
+        "admissionAvailable": true,
+        "pendingVisible": true
+      }
+    ],
+    "deviceRecoveryVerification": {
+      "status": "PASS",
+      "hostRunnerAlive": true,
+      "hostScriptUnchangedSinceStart": true,
+      "deviceRecoveryScriptMatches": true,
+      "deviceWatchdogRunning": true,
+      "heartbeatAgeSeconds": 70.1,
+      "checkedAtUtc": "2026-10-21T21:10:34Z"
+    },
+    "offlineScreenSha256": "f9dcfbedd923609ee4aaa73939f4ec1d0b59b7f1bc74c9f0f77d958d2bab90fa",
+    "full24HourWindow": "PENDING",
+    "delayedReplayAndHrReview": "PENDING",
+    "note": "This is a start-of-run snapshot, not a completed soak receipt."
+  },
   "consentWithdrawal": {
     "status": "PASS",
     "purpose": "verify withdrawal and prepare first-permission regression on corrected APK",
@@ -296,5 +365,21 @@
         "status": "SUCCESS"
       }
     }
+  },
+  "evidenceHeadGates": {
+    "sourceSha": "6ee29ed50e09b0dade7d403f6cce830b9ffeaace",
+    "ci": {
+      "run": 39676089432,
+      "status": "SUCCESS",
+      "suites": 275,
+      "passed": 2434,
+      "todo": 1,
+      "typescript": "PASS"
+    },
+    "emulatorContract": {
+      "run": 39676089495,
+      "status": "SUCCESS"
+    },
+    "runtimeInputsUnchangedFrom": "5a8807041988a51b96a55d7936f9d91bb6276cbd"
   }
 }
