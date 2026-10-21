@@ -34,7 +34,7 @@ function OwnTabs() {
   const agent = useAuthStore(state => state.agent)
   const { data, routeFieldAccess } = useBootstrapStore()
   const tabs = attendanceTabs(data, agent)
-  if (!tabs.length) return <RouteFieldAccessScreen attendance access={routeFieldAccess === "offline" ? "offline" : !data ? "pending" : "disabled"} />
+  if (!tabs.length) return <RouteFieldAccessScreen attendance access={routeFieldAccess === "offline" ? "offline" : routeFieldAccess === "pending" ? "pending" : "disabled"} />
   return <Tab.Navigator initialRouteName="OwnWorkday" screenOptions={{
     headerShown: false,
     tabBarActiveTintColor: fieldTheme.color.primaryStrong,
