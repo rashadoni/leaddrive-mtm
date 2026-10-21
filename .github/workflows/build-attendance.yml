@@ -1,0 +1,83 @@
+name: Build standalone attendance APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/attendance-standalone']
+    paths:
+      - 'MTMobileApp/**'
+      - '.github/workflows/build-attendance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: attendance-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  attendance-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: MTMobileApp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: MTMobileApp/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
+      - name: Verify shared attendance and standalone client
+        run: |
+          npx jest --ci --runInBand
+          npx tsc --noEmit
+      - name: Materialize existing release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.MTM_RELEASE_KEYSTORE_B64 }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo '::error::Release signing key is required'; exit 1; }
+          umask 077
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/mtm-release.keystore
+          test -s android/app/mtm-release.keystore
+      - name: Build separate package and attendance entry point
+        working-directory: MTMobileApp/android
+        run: |
+          export MTM_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
+          ./gradlew assembleRelease -PattendanceApp=true --no-daemon --no-parallel --max-workers=2 --console=plain
+      - name: Verify packaged identity, permissions and signing certificate
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)
+          "$APKSIGNER" verify "$APK"
+          CERT=$("$APKSIGNER" verify --print-certs "$APK" | sed -nE 's/^(Signer #[0-9]+ certificate|V[0-9.]+ Signer: certificate) SHA-256 digest: //p' | head -n 1)
+          test "$CERT" = d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b
+          "$AAPT" dump badging "$APK" > "$RUNNER_TEMP/attendance-badging.txt"
+          "$AAPT" dump permissions "$APK" > "$RUNNER_TEMP/attendance-permissions.txt"
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml > "$RUNNER_TEMP/attendance-manifest.txt"
+          grep -q "package: name='com.leaddrive.attendance'" "$RUNNER_TEMP/attendance-badging.txt"
+          grep -q "versionName='1.0.0'" "$RUNNER_TEMP/attendance-badging.txt"
+          grep -q "versionCode='$((1000 + GITHUB_RUN_NUMBER))'" "$RUNNER_TEMP/attendance-badging.txt"
+          grep -q 'AttendanceApplication' "$RUNNER_TEMP/attendance-manifest.txt"
+          if grep -E 'ACCESS_BACKGROUND_LOCATION|FOREGROUND_SERVICE_LOCATION|RECEIVE_BOOT_COMPLETED|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' "$RUNNER_TEMP/attendance-permissions.txt"; then exit 1; fi
+          if grep -E 'FieldTrackingResume|RNBackgroundActionsTask|FieldPushService' "$RUNNER_TEMP/attendance-manifest.txt"; then exit 1; fi
+          mkdir -p attendance-artifact
+          cp "$APK" attendance-artifact/leaddrive-time-1.0.0.apk
+          (cd attendance-artifact && sha256sum leaddrive-time-1.0.0.apk > leaddrive-time-1.0.0.apk.sha256)
+          printf '{"sourceSha":"%s","package":"com.leaddrive.attendance","version":"1.0.0","versionCode":%s,"physicalMaestro":"NOT_RUN"}\n' "$GITHUB_SHA" "$((1000 + GITHUB_RUN_NUMBER))" > attendance-artifact/build.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: leaddrive-time-${{ github.sha }}
+          path: MTMobileApp/attendance-artifact/
+          if-no-files-found: error
+          retention-days: 14

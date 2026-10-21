@@ -1,0 +1,48 @@
+appId: com.leaddrive.attendance
+name: An empty reason is refused and closing the draft submits nothing
+---
+- runFlow: ../shared/open-fixture.yaml
+- tapOn:
+    id: time-tab-OwnRequests
+- extendedWaitUntil:
+    visible:
+      id: attendance-new
+    timeout: 30000
+- tapOn:
+    id: attendance-new
+- scrollUntilVisible:
+    element:
+      id: attendance-reason
+    direction: DOWN
+- tapOn:
+    id: attendance-reason
+- eraseText: 200
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: attendance-submit
+    direction: DOWN
+- tapOn:
+    id: attendance-submit
+# The refusal must be visible; an unchanged form by itself is not evidence.
+- scrollUntilVisible:
+    element:
+      text: ${output.copy.invalid}
+    direction: UP
+- assertVisible: ${output.copy.invalid}
+- scrollUntilVisible:
+    element:
+      id: attendance-close-form
+    direction: DOWN
+- assertVisible:
+    id: attendance-close-form
+- tapOn:
+    id: attendance-close-form
+- assertNotVisible:
+    id: attendance-form
+- scrollUntilVisible:
+    element:
+      id: attendance-new
+    direction: UP
+- assertVisible:
+    id: attendance-new

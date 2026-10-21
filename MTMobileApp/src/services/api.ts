@@ -4,7 +4,7 @@ import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 import { getFieldDeviceId } from "./field-device-id"
 import { noteAnswered, noteUnanswered } from "./connection-health"
 import type { MobileRouteCommandRequest } from "./route-command-journal"
-import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
+import { clientApkVersion } from "../runtime/client-release"
 
 /**
  * Canonical reason string set when the backend returns a mid-session 401
@@ -334,7 +334,7 @@ class ApiClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "x-field-apk-version": ROUTE_FIELD_PROFILE.apkVersion,
+      "x-field-apk-version": clientApkVersion(),
     }
     try {
       headers["x-field-device-id"] = await getFieldDeviceId()
@@ -406,7 +406,7 @@ class ApiClient {
       // Device identity is deliberately opaque and installation-scoped; it is
       // never derived from the logged-in agent. If AsyncStorage is temporarily
       // unavailable, keep v1 compatible by omitting only the cohort header.
-      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      headers["x-field-apk-version"] = clientApkVersion()
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
       } catch {}
@@ -1226,7 +1226,7 @@ class ApiClient {
     if (requestToken) {
       headers.Authorization = `Bearer ${requestToken}`
       // Do NOT set Content-Type — fetch sets multipart boundary automatically
-      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      headers["x-field-apk-version"] = clientApkVersion()
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
       } catch {}

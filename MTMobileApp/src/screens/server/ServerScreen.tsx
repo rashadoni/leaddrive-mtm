@@ -21,9 +21,10 @@ import { isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoin
 
 interface Props {
   onServerSelected: (domain: string, companyName: string) => void
+  productName?: string
 }
 
-export default function ServerScreen({ onServerSelected }: Props) {
+export default function ServerScreen({ onServerSelected, productName = "LeadDrive Field" }: Props) {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -87,7 +88,7 @@ export default function ServerScreen({ onServerSelected }: Props) {
               <View style={[styles.brandMark, tablet && styles.brandMarkTablet]}>
                 <Icon name="navigate" size={tablet ? 30 : 22} color={fieldTheme.color.onColor} />
               </View>
-              <Text style={styles.brand}>LeadDrive Field</Text>
+              <Text style={styles.brand}>{productName}</Text>
             </View>
             {tablet ? <Text style={styles.introTitle}>{t("server.welcomeTitle")}</Text> : null}
             {tablet ? <Text style={styles.introBody}>{t("server.welcomeBody")}</Text> : null}

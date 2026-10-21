@@ -25,9 +25,10 @@ interface Props {
   serverDomain: string
   companyName: string
   onSwitchServer: () => void
+  productName?: string
 }
 
-export default function LoginScreen({ serverDomain, companyName, onSwitchServer }: Props) {
+export default function LoginScreen({ serverDomain, companyName, onSwitchServer, productName = "LeadDrive Field" }: Props) {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
@@ -116,7 +117,7 @@ export default function LoginScreen({ serverDomain, companyName, onSwitchServer 
               <View style={[styles.brandMark, tablet && styles.brandMarkTablet]}>
                 <Icon name="navigate" size={tablet ? 30 : 22} color={fieldTheme.color.onColor} />
               </View>
-              <Text style={styles.brand}>LeadDrive Field</Text>
+              <Text style={styles.brand}>{productName}</Text>
             </View>
             {tablet ? <Text style={styles.introTitle}>{t("auth.welcomeTitle")}</Text> : null}
             {tablet ? <Text style={styles.introBody}>{t("auth.welcomeBody")}</Text> : null}

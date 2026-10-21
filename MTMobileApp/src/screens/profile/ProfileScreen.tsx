@@ -64,7 +64,7 @@ const LANGUAGE_LABEL_KEY: Record<string, string> = {
  * navigator hands in «Mövqeyimi paylaş», moved here from «Komanda» — this
  * screen, shared with agents and office staff, does not load GPS code itself.
  */
-export default function ProfileScreen({ managerShell = false, managerCard = null }: { managerShell?: boolean; managerCard?: React.ReactNode } = {}) {
+export default function ProfileScreen({ managerShell = false, managerCard = null, versionLabel = `Route & Field v${APP_VERSION}` }: { managerShell?: boolean; managerCard?: React.ReactNode; versionLabel?: string } = {}) {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
@@ -334,7 +334,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
           {mainColumn}
           {settingsColumn}
         </View>
-        <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
+        <Text style={styles.version}>{versionLabel}</Text>
       </ScrollView>
       {/* The header scrolls away with the page: the band keeps the clock off the cards. */}
       <StatusBarBand tone="light" />

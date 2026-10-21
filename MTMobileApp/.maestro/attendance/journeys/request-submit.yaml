@@ -1,0 +1,64 @@
+appId: com.leaddrive.attendance
+name: Employee submits one dated request for the HR browser review
+---
+- runFlow: ../shared/open-fixture.yaml
+- assertTrue: ${/^maestro-[a-z0-9-]+$/.test(RUN_ID)}
+- assertTrue: ${/^\d{4}-\d{2}-\d{2}$/.test(REQUEST_DATE)}
+- tapOn:
+    id: time-tab-OwnRequests
+- extendedWaitUntil:
+    visible:
+      id: attendance-new
+    timeout: 30000
+- tapOn:
+    id: attendance-new
+- scrollUntilVisible:
+    element:
+      id: attendance-kind-REMOTE_WORK
+    direction: DOWN
+- tapOn:
+    id: attendance-kind-REMOTE_WORK
+- scrollUntilVisible:
+    element:
+      id: attendance-startDate
+    direction: DOWN
+- tapOn:
+    id: attendance-startDate
+- eraseText: 100
+- inputText: ${REQUEST_DATE}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: attendance-endDate
+    direction: DOWN
+- tapOn:
+    id: attendance-endDate
+- eraseText: 100
+- inputText: ${REQUEST_DATE}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: attendance-reason
+    direction: DOWN
+- tapOn:
+    id: attendance-reason
+- inputText: ${RUN_ID}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: attendance-submit
+    direction: DOWN
+- tapOn:
+    id: attendance-submit
+- extendedWaitUntil:
+    notVisible:
+      id: attendance-form
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: ${RUN_ID}
+    direction: DOWN
+- assertVisible:
+    text: ${RUN_ID}
+    childOf:
+      id: attendance-request-.*

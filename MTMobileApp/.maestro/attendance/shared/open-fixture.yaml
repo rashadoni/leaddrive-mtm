@@ -1,0 +1,18 @@
+appId: com.leaddrive.attendance
+---
+- runScript: labels.js
+- launchApp:
+    clearState: false
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 30000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "Fictional office employee"
+- assertNotVisible:
+    id: office-workday-unavailable
+- assertNotVisible:
+    id: office-workday-conflict
