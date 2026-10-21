@@ -10,6 +10,7 @@ jest.mock("../../src/services/sync-v2-routes", () => ({ clearRouteV2RoutesState:
 import { api } from "../../src/services/api"
 import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
+import { useSyncStatusStore } from "../../src/store/sync-status"
 import { useWorkdayStore } from "../../src/store/workday"
 import { setOfflineScope } from "../../src/services/offline-scope"
 import { enqueueOutboxOperation, allOutboxOperations, retryOutboxConflict } from "../../src/services/outbox"
@@ -25,6 +26,7 @@ import { officeAgent, officeBootstrap } from "../../test-support/office-attendan
 const scope = `${officeAgent.organizationId}:${officeAgent.id}`
 let data = officeBootstrap()
 beforeEach(async () => {
+  useSyncStatusStore.getState().setOnline(true)
   jest.clearAllMocks(); await AsyncStorage.clear(); setOfflineScope(officeAgent.organizationId, officeAgent.id); data = officeBootstrap()
   ;(useAuthStore.getState as jest.Mock).mockReturnValue({ isLoggedIn: true, agent: officeAgent })
   ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ routeFieldAccess: "unavailable", data }))
@@ -150,4 +152,16 @@ it("retains the full claimed sequence and stops after a rejected predecessor", a
   expect(useWorkdayStore.getState().activeWorkday?.syncState).toBe('FINISH_PENDING')
   expect((await allOutboxOperations()).map(row => row.data)).toEqual(original.map(row => row.data))
   await expect(store.start(scope, () => guardOfficeAttendance(scope))).rejects.toThrow('ATTENDANCE_QUEUE_CONFLICT')
+})
+
+it('does not capture using stale live admission after loss of connectivity', async () => {
+  useSyncStatusStore.getState().setOnline(false)
+  await expect(useWorkdayStore.getState().start(scope, () => guardOfficeAttendance(scope))).rejects.toThrow('ATTENDANCE_ACCESS_UNAVAILABLE')
+  expect(await allOutboxOperations()).toEqual([])
+  data.attendanceOffline = { verifiedAt: Date.now(), lastSeenAt: Date.now(), validUntil: Date.now() + 86400000, installation: null, location: null }
+  // Use one exact clock instant to avoid a test boundary across Date.now calls.
+  data.attendanceOffline.lastSeenAt = data.attendanceOffline.verifiedAt
+  data.attendanceOffline.validUntil = data.attendanceOffline.verifiedAt + 86400000
+  await useWorkdayStore.getState().start(scope, () => guardOfficeAttendance(scope))
+  expect((await allOutboxOperations()).map(row => row.data.action)).toEqual(['START'])
 })

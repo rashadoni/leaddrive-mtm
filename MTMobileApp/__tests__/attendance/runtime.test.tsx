@@ -78,3 +78,9 @@ it.each(["AGENT", "foreign"])("cannot start the personal queue for %s admission"
   await mount()
   expect(startForegroundSyncRetry).not.toHaveBeenCalled()
 })
+
+it("revalidates the bounded local admission immediately when connectivity is lost", async () => {
+  await mount()
+  await act(async () => { network({ isConnected: false, isInternetReachable: false }) })
+  expect(refreshAttendanceSession).toHaveBeenCalledTimes(2)
+})

@@ -45,7 +45,9 @@ export default function AttendanceApp() {
     const network = NetInfo.addEventListener(state => {
       const online = state.isConnected === false || state.isInternetReachable === false ? false : state.isConnected === true ? true : null
       useSyncStatusStore.getState().setOnline(online)
-      if (online) refresh()
+      // Loss of network must replace live admission with the bounded cache
+      // before an offline action can be captured, including a long-lived app.
+      if (online !== null) refresh()
     })
     const lifecycle = AppState.addEventListener("change", state => { if (state === "active") refresh() })
     return () => { network(); lifecycle.remove() }
