@@ -243,6 +243,21 @@
           "status": "PASS"
         }
       ]
+    },
+    {
+      "label": "qr-camera-1009",
+      "flow": "journeys/qr-camera",
+      "exit": 1,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "QR camera opens only after explicit permission and closes when backgrounded",
+          "seconds": "135.635",
+          "status": "FAIL"
+        }
+      ],
+      "reason": "OS camera permission activity closes scanner via AppState; actual defect, native preview not reached"
     }
   ],
   "installedIdentity": {
@@ -344,5 +359,16 @@
     "hrRevoke": "PASS",
     "phoneRevocationObservation": "PASS",
     "originalRuleRestored": true
+  },
+  "qrCamera": {
+    "status": "FAIL",
+    "versionCode": 1009,
+    "osPermissionDialog": "PASS",
+    "nativePreview": "FAIL",
+    "opticalDecode": "NOT_RUN",
+    "verifiedTimeMark": "NOT_RUN",
+    "qrPolicyRestored": true,
+    "cameraPermissionRestored": true,
+    "workdayAndRequestsUnchanged": true
   }
 }

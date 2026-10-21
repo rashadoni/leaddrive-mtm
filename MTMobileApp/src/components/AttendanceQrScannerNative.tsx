@@ -14,17 +14,32 @@ export default function AttendanceQrScanner(props:AttendanceQrScannerProps){
 function Scanner({scope,action,onClose,onConfirm}:AttendanceQrScannerProps){
   const {t}=useTranslation(),insets=useSafeAreaInsets(),device=useCameraDevice('back'),{hasPermission,requestPermission}=useCameraPermission()
   const [token,setToken]=useState<string|null>(null),[busy,setBusy]=useState(false),[failed,setFailed]=useState(false),[active,setActive]=useState(AppState.currentState==='active')
-  const mounted=useRef(true),scanning=useRef(true),writing=useRef(false),close=useRef(onClose)
+  const mounted=useRef(true),scanning=useRef(true),writing=useRef(false),requestingPermission=useRef(false),close=useRef(onClose)
   let admitted = false
   try { guardAttendanceQr(scope); admitted = true } catch { /* No camera for a stale admission. */ }
   close.current=onClose
   const current=()=>{if(!mounted.current||AppState.currentState!=='active')throw new Error('ATTENDANCE_QR_CLOSED');guardAttendanceQr(scope)}
-  useEffect(()=>{mounted.current=true;const listener=AppState.addEventListener('change',state=>{setActive(state==='active');if(state!=='active'){scanning.current=false;setToken(null);close.current()}});return()=>{mounted.current=false;listener.remove()}},[])
+  useEffect(()=>{mounted.current=true;const listener=AppState.addEventListener('change',state=>{setActive(state==='active');if(state!=='active'){scanning.current=false;setToken(null);if(!requestingPermission.current)close.current()}});return()=>{mounted.current=false;listener.remove()}},[])
   const scanner=useCodeScanner({codeTypes:['qr'],onCodeScanned:codes=>{
     if(!scanning.current||writing.current)return
     try{current();const next=codes.find(code=>code.type==='qr'&&validAttendanceQrToken(code.value))?.value;if(!next){setFailed(true);return}scanning.current=false;setToken(next);setFailed(false)}catch{/* A late camera callback never becomes a new action. */}
   }})
-  async function requestCamera(){try{current();const granted=await requestPermission();current();if(!granted)setFailed(true)}catch{if(mounted.current)setFailed(true)}}
+  async function requestCamera(){
+    if(requestingPermission.current)return
+    try{
+      current();requestingPermission.current=true
+      // Android's permission activity temporarily backgrounds this screen.
+      // Keep the modal, but never keep the camera or a scanned token active.
+      const granted=await requestPermission();current()
+      scanning.current=granted
+      if(!granted)setFailed(true)
+    }catch{if(mounted.current)setFailed(true)}
+    finally{
+      requestingPermission.current=false
+      // A real departure while the permission prompt was open still closes it.
+      if(mounted.current&&AppState.currentState!=='active')close.current()
+    }
+  }
   async function confirm(){if(!token||writing.current)return;writing.current=true;setBusy(true);setFailed(false);try{current();await onConfirm(token);if(mounted.current){setToken(null);onClose()}}catch{if(mounted.current)setFailed(true)}finally{writing.current=false;if(mounted.current)setBusy(false)}}
   function rescan(){if(writing.current)return;try{current();scanning.current=true;setToken(null);setFailed(false)}catch{onClose()}}
   return <View style={styles.screen}><ScrollView contentContainerStyle={[styles.content,{paddingTop:insets.top+24,paddingBottom:insets.bottom+24}]}>

@@ -194,3 +194,10 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Locale-aware request retryAZ на1009 PASS81.743s; ровно1 новаяPENDING installation request для прежнего office principal. Завершение/начало рабочего дня не выполнялось.
 - Actual HR browser одобрил exact request с собственным test reason; independent server receiptAPPROVED. Phone decision observationPASS64.718s сAZ labels. Это доказательство approval конкретной установки, не аппаратной аттестации/единственного телефона.
 - HR browser уже отозвал то же разрешение, receiptREVOKED; physical observation в работе. Затем restore originalrequiredfalse, QR camera UI и восстановление QRfalse/camera grant. В fixture0 branches и нет published location policy; optical decoding/verified QR mark и actualGPS не выданы заPASS.
+
+## 2026-10-21 — actual camera permission defect found and fixed
+
+- Revocation observation1009 PASS75.05s; original installation-requiredfalse restored via actual HR browser.
+- QR camera flow1009 FAIL after explicit OS camera permission grant: screenshot shows workday page with the new prominent QR button, not camera preview. Scanner AppState listener closes modal when Android permission activity temporarily backgrounds it. This is a real first-use defect, not a selector workaround. QRfalse and original camera permission restored by finally; workday/requests unchanged.
+- Regression RED1failed/8passed reproduced the permission-activity transition. Fix preserves modal only while its own permission request is outstanding; camera/token pause on background, actual departure still closes, and account admission is rechecked on reply. GREEN2suites/51 tests after adding revoked-account-during-permission regression.
+- Hosted full checks/APK required for this runtime change; physical camera retry remainsNOT RUN until the new APK is installed. Source1009 evidence remainsFAIL; do not overwrite it.
