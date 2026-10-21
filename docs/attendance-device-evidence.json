@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "device": {
+    "model": "SM-S918B",
+    "android": "16"
+  },
+  "maestroVersion": "2.11.0",
+  "attempts": [
+    {
+      "flow": "journeys/first-launch.yaml",
+      "apkSourceSha": "6eccb0ab1e6f5dccad14c84413b34145b7091819",
+      "apkVersionCode": 1002,
+      "status": "FAIL",
+      "cause": "Test erased only text before the caret; the company lookup correctly rejected the remaining suffix."
+    },
+    {
+      "flow": "journeys/first-launch.yaml",
+      "apkSourceSha": "6eccb0ab1e6f5dccad14c84413b34145b7091819",
+      "apkVersionCode": 1002,
+      "status": "PASS",
+      "elapsedSeconds": 142.376,
+      "checks": [
+        "separate product name",
+        "empty company rejected",
+        "nonexistent company rejected",
+        "owned fixture discovered",
+        "empty login rejected"
+      ]
+    }
+  ],
+  "installedIdentity": {
+    "package": "com.leaddrive.attendance",
+    "version": "1.0.0",
+    "versionCode": "1002",
+    "mtmVersion": "3.11.49",
+    "mtmVersionCode": "1710",
+    "separateAndroidUid": true,
+    "backgroundLocationPermissionPresent": false,
+    "sourceSha": "6eccb0ab1e6f5dccad14c84413b34145b7091819"
+  },
+  "pending": [
+    "final APK update and physical acceptance",
+    "employee workday journey",
+    "employee request validation and submission",
+    "HR decision observed on phone"
+  ],
+  "credentials": "Not included",
+  "deviceSerial": "Not included"
+}

@@ -32,3 +32,33 @@ var labels = {
 };
 if (!labels[LOCALE]) throw new Error("LOCALE must be az, ru or en");
 output.copy = labels[LOCALE];
+
+var loginCopy = {
+  "az": {
+    "missingCompany": "Şirkət adını daxil edin",
+    "unknownCompany": "Şirkət tapılmadı. Yazılışı yoxlayın və ya administratordan aldığınız tam ünvanı daxil edin.",
+    "missingCredentials": "Nömrəni və ya e-poçtu və şifrəni daxil edin",
+    "clear": "Təmizlə"
+  },
+  "ru": {
+    "missingCompany": "Введите название компании",
+    "unknownCompany": "Компания не найдена. Проверьте написание или введите полный адрес, полученный у администратора.",
+    "missingCredentials": "Введите номер или email и пароль",
+    "clear": "Очистить"
+  },
+  "en": {
+    "missingCompany": "Please enter your company name",
+    "unknownCompany": "Company not found. Check the spelling or enter the full address from your administrator.",
+    "missingCredentials": "Enter your number or email and password",
+    "clear": "Clear"
+  }
+};
+output.login = loginCopy[LOCALE];
+
+// Maestro text selectors are regular expressions; copy must match literally.
+function escapeSelector(value) {
+  var special = ".*+?^${}()|[]\\";
+  return value.split("").map(function(ch) { return special.indexOf(ch) >= 0 ? "\\" + ch : ch; }).join("");
+}
+Object.keys(output.copy).forEach(function(key) { output.copy[key] = escapeSelector(output.copy[key]); });
+Object.keys(output.login).forEach(function(key) { output.login[key] = escapeSelector(output.login[key]); });

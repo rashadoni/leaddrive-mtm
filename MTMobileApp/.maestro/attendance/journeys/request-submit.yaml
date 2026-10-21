@@ -24,8 +24,12 @@ name: Employee submits one dated request for the HR browser review
     direction: DOWN
 - tapOn:
     id: attendance-startDate
+    point: "95%,50%"
 - eraseText: 100
 - inputText: ${REQUEST_DATE}
+- assertVisible:
+    id: attendance-startDate
+    text: ${REQUEST_DATE}
 - hideKeyboard
 - scrollUntilVisible:
     element:
@@ -33,8 +37,12 @@ name: Employee submits one dated request for the HR browser review
     direction: DOWN
 - tapOn:
     id: attendance-endDate
+    point: "95%,50%"
 - eraseText: 100
 - inputText: ${REQUEST_DATE}
+- assertVisible:
+    id: attendance-endDate
+    text: ${REQUEST_DATE}
 - hideKeyboard
 - scrollUntilVisible:
     element:
