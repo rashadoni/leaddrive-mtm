@@ -18,6 +18,7 @@ import AttendanceRequestsScreen from "../screens/attendance/AttendanceRequestsSc
 import AttendanceExplanationsScreen from "../screens/attendance/AttendanceExplanationsScreen"
 import AttendanceInboxScreen from "../screens/attendance/AttendanceInboxScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
+import { TimePresentation, timeColor } from "./ui/TimeUI"
 import { ATTENDANCE_APP, attendanceTabs } from "./profile"
 
 const Tab = createBottomTabNavigator(), Stack = createNativeStackNavigator()
@@ -39,10 +40,10 @@ function OwnTabs() {
   if (!tabs.length) return <RouteFieldAccessScreen attendance access={routeFieldAccess === "offline" ? "offline" : routeFieldAccess === "pending" ? "pending" : "disabled"} />
   return <Tab.Navigator initialRouteName="OwnWorkday" screenOptions={{
     headerShown: false,
-    tabBarActiveTintColor: fieldTheme.color.primaryStrong,
-    tabBarInactiveTintColor: fieldTheme.color.inkMuted,
-    tabBarStyle: { minHeight: TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8), paddingBottom: Math.max(insets.bottom, 8) },
-    tabBarLabelStyle: { fontSize: 11, lineHeight: 15 },
+    tabBarActiveTintColor: timeColor.accent,
+    tabBarInactiveTintColor: timeColor.muted,
+    tabBarStyle: { backgroundColor: timeColor.surface, borderTopColor: timeColor.line, paddingTop: 8, minHeight: TAB_BAR_BASE_HEIGHT + Math.max(insets.bottom, 8), paddingBottom: Math.max(insets.bottom, 8) },
+    tabBarLabelStyle: { fontSize: 11, lineHeight: 15, fontWeight: "600" },
   }}>
     {tabs.map(name => <Tab.Screen key={name} name={name} component={screens[name].component} options={{
       title: t(screens[name].label), tabBarLabel: t(`attendanceCompact.tabs.${tabLabels[name]}`), tabBarButtonTestID: `time-tab-${name}`,
@@ -55,12 +56,12 @@ export default function AttendanceNavigator() {
   const scheme = useFieldColorScheme()
   if (auth.isLoading) return <View style={styles.loading}><ActivityIndicator /></View>
   const admitted = attendanceTabs(data, auth.agent).length > 0
-  return <NavigationContainer theme={scheme === "dark" ? DarkTheme : DefaultTheme}>
+  return <TimePresentation.Provider value><NavigationContainer theme={scheme === "dark" ? DarkTheme : DefaultTheme}>
     <Stack.Navigator key={`${auth.agent?.organizationId ?? ""}:${auth.agent?.id ?? ""}:${admitted}`} screenOptions={{ headerShown: false }}>
       {auth.isLoggedIn ? <Stack.Screen name="Main" component={OwnTabs} /> : auth.hasServer ?
         <Stack.Screen name="Login">{() => <LoginScreen productName={ATTENDANCE_APP.displayName} serverDomain={auth.serverDomain} companyName={auth.companyName} onSwitchServer={auth.switchServer} />}</Stack.Screen> :
         <Stack.Screen name="Server">{() => <ServerScreen productName={ATTENDANCE_APP.displayName} onServerSelected={auth.setServer} />}</Stack.Screen>}
     </Stack.Navigator>
-  </NavigationContainer>
+  </NavigationContainer></TimePresentation.Provider>
 }
 const styles = themed(() => StyleSheet.create({ loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: fieldTheme.color.canvas } }))

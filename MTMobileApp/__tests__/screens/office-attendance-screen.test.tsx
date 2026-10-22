@@ -1,4 +1,5 @@
 jest.mock("@react-native-async-storage/async-storage", () => require("@react-native-async-storage/async-storage/jest/async-storage-mock"))
+import { TimePresentation } from "../../src/attendance/ui/TimeUI"
 import React from "react"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -64,7 +65,7 @@ import { api } from "../../src/services/api"
 const locale = i18next.createInstance(), roots: TestRenderer.ReactTestRenderer[] = []
 const notice = { id: "notice-1", title: "Fictional approval", body: "Fictional own body", createdAt: "2026-10-13T08:00:00Z", isRead: false }
 const settle = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) }) }
-async function render(Component: React.ComponentType, language = "ru") { await locale.changeLanguage(language); let tree!: TestRenderer.ReactTestRenderer; await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><Component /></I18nextProvider>) }); roots.push(tree); await settle(); return tree }
+async function render(Component: React.ComponentType, language = "ru", rhythm = false) { await locale.changeLanguage(language); let tree!: TestRenderer.ReactTestRenderer; await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><TimePresentation.Provider value={rhythm}><Component /></TimePresentation.Provider></I18nextProvider>) }); roots.push(tree); await settle(); return tree }
 const node = (tree: TestRenderer.ReactTestRenderer, id: string) => tree.root.findAll(item => item.props.testID === id, { deep: false })[0]
 function capture(tree: TestRenderer.ReactTestRenderer, name: string) {
   const directory = process.env.MTM_ATTENDANCE_RENDER_DIR
@@ -380,4 +381,52 @@ it('explains an empty compact history without querying a nonexistent day or crea
   expect(node(tree,'attendance-mark-details-load')).toBeUndefined()
   expect(node(tree,'office-workday-action').props.disabled).toBe(false)
   expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+
+it.each(["ru", "az", "en"])("Rhythm %s inbox expands and filters without silently marking messages read", async language => {
+  ;(readAttendanceInbox as jest.Mock).mockResolvedValue([notice, { ...notice, id: "read", isRead: true }])
+  const tree = await render(AttendanceInboxScreen, language, true)
+  await press(tree, "office-notice-open-notice-1")
+  expect(text(tree)).toContain(notice.body)
+  expect(markAttendanceInboxRead).not.toHaveBeenCalled()
+  await press(tree, "inbox-filter-unread")
+  expect(node(tree, "office-notice-read")).toBeUndefined()
+  expect(node(tree, "office-notice-notice-1")).toBeDefined()
+  expect(markAttendanceInboxRead).not.toHaveBeenCalled()
+  ;(readAttendanceInbox as jest.Mock).mockResolvedValue([{ ...notice, isRead: true }])
+  await press(tree, "office-read-notice-1")
+  expect(markAttendanceInboxRead).toHaveBeenCalledWith("org-fixture:office-fixture", "notice-1")
+  expect(node(tree, "office-notice-notice-1")).toBeUndefined()
+  expect(text(tree)).not.toContain("attendanceRhythm.")
+})
+it("Rhythm profile exposes preferences first and keeps server switching behind confirmation", async () => {
+  const tree = await render(ProfileScreen, "ru", true)
+  expect(node(tree, "time-language-ru").props.accessibilityState.selected).toBe(true)
+  expect(node(tree, "time-switch-company")).toBeUndefined()
+  await press(tree, "time-connection-disclosure")
+  expect(node(tree, "time-switch-company")).toBeDefined()
+  await press(tree, "time-switch-company")
+  expect(mockAuth.switchServer).not.toHaveBeenCalled()
+  expect(mockAuth.logout).not.toHaveBeenCalled()
+  expect(api.getAlerts).not.toHaveBeenCalled()
+})
+it("Rhythm day history only shows actual receipts for this workday and retains finish confirmation", async () => {
+  mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-22T05:00:00Z", syncState: "CONFIRMED" }
+  mockDeliveries.rows = [
+    { operationId: "old", workdayId: "old-day", action: "START", occurredAt: "2026-10-20T05:00:00Z", delivery: "RECEIVED", receivedAt: null, review: "NOT_REQUIRED" },
+    { operationId: "today", workdayId: "wd", action: "START", occurredAt: "2026-10-22T05:00:00Z", delivery: "LOCAL", receivedAt: null, review: null },
+  ]
+  const Day = () => <AttendanceWorkdayScreen compact />
+  const tree = await render(Day, "ru", true)
+  expect(tree.root.findAll(item => item.props.testID === "time-history-local").length).toBeGreaterThan(0)
+  expect(tree.root.findAll(item => item.props.testID === "time-history-received")).toHaveLength(0)
+  mockAsk.mockResolvedValueOnce(false); await press(tree, "office-workday-action")
+  expect(changeAttendanceWorkday).not.toHaveBeenCalledWith("end")
+})
+it("Rhythm never labels yesterday's device receipts as today's history", async () => {
+  mockBootstrap.data.workday = { id: 'old-day', status: 'COMPLETED', startedAt: '2020-10-20T05:00:00Z', completedAt: '2020-10-20T14:00:00Z', workDate: '2020-10-20' }
+  mockDeliveries.rows = [{ operationId: 'old', workdayId: 'old-day', action: 'START', occurredAt: '2020-10-20T05:00:00Z', delivery: 'RECEIVED', receivedAt: null, review: 'NOT_REQUIRED' }]
+  const Day = () => <AttendanceWorkdayScreen compact />
+  const tree = await render(Day, 'ru', true)
+  expect(node(tree, 'time-day-history')).toBeUndefined()
 })

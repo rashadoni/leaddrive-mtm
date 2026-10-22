@@ -1,3 +1,5 @@
+jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
+import { TimePresentation } from "../../src/attendance/ui/TimeUI"
 import React from "react"
 import { mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
@@ -39,15 +41,15 @@ const row: AttendanceRequest = { id: "own-request", clientRequestId: "c01be938-a
 const data = (items: AttendanceRequest[] = [row]) => ({ items, nextCursor: null, updatedAt: "2026-10-13T08:00:00Z" })
 const roots: TestRenderer.ReactTestRenderer[] = []
 const settle = async () => { for (let i = 0; i < 4; i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) }) }
-async function open(language = "ru", correction?: AttendanceCorrectionIntent) {
+async function open(language = "ru", correction?: AttendanceCorrectionIntent, rhythm = false) {
   await locale.changeLanguage(language)
   let tree!: TestRenderer.ReactTestRenderer
-  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><AttendanceRequestsScreen route={{ params: { correction } }} /></I18nextProvider>) })
+  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><TimePresentation.Provider value={rhythm}><AttendanceRequestsScreen route={{ params: { correction } }} /></TimePresentation.Provider></I18nextProvider>) })
   roots.push(tree); await settle(); return tree
 }
 function node(tree: TestRenderer.ReactTestRenderer, id: string) { return tree.root.findAll(item => item.props.testID === id, { deep: false })[0] }
 function text(tree: TestRenderer.ReactTestRenderer) { return JSON.stringify(tree.toJSON()) }
-async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree, id).props.onPress() }); await settle() }
+async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { tree.root.findAll(item => item.props.testID === id && typeof item.props.onPress === "function")[0].props.onPress() }); await settle() }
 async function type(tree: TestRenderer.ReactTestRenderer, id: string, value: string) { await act(async () => { node(tree, id).props.onChangeText(value) }); await settle() }
 function captureNightForm(tree: TestRenderer.ReactTestRenderer, language: string) {
   const dir = process.env.MTM_ATTENDANCE_RENDER_DIR
@@ -97,7 +99,7 @@ it('does not expose a correction intent belonging to another account', async () 
 it('preserves an existing request when a new workday correction arrives', async () => {
   const tree = await open(); await press(tree, 'attendance-new'); await type(tree, 'attendance-reason', 'Keep this existing draft')
   const correction = createAttendanceCorrectionIntent('fictional-org:fictional-agent', 'fixture.invalid', 'Asia/Baku', { startedAt: '2026-10-21T05:00:00Z' })!
-  await act(async () => tree.update(<I18nextProvider i18n={locale}><AttendanceRequestsScreen route={{ params: { correction } }} /></I18nextProvider>)); await settle()
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><TimePresentation.Provider value={false}><AttendanceRequestsScreen route={{ params: { correction } }} /></TimePresentation.Provider></I18nextProvider>)); await settle()
   expect(node(tree, 'attendance-reason').props.value).toBe('Keep this existing draft')
   expect(node(tree, 'attendance-open-correction').props.disabled).toBe(true)
   expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
@@ -312,4 +314,49 @@ it("does not act on a cancellation confirmation returned after leaving the scree
   expect(service.queueAttendanceCancellation).not.toHaveBeenCalled()
   await act(async () => { confirm(true) }); await settle()
   expect(service.queueAttendanceCancellation).not.toHaveBeenCalled()
+})
+
+it("Rhythm filters only the loaded request list and keeps the durable queue visible", async () => {
+  ;(service.loadAttendanceRequests as jest.Mock).mockResolvedValue(data([row, { ...row, id: "approved", clientRequestId: "other", status: "APPROVED" }]))
+  ;(service.attendanceQueued as jest.Mock).mockResolvedValue([{ operationId: "local", op: "create", status: "pending", data: { clientRequestId: "local-id", kind: "SICK_LEAVE", reason: "Offline reason", startDate: "2026-10-22", endDate: "2026-10-22" } }])
+  const tree = await open("ru", undefined, true)
+  expect(node(tree, "attendance-request-approved")).toBeDefined()
+  await press(tree, "attendance-filter-waiting")
+  expect(node(tree, "attendance-request-approved")).toBeUndefined()
+  expect(node(tree, "attendance-request-own-request")).toBeDefined()
+  expect(text(tree)).toContain("Offline reason")
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+})
+it.each(["ru", "az", "en"])("Rhythm %s form focuses on one draft and retains the full overnight correction contract", async language => {
+  const correction = createAttendanceCorrectionIntent('fictional-org:fictional-agent', 'fixture.invalid', 'Asia/Baku', { workDate: '2026-10-21', startedAt: '2026-10-21T18:00:00Z', completedAt: '2026-10-22T02:00:00Z' })!
+  const tree = await open(language, correction, true)
+  expect(node(tree, "attendance-list")).toBeUndefined()
+  expect(node(tree, "attendance-form")).toBeDefined()
+  await press(tree, "attendance-change-kind")
+  expect(node(tree, "attendance-kind-TIME_CORRECTION").props.accessibilityState.selected).toBe(true)
+  await press(tree, "attendance-kind-TIME_CORRECTION")
+  expect(node(tree, "attendance-startDate").props.value).toBe("2026-10-21")
+  expect(node(tree, "attendance-endDate").props.value).toBe("2026-10-22")
+  await press(tree, "attendance-startTime"); await press(tree, "time-picker-hour-23"); await press(tree, "time-picker-minute-15"); await press(tree, "time-picker-confirm")
+  await press(tree, "attendance-submit")
+  expect(node(tree, "attendance-reason-error")).toBeDefined()
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+  await type(tree, "attendance-reason", "  Please check my overnight finish  ")
+  await press(tree, "attendance-submit")
+  expect(service.queueAttendanceRequest).toHaveBeenCalledWith("fictional-org:fictional-agent", expect.objectContaining({ kind: "TIME_CORRECTION", startDate: "2026-10-21", endDate: "2026-10-22", startTime: "23:15", endTime: "06:00", reason: "Please check my overnight finish" }), [])
+  expect(node(tree, "attendance-list")).toBeDefined()
+  expect(node(tree, "attendance-form")).toBeUndefined()
+  expect(text(tree)).not.toContain("attendanceRhythm.")
+})
+it("Rhythm calendar changes civil dates without submitting or losing the reason", async () => {
+  const correction = createAttendanceCorrectionIntent('fictional-org:fictional-agent', 'fixture.invalid', 'Asia/Baku', { workDate: '2026-10-21', startedAt: '2026-10-21T05:00:00Z' })!
+  const tree = await open("az", correction, true)
+  await type(tree, "attendance-reason", "Keep the draft")
+  await press(tree, "attendance-endDate"); await press(tree, "calendar-next"); await press(tree, "calendar-2026-11-02")
+  expect(node(tree, "attendance-endDate").props.value).toBe("2026-11-02")
+  expect(node(tree, "attendance-startDate").props.value).toBe("2026-10-21")
+  expect(node(tree, "attendance-reason").props.value).toBe("Keep the draft")
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+  await press(tree, "attendance-close-form")
+  expect(node(tree, "attendance-form")).toBeUndefined()
 })

@@ -946,3 +946,19 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Изолированнаяпроверкаконечногопроекта82/82PASS/0JSexceptions:2варианта×5вкладок, формы/validation/filters/empty-unread, pause/finishconfirm/offlineguard, 320/390/736, stablewidth, state-restorenowrite. Light/darkснимкиконечноговариантапросмотрены. РанниехарнессFAILv1iframe/v2initialJSON/v4evalsyntaxсохранены; v3PASS70относилсякпредыдущемуисточнику, итогv5PASS82. Этоstaticprototypecheck, неnativeE2E.
 - Кодприложения/установленный1029неизменены. Новыхheavybuilds/E2ENOT RUN: docs/prototype-only, hostcontract. CurrentPR196draft: compact/receiptPASS, otherregressions1029preflightFAILнастаромbackendfreeze, безпрогонаMaestro/сменыaccount;24hнеидёт/v6FAIL/recoveryPASS.
 - Точкаостановки: аудитипросматриваемыепредложенияготовы, полныйновыйдизайнвnativeещёнеперенесён. Следующийшаг пообщемуплану — единыекомпоненты/контраст, «Заявки»,«Ответы/Входящие»,«Профиль» иобщаядоводка«Дня»; затемновыеCI/физическиерегрессиисactualbackendSHA и24h. Всеcheckpointпозже6acedпокалокальныеdocs/evidence; ненужныйповторCIоднимdocspushнезапускался.
+
+
+### 2026-10-22 — принят «Ритм», начат перенос всех пяти вкладок
+
+- Пользователь выбрал «Ритм» в сравнении макетов и подтвердил «отлично». Согласован перенос общего визуального языка на День, Заявки, Ответы, Входящие, Профиль, с сохранением кадровых правил, реальной очереди и всех функций.
+- Routing проверен codex-project-context: mtm-attendance-standalone, codex/attendance-standalone, origin rashadoni/leaddrive-mtm. У приложения нет самостоятельного production-server route; Android проходит GitHub CI/artifact/install. CRM не меняем в рамках визуального этапа.
+- План реализации: изолированный standalone presentation и контрастные light/dark tokens; компактные списки/фильтры и отдельный фокус формы заявок с календарём; очередность кадровых ответов; группировка входящих без автоматического прочтения; профиль с раскрываемыми группами и полным согласием; доводка Дня. Сохраняем обычный MTM/manager default.
+- Проверки: небольшие последовательные rendered regressions и линтер; полный CI/TS/Android только hosted. APK1029 пока остаётся установленным. Очередь после recovery пуста, реальный24h не запущен; v6 остаётся FAIL. Следующий шаг — native implementation и проверки взаимодействий, затем checkpoint/CI.
+
+
+### 2026-10-22,20:03 Баку — «Ритм» перенесён в native, подготовлен CI checkpoint
+
+- Все5вкладок получили standalone-only композиции черезTimePresentation: общийchrome/контрастнаяпалитра, Dayactualreceipttimeline, Requestsfilters/focusedform/calendar/timepicker, RepliesHR-first/history, Inboxdategroups/unread/explicitread, Profilepreferences/privacy/disclosures. Backend/ordinaryMTM layout не меняются; legal/queue/scoping/confirmation handlers сохранены. Нативные системные шрифты пока оставлены; fonts вебэскиза не установленынативно.
+-149целевыхпроверок/9suites PASS последовательно:102screen +46shared/contrast/calendar/nav/legacy +1новаяпроверка отсутствия вчерашнейистории (Day2targetrerunPASS). InitialFAIL тестовогоremountprovider исправлен сохранениемобёртки, assertions не ослаблены. TargetedESLint14files0errors/45warnings (основныеno-void истарыйtabiconcallback);33RU/AZ/ENkeys parity,5MaestroYAMLparse, gitdiffcheck PASS. FullTS/Jest/build локальноNOT RUN, далееhostedCI.
+- Подготовленall-tabs-rhythm read-onlyMaestro; requestsubmit передаётcompany-derivedREQUEST_MONTH_OFFSET, correction проверяет selectedcivildate, верхнийcloseform. PhysicalNOT RUN до новойсборки. Прежний1029/101canonicalevents остаютсяbaseline; настоящая24hне идёт, v6FAIL сохранён.
+- Точка: sourceготовкcheckpoint/pushPR196 (draft). Дальшеexact-headfullCI/standalone+ordinarybuilds, проверкаSHA APK, при наличиителефонаinstall-r иphysicalalltabs с независимойсверкойисторий/заявок/прочтений/settings.

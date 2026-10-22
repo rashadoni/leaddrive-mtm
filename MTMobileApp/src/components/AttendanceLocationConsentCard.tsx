@@ -1,3 +1,4 @@
+import { timeColor, useTimePresentation } from "../attendance/ui/TimeUI"
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ import AttendanceDisclosure from './AttendanceDisclosure'
  * (owner, 2026-10-17). Without it the card explains that location is off.
  */
 export default function AttendanceLocationConsentCard({ hideUntilEnabled = false, compact = false }: { hideUntilEnabled?: boolean; compact?: boolean } = {}) {
+  const rhythm = useTimePresentation(), styles = rhythm ? rhythmStyles : legacyStyles
   const { t, i18n } = useTranslation()
   const agent = useAuthStore(state => state.agent), data = useBootstrapStore(state => state.data)
   const visible = data?.policies.attendanceMarkVersion === 1 && data.policies.agentPermissions?.attendanceLocation === true
@@ -107,7 +109,7 @@ export default function AttendanceLocationConsentCard({ hideUntilEnabled = false
       attention={failed || awaiting || conflict} initiallyOpen={canAccept || failed || awaiting || conflict}>{content}</AttendanceDisclosure> : content}
   </View>
 }
-const styles = themed(() => StyleSheet.create({
+const legacyStyles = themed(() => StyleSheet.create({
   inline: { gap: 10 },
   card: { backgroundColor: fieldTheme.color.surface, borderRadius: 20, borderWidth: 1, borderColor: fieldTheme.color.border, padding: 20, gap: 12 },
   title: { fontSize: 20, fontWeight: '700', color: fieldTheme.color.ink }, status: { fontSize: 16, fontWeight: '600', color: fieldTheme.color.primaryStrong },
@@ -115,3 +117,5 @@ const styles = themed(() => StyleSheet.create({
   warning: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.amber }, button: { minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 12 },
   buttonText: { fontSize: 16, color: fieldTheme.color.primaryStrong, fontWeight: '600', textAlign: 'center' }, primary: { backgroundColor: fieldTheme.color.primaryStrong }, white: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: '600', textAlign: 'center' }, disabled: { opacity: 0.45 }, checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, grow: { flex: 1 },
 }))
+
+const rhythmStyles = themed(() => StyleSheet.create({ ...legacyStyles, copy: { fontSize: 15, lineHeight: 23, color: timeColor.muted }, warning: { fontSize: 15, lineHeight: 23, color: timeColor.amber }, status: { color: timeColor.accent, fontSize: 16, fontWeight: '700' }, legal: { fontSize: 16, lineHeight: 25, color: timeColor.ink }, button: { minHeight: 48, padding: 12, justifyContent: 'center', alignItems: 'center', borderRadius: 16, backgroundColor: timeColor.inset }, buttonText: { color: timeColor.accent, fontSize: 16, lineHeight: 23, fontWeight: '600', textAlign: 'center' }, primary: { backgroundColor: timeColor.fill } }))

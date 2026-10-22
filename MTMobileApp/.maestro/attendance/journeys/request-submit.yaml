@@ -13,6 +13,8 @@ name: Employee submits one dated request for HR review
     timeout: 30000
 - tapOn:
     id: attendance-new
+- tapOn:
+    id: attendance-change-kind
 - scrollUntilVisible:
     element:
       id: attendance-kind-REMOTE_WORK
@@ -27,13 +29,11 @@ name: Employee submits one dated request for HR review
     timeout: 60000
 - tapOn:
     id: attendance-startDate
-    point: "95%,50%"
-- eraseText: 100
-- inputText: ${REQUEST_DATE}
-- hideKeyboard
-- assertVisible:
-    id: attendance-startDate
-    text: ${REQUEST_DATE}
+- runFlow:
+    file: ../shared/select-calendar-date.yaml
+    env:
+      TARGET_DATE: ${REQUEST_DATE}
+      MONTH_OFFSET: ${REQUEST_MONTH_OFFSET}
 - scrollUntilVisible:
     element:
       id: attendance-endDate
@@ -41,13 +41,11 @@ name: Employee submits one dated request for HR review
     timeout: 60000
 - tapOn:
     id: attendance-endDate
-    point: "95%,50%"
-- eraseText: 100
-- inputText: ${REQUEST_DATE}
-- hideKeyboard
-- assertVisible:
-    id: attendance-endDate
-    text: ${REQUEST_DATE}
+- runFlow:
+    file: ../shared/select-calendar-date.yaml
+    env:
+      TARGET_DATE: ${REQUEST_DATE}
+      MONTH_OFFSET: ${REQUEST_MONTH_OFFSET}
 - scrollUntilVisible:
     element:
       id: attendance-reason
@@ -68,7 +66,7 @@ name: Employee submits one dated request for HR review
     notVisible:
       id: attendance-form
     timeout: 60000
-# Closing the long form retains its scroll offset. Return above the newest row.
+# The focused form returns to the list after a durable queue write.
 - scrollUntilVisible:
     element:
       id: attendance-refresh

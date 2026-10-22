@@ -111,3 +111,10 @@ state to avoid closing an already open section. Consent acceptance waits for
 the confirmed active summary before reopening withdrawal controls. Full policy
 text and explicit consent are still required. Do not run new-layout journeys
 on the older1025 APK or change the APK during an active real-day hold.
+
+
+### Rhythm across all tabs (2026-10-22)
+
+`smoke/all-tabs-rhythm.yaml` exercises all five standalone tabs, the request type selector, calendar and time picker cancellation, reply and inbox filters, and the profile connection disclosure. It never submits a request, marks a notice read, changes locale/hints, grants consent, or changes companies. The external physical harness must prove unchanged canonical events, requests, read state and settings and restore the permission baseline changed by `open-fixture`. NOT RUN until its exact-source APK passes CI and is installed.
+
+Requests now have a focused form and date/time pickers. `request-submit.yaml` also requires `REQUEST_MONTH_OFFSET` (-12 through 12), derived from the company-local default day to `REQUEST_DATE`; its helper asserts the exact displayed month before selecting the civil date. `correction-from-day.yaml` verifies the calendar's selected canonical workdate and closes without changing it. Form close is at the top; flows return upward. These flows target Rhythm and must not be run on1029. Earlier physical results remain version-bound and are not transferred to the new UI.

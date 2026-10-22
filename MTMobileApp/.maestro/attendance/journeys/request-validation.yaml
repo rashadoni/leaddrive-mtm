@@ -36,7 +36,7 @@ name: An empty reason is refused and closing the draft submits nothing
 - scrollUntilVisible:
     element:
       id: attendance-close-form
-    direction: DOWN
+    direction: UP
     timeout: 60000
 - assertVisible:
     id: attendance-close-form

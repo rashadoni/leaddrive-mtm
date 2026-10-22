@@ -23,9 +23,13 @@ name: Open a correction from the completed day without an accidental submission
       id: attendance-startDate
     direction: DOWN
     timeout: 60000
-- assertVisible:
+- tapOn:
     id: attendance-startDate
-    text: ${EXPECTED_WORK_DATE}
+- assertVisible:
+    id: ${'calendar-' + EXPECTED_WORK_DATE}
+    selected: true
+- tapOn:
+    id: time-picker-close
 - scrollUntilVisible:
     element:
       id: attendance-startTime
@@ -45,7 +49,7 @@ name: Open a correction from the completed day without an accidental submission
 - scrollUntilVisible:
     element:
       id: attendance-close-form
-    direction: DOWN
+    direction: UP
     timeout: 60000
 - tapOn:
     id: attendance-close-form

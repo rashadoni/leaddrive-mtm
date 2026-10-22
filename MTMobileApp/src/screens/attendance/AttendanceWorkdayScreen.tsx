@@ -1,3 +1,6 @@
+import { TimeHeader, timeColor, timeStyles, useTimePresentation } from "../../attendance/ui/TimeUI"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
+import TimeDayHistory from "../../attendance/ui/TimeDayHistory"
 import AttendanceDisclosure from '../../components/AttendanceDisclosure'
 import AttendanceQrScanner from '../../components/AttendanceQrScanner'
 import AttendanceQrReceipt from '../../components/AttendanceQrReceipt'
@@ -42,6 +45,8 @@ function dateKey(timezone: string | null) {
  * «Profil» button — it is the «Daha çox» tab (owner, 2026-10-17).
  */
 export default function AttendanceWorkdayScreen({ managerShell = false, compact = false }: { managerShell?: boolean; compact?: boolean } = {}) {
+  const rhythm = useTimePresentation() && compact
+  const styles = rhythm ? rhythmStyles : legacyStyles, compactStyles = rhythm ? rhythmCompactStyles : legacyCompactStyles
   const { t, i18n } = useTranslation(), navigation = useNavigation<NavigationProp<OwnAttendanceParamList>>()
   const top = useHeaderTop(), bottom = useTabBarPadding()
   const agent = useAuthStore(state => state.agent), bootstrap = useBootstrapStore(state => state.data)
@@ -134,10 +139,10 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
   const detailKey = `${server}:${key}:${allowed}`
   const qrAction = <View style={compact ? compactStyles.qrAction : styles.qrAction}>
     <Pressable testID="office-workday-qr" accessibilityRole="button" accessibilityState={{ disabled: qrDisabled }} disabled={qrDisabled}
-      style={[styles.button, styles.qrButton, qrDisabled && styles.disabled]}
+      style={({ pressed }) => [styles.button, styles.qrButton, rhythm && qrDisabled && rhythmStyles.inactiveQr, qrDisabled && styles.disabled, rhythm && pressed && timeStyles.pressed]}
       onPress={() => { if (!qrDisabled) setScan({ scope: key, action: open ? 'FINISH' : 'START', workdayId: current?.workdayId }) }}>
-      <Icon name="qr-code-outline" size={23} color={fieldTheme.color.onColor} />
-      <Text style={styles.buttonText}>{t("attendanceQr.scan")}</Text>
+      <Icon name="qr-code-outline" size={23} color={rhythm && qrDisabled ? timeColor.ink : fieldTheme.color.onColor} />
+      <Text style={[styles.buttonText, rhythm && qrDisabled && rhythmStyles.inactiveQrText]}>{t("attendanceQr.scan")}</Text>
     </Pressable>
     {qrReason && <Text testID="office-workday-qr-reason" style={styles.qrReason}>{t(qrReason)}</Text>}
   </View>
@@ -154,18 +159,20 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
   const qrReceipt = qr.receipts.filter(row => row.action === 'FINISH').slice(-1)[0] ?? qr.receipts.filter(row => row.action === 'START').slice(-1)[0]
   return <View style={[styles.screen, compact && compactStyles.screen]}>
     <LightScreenStatusBar />
-    <View style={[styles.header, compact && compactStyles.header, { paddingTop: top }]}><View style={styles.headerRow}><View style={styles.headerCopy}>
-      <Text style={styles.brand}>{compact ? 'LeadDrive Time' : t("officeAttendance.myAttendance")}</Text>
-      <Text style={compact ? compactStyles.identity : styles.title}>{compact ? (allowed ? agent?.name : '') : t("officeAttendance.workday")}</Text>
-    </View>{managerShell ? <NotificationBell /> : null}</View></View>
+    <View style={[styles.header, compact && compactStyles.header, { paddingTop: top }]}>{rhythm
+      ? <TimeHeader title={t('attendanceCompact.tabs.day')} subtitle={allowed ? agent?.name : undefined} />
+      : <View style={styles.headerRow}><View style={styles.headerCopy}>
+        <Text style={styles.brand}>{compact ? 'LeadDrive Time' : t("officeAttendance.myAttendance")}</Text>
+        <Text style={compact ? compactStyles.identity : styles.title}>{compact ? (allowed ? agent?.name : '') : t("officeAttendance.workday")}</Text>
+      </View>{managerShell ? <NotificationBell /> : null}</View>}</View>
     {allowed && !compact && qrAction}
     <ScrollView contentContainerStyle={[styles.content, compact && compactStyles.content, { paddingBottom: bottom }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       {!allowed ? <Text testID="office-workday-unavailable" style={styles.muted}>{t("officeAttendance.unavailable")}</Text> : <>
-        <View style={compact ? compactStyles.day : styles.card}>
-          {compact && <Text style={compactStyles.title}>{t('officeAttendance.workday')}</Text>}
+        <View style={[compact ? compactStyles.day : styles.card, rhythm && paused && rhythmCompactStyles.pausedDay]}>
+          {compact && !rhythm && <Text style={compactStyles.title}>{t('officeAttendance.workday')}</Text>}
           <Text accessibilityRole={compact ? 'header' : undefined} style={compact ? compactStyles.status : styles.status}>{t(`officeAttendance.${state}`)}</Text>
           {!compact && <Text style={styles.name}>{agent?.name}</Text>}
-          <Text style={compact ? compactStyles.time : styles.clock}>{compact ? `${t(completed ? 'officeAttendance.finishedAt' : 'officeAttendance.startedAt')} · ${dayTime}` : dayTime}</Text>
+          <Text style={compact ? compactStyles.time : styles.clock}>{rhythm && !open && !completed ? formatLocalizedDate(dateKey(bootstrap?.timezone ?? null), i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : compact ? `${t(completed ? 'officeAttendance.finishedAt' : 'officeAttendance.startedAt')} · ${dayTime}` : dayTime}</Text>
           {!compact && <Text style={styles.muted}>{t(completed ? "officeAttendance.finishedAt" : "officeAttendance.startedAt")}</Text>}
           {paused && <Text style={compact ? compactStyles.hint : styles.muted}>{t("officeAttendance.pausedAt", { time: time(current?.pausedAt) })}</Text>}
           {offline && <View style={compact ? compactStyles.offline : undefined}>
@@ -190,6 +197,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
           </View>
           {!compact && <><Text style={styles.muted}>{t('officeAttendance.closeHint')}</Text>{correction}</>}
         </View>
+        {rhythm && <TimeDayHistory rows={deliveries.rows} failed={deliveries.failed} workdayId={current?.workdayId ?? (completed ? bootstrap?.workday?.id : undefined)} timezone={bootstrap?.timezone} />}
         {compact ? <View key={detailKey} style={compactStyles.details}>
           <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation}
             dependentEvents={!!recovery.operation && operations.some(item => item.operationId !== recovery.operation!.operationId && (item.data.id ?? item.data.workdayId) === (recovery.operation!.data.id ?? recovery.operation!.data.workdayId))}
@@ -234,13 +242,13 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
   </View>
 }
 
-const styles = themed(() => StyleSheet.create({
+const legacyStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: fieldTheme.color.canvas }, header: { backgroundColor: fieldTheme.color.surface, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border, padding: 24 }, headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 }, headerCopy: { flex: 1, gap: 8 }, brand: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "700" }, title: { color: fieldTheme.color.ink, fontSize: 27, fontWeight: "700" }, content: { padding: 20, gap: 16, maxWidth: 720, width: "100%", alignSelf: "center" },
   qrAction: { paddingHorizontal: 20, paddingVertical: 12, gap: 6, maxWidth: 720, width: "100%", alignSelf: "center" }, qrButton: { flexDirection: "row", gap: 10, flexGrow: 0 }, qrReason: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20 },
   card: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 22, padding: 22, gap: 16 }, status: { color: fieldTheme.color.primary, fontSize: 15, fontWeight: "700" }, name: { fontSize: 20, color: fieldTheme.color.ink, fontWeight: "600" }, clock: { fontSize: 27, fontWeight: "700", color: fieldTheme.color.primaryStrong }, muted: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.inkMuted }, notice: { color: fieldTheme.color.amber, lineHeight: 22 }, error: { color: fieldTheme.color.danger, lineHeight: 22 }, actions: { flexDirection: "row", flexWrap: "wrap", gap: 12 }, button: { minHeight: 50, padding: 14, justifyContent: "center", alignItems: "center", backgroundColor: fieldTheme.color.primaryStrong, borderRadius: 12, flexGrow: 1 }, buttonText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "700", textAlign: "center" }, secondary: { backgroundColor: fieldTheme.color.surface, borderColor: fieldTheme.color.border, borderWidth: 1 }, secondaryText: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "600", textAlign: "center" }, disabled: { opacity: 0.45 },
 }))
 
-const compactStyles = themed(() => StyleSheet.create({
+const legacyCompactStyles = themed(() => StyleSheet.create({
   screen: { backgroundColor: fieldTheme.color.surface },
   header: { paddingHorizontal: 16, paddingBottom: 12 }, identity: { color: fieldTheme.color.inkMuted, fontSize: 14 },
   content: { padding: 16, gap: 8, maxWidth: 640 }, day: { gap: 8 },
@@ -252,4 +260,21 @@ const compactStyles = themed(() => StyleSheet.create({
   textAction: { minHeight: 48, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   offline: { backgroundColor: fieldTheme.color.amberSoft, borderRadius: 10, padding: 12, gap: 4 },
   details: { gap: 8 },
+}))
+
+const rhythmStyles = themed(() => StyleSheet.create({
+  ...legacyStyles, screen: { ...timeStyles.screen }, header: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 20 },
+  content: { ...timeStyles.content }, button: { ...timeStyles.action, ...timeStyles.primary, flexGrow: 1 }, buttonText: { ...timeStyles.primaryText, fontSize: 16, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
+  secondary: { backgroundColor: timeColor.surface, borderWidth: 1, borderColor: timeColor.line }, secondaryText: { color: timeColor.accent, fontSize: 16, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
+  muted: { ...timeStyles.caption }, notice: { color: timeColor.amber, fontSize: 15, lineHeight: 22 }, error: { color: timeColor.danger, fontSize: 15, lineHeight: 22 },
+  qrReason: { ...timeStyles.caption }, inactiveQr: { alignSelf: 'flex-start', backgroundColor: timeColor.inset, flexGrow: 0 }, inactiveQrText: { color: timeColor.ink },
+}))
+const rhythmCompactStyles = themed(() => StyleSheet.create({
+  ...legacyCompactStyles,
+  screen: { backgroundColor: timeColor.canvas }, header: { paddingHorizontal: 20, paddingBottom: 0 }, content: { ...timeStyles.content },
+  day: { backgroundColor: timeColor.soft, borderRadius: 24, padding: 20, gap: 12 }, pausedDay: { backgroundColor: timeColor.amberSoft },
+  status: { color: timeColor.ink, fontSize: 25, lineHeight: 32, fontWeight: '800', letterSpacing: -0.4 },
+  time: { color: timeColor.muted, fontSize: 14, lineHeight: 21 }, hint: { ...timeStyles.caption }, qrAction: { gap: 8, paddingTop: 4 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, details: { gap: 8 },
+  offline: { backgroundColor: timeColor.amberSoft, borderRadius: 16, padding: 12, gap: 4 },
 }))
