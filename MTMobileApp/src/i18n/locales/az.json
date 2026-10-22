@@ -1335,5 +1335,11 @@
     "loadFailed": "Qəbzləri oxumaq alınmadı. Ekranı yeniləyin; çatdırılma vəziyyəti hələ məlum deyil.",
     "more": "Bütün saxlanmış qeydlər ({{count}})",
     "less": "Yığ"
+  },
+  "attendanceCorrection": {
+    "open": "İş günümü düzəlt",
+    "waitForDelivery": "Günü düzəltməzdən əvvəl saxlanmış qeydlərin göndərilməsini gözləyin.",
+    "existingDraft": "Başqa müraciətə başlamısınız. Əvvəl onu tamamlayın və ya bağlayın, sonra {{date}} tarixi üçün düzəlişi açın.",
+    "openAfterDraft": "Günün düzəlişini aç"
   }
 }

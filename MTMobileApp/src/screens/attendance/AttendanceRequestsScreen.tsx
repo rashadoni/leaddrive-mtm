@@ -16,6 +16,7 @@ import { ask } from "../../services/app-feedback"
 import PhotoCaptureModal from "../../components/PhotoCaptureModal"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
+import { attendanceCorrectionDraft, type AttendanceCorrectionIntent } from '../../services/attendance-correction-intent'
 
 function today(timezone: string | null) {
   try {
@@ -27,12 +28,13 @@ function newDraft(date: string): AttendanceInput {
   return { clientRequestId: attendanceUuid(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: date, endDate: date, reason: "", attachmentIds: [] }
 }
 
-export default function AttendanceRequestsScreen() {
+export default function AttendanceRequestsScreen({ route }: { route?: { params?: { correction?: AttendanceCorrectionIntent } } } = {}) {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation()
   const headerTop = useHeaderTop()
   const bottom = useTabBarPadding()
   const agent = useAuthStore(state => state.agent)
+  const server = useAuthStore(state => state.serverDomain)
   const bootstrap = useBootstrapStore(state => state.data)
   const admission = useBootstrapStore(state => state.routeFieldAccess)
   const allowed = mayUseOwnAttendanceRequests(bootstrap, agent, admission)
@@ -51,6 +53,8 @@ export default function AttendanceRequestsScreen() {
   const [denied, setDenied] = useState(false)
   const [errorKey, setErrorKey] = useState<string | null>(null)
   const [noticeKey, setNoticeKey] = useState<string | null>(null)
+  const [suggestedCorrection, setSuggestedCorrection] = useState<AttendanceInput | null>(null)
+  const consumedCorrection = useRef<string | null>(null)
   const epoch = useRef(0)
   const busyRef = useRef(false)
   const draftScope = useRef<string | null>(null)
@@ -70,6 +74,7 @@ export default function AttendanceRequestsScreen() {
   const clear = useCallback(() => {
     lifecycle.current += 1; releaseDraft(); busyRef.current = false
     setBusy(false); setLoading(false); setItems([]); setQueued([]); setQuota(null); setNextCursor(null); setUpdatedAt(null); setDocuments([]); setEditing(false); setCamera(false)
+    setSuggestedCorrection(null)
   }, [releaseDraft])
   const load = useCallback(async (more = false) => {
     if (!allowed || denied) return
@@ -112,8 +117,18 @@ export default function AttendanceRequestsScreen() {
       if (scope) void clearAttendanceCache(scope).catch(() => {})
     } else { draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); void loadRef.current() }
     return () => { mounted.current = false; lifecycle.current += 1; epoch.current += 1; releaseDraft() }
-  }, [agent?.id, agent?.organizationId, allowed, clear, releaseDraft, bootstrap?.timezone])
+  }, [agent?.id, agent?.organizationId, server, allowed, clear, releaseDraft, bootstrap?.timezone])
   useEffect(() => { setQuota(null); void loadRef.current() }, [month])
+  const correction = route?.params?.correction
+  useEffect(() => {
+    if (!allowed || denied || !correction || consumedCorrection.current === correction.requestKey) return
+    const input = attendanceCorrectionDraft(correction, { scope: `${agent?.organizationId}:${agent?.id}`, server, timezone: bootstrap?.timezone })
+    if (!input) return
+    consumedCorrection.current = correction.requestKey
+    // An existing form (and its attachments) is never silently overwritten.
+    if (editing || busyRef.current) { setSuggestedCorrection(input); return }
+    draftScope.current = getOfflineScope(); setDraft(input); setEditing(true); setErrorKey(null); setNoticeKey(null)
+  }, [correction, allowed, denied, agent?.id, agent?.organizationId, server, bootstrap?.timezone, editing])
   const change = (patch: Partial<AttendanceInput>) => { setDraft(value => ({ ...value, ...patch })); setErrorKey(null) }
   const changeKind = (kind: AttendanceKind) => {
     if (kind === draft.kind) return
@@ -232,6 +247,13 @@ export default function AttendanceRequestsScreen() {
           {updatedAt && <Text style={styles.caption}>{t("attendanceRequests.updated", { date: clock(updatedAt) })}</Text>}
           {errorKey && <Text accessibilityRole="alert" style={styles.error}>{t(errorKey)}</Text>}
           {noticeKey && <Text accessibilityLiveRegion="polite" style={styles.notice}>{t(noticeKey)}</Text>}
+          {suggestedCorrection && <View style={styles.quota}>
+            <Text style={styles.body}>{t('attendanceCorrection.existingDraft', { date: suggestedCorrection.startDate })}</Text>
+            {button(t('attendanceCorrection.openAfterDraft'), () => {
+              if (editing || busyRef.current || !suggestedCorrection) return
+              draftScope.current = getOfflineScope(); setDraft(suggestedCorrection); setSuggestedCorrection(null); setEditing(true); setErrorKey(null)
+            }, 'attendance-open-correction', false, editing || busy)}
+          </View>}
           <View style={styles.actions}>
             {!editing && button(t("attendanceRequests.new"), enter, "attendance-new", true, busy)}
             {button(t("attendanceRequests.refresh"), () => { void act(async () => {}) }, "attendance-refresh", false, busy || loading)}

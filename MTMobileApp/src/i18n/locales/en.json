@@ -1335,5 +1335,11 @@
     "loadFailed": "Receipts could not be read. Refresh the screen; delivery status is currently unknown.",
     "more": "Show all saved marks ({{count}})",
     "less": "Show less"
+  },
+  "attendanceCorrection": {
+    "open": "Correct my workday",
+    "waitForDelivery": "Wait for saved marks to be sent before correcting this day.",
+    "existingDraft": "You have another request open. Finish or close it before opening the correction for {{date}}.",
+    "openAfterDraft": "Open workday correction"
   }
 }

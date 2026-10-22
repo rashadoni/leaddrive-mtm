@@ -2,6 +2,7 @@ import AttendanceQrScanner from '../../components/AttendanceQrScanner'
 import AttendanceQrReceipt from '../../components/AttendanceQrReceipt'
 import AttendanceDeliveryReceipts from '../../components/AttendanceDeliveryReceipts'
 import { useAttendanceReceipts } from '../../hooks/useAttendanceReceipts'
+import { createAttendanceCorrectionIntent } from '../../services/attendance-correction-intent'
 import {useAttendanceQr} from '../../hooks/useAttendanceQr'
 import {guardAttendanceQr} from '../../services/attendance-qr'
 import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
@@ -41,6 +42,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
   const { t, i18n } = useTranslation(), navigation = useNavigation()
   const top = useHeaderTop(), bottom = useTabBarPadding()
   const agent = useAuthStore(state => state.agent), bootstrap = useBootstrapStore(state => state.data)
+  const server = useAuthStore(state => state.serverDomain)
   const active = useWorkdayStore(state => state.activeWorkday), finished = useWorkdayStore(state => state.finishedWorkday)
   const hydrated = useWorkdayStore(state => state.hydrated)
   const [operations, setOperations] = useState<OutboxOperation[]>([])
@@ -159,6 +161,16 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
             {returnable && <Pressable testID="office-workday-return" accessibilityRole="button" disabled={busy || !hydrated || pending} onPress={() => void returnToWork()} style={[styles.button, (busy || !hydrated || pending) && styles.disabled]}><Text style={styles.buttonText}>{t('officeAttendance.returnToWork')}</Text></Pressable>}
           </View>
           <Text style={styles.muted}>{t("officeAttendance.closeHint")}</Text>
+          {bootstrap?.policies.agentPermissions?.attendanceRequests === true && (current || bootstrap?.workday) && <>
+            <Pressable testID="office-workday-correct" accessibilityRole="button" accessibilityState={{ disabled: busy || pending }} disabled={busy || pending}
+              style={[styles.button, styles.secondary, (busy || pending) && styles.disabled]} onPress={() => {
+                if (busy || pending) return
+                const day = current ? { startedAt: current.startedAt } : bootstrap?.workday
+                const correction = createAttendanceCorrectionIntent(key, server, bootstrap?.timezone, day)
+                if (correction) navigation.navigate('OwnRequests' as never, { correction } as never)
+              }}><Text style={styles.secondaryText}>{t('attendanceCorrection.open')}</Text></Pressable>
+            {pending && <Text style={styles.muted}>{t('attendanceCorrection.waitForDelivery')}</Text>}
+          </>}
         </View>
         <AttendanceQrReceipt receipts={qr.receipts} />
         <AttendanceDeliveryReceipts rows={deliveries.rows} failed={deliveries.failed} timezone={bootstrap?.timezone} />

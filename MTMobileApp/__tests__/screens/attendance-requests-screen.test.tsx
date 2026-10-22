@@ -8,7 +8,7 @@ import ru from "../../src/i18n/locales/ru.json"
 import az from "../../src/i18n/locales/az.json"
 import en from "../../src/i18n/locales/en.json"
 // «Mənim uçotum»: an employee HR keeps. A field agent has no own requests (owner, 2026-10-20).
-const mockAuth = { agent: { id: "fictional-agent", organizationId: "fictional-org", role: "EMPLOYEE" } }
+const mockAuth = { serverDomain: 'fixture.invalid', agent: { id: "fictional-agent", organizationId: "fictional-org", role: "EMPLOYEE" } }
 const mockBootstrap = { routeFieldAccess: "disabled", data: { timezone: "Asia/Baku", tenant: { id: "fictional-org" }, principal: { id: "fictional-agent", role: "EMPLOYEE" }, manifest: { tenant: { id: "fictional-org" }, principal: { id: "fictional-agent", role: "EMPLOYEE" } }, policies: { attendanceMarkVersion: 1, agentPermissions: { attendanceRequests: true, attendanceWorkday: true } } } }
 const mockNavigate = jest.fn()
 const mockAsk = jest.fn().mockResolvedValue(true)
@@ -33,15 +33,16 @@ import { setOfflineScope } from "../../src/services/offline-scope"
 import AttendanceRequestsScreen from "../../src/screens/attendance/AttendanceRequestsScreen"
 import PhotoCaptureModal from "../../src/components/PhotoCaptureModal"
 import type { AttendanceDocument, AttendanceRequest } from "../../src/services/attendance-contract"
+import { createAttendanceCorrectionIntent, type AttendanceCorrectionIntent } from '../../src/services/attendance-correction-intent'
 const locale = i18next.createInstance()
 const row: AttendanceRequest = { id: "own-request", clientRequestId: "c01be938-a8bb-41e1-b08b-d1ea2394d0b3", status: "PENDING", startDate: "2026-10-14", endDate: "2026-10-14", reason: "Fictional appointment", submittedAt: "2026-10-13T08:00:00Z", decidedAt: null, decisionNote: null, cancelledAt: null, version: "2026-10-13T08:00:00Z", details: { kind: "HOURLY_ABSENCE", unit: "HOURS", startTime: "10:00", endTime: "12:00", timezone: "Asia/Baku", attachmentIds: [] } }
 const data = (items: AttendanceRequest[] = [row]) => ({ items, nextCursor: null, updatedAt: "2026-10-13T08:00:00Z" })
 const roots: TestRenderer.ReactTestRenderer[] = []
 const settle = async () => { for (let i = 0; i < 4; i++) await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) }) }
-async function open(language = "ru") {
+async function open(language = "ru", correction?: AttendanceCorrectionIntent) {
   await locale.changeLanguage(language)
   let tree!: TestRenderer.ReactTestRenderer
-  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><AttendanceRequestsScreen /></I18nextProvider>) })
+  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><AttendanceRequestsScreen route={{ params: { correction } }} /></I18nextProvider>) })
   roots.push(tree); await settle(); return tree
 }
 function node(tree: TestRenderer.ReactTestRenderer, id: string) { return tree.root.findAll(item => item.props.testID === id, { deep: false })[0] }
@@ -72,6 +73,35 @@ beforeEach(() => {
   mockAsk.mockResolvedValue(true)
 })
 afterEach(async () => { act(() => { roots.splice(0).forEach(tree => tree.unmount()) }); await settle() })
+it.each(['ru', 'az', 'en'])('opens the selected overnight day in the existing %s correction form without sending', async language => {
+  const correction = createAttendanceCorrectionIntent('fictional-org:fictional-agent', 'fixture.invalid', 'Asia/Baku', {
+    workDate: '2026-10-21', startedAt: '2026-10-21T18:00:00Z', completedAt: '2026-10-22T02:00:00Z',
+  })!
+  const tree = await open(language, correction)
+  expect(node(tree, 'attendance-kind-TIME_CORRECTION').props.accessibilityState.selected).toBe(true)
+  expect(node(tree, 'attendance-startDate').props.value).toBe('2026-10-21')
+  expect(node(tree, 'attendance-endDate').props.value).toBe('2026-10-22')
+  expect(node(tree, 'attendance-startTime').props.value).toBe('22:00')
+  expect(node(tree, 'attendance-endTime').props.value).toBe('06:00')
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+  await type(tree, 'attendance-reason', 'Please check my finish time')
+  await press(tree, 'attendance-submit')
+  expect(service.queueAttendanceRequest).toHaveBeenCalledWith('fictional-org:fictional-agent', expect.objectContaining({ kind: 'TIME_CORRECTION', startDate: '2026-10-21', endDate: '2026-10-22' }), [])
+})
+it('does not expose a correction intent belonging to another account', async () => {
+  const correction = createAttendanceCorrectionIntent('other:employee', 'fixture.invalid', 'Asia/Baku', { startedAt: '2026-10-21T05:00:00Z' })!
+  const tree = await open('ru', correction)
+  expect(node(tree, 'attendance-form')).toBeUndefined()
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+})
+it('preserves an existing request when a new workday correction arrives', async () => {
+  const tree = await open(); await press(tree, 'attendance-new'); await type(tree, 'attendance-reason', 'Keep this existing draft')
+  const correction = createAttendanceCorrectionIntent('fictional-org:fictional-agent', 'fixture.invalid', 'Asia/Baku', { startedAt: '2026-10-21T05:00:00Z' })!
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><AttendanceRequestsScreen route={{ params: { correction } }} /></I18nextProvider>)); await settle()
+  expect(node(tree, 'attendance-reason').props.value).toBe('Keep this existing draft')
+  expect(node(tree, 'attendance-open-correction').props.disabled).toBe(true)
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+})
 it.each(["ru", "az", "en"])("renders actual %s request status, manager reply, monthly allowance and form labels", async language => {
   ;(service.loadAttendanceRequests as jest.Mock).mockResolvedValue(data([{ ...row, status: "REJECTED", decisionNote: "Fictional reviewer response", decidedAt: "2026-10-13T09:00:00Z" }]))
   const tree = await open(language)
