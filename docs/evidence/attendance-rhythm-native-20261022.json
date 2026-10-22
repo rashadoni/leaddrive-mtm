@@ -640,7 +640,7 @@
   "currentCandidate": {
     "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
     "versionCode": 1039,
-    "status": "FONT_THREE_MAESTRO_FULL_APPEARANCE_PASS_LANDSCAPE_RUNNING",
+    "status": "NATIVE_UI_ACCEPTANCE_PASS_GPS_COMPOSITE_PASS_QR_PENDING",
     "hostedGates": {
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "allExactHeadChecks": "PASS",
@@ -801,8 +801,21 @@
       "originalRotationRestored": true,
       "finishedAt": "2026-10-22T21:30:56.883339+00:00"
     },
-    "landscape": "RUNNINGv6 after owned draft/header tap harness correction; previous FAILs retained",
-    "opticalQrGps": "NOT_RUN on1039; earlier version results not transferred",
+    "landscape": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "startedAt": "2026-10-22T21:46:14.473519+00:00",
+      "landscapeWindow": true,
+      "pickerActionsReachable": true,
+      "timeCancelRetainedValue": true,
+      "dateCancelRetainedValue": true,
+      "draftRetained": true,
+      "visualReview": "PENDING",
+      "originalRotationRestored": true,
+      "dataAndPermissionsUnchanged": true,
+      "finishedAt": "2026-10-22T21:49:48.676774+00:00"
+    },
+    "opticalQrGps": "Actual1039 GPS permission/GPS RUNNING; QR NOT_RUN",
     "actual24h": "NOT_STARTED",
     "focusedNativeAcceptance": {
       "status": "PASS",
@@ -917,6 +930,95 @@
         "dataAndPermissionsUnchanged": true,
         "finishedAt": "2026-10-22T21:40:21.906405+00:00"
       }
-    ]
+    ],
+    "landscapeVisualReview": {
+      "status": "PASS_SCOPED_LANDSCAPE_100",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "versionCode": 1039,
+      "reviewed": [
+        "time-picker-landscape-initial.png",
+        "time-picker-landscape-confirm-reachable.png",
+        "calendar-landscape.png"
+      ],
+      "observed": "Actual landscape modal date/time content scrolls; selection/cancel controls reachable; tentative hour highlights, underlying form value remains unchanged until commit. Cancel preserves original time/date.",
+      "fontScale": 1.0,
+      "landscape200": "NOT_RUN",
+      "ownerAppearanceAcceptance": "NOT_INFERRED"
+    },
+    "gpsOutsideAndPermission": {
+      "status": "PASS_OUTSIDE_AND_PERMISSION_SCOPE",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "versionCode": 1039,
+      "flowSeconds": "41.408",
+      "actualAndroidPermissionDialog": true,
+      "preGranted": false,
+      "outsideExpectedFromActualDistance": true,
+      "distanceMeters": 9659,
+      "testRadiusMeters": 100,
+      "factsState": "VALID",
+      "newEvents": [
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 103,
+      "requestsAndOtherAccountUnchanged": true,
+      "originalPermissionsAndFlagsRestored": true,
+      "insidePositiveCase": "NOT_RUN; test branch is at earlier phone position",
+      "priorAttempt": "FAIL preserved: inside assertion failed because current phone is outside earlier branch",
+      "checkedAt": "2026-10-22T21:55:48.879371+00:00",
+      "evidence": "package-1039-gps-v1/outside-and-permission-audit-sanitized.json"
+    },
+    "gpsInsideNativeUi": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "apkVersionCode": 1039,
+      "startedAt": "2026-10-22T22:03:35.785872+00:00",
+      "scope": "one real native START for current company day in owned fictional tenant; no clock/history rewrite",
+      "locationMarks": [
+        {
+          "action": "START",
+          "state": "INSIDE",
+          "distanceMeters": 0
+        }
+      ],
+      "workDate": "2026-10-23",
+      "newEventTypes": [
+        "START"
+      ],
+      "priorEventsUnchanged": 104,
+      "otherAccountUnchanged": true,
+      "requestsUnchanged": true,
+      "preGrantedGpsForSetup": true,
+      "firstPermissionProof": "package-1039-gps-v1/outside-and-permission-audit-sanitized.json",
+      "gpsState": "INSIDE",
+      "radiusMeters": 250,
+      "branchVersion": 3,
+      "oldBranchHistoryUnchanged": true,
+      "reportTo": "2026-10-23",
+      "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+      "originalPermissionFlagsRestored": true,
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T22:04:38.358281+00:00",
+      "evidence": "package-1039-prepare-qr-day-v3/result-sanitized.json",
+      "maestroFlow": false
+    },
+    "gpsTestBranchRevision": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T22:01:06.697980+00:00",
+      "scope": "same fictional branch, new immutable revision; coordinates from actual owned app mark; no history rewrite",
+      "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+      "branchCountUnchanged": 2,
+      "sameBranch": true,
+      "newImmutableRevision": true,
+      "oldVersion": 2,
+      "newVersion": 3,
+      "radiusMeters": 250,
+      "source": "actual source845/APK1039 FINISH coordinates; original accuracy100m",
+      "historicalReportAndMarksUnchanged": true,
+      "requestsUnchanged": true,
+      "coordinatesDisclosed": false,
+      "finishedAt": "2026-10-22T22:01:10.203222+00:00",
+      "evidence": "gps-branch-refresh-v3/result-sanitized.json"
+    },
+    "nextUserRequestedPhase": "Route & Field Maestro after all Time acceptance, isolated data and role/server/offline checks"
   }
 }

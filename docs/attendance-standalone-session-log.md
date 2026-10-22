@@ -1226,3 +1226,39 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Landscapev5 FAIL21:40:21UTC наattendance-new: остался собственный незакрытыйчерновик послеv3. Data/permissions/rotation auditPASS, appbugclose не утверждали. Read-onlynativeinspection подтвердилformtrue/listfalse. Вlandscape helper находилчастично видимуюheaderкнопку иtapпопадалвзонуAndroidstatusbar. Отдельнаяпроверкаподтвердилаnonce Landscapeunsent845, прокрутилакнастоящемуначалу, closebounds[1736,174][2103,309]; одинtap закрылформу, attendance-new visible/formabsent. Заявка не отправлялась.
 - Immutablev6: передсозданиемформы coldstartONLYownapp/portraitlock0, scrollTimeup, послеpicker cancel ивcleanup истинныйtopheader+одинclose+обязательноеformabsent/newvisibleassert. Originalrotation/datarestore/480sdevicewatchdogсохранены. V6RUNNINGединственнымUIactor; appcode/source845/1039 unchanged. Предыдущиеv3/v4/v5FAILсохранены.
 - FutureGPScontroller1039подготовленкUSER_FIXEDflags: read/captureowner0flags, обратимоеclearuser-set/user-fixedтолькоFine/Coarseпередactualdialog, послеtestточныйrestoregrants+всехисходныхflags(включаяunchangedsystemflags). Pmhelpподтвердилподдерживаемыеuserflags; камераoriginalUSER_SETбезUSER_FIXED. Сбросфлагов/GPSwrite ещёНЕвыполнялись.
+
+
+### 2026-10-23,01:51 Баку —1039 landscape PASS, GPS начат
+
+- Landscape845v6 завершён PASS21:49:48.676UTC: pickeractionsinsideactual2316x1080window, tentativehourcancel иcalendar-nextcancel сохранилиисходныезначения, reasonretained, exactrotationrestored, history/requests/permissions unchanged. Actual3PNG просмотрены; companionPASS_SCOPED_LANDSCAPE_100 (200%landscapeNOT RUN). Formclose проверенчерезnewvisible/formabsent, толькоownunsentdraft. Source845/1039 appcodeнеизменён.
+- Послеполногоlandscapecleanup запущен GPS1039v1какединственныйUIactor. Gatesтребуютsource845/1039+allhostedPASS+threeMaestro/appearance/landscapePASS, activeapprovedtestpolicy/consent, originalFINE/COARSEfalse. ActualAndroiddialog безpregrant, userflags временноresetиexactrestoreвfinally; companydate23/oldrunningday22 задаётточныйidle-stateпослеfinish. ПредыдущеефактическоеGPSнепереноситсяс1025/1029. ИтогещёRUNNING, новыхmarksпоканеутверждаем.
+
+
+### 2026-10-23,01:55 Баку — поручение пользователя: затем Route & Field
+
+Пользователь: «после всех тестов такой же маэстро тест сделаешь с приложением route and field». Принято как следующий этап ПОСЛЕ завершения текущих Timeпроверок, включая настоящую24h, ане замена/параллельныйUIactor. Следующийплан: Route&Field маршрут/визиты/GPS/фото/роли/офлайн/restart/sync наизолированныхтестовыхданных. ТекущийобычныйMTM1710 инеотносящиесяпрофили сохраняются; передбудущимтестом выяснитьвходи fixtureизоляцию, не стиратьрабочиеданные. Публикацию/productiondeploy новогоRoute&Fieldизмененияэтотзапростестированиясампосебенедобавляет. До завершенияTimeкRoute&Fieldнепереключаться.
+
+
+### 2026-10-23,01:59 Баку — GPS actual permission и вне зоны подтверждены
+
+- GPS1039v1: actualMaestro41.408s PASS, один FINISH старого22Oct, но общий v1FAIL сохранён: harness ожидалINSIDE, actualdistance9659m/radius100m → корректныйOUTSIDE. Independent outside-and-permission-audit PASS: actualAndroidforegrounddialog безpregrant, factsVALID, прежние103events/requests/otheraccount unchanged, originalgrants+flags восстановленыточно. ПоложительныйINSIDE ещёNOT RUN.
+- Дляpositivecase будет новаяimmutable revision того жеfictionalGPSbranch по фактическойсвежейкоординатеapp, в рамках прежнегоявногоразрешенияпользователя. ИсторическийOUTSIDE иbranchrevision сохраняются. Новый23OctSTART будетоднократночерезnativeUI, затемQRFINISH. Runtime/source845/APK1039 unchanged.
+
+
+### 2026-10-23, 02:05 Баку — GPS: обе зоны проверены; следующий этап Route & Field сохранён
+
+- Отдельная проверка Android-диалога и OUTSIDE на APK 1039/source 845 прошла: настоящий системный запрос, без предварительной выдачи разрешения, одна FINISH, distance 9659 m при прежнем радиусе 100 m. Первоначальный общий GPS v1 FAIL сохранён: ожидание INSIDE не соответствовало фактической позиции телефона. Независимый аудит PASS, прежние 103 события и другой аккаунт не изменились; разрешения и флаги восстановлены точно.
+- Обновлён тот же вымышленный GPS-филиал, без создания ещё одного филиала: новая неизменяемая версия 3 после прежней версии 2 из теста APK 1025. Координаты взяты из собственного фактического FINISH приложения. Тестовый радиус 250 m учитывает зафиксированную точность 100 m; продуктивные филиалы не менялись. Состояния, расстояния и ссылки старых отметок на прежние ревизии остались неизменными. Branch-refresh v2 FAIL до записи из-за старого снимка версии 1 сохранён; v3 PASS.
+- Native START нового дня 2026-10-23 подтвердил INSIDE, distance 0 m, правильную ревизию 3 и facts VALID. Это отдельная автоматизация реального UI, не новый Maestro flow. Для этой подготовки GPS был предварительно разрешён; доказательство настоящего первого Android-диалога находится в отдельном Maestro v1 audit. Предыдущие 104 события/истории заявок/другой аккаунт сохранены, очередь отправлена, настройки и все исходные permission flags восстановлены. Результат package-1039-prepare-qr-day-v3 PASS, 22:04:38 UTC.
+- Prepare v2 FAIL сохранён: harness ошибочно разыменовал временно пустой bootstrap до завершения GPS. После ошибки независимая проверка подтвердила отсутствие новых событий; cleanup закрыл приложение при отзыве разрешения. V3 проверил прежнюю историю и пустую очередь до единственного нового START, затем корректно дождался ответа. Повторного слепого tap не было.
+- За время проверки backend стал c6654e0c50192e5e00a70fd68b6b970439ce4cfc. Primary GitHub compare 0998→c665: merge-base exact 0998, ahead 2, behind 0; изменены только backup/recovery workflows, docs, scripts и их тесты. Attendance/mobile/auth/schema runtime не менялся. Это не наш выпуск. Тестовый API по app.leaddrivecrm.org соответствует зарегистрированному 13.140.132.245:/opt/leaddrive-v2; прямой серверный deploy не выполнялся.
+- Следующая физическая проверка: QR FINISH текущего дня, затем квитанции/собственные отметки/исправление дня/изоляция аккаунтов на этой APK и новая настоящая 24h. PR 196 остаётся draft; 24h ещё NOT RUN. Обычный MTM 1710 и прочие профили не изменены.
+
+#### Следующий этап после ВСЕХ тестов Time — Route & Field (поручение пользователя)
+
+1. Установить точную версию/источник приложения, доступные роли и изолированные тестовые аккаунты; сохранить исходную сессию и состояние рабочего MTM.
+2. Maestro от имени полевого сотрудника: вход, маршрут, список и карточка точки, начало/конец визита, обязательные поля и фото, GPS и отказ в разрешениях, смена/перерыв, перезапуск приложения.
+3. Проверки от имени руководителя: доступный маршрут и визит, фактические времена, GPS/фото и исключения; запрет просмотра чужой организации и недоступных сотрудников.
+4. Офлайн: визит/фото/очередь, перезапуск, возврат связи, сохранение исходного времени и однократная доставка без дублей. Срок длительного теста определять по реальному контракту Route & Field, не приписывать ему автоматически Time-правило 24h.
+5. Сверить каждое действие приложения с сервером/CRM, отдельно проверить ошибки и восстановление. Сохранить source-bound результаты, снимки и найденные дефекты; не выдавать старые Time PASS за Route & Field PASS.
+6. Не запускать второй UI actor на телефоне во время текущих тестов Time. Физическое наведение камеры/USB запрашивать только при невозможности выполнить удалённо. Новый push/merge/deploy Route & Field не разрешён автоматически одним поручением протестировать.
