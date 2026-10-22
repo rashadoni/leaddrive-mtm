@@ -1,5 +1,5 @@
 {
-  "status": "IMPLEMENTED_HOSTED_CI_PASS_PHYSICAL_BLOCKED",
+  "status": "HOSTED_CHECKS_PASS_PHONE_UPDATE_IN_PROGRESS",
   "scope": "Standalone compact workday presentation; ordinary MTM uses the existing layout",
   "targeted": {
     "status": "PASS",
@@ -96,7 +96,9 @@
     },
     "ordinaryAndroid": {
       "runId": 39791935096,
-      "status": "IN_PROGRESS"
+      "checkRunId": 119869943056,
+      "status": "PASS",
+      "proof": "Exact-head check_run and PR checks completed successfully; workflow aggregate endpoint retained stale in_progress response"
     }
   },
   "candidateArtifact": {
@@ -107,5 +109,20 @@
     "digestVerification": "PASS",
     "installed": false
   },
-  "interruptedQueueRecovery": "NOT RUN: prepared bounded recovery of three captured claims, waiting for USB; not a 24h acceptance"
+  "interruptedQueueRecovery": {
+    "status": "PASS",
+    "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+    "priorEventsPreserved": 93,
+    "recoveredEvents": 3,
+    "originalClaimsRetained": true,
+    "noDuplicatesAfterRestart": true,
+    "cleanup": {
+      "ownNetworkingAllowed": true,
+      "ordinaryMtmAllowed": true,
+      "originalPermissionsRestored": true,
+      "radiosUnchanged": true,
+      "packagesUnchanged": true
+    },
+    "real24hAcceptance": "NOT PASSED"
+  }
 }
