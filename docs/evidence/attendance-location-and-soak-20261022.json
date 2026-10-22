@@ -907,7 +907,130 @@
       "otherAccountHistoryUnchanged": true,
       "finishedAt": "2026-10-22T09:08:52.984866+00:00"
     },
-    "secondAttemptWatchdogLimitation": "After the owner reconnected USB, own-package networking was still denied. Automatic device-side cleanup is not claimed; explicit recovery restored networking and original task permission grants."
+    "secondAttemptWatchdogLimitation": "After the owner reconnected USB, own-package networking was still denied. Automatic device-side cleanup is not claimed; explicit recovery restored networking and original task permission grants.",
+    "attempt4Final": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:32:12.749+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 4,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:35:40.041+00:00",
+      "samplesObserved": 1,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:32:13.300+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T16:53:07+04:00",
+      "offlineAt": "2026-10-22T12:33:12.196+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:35:12.196000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "cf7af9e53614097144cc7585f270dd88a5f2c7029c29d48d381072a96a498fbb",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "89.95",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true,
+        "originalOfficeAccountRetained": true
+      },
+      "finishedAt": "2026-10-22T12:35:40.041+00:00"
+    },
+    "attempt5Final": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:46:17.910+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 5,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:51:11.143+00:00",
+      "samplesObserved": 1,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:46:18.265+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:07:19+04:00",
+      "offlineAt": "2026-10-22T12:47:24.188+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:49:24.188000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "84c25d1728979669c8fea870405bff1375c9b6770fa46fcadc0e3ad1e5e76c90",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "156.208",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true,
+        "originalOfficeAccountRetained": true
+      },
+      "finishedAt": "2026-10-22T12:51:11.143+00:00"
+    },
+    "attempt6Start": {
+      "status": "RUNNING",
+      "startedPreparationAt": "2026-10-22T12:53:48.920+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 6,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:57:34.610+00:00",
+      "samplesObserved": 2,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:53:49.173+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:14:45+04:00",
+      "offlineAt": "2026-10-22T12:54:49.357+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:56:49.357000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c774d3d6cd42ad80aa76287a40922bed994836557e2bf0254e6d7c3419057ec7",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "93.169",
+            "status": "PASS"
+          }
+        ]
+      },
+      "queueCaptured": true
+    },
+    "currentStatus": "RUNNING attempt6; earlier completion estimates cancelled; no 24h PASS yet"
   },
   "consentWithdrawal": {
     "status": "PASS",

@@ -948,7 +948,69 @@
       "permissionsRadiosPackagesUnchanged": true,
       "dayState": "COMPLETED",
       "finishedAt": "2026-10-22T12:53:12.260+00:00"
-    }
+    },
+    "soakAttempt6Start": {
+      "status": "RUNNING",
+      "startedPreparationAt": "2026-10-22T12:53:48.920+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 6,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:57:34.610+00:00",
+      "samplesObserved": 2,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:53:49.173+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:14:45+04:00",
+      "offlineAt": "2026-10-22T12:54:49.357+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:56:49.357000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c774d3d6cd42ad80aa76287a40922bed994836557e2bf0254e6d7c3419057ec7",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "93.169",
+            "status": "PASS"
+          }
+        ]
+      },
+      "queueCaptured": true
+    },
+    "soakAttempt6InitialObservations": [
+      {
+        "checkedAt": "2026-10-22T12:54:55.341+00:00",
+        "hostElapsedSeconds": 5.984,
+        "deviceElapsedSeconds": 6.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T12:57:27.302+00:00",
+        "hostElapsedSeconds": 157.945,
+        "deviceElapsedSeconds": 158.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true,
+        "admissionAvailable": true,
+        "pendingVisible": true
+      }
+    ]
   },
   "latestTestOnlyPublishedHead": {
     "sha": "d56a15eecfe95c46eca98cf4ee994d0f67605932",
@@ -970,5 +1032,25 @@
     "status": "SUCCESS",
     "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
     "apkNotInstalled": true
+  },
+  "latestFlowFixGates": {
+    "sha": "dcdddfc7e2ac18c55fd61136257628da878503ad",
+    "CI": {
+      "run": 39782171350,
+      "status": "SUCCESS"
+    },
+    "emulatorContract": {
+      "run": 39782171208,
+      "status": "SUCCESS"
+    },
+    "ordinaryAndroid": {
+      "run": 39782171136,
+      "status": "IN_PROGRESS"
+    },
+    "standaloneAndroid": {
+      "run": 39782163319,
+      "status": "IN_PROGRESS"
+    },
+    "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4"
   }
 }
