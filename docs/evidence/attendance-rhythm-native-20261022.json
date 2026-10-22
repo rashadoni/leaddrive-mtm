@@ -619,7 +619,7 @@
     }
   },
   "liveFontReflowFix": {
-    "status": "SOURCE_READY_HOSTED_GATES_NOT_RUN",
+    "status": "TEST_TYPING_CORRECTED_REPEAT_HOSTED_GATES_PENDING",
     "targetedSuites": 14,
     "targetedTestsPassed": 135,
     "targetedEslintErrors": 0,
@@ -627,6 +627,14 @@
     "approach": "Time-only native paragraph replacement on font-scale updates; keep screens/TextInputs/drafts mounted. Synchronously update Fabric surface font constraints before Dimensions notification. No font scaling cap.",
     "ordinaryMtm": "Time context defaults false; native paragraph identity retained in targeted test; normal APK build pending",
     "nativeAcceptance": "NOT_RUN on new source",
-    "fullJestTypeScriptAndroid": "NOT_RUN locally; required hosted gates next"
+    "fullJestTypeScriptAndroid": "NOT_RUN locally; required hosted gates next",
+    "firstHostedAttempt": {
+      "sourceSha": "fe6628a75d4de72bc055cfc64746a72556543c71",
+      "ciRun": 39852496198,
+      "standaloneRun": 39852491311,
+      "fullJest": "PASS283suites/2523tests/1TODO",
+      "typeScript": "FAIL mockhost findByType typing",
+      "apk": "NOT_BUILT; not installed"
+    }
   }
 }

@@ -29,23 +29,23 @@ it('remeasures Time text across font changes while retaining the unsent form and
     const [reason, setReason] = useState('')
     return <>
       <TimeText ref={ref} testID="reason-label" accessibilityLabel="Reason" allowFontScaling>Reason</TimeText>
-      {React.createElement('DraftInput', { value: reason, onChangeText: setReason })}
+      {React.createElement('DraftInput', { testID: 'reason-input', value: reason, onChangeText: setReason })}
     </>
   }
   const render = () => <TimePresentationProvider><Form /></TimePresentationProvider>
   let root!: TestRenderer.ReactTestRenderer
   act(() => { root = TestRenderer.create(render()) }); roots.push(root)
-  act(() => root.root.findByType('DraftInput').props.onChangeText('Unsent reason'))
-  const input = root.root.findByType('DraftInput')
+  act(() => root.root.findByProps({ testID: 'reason-input' }).props.onChangeText('Unsent reason'))
+  const input = root.root.findByProps({ testID: 'reason-input' })
   for (const scale of [2, 1]) {
     mockFontScale = scale; act(() => root.update(render()))
-    const paragraph = root.root.findByType('MeasuredParagraph')
+    const paragraph = root.root.find(node => node.props.measuredHeight !== undefined)
     expect(paragraph.props.measuredHeight).toBe(paragraph.props.glyphHeight)
     expect(paragraph.props.measuredHeight).toBe(20 * scale)
     expect(paragraph.props.allowFontScaling).toBe(true)
     expect(paragraph.props.accessibilityLabel).toBe('Reason')
     expect(ref.current).not.toBeNull()
-    expect(root.root.findByType('DraftInput')).toBe(input)
+    expect(root.root.findByProps({ testID: 'reason-input' })).toBe(input)
     expect(input.props.value).toBe('Unsent reason')
   }
 })
@@ -54,7 +54,7 @@ it('keeps the ordinary MTM native text instance when it has not opted into Time'
   const render = () => <TimeFontScale.Provider value={mockFontScale}><TimeText>MTM</TimeText></TimeFontScale.Provider>
   let root!: TestRenderer.ReactTestRenderer
   act(() => { root = TestRenderer.create(render()) }); roots.push(root)
-  const original = root.root.findByType('MeasuredParagraph')
+  const original = root.root.find(node => node.props.measuredHeight !== undefined)
   mockFontScale = 2; act(() => root.update(render()))
-  expect(root.root.findByType('MeasuredParagraph')).toBe(original)
+  expect(root.root.find(node => node.props.measuredHeight !== undefined)).toBe(original)
 })
