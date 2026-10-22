@@ -636,5 +636,84 @@
       "typeScript": "FAIL mockhost findByType typing",
       "apk": "NOT_BUILT; not installed"
     }
+  },
+  "currentCandidate": {
+    "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+    "versionCode": 1039,
+    "status": "FOCUSED_FONT_PASS_FULL_MAESTRO_RUNNING",
+    "hostedGates": {
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "allExactHeadChecks": "PASS",
+      "typeScript": "PASS",
+      "testSuites": 283,
+      "testsPassed": 2523,
+      "testsTodo": 1,
+      "releaseGate": "CI_PASS_PHYSICAL_ACCEPTANCE_PENDING",
+      "ci": "PASS",
+      "ciRun": 39852871837,
+      "standalone": "PASS",
+      "standaloneRun": 39852866505,
+      "ordinary": "PASS",
+      "ordinaryRun": 39852871882,
+      "emulatorContract": "PASS",
+      "emulatorContractRun": 39852871766
+    },
+    "apk": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "versionCode": 1039,
+      "zipSha256": "db7d7fca1110294ad699310db98978a1b74f3074494eb0b5f6cc4bad4810feca",
+      "apkSha256": "4ffa2760d22c6092b1ff20dd42d4053220036ba6f412dbc032ec6f6fa681c2ca",
+      "artifactId": 12457993802
+    },
+    "installation": {
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": 1039,
+      "physicalMaestro": "NOT_RUN",
+      "sha256": "4ffa2760d22c6092b1ff20dd42d4053220036ba6f412dbc032ec6f6fa681c2ca",
+      "install": "PASS",
+      "sameStandaloneUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    "focusedVisualReview": {
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "versionCode": 1039,
+      "status": "PASS_FOCUSED_SCOPE",
+      "reviewed": [
+        "cached-day-after-200.png",
+        "draft-after-200.png",
+        "draft-restored-100.png"
+      ],
+      "observed": "Previously mounted Day and request date/label/button text now has full line boxes after live200%. Draft reason retained and normal text reflows after return100%. Bottom viewport crop is ordinary scrolling, not clipped interior line boxes.",
+      "allFiveTabAppearance": "NOT_RUN",
+      "ownerAppearanceAcceptance": "NOT_INFERRED"
+    },
+    "fullPhysicalMaestro": "RUNNING",
+    "allFiveTabAppearance": "NOT_RUN",
+    "landscape": "NOT_RUN",
+    "opticalQrGps": "NOT_RUN on1039; earlier version results not transferred",
+    "actual24h": "NOT_STARTED",
+    "focusedNativeAcceptance": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "backendArtifactSha": "0ffc87a5b95e1c918e78ac9c71d3d4f93ebaa500",
+      "startedAt": "2026-10-22T21:06:41.317628+00:00",
+      "screenshots": [
+        "cached-day-before-100.png",
+        "cached-day-after-200.png",
+        "draft-after-100.png",
+        "draft-after-200.png",
+        "draft-restored-100.png"
+      ],
+      "draftRetainedBothDirections": true,
+      "dataAndPermissionsUnchanged": true,
+      "visualReview": "PENDING",
+      "originalAppearanceRestored": true,
+      "originalRotationRestored": true,
+      "finishedAt": "2026-10-22T21:09:34.671846+00:00"
+    }
   }
 }

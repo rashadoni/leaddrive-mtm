@@ -1181,3 +1181,19 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 
 -00:59 Баку: sourcefe6628a опубликован, PR196draft description обновлён. HostedCI39852496198 прошёл283suites/2523tests/1TODO, но TypeScriptFAIL:6обращений findByType к mockhostnames, которых нет вReact.ElementType. Standalone39852491311 остановленнаTS до сборки/подписи, code1038 НЕ СОБРАН/НЕ УСТАНОВЛЕН. Nativeкод не менялся в correction: hostmock теперь выбирается по существующим props(testID/measuredHeight) без некорректных типов/any. Исправляем testtyping иповторяемexactsource gates; результатfe не маскируетсяPASS.
 - После propsselector correction: new2regressiontests PASS, targetedESLint0errors, diffcheckPASS. Полный TS/Android повтор толькоGitHub. Privatefehelpers были лишьподготовлены иНЕ запускались; следующийsource получает собственные immutable paths/версию.
+
+
+### 2026-10-23,00:58 Баку — новый source84534c6, CI PASS, Android RUNNING
+
+- Correction source84534c6ed32da9943e4d0b464ce6e3d8e7831538 опубликован. CI39852871837/tests120083460643 PASS:283suites/2523tests/1TODO и TypeScriptPASS (логи прочитаны). Standalone39852866505/run39 (ожидаемыйcode1039) иordinary39852871882 ещёRUNNING; emulatorcontract39852871766PASS. APK1039 покаНЕ установлен, на телефоне1037. Полные сборки Contabo не запускались.
+- Servingbackend теперь0ffc87a5b95e1c918e78ac9c71d3d4f93ebaa500, не нашdeploy. GitHubcompare с376533:mergebase exact376533/ahead34/behind0, исходныйserverpackage включён. Preparedunrun845v1/c72 сохранён, новый immutablev2 привязан к0ffc. До успешногоsource/artifact/installgate nativefocus не запускается.
+- Уточнение времени двух предыдущих подготовительных entries00:54/00:59: это приблизительные метки подготовки, не timestamps выполненияCI. Фактический feCI TSFAIL20:53:02UTC, correctionpush20:54UTC, newCI успешно прочитан20:56UTC. Дальнейшие результаты хранят точныеstartedAt/finishedAt в sanitized receipts.
+
+
+### 2026-10-23,01:06 Баку —845 exact-source hosted gates и artifact PASS
+
+- Source84534c6: CI39852871837 PASS283suites/2523tests/1TODO+TypeScript; standalone39852866505/run39 PASS, ordinary39852871882 PASS, emulatorcontract39852871766 PASS. REST каждогоrun проверил exacthead/statuscompleted/conclusionsuccess. Contract не выдаётся за emulatorE2E.
+- Artifact12457993802: ZIP SHA256db7d7fca1110294ad699310db98978a1b74f3074494eb0b5f6cc4bad4810feca, APK SHA2564ffa2760d22c6092b1ff20dd42d4053220036ba6f412dbc032ec6f6fa681c2ca. Build.json подтверждает exactsource/com.leaddrive.attendance/code1039, digest/safeextract PASS. Strictgate скопирован рядом сartifact. Начат install-r; до подтверждения результата nativefocus не запускается.
+
+-01:10 Баку: install-r1039 PASS: sameStandaloneUID, MTM1710 unchanged, no background location. Fontfocus845v2 наbackend0ffc завершён PASS21:09:34.671UTC: Day100→200, открытаяформа200→100→200→100, причина сохранена; data/permissions/packages unchanged, originalappearance/rotation restored. ActualPNG cached-day-after200/draft-after200/draft-restored100 просмотрены: внутренниеlineboxes большеНЕ обрезаны, видимыйviewportcrop внизу — обычныйscroll. Это PASS focused scope, не всяappearance и не ownerdesignapproval.
+- После полногоfocuscleanup readonly845v2 запущен отдельнымединственным UIactor. ТриMaestro, независимаясверкаdata/settings иcoldrestart ещёRUNNING. HostRAM13.6GBavailable/disk146GB/pressure0; только последовательныеtargetednativechecks, тяжёлыеAndroid/Jest/TS ужеGitHubPASS.
