@@ -29,7 +29,7 @@ class MainActivity : ReactActivity() {
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
-    if (BuildConfig.FLAVOR != "attendance") return
+    if (BuildConfig.APPLICATION_ID != "com.leaddrive.attendance") return
     updateAttendanceSystemNavigation(newConfig)
     // RN 0.84 refreshes native text layout on a font change, but DeviceInfo
     // caches the JS fontScale until host resume. Refresh only that listener:
@@ -40,7 +40,7 @@ class MainActivity : ReactActivity() {
 
   @Suppress("DEPRECATION") // navigationBarColor is needed on pre-edge-to-edge Android.
   private fun updateAttendanceSystemNavigation(config: Configuration) {
-    if (BuildConfig.FLAVOR != "attendance") return
+    if (BuildConfig.APPLICATION_ID != "com.leaddrive.attendance") return
     val dark = config.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     // Matches TimeUI.surface; the padded area behind Android's navigation
     // buttons otherwise keeps the colour from Activity creation.

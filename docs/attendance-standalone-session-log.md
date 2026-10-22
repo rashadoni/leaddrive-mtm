@@ -1053,3 +1053,16 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 
 - Source fix внесён: OwnTabs напрямую подписана на тему и font metrics; доступные полные названия вкладок, две строки подписи и высота для крупного текста. Только attendance manifest добавляет fontScale. Shared MainActivity сразу возвращает старое поведение для обычного flavor; attendance обновляет фон/контраст системной панели, а DeviceInfo lifecycle listener — актуальные JS font metrics без пересоздания формы. Исходник RN0.84.1 подтверждает, что cache fontScale обычно обновляется на host resume; целиком lifecycle не возобновляем.
 - После source fix targeted3suites/7tests PASS, включая ранее красный cached tab regression и сохранность смонтированного черновика при light→dark→light; lint0errors (первый проход5warnings, триshadow исправлены). Diffcheck PASS. Native Kotlin/полный TS/Jest/Android локально NOT RUN по host contract; далее exact-source hosted gates. Отдельный native strip следует официальным edge-to-edge правилам: https://developer.android.com/develop/ui/views/layout/edge-to-edge . Real24h не запущен.
+
+
+### 2026-10-22,21:45 Баку — опубликован source2db4f5d, гейты в работе
+
+- Checkpoint2db4f5d590611d03128deec8e837970dde1e68f8 опубликован в origin/codex/attendance-standalone. Включён предыдущий локальный docs checkpoint21663f6; PR196head/draft подтверждены, описание актуализировано и PR прикреплён к задаче. Никого не просили повторно разрешать уже разрешённую публикацию.
+- GitHub CI39825122866, standalone39825116122(run34/code1034), ordinary39825122879 в работе; contract39825122850 PASS. Новый APK ещё не получен/не установлен. Новый source-bound readonly harness требует полного PASS всех гейтов, исключение старого aggregatepending убрано.
+- Последние узкие проверки после mock-shadow исправления: cached tab test1PASS, общий предыдущий3suites/7testsPASS, финальный lint0errors/2render-callbackwarnings. Native/полный TS/Jest/Android local NOT RUN — host contract.
+- Установленный1033 остаётся на телефоне с известными appearance-дефектами; original light/font1.0 и данные восстановлены. Точка продолжения: exact-source CI/Android, затем digest/install-r1034, короткий native font regression первым, затем all-tabs/appearance приёмка. Новая24h пока не идёт.
+
+
+### 2026-10-22,21:47 Баку — уточнена изоляция native fix по applicationId
+
+- При проверке фактического build.gradle выявлена ошибочная предпосылка в source2db: отдельный APK выбирается project property attendanceApp, а не productFlavor. BuildConfig.FLAVOR не является проверенным контрактом. Заменено на реальный BuildConfig.APPLICATION_ID == com.leaddrive.attendance, тот же канонический install identity, который уже проверяется при установке. Это correction по source inspection; native gate2db не объявляем PASS/FAIL без итога, промежуточные сборки отменяем как superseded и публикуем исправленный checkpoint. Новые APK ещё не устанавливались.
