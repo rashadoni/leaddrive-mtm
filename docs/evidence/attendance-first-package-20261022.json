@@ -207,5 +207,59 @@
     "aheadByCommits": 2,
     "deployRun": 39756130476,
     "deployStatus": "SUCCESS"
+  },
+  "resumeAfterConnection20261022": {
+    "nativeFinish": {
+      "status": "PASS",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "startedAt": "2026-10-22T11:09:59.590380+00:00",
+      "scope": "answer existing Android permission denial; no repeated FINISH tap",
+      "oldEventsUnchanged": 53,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "dayCompleted": true,
+      "requestsUnchanged": true,
+      "settingsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "finishedAt": "2026-10-22T11:10:27.002341+00:00"
+    },
+    "receiptJourneyV4": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T11:13:31.017542+00:00",
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "maestro": {
+        "flow": "journeys/receipt-existing-day",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "c97312b5bcdc926adc9f9983d6f80af6d37fc6d5c3e1eca144c6325259679b7e",
+        "tests": [
+          {
+            "name": "Return to an existing fictional day and retain canonical delivery receipts",
+            "seconds": "110.634",
+            "status": "PASS"
+          }
+        ]
+      },
+      "priorEventsUnchanged": 54,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "requestsUnchanged": true,
+      "otherAccountHistoryUnchanged": true,
+      "settingsUnchanged": true,
+      "receiptVisibleAfterRestart": true,
+      "finishedAt": "2026-10-22T11:13:38.978421+00:00"
+    },
+    "priorAttemptsPreserved": true,
+    "maestroSyntax": "PASS: three changed flows with Maestro 2.11.0",
+    "runtimeChanged": false
   }
 }

@@ -18,8 +18,15 @@ name: Finish an admitted running fixture day using the actual Android location p
       id: office-workday-action
     direction: DOWN
     timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: office-workday-action
+      enabled: true
+    timeout: 60000
 - tapOn:
     id: office-workday-action
+    enabled: true
+- assertVisible: ${output.copy.finishTitle}
 - tapOn:
     id: app-choice-button-1
 - extendedWaitUntil:

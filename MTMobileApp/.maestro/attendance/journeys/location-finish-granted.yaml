@@ -26,6 +26,7 @@ name: Record a fresh GPS finish with previously accepted consent and OS permissi
     timeout: 60000
 - tapOn:
     id: office-workday-return
+    enabled: true
 - scrollUntilVisible:
     element:
       text: ${output.copy.running}
@@ -36,8 +37,15 @@ name: Record a fresh GPS finish with previously accepted consent and OS permissi
       id: office-workday-action
     direction: DOWN
     timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: office-workday-action
+      enabled: true
+    timeout: 60000
 - tapOn:
     id: office-workday-action
+    enabled: true
+- assertVisible: ${output.copy.finishTitle}
 - tapOn:
     id: app-choice-button-1
 - scrollUntilVisible:

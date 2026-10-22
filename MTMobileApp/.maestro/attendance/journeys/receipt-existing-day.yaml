@@ -13,6 +13,7 @@ name: Return to an existing fictional day and retain canonical delivery receipts
     timeout: 60000
 - tapOn:
     id: office-workday-return
+    enabled: true
 - extendedWaitUntil:
     visible: ${output.copy.running}
     timeout: 60000
@@ -23,6 +24,13 @@ name: Return to an existing fictional day and retain canonical delivery receipts
     timeout: 60000
 - tapOn:
     id: office-workday-break
+    enabled: true
+# Wait for the operation to finish before killing the app; restart must retain PAUSE.
+- extendedWaitUntil:
+    visible:
+      id: office-workday-break
+      enabled: true
+    timeout: 60000
 - stopApp
 - runFlow: ../shared/open-fixture.yaml
 - assertVisible: ${output.copy.paused}
@@ -33,23 +41,30 @@ name: Return to an existing fictional day and retain canonical delivery receipts
     timeout: 60000
 - tapOn:
     id: office-workday-break
+    enabled: true
 - scrollUntilVisible:
     element:
       id: office-workday-action
     direction: DOWN
     timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: office-workday-action
+      enabled: true
+    timeout: 60000
 - tapOn:
     id: office-workday-action
+    enabled: true
 - assertVisible: ${output.copy.finishTitle}
 - tapOn:
     id: app-choice-button-1
 - runFlow:
     when:
       visible:
-        id: ".*:id/permission_deny_button"
+        id: ".*:id/permission_deny(_and_dont_ask_again)?_button"
     commands:
       - tapOn:
-          id: ".*:id/permission_deny_button"
+          id: ".*:id/permission_deny(_and_dont_ask_again)?_button"
 - scrollUntilVisible:
     element:
       text: ${output.copy.completed}
