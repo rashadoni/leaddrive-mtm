@@ -23,6 +23,10 @@ name: Employee accepts the reviewed test policy and records a real foreground GP
     id: office-workday-pending
 - assertNotVisible:
     id: office-workday-offline
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-location-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-consent-refresh
@@ -51,6 +55,14 @@ name: Employee accepts the reviewed test policy and records a real foreground GP
     timeout: 60000
 - tapOn:
     id: attendance-consent-accept
+- extendedWaitUntil:
+    visible:
+      id: attendance-consent-active
+    timeout: 60000
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-location-disclosure
 - extendedWaitUntil:
     visible:
       id: attendance-consent-revoke

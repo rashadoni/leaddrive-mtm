@@ -79,6 +79,10 @@ name: Return to an existing fictional day and retain canonical delivery receipts
 - assertVisible: ${output.copy.completed}
 - assertNotVisible:
     id: office-workday-pending
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-receipts-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-receipt-received

@@ -1,0 +1,38 @@
+appId: com.leaddrive.attendance
+name: Compact workday keeps details discoverable without creating a mark
+---
+- runFlow: ../shared/open-fixture.yaml
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-receipts-disclosure
+- assertVisible:
+    id: attendance-receipts-disclosure-expanded
+- tapOn:
+    id: attendance-receipts-disclosure
+- assertVisible:
+    id: attendance-receipts-disclosure-collapsed
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-evidence-disclosure
+- assertVisible:
+    id: attendance-evidence-disclosure-expanded
+# Historical coordinates are not requested by expanding this section.
+- assertNotVisible:
+    id: attendance-own-coordinates
+- tapOn:
+    id: attendance-evidence-disclosure
+- assertVisible:
+    id: attendance-evidence-disclosure-collapsed
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- scrollUntilVisible:
+    element:
+      id: attendance-evidence-disclosure
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-evidence-disclosure-collapsed
+- assertNotVisible:
+    id: attendance-own-coordinates

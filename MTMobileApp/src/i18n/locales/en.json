@@ -1324,6 +1324,32 @@
     "update": "Update",
     "later": "Later"
   },
+  "attendanceCompact": {
+    "tabs": {
+      "day": "Day",
+      "requests": "Requests",
+      "explanations": "Replies",
+      "inbox": "Inbox",
+      "profile": "Profile"
+    },
+    "marks": "Mark receipts",
+    "marksEmpty": "No receipts yet",
+    "received": "Received by server",
+    "saved": "Waiting to send: {{count}}",
+    "conflicts": "Needs attention: {{count}}",
+    "review": "Flagged on receipt: {{count}}",
+    "total": "Saved: {{count}}",
+    "evidence": "GPS and QR",
+    "open": "Details",
+    "device": "Phone and access",
+    "location": "Location",
+    "loading": "Checking…",
+    "unknown": "State not confirmed",
+    "offline": "Offline · saving on phone",
+    "validUntil": "Access until {{time}}",
+    "pending": "Saved on phone · waiting to send",
+    "help": "About your workday"
+  },
   "attendanceReceipts": {
     "title": "Mark receipts",
     "deviceHistory": "Recent marks saved on this phone.",

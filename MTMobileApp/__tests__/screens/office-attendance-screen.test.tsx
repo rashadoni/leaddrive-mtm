@@ -10,11 +10,13 @@ import en from "../../src/i18n/locales/en.json"
 import az from "../../src/i18n/locales/az.json"
 import { officeAgent, officeBootstrap } from "../../test-support/office-attendance"
 import type { ActiveWorkday } from "../../src/store/workday"
-const mockAuth = { agent: officeAgent, logout: jest.fn(), switchServer: jest.fn(), serverDomain: "fictional.invalid" }
+const mockAuth = { isLoggedIn: true, agent: officeAgent, logout: jest.fn(), switchServer: jest.fn(), serverDomain: "fictional.invalid" }
 const mockBootstrap = { data: officeBootstrap() }
 const mockWorkday: { activeWorkday: ActiveWorkday | null; finishedWorkday: null; hydrated: boolean } = { activeWorkday: null, finishedWorkday: null, hydrated: true }
 const mockRecovery = { operation: null, reload: jest.fn().mockResolvedValue(undefined) }
-jest.mock("../../src/hooks/useAttendanceReceipts", () => ({ useAttendanceReceipts: () => ({ rows: [], failed: false, reload: jest.fn() }) }))
+const mockDeliveries: { rows: import('../../src/services/attendance-receipt-contract').AttendanceReceiptRow[]; failed: boolean; reload: jest.Mock } = { rows: [], failed: false, reload: jest.fn() }
+jest.mock("../../src/hooks/useAttendanceReceipts", () => ({ useAttendanceReceipts: () => mockDeliveries }))
+jest.mock("../../src/services/attendance-own-marks", () => ({ loadOwnAttendanceMarks: jest.fn() }))
 const mockQr = {available:false,receipts:[],scope:'org-fixture:office-fixture',reload:jest.fn()}
 const mockInstallation={visible:false,blocked:false,own:null,pending:null,busy:false,failed:false,submit:jest.fn(),reload:jest.fn().mockResolvedValue(undefined)}
 jest.mock("../../src/hooks/useAttendanceInstallation",()=>({useAttendanceInstallation:()=>mockInstallation}))
@@ -81,7 +83,7 @@ function renderedTree(value: TestRenderer.ReactTestRendererJSON | TestRenderer.R
 const text = (tree: TestRenderer.ReactTestRenderer) => JSON.stringify(renderedTree(tree.toJSON()))
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree,id).props.onPress() }); await settle() }
 beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
-beforeEach(() => { jest.clearAllMocks(); mockQr.available = false; mockInstallation.blocked = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
+beforeEach(() => { jest.clearAllMocks(); mockAuth.serverDomain = "fictional.invalid"; mockDeliveries.rows = []; mockDeliveries.failed = false; Object.assign(mockInstallation, {visible:false, own:null, pending:null, busy:false, failed:false}); mockQr.available = false; mockInstallation.blocked = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
 afterEach(async () => { await act(async () => { roots.splice(0).forEach(root => root.unmount()) }); await settle() })
 it.each(["ru","az","en"])("renders actual %s office day and sends the canonical start action", async language => {
   expect(mockBootstrap.data.manifest?.modules.routeField.enabled).toBe(false)
@@ -293,5 +295,89 @@ it("keeps QR visible but blocked while the phone awaits approval", async () => {
   expect(text(tree)).toContain(ru.attendanceQr.installationRequired)
   await press(tree, 'office-workday-qr')
   expect(tree.root.findByType(AttendanceQrScanner).props.visible).toBe(false)
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+
+const CompactWorkday = () => <AttendanceWorkdayScreen compact />
+it.each(['ru', 'az', 'en'] as const)('keeps %s compact actions and identity visible while help and evidence wait for a tap', async language => {
+  mockQr.available = true
+  mockWorkday.activeWorkday = {key:'org-fixture:office-fixture',workdayId:'wd',startedAt:'2026-10-22T05:00:00Z',syncState:'CONFIRMED'}
+  const tree = await render(CompactWorkday, language), copy = {ru, az, en}[language]
+  expect(text(tree)).toContain(officeAgent.name)
+  expect(node(tree, 'office-workday-qr').props.disabled).toBe(false)
+  expect(node(tree, 'office-workday-action')).toBeDefined()
+  expect(text(tree)).not.toContain(copy.officeAttendance.closeHint)
+  expect(text(tree)).not.toContain(copy.officeAttendance.noTracking)
+  expect(node(tree, 'attendance-mark-details-load')).toBeUndefined()
+  expect(node(tree, 'attendance-evidence-disclosure').props.accessibilityState.expanded).toBe(false)
+  capture(tree, `compact-workday-${language}`)
+  await press(tree, 'attendance-help-disclosure')
+  expect(text(tree)).toContain(copy.officeAttendance.closeHint)
+  expect(text(tree)).toContain(copy.officeAttendance.noTracking)
+  await press(tree, 'attendance-evidence-disclosure')
+  expect(node(tree, 'attendance-mark-details-load')).toBeDefined()
+  await press(tree, 'attendance-evidence-disclosure')
+  expect(node(tree, 'attendance-mark-details-load')).toBeUndefined()
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+it('keeps compact offline expiry, local capture and correction restrictions visible', async () => {
+  const verifiedAt = Date.parse('2026-10-22T05:00:00Z')
+  mockBootstrap.data.attendanceOffline = { verifiedAt, lastSeenAt: verifiedAt, validUntil: verifiedAt + 86400000, installation: null, location: null }
+  mockWorkday.activeWorkday = { key: 'org-fixture:office-fixture', workdayId: 'wd', startedAt: '2026-10-22T05:00:00Z', syncState: 'START_PENDING' }
+  const tree = await render(CompactWorkday)
+  expect(text(tree)).toContain(ru.attendanceCompact.offline)
+  expect(node(tree, 'office-workday-offline-until')).toBeDefined()
+  expect(text(tree)).toContain('09:00')
+  expect(node(tree, 'office-workday-pending')).toBeDefined()
+  expect(node(tree, 'office-workday-correct').props.disabled).toBe(true)
+  await press(tree, 'office-workday-correct'); expect(mockNavigate).not.toHaveBeenCalled()
+  await press(tree, 'office-workday-break'); expect(changeAttendanceWorkday).toHaveBeenCalledWith('pause')
+  capture(tree, 'compact-offline-pending')
+})
+it('keeps compact conflict and HR-review warnings visible without opening details', async () => {
+  ;(allOutboxOperations as jest.Mock).mockResolvedValue([{entity:'workdays',status:'conflict'}])
+  mockDeliveries.rows = [{ operationId:'one',workdayId:'wd',action:'START',occurredAt:'2026-10-22T05:00:00Z',delivery:'RECEIVED',receivedAt:'2026-10-22T06:00:00Z',review:'PENDING_REVIEW' }]
+  const tree = await render(CompactWorkday)
+  expect(node(tree, 'office-workday-conflict')).toBeDefined()
+  expect(node(tree, 'attendance-receipts-review-summary')).toBeDefined()
+  expect(node(tree, 'office-workday-action').props.disabled).toBe(true)
+  expect(node(tree, 'attendance-receipt-received')).toBeUndefined()
+  await press(tree, 'attendance-receipts-disclosure')
+  expect(node(tree, 'attendance-receipt-received')).toBeDefined()
+})
+it('still requires finish confirmation and never reopens a pending offline finish in compact mode', async () => {
+  mockWorkday.activeWorkday = { key:'org-fixture:office-fixture',workdayId:'wd',startedAt:'2026-10-22T05:00:00Z',syncState:'CONFIRMED' }
+  const tree = await render(CompactWorkday)
+  mockAsk.mockResolvedValueOnce(false); await press(tree,'office-workday-action')
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+  await press(tree,'office-workday-action'); expect(changeAttendanceWorkday).toHaveBeenCalledWith('end')
+  mockWorkday.activeWorkday = {...mockWorkday.activeWorkday,syncState:'FINISH_PENDING'}
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><CompactWorkday /></I18nextProvider>))
+  expect(node(tree,'office-workday-action')).toBeUndefined()
+  expect(node(tree,'office-workday-return')).toBeUndefined()
+  expect(node(tree,'office-workday-pending')).toBeDefined()
+})
+it('closes compact disclosures when the server changes and hides all actions on revoked access', async () => {
+  mockWorkday.activeWorkday = {key:'org-fixture:office-fixture',workdayId:'wd',startedAt:'2026-10-22T05:00:00Z',syncState:'CONFIRMED'}
+  const tree = await render(CompactWorkday)
+  await press(tree,'attendance-evidence-disclosure')
+  expect(node(tree,'attendance-mark-details-load')).toBeDefined()
+  mockAuth.serverDomain = 'another-fictional.invalid'
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><CompactWorkday /></I18nextProvider>))
+  expect(node(tree,'attendance-mark-details-load')).toBeUndefined()
+  mockBootstrap.data.policies.agentPermissions!.attendanceWorkday = false
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><CompactWorkday /></I18nextProvider>))
+  expect(text(tree)).not.toContain(officeAgent.name)
+  expect(node(tree,'office-workday-qr')).toBeUndefined()
+  expect(node(tree,'attendance-receipts-disclosure')).toBeUndefined()
+  mockAuth.serverDomain = 'fictional.invalid'
+})
+
+it('explains an empty compact history without querying a nonexistent day or creating a mark', async () => {
+  const tree = await render(CompactWorkday)
+  await press(tree,'attendance-evidence-disclosure')
+  expect(text(tree)).toContain(ru.attendanceMarks.empty)
+  expect(node(tree,'attendance-mark-details-load')).toBeUndefined()
+  expect(node(tree,'office-workday-action').props.disabled).toBe(false)
   expect(changeAttendanceWorkday).not.toHaveBeenCalled()
 })

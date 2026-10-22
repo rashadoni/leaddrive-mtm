@@ -8,13 +8,13 @@ import { attendanceReceiptAccount } from '../services/attendance-receipts'
 import { loadOwnAttendanceMarks, type OwnAttendanceMarks } from '../services/attendance-own-marks'
 import { fieldTheme, themed } from '../theme/fieldTheme'
 
-export default function AttendanceOwnMarkDetails({ workdayId }: { workdayId?: string }) {
+export default function AttendanceOwnMarkDetails({ workdayId, embedded = false }: { workdayId?: string; embedded?: boolean }) {
   const { t, i18n } = useTranslation(), auth = useAuthStore(), data = useBootstrapStore(state => state.data)
   const allowed = auth.isLoggedIn && hasOfficeAttendanceAccess(data, auth.agent)
   const identity = JSON.stringify([auth.serverDomain, auth.agent?.organizationId, auth.agent?.id, workdayId, allowed, !!data?.attendanceOffline])
   const [view, setView] = useState<{ identity: string; report: OwnAttendanceMarks | null; busy: boolean; failed: boolean }>({ identity: '', report: null, busy: false, failed: false })
   const epoch = useRef(0)
-  useEffect(() => { epoch.current++; setView({ identity, report: null, busy: false, failed: false }); return () => { epoch.current++ } }, [identity])
+  useEffect(() => { const requests = epoch; requests.current++; setView({ identity, report: null, busy: false, failed: false }); return () => { requests.current++ } }, [identity])
   if (!allowed || !workdayId) return null
   const own = view.identity === identity ? view : null, report = own?.report
   const load = async () => {
@@ -27,7 +27,7 @@ export default function AttendanceOwnMarkDetails({ workdayId }: { workdayId?: st
     catch { if (ticket === epoch.current) setView({ identity, report: null, busy: false, failed: true }) }
   }
   const clock = (value: string) => new Date(value).toLocaleString(i18n.language, { timeZone: report?.timezone ?? 'UTC', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-  return <View testID="attendance-mark-details" style={styles.card}>
+  return <View testID="attendance-mark-details" style={embedded ? styles.inline : styles.card}>
     <Text style={styles.title}>{t('attendanceMarks.title')}</Text>
     <Text style={styles.copy}>{t('attendanceMarks.historical')}</Text>
     <Pressable testID="attendance-mark-details-load" accessibilityRole="button" disabled={!!own?.busy || !!data?.attendanceOffline} style={styles.button} onPress={() => void load()}>
@@ -58,6 +58,7 @@ export default function AttendanceOwnMarkDetails({ workdayId }: { workdayId?: st
   </View>
 }
 const styles = themed(() => StyleSheet.create({
+  inline: { gap: 10 },
   card: { padding: 20, gap: 12, borderRadius: 20, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
   title: { fontSize: 18, fontWeight: '700', color: fieldTheme.color.ink }, label: { fontSize: 15, fontWeight: '600', color: fieldTheme.color.ink },
   copy: { fontSize: 14, lineHeight: 21, color: fieldTheme.color.inkMuted }, row: { gap: 6, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingTop: 12 },

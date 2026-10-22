@@ -1,3 +1,4 @@
+jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 import React from 'react'
 import TestRenderer, { act } from 'react-test-renderer'
 import i18next from 'i18next'
@@ -22,5 +23,24 @@ it.each(['ru', 'az', 'en'] as const)('distinguishes saved, delivered and delayed
   expect(text).toContain(copy.RECEIVED); expect(text).toContain(copy.delayedAtDelivery)
   expect(text).toContain(copy.deliveryNotApproval); expect(text).toContain('09:02'); expect(text).toContain('11:00')
   expect(text).not.toContain(copy.LOCAL); expect(text).not.toContain('attendanceReceipts.')
+  await act(async () => tree.unmount())
+})
+
+it('keeps delivery failures, conflicts and HR review explicit while compact receipts are collapsed', async () => {
+  const locale = i18next.createInstance(); await locale.init({lng:'ru',resources:{ru:{translation:ru}}})
+  const rows: AttendanceReceiptRow[] = [row,{...row,operationId:'conflict',delivery:'CONFLICT'}, {...row,operationId:'delivered',delivery:'RECEIVED',review:'PENDING_REVIEW'}]
+  let tree!: TestRenderer.ReactTestRenderer
+  const render = (failed=false) => <I18nextProvider i18n={locale}><AttendanceDeliveryReceipts compact rows={rows} failed={failed} timezone="Asia/Baku" /></I18nextProvider>
+  await act(async () => { tree=TestRenderer.create(render()) })
+  const node=(id:string)=>tree.root.findAll(item=>item.props.testID===id,{deep:false})[0]
+  expect(node('attendance-receipts-review-summary')).toBeDefined()
+  expect(node('attendance-receipt-conflict')).toBeUndefined()
+  expect(JSON.stringify(tree.toJSON())).toContain('Требуют внимания: 1')
+  await act(async () => node('attendance-receipts-disclosure').props.onPress())
+  expect(node('attendance-receipt-local')).toBeDefined(); expect(node('attendance-receipt-conflict')).toBeDefined()
+  await act(async () => node('attendance-receipts-disclosure').props.onPress())
+  await act(async () => tree.update(render(true)))
+  const text=JSON.stringify(tree.toJSON());expect(text).toContain(ru.attendanceCompact.unknown);expect(text).toContain(ru.attendanceReceipts.loadFailed)
+  expect(text).not.toContain(ru.attendanceCompact.received)
   await act(async () => tree.unmount())
 })

@@ -94,3 +94,20 @@ Physical update, 2026-10-22: APK1022 is installed; these new journeys are not ye
 
 
 Physical continuation, 2026-10-22: workday status can update before the screen finishes its request and enables the next button. The receipt and location continuations now wait for the action to be enabled before finishing; receipt restart waits for the break operation to settle. Confirm the FINISH dialog before selecting its confirmation. Android may expose either `permission_deny_button` or `permission_deny_and_dont_ask_again_button` after prior denials; the receipt flow accepts both actual system controls. These waits do not turn an unavailable GPS fix into INSIDE or replace the authenticated event/history comparison. Maestro state selectors are documented at https://docs.maestro.dev/maestro-flows/flow-control-and-logic/how-to-use-selectors.md.
+
+
+### Compact standalone workday (2026-10-22)
+
+The standalone navigator now uses the compact layout; ordinary MTM keeps its
+existing presentation. `smoke/compact-workday.yaml` checks discovery, disclosure
+and closing of receipt/evidence details, then verifies that private details
+remain closed after restart. It does not request historical coordinates, make
+a time mark or prove optical/GPS success. The fixture permission baseline still
+requires an external restore harness. Physical execution is NOT RUN until the
+matching new APK is installed after recovery of the interrupted soak queue.
+
+Updated journeys use `shared/expand-disclosure.yaml` and the visible chevron
+state to avoid closing an already open section. Consent acceptance waits for
+the confirmed active summary before reopening withdrawal controls. Full policy
+text and explicit consent are still required. Do not run new-layout journeys
+on the older1025 APK or change the APK during an active real-day hold.

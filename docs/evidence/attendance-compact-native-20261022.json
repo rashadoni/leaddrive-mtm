@@ -1,0 +1,76 @@
+{
+  "status": "IMPLEMENTED_PENDING_HOSTED_AND_PHYSICAL_GATES",
+  "scope": "Standalone compact workday presentation; ordinary MTM uses the existing layout",
+  "targeted": {
+    "status": "PASS",
+    "suites": 7,
+    "passed": 95,
+    "failed": 0
+  },
+  "lint": {
+    "status": "PASS",
+    "productionFiles": 8,
+    "errors": 0,
+    "warnings": 14,
+    "warningRules": [
+      "no-void",
+      "react/no-unstable-nested-components"
+    ]
+  },
+  "locales": {
+    "languages": [
+      "az",
+      "ru",
+      "en"
+    ],
+    "compactKeysPerLanguage": 22,
+    "parity": "PASS"
+  },
+  "maestroSyntax": [
+    {
+      "flow": "shared/expand-disclosure",
+      "exit": 0
+    },
+    {
+      "flow": "journeys/installation-decision",
+      "exit": 0
+    },
+    {
+      "flow": "journeys/location-finish",
+      "exit": 0
+    },
+    {
+      "flow": "journeys/location-policy-off",
+      "exit": 0
+    },
+    {
+      "flow": "journeys/own-mark-details",
+      "exit": 0
+    },
+    {
+      "flow": "journeys/qr-optical-mark",
+      "exit": 0
+    },
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": 0
+    },
+    {
+      "flow": "smoke/compact-workday",
+      "exit": 0
+    }
+  ],
+  "nativeRenderEvidence": "React TestRenderer host trees captured for AZ/RU/EN and offline-pending; not physical screenshots",
+  "typecheck": "NOT RUN locally: full gate assigned to hosted CI",
+  "androidBuild": "NOT RUN locally: host prohibits heavy builds",
+  "physicalCompactUI": "NOT RUN: connection lost before installation",
+  "soakVersion1025": {
+    "status": "FAIL",
+    "cause": "Mac reverse connection closed",
+    "attempt": 6,
+    "completionEstimateCancelled": true,
+    "cleanupConfirmed": false
+  },
+  "permissionsAndQueueLogicChanged": false,
+  "backendChanges": false
+}

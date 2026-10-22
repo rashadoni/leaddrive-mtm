@@ -1324,6 +1324,32 @@
     "update": "Yenilə",
     "later": "Sonra"
   },
+  "attendanceCompact": {
+    "tabs": {
+      "day": "Gün",
+      "requests": "Sorğular",
+      "explanations": "İzahatlar",
+      "inbox": "Bildirişlər",
+      "profile": "Profil"
+    },
+    "marks": "Qeyd qəbzləri",
+    "marksEmpty": "Hələ qəbz yoxdur",
+    "received": "Serverə çatıb",
+    "saved": "Göndəriş gözləyir: {{count}}",
+    "conflicts": "Diqqət tələb edir: {{count}}",
+    "review": "Qəbul zamanı yoxlama işarəsi: {{count}}",
+    "total": "Saxlanılıb: {{count}}",
+    "evidence": "GPS və QR",
+    "open": "Ətraflı",
+    "device": "Telefon və giriş",
+    "location": "Geolokasiya",
+    "loading": "Yoxlanılır…",
+    "unknown": "Vəziyyət təsdiqlənməyib",
+    "offline": "Bağlantı yoxdur · telefonda saxlanılır",
+    "validUntil": "Giriş müddəti: {{time}}",
+    "pending": "Telefonda saxlanılıb · göndəriş gözləyir",
+    "help": "İş günü haqqında"
+  },
   "attendanceReceipts": {
     "title": "Qeyd qəbzləri",
     "deviceHistory": "Bu telefonda saxlanmış son qeydlər.",

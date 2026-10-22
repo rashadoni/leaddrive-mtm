@@ -5,6 +5,10 @@ name: Read canonical receipts and own historical mark evidence after restart
 # Existing 24-hour tests must finish before installation or permission changes.
 - runFlow: ../shared/open-fixture.yaml
 - assertVisible: ${output.copy.completed}
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-receipts-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-receipt-received
@@ -12,6 +16,10 @@ name: Read canonical receipts and own historical mark evidence after restart
     timeout: 60000
 - assertVisible:
     id: attendance-receipt-received
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-evidence-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-mark-details-load
@@ -41,6 +49,10 @@ name: Read canonical receipts and own historical mark evidence after restart
     id: attendance-own-coordinates
 - stopApp
 - runFlow: ../shared/open-fixture.yaml
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-receipts-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-receipt-received

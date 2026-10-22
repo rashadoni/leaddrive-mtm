@@ -81,6 +81,10 @@ name: Read a real branch QR with the camera and verify the finish receipt
     id: office-workday-pending
 - assertNotVisible:
     id: office-workday-conflict
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-evidence-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-qr-receipt

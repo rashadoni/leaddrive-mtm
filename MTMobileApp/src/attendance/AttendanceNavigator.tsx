@@ -21,14 +21,16 @@ import ProfileScreen from "../screens/profile/ProfileScreen"
 import { ATTENDANCE_APP, attendanceTabs } from "./profile"
 
 const Tab = createBottomTabNavigator(), Stack = createNativeStackNavigator()
+const CompactWorkday = () => <AttendanceWorkdayScreen compact />
 const OwnProfile = () => <ProfileScreen versionLabel={`${ATTENDANCE_APP.displayName} v${ATTENDANCE_APP.version}`} />
 const screens: Record<string, { component: React.ComponentType<any>; label: string; icon: string }> = {
-  OwnWorkday: { component: withFieldColorScheme(AttendanceWorkdayScreen), label: "officeAttendance.workday", icon: "time-outline" },
+  OwnWorkday: { component: withFieldColorScheme(CompactWorkday), label: "officeAttendance.workday", icon: "time-outline" },
   OwnRequests: { component: withFieldColorScheme(AttendanceRequestsScreen), label: "attendanceRequests.title", icon: "document-text-outline" },
   OwnExplanations: { component: withFieldColorScheme(AttendanceExplanationsScreen), label: "explanations.tab", icon: "chatbox-ellipses-outline" },
   OwnInbox: { component: withFieldColorScheme(AttendanceInboxScreen), label: "officeAttendance.inbox", icon: "notifications-outline" },
   OwnProfile: { component: withFieldColorScheme(OwnProfile), label: "officeAttendance.profile", icon: "person-outline" },
 }
+const tabLabels: Record<string, string> = { OwnWorkday: "day", OwnRequests: "requests", OwnExplanations: "explanations", OwnInbox: "inbox", OwnProfile: "profile" }
 function OwnTabs() {
   const { t } = useTranslation(), insets = useSafeAreaInsets()
   const agent = useAuthStore(state => state.agent)
@@ -43,7 +45,7 @@ function OwnTabs() {
     tabBarLabelStyle: { fontSize: 11, lineHeight: 15 },
   }}>
     {tabs.map(name => <Tab.Screen key={name} name={name} component={screens[name].component} options={{
-      title: t(screens[name].label), tabBarButtonTestID: `time-tab-${name}`,
+      title: t(screens[name].label), tabBarLabel: t(`attendanceCompact.tabs.${tabLabels[name]}`), tabBarButtonTestID: `time-tab-${name}`,
       tabBarIcon: ({ color }) => <Icon name={screens[name].icon} size={22} color={color} />,
     }} />)}
   </Tab.Navigator>

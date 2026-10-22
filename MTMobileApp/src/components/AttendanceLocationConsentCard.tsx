@@ -7,13 +7,14 @@ import { fieldTheme, themed } from '../theme/fieldTheme'
 import { attendanceLocationScope, readAttendanceLocation, pendingAttendanceConsent, beginAttendanceConsent, sendAttendanceConsent } from '../services/attendance-location'
 import type { OwnAttendanceLocation } from '../services/attendance-location-contract'
 import type { OutboxOperation } from '../services/outbox'
+import AttendanceDisclosure from './AttendanceDisclosure'
 
 /**
  * `hideUntilEnabled`: say nothing while the company has not turned location
  * on and the person has nothing pending or given — the manager's «İş günü»
  * (owner, 2026-10-17). Without it the card explains that location is off.
  */
-export default function AttendanceLocationConsentCard({ hideUntilEnabled = false }: { hideUntilEnabled?: boolean } = {}) {
+export default function AttendanceLocationConsentCard({ hideUntilEnabled = false, compact = false }: { hideUntilEnabled?: boolean; compact?: boolean } = {}) {
   const { t, i18n } = useTranslation()
   const agent = useAuthStore(state => state.agent), data = useBootstrapStore(state => state.data)
   const visible = data?.policies.attendanceMarkVersion === 1 && data.policies.agentPermissions?.attendanceLocation === true
@@ -74,8 +75,11 @@ export default function AttendanceLocationConsentCard({ hideUntilEnabled = false
   const awaiting = pending?.status === 'pending', conflict = pending?.status === 'conflict'
   const on = own?.maySendLocation === true && !pending && !failed
   const canAccept = own?.policy?.enabled === true && own.policy.legalReviewConfirmed === true && !on && !failed
-  return <View testID="attendance-location-card" style={styles.card}>
-    <Text style={styles.title}>{t('attendanceLocation.title')}</Text>
+  const summary = denied ? t('attendanceLocation.unavailable') : failed ? t('attendanceCompact.unknown') : awaiting
+    ? t(pending?.data.accepted === false ? 'attendanceLocation.pendingWithdrawal' : 'attendanceLocation.pending')
+    : busy && !own ? t('attendanceCompact.loading') : t(on ? 'attendanceLocation.accepted' : 'attendanceLocation.off')
+  const content = <>
+    {!compact && <Text style={styles.title}>{t('attendanceLocation.title')}</Text>}
     <Text style={styles.status}>{t(on ? 'attendanceLocation.accepted' : 'attendanceLocation.off')}</Text>
     <Text style={styles.copy}>{t('attendanceLocation.summary')}</Text>
     <Text style={styles.copy}>{t('attendanceLocation.noGps')}</Text>
@@ -97,9 +101,14 @@ export default function AttendanceLocationConsentCard({ hideUntilEnabled = false
       {awaiting && <Pressable testID="attendance-consent-retry" accessibilityRole="button" disabled={busy} onPress={() => void change(false, true)} style={styles.button}><Text style={styles.buttonText}>{t('attendanceLocation.retry')}</Text></Pressable>}
       <Pressable testID="attendance-consent-refresh" accessibilityRole="button" disabled={busy || writing.current} onPress={() => void load()} style={styles.button}><Text style={styles.buttonText}>{t('attendanceLocation.refresh')}</Text></Pressable>
     </>}
+  </>
+  return <View testID="attendance-location-card" style={compact ? styles.inline : styles.card}>
+    {compact ? <AttendanceDisclosure title={t('attendanceCompact.location')} summary={summary} icon="location-outline" controlID="attendance-location-disclosure" summaryTestID={on ? "attendance-consent-active" : undefined}
+      attention={failed || awaiting || conflict} initiallyOpen={canAccept || failed || awaiting || conflict}>{content}</AttendanceDisclosure> : content}
   </View>
 }
 const styles = themed(() => StyleSheet.create({
+  inline: { gap: 10 },
   card: { backgroundColor: fieldTheme.color.surface, borderRadius: 20, borderWidth: 1, borderColor: fieldTheme.color.border, padding: 20, gap: 12 },
   title: { fontSize: 20, fontWeight: '700', color: fieldTheme.color.ink }, status: { fontSize: 16, fontWeight: '600', color: fieldTheme.color.primaryStrong },
   copy: { fontSize: 15, lineHeight: 23, color: fieldTheme.color.inkMuted }, legal: { fontSize: 16, lineHeight: 25, color: fieldTheme.color.ink },

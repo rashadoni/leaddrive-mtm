@@ -3,6 +3,10 @@ name: Employee cannot enable location collection without a published policy
 # Owned fixture has no location policy. This is a privacy gate, not a GPS accuracy test.
 ---
 - runFlow: ../shared/open-fixture.yaml
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-location-disclosure
 - scrollUntilVisible:
     element:
       id: attendance-consent-refresh
