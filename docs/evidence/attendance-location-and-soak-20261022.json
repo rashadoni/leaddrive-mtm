@@ -247,7 +247,7 @@
   ],
   "firstPermissionFix": "PASS on physical APK 1019; genuine Android permission and HR INSIDE at 45 metres",
   "physical24HourSoak": {
-    "status": "RUNNING",
+    "status": "FAIL",
     "startSnapshot": {
       "status": "RUNNING",
       "startedPreparationAt": "2026-10-21T21:06:02.121+00:00",
@@ -480,7 +480,7 @@
       "finishedAt": "2026-10-22T06:57:04.651510+00:00",
       "screenshotSha256": "24a3c40c07da06ce63b894463a3476d9604d97af62bdfd27696544dfcf9e8be1"
     },
-    "activeAttempt": 2,
+    "activeAttempt": null,
     "firstAttemptStatus": "FAIL",
     "secondAttempt": {
       "status": "RUNNING",
@@ -572,7 +572,342 @@
       "full24HourWindow": "PENDING",
       "delayedReplayAndHrReview": "PENDING",
       "note": "Second real attempt; the first failed attempt and its recovery remain preserved."
-    }
+    },
+    "secondAttemptStatus": "FAIL",
+    "secondAttemptFinalResult": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T07:00:09.030+00:00",
+      "sourceSha": "5a8807041988a51b96a55d7936f9d91bb6276cbd",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 2,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T08:57:14.601+00:00",
+      "samplesObserved": 23,
+      "backendArtifactShaBefore": "91c0fa8d5bec8b253fb76cc90ac12eb287613230",
+      "lastHrSessionVerifiedAt": "2026-10-22T07:00:09.958+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryDeadline": "2026-10-23T11:21:00+04:00",
+      "offlineAt": "2026-10-22T07:01:04.099+00:00",
+      "apkVersionCode": 1019,
+      "apkSha256": "c49b591e6e18a7ce8d9e5248af395c3e72ee4becaa962895bf67f7b2b71fa661",
+      "earliestCompletion": "2026-10-23T11:03:04.099000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1019,
+        "sourceSha": "5a8807041988a51b96a55d7936f9d91bb6276cbd",
+        "flowSha256": "080d1d2f4520b087375e3693ae4a8f96ad392f0ffb0674c54b118acf8eefd0f3",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "77.844",
+            "status": "PASS"
+          }
+        ]
+      },
+      "queueCaptured": true,
+      "failureType": "RuntimeError",
+      "cleanupFailure": true,
+      "finishedAt": "2026-10-22T08:57:14.601+00:00"
+    },
+    "secondAttemptSamples": [
+      {
+        "checkedAt": "2026-10-22T07:01:08.355+00:00",
+        "hostElapsedSeconds": 4.256,
+        "deviceElapsedSeconds": 4.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:03:28.302+00:00",
+        "hostElapsedSeconds": 144.203,
+        "deviceElapsedSeconds": 144.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true,
+        "admissionAvailable": true,
+        "pendingVisible": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:08:39.587+00:00",
+        "hostElapsedSeconds": 455.488,
+        "deviceElapsedSeconds": 455.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:13:49.578+00:00",
+        "hostElapsedSeconds": 765.479,
+        "deviceElapsedSeconds": 765.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:18:58.413+00:00",
+        "hostElapsedSeconds": 1074.314,
+        "deviceElapsedSeconds": 1074.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:24:07.799+00:00",
+        "hostElapsedSeconds": 1383.7,
+        "deviceElapsedSeconds": 1384.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:29:16.317+00:00",
+        "hostElapsedSeconds": 1692.218,
+        "deviceElapsedSeconds": 1693.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:34:25.859+00:00",
+        "hostElapsedSeconds": 2001.76,
+        "deviceElapsedSeconds": 2002.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:39:35.280+00:00",
+        "hostElapsedSeconds": 2311.181,
+        "deviceElapsedSeconds": 2311.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:44:45.262+00:00",
+        "hostElapsedSeconds": 2621.163,
+        "deviceElapsedSeconds": 2621.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:49:53.551+00:00",
+        "hostElapsedSeconds": 2929.452,
+        "deviceElapsedSeconds": 2929.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T07:55:06.083+00:00",
+        "hostElapsedSeconds": 3241.984,
+        "deviceElapsedSeconds": 3242.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:00:15.212+00:00",
+        "hostElapsedSeconds": 3551.113,
+        "deviceElapsedSeconds": 3551.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:05:26.408+00:00",
+        "hostElapsedSeconds": 3862.309,
+        "deviceElapsedSeconds": 3863.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:10:35.617+00:00",
+        "hostElapsedSeconds": 4171.518,
+        "deviceElapsedSeconds": 4171.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:15:44.429+00:00",
+        "hostElapsedSeconds": 4480.33,
+        "deviceElapsedSeconds": 4480.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:20:54.024+00:00",
+        "hostElapsedSeconds": 4789.925,
+        "deviceElapsedSeconds": 4790.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:26:03.722+00:00",
+        "hostElapsedSeconds": 5099.623,
+        "deviceElapsedSeconds": 5100.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:31:11.929+00:00",
+        "hostElapsedSeconds": 5407.83,
+        "deviceElapsedSeconds": 5408.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:36:21.011+00:00",
+        "hostElapsedSeconds": 5716.912,
+        "deviceElapsedSeconds": 5717.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:41:30.160+00:00",
+        "hostElapsedSeconds": 6026.061,
+        "deviceElapsedSeconds": 6026.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:46:38.811+00:00",
+        "hostElapsedSeconds": 6334.712,
+        "deviceElapsedSeconds": 6335.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T08:51:48.380+00:00",
+        "hostElapsedSeconds": 6644.281,
+        "deviceElapsedSeconds": 6644.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      }
+    ],
+    "secondAttemptCause": "ADB no longer saw the USB device; runner stopped at 2026-10-22T08:57:14Z and could not perform remote cleanup. Not a completed 24-hour run. The earlier secondAttempt object remains its dated start snapshot.",
+    "secondAttemptCompletionEstimateCancelled": true,
+    "secondAttemptRecovery": {
+      "status": "PASS",
+      "scope": "delivery and cleanup after interrupted second soak; not 24h acceptance",
+      "startedAt": "2026-10-22T09:08:02.881135+00:00",
+      "networkBefore": {
+        "chain": "chain:enabled",
+        "own": "com.leaddrive.attendance:deny",
+        "mtm": "com.mtmobileapp:allow"
+      },
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "ordinaryMtmAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true
+      },
+      "eventsAlreadyDeliveredBeforeLaunch": 0,
+      "backendArtifactSha": "96c08c4e6222a31df74783a1bd57f026953ab40f",
+      "launchAt": "2026-10-22T09:08:20.638755+00:00",
+      "backendArtifactShaAfter": "96c08c4e6222a31df74783a1bd57f026953ab40f",
+      "priorEventsUnchanged": 40,
+      "newEvents": 3,
+      "eventTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "originalOfflineTimesPreserved": true,
+      "minimumDeliveryDelaySeconds": 7537.8,
+      "hrFactsState": "VALID",
+      "dayCompleted": true,
+      "delayedReviewFlagConfirmed": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingBannerAbsent": true,
+      "requestsUnchanged": true,
+      "otherAccountHistoryUnchanged": true,
+      "finishedAt": "2026-10-22T09:08:52.984866+00:00"
+    },
+    "secondAttemptWatchdogLimitation": "After the owner reconnected USB, own-package networking was still denied. Automatic device-side cleanup is not claimed; explicit recovery restored networking and original task permission grants."
   },
   "consentWithdrawal": {
     "status": "PASS",
