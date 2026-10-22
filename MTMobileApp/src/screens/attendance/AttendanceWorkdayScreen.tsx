@@ -15,7 +15,8 @@ import { canReturnToWorkday, returnToClosedWorkday } from '../../services/workda
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import Icon from "react-native-vector-icons/Ionicons"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, type NavigationProp } from "@react-navigation/native"
+import type { OwnAttendanceParamList } from '../../navigation/attendance-routes'
 import { useTranslation } from "react-i18next"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
@@ -40,7 +41,7 @@ function dateKey(timezone: string | null) {
  * «Profil» button — it is the «Daha çox» tab (owner, 2026-10-17).
  */
 export default function AttendanceWorkdayScreen({ managerShell = false }: { managerShell?: boolean } = {}) {
-  const { t, i18n } = useTranslation(), navigation = useNavigation()
+  const { t, i18n } = useTranslation(), navigation = useNavigation<NavigationProp<OwnAttendanceParamList>>()
   const top = useHeaderTop(), bottom = useTabBarPadding()
   const agent = useAuthStore(state => state.agent), bootstrap = useBootstrapStore(state => state.data)
   const server = useAuthStore(state => state.serverDomain)
@@ -168,7 +169,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
                 if (busy || pending) return
                 const day = current ? { startedAt: current.startedAt } : bootstrap?.workday
                 const correction = createAttendanceCorrectionIntent(key, server, bootstrap?.timezone, day)
-                if (correction) navigation.navigate('OwnRequests' as never, { correction } as never)
+                if (correction) navigation.navigate('OwnRequests', { correction })
               }}><Text style={styles.secondaryText}>{t('attendanceCorrection.open')}</Text></Pressable>
             {pending && <Text style={styles.muted}>{t('attendanceCorrection.waitForDelivery')}</Text>}
           </>}
@@ -182,9 +183,9 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
           refresh={async () => { await refresh(); await recovery.reload() }} />
         {managerShell ? null : <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>}
         <AttendanceLocationConsentCard hideUntilEnabled={managerShell} />
-        {bootstrap?.policies.agentPermissions?.attendanceRequests === true && <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnRequests" as never)}><Text style={styles.secondaryText}>{t("attendanceRequests.title")}</Text></Pressable>}
-        <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnInbox" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.inbox")}</Text></Pressable>
-        {managerShell ? null : <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>}
+        {bootstrap?.policies.agentPermissions?.attendanceRequests === true && <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnRequests")}><Text style={styles.secondaryText}>{t("attendanceRequests.title")}</Text></Pressable>}
+        <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnInbox")}><Text style={styles.secondaryText}>{t("officeAttendance.inbox")}</Text></Pressable>
+        {managerShell ? null : <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile")}><Text style={styles.secondaryText}>{t("officeAttendance.profile")}</Text></Pressable>}
       </>}
     </ScrollView>
     <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused && !installation.blocked && !recovery.operation && !finishing && !conflict} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
