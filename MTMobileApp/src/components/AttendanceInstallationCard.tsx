@@ -12,6 +12,7 @@ export default function AttendanceInstallationCard({installation}:{installation:
     <Text style={styles.title}>{t('attendanceInstallation.title')}</Text>
     <Text style={styles.copy}>{t('attendanceInstallation.summary')}</Text>
     {own && <Text style={styles.state}>{t(`attendanceInstallation.${own.state}`)}</Text>}
+    {own && !pending && <Text testID="attendance-installation-next-step" style={styles.copy}>{t(`attendanceInstallation.nextStep.${own.state}`)}</Text>}
     {own?.installationLabel && <Text style={styles.copy}>{own.installationLabel}</Text>}
     {submittedAt && <Text style={styles.copy}>{t('attendanceInstallation.submitted',{time:submittedAt})}</Text>}
     {reason && <Text style={styles.copy}>{reason}</Text>}

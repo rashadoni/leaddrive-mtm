@@ -719,7 +719,7 @@ class ApiClient {
 
   // Attendance uses the existing authenticated transport and its own narrow API.
   getOwnAttendanceMarks(workdayId: string, guard: () => void) {
-    return this.request(`/mobile/route-field/attendance/marks?workdayId=${encodeURIComponent(workdayId)}`, { method: 'GET' }, 10_000, 1, guard)
+    return this.request(`/mobile/route-field/attendance/marks?workdayId=${encodeURIComponent(workdayId)}`, { method: 'GET' }, 10_000, 2, guard)
   }
   getAttendanceInstallation(guard: () => void) {
     return this.request('/mobile/route-field/attendance/installation', {method:'GET'}, 20_000, 2, guard)

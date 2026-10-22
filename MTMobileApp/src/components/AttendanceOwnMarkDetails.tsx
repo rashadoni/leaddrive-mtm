@@ -35,9 +35,9 @@ export default function AttendanceOwnMarkDetails({ workdayId }: { workdayId?: st
     </Pressable>
     {own?.busy && <ActivityIndicator />}
     {data?.attendanceOffline && <Text style={styles.copy}>{t('attendanceMarks.offline')}</Text>}
-    {own?.failed && <Text accessibilityRole="alert" style={styles.copy}>{t('attendanceMarks.failed')}</Text>}
+    {own?.failed && <Text testID="attendance-mark-details-failed" accessibilityRole="alert" style={styles.copy}>{t('attendanceMarks.failed')}</Text>}
     {report && <>
-      <Text style={styles.copy}>{t('attendanceMarks.updated', { time: clock(report.updatedAt) })}</Text>
+      <Text testID="attendance-mark-details-loaded" style={styles.copy}>{t('attendanceMarks.updated', { time: clock(report.updatedAt) })}</Text>
       {!report.items.length && <Text style={styles.copy}>{t('attendanceMarks.empty')}</Text>}
       {report.items.map(mark => <View key={mark.eventId} style={styles.row}>
         <Text style={styles.label}>{t(`attendanceReceipts.${mark.action}`)} · {clock(mark.claimedAt)}</Text>

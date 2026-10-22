@@ -1240,7 +1240,14 @@
     "retry": "Retry sending",
     "refresh": "Check decision",
     "newMark": "After approval, make a new attendance mark. You can request a correction for an earlier time.",
-    "waitForApproval": "Wait for this installation to be approved first."
+    "waitForApproval": "Wait for this installation to be approved first.",
+    "nextStep": {
+      "NOT_REQUESTED": "Send a request from this phone. Refresh the status after HR decides.",
+      "PENDING": "HR has not decided yet. Refresh later; no duplicate request is needed.",
+      "REJECTED": "Read the rejection reason and contact HR. You can send a new request after resolving it.",
+      "REVOKED": "Access for this installation was revoked. Check the reason with HR before requesting again.",
+      "APPROVED": "This installation is approved. Start your workday when you actually begin working; no trial arrival is needed."
+    }
   },
   "attendanceLocation": {
     "installationTitle": "Installation approval needed",

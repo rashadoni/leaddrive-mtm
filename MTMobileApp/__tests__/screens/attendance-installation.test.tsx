@@ -45,13 +45,16 @@ beforeEach(()=>{
 afterEach(async()=>{await act(async()=>{roots.splice(0).forEach(root=>root.unmount())})})
 it.each(['ru','az','en'])('renders actual %s request and awaiting states without asking for GPS',async language=>{
   const tree=await render(language),copy={ru,az,en}[language as 'ru'|'az'|'en'].attendanceInstallation
+  expect(text(tree)).toContain(copy.nextStep.NOT_REQUESTED)
   expect(text(tree)).toContain(copy.noLocation);expect(current.blocked).toBe(true);capture(tree,`installation-request-${language}`)
   await press(tree,'attendance-installation-request');expect(sendAttendanceInstallation).toHaveBeenCalledWith(scope,{requestId:uuid,createdAt:at});expect(node(tree,'attendance-installation-request')).toBeUndefined()
   expect(text(tree)).toContain(copy.PENDING);expect(text(tree)).not.toContain('attendanceInstallation.');capture(tree,`installation-pending-${language}`)
+  expect(text(tree)).toContain(copy.nextStep.PENDING)
 })
 it.each(['APPROVED','REJECTED','REVOKED'] as const)('shows current %s decision and blocks only unapproved marks',async state=>{
   own={...own,state,requestId:uuid,submittedAt:at,decision:{action:state==='REJECTED'?'REJECT':'APPROVE',at,reason:'Fictional manager reason'},revocation:state==='REVOKED'?{at,reason:'Fictional revocation reason'}:null,canRequest:state!=='APPROVED'}
   const tree=await render();expect(current.blocked).toBe(state!=='APPROVED');expect(text(tree)).toContain(state==='REVOKED'?'Fictional revocation reason':'Fictional manager reason')
+  expect(text(tree)).toContain(ru.attendanceInstallation.nextStep[state])
   expect(!!node(tree,'attendance-installation-request')).toBe(state!=='APPROVED')
 })
 it('does not turn an approved GET into acknowledgement of an unknown POST',async()=>{

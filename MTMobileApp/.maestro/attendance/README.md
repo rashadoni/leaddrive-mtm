@@ -79,3 +79,12 @@ After reconnection, `verify_replay` in that module independently checks the exac
 `offline-soak-capture.yaml` captures PAUSE/RESUME/FINISH with restarts on an already running current-day fixture. It requires prior approved consent and foreground GPS permission. Its host harness must hold the separate app offline for a real 24 hours, preserve the clock and other apps' connectivity, observe provisional access and the durable queue before expiry, then observe admission closed after expiry. Only then restore networking and verify original delayed claims and the server review flag. A device-side recovery deadline must restore the app's networking even if the host tunnel is lost. No clearState, artificial clock advance or deletion of prior events is allowed.
 
 `scripts/e2e/attendance_soak_guard.py` checks timestamped physical observations and authenticated event maps. Its unit tests do not prove a physical soak. Gaps, changed clocks, early delivery, duplicate events or missing expiry UI observations prevent PASS. A real run must report RUNNING until the full interval and post-reconnect checks actually complete.
+
+
+### Delivery receipts, own evidence and correction context (2026-10-22)
+
+`own-mark-details.yaml` requires a completed fictional day created by the new APK after the canonical delivery receipts feature was installed, and the new server GET marks endpoint. It opens saved evidence with permissions denied, closes it, restarts, and verifies that delivery receipts persist while the private report stays closed. It does not prove a GPS fix or camera scan; verify the exact event IDs/times, permission baseline and absence of new events through the authenticated harness.
+
+`correction-from-day.yaml` requires a completed, delivered fictional day and no existing request draft. Pass `EXPECTED_WORK_DATE`, `EXPECTED_START_TIME`, `EXPECTED_END_TIME` from that canonical day in the company timezone. It verifies contextual prefill and closes without submitting. Compare the requests baseline afterward to prove no accidental request. Submission, HR review and employee decision are separate checks; the server browser E2E exercises a real mobile correction submission, HR comparison/rejection and the employee’s returned decision.
+
+Both new journeys are prepared but NOT RUN on the physical phone as of this change. Finish the running real24h test before replacing its APK or changing permissions. The backend browser/PG gates and the new APK must pass on the new source before these physical flows run.

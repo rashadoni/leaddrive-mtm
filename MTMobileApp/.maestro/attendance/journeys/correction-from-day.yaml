@@ -1,0 +1,53 @@
+appId: com.leaddrive.attendance
+name: Open a correction from the completed day without an accidental submission
+---
+# EXPECTED_WORK_DATE comes from the authenticated canonical day, not the host clock.
+- runFlow: ../shared/open-fixture.yaml
+- assertTrue: ${/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/.test(EXPECTED_WORK_DATE)}
+- assertVisible: ${output.copy.completed}
+- assertNotVisible:
+    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-correct
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-correct
+- extendedWaitUntil:
+    visible:
+      id: attendance-form
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: attendance-startDate
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-startDate
+    text: ${EXPECTED_WORK_DATE}
+- scrollUntilVisible:
+    element:
+      id: attendance-startTime
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-startTime
+    text: ${EXPECTED_START_TIME}
+- scrollUntilVisible:
+    element:
+      id: attendance-endTime
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-endTime
+    text: ${EXPECTED_END_TIME}
+- scrollUntilVisible:
+    element:
+      id: attendance-close-form
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-close-form
+- assertNotVisible:
+    id: attendance-form

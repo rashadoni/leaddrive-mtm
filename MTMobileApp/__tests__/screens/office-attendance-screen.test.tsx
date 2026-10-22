@@ -35,7 +35,8 @@ jest.mock("../../src/services/attendance-requests", () => ({ attendanceAccessDen
 jest.mock("../../src/services/outbox", () => ({ allOutboxOperations: jest.fn().mockResolvedValue([]) }))
 jest.mock("../../src/services/api", () => ({ api: { getProfile: jest.fn().mockResolvedValue({ success: true, data: {} }), getAlerts: jest.fn() } }))
 jest.mock("../../src/services/app-feedback", () => ({ ask: (...args: unknown[]) => mockAsk(...args) }))
-jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }) }))
+const mockNavigate = jest.fn()
+jest.mock("@react-navigation/native", () => ({ useNavigation: () => ({ navigate: mockNavigate, goBack: jest.fn() }) }))
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 12, useTabBarPadding: () => 24 }))
 jest.mock("../../src/hooks/useAutoRefresh", () => ({ useAutoRefresh: () => {} }))
 jest.mock("../../src/store/hints", () => ({ useHintsStore: (selector: (value: unknown) => unknown) => selector({ enabled: true, setEnabled: jest.fn() }) }))
@@ -93,8 +94,17 @@ it.each(["ru","az","en"])("renders actual %s office day and sends the canonical 
 it("keeps a pending start visibly provisional while allowing the next shift action", async () => {
   mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-13T08:00:00Z", syncState: "START_PENDING" }
   const tree = await render(AttendanceWorkdayScreen); expect(node(tree,"office-workday-pending")).toBeDefined(); expect(node(tree,"office-workday-action").props.disabled).toBe(false)
+  expect(node(tree,"office-workday-correct").props.disabled).toBe(true)
+  await press(tree,"office-workday-correct"); expect(mockNavigate).not.toHaveBeenCalled()
   await press(tree,"office-workday-break"); expect(changeAttendanceWorkday).toHaveBeenCalledWith("pause")
   await press(tree,"office-workday-action"); expect(changeAttendanceWorkday).toHaveBeenCalledWith("end")
+})
+it("opens a scoped correction for the actual confirmed workday without submitting a request", async () => {
+  mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-13T18:00:00Z", syncState: "CONFIRMED" }
+  const tree = await render(AttendanceWorkdayScreen)
+  await press(tree, "office-workday-correct")
+  expect(mockNavigate).toHaveBeenCalledWith("OwnRequests", { correction: expect.objectContaining({ scope: "org-fixture:office-fixture", server: "fictional.invalid", workDate: "2026-10-13", startedAt: "2026-10-13T18:00:00Z", completedAt: null }) })
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
 })
 it("uses pause/resume and requires an explicit finish confirmation", async () => {
   mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-13T08:00:00Z", syncState: "CONFIRMED" }

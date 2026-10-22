@@ -20,6 +20,14 @@ beforeEach(() => {
   global.fetch = jest.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ success: true, data: {} }) })
 })
 afterAll(() => { global.fetch = originalFetch; nativeGlobals.FormData = originalFormData })
+it("reads only the encoded own workday through the v2 guarded evidence endpoint", async () => {
+  const guard = jest.fn()
+  await api.getOwnAttendanceMarks("day&agentId=foreign", guard)
+  expect((global.fetch as jest.Mock).mock.calls[0][0]).toBe("https://fictional.invalid/api/v2/mtm/mobile/route-field/attendance/marks?workdayId=day%26agentId%3Dforeign")
+  expect((global.fetch as jest.Mock).mock.calls[0][1].method).toBe("GET")
+  expect((global.fetch as jest.Mock).mock.calls[0][1].body).toBeUndefined()
+  expect(guard).toHaveBeenCalled()
+})
 it("uses ordinary authenticated own-list/quota/create/cancel API doors", async () => {
   const guard = jest.fn()
   const value: AttendanceInput = { clientRequestId: attendanceUuid(), kind: "ANNUAL_LEAVE", unit: "DAYS", startDate: "2026-10-14", endDate: "2026-10-15", reason: "Fictional leave", attachmentIds: [] }

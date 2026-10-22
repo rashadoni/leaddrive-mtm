@@ -33,7 +33,10 @@ export function parseOwnAttendanceMarks(value: unknown, workdayId: string): OwnA
     if (location.coordinates !== null && (!position || typeof position.latitude !== 'number' || !Number.isFinite(position.latitude) || Math.abs(position.latitude) > 90
       || typeof position.longitude !== 'number' || !Number.isFinite(position.longitude) || Math.abs(position.longitude) > 180)) return fail()
     const endpoint = row.action === 'START' || row.action === 'FINISH'
-    if (!endpoint && (location.state !== 'NOT_RECORDED' || position || row.qr !== null || location.branchName !== null)) return fail()
+    if (!endpoint && (location.state !== 'NOT_RECORDED' || position || row.qr !== null || location.branchName !== null
+      || location.accuracyMeters !== null || location.distanceMeters !== null || location.capturedAt !== null)) return fail()
+    if (!position && (location.accuracyMeters !== null || location.capturedAt !== null)) return fail()
+    if (qr && qr.state !== 'VERIFIED' && qr.branchName !== null) return fail()
     if (position && !['INSIDE', 'OUTSIDE', 'UNCERTAIN', 'UNCONFIGURED'].includes(String(location.state))) return fail()
     seen.add(row.eventId)
     return { eventId: row.eventId, action: row.action as OwnAttendanceMark['action'], claimedAt: row.claimedAt, serverReceivedAt: row.serverReceivedAt as string | null,

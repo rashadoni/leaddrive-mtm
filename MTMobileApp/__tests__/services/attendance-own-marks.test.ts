@@ -34,3 +34,7 @@ it('rejects another workday, duplicate events, invalid positions and unbounded d
 it('retains unavailable and uncertain findings without manufacturing outside presence', () => {
   expect(parseOwnAttendanceMarks({ ...report, items: [{ ...item, location: { ...item.location, state: 'UNAVAILABLE', coordinates: null, accuracyMeters: null, capturedAt: null, branchName: null, distanceMeters: null } }] }, 'day-1').items[0].location.state).toBe('UNAVAILABLE')
 })
+it('refuses break measurements and an unverified branch without coordinates', () => {
+  expect(() => parseOwnAttendanceMarks({ ...report, items: [{ ...item, action: 'PAUSE', location: { ...item.location, state: 'NOT_RECORDED', coordinates: null, branchName: null, distanceMeters: null } }] }, 'day-1')).toThrow()
+  expect(() => parseOwnAttendanceMarks({ ...report, items: [{ ...item, qr: { state: 'INVALID', branchName: 'Unverified branch' } }] }, 'day-1')).toThrow()
+})

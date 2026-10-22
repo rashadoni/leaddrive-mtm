@@ -1240,7 +1240,14 @@
     "retry": "Yenidən göndər",
     "refresh": "Qərarı yoxla",
     "newMark": "Təsdiqdən sonra yenidən qeyd edin. Daha əvvəlki vaxtı düzəliş sorğusunda göstərə bilərsiniz.",
-    "waitForApproval": "Əvvəlcə bu quraşdırmanın təsdiqini gözləyin."
+    "waitForApproval": "Əvvəlcə bu quraşdırmanın təsdiqini gözləyin.",
+    "nextStep": {
+      "NOT_REQUESTED": "Bu telefondan sorğu göndərin. Kadrların qərarından sonra statusu yeniləyin.",
+      "PENDING": "Kadrlar hələ qərar verməyib. Statusu sonra yeniləyin; təkrar sorğu lazım deyil.",
+      "REJECTED": "İmtinanın səbəbini oxuyun və kadrlarla əlaqə saxlayın. Dəqiqləşdirdikdən sonra yeni sorğu göndərə bilərsiniz.",
+      "REVOKED": "Bu quraşdırmanın icazəsi ləğv edilib. Yeni sorğudan əvvəl səbəbi kadrlarla dəqiqləşdirin.",
+      "APPROVED": "Bu quraşdırma təsdiqlənib. İşə həqiqətən başlayanda iş gününü başladın; sınaq qeydi lazım deyil."
+    }
   },
   "attendanceLocation": {
     "installationTitle": "Quraşdırma təsdiqlənməlidir",

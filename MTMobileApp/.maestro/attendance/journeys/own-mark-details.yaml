@@ -1,0 +1,49 @@
+appId: com.leaddrive.attendance
+name: Read canonical receipts and own historical mark evidence after restart
+---
+# Run after the workday journey on the NEW APK and matching backend.
+# Existing 24-hour tests must finish before installation or permission changes.
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.completed}
+- scrollUntilVisible:
+    element:
+      id: attendance-receipt-received
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-receipt-received
+- scrollUntilVisible:
+    element:
+      id: attendance-mark-details-load
+    direction: DOWN
+    timeout: 60000
+- assertNotVisible:
+    id: attendance-mark-details-loaded
+- tapOn:
+    id: attendance-mark-details-load
+- extendedWaitUntil:
+    visible:
+      id: attendance-mark-details-loaded
+    timeout: 30000
+- assertNotVisible:
+    id: attendance-mark-details-failed
+- scrollUntilVisible:
+    element:
+      id: attendance-mark-details-close
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-mark-details-close
+- assertNotVisible:
+    id: attendance-own-coordinates
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- scrollUntilVisible:
+    element:
+      id: attendance-receipt-received
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-receipt-received
+- assertNotVisible:
+    id: attendance-mark-details-loaded
