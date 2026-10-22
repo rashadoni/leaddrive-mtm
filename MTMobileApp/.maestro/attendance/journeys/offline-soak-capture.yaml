@@ -39,6 +39,11 @@ name: Capture three offline actions before a real 24-hour hold
 - assertVisible: "${output.copy.paused}"
 - assertVisible:
     id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
 - extendedWaitUntil:
     visible:
       id: office-workday-break
@@ -68,6 +73,11 @@ name: Capture three offline actions before a real 24-hour hold
     direction: UP
     timeout: 60000
 - assertVisible: "${output.copy.running}"
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
 - extendedWaitUntil:
     visible:
       id: office-workday-break
@@ -100,11 +110,14 @@ name: Capture three offline actions before a real 24-hour hold
     direction: UP
     timeout: 60000
 - assertVisible: "${output.copy.completed}"
-- extendedWaitUntil:
-    visible:
-      id: office-workday-return
-      enabled: true
-    timeout: 60000
+# FINISH_PENDING is shown only after both the outbox and workday state are saved.
+# Returning to work is intentionally unavailable offline; it is not a ready signal.
+- assertVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-return
+- assertNotVisible:
+    id: office-workday-action
 - stopApp
 - launchApp:
     clearState: false

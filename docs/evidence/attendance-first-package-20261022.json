@@ -812,6 +812,142 @@
       "otherAccountUnchanged": true,
       "originalPermissionsRestored": true,
       "finishedAt": "2026-10-22T12:30:24.315478+00:00"
+    },
+    "soakAttempt4": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:32:12.749+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 4,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:35:40.041+00:00",
+      "samplesObserved": 1,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:32:13.300+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T16:53:07+04:00",
+      "offlineAt": "2026-10-22T12:33:12.196+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:35:12.196000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "cf7af9e53614097144cc7585f270dd88a5f2c7029c29d48d381072a96a498fbb",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "89.95",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true,
+        "originalOfficeAccountRetained": true
+      },
+      "finishedAt": "2026-10-22T12:35:40.041+00:00",
+      "cause": "Enabled control below viewport after upward status scroll; not a completed 24h run",
+      "completionEstimateCancelled": true
+    },
+    "soakAttempt4Recovery": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "startedAt": "2026-10-22T12:44:24.306+00:00",
+      "priorEventsPreserved": 86,
+      "serverEvents": 87,
+      "recoveredTypes": [
+        "PAUSE"
+      ],
+      "originalClaimRetained": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingAbsent": true,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "permissionsRadiosPackagesUnchanged": true,
+      "dayState": "PAUSED",
+      "finishedAt": "2026-10-22T12:45:34.934+00:00"
+    },
+    "soakAttempt5Preparation": {
+      "status": "PREPARING",
+      "fromDayState": "PAUSED",
+      "expectedPreparationEvents": [
+        "RESUME"
+      ],
+      "real24h": "NOT_RUN until queue capture and confirmed RUNNING"
+    },
+    "soakAttempt5": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:46:17.910+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 5,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:51:11.143+00:00",
+      "samplesObserved": 1,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:46:18.265+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:07:19+04:00",
+      "offlineAt": "2026-10-22T12:47:24.188+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:49:24.188000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "84c25d1728979669c8fea870405bff1375c9b6770fa46fcadc0e3ad1e5e76c90",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "156.208",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true,
+        "originalOfficeAccountRetained": true
+      },
+      "finishedAt": "2026-10-22T12:51:11.143+00:00",
+      "completionEstimateCancelled": true,
+      "cause": "Incorrect test expected online-only return control after offline FINISH; source explicitly hides it while offline/FINISH_PENDING. Capture reached completed with pending queue."
+    },
+    "soakAttempt5Recovery": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "startedAt": "2026-10-22T12:51:59.714+00:00",
+      "priorEventsPreserved": 88,
+      "serverEvents": 91,
+      "recoveredTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "originalClaimsRetained": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingAbsent": true,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "permissionsRadiosPackagesUnchanged": true,
+      "dayState": "COMPLETED",
+      "finishedAt": "2026-10-22T12:53:12.260+00:00"
     }
   },
   "latestTestOnlyPublishedHead": {
@@ -824,5 +960,15 @@
     "standaloneBuild": 39777185632,
     "nativeStatus": "SUCCESS",
     "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4"
+  },
+  "latestTestOnlyGates9b54": {
+    "sha": "9b54cb96b05aa3a7c4058251d194de7c8db7a468",
+    "CI": 39779282800,
+    "emulatorContract": 39779283007,
+    "ordinaryAndroid": 39779282832,
+    "standaloneAndroid": 39779274056,
+    "status": "SUCCESS",
+    "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+    "apkNotInstalled": true
   }
 }

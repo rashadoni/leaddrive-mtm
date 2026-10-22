@@ -821,3 +821,27 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Correction-v4 Maestro PASS51.713с; дата/минуты канонического real-date day поAsia/Baku, no accidental request/workday change. Aggregate readonly-v4 PASS: receipt-v2/own-marks-v4/correction-v4, office account восстановлен, обе истории/заявки сохранены, исходные разрешения restored. Исторических событий84; новых действий на read-only стадиях не добавлено.
 - d56a15e все hosted gates SUCCESS, включая ordinary39777195278/standalone39777185632. Более новые APK не установлены; зафиксированный runtime3ae/1025 остаётся на телефоне. Последнее изменение flow own-marks(180с, speed75) прошло syntax и реальныйMaestro, отдельный checkpoint публикуется без runtime changes.
 - Проверено отсутствие прежнего owned recovery watchdog. Запущен detached physical_soak_v4.py --start-physical-soak (metadata private physical-soak-v4-process.json, stdout physical-soak-v4-runner.log). Пока PREPARING, нельзя считать24h начатой/пройденной до подтверждённых offlineAt/queueCaptured. Ограничивается только отдельный тестовый пакет; обычноеMTM и радио сохраняются. Пользователю сообщено оставитьMac/USB работающими. Автоматического уведомления чата не настроено: соответствующего инструмента в этой сессии нет; сам тест пишет progress/result.
+
+
+### 2026-10-22, 16:47 Баку — real24h-v4 прерван на подготовке; срок отменён
+
+- physical-soak-v4 FAIL до основной выдержки: offline capture Maestro89.95с ожидал enabled break после прокрутки вверх, когда кнопка оказалась ниже viewport. До сбоя локально сохранён только PAUSE. Проверка syntax обновлённого flow PASS: перед каждым enabled wait добавлена явная прокрутка к тому же control; ожидания сохранены. Runtime APK3ae/1025 не менялся.
+- Cleanup v4 PASS: network обоих приложений allow, chain disabled, радио и исходные permissions сохранены; телефон доступен. Прежний срок23.10 16:36 Баку отменён,24h НЕ пройдены и сейчас НЕ идут. Запущена независимая проверка доставки сохранённого PAUSE без дубликатов/изменения истории. Следующая попытка v5 должна продолжить реально PAUSED день обычным RESUME, не переписывать старые события.
+
+
+### 2026-10-22, 16:46 Баку — PAUSE восстановлен, v5 PREPARING
+
+- Recovery v4 PASS:86 прежних событий неизменны, один PAUSE доставлен с исходным claimedAt; после restart дубликатов нет, pending отсутствует. Всего87 событий, PAUSED. Заявки/другой аккаунт/настройки/пакеты сохранены. Native screenshot подтверждает перерыв.
+- Запущена отдельная попытка physical_soak_v5: обычный RESUME текущего PAUSED дня, затем исправленный offline capture и полные24h без изменения часов. Пока PREPARING; дедлайн сообщать только после RUNNING. Все четыре hosted gates9b54 SUCCESS: CI39779282800, emulator39779283007, ordinary39779282832, standalone39779274056. Runtime не отличается от установленного3ae/1025; новые APK не устанавливались.
+
+
+### 2026-10-22, 16:52 Баку — исправлено неверное ожидание после offline FINISH
+
+- v5 capture FAIL156.208с: PAUSE/RESUME прошли с новой прокруткой, FINISH достиг completed/pending, но автотест ожидал office-workday-return. Проверка AttendanceWorkdayScreen.tsx показала returnable = !offline && !finishing; эта кнопка намеренно отсутствует. Это ошибка теста, не дефект приложения. Прежний срок23.10 16:49 отменён; cleanup сети/permissions PASS. Три сохранённые отметки восстанавливаются обычным запуском.
+- Проверка store/workday.ts подтвердила: FINISH_PENDING публикуется в UI только после сохранения outbox и AsyncStorage. Flow теперь проверяет completed + pending + отсутствие онлайн-действий, затем настоящий cold restart и сохранение completed/pending. Неприменимое ожидание return удалено; runtime/права/24h gates не ослаблялись. Новая ограниченная v6 подготовлена на основании причины, требует recovery-v5 PASS.
+
+
+### 2026-10-22, 16:53 Баку — recovery-v5 PASS; v6 PREPARING
+
+- Восстановление PASS:88 прежних событий неизменны, PAUSE/RESUME/FINISH доставлены с исходными claimedAt, без дублей после cold restart. Всего91 событие, COMPLETED, pending отсутствует, заявки/другой аккаунт/сеть/permissions/пакеты сохранены. Maestro syntax исправленного capture PASS.
+- Detached physical_soak_v6 запущен из восстановленного COMPLETED, требует recovery-v5 PASS; исходный runtime3ae/1025 и полные сутки без изменения времени сохранены. Пока PREPARING, срока до подтверждённого RUNNING нет.
