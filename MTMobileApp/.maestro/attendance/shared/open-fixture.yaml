@@ -1,6 +1,7 @@
 appId: com.leaddrive.attendance
 ---
 - runScript: labels.js
+- runScript: offline-fixture.js
 - launchApp:
     clearState: false
     permissions:
@@ -13,7 +14,7 @@ appId: com.leaddrive.attendance
     timeout: 30000
 - tapOn:
     id: time-tab-OwnWorkday
-- assertVisible: "Fictional office employee"
+- assertVisible: "${output.offlineFixtureName}"
 - assertNotVisible:
     id: office-workday-unavailable
 - assertNotVisible:

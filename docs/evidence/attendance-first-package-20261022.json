@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "status": "INCOMPLETE_PHYSICAL_ACCEPTANCE",
+  "runtimeSourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+  "install": {
+    "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+    "package": "com.leaddrive.attendance",
+    "version": "1.0.0",
+    "versionCode": 1022,
+    "physicalMaestro": "NOT_RUN",
+    "sha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+    "install": "PASS",
+    "sameStandaloneUid": true,
+    "mtmIdentityUnchangedDuringUpdate": true,
+    "authenticatedFixturePreserved": true,
+    "priorEventsUnchanged": 43
+  },
+  "server": {
+    "pullRequest": "https://github.com/rashadoni/leaddrive-v2/pull/978",
+    "testedHead": "392f8d16d1dc6f619abe0c63db85c32ce7627a26",
+    "mainSha": "376533a340f8d44b5034af7cc71c459d2c1d6f6e",
+    "e2eRun": 39750963496,
+    "e2ePassCases": 65,
+    "deployRun": 39754397126,
+    "deployStatus": "IN_PROGRESS"
+  },
+  "physicalReceiptAttempts": [
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": 1,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "cfe341a559c0234038ff72962919922fe07678e0f1802e745f63a2c8e8f75c02",
+      "tests": [
+        {
+          "name": "Return to an existing fictional day and retain canonical delivery receipts",
+          "seconds": "362.925",
+          "status": "FAIL"
+        }
+      ]
+    },
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": 1,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "be9777ef3db8acd7c69853e3544a212ef58e16f0cce311d72f823852d1992901",
+      "tests": [
+        {
+          "name": "Return to an existing fictional day and retain canonical delivery receipts",
+          "seconds": "6.336",
+          "status": "FAIL"
+        }
+      ]
+    },
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": -9,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "be9777ef3db8acd7c69853e3544a212ef58e16f0cce311d72f823852d1992901"
+    }
+  ],
+  "firstGpsPermission": {
+    "status": "FAIL",
+    "startedAt": "2026-10-22T09:26:55.130883+00:00",
+    "scope": "real foreground GPS through native app after explicit reviewed test consent",
+    "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+    "apkVersionCode": 1022,
+    "apkSha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+    "backendArtifactSha": "96c08c4e6222a31df74783a1bd57f026953ab40f",
+    "flowExit": 0,
+    "newEventTypes": [
+      "FINISH"
+    ],
+    "priorEventsUnchanged": 47,
+    "requestsUnchanged": true,
+    "locationMarks": [
+      {
+        "action": "FINISH",
+        "state": "UNAVAILABLE",
+        "distanceMeters": null,
+        "branchName": null
+      }
+    ],
+    "radioStatesUnchanged": true,
+    "permissionsAfter": {
+      "CAMERA": false,
+      "ACCESS_FINE_LOCATION": true,
+      "ACCESS_COARSE_LOCATION": true
+    },
+    "maestro": {
+      "flow": "journeys/location-finish-running",
+      "exit": 0,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "d0424a326cee4342e50652d42bfbbc02c352c3ad7a6c9c9e3b5e8630452309b2",
+      "tests": [
+        {
+          "name": "Finish an admitted running fixture day using the actual Android location permission",
+          "seconds": "44.159",
+          "status": "PASS"
+        }
+      ]
+    },
+    "failureType": "AssertionError",
+    "finishedAt": "2026-10-22T09:28:37.973549+00:00"
+  },
+  "gpsRetry": {
+    "status": "FAIL",
+    "startedAt": "2026-10-22T09:29:42.010255+00:00",
+    "scope": "real foreground GPS through native app after explicit reviewed test consent",
+    "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+    "apkVersionCode": 1022,
+    "apkSha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+    "backendArtifactSha": "96c08c4e6222a31df74783a1bd57f026953ab40f",
+    "flowExit": 1,
+    "newEventTypes": [
+      "REOPEN",
+      "RESUME"
+    ],
+    "priorEventsUnchanged": 48,
+    "requestsUnchanged": true,
+    "locationMarks": [],
+    "radioStatesUnchanged": true,
+    "permissionsAfter": {
+      "CAMERA": false,
+      "ACCESS_FINE_LOCATION": true,
+      "ACCESS_COARSE_LOCATION": true
+    },
+    "maestro": {
+      "flow": "journeys/location-finish-granted",
+      "exit": 1,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "cee7ce0b18980b61c3bf9745074d3fb6d2ba3f0071dafa6b169a8b29fa1c916c",
+      "tests": [
+        {
+          "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+          "seconds": "53.344",
+          "status": "FAIL"
+        }
+      ]
+    },
+    "failureType": "AssertionError",
+    "finishedAt": "2026-10-22T09:31:42.426781+00:00"
+  },
+  "connectionLoss": {
+    "status": "INCOMPLETE",
+    "reason": "Mac ADB tunnel unresponsive; own Maestro process stopped",
+    "canonicalDayStatus": "STARTED",
+    "newEventTypes": [
+      "REOPEN",
+      "RESUME"
+    ],
+    "priorEventsUnchanged": 51,
+    "requestsUnchanged": true,
+    "otherAccountHistoryUnchanged": true,
+    "appOnlyNetworkBlockStarted": false,
+    "real24hStarted": false
+  },
+  "correctionPrefill": "NOT_RUN: phone connection unavailable; use real-date admin fixture, office fixture day originates from preserved synthetic earlier case",
+  "ownMarksPhysical": "NOT_RUN: phone connection unavailable",
+  "newReal24h": "NOT_RUN",
+  "qrOn1022": "NOT_RUN",
+  "limitations": [
+    "First GPS OS permission flow PASS, coordinates UNAVAILABLE; no INSIDE pass on 1022 claimed.",
+    "Receipt attempt1 stopped before GPS permission response; test flow corrected.",
+    "Receipt attempt2 lost device during launch and wrote no events.",
+    "Receipt attempt3 stopped on unresponsive Mac tunnel after REOPEN/RESUME; no offline network block started."
+  ]
+}
