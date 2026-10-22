@@ -1,3 +1,4 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
 import { timeColor, timeStyles, useTimePresentation } from "../../attendance/ui/TimeUI"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import TimeDayHistory from "../../attendance/ui/TimeDayHistory"
@@ -18,7 +19,7 @@ import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery
 import { canReturnToWorkday, returnToClosedWorkday } from '../../services/workday-return'
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import Icon from "react-native-vector-icons/Ionicons"
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native"
 import { useNavigation, type NavigationProp } from "@react-navigation/native"
 import type { OwnAttendanceParamList } from '../../navigation/attendance-routes'
 import { useTranslation } from "react-i18next"

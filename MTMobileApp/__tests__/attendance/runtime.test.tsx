@@ -7,6 +7,7 @@ import Geolocation from "@react-native-community/geolocation"
 jest.mock("react-native", () => ({
   AppState: { addEventListener: jest.fn() },
   PermissionsAndroid: { request: jest.fn(), requestMultiple: jest.fn() },
+  useWindowDimensions: () => ({ width: 390, height: 800, scale: 3, fontScale: 1 }),
   View: "View", ActivityIndicator: "ActivityIndicator", StatusBar: "StatusBar",
 }))
 jest.mock("react-native-safe-area-context", () => ({ SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children }))

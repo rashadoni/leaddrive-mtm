@@ -1,5 +1,6 @@
+import { TimeText as Text } from "./ui/TimeText"
 import React from "react"
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native"
 import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/native"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"

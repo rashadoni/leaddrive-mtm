@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React, { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { OutboxOperation } from '../services/outbox'
 import { attendanceMarkRejection, canReplaceAttendanceMark } from '../services/attendance-mark-recovery'

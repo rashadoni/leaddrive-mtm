@@ -1,5 +1,5 @@
 {
-  "status": "DAY_REVISED_INSTALLED_LIGHT_REVIEWED_USB_TRANSPORT_STOP",
+  "status": "CURRENT_DAY_FUNCTIONAL_ACCEPTANCE_PASS_APPEARANCE_RUNNING",
   "sourceSha": "6d6556cdf157481fab8359df45b71591e61a6398",
   "versionCode": 1036,
   "scope": "Standalone Time; Day presentation revision requested after owner viewed installed app; other tabs unchanged in this revision",
@@ -129,13 +129,13 @@
     "action": "Compact date header, neutral status surface, consistent paired actions and concise delivery history. Functional passes do not imply visual acceptance."
   },
   "dayRevision": {
-    "status": "INSTALLED_LIGHT_REVIEWED_MAESTRO_INTERRUPTED_USB_ABSENT",
+    "status": "FUNCTIONAL_PASS_APPEARANCE_FAIL_LARGE_TEXT_FIX_IN_PROGRESS",
     "targetedSuites": 2,
     "targetedTestsPassed": 61,
     "eslintErrors": 0,
     "eslintWarnings": 5,
     "localesParity": "PASS",
-    "nativeCurrentRevision": "FAIL_TRANSPORT; all-tabs device server died because device not found, remaining flows NOT_RUN",
+    "nativeCurrentRevision": "PASS; three Maestro flows and independent data/settings checks on1037",
     "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
     "versionCode": 1037,
     "hostedGates": {
@@ -186,7 +186,7 @@
       "finishedAt": "2026-10-22T19:04:56.414680+00:00"
     },
     "firstAttemptNote": "Backend changed before launch/settings; retry v2 binds current31fe. No guard was removed.",
-    "currentBackendArtifactSha": "31fe9961d7005f9db0fcd0a345d523cbb8029058",
+    "currentBackendArtifactSha": "c72f90b370bb80f1708c47ac8aff4384728ec91d",
     "initialDayVisualReview": {
       "status": "REVIEWED_NORMAL_FONT_ONLY",
       "appearance": "Light/font_scale1.0",
@@ -233,9 +233,125 @@
       "finishedAt": "2026-10-22T19:15:11.993669+00:00",
       "phoneChecks": "NOT_RUN; USB device absent"
     },
-    "appearance": "NOT_RUN; USB device absent",
-    "landscape": "NOT_RUN; USB device absent",
-    "nextAttempt": "Immutable v3 prepared, NOT_RUN. Requires same source1037 and actual USB connection; backend remains frozen31fe or rebind after ancestry check if changed."
+    "appearance": "FAIL_LARGE_TEXT on installed1037 after livefont200%; dark5 PASS; functional draft retention PASS is separate",
+    "landscape": "NOT_RUN",
+    "nextAttempt": "Install new font-reflow candidate only after its exact-source hosted gates; first inspect live200% Day/form and draft preservation, then full five-tab appearance and landscape. No current24h.",
+    "physicalReadOnlyAcceptance": {
+      "status": "PASS",
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "backendArtifactSha": "c72f90b370bb80f1708c47ac8aff4384728ec91d",
+      "startedAt": "2026-10-22T20:20:35.956042+00:00",
+      "scope": "owned fictional office; no workday/request/read/consent writes",
+      "apkVersionCode": 1037,
+      "maestro": [
+        {
+          "flow": "smoke/all-tabs-rhythm",
+          "exit": 0,
+          "apkVersionCode": 1037,
+          "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+          "flowSha256": "4df52af6d49d72658aa1fba416f3b6b0922d6bff0f6b823a769863edaf15c8c3",
+          "tests": [
+            {
+              "name": "Rhythm all tabs discover filters, draft controls and privacy without writes",
+              "seconds": "162.016",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "flow": "journeys/request-validation",
+          "exit": 0,
+          "apkVersionCode": 1037,
+          "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+          "flowSha256": "b36a1f38ca0ad715a5fc700d665803b2fbbef13df728c60f6306b0396b446261",
+          "tests": [
+            {
+              "name": "An empty reason is refused and closing the draft submits nothing",
+              "seconds": "79.067",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "flow": "smoke/compact-workday",
+          "exit": 0,
+          "apkVersionCode": 1037,
+          "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+          "flowSha256": "608e347baf5c83eae80d14c7aa8a7dd47030ae71cfa689327d7c751d0e4db539",
+          "tests": [
+            {
+              "name": "Compact workday keeps details discoverable without creating a mark",
+              "seconds": "74.606",
+              "status": "PASS"
+            }
+          ]
+        }
+      ],
+      "screenshots": [
+        "ownworkday-baseline.png",
+        "ownrequests-baseline.png",
+        "ownexplanations-baseline.png",
+        "owninbox-baseline.png",
+        "ownprofile-baseline.png"
+      ],
+      "deviceAppearance": {
+        "nightMode": "Night mode: no",
+        "fontScale": "1.0"
+      },
+      "canonicalEventsUnchanged": true,
+      "officeEventCount": 103,
+      "requestsUnchanged": true,
+      "existingInboxReadStateUnchanged": true,
+      "otherAccountUnchanged": true,
+      "profileSettingsUnchanged": true,
+      "coldRestartNoNewQueue": true,
+      "radiosAndNetworkUnchanged": true,
+      "originalPermissionsRestored": true,
+      "originalRotationRestored": true,
+      "finishedAt": "2026-10-22T20:30:58.474238+00:00"
+    },
+    "appearanceFunctional": {
+      "status": "PASS",
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "backendArtifactSha": "c72f90b370bb80f1708c47ac8aff4384728ec91d",
+      "startedAt": "2026-10-22T20:31:41.847486+00:00",
+      "screenshots": [
+        "ownworkday-dark.png",
+        "ownrequests-dark.png",
+        "ownexplanations-dark.png",
+        "owninbox-dark.png",
+        "ownprofile-dark.png",
+        "request-draft-light-200.png",
+        "ownworkday-light-200.png",
+        "ownrequests-light-200.png",
+        "ownexplanations-light-200.png",
+        "owninbox-light-200.png",
+        "ownprofile-light-200.png"
+      ],
+      "draftPreservedAcrossThemeChange": true,
+      "draftPreservedAcrossFontChange": true,
+      "dataAndPermissionsUnchanged": true,
+      "profileSettingsUnchanged": true,
+      "visualReview": "PENDING",
+      "originalAppearanceRestored": true,
+      "originalRotationRestored": true,
+      "finishedAt": "2026-10-22T20:36:22.958831+00:00"
+    },
+    "appearanceVisualReview": {
+      "status": "FAIL_LARGE_TEXT",
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "darkScreensReviewed": 5,
+      "darkTheme": "PASS",
+      "largeTextReviewed": [
+        "request-draft-light-200.png",
+        "ownworkday-light-200.png",
+        "ownrequests-light-200.png"
+      ],
+      "largeText": "FAIL: retained native text line boxes clip after livefont200%; cached Day severely affected; draft preserved is a separate functional PASS",
+      "settingsRestoredByHarness": true,
+      "remainingLargeScreens": "PENDING review",
+      "ownerAppearanceAcceptance": "Not inferred"
+    }
   },
   "nativeLandscape": "NOT_RUN",
   "talkBack": "NOT_RUN",
@@ -501,5 +617,16 @@
       "contractRun": 39828925756,
       "physical": "NOT_RUN"
     }
+  },
+  "liveFontReflowFix": {
+    "status": "SOURCE_READY_HOSTED_GATES_NOT_RUN",
+    "targetedSuites": 14,
+    "targetedTestsPassed": 135,
+    "targetedEslintErrors": 0,
+    "regressionModel": "Without paragraph replacement FAIL_AS_EXPECTED; restored implementation PASS; JS behavior only, not native geometry proof",
+    "approach": "Time-only native paragraph replacement on font-scale updates; keep screens/TextInputs/drafts mounted. Synchronously update Fabric surface font constraints before Dimensions notification. No font scaling cap.",
+    "ordinaryMtm": "Time context defaults false; native paragraph identity retained in targeted test; normal APK build pending",
+    "nativeAcceptance": "NOT_RUN on new source",
+    "fullJestTypeScriptAndroid": "NOT_RUN locally; required hosted gates next"
   }
 }

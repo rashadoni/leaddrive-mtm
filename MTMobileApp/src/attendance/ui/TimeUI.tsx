@@ -1,8 +1,8 @@
-import React, { createContext, useContext } from 'react';
+import { TimeText as Text } from "./TimeText"
+import React from 'react';
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
@@ -10,9 +10,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import { currentFieldColorScheme, themed } from '../../theme/fieldTheme';
 
-/** Only the separate Time navigator opts in. Route & Field keeps its own presentation. */
-export const TimePresentation = createContext(false);
-export const useTimePresentation = () => useContext(TimePresentation);
+export { TimePresentation, useTimePresentation } from './TimePresentation';
 const LIGHT = {
   canvas: '#F0F4F1',
   surface: '#FCFDFB',

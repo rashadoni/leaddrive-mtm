@@ -16,6 +16,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
+  private var attendanceFontScale: Float? = null
 
   /**
    * React Native Screens fragments must be recreated by React Navigation,
@@ -23,6 +24,9 @@ class MainActivity : ReactActivity() {
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
+    if (BuildConfig.APPLICATION_ID == "com.leaddrive.attendance") {
+      attendanceFontScale = resources.configuration.fontScale
+    }
     keepContentOutOfNavigationBar()
     updateAttendanceSystemNavigation(resources.configuration)
   }
@@ -30,19 +34,25 @@ class MainActivity : ReactActivity() {
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
     if (BuildConfig.APPLICATION_ID != "com.leaddrive.attendance") return
+    val fontChanged = attendanceFontScale != null && attendanceFontScale != newConfig.fontScale
+    attendanceFontScale = newConfig.fontScale
     updateAttendanceSystemNavigation(newConfig)
-    // RN 0.84 refreshes native text layout on a font change, but DeviceInfo
-    // caches the JS fontScale until host resume. Refresh only that listener:
-    // the Activity and the open React form must remain mounted.
-    val context = (application as ReactApplication).reactHost?.currentReactContext
-    (context?.getNativeModule("DeviceInfo") as? LifecycleEventListener)?.onHostResume()
-    // A font-only change can leave the window bounds unchanged. Force the
-    // surface to measure again so Fabric receives the new font multiplier;
-    // updating JS Dimensions alone keeps old line boxes and clips glyphs.
+    // Update Fabric's font multiplier before JS receives Dimensions. A queued
+    // requestLayout alone can let freshly replaced paragraphs measure with
+    // the previous multiplier and retain those line boxes.
     reactDelegate?.reactRootView?.let { root ->
       root.forceLayout()
+      if (fontChanged && root.measuredWidth > 0 && root.measuredHeight > 0) {
+        root.measure(
+          View.MeasureSpec.makeMeasureSpec(root.measuredWidth, View.MeasureSpec.EXACTLY),
+          View.MeasureSpec.makeMeasureSpec(root.measuredHeight, View.MeasureSpec.EXACTLY)
+        )
+      }
       root.requestLayout()
     }
+    // Only refresh font metrics; keep the Activity, React forms and drafts.
+    val context = (application as ReactApplication).reactHost?.currentReactContext
+    (context?.getNativeModule("DeviceInfo") as? LifecycleEventListener)?.onHostResume()
   }
 
   @Suppress("DEPRECATION") // navigationBarColor is needed on pre-edge-to-edge Android.

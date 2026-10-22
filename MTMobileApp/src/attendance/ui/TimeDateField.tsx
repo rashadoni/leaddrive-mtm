@@ -1,3 +1,4 @@
+import { TimeText as Text } from "./TimeText"
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -5,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';

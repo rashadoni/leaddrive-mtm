@@ -1,3 +1,4 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
 import React, { useMemo, useState } from "react"
 import {
   ActivityIndicator,
@@ -7,7 +8,6 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,

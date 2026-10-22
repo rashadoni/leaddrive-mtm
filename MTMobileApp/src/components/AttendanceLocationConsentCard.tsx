@@ -1,6 +1,7 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import { timeColor, useTimePresentation } from "../attendance/ui/TimeUI"
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import { useBootstrapStore } from '../store/bootstrap'

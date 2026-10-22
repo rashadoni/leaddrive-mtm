@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React,{useEffect,useRef,useState} from 'react'
-import {ActivityIndicator,AppState,Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native'
+import {ActivityIndicator,AppState,Modal,Pressable,ScrollView,StyleSheet,View} from 'react-native'
 import {Camera,useCameraDevice,useCameraPermission,useCodeScanner} from 'react-native-vision-camera'
 import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context'
 import {useTranslation} from 'react-i18next'

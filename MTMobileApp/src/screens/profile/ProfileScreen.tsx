@@ -1,3 +1,4 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
 import TimeProfile from "../../attendance/ui/TimeProfile"
 import { useTimePresentation } from "../../attendance/ui/TimeUI"
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
@@ -9,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   useWindowDimensions,
   View,
 } from "react-native"

@@ -1,6 +1,7 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import { timeColor, useTimePresentation } from "../attendance/ui/TimeUI"
 import React, { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { AttendanceReceiptRow } from '../services/attendance-receipt-contract'
 import { fieldTheme, themed } from '../theme/fieldTheme'

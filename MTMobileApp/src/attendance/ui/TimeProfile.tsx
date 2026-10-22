@@ -1,3 +1,4 @@
+import { TimeText as Text } from "./TimeText"
 import React from 'react';
 import {
   Pressable,
@@ -5,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';

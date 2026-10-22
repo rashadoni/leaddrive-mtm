@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React from 'react'
-import {StyleSheet,Text,View} from 'react-native'
+import {StyleSheet,View} from 'react-native'
 import {useTranslation} from 'react-i18next'
 import type {SavedAttendanceQrReceipt} from '../services/attendance-qr-contract'
 import { fieldTheme, themed } from '../theme/fieldTheme'

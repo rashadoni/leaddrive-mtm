@@ -1,3 +1,4 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React, { useCallback, useEffect, useRef } from "react"
 import {
   Animated,
@@ -5,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native"

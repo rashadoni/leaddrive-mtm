@@ -1,6 +1,7 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import { timeColor, useTimePresentation } from "../attendance/ui/TimeUI"
 import React from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { fieldTheme, themed } from '../theme/fieldTheme'
 import type { useAttendanceInstallation } from '../hooks/useAttendanceInstallation'

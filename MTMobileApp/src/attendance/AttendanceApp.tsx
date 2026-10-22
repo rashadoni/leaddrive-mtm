@@ -18,6 +18,7 @@ import { followPhoneColorScheme } from "../services/follow-phone-color-scheme"
 import { dismissAllChoices } from "../services/app-feedback"
 import { fieldTheme, useFieldColorScheme } from "../theme/fieldTheme"
 import AttendanceNavigator from "./AttendanceNavigator"
+import { TimePresentationProvider } from "./ui/TimePresentation"
 
 /** Separate entry point: no field runtime, GPS service, heartbeat or MTM updater. */
 export default function AttendanceApp() {
@@ -54,10 +55,10 @@ export default function AttendanceApp() {
   }, [isLoggedIn, agent?.organizationId, agent?.id])
   // A field login cannot start the generic field queue scheduler in this app.
   useEffect(() => admitted ? startForegroundSyncRetry() : undefined, [admitted])
-  return <SafeAreaProvider>
+  return <TimePresentationProvider><SafeAreaProvider>
     <StatusBar barStyle={scheme === "dark" ? "light-content" : "dark-content"} backgroundColor={fieldTheme.color.canvas} />
     {ready ? <ErrorBoundary><AttendanceNavigator /></ErrorBoundary> :
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: fieldTheme.color.canvas }}><ActivityIndicator /></View>}
     <AppFeedbackHost />
-  </SafeAreaProvider>
+  </SafeAreaProvider></TimePresentationProvider>
 }
