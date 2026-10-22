@@ -1,5 +1,5 @@
 {
-  "status": "FUNCTIONAL_PASS_OWNER_REJECTED_DAY_DESIGN_REVISION_PREPARED",
+  "status": "DAY_REVISED_INSTALLED_LIGHT_REVIEWED_USB_TRANSPORT_STOP",
   "sourceSha": "6d6556cdf157481fab8359df45b71591e61a6398",
   "versionCode": 1036,
   "scope": "Standalone Time; Day presentation revision requested after owner viewed installed app; other tabs unchanged in this revision",
@@ -129,13 +129,113 @@
     "action": "Compact date header, neutral status surface, consistent paired actions and concise delivery history. Functional passes do not imply visual acceptance."
   },
   "dayRevision": {
-    "status": "SOURCE_PREPARED",
+    "status": "INSTALLED_LIGHT_REVIEWED_MAESTRO_INTERRUPTED_USB_ABSENT",
     "targetedSuites": 2,
     "targetedTestsPassed": 61,
     "eslintErrors": 0,
     "eslintWarnings": 5,
     "localesParity": "PASS",
-    "nativeCurrentRevision": "NOT_RUN; new CI artifact needed"
+    "nativeCurrentRevision": "FAIL_TRANSPORT; all-tabs device server died because device not found, remaining flows NOT_RUN",
+    "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+    "versionCode": 1037,
+    "hostedGates": {
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "allExactHeadChecks": "PASS",
+      "releaseGate": "CI_PASS_PHYSICAL_ACCEPTANCE_PENDING",
+      "typeScript": "PASS",
+      "testSuites": 282,
+      "testsPassed": 2521,
+      "testsTodo": 1,
+      "ci": "PASS",
+      "ciRun": 39834704842,
+      "standalone": "PASS",
+      "standaloneRun": 39834697857,
+      "ordinary": "PASS",
+      "ordinaryRun": 39834704580,
+      "emulatorContract": "PASS",
+      "emulatorContractRun": 39834704909
+    },
+    "apk": {
+      "status": "PASS",
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "versionCode": 1037,
+      "zipSha256": "1c22ad1299eb4a44aa44b9788c0063b28be67286c3ab9ec813371fe64b2ea569",
+      "apkSha256": "423f8a2861597bddbc0b3d4156040e4691135b3e09e76adca1635bea2261e969",
+      "artifactId": 12450981919
+    },
+    "installation": {
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": 1037,
+      "physicalMaestro": "NOT_RUN",
+      "sha256": "423f8a2861597bddbc0b3d4156040e4691135b3e09e76adca1635bea2261e969",
+      "install": "PASS",
+      "sameStandaloneUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    "firstPhysicalAttempt": {
+      "status": "FAIL",
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "backendArtifactSha": "fe7805b2e8844f8137375a70e5302039254ca304",
+      "startedAt": "2026-10-22T19:04:55.481374+00:00",
+      "scope": "owned fictional office; no workday/request/read/consent writes",
+      "apkVersionCode": 1037,
+      "failureType": "AssertionError",
+      "finishedAt": "2026-10-22T19:04:56.414680+00:00"
+    },
+    "firstAttemptNote": "Backend changed before launch/settings; retry v2 binds current31fe. No guard was removed.",
+    "currentBackendArtifactSha": "31fe9961d7005f9db0fcd0a345d523cbb8029058",
+    "initialDayVisualReview": {
+      "status": "REVIEWED_NORMAL_FONT_ONLY",
+      "appearance": "Light/font_scale1.0",
+      "screenshot": "day-top-before-maestro.png",
+      "observed": "QR, both secondary actions, four latest marks and receipts entry visible in first viewport",
+      "ownerVisualAcceptance": "PENDING; screenshot shown to owner, no approval inferred"
+    },
+    "physicalAttemptV2": {
+      "status": "FAIL",
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "backendArtifactSha": "31fe9961d7005f9db0fcd0a345d523cbb8029058",
+      "startedAt": "2026-10-22T19:07:10.264825+00:00",
+      "scope": "owned fictional office; no workday/request/read/consent writes",
+      "apkVersionCode": 1037,
+      "maestro": [
+        {
+          "flow": "smoke/all-tabs-rhythm",
+          "exit": 1,
+          "apkVersionCode": 1037,
+          "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+          "flowSha256": "4df52af6d49d72658aa1fba416f3b6b0922d6bff0f6b823a769863edaf15c8c3",
+          "tests": [
+            {
+              "name": "Rhythm all tabs discover filters, draft controls and privacy without writes",
+              "seconds": "104.944",
+              "status": "FAIL"
+            }
+          ]
+        }
+      ],
+      "failureType": "AssertionError",
+      "originalPermissionsRestored": true,
+      "originalRotationRestored": true,
+      "finishedAt": "2026-10-22T19:10:37.019731+00:00"
+    },
+    "postFailureServerDataAudit": {
+      "sourceSha": "d2402a0634f7b8d22f822b02014b117e21e239f3",
+      "officeCanonicalEventsUnchanged": true,
+      "otherAccountEventsUnchanged": true,
+      "requestsUnchanged": true,
+      "officeEventCount": 103,
+      "existingInboxReadStateUnchanged": true,
+      "status": "PASS",
+      "finishedAt": "2026-10-22T19:15:11.993669+00:00",
+      "phoneChecks": "NOT_RUN; USB device absent"
+    },
+    "appearance": "NOT_RUN; USB device absent",
+    "landscape": "NOT_RUN; USB device absent",
+    "nextAttempt": "Immutable v3 prepared, NOT_RUN. Requires same source1037 and actual USB connection; backend remains frozen31fe or rebind after ancestry check if changed."
   },
   "nativeLandscape": "NOT_RUN",
   "talkBack": "NOT_RUN",

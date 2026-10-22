@@ -183,3 +183,14 @@ Sanitized evidence: `docs/evidence/attendance-rhythm-native-20261022.json`. Эт
 Переработка ограничена Днём: шапка24sp с текущей датой компании, имя13sp; нейтральная surface вместо большой softgreenзаливки; статус18sp с текстом и точкой; QR остаётся главным48dpдействием. Перерыв и ручное завершение имеют одинаковую рамку/геометрию; длинные подписи переносятся, кнопки не получают фиксированной высоты. Четыре реальные отметки остаются, но доставленные записи имеют одну строку и check-icon с полным accessibilityLabel; LOCAL/CONFLICT по-прежнему имеют явный предупреждающий текст. Полные квитанции и сводка доставки ниже сохранены. Нет нового таймера/фиктивных часов/сокрытия очереди или ошибок.
 
 На source изменения2targetedsuites/61testsPASS, RU/AZ/ENkeysparityPASS, lint0errors/5existingno-voidwarnings. Новый nativeAPK и его визуальная/функциональная проверка пока NOT RUN. Source6d/1036 до этого прошёл3Maestro и независимую сверку103events, без изменений историй/заявок/чтения/другогоаккаунта и с восстановлением permissions/rotation; это функциональная проверка прежнего оформления.
+
+
+## Установленная редакция «Дня»1037: фактическая проверка
+
+Source d2402a0634f7b8d22f822b02014b117e21e239f3 прошёл все четыре hostedgate: CI282suites/2521tests/1TODO+TypeScript, standalone39834697857, ordinary39834704580, emulatorcontract39834704909. Artifact12450981919/source/package/version/digests проверены; install-r1037 сохранилUID/вход и ordinaryMTM1710. Новый serverdeploy не выполнялся.
+
+Реальный Day-top light/font1.0 снимок просмотрен и показан владельцу: QR, обе secondarybuttons, четыре последние отметки и вход в полные квитанции видны в первом viewport. Текст не обрезан, цвета/контраст из существующих семантических токенов. Этот факт не равен пользовательскому принятию красоты и не закрывает dark/200%/TalkBack. Исторический прототип Day доd240 не является точным представлением установленного экрана.
+
+Полный новый Maestroworkflow не прошёл: firstattempt остановился до UI на сменившемся serverSHA; повтор привязан к31fe9961d7005f9db0fcd0a345d523cbb8029058 после подтверждения ancestry нашей serverчасти. All-tabs завершился104.944s/DeviceServerDiedException, underlying device not found. После failure originalpermissions/rotation восстановлены, но USBphone затем снова отсутствует. Reconnectoffline и mDNSбез новыхпортов не помогли; MacADBserver отвечает, списокdevices пуст. Appearance/landscape текущей редакции NOT RUN.
+
+Независимая серверная сверка после обрыва PASS:103canonicalevents/обеистории/заявки/existingreadstate/другойаккаунт unchanged. Новая24h НЕ запущена. Следующий шаг: восстановить физическийUSB, подтвердитьinstalled1037, выполнить новый immutableMaestroattemptv3 и appearance/landscape; не переносить PASS предыдущих APK на текущий.
