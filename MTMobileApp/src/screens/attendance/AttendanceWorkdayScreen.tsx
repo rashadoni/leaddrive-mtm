@@ -3,6 +3,7 @@ import AttendanceQrReceipt from '../../components/AttendanceQrReceipt'
 import AttendanceDeliveryReceipts from '../../components/AttendanceDeliveryReceipts'
 import { useAttendanceReceipts } from '../../hooks/useAttendanceReceipts'
 import { createAttendanceCorrectionIntent } from '../../services/attendance-correction-intent'
+import AttendanceOwnMarkDetails from '../../components/AttendanceOwnMarkDetails'
 import {useAttendanceQr} from '../../hooks/useAttendanceQr'
 import {guardAttendanceQr} from '../../services/attendance-qr'
 import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
@@ -174,6 +175,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
         </View>
         <AttendanceQrReceipt receipts={qr.receipts} />
         <AttendanceDeliveryReceipts rows={deliveries.rows} failed={deliveries.failed} timezone={bootstrap?.timezone} />
+        <AttendanceOwnMarkDetails workdayId={current?.workdayId ?? bootstrap?.workday?.id} />
         <AttendanceInstallationCard installation={installation} />
         <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation}
           dependentEvents={!!recovery.operation && operations.some(item => item.operationId !== recovery.operation!.operationId && (item.data.id ?? item.data.workdayId) === (recovery.operation!.data.id ?? recovery.operation!.data.workdayId))}

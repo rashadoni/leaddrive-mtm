@@ -1341,5 +1341,31 @@
     "waitForDelivery": "Günü düzəltməzdən əvvəl saxlanmış qeydlərin göndərilməsini gözləyin.",
     "existingDraft": "Başqa müraciətə başlamısınız. Əvvəl onu tamamlayın və ya bağlayın, sonra {{date}} tarixi üçün düzəlişi açın.",
     "openAfterDraft": "Günün düzəlişini aç"
+  },
+  "attendanceMarks": {
+    "title": "Qeydlərim necə yoxlanılıb",
+    "historical": "Burada qeydlərinizin saxlanmış məlumatları var. Baxış GPS-i açmır və cari yerinizi müəyyən etmir.",
+    "open": "Günün yoxlamasına bax",
+    "refresh": "Yoxlamanı yenilə",
+    "close": "Məlumatları gizlət",
+    "offline": "Server yoxlamasına baxmaq üçün internet lazımdır. Telefondakı qəbzlər yuxarıda mövcuddur.",
+    "failed": "Məlumatlar hələ əlçatan deyil. Bu, qeydin rədd edilməsi demək deyil.",
+    "updated": "Məlumatın alınma vaxtı: {{time}}",
+    "empty": "Bu gün üçün qəbul edilmiş qeyd hələ yoxdur.",
+    "INSIDE": "Qeyd yeri filialın daxilində təsdiqlənib",
+    "OUTSIDE": "Ölçmə filialın sərhədlərindən kənardadır",
+    "UNCERTAIN": "Məkan etibarlı şəkildə təsdiqlənməyib",
+    "UNCONFIGURED": "Ölçmə üçün filial qurulmayıb",
+    "UNAVAILABLE": "Məkan alınmayıb",
+    "NO_CONSENT": "Qüvvədə olan razılıq olmadığı üçün məkan göndərilməyib",
+    "NOT_RECORDED": "Bu qeyd üçün məkan yazılmayıb",
+    "coordinates": "Göndərilən koordinatlar: {{latitude}}, {{longitude}}",
+    "accuracy": "Ölçmənin dəqiqliyi: {{meters}} m",
+    "distance": "Filialın mərkəzinə məsafə: {{meters}} m",
+    "captured": "Ölçmə vaxtı: {{time}}",
+    "openCases": "Açıq kadr yoxlamaları: {{count}}",
+    "closedCases": "Tamamlanmış kadr yoxlamaları: {{count}}",
+    "partial": "Bu günün son 64 qeydi göstərilir.",
+    "dispute": "Vaxt səhvdirsə, «İş günümü düzəlt» düyməsindən istifadə edin. Məkanla razı deyilsinizsə, kadr əməkdaşına müraciət edin; ölçmə özü pozuntu qərarı deyil."
   }
 }

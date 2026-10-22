@@ -1341,5 +1341,31 @@
     "waitForDelivery": "Wait for saved marks to be sent before correcting this day.",
     "existingDraft": "You have another request open. Finish or close it before opening the correction for {{date}}.",
     "openAfterDraft": "Open workday correction"
+  },
+  "attendanceMarks": {
+    "title": "How my marks were checked",
+    "historical": "These are saved details of your marks. Viewing them does not turn on GPS or locate you now.",
+    "open": "View this day’s checks",
+    "refresh": "Refresh checks",
+    "close": "Hide details",
+    "offline": "Internet is required to view server checks. Receipts saved on your phone are available above.",
+    "failed": "Details are not available yet. This does not mean your mark was rejected.",
+    "updated": "Details retrieved: {{time}}",
+    "empty": "No received marks for this day yet.",
+    "INSIDE": "Mark location confirmed inside a branch",
+    "OUTSIDE": "The measurement was outside the branch boundary",
+    "UNCERTAIN": "Location could not be reliably confirmed",
+    "UNCONFIGURED": "No branch configured for this measurement",
+    "UNAVAILABLE": "Location was not obtained",
+    "NO_CONSENT": "Location was not sent because there was no valid consent",
+    "NOT_RECORDED": "No location was recorded for this mark",
+    "coordinates": "Submitted coordinates: {{latitude}}, {{longitude}}",
+    "accuracy": "Measurement accuracy: {{meters}} m",
+    "distance": "Distance to branch centre: {{meters}} m",
+    "captured": "Measured: {{time}}",
+    "openCases": "Open HR checks: {{count}}",
+    "closedCases": "Completed HR checks: {{count}}",
+    "partial": "Showing the last 64 marks for this day.",
+    "dispute": "If the time is wrong, use “Correct my workday”. Contact HR about a disputed location; a measurement alone is not a decision about a violation."
   }
 }
