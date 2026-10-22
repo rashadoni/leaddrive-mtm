@@ -22,7 +22,25 @@
     "e2eRun": 39750963496,
     "e2ePassCases": 65,
     "deployRun": 39754397126,
-    "deployStatus": "IN_PROGRESS"
+    "deployStatus": "SUCCESS",
+    "publicBuildInfoMatches": true,
+    "pingOk": true,
+    "featureSmoke": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T09:48:47.326610+00:00",
+      "backendArtifactSha": "376533a340f8d44b5034af7cc71c459d2c1d6f6e",
+      "canonicalItemsCompared": 25,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "otherEmployeeDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "preparationPresent": true,
+      "physicalMaestro": "NOT_RUN: Mac connection unavailable",
+      "finishedAt": "2026-10-22T09:48:50.182854+00:00"
+    }
   },
   "physicalReceiptAttempts": [
     {
@@ -168,5 +186,13 @@
     "Receipt attempt1 stopped before GPS permission response; test flow corrected.",
     "Receipt attempt2 lost device during launch and wrote no events.",
     "Receipt attempt3 stopped on unresponsive Mac tunnel after REOPEN/RESUME; no offline network block started."
-  ]
+  ],
+  "latestPublishedEvidenceHead": "a5498375ead129e2c6ce7ed2f6b71965779edaf2",
+  "latestEvidenceCI": {
+    "run": 39757861641,
+    "status": "SUCCESS",
+    "emulatorContract": 39757861686,
+    "emulatorContractStatus": "SUCCESS",
+    "nativeBuilds": "IN_PROGRESS; no APK replacement performed"
+  }
 }
