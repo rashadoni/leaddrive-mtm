@@ -1,0 +1,57 @@
+appId: com.leaddrive.attendance
+name: Return to an existing fictional day and retain canonical delivery receipts
+---
+# Supplementary receipt acceptance; this does not replace a fresh-day START test.
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.completed}
+- assertNotVisible:
+    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-return
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-return
+- extendedWaitUntil:
+    visible: ${output.copy.running}
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-break
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.paused}
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-break
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: office-workday-action
+- assertVisible: ${output.copy.finishTitle}
+- tapOn:
+    id: app-choice-button-1
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.completed}
+- assertNotVisible:
+    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: attendance-receipt-received
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    id: attendance-receipt-received
