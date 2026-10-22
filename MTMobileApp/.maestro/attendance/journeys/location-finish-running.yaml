@@ -44,7 +44,9 @@ name: Finish an admitted running fixture day using the actual Android location p
     id: ".*:id/permission_allow_foreground_only_button"
 - scrollUntilVisible:
     element:
-      text: ${output.copy.completed}
+      # The host pins the company date before the first write. An overnight
+      # finish can return to today's idle day instead of yesterday's completion.
+      text: "${typeof EXPECTED_STATE === 'undefined' ? output.copy.completed : EXPECTED_STATE}"
     direction: UP
     timeout: 60000
 - assertNotVisible:
