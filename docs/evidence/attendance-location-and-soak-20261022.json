@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "testDate": "2026-10-22",
   "timezone": "Asia/Baku",
   "scope": "owned fictional tenant; actual phone; no raw coordinates in public evidence",
@@ -247,7 +247,7 @@
   ],
   "firstPermissionFix": "PASS on physical APK 1019; genuine Android permission and HR INSIDE at 45 metres",
   "physical24HourSoak": {
-    "status": "FAIL",
+    "status": "RUNNING",
     "startSnapshot": {
       "status": "RUNNING",
       "startedPreparationAt": "2026-10-21T21:06:02.121+00:00",
@@ -452,12 +452,126 @@
         }
       ]
     },
-    "phoneCurrentlyConnected": false,
+    "phoneCurrentlyConnected": true,
     "originalCompletionEstimateCancelled": true,
-    "nextAttempt": {
-      "status": "NOT_RUN",
-      "requires": "Phone connection and delivery/verification of the three earlier queued actions before a fresh full-day attempt",
-      "prepared": "Bounded transport retries and owned HR session renewal; original attempt preserved"
+    "recoveryAfterReconnection": {
+      "status": "PASS",
+      "scope": "delivery after interrupted soak; does not prove 24h admission",
+      "startedAt": "2026-10-22T06:56:21.377616+00:00",
+      "backendArtifactSha": "91c0fa8d5bec8b253fb76cc90ac12eb287613230",
+      "serverBeforeLaunchUnchanged": true,
+      "launchAt": "2026-10-22T06:56:28.447918+00:00",
+      "priorEventsUnchanged": 35,
+      "newEvents": 3,
+      "eventTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "originalOfflineTimesPreserved": true,
+      "minimumDeliveryDelaySeconds": 35271.3,
+      "hrFactsState": "VALID",
+      "dayCompleted": true,
+      "delayedReviewFlagConfirmed": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingBannerAbsent": true,
+      "requestsUnchanged": true,
+      "radiosAndPermissionsRestored": true,
+      "finishedAt": "2026-10-22T06:57:04.651510+00:00",
+      "screenshotSha256": "24a3c40c07da06ce63b894463a3476d9604d97af62bdfd27696544dfcf9e8be1"
+    },
+    "activeAttempt": 2,
+    "firstAttemptStatus": "FAIL",
+    "secondAttempt": {
+      "status": "RUNNING",
+      "startedPreparationAt": "2026-10-22T07:00:09.030+00:00",
+      "sourceSha": "5a8807041988a51b96a55d7936f9d91bb6276cbd",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 2,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T07:03:34.769+00:00",
+      "samplesObserved": 2,
+      "backendArtifactShaBefore": "91c0fa8d5bec8b253fb76cc90ac12eb287613230",
+      "lastHrSessionVerifiedAt": "2026-10-22T07:00:09.958+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryDeadline": "2026-10-23T11:21:00+04:00",
+      "offlineAt": "2026-10-22T07:01:04.099+00:00",
+      "apkVersionCode": 1019,
+      "apkSha256": "c49b591e6e18a7ce8d9e5248af395c3e72ee4becaa962895bf67f7b2b71fa661",
+      "earliestCompletion": "2026-10-23T11:03:04.099000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1019,
+        "sourceSha": "5a8807041988a51b96a55d7936f9d91bb6276cbd",
+        "flowSha256": "080d1d2f4520b087375e3693ae4a8f96ad392f0ffb0674c54b118acf8eefd0f3",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "77.844",
+            "status": "PASS"
+          }
+        ]
+      },
+      "queueCaptured": true,
+      "asOf": "2026-10-22T07:03:34.769+00:00",
+      "samplesSnapshot": [
+        {
+          "checkedAt": "2026-10-22T07:01:08.355+00:00",
+          "hostElapsedSeconds": 4.256,
+          "deviceElapsedSeconds": 4.0,
+          "sameDeviceBoot": true,
+          "packageIdentityUnchanged": true,
+          "packageNetworkBlocked": true,
+          "ordinaryMtmNetworkAllowed": true,
+          "radiosUnchanged": true,
+          "serverHistoryUnchanged": true
+        },
+        {
+          "checkedAt": "2026-10-22T07:03:28.302+00:00",
+          "hostElapsedSeconds": 144.203,
+          "deviceElapsedSeconds": 144.0,
+          "sameDeviceBoot": true,
+          "packageIdentityUnchanged": true,
+          "packageNetworkBlocked": true,
+          "ordinaryMtmNetworkAllowed": true,
+          "radiosUnchanged": true,
+          "serverHistoryUnchanged": true,
+          "admissionAvailable": true,
+          "pendingVisible": true
+        }
+      ],
+      "deviceRecoveryVerification": {
+        "status": "PASS",
+        "hostRunnerAlive": true,
+        "scriptUnchanged": true,
+        "deviceWatchdogRunning": true,
+        "deviceRecoveryScriptMatches": true,
+        "heartbeatAgeSeconds": 101.3,
+        "checkedAtUtc": "2026-10-22T07:02:54Z"
+      },
+      "permissionSetup": {
+        "status": "PASS",
+        "checkedAt": "2026-10-22T06:59:08.162557+00:00",
+        "policyVersion": 1,
+        "existingConsentStillAccepted": true,
+        "purpose": "Restore previously exercised foreground grants for the second soak; not a new OS-dialog acceptance test",
+        "before": {
+          "CAMERA": false,
+          "ACCESS_FINE_LOCATION": false,
+          "ACCESS_COARSE_LOCATION": false
+        },
+        "after": {
+          "CAMERA": false,
+          "ACCESS_FINE_LOCATION": true,
+          "ACCESS_COARSE_LOCATION": true
+        }
+      },
+      "offlineScreenSha256": "86d2c71fe79c57de06682d22169be21c1e1619ee4696e4fe0b52ce24ee048633",
+      "full24HourWindow": "PENDING",
+      "delayedReplayAndHrReview": "PENDING",
+      "note": "Second real attempt; the first failed attempt and its recovery remain preserved."
     }
   },
   "consentWithdrawal": {
@@ -525,5 +639,22 @@
       "status": "SUCCESS"
     },
     "runtimeInputsUnchangedFrom": "5a8807041988a51b96a55d7936f9d91bb6276cbd"
+  },
+  "probeFixGates": {
+    "sourceSha": "1ab690ca6eb58dd52ef1a0d53b2d92ae4af16c8c",
+    "targetedPythonTests": 12,
+    "ci": {
+      "run": 39736929293,
+      "status": "SUCCESS"
+    },
+    "emulatorContract": {
+      "run": 39736929326,
+      "status": "SUCCESS"
+    },
+    "redundantOrdinaryAndroid": {
+      "run": 39736929294,
+      "status": "CANCELLED",
+      "reason": "Runtime and Android build inputs unchanged from the tested 5a88070 artifact"
+    }
   }
 }
