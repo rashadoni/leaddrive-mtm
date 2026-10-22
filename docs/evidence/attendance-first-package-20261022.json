@@ -428,6 +428,40 @@
       "factsState": "VALID",
       "tokenInjected": false,
       "verifiedAt": "2026-10-22T11:47:53.752694+00:00"
+    },
+    "opticalQrV8": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T11:47:11.917927+00:00",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "optical": "actual camera; person aims phone; no token injection",
+      "maestro": {
+        "flow": "journeys/qr-optical-mark",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "42f3293db5560b21b2eb94d6bd11a197d0cceb02664f972bdd7481216e37d860",
+        "tests": [
+          {
+            "name": "Read a real branch QR with the camera and verify the finish receipt",
+            "seconds": "300.427",
+            "status": "PASS"
+          }
+        ]
+      },
+      "flowExit": 0,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "qrState": "VERIFIED",
+      "branchName": "Тестовое рабочее место QR",
+      "priorEventsUnchanged": 67,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "factsState": "VALID",
+      "tokenInjected": false,
+      "permissionsRestored": true,
+      "finishedAt": "2026-10-22T11:53:10.975063+00:00"
     }
   },
   "currentPhysicalAcceptance": {
@@ -436,10 +470,173 @@
     "ownMarks": "PASS",
     "correctionPrefill": "PASS",
     "gpsInside": "FAIL: fresh location UNAVAILABLE",
-    "opticalQr": "Real optical QR VERIFIED; automated Maestro acceptance pending",
+    "opticalQr": "PASS: actual camera + Maestro + independent HR validation",
     "real24h": "NOT_RUN",
-    "dayStatus": "STARTED",
-    "historicalEvents": 64,
+    "dayStatus": "COMPLETED",
+    "historicalEvents": 68,
     "earlierAttemptStatusesRetained": true
+  },
+  "candidate1025": {
+    "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+    "artifactId": 12424026030,
+    "artifactDigest": "bba57a2befccb99973b91513cc6d3cdf4bc6d59b59674af157d77c8b39c3796f",
+    "install": {
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": 1025,
+      "physicalMaestro": "NOT_RUN",
+      "sha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "install": "PASS",
+      "sameStandaloneUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    "preservation": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "oldEventsUnchanged": 68,
+      "authenticatedFixturePreserved": true,
+      "otherAccountUnchanged": true,
+      "requestsUnchanged": true,
+      "settingsUnchanged": true,
+      "ordinaryMtmUnchanged": true,
+      "pendingAbsent": true,
+      "finishedAt": "2026-10-22T11:58:14.631246+00:00"
+    },
+    "ci": {
+      "runId": 39773369382,
+      "status": "SUCCESS",
+      "testSuites": 280,
+      "testsPassed": 2484,
+      "todo": 1,
+      "typescript": "PASS",
+      "standaloneBuild": 39773362822,
+      "ordinaryBuild": 39773369353,
+      "nativeStatus": "SUCCESS",
+      "emulatorContract": 39773369470
+    },
+    "gpsInsideAttempt1": {
+      "status": "FAIL",
+      "startedAt": "2026-10-22T11:58:14.690567+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 68,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "OUTSIDE",
+          "distanceMeters": 9678,
+          "branchName": "GPS test — 22.10.2026"
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "a6d0dae5d1e446c332ae2e2ec1f4b97362b9e46c4a7011ceea0123f6f422fc4c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "54.21",
+            "status": "PASS"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:00:05.279099+00:00"
+    },
+    "gpsOutside": {
+      "status": "PASS",
+      "scope": "Independent real outside-zone measurement; original INSIDE attempt remains FAIL",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "finding": "OUTSIDE",
+      "accuracyMeters": 100,
+      "distanceMeters": 9678,
+      "captureAfterActionSeconds": 7.258,
+      "distanceIndependentlyVerified": true,
+      "oldBranchRevisionPreserved": true
+    },
+    "testBranchCentreUpdate": {
+      "status": "PASS",
+      "scope": "owned fictional tenant only; centre from actual new app reading as authorized",
+      "branchName": "GPS test — 22.10.2026",
+      "previousRevisionPreserved": true,
+      "radiusMeters": 100,
+      "otherBranchesUnchanged": true,
+      "historicalEventsUnchanged": true,
+      "finishedAt": "2026-10-22T12:03:28.072414+00:00"
+    },
+    "real24h": "NOT_RUN",
+    "gpsInside": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T12:03:28.199372+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 71,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "INSIDE",
+          "distanceMeters": 0,
+          "branchName": "GPS test — 22.10.2026"
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "a6d0dae5d1e446c332ae2e2ec1f4b97362b9e46c4a7011ceea0123f6f422fc4c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "48.918",
+            "status": "PASS"
+          }
+        ]
+      },
+      "state": "INSIDE",
+      "realFirstAndroidPermissionPassed": false,
+      "previouslyGrantedPermission": true,
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:05:07.997532+00:00"
+    }
   }
 }
