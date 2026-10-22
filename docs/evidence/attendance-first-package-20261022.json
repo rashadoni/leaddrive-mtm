@@ -587,7 +587,7 @@
       "historicalEventsUnchanged": true,
       "finishedAt": "2026-10-22T12:03:28.072414+00:00"
     },
-    "real24h": "NOT_RUN",
+    "real24h": "PREPARING: physical-soak-20261022-v4; no completed hold yet",
     "gpsInside": {
       "status": "PASS",
       "startedAt": "2026-10-22T12:03:28.199372+00:00",
@@ -714,6 +714,115 @@
       "originalPermissionsRestored": true,
       "finishedAt": "2026-10-22T12:14:43.014932+00:00",
       "reason": "Read-only helper filename mistakenly used 20261025 instead of saved 20261022 baseline; no own-marks UI run in this attempt"
+    },
+    "ownMarksAttempt3": {
+      "status": "FAIL",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:16:17.561446+00:00",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "dbd53ab8e85e818eb14c1d5da3dd50fb00e23fab07405f189ee9a1bbe177b76c",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "123.632",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "finishedAt": "2026-10-22T12:19:01.457787+00:00",
+      "reason": "48-item preserved history exceeded the 60-second remote scroll budget; read succeeded, close control not reached"
+    },
+    "ownMarksV4": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:21:47.786296+00:00",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "19fedae7cfb61b458289979b71f846b7edb44ced71d1e14d82c2498bf88e2b64",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "147.306",
+            "status": "PASS"
+          }
+        ]
+      },
+      "canonicalItemsCompared": 48,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "permissionsUnchanged": true,
+      "reportClosedAfterRestart": true,
+      "finishedAt": "2026-10-22T12:25:12.026069+00:00"
+    },
+    "correctionV4": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "fixtureAccount": "admin",
+      "startedAt": "2026-10-22T12:26:50.064817+00:00",
+      "maestro": {
+        "flow": "journeys/correction-from-day",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c19b0043bbd054fe1dbe99fda5b73aa731b57fc3602a8f071ab38c4b4eb6bdc2",
+        "tests": [
+          {
+            "name": "Open a correction from the completed day without an accidental submission",
+            "seconds": "51.713",
+            "status": "PASS"
+          }
+        ]
+      },
+      "companyTimezone": "Asia/Baku",
+      "canonicalDatesAndMinutesPrefilled": true,
+      "noAccidentalRequest": true,
+      "noWorkdayChanges": true,
+      "settingsUnchanged": true,
+      "finishedAt": "2026-10-22T12:28:36.757583+00:00"
+    },
+    "functionalRegression": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:21:28.262294+00:00",
+      "receiptsEvidence": "package-1025-physical-v2/receipts-result-sanitized.json",
+      "ownMarks": "PASS",
+      "correction": "PASS",
+      "receipts": "PASS",
+      "officeAccountRestored": true,
+      "noFurtherWorkdayEvents": true,
+      "requestListsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:30:24.315478+00:00"
     }
+  },
+  "latestTestOnlyPublishedHead": {
+    "sha": "d56a15eecfe95c46eca98cf4ee994d0f67605932",
+    "ciRun": 39777195289,
+    "ciStatus": "SUCCESS",
+    "emulatorContract": 39777195358,
+    "emulatorStatus": "SUCCESS",
+    "ordinaryBuild": 39777195278,
+    "standaloneBuild": 39777185632,
+    "nativeStatus": "SUCCESS",
+    "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4"
   }
 }

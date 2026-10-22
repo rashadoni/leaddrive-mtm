@@ -31,7 +31,10 @@ name: Read canonical receipts and own historical mark evidence after restart
     element:
       id: attendance-mark-details-close
     direction: DOWN
-    timeout: 60000
+    # Preserve every earlier test mark. A full 64-item day is longer than the
+    # original short fixture, especially over remote ADB hierarchy reads.
+    speed: 75
+    timeout: 180000
 - tapOn:
     id: attendance-mark-details-close
 - assertNotVisible:

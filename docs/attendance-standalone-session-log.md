@@ -802,3 +802,22 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Receipt-v2 Maestro PASS99.712с; независимая сверка PASS:79 предыдущих событий неизменны, ровноREOPEN/RESUME/PAUSE/RESUME/FINISH, receipt видна после restart, другой аккаунт/заявки/настройки неизменны. Всего84 события. После этого read-only helper остановился доUI из-за ошибочного имени baseline20261025 вместо20261022 (результатFAIL сохранён). Исправлена только ссылка private harness; продолжение readonly-v3 использует уже пройденнуюreceipt-v2 и не повторяет записи рабочего дня.
 - В offline-soak-capture добавлены enabled checks перед действиями и перед cold restart послеPAUSE/RESUME/FINISH. Это тот же выявленный ранее риск преждевременного restart, исправленный дляreceipt. Maestro2.11 check-syntax PASS; runtime не изменился, установленный3ae/1025 остаётся кандидатом. Физический offline capture покаNOT RUN.
 - Публикуется логический test/evidence checkpoint; builds на новойtest-onlySHA не устанавливать автоматически. Runtime equivalence к3ae проверить поsrc/android/package/index. Real24h по-прежнему не начат; после read-only приёмки запустить private physical_soak_v4 с исходными permission restoration и независимым real-time guard.
+
+
+### 2026-10-22, 16:23 Баку — расширенная история и bounded scroll
+
+- Own marks1025-v3: API/данные48items загружены, но MaestroFAIL123.632с: scrolling до нижнего close вышел за60с. Screenshot подтверждает реальную прокрутку до поздних отметок, включаяOUTSIDE; это не отсутствие данных/элемента. Лимитread-onlyпрокрутки увеличен до180с, speed75, без удаления тестовой истории/ослабления утверждений. Maestro check-syntax PASS. Предыдущий failure сохранён; readonly-v4 повторяет только чтение и correction, не записи рабочего дня.
+- Test/evidence d56a15e опубликован. Его CI39777195289/emulator39777195358 SUCCESS; обычная39777195278 и standalone39777185632 ещё IN_PROGRESS. Runtime/src/android/package/index не отличаются от3ae; новаяAPK автоматически не устанавливается. Изменение own-mark scroll пока следующим локальным checkpoint, фактический flowhash будет в результате.
+
+
+### 2026-10-22, 16:26 Баку — own marks1025 PASS
+
+- Maestro own-marks-v4 PASS147.306с (flowhash19fedae7), независимая сверка48 canonical records PASS. Read-only/no-store, anonymous401/unknown404/scopeoverride400, break coordinates отсутствуют; события/заявки/настройки не изменились, report закрыт послеrestart. Увеличенного ограниченного scroll-бюджета хватило для сохранённой48-itemистории, приложение не менялось.
+- Последний завершённый этап: собственные записи1025. Текущий runner выполняет native switch office→admin и correction prefill/cancel на real-datefixture, затем office restore. В сети телефона ограничений нет. Следующий шаг после aggregatePASS — новый real24h-v4; до этого нет start/deadline и нельзя говорить, что суточный тест идёт.
+
+
+### 2026-10-22, 16:32 Баку — функциональная приёмка1025 PASS; подготовка real24h
+
+- Correction-v4 Maestro PASS51.713с; дата/минуты канонического real-date day поAsia/Baku, no accidental request/workday change. Aggregate readonly-v4 PASS: receipt-v2/own-marks-v4/correction-v4, office account восстановлен, обе истории/заявки сохранены, исходные разрешения restored. Исторических событий84; новых действий на read-only стадиях не добавлено.
+- d56a15e все hosted gates SUCCESS, включая ordinary39777195278/standalone39777185632. Более новые APK не установлены; зафиксированный runtime3ae/1025 остаётся на телефоне. Последнее изменение flow own-marks(180с, speed75) прошло syntax и реальныйMaestro, отдельный checkpoint публикуется без runtime changes.
+- Проверено отсутствие прежнего owned recovery watchdog. Запущен detached physical_soak_v4.py --start-physical-soak (metadata private physical-soak-v4-process.json, stdout physical-soak-v4-runner.log). Пока PREPARING, нельзя считать24h начатой/пройденной до подтверждённых offlineAt/queueCaptured. Ограничивается только отдельный тестовый пакет; обычноеMTM и радио сохраняются. Пользователю сообщено оставитьMac/USB работающими. Автоматического уведомления чата не настроено: соответствующего инструмента в этой сессии нет; сам тест пишет progress/result.
