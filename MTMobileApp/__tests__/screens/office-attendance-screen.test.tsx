@@ -430,3 +430,19 @@ it("Rhythm never labels yesterday's device receipts as today's history", async (
   const tree = await render(Day, 'ru', true)
   expect(node(tree, 'time-day-history')).toBeUndefined()
 })
+
+it("Rhythm explanation notices carry a fresh action intent, and profile refresh reloads phone approval", async () => {
+  ;(readAttendanceInbox as jest.Mock).mockResolvedValue([{ ...notice, explanation: true }])
+  const inbox = await render(AttendanceInboxScreen, "ru", true)
+  await press(inbox, "office-notice-open-notice-1"); await press(inbox, "office-explain-notice-1")
+  expect(mockNavigate).toHaveBeenLastCalledWith("OwnExplanations", { answerIntent: expect.stringMatching(/^[a-f0-9-]{36}$/) })
+  const first = mockNavigate.mock.calls.at(-1)![1].answerIntent
+  await press(inbox, "office-explain-notice-1")
+  expect(mockNavigate.mock.calls.at(-1)![1].answerIntent).not.toBe(first)
+  const profile = await render(ProfileScreen, "ru", true)
+  const control = profile.root.findAll(item => item.props.refreshControl?.props?.onRefresh)[0].props.refreshControl
+  const reloads = mockInstallation.reload.mock.calls.length
+  await act(async () => control.props.onRefresh()); await settle()
+  expect(mockInstallation.reload).toHaveBeenCalledTimes(reloads + 1)
+  expect(markAttendanceInboxRead).not.toHaveBeenCalled()
+})

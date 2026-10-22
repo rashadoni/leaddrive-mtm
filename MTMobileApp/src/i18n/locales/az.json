@@ -1434,6 +1434,7 @@
     "previousMonth": "Əvvəlki ay",
     "nextMonth": "Növbəti ay",
     "queueWaiting": "Göndərilmə növbəsində: {{count}}",
-    "queueNeedsAttention": "Növbədə diqqət tələb edən qeydlər var: {{count}}"
+    "queueNeedsAttention": "Növbədə diqqət tələb edən qeydlər var: {{count}}",
+    "finishReplyDraft": "Gələn sorğuya keçmək üçün əvvəlcə açıq qaralamanı göndərin və ya bağlayın."
   }
 }

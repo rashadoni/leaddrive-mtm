@@ -143,3 +143,10 @@
 Проверки локально:149целевых тестов в9suites по последовательным прогонам, контраст основных пар>=4.5:1 обеихтем, RU/AZ/EN33ключа parity PASS;14productionfiles targeted ESLint0errors/45warnings до финальной форматной проверки. Новый Maestroall-tabs и4изменённых flow/helper прошли YAMLparse, но это не выполнениеMaestro. Первый тестовый FAIL был вызван добавленным testProvider, который один старый test.update снимал и перемонтировал дерево; сохранена одинаковая обёртка без ослабления проверки сохранности черновика.
 
 Full Jest/TS/Android локально **NOT RUN** по host contract, запускаются в GitHub. Native все5/light/dark/крупныйтекст/TalkBack/60fps и новый physicalMaestro **NOT RUN** до SHA-bound APK. APK1029 на телефоне пока не заменён. Новый24h пока не начинается.
+
+
+### Финальный source review и исправления
+
+Исправлены дваP2: кнопки time picker в низком landscape окне и переход Inbox→Ответы после выбранной истории. Picker теперь прокручивается и учитывает крупный текст. Inbox передаёт новое намерение открыть очередь HR; открытый черновик остаётся доступен до явной отправки/отмены. Исправлены также48dp календарные цели на360dp, перенос длинной даты и pull-to-refresh подтверждения телефона в профиле.106целевыхscreen tests PASS,0ESLint errors в5изменённыхфайлах. Это source/render evidence; native landscape/large-text ещёNOT RUN.
+
+Первый полный281suites/2515tests/1TODO PASS наad92, но общийgateFAIL из-заTS2352 инициализациипалитры. Исправление6b915 создаётполнуюпалитру передgetters, отдельныйlivepalette regression4PASS. Последующийreviewcheckpoint требует новых exact-head проверок; старыйFAIL ипрежние результаты не заменяются.

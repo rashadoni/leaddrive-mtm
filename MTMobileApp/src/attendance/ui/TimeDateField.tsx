@@ -52,8 +52,9 @@ export default function TimeDateField({
   onChange: (value: string) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const { width, fontScale } = useWindowDimensions(),
-    dateList = width < 360 || fontScale > 1.3;
+  const { width, height, fontScale } = useWindowDimensions(),
+    dateList = (Math.min(width - 24, 520) - 32) / 7 < 48 || fontScale > 1.3;
+  const optionHeight = Math.max(48, Math.ceil(24 * fontScale) + 8);
   const [open, setOpen] = useState(false),
     [month, setMonth] = useState('2000-01');
   const [chosen, setChosen] = useState(value),
@@ -101,7 +102,9 @@ export default function TimeDateField({
         onPress={show}
         style={({ pressed }) => [styles.input, pressed && timeStyles.pressed]}
       >
-        <Text style={timeStyles.body}>{time ? value : dateText(value)}</Text>
+        <Text style={[timeStyles.body, styles.fieldValue]}>
+          {time ? value : dateText(value)}
+        </Text>
         <Text style={styles.indicator}>{time ? '◷' : '▦'}</Text>
       </Pressable>
       <Modal
@@ -116,7 +119,12 @@ export default function TimeDateField({
               {label}
             </Text>
             {time ? (
-              <>
+              <ScrollView
+                testID="time-picker-scroll"
+                nestedScrollEnabled
+                contentContainerStyle={styles.timeContent}
+                style={styles.pickerScroll}
+              >
                 <Text testID="time-picker-value" style={styles.preview}>
                   {hour}:{minute}
                 </Text>
@@ -127,14 +135,20 @@ export default function TimeDateField({
                         {t(`attendanceRhythm.${part}`)}
                       </Text>
                       <ScrollView
+                        nestedScrollEnabled
                         ref={column === 0 ? hours : minutes}
                         onLayout={() =>
                           (column === 0 ? hours : minutes).current?.scrollTo({
-                            y: Number(column === 0 ? hour : minute) * 48,
+                            y:
+                              Number(column === 0 ? hour : minute) *
+                              optionHeight,
                             animated: false,
                           })
                         }
-                        style={styles.timeScroll}
+                        style={[
+                          styles.timeScroll,
+                          { height: Math.max(96, Math.min(240, height * 0.3)) },
+                        ]}
                       >
                         {Array.from(
                           { length: column === 0 ? 24 : 60 },
@@ -157,6 +171,7 @@ export default function TimeDateField({
                             }
                             style={[
                               styles.timeOption,
+                              { minHeight: optionHeight },
                               number === (column === 0 ? hour : minute) &&
                                 styles.selected,
                             ]}
@@ -177,9 +192,9 @@ export default function TimeDateField({
                     setOpen(false);
                   }}
                 />
-              </>
+              </ScrollView>
             ) : (
-              <ScrollView>
+              <ScrollView style={styles.pickerScroll}>
                 <View style={styles.month}>
                   <TimeAction
                     testID="calendar-previous"
@@ -296,6 +311,9 @@ export default function TimeDateField({
 }
 const styles = themed(() =>
   StyleSheet.create({
+    fieldValue: { flex: 1, minWidth: 0 },
+    pickerScroll: { flexShrink: 1 },
+    timeContent: { gap: 16 },
     field: { flexGrow: 1, flexBasis: 180, gap: 8 },
     label: {
       color: timeColor.muted,
@@ -382,7 +400,7 @@ const styles = themed(() =>
     timeColumn: { flex: 1, gap: 8 },
     timeScroll: { maxHeight: 240 },
     timeOption: {
-      height: 48,
+      minHeight: 48,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 12,

@@ -13,11 +13,13 @@ import { attendanceAccessDenied } from "../../services/attendance-requests"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop, useTabBarPadding } from "../../hooks/useTabBarHeight"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
-import { useNavigation } from "@react-navigation/native"
+import { attendanceUuid } from "../../services/attendance-contract"
+import type { OwnAttendanceParamList } from "../../navigation/attendance-routes"
+import { useNavigation, type NavigationProp } from "@react-navigation/native"
 export default function AttendanceInboxScreen() {
   const rhythm = useTimePresentation()
   const [filter, setFilter] = useState<"all" | "unread">("all"), [expanded, setExpanded] = useState<string | null>(null)
-  const { t, i18n } = useTranslation(), top = useHeaderTop(), bottom = useTabBarPadding(), navigation = useNavigation()
+  const { t, i18n } = useTranslation(), top = useHeaderTop(), bottom = useTabBarPadding(), navigation = useNavigation<NavigationProp<OwnAttendanceParamList>>()
   const agent = useAuthStore(state => state.agent), bootstrap = useBootstrapStore(state => state.data)
   const allowed = hasOfficeAttendanceAccess(bootstrap, agent)
   const [items, setItems] = useState<AttendanceNotice[]>([]), [loading, setLoading] = useState(false), [writing, setWriting] = useState<string | null>(null)
@@ -77,7 +79,7 @@ export default function AttendanceInboxScreen() {
               </Pressable>
               {isOpen && <View style={rhythmStyles.detail}>
                 {body ? <Text style={timeStyles.body}>{body}</Text> : null}
-                {item.explanation && <TimeAction testID={`office-explain-${item.id}`} icon="chatbox-ellipses-outline" label={t("explanations.openFromInbox")} onPress={() => navigation.navigate("OwnExplanations" as never)} />}
+                {item.explanation && <TimeAction testID={`office-explain-${item.id}`} icon="chatbox-ellipses-outline" label={t("explanations.openFromInbox")} onPress={() => navigation.navigate("OwnExplanations", { answerIntent: attendanceUuid() })} />}
                 {item.isRead ? <Text style={timeStyles.caption}>{t("officeAttendance.read")}</Text> : <TimeAction testID={`office-read-${item.id}`} icon="checkmark-outline" disabled={writing !== null}
                   label={t(writing === item.id ? "officeAttendance.saving" : "officeAttendance.markRead")} onPress={() => void markRead(item.id)} />}
               </View>}

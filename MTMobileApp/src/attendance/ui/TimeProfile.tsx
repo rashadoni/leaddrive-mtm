@@ -69,7 +69,10 @@ export default function TimeProfile({
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={refresh}
+            onRefresh={() => {
+              refresh();
+              void installation.reload();
+            }}
             colors={[timeColor.accent]}
             tintColor={timeColor.accent}
           />

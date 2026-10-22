@@ -23,7 +23,7 @@ const keyOf = (date: string, kind: AttendanceExplanationKind) => `${date}:${kind
  * explain, the late or absent days one may still explain, and what was sent.
  * Leave, sick leave or a business trip are filed as a request instead.
  */
-export default function AttendanceExplanationsScreen() {
+export default function AttendanceExplanationsScreen({ route }: { route?: { params?: { answerIntent?: string } } } = {}) {
   const rhythm = useTimePresentation(), styles = rhythm ? rhythmStyles : legacyStyles
   const [filter, setFilter] = useState<"action" | "history">("action")
   const { t, i18n } = useTranslation(), top = useHeaderTop(), bottom = useTabBarPadding()
@@ -46,6 +46,12 @@ export default function AttendanceExplanationsScreen() {
   const loadRef = useRef(load); loadRef.current = load
   useEffect(() => { mounted.current = true; epoch.current += 1; setData(null); setDenied(false); setFilter("action"); setOpen(null); setDraft(""); setNotice(null); if (allowed) void loadRef.current(); return () => { mounted.current = false; epoch.current += 1 } }, [allowed, agent?.id, agent?.organizationId])
   useAutoRefresh(() => { if (!open) void load() })
+  const consumedAnswerIntent = useRef<string | null>(null), answerIntent = route?.params?.answerIntent
+  // An inbox shortcut changes the section only after an existing draft is sent or cancelled.
+  useEffect(() => {
+    if (!rhythm || !answerIntent || consumedAnswerIntent.current === answerIntent || open || saving) return
+    consumedAnswerIntent.current = answerIntent; setFilter("action")
+  }, [rhythm, answerIntent, open, saving])
 
   const day = (date: string) => formatLocalizedDate(`${date}T12:00:00.000Z`, i18n.language, { day: "numeric", month: "long", timeZone: "UTC" })
   const what = (kind: AttendanceExplanationKind, date: string, minutes: number | null) => kind === "LATE"
@@ -73,7 +79,7 @@ export default function AttendanceExplanationsScreen() {
     <View style={styles.row}>
       <Pressable testID={`explanation-send-${keyOf(date, kind)}`} accessibilityRole="button" disabled={saving} onPress={() => void send(date, kind)} style={[styles.button, styles.primary]}>
         <Text style={styles.primaryText}>{t(saving ? "explanations.sending" : "explanations.send")}</Text></Pressable>
-      <Pressable accessibilityRole="button" disabled={saving} onPress={() => { setOpen(null); setDraft("") }} style={styles.button}><Text style={styles.action}>{t("explanations.cancel")}</Text></Pressable>
+      <Pressable testID={`explanation-cancel-${keyOf(date, kind)}`} accessibilityRole="button" disabled={saving} onPress={() => { setOpen(null); setDraft("") }} style={styles.button}><Text style={styles.action}>{t("explanations.cancel")}</Text></Pressable>
     </View>
   </View> : null
   const sections = data ? attendanceExplanationSections(data) : null
@@ -82,6 +88,7 @@ export default function AttendanceExplanationsScreen() {
     <View style={[styles.header, { paddingTop: top }]}>{rhythm ? <TimeHeader title={t("attendanceCompact.tabs.explanations")} subtitle={t("attendanceRhythm.repliesHint")} /> : <><Text style={styles.title}>{t("explanations.title")}</Text><Text style={styles.subtitle}>{t("explanations.hint")}</Text></>}</View>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: bottom }]} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}>
       {!allowed || denied ? <Text testID="explanations-unavailable" style={styles.body}>{t("officeAttendance.unavailable")}</Text> : <>
+        {rhythm && answerIntent && consumedAnswerIntent.current !== answerIntent && open && <Text testID="explanations-draft-before-inbox" style={styles.caption}>{t("attendanceRhythm.finishReplyDraft")}</Text>}
         {rhythm && <TimeFilters testID="explanations-filter" value={filter} onChange={setFilter} disabled={!!open || saving} options={[
           { value: "action", label: t("attendanceRhythm.toAnswer"), count: sections?.asked.length },
           { value: "history", label: t("attendanceRhythm.sent"), count: sections?.written.length },

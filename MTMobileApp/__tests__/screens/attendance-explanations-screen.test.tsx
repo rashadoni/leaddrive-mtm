@@ -29,10 +29,10 @@ import { attendanceNoticePresentation } from "../../src/services/attendance-noti
 
 const locale = i18next.createInstance(), roots: TestRenderer.ReactTestRenderer[] = []
 const settle = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) }) }
-async function render(language = "ru", rhythm = false) {
+async function render(language = "ru", rhythm = false, answerIntent?: string) {
   await locale.changeLanguage(language)
   let tree!: TestRenderer.ReactTestRenderer
-  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><TimePresentation.Provider value={rhythm}><AttendanceExplanationsScreen /></TimePresentation.Provider></I18nextProvider>) })
+  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><TimePresentation.Provider value={rhythm}><AttendanceExplanationsScreen route={{ params: { answerIntent } }} /></TimePresentation.Provider></I18nextProvider>) })
   roots.push(tree); await settle(); return tree
 }
 const node = (tree: TestRenderer.ReactTestRenderer, id: string) => tree.root.findAll(item => item.props.testID === id, { deep: false })[0]
@@ -130,4 +130,27 @@ it.each(["ru", "az", "en"])("Rhythm %s keeps HR requests separate from sent answ
   expect(node(tree, "explanation-written-2026-10-10:ABSENT")).toBeDefined()
   expect(node(tree, "explanation-asked-2026-10-16:LATE")).toBeUndefined()
   expect(texts(tree)).not.toContain("attendanceRhythm.")
+})
+
+it("an inbox shortcut returns to HR requests after visiting sent history", async () => {
+  const tree = await render("ru", true)
+  await press(tree, "explanations-filter-history")
+  expect(node(tree, "explanation-asked-2026-10-16:LATE")).toBeUndefined()
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><TimePresentation.Provider value><AttendanceExplanationsScreen route={{ params: { answerIntent: "new-inbox-intent" } }} /></TimePresentation.Provider></I18nextProvider>))
+  await settle()
+  expect(node(tree, "explanation-asked-2026-10-16:LATE")).toBeDefined()
+  expect(node(tree, "explanation-written-2026-10-10:ABSENT")).toBeUndefined()
+})
+it("an inbox shortcut never hides or overwrites an open sent-answer draft", async () => {
+  ;(api.getAttendanceExplanations as jest.Mock).mockResolvedValue({ success: true, data: { ...data, items: [...data.items, { ...data.items[0], id: "answered", date: "2026-10-15", status: "ANSWERED", answer: "Earlier answer" }] } })
+  const tree = await render("ru", true)
+  await press(tree, "explanations-filter-history"); await press(tree, "explanation-edit-2026-10-15:LATE")
+  await type(tree, "explanation-text-2026-10-15:LATE", "Preserve this unsent change")
+  await act(async () => tree.update(<I18nextProvider i18n={locale}><TimePresentation.Provider value><AttendanceExplanationsScreen route={{ params: { answerIntent: "new-inbox-intent" } }} /></TimePresentation.Provider></I18nextProvider>))
+  await settle()
+  expect(node(tree, "explanation-text-2026-10-15:LATE").props.value).toBe("Preserve this unsent change")
+  expect(node(tree, "explanations-draft-before-inbox")).toBeDefined()
+  expect(api.answerAttendanceExplanation).not.toHaveBeenCalled()
+  await press(tree, "explanation-cancel-2026-10-15:LATE")
+  expect(node(tree, "explanation-asked-2026-10-16:LATE")).toBeDefined()
 })

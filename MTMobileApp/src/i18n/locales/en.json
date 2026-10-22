@@ -1434,6 +1434,7 @@
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
     "queueWaiting": "Waiting to send: {{count}}",
-    "queueNeedsAttention": "Queued items need attention: {{count}}"
+    "queueNeedsAttention": "Queued items need attention: {{count}}",
+    "finishReplyDraft": "Send or close your current draft before opening the request from your inbox."
   }
 }
