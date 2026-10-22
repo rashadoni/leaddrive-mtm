@@ -976,3 +976,10 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - ИсправлениеTS2352 опубликовано6b915f8, targetedlivepalette4PASS; егоstandalone39811391046 ещёсобирается ибудетзамененоreviewcheckpoint. Не переноситьуспех предыдущихsourceнаследующийAPK.
 - ПользовательподтвердилUSB, но ADBещёTIMEOUT. Read-onlyinspection черезразрешённыйloopbackcontabo-admin нашлазависшийsshd728662, codex-alt@notty,2h21m, единственныйlistener35039. После проверкиUID/команды завершёнтолькоэтот task-owned noninteractiveforward обычнымUIDcodex-alt. Macавтоцикл переподключился:ADBdevicePASS. ДругиеSSH/runtime/приложения/данные не трогались; новыхкоманд пользователянепотребовалось. На телефоне пока1029.
 - Далееcheckpointreviewfix/push, exact-headfullgates иSHA-boundinstall-r, all-tabsMaestro+скриншоты, независимаясверкаисторий/settings. Новая24h ещёнеидёт.
+
+
+### 2026-10-22 — защита refresh во время отправки допуска устройства
+
+- Повторный source review подтвердил закрытие picker/intent/calendar P2/P3, но выявил race в добавленном profilepullrefresh: installation.reload мог увеличитьepoch незавершённогоsubmit и оставитьwritingref. Safety-lane узкийплан: сериализоватьload за durablePOST науровнеhook, не менять UUID/правила/сервер; дополнительноbusyguardprofile; проверитьlostresponse→retryс темжеrequestId иотсутствиечужихGET во времяsubmit, затемfullCI. Это исправление новойвозможностиобновления, не расширениеправилдопуска.
+
+- Проверка race PASS:16tests реальногоuseAttendanceInstallation, включаяpendingPOST→внешнийreload→lostreply→retry с прежнимUUID и ровнооднимbegin. Hookload теперь не меняетepoch, когдаwriting.current; profilebusyguard добавлен. TargetedESLint2files0errors. Публикуемфинальныйsourcecheckpoint; source86560cf не устанавливать, посколькупоследующийracefix ещёне включён.

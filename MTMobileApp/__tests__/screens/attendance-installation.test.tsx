@@ -100,3 +100,22 @@ it('keeps approved compact details optional and immediately exposes revocation g
   expect(text(tree)).toContain('Fictional revoke reason')
   expect(text(tree)).toContain(ru.attendanceInstallation.nextStep.REVOKED)
 })
+
+it('serializes external refresh behind a durable device submission and keeps an ambiguous POST retryable', async () => {
+  let reject!:(error:Error)=>void
+  ;(sendAttendanceInstallation as jest.Mock).mockImplementationOnce(()=>new Promise((_done,fail)=>{reject=fail}))
+  const tree=await render()
+  await press(tree,'attendance-installation-request')
+  expect(current.busy).toBe(true)
+  const reads=(readAttendanceInstallation as jest.Mock).mock.calls.length
+  await act(async()=>{await current.reload()})
+  expect(readAttendanceInstallation).toHaveBeenCalledTimes(reads)
+  await act(async()=>{reject(new Error('lost reply'))});await settle()
+  expect(current.busy).toBe(false)
+  expect(node(tree,'attendance-installation-pending')).toBeDefined()
+  await press(tree,'attendance-installation-request')
+  expect(beginAttendanceInstallation).toHaveBeenCalledTimes(1)
+  expect(sendAttendanceInstallation).toHaveBeenCalledTimes(2)
+  expect((sendAttendanceInstallation as jest.Mock).mock.calls.map(call=>call[1])).toEqual([{requestId:uuid,createdAt:at},{requestId:uuid,createdAt:at}])
+  expect(current.busy).toBe(false)
+})

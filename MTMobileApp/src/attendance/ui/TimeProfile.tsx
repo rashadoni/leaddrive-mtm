@@ -71,7 +71,7 @@ export default function TimeProfile({
             refreshing={refreshing}
             onRefresh={() => {
               refresh();
-              void installation.reload();
+              if (!installation.busy) void installation.reload();
             }}
             colors={[timeColor.accent]}
             tintColor={timeColor.accent}
