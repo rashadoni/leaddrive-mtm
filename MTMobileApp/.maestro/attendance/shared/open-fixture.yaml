@@ -4,7 +4,9 @@ appId: com.leaddrive.attendance
 - launchApp:
     clearState: false
     permissions:
-      all: deny
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
 - extendedWaitUntil:
     visible:
       id: time-tab-OwnWorkday
