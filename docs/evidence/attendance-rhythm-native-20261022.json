@@ -1,5 +1,5 @@
 {
-  "status": "INSTALLED_ALL_TABS_MAESTRO_PASS_APPEARANCE_TRANSPORT_STOPPED",
+  "status": "INSTALLED_ALL_TABS_MAESTRO_PASS_APPEARANCE_DEFECTS_FIX_PENDING_CI",
   "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
   "versionCode": 1033,
   "scope": "Standalone Rhythm across Day, Requests, Replies, Inbox and Profile; legacy MTM presentation preserved",
@@ -136,17 +136,50 @@
     "parity": "PASS"
   },
   "appearance": {
-    "status": "NOT_RUN_TRANSPORT_STOPPED",
-    "attemptStatus": "FAIL",
-    "attempt": "rhythm-appearance-35540c2-v1",
-    "startedAt": "2026-10-22T16:53:42.229568+00:00",
-    "finishedAt": "2026-10-22T16:54:12.592401+00:00",
-    "failureType": "TimeoutExpired",
-    "failureStage": "First ADB shell operation, before original-settings capture, watchdog, draft or theme/font changes",
-    "settingsChangedByAttempt": false,
-    "screenshots": [],
-    "scope": "Native dark and 200% text; draft and settings restoration guards",
-    "nextAction": "Resume in a new immutable attempt directory after Mac ADB service recovery"
+    "status": "FAIL",
+    "scope": "Actual native appearance on source35540c2 / APK1033",
+    "earlierTransportStop": {
+      "status": "NOT_RUN_TRANSPORT_STOPPED",
+      "attemptStatus": "FAIL",
+      "attempt": "rhythm-appearance-35540c2-v1",
+      "startedAt": "2026-10-22T16:53:42.229568+00:00",
+      "finishedAt": "2026-10-22T16:54:12.592401+00:00",
+      "failureType": "TimeoutExpired",
+      "failureStage": "First ADB shell operation, before original-settings capture, watchdog, draft or theme/font changes",
+      "settingsChangedByAttempt": false,
+      "screenshots": [],
+      "scope": "Native dark and 200% text; draft and settings restoration guards",
+      "nextAction": "Resume in a new immutable attempt directory after Mac ADB service recovery"
+    },
+    "attemptV2": "FAIL preflight: owned app not foreground; no settings changed",
+    "attemptV3": {
+      "status": "INTERRUPTED",
+      "runnerExit": 143,
+      "reason": "Not established",
+      "darkScreensCaptured": 5,
+      "darkVisualReview": "FAIL: tab bar and system navigation stay light",
+      "fontObservation": "Day selected after request-draft font change; bounded reproduction follows",
+      "originalAppearanceRestored": true
+    },
+    "fontReproductionV4": {
+      "status": "FAIL",
+      "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+      "startedAt": "2026-10-22T17:34:51.012714+00:00",
+      "draftVerifiedBeforeChange": true,
+      "formPresentAfterFontChange": false,
+      "selectedTabsAfterFontChange": [
+        "time-tab-OwnWorkday"
+      ],
+      "failure": "REQUEST_DRAFT_LOST_AFTER_FONT_CHANGE",
+      "draftPreserved": false,
+      "originalAppearanceRestored": true,
+      "historyAndRequestsUnchanged": true,
+      "permissionsUnchanged": true,
+      "finishedAt": "2026-10-22T17:36:20.749590+00:00"
+    },
+    "fixStatus": "Source fix prepared; new hosted native compile and physical acceptance required",
+    "nativeLandscape": "NOT_RUN",
+    "talkBack": "NOT_RUN"
   },
   "real24h": "NOT_STARTED; earlier v6 remains FAIL",
   "productionMerge": "NOT_RUN; PR196 remains draft"
