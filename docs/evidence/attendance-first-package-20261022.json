@@ -260,6 +260,186 @@
     },
     "priorAttemptsPreserved": true,
     "maestroSyntax": "PASS: three changed flows with Maestro 2.11.0",
-    "runtimeChanged": false
+    "runtimeChanged": false,
+    "ownMarksV4": {
+      "status": "PASS",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "startedAt": "2026-10-22T11:13:47.141730+00:00",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "dbd53ab8e85e818eb14c1d5da3dd50fb00e23fab07405f189ee9a1bbe177b76c",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "136.325",
+            "status": "PASS"
+          }
+        ]
+      },
+      "canonicalItemsCompared": 30,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "permissionsUnchanged": true,
+      "reportClosedAfterRestart": true,
+      "finishedAt": "2026-10-22T11:16:54.398023+00:00"
+    },
+    "correctionV4": {
+      "status": "PASS",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "fixtureAccount": "admin",
+      "startedAt": "2026-10-22T11:21:34.191149+00:00",
+      "maestro": {
+        "flow": "journeys/correction-from-day",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "c19b0043bbd054fe1dbe99fda5b73aa731b57fc3602a8f071ab38c4b4eb6bdc2",
+        "tests": [
+          {
+            "name": "Open a correction from the completed day without an accidental submission",
+            "seconds": "60.311",
+            "status": "PASS"
+          }
+        ]
+      },
+      "companyTimezone": "Asia/Baku",
+      "canonicalDatesAndMinutesPrefilled": true,
+      "noAccidentalRequest": true,
+      "noWorkdayChanges": true,
+      "settingsUnchanged": true,
+      "finishedAt": "2026-10-22T11:23:43.920900+00:00"
+    },
+    "accountSwitchV4": {
+      "status": "PASS",
+      "officeAccountRestored": true,
+      "bothHistoriesUnchanged": true,
+      "bothRequestListsUnchanged": true,
+      "checkedAt": "2026-10-22T11:26:10.450554+00:00"
+    },
+    "publishedTestHead": "c888d4f3022b7a4b99adaa8a958fcad80e119125",
+    "ci": {
+      "runId": 39769470008,
+      "status": "SUCCESS"
+    },
+    "emulatorContract": {
+      "runId": 39769470018,
+      "status": "SUCCESS"
+    },
+    "gpsV4": {
+      "status": "FAIL",
+      "startedAt": "2026-10-22T11:26:42.624276+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "apkSha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 59,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "UNAVAILABLE",
+          "distanceMeters": null,
+          "branchName": null
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "a6d0dae5d1e446c332ae2e2ec1f4b97362b9e46c4a7011ceea0123f6f422fc4c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "48.369",
+            "status": "PASS"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T11:28:32.508687+00:00"
+    },
+    "qrV4": {
+      "status": "FAIL",
+      "startedAt": "2026-10-22T11:30:14.685886+00:00",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "optical": "actual camera; person aims phone; no token injection",
+      "maestro": {
+        "flow": "journeys/qr-optical-mark",
+        "exit": 1,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "42f3293db5560b21b2eb94d6bd11a197d0cceb02664f972bdd7481216e37d860",
+        "tests": [
+          {
+            "name": "Read a real branch QR with the camera and verify the finish receipt",
+            "seconds": "350.421",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "flowExit": 1,
+      "newEventTypes": [],
+      "failureType": "AssertionError",
+      "permissionsRestored": true,
+      "finishedAt": "2026-10-22T11:37:23.414989+00:00",
+      "reason": "No optical confirmation within five-minute camera wait; viewer had no external views or code requests"
+    },
+    "ordinaryNativeBuild": {
+      "runId": 39769470013,
+      "status": "SUCCESS"
+    },
+    "manualOpticalQrV5": {
+      "status": "PASS",
+      "scope": "Independent canonical validation of user optical camera confirmation; not a Maestro flow PASS",
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "priorEventsUnchanged": 64,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "qrState": "VERIFIED",
+      "branchName": "Тестовое рабочее место QR",
+      "factsState": "VALID",
+      "tokenInjected": false,
+      "verifiedAt": "2026-10-22T11:47:53.752694+00:00"
+    }
+  },
+  "currentPhysicalAcceptance": {
+    "apkVersionCode": 1022,
+    "receipts": "PASS",
+    "ownMarks": "PASS",
+    "correctionPrefill": "PASS",
+    "gpsInside": "FAIL: fresh location UNAVAILABLE",
+    "opticalQr": "Real optical QR VERIFIED; automated Maestro acceptance pending",
+    "real24h": "NOT_RUN",
+    "dayStatus": "STARTED",
+    "historicalEvents": 64,
+    "earlierAttemptStatusesRetained": true
   }
 }

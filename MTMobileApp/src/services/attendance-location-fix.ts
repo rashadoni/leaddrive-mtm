@@ -2,7 +2,8 @@ import Geolocation from '@react-native-community/geolocation'
 import { PermissionsAndroid, Platform } from 'react-native'
 import type { AttendanceMark } from './attendance-location-contract'
 
-/** One bounded foreground reading after application consent. No watch,
+/** Bounded foreground acquisition after application consent. Android tries
+ * fresh network positioning when satellites cannot answer indoors. No watch,
  * background permission or cached-position fallback. Missing provenance is
  * unavailable rather than a fabricated non-mock fix.
  *
@@ -21,6 +22,19 @@ export async function readAttendanceLocationFix(guard: () => void, options: { ma
     timer = setTimeout(() => { expired = true; finishTimeout(null) }, milliseconds)
   }
   const current = () => { guard(); if (expired) throw new Error('ATTENDANCE_LOCATION_TIMEOUT') }
+  const readFix = (enableHighAccuracy: boolean, timeout: number): Promise<AttendanceMark['location']> => {
+    current()
+    return new Promise((resolve, reject) => {
+      Geolocation.getCurrentPosition(position => {
+        try { current() } catch { resolve(null); return }
+        const { latitude, longitude, accuracy } = position.coords
+        const mocked = (position as unknown as { mocked?: unknown }).mocked
+        if (![latitude, longitude, accuracy, position.timestamp].every(Number.isFinite) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180
+          || accuracy < 0 || accuracy > 100000 || typeof mocked !== 'boolean') { resolve(null); return }
+        resolve({ latitude, longitude, accuracy, capturedAt: new Date(position.timestamp).toISOString(), provider: 'UNKNOWN', isMock: mocked })
+      }, reject, { enableHighAccuracy, timeout, maximumAge: 0 })
+    })
+  }
   const read = async (): Promise<AttendanceMark['location']> => {
     current()
     if (Platform.OS === 'android') {
@@ -37,17 +51,21 @@ export async function readAttendanceLocationFix(guard: () => void, options: { ma
       Geolocation.setRNConfiguration({ skipPermissionRequests: true, locationProvider: 'android' })
     }
     current()
-    deadline(8_000)
-    return new Promise(resolve => {
-      Geolocation.getCurrentPosition(position => {
-        try { current() } catch { resolve(null); return }
-        const { latitude, longitude, accuracy } = position.coords
-        const mocked = (position as unknown as { mocked?: unknown }).mocked
-        if (![latitude, longitude, accuracy, position.timestamp].every(Number.isFinite) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180
-          || accuracy < 0 || accuracy > 100000 || typeof mocked !== 'boolean') { resolve(null); return }
-        resolve({ latitude, longitude, accuracy, capturedAt: new Date(position.timestamp).toISOString(), provider: 'UNKNOWN', isMock: mocked })
-      }, () => resolve(null), { enableHighAccuracy: true, timeout: 7_000, maximumAge: 0 })
-    })
+    deadline(Platform.OS === 'android' ? 12_000 : 8_000)
+    try {
+      return await readFix(true, 7_000)
+    } catch (error) {
+      // Keep the Android provider: the library's Play Services path has a
+      // documented native listener crash in this app. A lower-accuracy request
+      // selects Android's network provider without accepting a cached fix.
+      if (Platform.OS !== 'android' || !error || typeof error !== 'object'
+        || !('code' in error) || (error.code !== 2 && error.code !== 3)) return null
+      current()
+      const allowed = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION)
+      current()
+      if (!allowed) return null
+      return await readFix(false, 4_000)
+    }
   }
   try {
     deadline(8_000)

@@ -39,6 +39,7 @@ name: Read a real branch QR with the camera and verify the finish receipt
     id: office-workday-qr-reason
 - tapOn:
     id: office-workday-qr
+    enabled: true
 - scrollUntilVisible:
     element:
       id: attendance-qr-permission
@@ -65,6 +66,14 @@ name: Read a real branch QR with the camera and verify the finish receipt
     timeout: 300000
 - tapOn:
     id: attendance-qr-confirm
+# QR verification and optional location permission are independent evidence.
+- runFlow:
+    when:
+      visible:
+        id: ".*:id/permission_deny(_and_dont_ask_again)?_button"
+    commands:
+      - tapOn:
+          id: ".*:id/permission_deny(_and_dont_ask_again)?_button"
 - extendedWaitUntil:
     visible: ${output.copy.completed}
     timeout: 60000
