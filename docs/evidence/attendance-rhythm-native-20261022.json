@@ -640,7 +640,7 @@
   "currentCandidate": {
     "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
     "versionCode": 1039,
-    "status": "NATIVE_UI_ACCEPTANCE_PASS_GPS_COMPOSITE_PASS_QR_PENDING",
+    "status": "NATIVE_UI_ACCEPTANCE_PASS_GPS_COMPOSITE_PASS_QR_RUNNING_WAITING_PHYSICAL_AIM",
     "hostedGates": {
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "allExactHeadChecks": "PASS",
@@ -1019,6 +1019,16 @@
       "finishedAt": "2026-10-22T22:01:10.203222+00:00",
       "evidence": "gps-branch-refresh-v3/result-sanitized.json"
     },
-    "nextUserRequestedPhase": "Route & Field Maestro after all Time acceptance, isolated data and role/server/offline checks"
+    "nextUserRequestedPhase": "Route & Field Maestro after all Time acceptance, isolated data and role/server/offline checks",
+    "currentOpticalQr": {
+      "status": "RUNNING",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "apkVersionCode": 1039,
+      "evidence": "package-1039-qr-v3",
+      "cameraNativeScreenshotInspected": true,
+      "qrPass": false,
+      "physicalAimRequested": true,
+      "tokenInjected": false
+    }
   }
 }
