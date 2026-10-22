@@ -983,3 +983,56 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Повторный source review подтвердил закрытие picker/intent/calendar P2/P3, но выявил race в добавленном profilepullrefresh: installation.reload мог увеличитьepoch незавершённогоsubmit и оставитьwritingref. Safety-lane узкийплан: сериализоватьload за durablePOST науровнеhook, не менять UUID/правила/сервер; дополнительноbusyguardprofile; проверитьlostresponse→retryс темжеrequestId иотсутствиечужихGET во времяsubmit, затемfullCI. Это исправление новойвозможностиобновления, не расширениеправилдопуска.
 
 - Проверка race PASS:16tests реальногоuseAttendanceInstallation, включаяpendingPOST→внешнийreload→lostreply→retry с прежнимUUID и ровнооднимbegin. Hookload теперь не меняетepoch, когдаwriting.current; profilebusyguard добавлен. TargetedESLint2files0errors. Публикуемфинальныйsourcecheckpoint; source86560cf не устанавливать, посколькупоследующийracefix ещёне включён.
+
+
+### 2026-10-22,20:27 Баку — финальный35540c2 CI/TS PASS, Android ещёсобирается
+
+- Source35540c2350a5057d4164ee764522a1c35ff62388 опубликован. CI39813020973/job119944140168 completedSUCCESS:281suites/2520tests/1TODO, TS PASS; emulatorcontract39813020966 PASS. Standalone39813014403/job119944638319 и ordinary39813020933/job119944065552 ещёIN_PROGRESS, APK не установлен. Sourcead92FAIL ипромежуточныеотмены6b915/865 сохраненыкакранниеgates, не доказательствофинальнойсборки.
+- Сервертеперьab220459683584df2aa0aba4fb02dc1e6d6b4e23. GitHubcompare с376533merge-baseточно376533,ahead25,behind0: нашаreleasedсервернаячастьсохранена. Новыйreadonlyphysicalharness жёсткопривязанкэтомуservingSHA и35540c2; еслисерверизменитсядо/внутрипрогона, результатнеподменять.
+- Приватныйrhythm_candidate_acceptance.pyподготовлен/syntaxPASS:3Maestroflows(alltabs/validation/compact),5nativeснимков, restart и независимыесравненияevents/requests/existinginboxreadstate/otheraccount/settings. ExecutionNOT RUNдоexactheadAPKиSHA. Run_flowallowlistдобавляетall-tabs-rhythm иREQUEST_MONTH_OFFSET. PR196body/titleактуализированы, draftсохранён иPRприкреплён. Новая24hне запущена.
+
+
+### 2026-10-22,20:39 Баку — SHA-bound1033 готов для физической приёмки, GitHub aggregate pending
+
+- APK1033 artifact12442030884 получен: ZIP SHA256 f30542bdca3134294d813b1c0d1f847343c174261066cd3f5f095e235e96e5da совпалсGitHubdigest; APK SHA2563cfb89612b653f30ae176f32b222b20ea9c9ad2a05933506d8416540ffc63c2a совпалсmanifest; build.json source35540c2/package/version1033 подтверждены. Первый downloadhelperstdin запуск завершилсяEOF до созданияпапки; повтор сPTYechooff PASS, URLввыводнепопал.
+- Ordinarybuild-apk completedPASS7m39s. Standalonejob119944638319: все17шагов, включаяCompletejob, completedSUCCESS, завершённыеполныетесты/TS/build/package/permissions/signature/cleanup, artifactзагружен16:30:17UTC. Ноaggregatejob/checkrun всёещёIN_PROGRESS/conclusionnull: провереныRESTrun/job/check-runs/attempt1 иconnectedGitHub, не замещаемэтоfalsePASS.
+- OfficialGitHubstatus16:36UTC подтверждаетdegradedActions/PR/Packages, incidentwq8305lppdc2. Задержка итоговогосостояния совпадаетсэтиминцидентом; точнаяпричина конкретногозаданиянедоказана. Повторнуютяжёлуюсборкуне запускаембезнеобходимости.
+- Уточнениеранееуказаннойпоследовательности: разрешённаяфизическаяприёмкатестовогоAPK можетпродолжиться послефактическогоPASS всехbuild/signingsteps ивсехостальныхfinalsourcegates, дажееслиоркестрацияGitHubещёнезакрылаaggregate. GateJSON честносодержитstandalone=PENDING_GITHUB_ORCHESTRATION, buildSteps=PASS, releaseGate=WAITING_FOR_FINAL_GITHUB_STATUS. Privateharness разрешаеттолькоэтоявноеусловие; source/digest/identity/history/scoping неослаблены. Production/merge/releaseне выполняются, PRdraft. Это продолжениетестов, не ложныйзелёныйCI.
+- Телефон1029последнимUIpreflight: fixtureверифицирован, pending/conflict отсутствуют. Следующийшагinstall-r1033 иreadonly3flows+5снимков, затемreversibleappearance; новая24hпокаNOT_STARTED.
+
+
+### 2026-10-22,20:41 Баку —1033 установлен; первый readonlypreflight остановлен сменой servingSHA
+
+- Install-r1033/source35540c2 PASS: SHA3cfb8961 проверен, standaloneUID/вход сохранены, ordinaryMTM1710 неизменён, backgroundlocationpermission отсутствует.
+- Nativev1 FAILдоMaestro/permissions/baselineUI: servingSHA изменилсяab220→3ebd57869129f256db53311b29376b0780de1559. Раннийresult/failure иv1script сохранены; это preflightstop, не UIregression. Новыйcompare3ebdvs376533:merge-base376533,ahead26,behind0. Подготовленimmutablev2 сновымfreeze иновымиoutputlabels; sourceгейты/сверкаисторийнеослаблены.
+- Уточнениепредыдущейсчётнойопечатки: уstandalonejob16шагов completedsuccess, не17. OverallGitHubстатуспо-прежнемуожидаетсяотдельно отфизическойприёмки. Далееv2readonly3flows/снимки.
+
+
+### 2026-10-22,20:43 Баку — v2preflight: деньужеSTARTED; read-onlyприёмкаотновогоbaseline
+
+- v2остановлендоMaestroиpermissionsнастаромусловииCOMPLETED. Backend3ebd стабильный(3последовательныхread), fixtureidentity подтверждён, actualdaySTARTED,103events вместо101. Происхождениедвухновыхevents этимreadне установлено; не объявляемихошибкойUI илидействиемпользователюбездоказательств. Неоткатываемисторию/незавершаемденьрадиожиданиятеста.
+- Исправлена избыточнаяпредпосылка приватногоreadonlyharness: all-tabs/validation/compactflows неотмечаютрабочеевремя и не требуютcompleted; допускаемобычныйSTARTED/COMPLETED, сохраняяtenant/account/queue/conflict/source/build/immutablehistoryguards. v3берёт103актуальныхevents какbeforebaseline, требуетточнойнеизменностипосле. v1/v2FAIL и ихскриптысохранены. Этоизменениеподходящегопредусловиясценария, не ослаблениепроверкизаписей.
+
+
+### 2026-10-22,20:46 Баку — все exact-head35540c2 гейтызелёные
+
+- GitHubcheck-runs/PRchecks наконец completedPASS дляstandalone39813014403/job119944638319 (9m55s), ordinary39813020933(7m39s), CI39813020973, contract39813020966, scope. Ранеенаблюдавшийсяaggregatepending сохранёнкакфактфазыинцидента, текущеесостояниезаменяетегонаPASS. Приватныйhosted-gates JSON обновлён: standalonePASS, allExactHeadChecksPASS, releaseGateCI_PASS_PHYSICAL_ACCEPTANCE_PENDING. Новуюсборкунеперезапускали.
+- v3readonlyна1033RUNNING, независимыйbaseline103events/requests/readstate/settings записан. Наэтотмомент итогMaestroещёнеполучен.
+
+
+### 2026-10-22,20:53 Баку —1033 all-tabs/validation/compact physical PASS
+
+- v3readonlycompletedPASS16:52:47UTC: all-tabs218.148s, empty-reasonvalidation67.323s, compactdisclosure/restart63.904s. Независимаясверка: все103canonicalevents неизменны, обеистории/заявки/существующееreadstate/другойаккаунт/profilelocale+hints/radios/network/packages сохранены; coldrestartбезочереди; originalCAMERA=true/FINE=false/COARSE=false восстановлены. Backend3ebd не менялсявнутрипрогона.
+- Captured5nativebaseline screenshots; Day/Profile сохраняли прежнююscrollпозицию, поэтомуэто не всегдаfirstviewport. ПросмотреныDay(scrolled),Requests,Profile; отмечено, чтоhandoffнужновернутьDayнаверхкQR. LegacyunkeyedрусскиезаголовкиуведомленийвAZ сохраняютсякакфактданных(нетложногоперевода).
+- Новыйpublicsanitizedevidence docs/evidence/attendance-rhythm-native-20261022.json. Appearancehelperзапущеноттого же355/1033/3ebd: dark5tabs,200%5tabs, сохранениеreasonчерновика, watchdogвозвратаоригинальнойтемы/шрифтаеслиMacпропадёт. ИтогRUNNING, неPASS; nativeLandscapeещёNOT RUN. Следующийшаг appearance/visualreview изакрытиеdoccheckpoint. Реальная24hнеидёт.
+
+
+### 2026-10-22,21:24 Баку — уточнён результат appearance и сохранена точка продолжения
+
+- Предыдущий статус appearance RUNNING заменён фактическим итогом: v1 FAIL16:54:12UTC/TimeoutExpired на первой shell-команде release_driver, до original capture, watchdog, черновика и смены темы/шрифта. Настройки этим запуском не менялись, screenshots пусты. Dark/200% нельзя считать проверенными; native landscape/TalkBack тоже NOT RUN.
+- Просмотрены оставшиеся реальные Replies/Inbox снимки: теперь все пять baseline проверены визуально в light/font_scale1.0. Day/Profile имеют старую scroll-позицию; первый экран с QR этим снимком не подтверждается. Следующая успешная попытка должна вернуть День наверх и сделать отдельный снимок.
+- Bounded get-state/reconnect не восстановили upstream Mac ADB. Listener35039/shared SSH имеет дочерние codex и bash: guarded recovery завершилась отказом ДО kill; общий SSH не прерывался. Remote terminal read не дал доступного Mac execution. Пользователю объяснены команды Mac: pkill -x adb || true; adb start-server. Сохраняем существующее окно подключения/USB; нового разрешения push/deploy не просим.
+- На вопрос «что надо сделать?» дан короткий блок двух команд с кнопкой копирования и просьбой написать «готово». Ответа о перезапуске пока нет. Обновлены sanitized evidence и UX audit; CI/обе сборки по35540c2 уже PASS, installed1033 и три Maestro+независимая сверка PASS остаются действительны.
+- Routing перепроверен codex-project-context: worktree mtm-attendance-standalone, branch codex/attendance-standalone, origin rashadoni/leaddrive-mtm; отдельного server production route у приложения нет. CRM не меняли. Точная остановка: связь перед appearance. Следующее действие: после Mac ADB restart bounded transport check, новая immutable appearance attempt на том же source, возврат настроек/Дня и фиксация результата. Реальная24h NOT_STARTED; прежняя v6 FAIL сохранена.
+
+- PR196 обновлён: head35540c2/draft подтверждены API, пять PR checks повторно PASS. Описание теперь содержит установленный1033, три реальных Maestro и независимую сверку, честный appearance transport stop и отсутствие активной24h. Evidence/docs оформлены отдельным локальным checkpoint без повторного запуска тяжёлых сборок ради документации.

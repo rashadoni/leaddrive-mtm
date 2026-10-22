@@ -1,0 +1,153 @@
+{
+  "status": "INSTALLED_ALL_TABS_MAESTRO_PASS_APPEARANCE_TRANSPORT_STOPPED",
+  "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+  "versionCode": 1033,
+  "scope": "Standalone Rhythm across Day, Requests, Replies, Inbox and Profile; legacy MTM presentation preserved",
+  "hostedGates": {
+    "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+    "ci": "PASS",
+    "standalone": "PASS",
+    "standaloneBuildSteps": "PASS",
+    "allStandaloneStepsIncludingCompleteJob": "completed/success",
+    "ordinary": "PASS",
+    "emulatorContract": "PASS",
+    "ciRun": 39813020973,
+    "standaloneRun": 39813014403,
+    "standaloneJob": 119944638319,
+    "ordinaryRun": 39813020933,
+    "emulatorContractRun": 39813020966,
+    "testSuites": 281,
+    "testsPassed": 2520,
+    "testsTodo": 1,
+    "typeScript": "PASS",
+    "artifactId": 12442030884,
+    "gitHubIncident": "https://www.githubstatus.com/incidents/wq8305lppdc2",
+    "physicalCandidateReady": true,
+    "releaseGate": "CI_PASS_PHYSICAL_ACCEPTANCE_PENDING",
+    "allExactHeadChecks": "PASS"
+  },
+  "apk": {
+    "status": "PASS",
+    "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+    "versionCode": 1033,
+    "zipSha256": "f30542bdca3134294d813b1c0d1f847343c174261066cd3f5f095e235e96e5da",
+    "apkSha256": "3cfb89612b653f30ae176f32b222b20ea9c9ad2a05933506d8416540ffc63c2a",
+    "artifactId": 12442030884
+  },
+  "physicalReadOnlyAcceptance": {
+    "status": "PASS",
+    "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+    "backendArtifactSha": "3ebd57869129f256db53311b29376b0780de1559",
+    "startedAt": "2026-10-22T16:42:41.404050+00:00",
+    "scope": "owned fictional office; no workday/request/read/consent writes",
+    "apkVersionCode": 1033,
+    "maestro": [
+      {
+        "flow": "smoke/all-tabs-rhythm",
+        "exit": 0,
+        "apkVersionCode": 1033,
+        "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+        "flowSha256": "4df52af6d49d72658aa1fba416f3b6b0922d6bff0f6b823a769863edaf15c8c3",
+        "tests": [
+          {
+            "name": "Rhythm all tabs discover filters, draft controls and privacy without writes",
+            "seconds": "218.148",
+            "status": "PASS"
+          }
+        ]
+      },
+      {
+        "flow": "journeys/request-validation",
+        "exit": 0,
+        "apkVersionCode": 1033,
+        "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+        "flowSha256": "b36a1f38ca0ad715a5fc700d665803b2fbbef13df728c60f6306b0396b446261",
+        "tests": [
+          {
+            "name": "An empty reason is refused and closing the draft submits nothing",
+            "seconds": "67.323",
+            "status": "PASS"
+          }
+        ]
+      },
+      {
+        "flow": "smoke/compact-workday",
+        "exit": 0,
+        "apkVersionCode": 1033,
+        "sourceSha": "35540c2350a5057d4164ee764522a1c35ff62388",
+        "flowSha256": "608e347baf5c83eae80d14c7aa8a7dd47030ae71cfa689327d7c751d0e4db539",
+        "tests": [
+          {
+            "name": "Compact workday keeps details discoverable without creating a mark",
+            "seconds": "63.904",
+            "status": "PASS"
+          }
+        ]
+      }
+    ],
+    "screenshots": [
+      "ownworkday-baseline.png",
+      "ownrequests-baseline.png",
+      "ownexplanations-baseline.png",
+      "owninbox-baseline.png",
+      "ownprofile-baseline.png"
+    ],
+    "deviceAppearance": {
+      "nightMode": "Night mode: no",
+      "fontScale": "1.0"
+    },
+    "canonicalEventsUnchanged": true,
+    "officeEventCount": 103,
+    "requestsUnchanged": true,
+    "existingInboxReadStateUnchanged": true,
+    "otherAccountUnchanged": true,
+    "profileSettingsUnchanged": true,
+    "coldRestartNoNewQueue": true,
+    "radiosAndNetworkUnchanged": true,
+    "originalPermissionsRestored": true,
+    "finishedAt": "2026-10-22T16:52:47.243344+00:00",
+    "visualReview": {
+      "status": "BASELINE_FIVE_SCREENSHOTS_REVIEWED",
+      "appearance": "Light, font_scale 1.0 only",
+      "limitations": [
+        "Day and Profile retain scroll offsets; these are not all first-viewport captures",
+        "Legacy unkeyed inbox titles remain server-provided text",
+        "Native dark, 200% text, landscape and TalkBack NOT RUN"
+      ]
+    }
+  },
+  "sourceReview": {
+    "fixed": [
+      "time picker overflow in a short landscape window",
+      "calendar cells under48dp at360dp width",
+      "inbox shortcut landing in sent history",
+      "draft preserved until explicit send or cancel before shortcut",
+      "profile refresh serialized behind device submission"
+    ],
+    "nativeLandscape": "NOT_RUN"
+  },
+  "locales": {
+    "languages": [
+      "az",
+      "ru",
+      "en"
+    ],
+    "rhythmKeysPerLanguage": 34,
+    "parity": "PASS"
+  },
+  "appearance": {
+    "status": "NOT_RUN_TRANSPORT_STOPPED",
+    "attemptStatus": "FAIL",
+    "attempt": "rhythm-appearance-35540c2-v1",
+    "startedAt": "2026-10-22T16:53:42.229568+00:00",
+    "finishedAt": "2026-10-22T16:54:12.592401+00:00",
+    "failureType": "TimeoutExpired",
+    "failureStage": "First ADB shell operation, before original-settings capture, watchdog, draft or theme/font changes",
+    "settingsChangedByAttempt": false,
+    "screenshots": [],
+    "scope": "Native dark and 200% text; draft and settings restoration guards",
+    "nextAction": "Resume in a new immutable attempt directory after Mac ADB service recovery"
+  },
+  "real24h": "NOT_STARTED; earlier v6 remains FAIL",
+  "productionMerge": "NOT_RUN; PR196 remains draft"
+}
