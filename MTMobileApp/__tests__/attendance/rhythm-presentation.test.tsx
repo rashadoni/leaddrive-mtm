@@ -1,5 +1,6 @@
 jest.mock('react-native-vector-icons/Ionicons', () => 'Icon')
-import { TIME_PALETTES } from '../../src/attendance/ui/TimeUI'
+import { currentFieldColorScheme, setFieldColorScheme } from '../../src/theme/fieldTheme'
+import { timeColor, TIME_PALETTES } from '../../src/attendance/ui/TimeUI'
 import { adjacentMonth, calendarDays } from '../../src/attendance/ui/TimeDateField'
 
 const luminance = (hex: string) => {
@@ -21,4 +22,12 @@ it('offers real civil calendar dates across a leap February and year boundaries'
   expect(calendarDays('2026-06')[0]).toBe('2026-06-01') // Monday
   expect(adjacentMonth('2026-12', 1)).toBe('2027-01')
   expect(adjacentMonth('2026-01', -1)).toBe('2025-12')
+})
+
+it('follows the phone palette through live getters without rebuilding the provider', () => {
+  const original = currentFieldColorScheme()
+  try {
+    setFieldColorScheme('dark'); expect(timeColor.accent).toBe(TIME_PALETTES.dark.accent)
+    setFieldColorScheme('light'); expect(timeColor.accent).toBe(TIME_PALETTES.light.accent)
+  } finally { setFieldColorScheme(original) }
 })

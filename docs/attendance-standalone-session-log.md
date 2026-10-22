@@ -962,3 +962,9 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 -149целевыхпроверок/9suites PASS последовательно:102screen +46shared/contrast/calendar/nav/legacy +1новаяпроверка отсутствия вчерашнейистории (Day2targetrerunPASS). InitialFAIL тестовогоremountprovider исправлен сохранениемобёртки, assertions не ослаблены. TargetedESLint14files0errors/45warnings (основныеno-void истарыйtabiconcallback);33RU/AZ/ENkeys parity,5MaestroYAMLparse, gitdiffcheck PASS. FullTS/Jest/build локальноNOT RUN, далееhostedCI.
 - Подготовленall-tabs-rhythm read-onlyMaestro; requestsubmit передаётcompany-derivedREQUEST_MONTH_OFFSET, correction проверяет selectedcivildate, верхнийcloseform. PhysicalNOT RUN до новойсборки. Прежний1029/101canonicalevents остаютсяbaseline; настоящая24hне идёт, v6FAIL сохранён.
 - Точка: sourceготовкcheckpoint/pushPR196 (draft). Дальшеexact-headfullCI/standalone+ordinarybuilds, проверкаSHA APK, при наличиителефонаinstall-r иphysicalalltabs с независимойсверкойисторий/заявок/прочтений/settings.
+
+
+### 2026-10-22,20:09 Баку — первый полный gate: тесты PASS, TS-ошибка палитры
+
+- Sourcead92c787 опубликован, standalone39811003601, CI39811011360, ordinary39811037975, emulatorcontract39811011419. Полныйstandalone281suites/2515tests/1TODO PASS; TS2352 вTimeUI.tsx: fromEntries(undefined) нельзя привести к полной палитре. APKне собран и не установлен. Исправляем полным начальнымобъектом {...LIGHT} перед определениемдинамическихgetters, безts-ignore/unknown ибез ослаблениятипа. Добавлен regression сменыlivepalette. Результатad92остаётсяFAIL, не переименовыватьего вPASS.
+- TargetedESLintпослефинальныхизменений14files0errors/45warnings,18TS/TSXparsePASS,5YAMLparse/33keyparityPASS. Транспорт35037/35038refused,35039listenerpresentноADBget-state/reconnect обаTIMEOUT; запрос пользователю wakeMac/USB, безновыхкоманд. На телефоне1029, новая24hне запущена. Независимаяфинальнаяsourceпроверкапоpolish вработе.

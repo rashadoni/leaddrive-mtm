@@ -50,9 +50,7 @@ const DARK: typeof LIGHT = {
   dangerSoft: '#45272B',
 };
 export const TIME_PALETTES = { light: LIGHT, dark: DARK } as const;
-export const timeColor = Object.fromEntries(
-  Object.keys(LIGHT).map(key => [key, undefined]),
-) as typeof LIGHT;
+export const timeColor = { ...LIGHT };
 for (const key of Object.keys(LIGHT) as (keyof typeof LIGHT)[]) {
   Object.defineProperty(timeColor, key, {
     enumerable: true,
