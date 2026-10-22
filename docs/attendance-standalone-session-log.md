@@ -1089,3 +1089,45 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Native fontv6 completedPASS18:05:26UTC: после200% выбран OwnRequests, форма и исходная причина сохранены; original appearance/history/requests/permissions восстановлены. Это исправляет реальный data-loss1033, но не означает visualPASS. Просмотр after-font PNG выявил обрезание некоторых строк по высоте после live-font change. Подписи вкладок теперь занимают две строки, без прежнегоellipsis, но сами слова могут переноситься посередине.
 - Source RN0.84.1 уточнил оставшуюся причину: ReactSurfaceImpl передаёт font multiplier в Fabric из ReactSurfaceView.onMeasure, а font-only change не обязан менять окно/вызывать новое measure. Нужна явная forceLayout/requestLayout существующей поверхности после обновления DeviceInfo, без remount/потери draft. Добавлен узкий native fix; проверка APK ещё впереди.
 - Параллельных UI actors нет: fontv6 полностью завершён; затем отдельно запущен darkv7 на1035 для проверки пяти вкладок/системной панели, с собственным watchdog/restore и независимой сверкой. Его результат покаRUNNING.
+
+
+### 2026-10-22,22:11 Баку —1035 theme PASS, новый reflow source6d6556c опубликован
+
+- Darkv7 completedPASS18:10:02UTC; все5nativeснимков просмотрены. Нижняя панель и Android navigation теперь тёмные, системные иконки светлые/видимые. Original appearance/data/permissions unchanged. Отдельный visual reviewPASS только theme-scope: это не маскирует line-metricsFAIL при live-font смене. Исходный test resultPENDINGvisual оставлен, companionreview создан отдельно.
+- Checkpoint6d6556cdf157481fab8359df45b71591e61a6398 опубликован; заставляет существующий root поверхностно переизмериться, чтобы Fabric получил новый fontSizeMultiplier изReactSurfaceImpl.onMeasure. Черновик/Reactдерево не перемонтируется. DiffcheckPASS; nativecompile/physical этого изменения покаNOT RUN. NewGitHubCI39828925757, ordinary39828925750, standalone39828917779(run36/code1036); contract39828925756PASS. На телефоне1035, очередь не менялась, реальная24h не идёт.
+
+-22:16 Баку: final reflow source6d CI39828925757/jobs119999566970+119999628422 completedSUCCESS; обе Android-сборки ещё native build in progress. Prepared1036 helpers дополнительно сверяют реальный package version до изменения настроек. На1035 darkv7+fontv6 закончили с восстановлением данных/settings; другие UI actors не запущены. Следующий шаг1036 install/digest и fontv8visual, затем readonlyv6/appearancev5.
+
+-22:19 Баку: standalone6d39828917779/job119999536349 completedSUCCESS, artifact12448975644(source6d/run36/code1036) получен для digest verification. Ordinary39828925750 ещё build in progress; установка1036 не начинается до егоPASS. На1035 все временныеappearanceнастройки возвращены.
+
+
+### 2026-10-22,22:21 Баку — final6d все hosted gates PASS, установка1036
+
+- CI39828925757, standalone39828917779, ordinary39828925750 и contract39828925756 completedSUCCESS с exact head6d6556cdf157481fab8359df45b71591e61a6398. Standaloneartifact12448975644/run36/code1036: ZIP SHA256fbf01841e6dd4cfdfaaeb83947e1381ea55eb07524bc6850d1c63242ede03618; APK SHA256a960c5dc076cefb51eb64dc3b5e147226389f585bbc8ae230afba294d0dbb6e6. Digest/source/install gate PASS. Install-r начат, результат ожидаем до запуска fontv8. Никакого serverdeploy не было.
+
+-22:21:45 Баку: install-r1036 PASS (sameStandaloneUID, ordinaryMTM1710 unchanged, no background location). Затем запущен fontv8 PID1550583, private ROOT/rhythm-font-6d6556c-v8; запуск отдельныйdurable, не зависит от жизни terminal session. Остальные native/Маэстро actors не запущены. ПослеPASS и visual review идут readonlyv6 (3flows), appearancev5, landscapev9; до их запуска только один UI actor.
+
+
+### 2026-10-22,22:25 Баку —1036 visual reflow исправлен, cleanup reader retry
+
+- Fontv8 functional assertionsPASS: форма/выбранные Заявки/причина сохранены; after-font PNG просмотрен — даты, label и строки больше не обрезаются. Итог runnerFAIL из-за единичного ADB read при cleanup: cat XML вернул ненулевой статус после успешного возврата original appearance. Поэтому общий fontv8 не переименовываем вPASS.
+- Bounded transport get-state/shell PASS; файл XML позже существует, конкурирующихUI runners нет (толькоadb_relay.py). Новая независимая UI snapshot первая попыткаPASS: собственное приложение/форма/исходная причина на месте после возвратаfont1.0. Причина единичного read не установлена, не называем её ошибкой nativeUI или физическим отключением.
+- Privatephone_login helper сохранён backup-before-reflow-read-retry; nodes теперь использует уникальное snapshot имя и максимум3read-only retry с удалениемснимка. Тапы/отправки/изменения не повторяются. Запущен отдельный recovery для закрытия только несохранённого тестового черновика/возвратаДня и независимой сверкиoriginal report/requests/permissions. Новый fullappearance отдельно повторит font change чистым запуском.
+
+
+### 2026-10-22,22:28 Баку — cleanup завершён, backend сменился наfe7805b
+
+- Recoveryfontv8 итогFAIL на последнем freezeassert: к этому моменту собственный тестовый черновик закрыт, День возвращёнкQR, history/requests/permissions comparison ужеPASS. Реальный servingSHA изменился3ebd→fe7805b2e8844f8137375a70e5302039254ca304. Это не потеря данных и не новыйнашdeploy. Снимок restored-request просмотрен: нормальные строки не обрезаны, причина сохранилась послеобратногоfontchange; устройство оказалосьlandscape в режимеfree(поворот не задавалсянашимtest).
+- GitHubcompare fevs376533: merge-base точно376533, ahead27,behind0, нашаserverчастьсодержится. СтарыеFAIL/freeze не удаляются. Следующая readonly попытка получает новый immutable label и actualFE freeze, остальные data/source/tenant guards сохраняются. Для детерминированных portraitMaestro временно фиксируем0 сdevicewatchdog иточным восстановлением исходных free/accelerometer1/userRotation0 вfinally.
+
+-22:30:10 Баку: readonlyv7 запущен PID1579943, source6d/1036/backendFE, privateROOT/rhythm-native-6d6556c-v7. Portrait временно lock0 сdevicewatchdog900s иexactfree/accel/userRotationrestore. Beforebaseline записан, первый реальныйMaestroall-tabs вработе; fullappearancev6 иlandscapev10 подготовлены стем жеFE, ещёне запускались. Единственный UI actor — readonlyv7/егоMaestro.
+
+
+### 2026-10-22,22:44 Баку — пользователь отклонил оформление «Дня», корректируем композицию
+
+- Пользователь: «ты дизайн изменил? вкладка сегодняшний день стал уродлоивее». Это новая оценка уже установленного интерфейса; прежний выбор «Ритм» не является приёмкой native «Дня». Сохраняем остальные вкладки и точные правила QR/очереди/доступа/согласия, перерабатываем именно композицию Дня.
+- Native readonlyv7 source6d6556c/code1036/backendfe7805b завершён PASS18:42:29UTC: 3Maestro(215.292s/84.094s/84.604s),103canonicalevents/заявки/readstate/другойаккаунт/профиль/пакеты/radios/network unchanged; originalpermissions и rotation restored. Эти функциональные PASS не означают, что дизайн понравился пользователю. Appearancev6/landscapev10 пока NOT RUN и отложены до исправления Дня; активного UI runner нет.
+- Просмотрен реальный ownworkday-baseline.png light/font1.0: крупная трёхстрочная шапка, тяжёлый зелёный блок, неодинаковые secondarybuttons и длинные двухстрочные receiptrows ухудшают плотность. Применяем distill с имеющимся .impeccable.md: компактная шапка с датой, нейтральная поверхность статуса, одинаковые вторичные действия, краткая хронология; все подробные квитанции/QR/GPS/устройство/согласие остаются доступными, очередь/ошибки не прячутся.
+- Routing: dedicated mtm-attendance-standalone, codex/attendance-standalone, origin rashadoni/leaddrive-mtm. Standalone server route отсутствует; сервер CRM в этой фазе не меняется. Тяжёлые проверки/Android только GitHub; следующим шагом source change, узкие проверки и конкретный preview, затем новая SHA-bound сборка/телефон.
+
+-22:49 Баку: source редакция Дня готова: date/name header меньше, нейтральнаяsurface, статус18sp, две равные secondarybutton, четырёхстрочная timeline с явнымиLOCAL/CONFLICT и доступным полнымdeliverylabel; полные квитанции/согласие/GPS/QR/очередь/ошибки остаются. Без новой бизнес-логики, без изменений сервера или остальных вкладок. Targeted2suites/61testsPASS, localeskeyparityPASS, diffcheckPASS, ESLint0errors/5no-voidwarnings. Полный TS/Jest/Android NOT RUN local — hostcontract, предстоитGitHub. Actual phone нового source ещё NOT RUN.

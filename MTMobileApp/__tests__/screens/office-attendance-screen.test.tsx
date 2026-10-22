@@ -418,6 +418,7 @@ it("Rhythm day history only shows actual receipts for this workday and retains f
   ]
   const Day = () => <AttendanceWorkdayScreen compact />
   const tree = await render(Day, "ru", true)
+  capture(tree, 'rhythm-day-ru')
   expect(tree.root.findAll(item => item.props.testID === "time-history-local").length).toBeGreaterThan(0)
   expect(tree.root.findAll(item => item.props.testID === "time-history-received")).toHaveLength(0)
   mockAsk.mockResolvedValueOnce(false); await press(tree, "office-workday-action")

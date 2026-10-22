@@ -1,4 +1,4 @@
-import { TimeHeader, timeColor, timeStyles, useTimePresentation } from "../../attendance/ui/TimeUI"
+import { timeColor, timeStyles, useTimePresentation } from "../../attendance/ui/TimeUI"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import TimeDayHistory from "../../attendance/ui/TimeDayHistory"
 import AttendanceDisclosure from '../../components/AttendanceDisclosure'
@@ -153,14 +153,21 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
         const day = current ? { startedAt: current.startedAt } : bootstrap?.workday
         const intent = createAttendanceCorrectionIntent(key, server, bootstrap?.timezone, day)
         if (intent) navigation.navigate('OwnRequests', { correction: intent })
-      }}><Text style={styles.secondaryText}>{t('attendanceCorrection.open')}</Text></Pressable>
+      }}>{rhythm && <Icon name="create-outline" size={18} color={timeColor.accent} />}<Text style={styles.secondaryText}>{t('attendanceCorrection.open')}</Text></Pressable>
     {pending && <Text style={compact ? compactStyles.hint : styles.muted}>{t('attendanceCorrection.waitForDelivery')}</Text>}
   </> : null
   const qrReceipt = qr.receipts.filter(row => row.action === 'FINISH').slice(-1)[0] ?? qr.receipts.filter(row => row.action === 'START').slice(-1)[0]
   return <View style={[styles.screen, compact && compactStyles.screen]}>
     <LightScreenStatusBar />
     <View style={[styles.header, compact && compactStyles.header, { paddingTop: top }]}>{rhythm
-      ? <TimeHeader title={t('attendanceCompact.tabs.day')} subtitle={allowed ? agent?.name : undefined} />
+      ? <View style={rhythmCompactStyles.heading}>
+        <Text style={rhythmCompactStyles.brand}>LeadDrive Time</Text>
+        <View style={rhythmCompactStyles.headingRow}>
+          <Text accessibilityRole="header" style={rhythmCompactStyles.headingTitle}>{t('attendanceCompact.tabs.day')}</Text>
+          <Text style={rhythmCompactStyles.date}>{formatLocalizedDate(dateKey(bootstrap?.timezone ?? null), i18n.language, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</Text>
+        </View>
+        {allowed && <Text style={rhythmCompactStyles.identity}>{agent?.name}</Text>}
+      </View>
       : <View style={styles.headerRow}><View style={styles.headerCopy}>
         <Text style={styles.brand}>{compact ? 'LeadDrive Time' : t("officeAttendance.myAttendance")}</Text>
         <Text style={compact ? compactStyles.identity : styles.title}>{compact ? (allowed ? agent?.name : '') : t("officeAttendance.workday")}</Text>
@@ -170,9 +177,12 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
       {!allowed ? <Text testID="office-workday-unavailable" style={styles.muted}>{t("officeAttendance.unavailable")}</Text> : <>
         <View style={[compact ? compactStyles.day : styles.card, rhythm && paused && rhythmCompactStyles.pausedDay]}>
           {compact && !rhythm && <Text style={compactStyles.title}>{t('officeAttendance.workday')}</Text>}
-          <Text accessibilityRole={compact ? 'header' : undefined} style={compact ? compactStyles.status : styles.status}>{t(`officeAttendance.${state}`)}</Text>
+          {rhythm ? <View style={rhythmCompactStyles.statusRow}>
+            <View style={[rhythmCompactStyles.statusDot, paused && rhythmCompactStyles.pausedDot, !open && !completed && rhythmCompactStyles.idleDot]} />
+            <Text accessibilityRole="header" style={compactStyles.status}>{t(`officeAttendance.${state}`)}</Text>
+          </View> : <Text accessibilityRole={compact ? 'header' : undefined} style={compact ? compactStyles.status : styles.status}>{t(`officeAttendance.${state}`)}</Text>}
           {!compact && <Text style={styles.name}>{agent?.name}</Text>}
-          <Text style={compact ? compactStyles.time : styles.clock}>{rhythm && !open && !completed ? formatLocalizedDate(dateKey(bootstrap?.timezone ?? null), i18n.language, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }) : compact ? `${t(completed ? 'officeAttendance.finishedAt' : 'officeAttendance.startedAt')} · ${dayTime}` : dayTime}</Text>
+          {(!rhythm || open || completed) && <Text style={compact ? compactStyles.time : styles.clock}>{compact ? `${t(completed ? 'officeAttendance.finishedAt' : 'officeAttendance.startedAt')} · ${dayTime}` : dayTime}</Text>}
           {!compact && <Text style={styles.muted}>{t(completed ? "officeAttendance.finishedAt" : "officeAttendance.startedAt")}</Text>}
           {paused && <Text style={compact ? compactStyles.hint : styles.muted}>{t("officeAttendance.pausedAt", { time: time(current?.pausedAt) })}</Text>}
           {offline && <View style={compact ? compactStyles.offline : undefined}>
@@ -188,10 +198,11 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
           {!compact && qr.available && !completed && <Text style={styles.muted}>{t(paused?'attendanceQr.breakPrivacy':'attendanceQr.optional')}</Text>}
           {compact && qrAction}
           <View style={compact ? compactStyles.actions : styles.actions}>
-            {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || conflict} onPress={() => void change(paused ? 'resume' : 'pause')} style={[styles.button, styles.secondary, (busy || conflict) && styles.disabled]}><Text style={styles.secondaryText}>{t(paused ? 'officeAttendance.resume' : 'officeAttendance.pause')}</Text></Pressable>}
+            {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || conflict} onPress={() => void change(paused ? 'resume' : 'pause')} style={[styles.button, styles.secondary, rhythm && rhythmCompactStyles.pairedAction, (busy || conflict) && styles.disabled]}>{rhythm && <Icon name={paused ? 'play-outline' : 'pause-outline'} size={19} color={timeColor.accent} />}<Text style={[styles.secondaryText, rhythm && rhythmCompactStyles.actionLabel]}>{t(paused ? 'officeAttendance.resume' : 'officeAttendance.pause')}</Text></Pressable>}
             {!completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || conflict} onPress={() => void change(open ? 'end' : 'start')}
-              style={compact && qr.available && open ? [compactStyles.textAction, (busy || !hydrated || conflict) && styles.disabled] : [styles.button, qr.available && styles.secondary, (busy || !hydrated || conflict) && styles.disabled]}>
-              <Text style={qr.available ? styles.secondaryText : styles.buttonText}>{t(qr.available ? (open ? 'attendanceQr.finishWithoutQr' : 'attendanceQr.startWithoutQr') : (open ? 'officeAttendance.finish' : 'officeAttendance.start'))}</Text>
+              style={rhythm ? [styles.button, qr.available && styles.secondary, open && rhythmCompactStyles.pairedAction, (busy || !hydrated || conflict) && styles.disabled] : compact && qr.available && open ? [compactStyles.textAction, (busy || !hydrated || conflict) && styles.disabled] : [styles.button, qr.available && styles.secondary, (busy || !hydrated || conflict) && styles.disabled]}>
+              {rhythm && open && <Icon name="stop-circle-outline" size={19} color={qr.available ? timeColor.accent : timeColor.onFill} />}
+              <Text style={[qr.available ? styles.secondaryText : styles.buttonText, rhythm && rhythmCompactStyles.actionLabel]}>{t(qr.available ? (open ? 'attendanceQr.finishWithoutQr' : 'attendanceQr.startWithoutQr') : (open ? 'officeAttendance.finish' : 'officeAttendance.start'))}</Text>
             </Pressable>}
             {returnable && <Pressable testID="office-workday-return" accessibilityRole="button" disabled={busy || !hydrated || pending} onPress={() => void returnToWork()} style={[styles.button, (busy || !hydrated || pending) && styles.disabled]}><Text style={styles.buttonText}>{t('officeAttendance.returnToWork')}</Text></Pressable>}
           </View>
@@ -264,17 +275,23 @@ const legacyCompactStyles = themed(() => StyleSheet.create({
 
 const rhythmStyles = themed(() => StyleSheet.create({
   ...legacyStyles, screen: { ...timeStyles.screen }, header: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 20 },
-  content: { ...timeStyles.content }, button: { ...timeStyles.action, ...timeStyles.primary, flexGrow: 1 }, buttonText: { ...timeStyles.primaryText, fontSize: 16, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
-  secondary: { backgroundColor: timeColor.surface, borderWidth: 1, borderColor: timeColor.line }, secondaryText: { color: timeColor.accent, fontSize: 16, lineHeight: 23, fontWeight: '700', textAlign: 'center' },
+  content: { ...timeStyles.content }, button: { ...timeStyles.action, ...timeStyles.primary, borderRadius: 12, flexGrow: 1 }, buttonText: { ...timeStyles.primaryText, fontSize: 15, lineHeight: 21, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
+  secondary: { backgroundColor: timeColor.surface, borderWidth: 1, borderColor: timeColor.line }, secondaryText: { color: timeColor.accent, fontSize: 15, lineHeight: 21, fontWeight: '600', textAlign: 'center' },
   muted: { ...timeStyles.caption }, notice: { color: timeColor.amber, fontSize: 15, lineHeight: 22 }, error: { color: timeColor.danger, fontSize: 15, lineHeight: 22 },
   qrReason: { ...timeStyles.caption }, inactiveQr: { alignSelf: 'flex-start', backgroundColor: timeColor.inset, flexGrow: 0 }, inactiveQrText: { color: timeColor.ink },
 }))
 const rhythmCompactStyles = themed(() => StyleSheet.create({
   ...legacyCompactStyles,
-  screen: { backgroundColor: timeColor.canvas }, header: { paddingHorizontal: 20, paddingBottom: 0 }, content: { ...timeStyles.content },
-  day: { backgroundColor: timeColor.soft, borderRadius: 24, padding: 20, gap: 12 }, pausedDay: { backgroundColor: timeColor.amberSoft },
-  status: { color: timeColor.ink, fontSize: 25, lineHeight: 32, fontWeight: '800', letterSpacing: -0.4 },
-  time: { color: timeColor.muted, fontSize: 14, lineHeight: 21 }, hint: { ...timeStyles.caption }, qrAction: { gap: 8, paddingTop: 4 },
+  screen: { backgroundColor: timeColor.canvas }, header: { paddingHorizontal: 20, paddingBottom: 16 }, content: { ...timeStyles.content },
+  heading: { gap: 4, paddingTop: 8 }, headingRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', columnGap: 16, rowGap: 4 },
+  brand: { color: timeColor.accent, fontSize: 12, lineHeight: 18, fontWeight: '700' }, headingTitle: { color: timeColor.ink, fontSize: 24, lineHeight: 30, fontWeight: '700', flexShrink: 1 },
+  date: { color: timeColor.muted, fontSize: 13, lineHeight: 20, flexShrink: 1 }, identity: { color: timeColor.muted, fontSize: 13, lineHeight: 20 },
+  day: { backgroundColor: timeColor.surface, borderColor: timeColor.line, borderWidth: 1, borderRadius: 20, padding: 16, gap: 12 }, pausedDay: { borderColor: timeColor.amber },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: timeColor.accent }, pausedDot: { backgroundColor: timeColor.amber }, idleDot: { backgroundColor: timeColor.muted },
+  status: { color: timeColor.ink, fontSize: 18, lineHeight: 25, fontWeight: '700', flex: 1 },
+  time: { color: timeColor.muted, fontSize: 13, lineHeight: 20 }, hint: { ...timeStyles.caption }, qrAction: { gap: 8 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, details: { gap: 8 },
+  pairedAction: { flexBasis: '45%', flexGrow: 1, flexShrink: 1 }, actionLabel: { flexShrink: 1 },
+  textAction: { minHeight: 48, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   offline: { backgroundColor: timeColor.amberSoft, borderRadius: 16, padding: 12, gap: 4 },
 }))
