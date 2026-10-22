@@ -1,5 +1,5 @@
 {
-  "status": "IMPLEMENTED_PENDING_HOSTED_AND_PHYSICAL_GATES",
+  "status": "IMPLEMENTED_HOSTED_CI_PASS_PHYSICAL_BLOCKED",
   "scope": "Standalone compact workday presentation; ordinary MTM uses the existing layout",
   "targeted": {
     "status": "PASS",
@@ -63,7 +63,7 @@
   "nativeRenderEvidence": "React TestRenderer host trees captured for AZ/RU/EN and offline-pending; not physical screenshots",
   "typecheck": "NOT RUN locally: full gate assigned to hosted CI",
   "androidBuild": "NOT RUN locally: host prohibits heavy builds",
-  "physicalCompactUI": "NOT RUN: connection lost before installation",
+  "physicalCompactUI": "NOT RUN: Mac ADB tunnel responds, but no USB device is visible",
   "soakVersion1025": {
     "status": "FAIL",
     "cause": "Mac reverse connection closed",
@@ -72,5 +72,40 @@
     "cleanupConfirmed": false
   },
   "permissionsAndQueueLogicChanged": false,
-  "backendChanges": false
+  "backendChanges": false,
+  "sourceSha": "6aced57c99f492df71f92262f048f390d400b54b",
+  "hosted": {
+    "ci": {
+      "runId": 39791935061,
+      "status": "PASS",
+      "suites": 280,
+      "passed": 2498,
+      "todo": 1,
+      "typecheck": "PASS"
+    },
+    "emulatorContract": {
+      "runId": 39791935010,
+      "status": "PASS",
+      "actualEmulatorRun": false
+    },
+    "standaloneAndroid": {
+      "runId": 39791925849,
+      "status": "PASS",
+      "versionCode": 1029,
+      "packageSignaturePermissionsVerified": true
+    },
+    "ordinaryAndroid": {
+      "runId": 39791935096,
+      "status": "IN_PROGRESS"
+    }
+  },
+  "candidateArtifact": {
+    "artifactId": 12432980021,
+    "sourceSha": "6aced57c99f492df71f92262f048f390d400b54b",
+    "zipSha256": "f44246e4ae2aa27c370af557dfb22e6051f39aa33bfa996d3aca69b8703a34b5",
+    "apkSha256": "0f3e9780200fd10256149bd4dad67e0cb2a1ed9f0dceb03e432c77d809d7533c",
+    "digestVerification": "PASS",
+    "installed": false
+  },
+  "interruptedQueueRecovery": "NOT RUN: prepared bounded recovery of three captured claims, waiting for USB; not a 24h acceptance"
 }
