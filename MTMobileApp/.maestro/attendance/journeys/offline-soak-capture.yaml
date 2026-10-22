@@ -30,6 +30,7 @@ name: Capture three offline actions before a real 24-hour hold
     timeout: 60000
 - tapOn:
     id: office-workday-break
+    enabled: true
 - scrollUntilVisible:
     element:
       text: "${output.copy.paused}"
@@ -38,6 +39,11 @@ name: Capture three offline actions before a real 24-hour hold
 - assertVisible: "${output.copy.paused}"
 - assertVisible:
     id: office-workday-pending
+- extendedWaitUntil:
+    visible:
+      id: office-workday-break
+      enabled: true
+    timeout: 60000
 - stopApp
 - launchApp:
     clearState: false
@@ -55,12 +61,18 @@ name: Capture three offline actions before a real 24-hour hold
     timeout: 60000
 - tapOn:
     id: office-workday-break
+    enabled: true
 - scrollUntilVisible:
     element:
       text: "${output.copy.running}"
     direction: UP
     timeout: 60000
 - assertVisible: "${output.copy.running}"
+- extendedWaitUntil:
+    visible:
+      id: office-workday-break
+      enabled: true
+    timeout: 60000
 - stopApp
 - launchApp:
     clearState: false
@@ -78,6 +90,7 @@ name: Capture three offline actions before a real 24-hour hold
     timeout: 60000
 - tapOn:
     id: office-workday-action
+    enabled: true
 - assertVisible: "${output.copy.finishTitle}"
 - tapOn:
     id: app-choice-button-1
@@ -87,6 +100,11 @@ name: Capture three offline actions before a real 24-hour hold
     direction: UP
     timeout: 60000
 - assertVisible: "${output.copy.completed}"
+- extendedWaitUntil:
+    visible:
+      id: office-workday-return
+      enabled: true
+    timeout: 60000
 - stopApp
 - launchApp:
     clearState: false

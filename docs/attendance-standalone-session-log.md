@@ -789,3 +789,16 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 
 - GPS-v2 Maestro PASS48.918с, независимый сервер INSIDE/0м для новой revision тестовогоGPSфилиала с прежним radius100м. Новая настоящая foreground позиция, не подстановка координат в отметку.71 прошлое событие/заявки/радио сохранены, ровноREOPEN/RESUME/FINISH добавлены; исходные разрешения восстановлены. Всего74 события, day COMPLETED. Отдельный OUTSIDE-v1 остаётся в evidence, его неудачное первоначальное ожиданиеINSIDE не переписано.
 - На1025 начат новый regression runner: receipts → own marks → real-date correction admin fixture → office restored, с отдельными immutable результатами и финальным восстановлением разрешения камеры пользователя. Только после всех PASS начнётся physical_soak_v4; сейчас real24h NOT RUN. CRM journal checkpoint8332599b9 локальный, серверный код/release не менялся.
+
+
+### 2026-10-22, 16:13 Баку — краткий обрыв Maestro, исходные данные сохранены
+
+- Regression1025-v1 FAIL: Maestro receipt-existing-day89.571с остановился с DeviceServerDied/grpc UNAVAILABLE при чтении иерархии после финального restart. Все5 положенных событий REOPEN/RESUME/PAUSE/RESUME/FINISH уже доставлены,74 прежних события неизменны, day COMPLETED. Это неPASS полногоflow, прежний failure сохранён. РазрешенияCAMERA=true/FINE=false/COARSE=false восстановлены, обе сетиallow, суточная блокировка не начиналась.
+- ADB продолжает отвечать; завершённые технические driver packages освобождены без очистки приложения. Новая отдельная bounded попытка regression-v2 запущена; предыдущие артефакты не перезаписываются. При повторной неисправности сначала диагностика, не бесконечный локальный retry. physical_soak_v4 будет требовать именно v2PASS; final cleanup исправлен на восстановление каждого исходного permission, включая пользовательскоеCAMERA=true.
+
+
+### 2026-10-22, 16:17 Баку — receipt1025 PASS; продолжение read-only приёмки
+
+- Receipt-v2 Maestro PASS99.712с; независимая сверка PASS:79 предыдущих событий неизменны, ровноREOPEN/RESUME/PAUSE/RESUME/FINISH, receipt видна после restart, другой аккаунт/заявки/настройки неизменны. Всего84 события. После этого read-only helper остановился доUI из-за ошибочного имени baseline20261025 вместо20261022 (результатFAIL сохранён). Исправлена только ссылка private harness; продолжение readonly-v3 использует уже пройденнуюreceipt-v2 и не повторяет записи рабочего дня.
+- В offline-soak-capture добавлены enabled checks перед действиями и перед cold restart послеPAUSE/RESUME/FINISH. Это тот же выявленный ранее риск преждевременного restart, исправленный дляreceipt. Maestro2.11 check-syntax PASS; runtime не изменился, установленный3ae/1025 остаётся кандидатом. Физический offline capture покаNOT RUN.
+- Публикуется логический test/evidence checkpoint; builds на новойtest-onlySHA не устанавливать автоматически. Runtime equivalence к3ae проверить поsrc/android/package/index. Real24h по-прежнему не начат; после read-only приёмки запустить private physical_soak_v4 с исходными permission restoration и независимым real-time guard.
