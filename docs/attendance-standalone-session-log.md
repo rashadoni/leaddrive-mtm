@@ -1066,3 +1066,26 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 ### 2026-10-22,21:47 Баку — уточнена изоляция native fix по applicationId
 
 - При проверке фактического build.gradle выявлена ошибочная предпосылка в source2db: отдельный APK выбирается project property attendanceApp, а не productFlavor. BuildConfig.FLAVOR не является проверенным контрактом. Заменено на реальный BuildConfig.APPLICATION_ID == com.leaddrive.attendance, тот же канонический install identity, который уже проверяется при установке. Это correction по source inspection; native gate2db не объявляем PASS/FAIL без итога, промежуточные сборки отменяем как superseded и публикуем исправленный checkpoint. Новые APK ещё не устанавливались.
+
+
+### 2026-10-22,21:49 Баку — финальный c44ace9 CI PASS, Android ещё в работе
+
+- Sourcec44ace9aa433e3f52fb5bfc95a001f5ba802804b опубликован. CI39825689566/jobs119988248746+119988375651 completedSUCCESS; standalone39825683278/run35/job119988872540 queued; ordinary39825689438/job119988247960 build in progress. Предыдущие2db Android39825116122/39825122879 отменены как superseded, их результат не приписывается c44. PRhead/описание обновлены c44, draft сохранён.
+- Подготовлены private неизменяемые helpers для c44/1035: strict all-gates downloader/install preflight, fontv6, read-onlyv5 и appearancev4 с ранней проверкой сохранения формы и обработкой SIGTERM/восстановлением. Пока NOT RUN до полного CI+обеих сборок/SHA-bound APK. На телефоне1033 и исходные настройки.
+
+-21:55 Баку: finalsource c44 ordinary Android39825689438/job119988247960 completedSUCCESS. Native MainActivity API успешно компилируется в обычной сборке; это не заменяет standalone manifest/package/physical приёмку. Standalone39825683278 ещё build in progress. ПолныйCI:282suites/2521tests/1TODO, TypeScriptPASS подтверждены job logs119988375651.
+
+
+### 2026-10-22,22:03 Баку — все c44 гейты PASS, APK1035 проверен
+
+- Все четыре workflow exact-source c44 completedSUCCESS: CI39825689566, standalone39825683278, ordinary39825689438, contract39825689106. Scope и оба282suites/2521tests/1TODO+TS подтверждены; старые cancelled2db не подменяют результаты. Artifact12447871373 sourcec44/run35/code1035. ZIP SHA256263e32b552b667ab028afbae2961933d13a6c590867a9eacdbf62bd3bb65294d и APK SHA2563aeeae919cddac70a828dad79a9e33f00e701397732f70612a221df8928aa231 PASS. Никакого исключения aggregatepending в этом выпуске нет.
+- Install-r1035 начат, его итог пока ожидается. Попытка запуска font helper до завершения install остановлена source/installed identity assertion до создания каталога/процесса и до изменений телефона. Правильный порядок — дождаться install receipt, затем physical.
+
+-22:03 Баку: install-r1035 PASS, прежний standaloneUID/вход сохранён, ordinaryMTM identity неизменна, background location отсутствует. После получения install receipt fontv6 запущен отдельно с durable launch/result files; на предыдущем незавершённом install ничего не изменялось.
+
+
+### 2026-10-22,22:06 Баку —1035 сохраняет черновик, visual reflow требует доводки
+
+- Native fontv6 completedPASS18:05:26UTC: после200% выбран OwnRequests, форма и исходная причина сохранены; original appearance/history/requests/permissions восстановлены. Это исправляет реальный data-loss1033, но не означает visualPASS. Просмотр after-font PNG выявил обрезание некоторых строк по высоте после live-font change. Подписи вкладок теперь занимают две строки, без прежнегоellipsis, но сами слова могут переноситься посередине.
+- Source RN0.84.1 уточнил оставшуюся причину: ReactSurfaceImpl передаёт font multiplier в Fabric из ReactSurfaceView.onMeasure, а font-only change не обязан менять окно/вызывать новое measure. Нужна явная forceLayout/requestLayout существующей поверхности после обновления DeviceInfo, без remount/потери draft. Добавлен узкий native fix; проверка APK ещё впереди.
+- Параллельных UI actors нет: fontv6 полностью завершён; затем отдельно запущен darkv7 на1035 для проверки пяти вкладок/системной панели, с собственным watchdog/restore и независимой сверкой. Его результат покаRUNNING.

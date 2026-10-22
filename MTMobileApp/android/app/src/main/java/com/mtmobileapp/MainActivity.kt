@@ -36,6 +36,13 @@ class MainActivity : ReactActivity() {
     // the Activity and the open React form must remain mounted.
     val context = (application as ReactApplication).reactHost?.currentReactContext
     (context?.getNativeModule("DeviceInfo") as? LifecycleEventListener)?.onHostResume()
+    // A font-only change can leave the window bounds unchanged. Force the
+    // surface to measure again so Fabric receives the new font multiplier;
+    // updating JS Dimensions alone keeps old line boxes and clips glyphs.
+    reactDelegate?.reactRootView?.let { root ->
+      root.forceLayout()
+      root.requestLayout()
+    }
   }
 
   @Suppress("DEPRECATION") // navigationBarColor is needed on pre-edge-to-edge Android.

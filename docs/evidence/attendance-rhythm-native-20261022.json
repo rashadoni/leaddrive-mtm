@@ -182,5 +182,53 @@
     "talkBack": "NOT_RUN"
   },
   "real24h": "NOT_STARTED; earlier v6 remains FAIL",
-  "productionMerge": "NOT_RUN; PR196 remains draft"
+  "productionMerge": "NOT_RUN; PR196 remains draft",
+  "fixCandidate": {
+    "sourceSha": "c44ace9aa433e3f52fb5bfc95a001f5ba802804b",
+    "expectedVersionCode": 1035,
+    "ci": "PASS",
+    "typeScript": "PASS",
+    "testsPassed": 2521,
+    "testSuites": 282,
+    "testsTodo": 1,
+    "standalone": "PASS",
+    "ordinary": "PASS",
+    "physical": "FONT_RETENTION_PASS_VISUAL_REFLOW_FIX_IN_PROGRESS",
+    "ciRun": 39825689566,
+    "standaloneRun": 39825683278,
+    "ordinaryRun": 39825689438,
+    "contractRun": 39825689106,
+    "emulatorContract": "PASS",
+    "apk": {
+      "status": "PASS",
+      "sourceSha": "c44ace9aa433e3f52fb5bfc95a001f5ba802804b",
+      "versionCode": 1035,
+      "zipSha256": "263e32b552b667ab028afbae2961933d13a6c590867a9eacdbf62bd3bb65294d",
+      "apkSha256": "3aeeae919cddac70a828dad79a9e33f00e701397732f70612a221df8928aa231",
+      "artifactId": 12447871373
+    },
+    "installation": {
+      "status": "PASS",
+      "versionCode": 1035,
+      "ordinaryMtmUnchanged": true,
+      "sameStandaloneUid": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    "fontRetention": {
+      "status": "PASS",
+      "sourceSha": "c44ace9aa433e3f52fb5bfc95a001f5ba802804b",
+      "startedAt": "2026-10-22T18:03:37.791655+00:00",
+      "draftVerifiedBeforeChange": true,
+      "formPresentAfterFontChange": true,
+      "selectedTabsAfterFontChange": [
+        "time-tab-OwnRequests"
+      ],
+      "draftPreserved": true,
+      "originalAppearanceRestored": true,
+      "historyAndRequestsUnchanged": true,
+      "permissionsUnchanged": true,
+      "finishedAt": "2026-10-22T18:05:26.964086+00:00"
+    },
+    "largeTextVisualReview": "FAIL: line boxes clip glyphs after live font change; draft retention PASS is separate"
+  }
 }
