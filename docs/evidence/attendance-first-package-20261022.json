@@ -193,6 +193,19 @@
     "status": "SUCCESS",
     "emulatorContract": 39757861686,
     "emulatorContractStatus": "SUCCESS",
-    "nativeBuilds": "IN_PROGRESS; no APK replacement performed"
+    "nativeBuilds": "SUCCESS",
+    "standaloneNativeRun": 39757854839,
+    "ordinaryMtmNativeRun": 39757861609
+  },
+  "laterBackendCompatibility": {
+    "checkedAt": "2026-10-22T10:28:26.907449+00:00",
+    "artifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+    "requiredAncestorSha": "376533a340f8d44b5034af7cc71c459d2c1d6f6e",
+    "ownMarksCount": 25,
+    "ownMarksRead": "PASS",
+    "requiredAncestorVerified": true,
+    "aheadByCommits": 2,
+    "deployRun": 39756130476,
+    "deployStatus": "SUCCESS"
   }
 }
