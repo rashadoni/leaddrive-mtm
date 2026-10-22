@@ -13,13 +13,14 @@ import { useBootstrapStore } from "../../src/store/bootstrap"
 import { useSyncStatusStore } from "../../src/store/sync-status"
 import { useWorkdayStore } from "../../src/store/workday"
 import { setOfflineScope } from "../../src/services/offline-scope"
-import { enqueueOutboxOperation, allOutboxOperations, retryOutboxConflict } from "../../src/services/outbox"
+import { enqueueOutboxOperation, allOutboxOperations, retryOutboxConflict, flushOutbox } from "../../src/services/outbox"
 import { runMobileSync } from "../../src/services/sync-engine"
 import { allMediaUploads, flushMediaOutbox } from "../../src/services/media-outbox"
 import { flushRouteCommandJournal } from "../../src/services/route-command-journal"
 import { pullAndApplySync } from "../../src/services/sync-cache"
 import { syncRouteV2Routes } from "../../src/services/sync-v2-routes"
-import { queueAttendanceRequest, attendanceScope } from "../../src/services/attendance-requests"
+import { queueAttendanceRequest, attendanceScope, pushAttendanceAndLegacy } from "../../src/services/attendance-requests"
+import { readAttendanceReceipts } from "../../src/services/attendance-receipts"
 import { guardOfficeAttendance } from "../../src/services/attendance-session-guard"
 import { getFieldDeviceId } from "../../src/services/field-device-id"
 import { officeAgent, officeBootstrap } from "../../test-support/office-attendance"
@@ -28,7 +29,7 @@ let data = officeBootstrap()
 beforeEach(async () => {
   useSyncStatusStore.getState().setOnline(true)
   jest.clearAllMocks(); await AsyncStorage.clear(); setOfflineScope(officeAgent.organizationId, officeAgent.id); data = officeBootstrap()
-  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ isLoggedIn: true, agent: officeAgent })
+  ;(useAuthStore.getState as jest.Mock).mockReturnValue({ isLoggedIn: true, agent: officeAgent, serverDomain: 'fixture.invalid' })
   ;(useBootstrapStore.getState as jest.Mock).mockImplementation(() => ({ routeFieldAccess: "unavailable", data }))
   ;(api.syncPush as jest.Mock).mockImplementation(async operations => ({ results: operations.map((item: {operationId: string}) => ({ operationId: item.operationId, status: "ok" })) }))
   useWorkdayStore.setState({ activeWorkday: null, finishedWorkday: null, hydrated: true, syncError: null })
@@ -43,6 +44,29 @@ it("sends only own workdays and attendance requests while preserving every other
   expect((api.syncPush as jest.Mock).mock.calls[0][0].map((item: { entity: string }) => item.entity)).toEqual(["workdays"])
   expect(await allOutboxOperations()).toEqual([field])
   for (const fn of [api.syncPull, api.uploadPhoto, allMediaUploads, flushMediaOutbox, flushRouteCommandJournal, pullAndApplySync, syncRouteV2Routes]) expect(fn).not.toHaveBeenCalled()
+})
+it('retains an accepted mark until its receipt is durable, then replays without duplicate receipts', async () => {
+  const original = await enqueueOutboxOperation({ entity: 'workdays', op: 'create', data: { action: 'START', id: 'receipt-day', occurredAt: '2026-10-22T05:00:00Z' } })
+  ;(api.syncPush as jest.Mock).mockImplementation(async operations => ({ results: operations.map((item: typeof original) => ({ operationId: item.operationId, status: 'ok', serverData: {
+    event: { id: 'receipt-event', workdayId: 'receipt-day', clientEventId: item.operationId, type: 'START', claimedAt: item.data.occurredAt, serverReceivedAt: '2026-10-22T05:01:00Z' }, review: { state: 'NOT_REQUIRED' },
+  } })) }))
+  const set = AsyncStorage.setItem as jest.Mock, persist = set.getMockImplementation()!
+  let fail = true
+  set.mockImplementation(async (key, value) => {
+    if (key.startsWith('@mtm_attendance_delivery') && fail) { fail = false; throw new Error('receipt disk failure') }
+    return persist(key, value)
+  })
+  try {
+    expect((await runMobileSync()).deferred).toBe(1)
+    expect((await allOutboxOperations())[0]).toMatchObject({ operationId: original.operationId, data: original.data })
+    expect(await readAttendanceReceipts({ scope, server: 'fixture.invalid' })).toEqual([])
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 120_000)
+    try { expect((await flushOutbox(pushAttendanceAndLegacy, { orderedWorkdays: true })).sent).toBe(1) }
+    finally { clock.mockRestore() }
+    expect(await allOutboxOperations()).toEqual([])
+    expect(await readAttendanceReceipts({ scope, server: 'fixture.invalid' })).toHaveLength(1)
+    expect((api.syncPush as jest.Mock).mock.calls.map(call => call[0][0].operationId)).toEqual([original.operationId, original.operationId])
+  } finally { set.mockImplementation(persist) }
 })
 it("retains canonical START/PAUSE/RESUME/FINISH identities and never adds location to any event", async () => {
   const store = useWorkdayStore.getState(); await store.start(scope, () => guardOfficeAttendance(scope))

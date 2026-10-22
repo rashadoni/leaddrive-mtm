@@ -1,5 +1,7 @@
 import AttendanceQrScanner from '../../components/AttendanceQrScanner'
 import AttendanceQrReceipt from '../../components/AttendanceQrReceipt'
+import AttendanceDeliveryReceipts from '../../components/AttendanceDeliveryReceipts'
+import { useAttendanceReceipts } from '../../hooks/useAttendanceReceipts'
 import {useAttendanceQr} from '../../hooks/useAttendanceQr'
 import {guardAttendanceQr} from '../../services/attendance-qr'
 import AttendanceInstallationCard from '../../components/AttendanceInstallationCard'
@@ -46,6 +48,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
   const [installationRefusal, setInstallationRefusal] = useState<'installation' | 'app' | null>(null)
   const [returnRefusal, setReturnRefusal] = useState<{ key: string; workdayId: string; reason: 'notToday' | 'locked' } | null>(null)
   const recovery = useAttendanceMarkRecovery()
+  const deliveries = useAttendanceReceipts()
   const installation = useAttendanceInstallation()
   const mounted = useRef(true), busyRef = useRef(false)
   const key = workdayKey(agent?.organizationId, agent?.id), allowed = hasOfficeAttendanceAccess(bootstrap, agent)
@@ -74,10 +77,10 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
   const refresh = useCallback(async () => {
     if (busyRef.current) return
     setRefreshing(true)
-    try { await refreshAttendanceSession(); await loadQueue(); if (mounted.current) setError(false) }
+    try { await refreshAttendanceSession(); await loadQueue(); await deliveries.reload(); if (mounted.current) setError(false) }
     catch { if (mounted.current) setError(true) }
     finally { if (mounted.current) setRefreshing(false) }
-  }, [loadQueue])
+  }, [loadQueue, deliveries.reload])
   useAutoRefresh(() => { void refresh() })
   useEffect(() => { mounted.current = true; if (allowed) void loadQueue().catch(() => {}); else setOperations([]); return () => { mounted.current = false } }, [allowed, key, loadQueue])
   async function change(action: "start" | "end" | "pause" | "resume", qrToken?: string) {
@@ -158,6 +161,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false }: { mana
           <Text style={styles.muted}>{t("officeAttendance.closeHint")}</Text>
         </View>
         <AttendanceQrReceipt receipts={qr.receipts} />
+        <AttendanceDeliveryReceipts rows={deliveries.rows} failed={deliveries.failed} timezone={bootstrap?.timezone} />
         <AttendanceInstallationCard installation={installation} />
         <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation}
           dependentEvents={!!recovery.operation && operations.some(item => item.operationId !== recovery.operation!.operationId && (item.data.id ?? item.data.workdayId) === (recovery.operation!.data.id ?? recovery.operation!.data.workdayId))}

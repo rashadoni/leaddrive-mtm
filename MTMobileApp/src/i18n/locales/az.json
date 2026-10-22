@@ -1316,5 +1316,24 @@
     "message": "LeadDrive Route Field {{version}} hazırdır. İndi quraşdırılsın? Göndərilməmiş ziyarətlər və qaralamalar telefonda qalacaq.",
     "update": "Yenilə",
     "later": "Sonra"
+  },
+  "attendanceReceipts": {
+    "title": "Qeyd qəbzləri",
+    "deviceHistory": "Bu telefonda saxlanmış son qeydlər.",
+    "START": "İşin başlanğıcı",
+    "PAUSE": "Fasilənin başlanğıcı",
+    "RESUME": "Fasilədən qayıdış",
+    "FINISH": "İşin sonu",
+    "LOCAL": "Telefonda saxlanıb · göndərilmə gözlənilir",
+    "CONFLICT": "Qəbul edilməyib · baxılmalıdır",
+    "RECEIVED": "Serverə çatıb",
+    "receivedAt": "Serverin qəbul vaxtı: {{time}}",
+    "reopenToSend": "İnternet olduqda qeydi göndərmək üçün tətbiqi açın.",
+    "conflictHelp": "Səbəbə iş günü ekranında baxın. Lazım gələrsə, vaxtın düzəldilməsi üçün müraciət göndərin.",
+    "delayedAtDelivery": "Qəbul zamanı server gecikmiş göndərişi kadr yoxlaması üçün işarələyib.",
+    "deliveryNotApproval": "Qeydin qəbulu onun çatdırıldığını göstərir. Kadr qərarları müraciətlərdə və izahatlarda göstərilir.",
+    "loadFailed": "Qəbzləri oxumaq alınmadı. Ekranı yeniləyin; çatdırılma vəziyyəti hələ məlum deyil.",
+    "more": "Bütün saxlanmış qeydlər ({{count}})",
+    "less": "Yığ"
   }
 }

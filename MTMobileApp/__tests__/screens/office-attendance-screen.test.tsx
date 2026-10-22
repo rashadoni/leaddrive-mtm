@@ -14,6 +14,7 @@ const mockAuth = { agent: officeAgent, logout: jest.fn(), switchServer: jest.fn(
 const mockBootstrap = { data: officeBootstrap() }
 const mockWorkday: { activeWorkday: ActiveWorkday | null; finishedWorkday: null; hydrated: boolean } = { activeWorkday: null, finishedWorkday: null, hydrated: true }
 const mockRecovery = { operation: null, reload: jest.fn().mockResolvedValue(undefined) }
+jest.mock("../../src/hooks/useAttendanceReceipts", () => ({ useAttendanceReceipts: () => ({ rows: [], failed: false, reload: jest.fn() }) }))
 const mockQr = {available:false,receipts:[],scope:'org-fixture:office-fixture',reload:jest.fn()}
 const mockInstallation={visible:false,blocked:false,own:null,pending:null,busy:false,failed:false,submit:jest.fn(),reload:jest.fn().mockResolvedValue(undefined)}
 jest.mock("../../src/hooks/useAttendanceInstallation",()=>({useAttendanceInstallation:()=>mockInstallation}))

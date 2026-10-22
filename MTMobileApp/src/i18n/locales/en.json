@@ -1316,5 +1316,24 @@
     "message": "LeadDrive Route Field {{version}} is ready. Install it now? Your unsent visits and drafts stay on the phone.",
     "update": "Update",
     "later": "Later"
+  },
+  "attendanceReceipts": {
+    "title": "Mark receipts",
+    "deviceHistory": "Recent marks saved on this phone.",
+    "START": "Work started",
+    "PAUSE": "Break started",
+    "RESUME": "Back from break",
+    "FINISH": "Work finished",
+    "LOCAL": "Saved on phone · waiting to send",
+    "CONFLICT": "Not accepted · needs attention",
+    "RECEIVED": "Received by server",
+    "receivedAt": "Server received: {{time}}",
+    "reopenToSend": "Open the app when internet is available to send this mark.",
+    "conflictHelp": "Check the reason on the workday screen. If needed, submit a time correction request.",
+    "delayedAtDelivery": "On receipt, the server flagged delayed delivery for HR review.",
+    "deliveryNotApproval": "Receipt confirms delivery. HR decisions appear in requests and explanations.",
+    "loadFailed": "Receipts could not be read. Refresh the screen; delivery status is currently unknown.",
+    "more": "Show all saved marks ({{count}})",
+    "less": "Show less"
   }
 }
