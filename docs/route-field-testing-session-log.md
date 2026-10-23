@@ -248,3 +248,12 @@
 - Narrow follow-up website run8308bf53-0f93-4b82-9013-39dcb7c8d69d now running (300s budget), only creates the single reserved QA organization via normal form; assignment/radius are explicitly subsequent steps. Do not run a duplicate while it is pending. Current real manager profile and employee app session preserved.
 - Independent real-agent visit baseline PASS:5 total historical visits, exact/untruncated full result,0 active visits. Raw response private; public digest/count retained in zeytun-visits-before-sanitized.json. Preserve these5 facts; no real workday/visit mutation has run.
 - Separate current-tree Zeytun admission25 tests,22 YAML/3 AST, QA native AZ/RU/EN literal matching and diff checks PASS. Hosted checks for these new paths NOT RUN yet; no native QA business case run before website customer is reconciled/admitted. Current only source edits are tests/harness/docs. No app-runtime change or APK install.
+
+
+## 2026-10-23T15:40:06.485588+00:00 — QA setup fallback, no reauthentication
+
+- Browser creation runs75d985f8 and8308bf53 both ended at time/step limits; neither saved a record. Exact manager API search still0 before fallback. Website QA-place creation is NOT COMPLETED and must not be reported PASS. Previously completed real website-task/mobile/website cycle is preserved.
+- Created exactly1 reserved QA place through ordinary authenticated manager API, not root/DB: RF-E2E-ZEY-20261023 QA GPS, empty coordinates, radius250. Single-point assignment preview/execution changed1 owned point, ended0 existing assignments, selected current Seymur only. Canonical customer GET readback PASS. Baseline5 existing visits/0active retained. No QA visit or GPS request has run yet.
+- Admission now records two distinct provenance types: website run OR exact ordinary manager POST receipt bound to QA customer/tenant/manager/hash. It does not claim website success for API preparation; other tenant/customer/role and credentials remain refused.27 targeted guards, Python AST/YAML parse and diff PASS. No runtime/APK change.
+- Active bounded screen lease v4 renewed fromv3, original2→temporary7, independent1200s recovery; restore/readback2 after native phase. No permission/network/radio/clock changes.
+- Next: publish harness checkpoint, hosted checks, then no-coordinate refusal and server reconciliation, followed by actual GPS request/review/visit/photo/offline. No login/account switch permitted.

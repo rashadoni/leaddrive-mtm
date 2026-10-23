@@ -182,7 +182,7 @@ def verify_fixture_case(case, source_sha):
 
 
 def verify_zeytun_qa_case(case, source_sha):
-    """User-selected Zeytun session; only the website-created reserved QA place."""
+    """User-selected Zeytun session; only a reserved, provenanced QA place."""
     org = "cmu9ih71e01vbkpd4fvgjhlba"
     require(case.get("version") == 1 and case.get("marker") == "rf-zeytun-qa-20261023-v1"
             and case.get("ownerAuthorized") is True and case.get("sourceSha") == source_sha
@@ -194,9 +194,18 @@ def verify_zeytun_qa_case(case, source_sha):
             and case.get("nativeProfileBound") is True and case.get("ordinaryManagerWebBound") is True,
             "RF_ZEYTUN_ACTOR_REFUSED")
     customer = case.get("customer") or {}
-    require(case.get("createdViaWebsite") is True
-            and re.fullmatch(r"[a-f0-9-]{36}", case.get("browserRunId", ""))
-            and customer.get("organizationId") == org
+    creation = case.get("creation") or {}
+    website = case.get("createdViaWebsite") is True and bool(
+        re.fullmatch(r"[a-f0-9-]{36}", case.get("browserRunId", "")))
+    manager_api = (case.get("createdViaWebsite") is False
+                   and creation.get("kind") == "ordinary-manager-api"
+                   and creation.get("method") == "POST"
+                   and creation.get("path") == "/api/v1/mtm/customers"
+                   and creation.get("customerId") == customer.get("id")
+                   and creation.get("organizationId") == org
+                   and bool(creation.get("managerUserId"))
+                   and bool(re.fullmatch(r"[a-f0-9]{64}", creation.get("responseSha256", ""))))
+    require((website or manager_api) and customer.get("organizationId") == org
             and isinstance(customer.get("id"), str) and bool(customer["id"])
             and customer.get("name") == case.get("customerName") == "RF-E2E-ZEY-20261023 QA GPS"
             and actor["id"] in customer.get("assignedAgentIds", []),

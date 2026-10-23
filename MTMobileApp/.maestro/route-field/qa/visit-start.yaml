@@ -1,7 +1,7 @@
 appId: com.mtmobileapp
 name: Start only the marked QA GPS place after server setup
 ---
-- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-website-qa-v1'}
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-qa-v1'}
 - runScript: ../shared/labels.js
 - runScript: ../shared/qa-labels.js
 - runFlow: ../shared/open-fixture-visits.yaml

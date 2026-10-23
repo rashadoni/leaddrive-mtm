@@ -155,6 +155,27 @@ class ZeytunQaAdmissionTests(unittest.TestCase):
     def test_website_qa_customer_and_existing_agent_context_are_admitted(self):
         verify_zeytun_qa_case(self.case(), "a" * 40)
 
+    def api_case(self):
+        case = self.case()
+        case["createdViaWebsite"] = False
+        case.pop("browserRunId")
+        case["creation"] = {"kind": "ordinary-manager-api", "method": "POST",
+                            "path": "/api/v1/mtm/customers", "customerId": "test-place",
+                            "organizationId": case["organizationId"],
+                            "managerUserId": "test-manager", "responseSha256": "c" * 64}
+        return case
+
+    def test_api_setup_is_admitted_without_claiming_website_creation(self):
+        verify_zeytun_qa_case(self.api_case(), "a" * 40)
+
+    def test_api_receipt_for_another_place_tenant_or_endpoint_is_refused(self):
+        for key, value in (("customerId", "other"), ("organizationId", FIXTURE_ORG),
+                           ("path", "/api/v1/mtm/visits"), ("method", "GET"),
+                           ("managerUserId", ""), ("responseSha256", "")):
+            case = self.api_case(); case["creation"][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                verify_zeytun_qa_case(case, "a" * 40)
+
     def test_other_tenants_roles_and_unverified_native_sessions_are_refused(self):
         for key, value in (("organizationId", FIXTURE_ORG), ("targetTenant", "other"),
                            ("nativeProfileBound", False), ("ordinaryManagerWebBound", False)):

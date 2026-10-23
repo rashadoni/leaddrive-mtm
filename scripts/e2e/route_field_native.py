@@ -192,7 +192,7 @@ def main():
             if fixture_flow:
                 gate = "RF_FIXTURE_PREFLIGHT=separate-owned-route-field-v1"
             if qa_flow:
-                gate = "RF_QA_PREFLIGHT=zeytun-owner-selected-website-qa-v1"
+                gate = "RF_QA_PREFLIGHT=zeytun-owner-selected-qa-v1"
             command = [str(args.maestro), "test", "-e", "LOCALE=" + args.locale,
                        "-e", gate]
             if task_case:
