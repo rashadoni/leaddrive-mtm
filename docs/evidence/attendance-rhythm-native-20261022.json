@@ -640,7 +640,7 @@
   "currentCandidate": {
     "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
     "versionCode": 1039,
-    "status": "NATIVE_UI_GPS_AND_QR_COMPOSITE_PASS_RECEIPTS_RUNNING",
+    "status": "CURRENT_SHORT_ACCEPTANCE_PASS_REAL24H_V8_PREPARING",
     "hostedGates": {
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "allExactHeadChecks": "PASS",
@@ -1112,6 +1112,208 @@
       },
       "actualReceiptScreenshotInspected": true,
       "temporaryViewerStopped": true
+    },
+    "receiptsCurrentApk": {
+      "parent": {
+        "status": "PASS",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "apkVersionCode": 1039,
+        "startedAt": "2026-10-23T06:56:01.363336+00:00",
+        "receipts": "PASS",
+        "otherAccountUnchanged": true,
+        "onlyReceiptEventsAdded": true,
+        "requestListsUnchanged": true,
+        "reportTo": "2026-10-23",
+        "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+        "originalPermissionFlagsRestored": true,
+        "originalPermissionsRestored": true,
+        "finishedAt": "2026-10-23T06:58:56.138061+00:00"
+      },
+      "actualFlow": {
+        "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+        "status": "PASS",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "apkVersionCode": 1039,
+        "maestro": {
+          "flow": "journeys/receipt-existing-day",
+          "exit": 0,
+          "apkVersionCode": 1039,
+          "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+          "flowSha256": "75e4bdb5745af4e7a5e4e70ba720b52bb1d9d1a0fe63de4ee94cee5b13086cd9",
+          "tests": [
+            {
+              "name": "Return to an existing fictional day and retain canonical delivery receipts",
+              "seconds": "116.893",
+              "status": "PASS"
+            }
+          ]
+        },
+        "priorEventsUnchanged": 106,
+        "newEventTypes": [
+          "REOPEN",
+          "RESUME",
+          "PAUSE",
+          "RESUME",
+          "FINISH"
+        ],
+        "requestsUnchanged": true,
+        "otherAccountHistoryUnchanged": true,
+        "receiptVisibleAfterRestart": true,
+        "finishedAt": "2026-10-23T06:58:45.906201+00:00"
+      }
+    },
+    "currentReadonlyAcceptance": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "apkVersionCode": 1039,
+      "startedAt": "2026-10-23T07:24:39.944002+00:00",
+      "ownMarks": "PASS",
+      "ownMarksEvidence": "package-1039-physical-v1/own-marks-v2-result-sanitized.json",
+      "correction": "PASS",
+      "correctionEvidence": "package-1039-physical-v1/correction-v4-result-sanitized.json",
+      "readOnlyNoNewEvents": true,
+      "requestsAndOtherAccountUnchanged": true,
+      "nativeAccountSwitchIsolation": true,
+      "foreignWorkdayReadDeniedBothWays": true,
+      "officeAccountRestored": true,
+      "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+      "reportTo": "2026-10-23",
+      "originalPermissionsAndFlagsRestored": true,
+      "finishedAt": "2026-10-23T07:28:18.623647+00:00"
+    },
+    "currentReal24h": {
+      "status": "PREPARING",
+      "attempt": "physical-soak-20261023-v8",
+      "strictOwner0UidOnly": true,
+      "scopeProbe": {
+        "ownerUidOnly": true,
+        "secondaryProfileRuleUnchanged": true,
+        "ordinaryMtmAllowed": true,
+        "effectiveNetworkBlockedDuringProbe": false,
+        "transactionIdsFromExactDeviceJar": true,
+        "status": "PASS",
+        "cleanupAllNetworksAllowed": true
+      },
+      "priorAttempt": "v7 FAIL preserved: package-wide rule also applied to profile95; networks restored",
+      "priorRecovery": {
+        "status": "PASS",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "startedAt": "2026-10-23T07:44:39.434+00:00",
+        "scope": "Recovery of scope-audited attempt 7",
+        "real24hAcceptance": "NOT PASSED: the original attempt failed",
+        "alreadyReceivedBeforeRecovery": 0,
+        "networkReturnCheckedAt": "2026-10-23T07:44:46.404+00:00",
+        "priorEventsPreserved": 113,
+        "serverEvents": 116,
+        "recoveredTypes": [
+          "PAUSE",
+          "RESUME",
+          "FINISH"
+        ],
+        "originalClaimsRetained": true,
+        "noDuplicatesAfterRestart": true,
+        "pendingAbsent": true,
+        "requestsUnchanged": true,
+        "otherAccountUnchanged": true,
+        "dayState": "COMPLETED",
+        "factsState": "VALID",
+        "sameDeviceBoot": true,
+        "cleanup": {
+          "ownNetworkingAllowed": true,
+          "ordinaryMtmAllowed": true,
+          "originalPermissionsRestored": true,
+          "originalPermissionFlagsRestored": true,
+          "radiosUnchanged": true,
+          "packagesUnchanged": true
+        },
+        "cleanupRetries": 0,
+        "finishedAt": "2026-10-23T07:45:50.290+00:00"
+      },
+      "progressSnapshot": {
+        "status": "PREPARING",
+        "startedPreparationAt": "2026-10-23T07:47:36.031+00:00",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "scope": "package-only real 24h outage; original clocks and other apps preserved",
+        "attempt": 8,
+        "hrSessionVerificationIntervalSeconds": 14400,
+        "readProbeMaxAttempts": 3,
+        "updatedAt": "2026-10-23T07:48:52.818+00:00",
+        "samplesObserved": 1,
+        "gpsAcceptance": "Current APK inside native UI + outside/actual Android permission Maestro; separate from real24h",
+        "qrAcceptance": "Current APK actual optical FINISH/VERIFIED + read-only native receipt after restart; original partial FAIL retained",
+        "backendArtifactShaBefore": "22ca2202c6ffb2f24227ba331bfe92206b9d478a",
+        "lastHrSessionVerifiedAt": "2026-10-23T07:47:37.051+00:00",
+        "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+        "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+        "deviceRecoveryDeadline": "2026-10-24T12:08:31+04:00",
+        "offlineAt": "2026-10-23T07:48:40.390+00:00",
+        "apkVersionCode": 1039,
+        "apkSha256": "4ffa2760d22c6092b1ff20dd42d4053220036ba6f412dbc032ec6f6fa681c2ca",
+        "earliestCompletion": "2026-10-24T11:50:40.390000+04:00"
+      }
+    },
+    "currentOwnMarks": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "apkVersionCode": 1039,
+      "startedAt": "2026-10-23T07:06:44.169916+00:00",
+      "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 0,
+        "apkVersionCode": 1039,
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "flowSha256": "3ad9e15ecad50d1ca9ebb84836767e73486c22cbd7290a29cbd0187d1ac06310",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "106.279",
+            "status": "PASS"
+          }
+        ]
+      },
+      "canonicalItemsCompared": 6,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "permissionsUnchanged": true,
+      "reportClosedAfterRestart": true,
+      "finishedAt": "2026-10-23T07:09:18.057221+00:00"
+    },
+    "currentCorrection": {
+      "status": "PASS",
+      "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+      "apkVersionCode": 1039,
+      "fixtureAccount": "office",
+      "startedAt": "2026-10-23T07:20:32.122456+00:00",
+      "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+      "selectedDateEvidence": "package-1039-correction-v2 commands.json completed selected-date assertion; original overall FAIL preserved",
+      "maestro": {
+        "flow": "journeys/correction-existing-form",
+        "exit": 0,
+        "apkVersionCode": 1039,
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "flowSha256": "382838a270ad1e05fdf7930fc48780b0d4dc6e624ebe7d28290579459b303450",
+        "tests": [
+          {
+            "name": "Verify canonical times and cancel the already opened fictional correction",
+            "seconds": "45.106",
+            "status": "PASS"
+          }
+        ]
+      },
+      "compositeContinuation": true,
+      "datePreviouslyVerified": true,
+      "noRepeatedFormOpening": true,
+      "companyTimezone": "Asia/Baku",
+      "canonicalDatesAndMinutesPrefilled": true,
+      "noAccidentalRequest": true,
+      "noWorkdayChanges": true,
+      "settingsUnchanged": true,
+      "finishedAt": "2026-10-23T07:22:04.253674+00:00"
     }
   }
 }

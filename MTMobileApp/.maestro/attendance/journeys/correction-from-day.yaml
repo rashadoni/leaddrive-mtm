@@ -11,6 +11,7 @@ name: Open a correction from the completed day without an accidental submission
     element:
       id: office-workday-correct
     direction: DOWN
+    centerElement: true
     timeout: 60000
 - tapOn:
     id: office-workday-correct
@@ -22,9 +23,16 @@ name: Open a correction from the completed day without an accidental submission
     element:
       id: attendance-startDate
     direction: DOWN
+    centerElement: true
     timeout: 60000
 - tapOn:
     id: attendance-startDate
+- scrollUntilVisible:
+    element:
+      id: ${'calendar-' + EXPECTED_WORK_DATE}
+    direction: DOWN
+    centerElement: true
+    timeout: 60000
 - assertVisible:
     id: ${'calendar-' + EXPECTED_WORK_DATE}
     selected: true
@@ -34,22 +42,25 @@ name: Open a correction from the completed day without an accidental submission
     element:
       id: attendance-startTime
     direction: DOWN
+    centerElement: true
     timeout: 60000
 - assertVisible:
     id: attendance-startTime
-    text: ${EXPECTED_START_TIME}
+    text: "${'.*: ' + EXPECTED_START_TIME}"
 - scrollUntilVisible:
     element:
       id: attendance-endTime
     direction: DOWN
+    centerElement: true
     timeout: 60000
 - assertVisible:
     id: attendance-endTime
-    text: ${EXPECTED_END_TIME}
+    text: "${'.*: ' + EXPECTED_END_TIME}"
 - scrollUntilVisible:
     element:
       id: attendance-close-form
     direction: UP
+    centerElement: true
     timeout: 60000
 - tapOn:
     id: attendance-close-form

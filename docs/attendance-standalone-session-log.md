@@ -1295,3 +1295,51 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Viewer v7 и cloudflared остановлены после проверки точной принадлежности PID/starttime/UID/command; внешняя выдача временных QR завершена.
 - Запущен единственный следующий UI actor package_1039_receipts_v1: REOPEN/RESUME/PAUSE/RESUME/FINISH существующего текущего дня, restart и серверные квитанции. Результат RUNNING; own-marks/correction/isolation и новая 24h ещё NOT RUN. Исторические GPS/QR предыдущих событий должны остаться неизменными.
 - Сохраняем тестовую правку и новый read-only Maestro flow отдельным checkpoint. App runtime/source845/APK1039 unchanged. Full Jest/TS/build/browser E2E на этом Contabo NOT RUN по host contract; это test-YAML/docs изменение проверено YAML parse и фактическим Maestro. Новые hosted CI этого checkpoint ещё NOT RUN, push/deploy этой фазы не выполнен.
+
+
+### 2026-10-23, 11:09 Баку — квитанции PASS, замечание пользователя о повторениях
+
+- Receipts actual Maestro PASS116.893s, independent parent PASS06:58:56UTC. Добавлены ровно REOPEN/RESUME/PAUSE/RESUME/FINISH текущего дня; прежние106событий и все старые GPS/QR не изменились, facts VALID, другой аккаунт/заявки сохранены, исходные grants/flags восстановлены.
+- Пользователь спросил о длительности и отметил ощущение движения по кругу. Ответ: на короткие оставшиеся проверки оценка5–10мин, суточный офлайн ещё НЕзапущен и требует реальных24ч. Принято: фиксировать каждый PASS текущей APK и продолжать только оставшиеся независимые шаги; новые app-сборки не делать без подтверждённого дефекта.
+- Readonlyv1 FAIL сохранён: own-marks API DTO/timestamps/no-store/401/400/404 прошли, native load-marker не появился. Actual failure PNG показал кнопку загрузки под нижней панелью вкладок: scrollUntilVisible считает элемент внутри окна, даже если он перекрыт tab bar, tap не открыл загрузку. Исправлен только harness: centerElement=true у кнопок загрузки/закрытия own marks и actionable controls correction. YAML parsePASS. App runtime не менялся.
+- Immutable readonlyv2 RUNNING как единственный UI actor; повторяется только этот короткий read-only блок, успешные QR/receipts/writes не запускаются заново. Сначала сравнивается история с сохранённым after-receipts; старые FAIL остаются.
+- Подготовлен physical_soak_v7, NOT RUN: source845/APK1039, canonicaldate23Oct, report21–23Oct на весь24h; gates требуют все текущие PASS и recoveryv6-v3 из прошлого прерванного теста. Собственныеv7heartbeat/watchdogfilepaths,900sheartbeat recovery, прежние разрешения/flags возвращаются точно. Реальное окно86400+120s не сокращается, часы не меняются. При смене backend итог требует отдельной compatibility review.
+
+
+### 2026-10-23, 11:11 Баку — просмотр собственных отметок PASS
+
+- Own-marks v2 actual Maestro PASS106.279s; independent API/native audit PASS07:09:18UTC. DTO/timestamps/no-store и запреты anonymous401/scopeoverride400/unknownday404 подтверждены; PAUSE/RESUME не содержат координат/QR. Canonical history и список заявок не изменены.
+- После centering actionable target кнопка загрузки действительно нажалась, собственные исторические GPS/QR загрузились и закрылись, после restart квитанции видны. Предыдущий v1 FAIL остаётся. Код приложения не менялся; correction v1 и native account isolation продолжаются в том же readonlyv2.
+- Кандидат остаётся установленным APK1039/source845. Checkpoint документации и изменения Maestro-harness не требуют новой установки/повторения уже принятых функциональных записей; source binding APK и отдельный hash фактического test flow сохраняются. Новая сборка/новые runtime проверки нужны при изменении приложения, а не при обновлении журнала.
+
+
+### 2026-10-23, 11:16 Баку — проверка календаря: уточнение harness, без повторения прошедших блоков
+
+- Correction v1 / readonly v2 FAIL сохранены: assert calendar-2026-10-23 selected выполнялся до прокрутки календаря. Actual native failure PNG просмотрен: показан октябрь со списком строк 1–9, целевая дата23 ниже viewport; неверная дата в форме этим FAIL не доказана.
+- В correction-from-day добавлен scrollUntilVisible целевой даты перед assert selected. Центрирование ранее найденных actionable controls сохранено. YAML parse PASS; app runtime unchanged.
+- Immutable readonly v3 использует уже прошедший own-marks v2 с явной ссылкой на его source/flow proof; запускает только исправленный correction v2 и ещё не пройденную изоляцию двух вымышленных аккаунтов. QR, квитанции и own-marks не повторяются. Parent сначала сравнивает историю с after-receipts и затем возвращает office account/исходные permissions+flags. Итог пока RUNNING; настоящая24h покаNOT RUN.
+- Оценка5–10мин оказалась неточной из-за второй ошибки видимости в harness; это явно сообщено пользователю. Срок завершения24h до её фактического старта не обещаем.
+
+
+### 2026-10-23, 11:26 Баку — исправление дня: составная native приёмка PASS
+
+- Correction v2 после добавления прокрутки подтвердил выбранную canonicaldate23Oct, затем FAIL на legacy selector id+text02:04. Actual native PNG и hierarchy показали правильные02:04 и10:57: id принадлежит кнопке с accessibilityText «Başlanğıc:02:04», дочерний Text имеет02:04. Ошибка была в ожидании прежнего TextInput-selector, а не в значениях.
+- В correction-from-day селектор учитывает локализованный label+value. Добавлен read-only correction-existing-form для продолжения уже открытой формы. Первый resume v1 завершился доUI на YAML parse: выражение сдвоеточием было не заключено вquotes; исходный FAILED hash сохранён. Это уточняет прежний tooloutput «parse исправлен до consumer»: consumer успел прочитать старый unquoted hash. После quoting обе YAML parsePASS, фактическийresumev2 использовал новыйhash382838a.
+- Resume actualMaestro PASS45.106s, independent correction-v4-result PASS07:22:04UTC. Используется ранее завершённый selected-date assert изcorrectionv2 и новый PASS времени/отмены; исходный полныйFAIL не переименован. Дата/минуты canonical, форма закрыта, attendance-new visible, accidental request отсутствует, events/settings unchanged.
+- Изоляция readonlyv4 FAIL до первого перехода аккаунта: Android закрыл app при подготовительном revokeCAMERA, а старый helper ожидал уже открытое приложение. AccountRestoreFailure flag относится к отсутствующемуUI, не доказывает потерю/смену исходногоаккаунта: никаких signout taps ещё не было. Helper теперь запускает тотжеTime перед read/tap; данные и сессия не очищаются. Новый readonlyv5 выполняет только изоляцию, используя явные текущие own-marks/correction PASS; остальное не повторяется. ИтогRUNNING.
+
+
+### 2026-10-23, 11:38 Баку — автоматический итог physical soak v7
+
+{"status": "FAIL", "offlineAt": "2026-10-23T07:30:25.529+00:00", "finishedAt": "2026-10-23T07:38:15.163+00:00", "observedSeconds": null, "window": null, "replay": null, "cleanup": null, "backendCompatibilityReviewRequired": null}
+Детальный sanitized result: physical-soak-20261023-v7/result-sanitized.json. Это итог этой попытки, прежние FAIL не изменены. Следующий шаг: проверить итог и восстановление; при принятом полном PASS перейти к Route & Field.
+
+
+### 2026-10-23, 11:50 Баку — короткий блок полностью PASS; новая строгая изоляция суточного теста
+
+- Readonlyv5 PASS07:28:18UTC: native office→admin→office, чужие workdayId запрещены404 в обе стороны, текущие111canonicalevents/истории заявок unchanged, исходный office account и grants/flags восстановлены. Own-marks и correction доказательства повторно не выполнялись. Это закрывает запланированный короткий блок текущего APK1039; пользовательская оценка эстетики не выводится из проверок. TalkBack/200%landscape остаются NOT RUN вне этого короткого блока.
+- Physicalv7 был запущен и сохранил3offlineоперации, но строгий дополнительный аудит выявил scope mismatch: package-wide Android firewall запрещал также UID второй установленной копии в профиле95. Сеть обеим копиям сразу возвращена, chain3 выключен, попытка остановлена и НЕ засчитывается24h. Прежняя modulo-UID проверка была недостаточна. Это supersedes любую предыдущую формулировку о том, что package-wide команда затрагивала только owner0. Данные/сессии профиля95 инструменты не читали/не меняли; краткое сетевое ограничение этого профиля раскрыто пользователю.
+- Originalv7 FAIL/cleanupFailure сохранён. Ручная сверка вернула исходные permissions и flags; recoveryv7 PASS07:45:50UTC подтвердил113прежних events+3PAUSE/RESUME/FINISH, исходные clientclaims, no duplicates послеrestart, emptyqueue, VALID, обе истории/другой аккаунт/settings/packages unchanged. Старыйv7watchdog остановлен; все сети былиallow. Это восстановление, не24h PASS.
+- Для точного owner0 firewall считан только системныйframework-connectivity.jar1.56MB, не данные приложений. По официальномуDEXformat прочитаны константы именно установленного framework: SHA d5c645805a0edfc16b106121ac6fa09ef0b286c38f9f62ca1c96caca8b315f59, binderget84/set83, OEM_DENY_3chain9. Номера не угадывались. Getter проверен read-only; в выключеннойchain точечный setter создал толькоowner0UID, профиль95 сохранилallow, cleanup вернулallallow. owner0-uid-firewall-probe PASS. Источники: https://source.android.com/docs/core/runtime/dex-format и https://android.googlesource.com/platform/packages/modules/Connectivity/+/75cd08977dce9f5a9bb24846743860e1ed8f0b01/service/src/com/android/server/ConnectivityService.java .
+- Новый physicalv8 запущен с owner0-only setter и таким же owner-only devicewatchdog, точным denyUID==ownerUID и отдельным read-only контролем профиля95. Ниодной package-wide сетевой записи вv8 нет. Все короткиеgates использованы каксохранённые текущиеPASS; app845/1039 unchanged, новых Androidсборок не требуется. Окно24h+120s началось23Oct11:48:40Баку; предварительная earliestcompletion24Oct11:50:40Баку, но queuecapture ещёRUNNING и итогНЕPASS.
+- YAMLparse всех5затронутыхjourneys PASS, gitdiffcheckPASS. Full builds/Jest/TS/browser E2E локально NOT RUN поhostcontract; hosted gates runtime845 ранееPASS. Новые hosted checks checkpoint ожидаются послеавторизованногоfeaturepush; PR196 остаётсяdraft, merge/release покаNOT RUN. Route & Field следует послефактического завершенияTime.
