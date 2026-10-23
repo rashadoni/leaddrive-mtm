@@ -53,6 +53,10 @@ def verify_location_denial_lease(lease, permissions, source_sha, now):
     require(started.tzinfo is not None and now.tzinfo is not None
             and timedelta(seconds=-5) <= now - started < timedelta(seconds=900),
             "RF_LOCATION_DENIAL_EXPIRED")
+    require(lease.get("restoresBackgroundLocation") is True
+            and lease.get("restorePermissionNames") == [
+                "android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION",
+                "android.permission.ACCESS_BACKGROUND_LOCATION"], "RF_LOCATION_DENIAL_BACKGROUND_RECOVERY_REQUIRED")
     before = lease.get("originalPermissions") or {}
     for name in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
         require(before.get(name, {}).get("granted") is True

@@ -16,6 +16,10 @@ class LocationDenialAdmissionTests(unittest.TestCase):
                       "androidUser": 0, "sourceSha": self.source, "maximumSeconds": 900,
                       "marker": marker, "worker": marker + ".sh", "recoveryPid": 123,
                       "coldPid": 456, "startedAt": self.now.isoformat(),
+                      "restoresBackgroundLocation": True,
+                      "restorePermissionNames": ["android.permission.ACCESS_COARSE_LOCATION",
+                                                 "android.permission.ACCESS_FINE_LOCATION",
+                                                 "android.permission.ACCESS_BACKGROUND_LOCATION"],
                       "originalPermissions": original}
         self.permissions = deepcopy(original)
         for name in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
@@ -66,6 +70,11 @@ class LocationDenialAdmissionTests(unittest.TestCase):
             self.verify()
         self.setUp()
         self.lease["startedAt"] = (self.now + timedelta(seconds=20)).isoformat()
+        with self.assertRaises(ValueError):
+            self.verify()
+
+    def test_background_grant_restoration_cannot_be_forgotten(self):
+        self.lease["restoresBackgroundLocation"] = False
         with self.assertRaises(ValueError):
             self.verify()
 
