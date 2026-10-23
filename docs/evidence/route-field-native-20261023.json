@@ -132,15 +132,15 @@
   },
   "remainingGates": {
     "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
-    "fullHostedChecks": "App draft PR199 exact72 all4 PASS; backend PR1003 exactf7 all5 PASS,18 unchanged known baseline files. PR1007 exactb7 required39962906981 static/typecheck RUNNING; narrow10-test/runner/scan PASS",
+    "fullHostedChecks": "App PR199 exactc596 all4 PASS; backend1008 exact432c all5 plus11 controller/root tests PASS; mainf612 merged, its automatic deploy not yet verified",
     "realVisitWorkdayGpsPhotoOffline": "NOT RUN: fictional company now created; private access delivery pending",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
-    "fictionalNative": "NOT RUN: six flows prepared. Phone transport recovered,owner0/APK verified; protected keyguard awaits physical unlock; fictional private access also pending",
-    "fixtureScope": "NOT RUN:20 GET-only cases prepared. Protected access39965410772 FAIL due standalone-path error; PR1008 exact432c full CI39966147428 RUNNING;11 narrow tests PASS"
+    "fictionalNative": "signin-v4 IN PROGRESS on corrected manager-Profile flow; first3 retained FAIL, other5 fictional journeys NOT RUN",
+    "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
   },
   "backendArtifactsObserved": {
     "initial": "e76620753f08e4ce716368f5ad3d249482134558",
-    "latest": "8eb9cdf18e74d222b9a0edd081c5ef92b5dd9ef2",
+    "latest": "8fbfeb8e8db34d929fbfea5ce4672731314b58fa",
     "note": "Production changed independently during testing. The app bytes stayed pinned; individual steps are observations rather than a claim of one immutable backend SHA."
   },
   "retainedFailures": {
@@ -150,16 +150,19 @@
     "employee-tabs-v4": "retained More/Profile stack",
     "task-complete-v1": "BACK dismissed result form; no completion sent",
     "manager-signin-v1": "agent not on Today; no sign-out performed",
-    "manager-tabs-v1": "final top-of-Team assertion; retained scroll and external foreground interruption observed"
+    "manager-tabs-v1": "final top-of-Team assertion; retained scroll and external foreground interruption observed",
+    "fixture-signin-v1": "preflight manager shell unavailable before switch",
+    "fixture-signin-v2": "preflight manager shell unavailable after normal wake;AOD observed independently",
+    "fixture-signin-v3": "Maestro42.579s FAIL:manager More is direct Profile;employee menu selector absent;no account switch"
   },
   "phoneEndState": {
     "principalRole": "MANAGER",
-    "screen": "Last native-verified Team; latest read-only focus check found RF not foreground",
+    "screen": "Last observed manager shell before fictional sign-in attemptv2",
     "taskStatus": "COMPLETED",
     "realVisitOrWorkdayCreated": false,
     "transport": "PASS:one ready physical device after user reconnect",
     "ownerPermissions": "fine/coarse/camera granted; flags recorded privately before any native fixture action",
-    "keyguard": "Screen woken through normal Android interface; protected keyguard still showing. Physical-unlock question pending"
+    "keyguard": "User unlocked; explicit normal MainActivity launch showed real manager shell. Earlier policy-only/implicit-launch failures retained; do not infer actual lock solely from policy showing flag"
   },
   "publicationAuthorized": true,
   "retainedBackendFailures": {
@@ -178,7 +181,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T14:11:16.981404+00:00",
+  "lastUpdatedAt": "2026-10-23T14:50:52.942080+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -194,10 +197,12 @@
     }
   ],
   "backendRelease": {
-    "sha": "06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada",
-    "deployRunId": "39952082312",
+    "sha": "8fbfeb8e8db34d929fbfea5ce4672731314b58fa",
+    "deployRunId": "39965342404",
     "status": "PASS",
-    "publicPingAndShaVerified": true
+    "publicShaVerified": true,
+    "newMain": "f6126b3b238de409a26404d59b73480e4a662353",
+    "newMainDeployment": "NOT VERIFIED yet"
   },
   "fictionalFixture": {
     "workflowRunId": "39957479723",
@@ -208,6 +213,21 @@
     "agents": 3,
     "customers": 3,
     "initialVisitWorkdayFacts": 0,
-    "access": "39965410772 FAIL retained: revision marker pathname. One-line correction+root-protocol regression11 PASS, PR1008 pending full CI"
+    "access": "PASS:protected workflow39970244047,controllerf612/deployed8fb,provenance/source-bound private OAEP decryption;3 exact principals/bootstrap verified",
+    "scope": {
+      "allowDenyCasesPassed": 19,
+      "initialReadModelExpectationFailureRetained": true,
+      "retiredWorkdayRefusal": "PASS:410 CRM_MODULE_UNAVAILABLE",
+      "routeOnlyBootstrapOmission": "PASS",
+      "workforcePositive": "NOT RUN/unavailable in CRM"
+    }
+  },
+  "screenRetention": {
+    "original": "2",
+    "temporary": "7",
+    "deviceRecoverySeconds": 1200,
+    "active": true,
+    "restoreRequired": true,
+    "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged"
   }
 }

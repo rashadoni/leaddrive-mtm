@@ -6,18 +6,12 @@ name: Switch only to the separately owned fictional Route Field employee
 - runScript: ../shared/fixture-labels.js
 - tapOn:
     id: guide-spot-tab.More
-- runFlow:
-    when:
-      visible: ${output.copy.profileBack}
-    commands:
-      - tapOn: ${output.copy.profileBack}
+# The manager More tab is Profile itself, unlike the employee More menu.
 - scrollUntilVisible:
     element:
-      id: more-action-Profile
-    direction: DOWN
+      text: ${output.fixture.priorName}
+    direction: UP
     timeout: 15000
-- tapOn:
-    id: more-action-Profile
 - assertVisible: ${output.fixture.priorName}
 - assertVisible: ${output.fixture.priorEmail}
 - scrollUntilVisible:

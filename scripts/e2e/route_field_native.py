@@ -118,6 +118,8 @@ def main():
                 return raw[raw.index("<?xml"):]
 
             before_xml = ui()
+            # Retain the actual window even when a shell admission check fails.
+            (args.out / "preflight-private.xml").write_text(before_xml)
             if (task_flow or manager_switch or (fixture_flow and not fixture_switch)) and agent_shell(before_xml, home_required=False) is None:
                 root = ET.fromstring(before_xml)
                 tab = next(node for node in root.iter("node") if node.get("package") == PACKAGE
