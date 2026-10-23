@@ -248,7 +248,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
         <Text style={[styles.chipIcon, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictIcon]}>
           {phase === "syncing" ? "↻" : conflicts.length > 0 ? "!" : phase === "offline" ? "○" : "✓"}
         </Text>
-        <Text style={[styles.chipLabel, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictLabel]} numberOfLines={1}>{label}</Text>
+        <Text style={[styles.chipLabel, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictLabel]} numberOfLines={2}>{label}</Text>
       </Pressable>
 
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
