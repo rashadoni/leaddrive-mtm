@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
