@@ -15,11 +15,18 @@ name: QA visit completion survives an app restart while its UID is offline
 - runFlow: ../shared/open-fixture-visits.yaml
 - scrollUntilVisible:
     element:
-      text: ${output.qa.visit.waitingSync}
+      text: ${output.qa.visit.active}
     direction: UP
     timeout: 45000
 - assertVisible: ${RF_QA_CUSTOMER_NAME}
 - assertVisible: ${output.qa.visit.onePhoto}
+# A fresh list opens at the top. The saved-completion notice sits BELOW the
+# active card's photo counter and overtime notice, so reach it by going down.
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.waitingSync}
+    direction: DOWN
+    timeout: 45000
 - tapOn: ${output.copy.profileBack}
 - tapOn:
     id: guide-spot-tab.Today

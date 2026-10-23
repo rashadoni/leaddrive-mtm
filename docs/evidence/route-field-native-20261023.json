@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T18:02:48.577704+00:00",
+  "lastUpdatedAt": "2026-10-23T18:56:43.182882+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -691,6 +691,95 @@
         "automatic": true
       },
       "phoneState": "APK1787/manualagent retained; protectedlock; no active network/display lease; do not request unlock until next signed APK ready"
+    },
+    {
+      "at": "2026-10-23T18:56:43.182882+00:00",
+      "kind": "CORE_OFFLINE_ACCEPTANCE_PASS",
+      "runtimeSourceSha": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+      "installedVersionCode": 1788,
+      "onlineConfirmedPhotoRead": {
+        "journey": "zeytun-visit-progress-read-v1",
+        "status": "PASS",
+        "seconds": "38.547"
+      },
+      "queuedCheckout": {
+        "journey": "zeytun-visit-complete-offline-v4",
+        "status": "PASS",
+        "seconds": "75.014"
+      },
+      "coldPendingAndPhotoPersistence": {
+        "journey": "zeytun-offline-persistence-v6",
+        "status": "PASS",
+        "seconds": "126.185"
+      },
+      "whileBlockedCanonical": {
+        "status": "PASS",
+        "phase": "offline-before-reconnect",
+        "checkedAt": "2026-10-23T18:52:22.085660+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_IN",
+        "photoCount": 1
+      },
+      "afterReconnect": {
+        "status": "PASS",
+        "phase": "visit-complete",
+        "checkedAt": "2026-10-23T18:52:43.845955+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_OUT",
+        "photoCount": 1
+      },
+      "secondForegroundNoDuplicate": {
+        "status": "PASS",
+        "phase": "visit-complete-idempotent",
+        "checkedAt": "2026-10-23T18:52:52.459361+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_OUT",
+        "photoCount": 1
+      },
+      "queueEmpty": true,
+      "agentSessionPreserved": true,
+      "ownerPermissionsUnchanged": true,
+      "networkRestoration": {
+        "ownNetworkingRestored": true,
+        "timeNetworkingUnchanged": true,
+        "protectedProfileUnchanged": true,
+        "radiosUnchanged": true,
+        "chainRestored": true
+      },
+      "managerWebsite": {
+        "status": "PASS",
+        "page": "CRM QA visit detail",
+        "sameOrganization": true,
+        "sameManagerEmail": true,
+        "managerRole": "manager",
+        "qaNameVisible": true,
+        "completionNoteVisible": true,
+        "runtimeExceptionCount": 0,
+        "businessWrites": false
+      },
+      "retainedFailureResolution": {
+        "v3": "hideKeyboard cancelled NotesModal before submit; test fixed, no checkout sent",
+        "v4": "completed checkout retained; cold launch lost USB; exact network baseline independently verified afterward",
+        "v5": "cold photo1 observed; waiting notice was below viewport while test scrolled UP; corrected test direction DOWN, no pending data loss"
+      },
+      "appRelease": "pending final evidence-head CI/main merge/public signed APK",
+      "remainingLimits": [
+        "Outside-zone/signature/large-text/landscape extra matrix NOT RUN",
+        "Original manager post-approval page error root unconfirmed/not fixed",
+        "Separate Time24h-v8 FAIL retained; not running"
+      ]
     }
   ]
 }

@@ -424,3 +424,33 @@
 - Offline-v3 retainedFAIL: completionMaestro82.809s stopped atnotesSubmit("Təsdiq et") missing. Exactcommandtrace provesactiveQA/name/Foto:1 assertionspassedoffline, finishopenedNotesModal, ASCIIQAcommenttyped, thenhideKeyboardclosedthewholemodal beforeSubmit. NotesModal.onRequestClose legitimatelycancels; thisisautomationBack/IME handling, not a newappcount/accessdefect. No checkoutsubmitted/queued. CanonicalstillCHECKED_IN andnotesnotcompletionmarker; Todaycleanqueue/sameSeymur verifiedagainbeforev4.
 - Networkv3EXACTLYrestored: RF/chain/Time/protectedprofile/radiosunchanged. No duplicatevisit/photo/GPS/approval/task. RemovedthatBack-generatinghideKeyboardfromcompletionflow; reachSubmitviaitsownscrollablecardandtapwithkeyboardhandling. Source-onlyMaestrocorrection, no APKrebuildneeded; binarysource918/1788unchanged.
 - Newseparatecontroller/attemptv4 nowrunningblockedcheckout→coldpersistence→reconnectonly. v3failureandartifactskept; neverrelabelasPASS. Need coldrestartphoto/pendingproof andcanonicalexactlyonce beforemerge. Displayv10 original2/temp7/1200s recoveryactive; restorebeforestop.
+
+
+## 2026-10-23T18:29:47.238728+00:00 — precise preflight recovery before offline-v4
+
+- Firstv4preparationstoppedBEFORElease/nativejourney becauseTodaycombinedreadyassertionfailed; controllerfilehadnotbeencreated, no checkoutandno UIDdeny. Observedafterward: sameSeymurgreetingbutcachedofflinebadge. OrdinaryHome→foregroundrefreshedbootstrap/cleanqueue; noauthretry. This is the same explicitforegroundreconnect step the controller already uses for syntheticUID outages (globalNetInfo doesnotchange). Originalpreflightfailure retainedNOTSTARTED, not a newbusinesswrite ornativePASS.
+- Renewedowneddisplayv10→v11beforeexpiry: original2/temp7,1200sindependentrecovery. Newboundedoffline-v4controlleractuallyarming/runningwithcurrent1788/source918 andcorrectedNotesModaltest; oldv3FAILretained. NoAPKsourcechange.
+
+
+## 2026-10-23T18:43:07.006898+00:00 — original checkout saved; cold test interrupted by USB, read-only continuation active
+
+- v4 completionMaestro PASS75.014s, includingactiveQA/name/Foto1, noteSubmit, explicitpending-on-device receiptandreturnToday. This is theONEsavedcheckout; NEVERreruncheckout/completion. Coldpersistence-v4 FAIL38.939s: commandsprove stopAppCOMPLETED, launchAppFAILED deviceR5CXC0NP96Knotfound. OriginalfullcontrollerFAIL/RF_OFFLINE_ADB_FAILED retained, no falsefullcyclePASS.
+- RecoveredADBwithoutuseraction; direct35039and5037relaybothwork, serialsame, USBtransportre-enumerated18→25→31. Initialcleanup'sfinalreadfailed; independentcomplete snapshotafterward EXACTLYequalsoriginal(before), RFallowed/chaindisabled/0denies/Time/protected/radios/bootunchanged. OldV4lease nowRESTORED_VERIFIED_AFTER_INTERRUPTION, earlierfailurekeptinresult/trace. CanonicalQA stillCHECKED_IN/no completionmarker; appPIDabsentafterprovenstop.
+- Pendingread-onlycontinuationv5 admissionPASS: priorcompletionPASS+hashed completedstop/failedlaunch trace, same signed1788/source918/case, originalnetworkexactbaseline, stoppedapp, canonicaloneactiveQA/onephoto. Retiredonlyownedoldworker/marker afterrestoreverification. ArmedNEWbounded900sRF-onlylease withindependentrecovery; explicitpending-operationreceipt admissionreplacestheordinaryemptyqueuepreflight, noauthorbusinessguardbypassed. It runsONLYcoldpersistence-v5(no newcheckout), canonicalstillCHECKED_INwhileblocked, exactrestoreandforegroundsync/ACK/idempotency. CurrentresultNOTFINISHED.
+- Displayv11 original2/temp7/1200s active (~18:28UTC), expiry~18:48; renewbeforeexpiryifcontinuingthenrestore2atend. No source/harnesseditwhileMaestrorunning.
+
+
+## 2026-10-23T18:49:07.203050+00:00 — cold photo survives; pending banner assertion requires downward search
+
+- Pending-onlyv5 retainedFAIL: coldMaestro174.903s couldnotfindwaitingSync while scrollingUP. DeviceactualafterXML showscachedfieldUI/activeQA/Foto1 afterfullrestart: durablephotoprojectionpositivelyobserved. It doesNOT provependingoperationlost: pendingnoticeis renderedBELOWphoto counter, overtimewarning/address; currentcoldlistwasattopandviewportendsatphoto count. Rootpending-loss is UNCONFIRMED; do notpresentasnewproductdefect.
+- v5networkEXACTLYrestoredPASS. Force-stoppedRFwithoutclearingdata to preserveoriginalqueuedoperationwhileinvestigating; canonicalstillCHECKED_IN/no completionmarker. Currentdisplayv12 original2/temp7/1200sguardactive(~18:46UTC), oldv11retiredsafely.
+- Correctedreadonlycoldflow: alignactiveheadingUP, assertQAnameandonephoto, thenfindwaitingSyncDOWNwhereitscardactuallyrendersit. No runtime/appcodechange ornewAPKneeded. Newpending-onlyv6 uses the same guardedcompletion/stop/serverbaseline receipts and itsown bounded900sRF-onlylease; no newcheckout/camera/checkin/approval. Need actualpending+canonicalproof beforemerge.
+
+
+## 2026-10-23T18:56:43.182882+00:00 — core offline cycle and manager website PASS; release gates next
+
+- Physical1788/source918 core cycle PASS composed from acceptedcheckout-v4(75.014s) and finalcoldpersistence-v6(126.185s), with guardedonlineworkspace/photo read(38.547s). One queuedcheckout only; no repeatedstart/camera/GPS/approval/task. ColdrestartpreservedexplicitpendingreceiptANDonephoto. v5wasviewport/testdirection, notpendingdata loss; v6properDOWNsearchPASS. OriginalFAILresults preserved.
+- WhileRFUIDblocked: canonicalQAstillCHECKED_IN/onephoto, original5visitsandunrelatedpendingrequestsunchanged. Afterexactnetworkrestore+ordinaryforeground: CHECKED_OUTwithexactQAcompletionnote/onephoto. Secondforegroundleavescanonicalrecordbyte-equivalent, exactlyonevisit/photo, cleanqueue. SameSeymur/Zeytunsession andoriginalpermissionspreserved; Time/protectedprofile/radios/chainexactbaseline. NoactiveRFnetworklease.
+- RealCRMwebsitepost-completion readPASS throughboundedexistingChromium/CDP: sameSaidaemail/managerrole/org verified, QAnameandcompletionnotevisible,0runtimeexceptions,0businesswrites. Browserterminated, no paidservice/install/fullbrowserE2E. Originalpostapprovalerrornotreproducedbythisreadandnotclaimedfixed.
+- Appcodeunchangedsince918(273suites/2432PASS+1TODO,TS,contract,signedbuild788PASS). SubsequentchangesONLYtwoMaestroflowfixesanddocs/evidence. PublishingfinalevidenceheadthenactualrequiredCI, exactheadmerge/mainpublicAPKrelease. Do notrerunbusinesswrites. Backenddeb8release/featuregrantchecksremainPASS.
+- Displayv12original2/temp7/1200s active(~18:46); renewbeforeexpiryifneeded, finalrestore/readback2required. Time24hv8failed/unrunextrasremainexplicitlyopen; do notclaimentirebroadmatrixor24hdurationPASS.
