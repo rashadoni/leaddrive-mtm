@@ -54,3 +54,8 @@ The customers API preserves `geofenceRadius`, and both interactive and offline s
 Correction prepared: retain the typed customer radius and pass it through those four existing decisions. The server rule stays unchanged. Three targeted suites / 32 tests and TSX syntax validation passed. Full hosted checks, a new signed APK and native read-only customer-screen verification are **NOT RUN for this new correction yet**. Candidate 1792 predates this change. A physical 150 m boundary check-in is NOT RUN and must not be inferred from helper/API tests or a screen-read flow.
 
 TalkBack, 200% text, runtime dark-mode/contrast, frame profiling and tablets remain NOT RUN; no overall numerical score is assigned.
+
+
+## 2026-10-23T21:03:19.112684+00:00 — customer-radius candidate verified; supersedes its pending gates
+
+Source `79853cbbed4e3741c44f41c6edf9856fe278fcd9` passed full hosted 273 suites / 2434 tests (one TODO), TypeScript, contract and signed Android build. Exact source/signature/hash-verified candidate 3.11.53 / 1793 updated the phone in place. Native customer-screen read PASS 70.089 s, same manual actor and clean queue, existing six visits/one photo, complete RF runtime permission profiles, Time and network unchanged. Fresh ordinary manager API read confirms the QA customer radius is 250 m. This closes the code and screen-regression gates; an actual physical 150 m check-in remains NOT RUN. Public main publication/update is still pending at this entry. No server enforcement change or landscape redesign is included.

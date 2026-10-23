@@ -1054,6 +1054,115 @@
         "TalkBack/200%/dark-mode/performance/tablets NOT RUN",
         "Separate Time24h-v8 FAIL; not running"
       ]
+    },
+    {
+      "at": "2026-10-23T21:03:19.112684+00:00",
+      "kind": "CUSTOMER_RADIUS_CANDIDATE_NATIVE_READ_PASS",
+      "candidate": {
+        "status": "PASS",
+        "package": "com.mtmobileapp",
+        "versionCode": 1793,
+        "versionName": "3.11.53",
+        "apkSha256": "257450a548cf3bd08e5cea9da44494fdd16c465dfda4a20bf4699515ca57fe1d",
+        "publishedSourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+        "checkoutSha": "b35e0a3fc4a2aad6f01241cdd37ac68de3877b3c",
+        "compiledSourcesEqual": true,
+        "release": "PR200-build793",
+        "workflowRun": 40021890990,
+        "workflowJob": 120648234495,
+        "artifactId": 12531711110,
+        "archiveSha256": "da50c989229b678dff674451d75ac3b06d09576265960ca387bcffcc6977ed58",
+        "certificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+        "nativeAbis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "testSuites": 273,
+        "testsPassed": 2434,
+        "testsTodo": 1,
+        "verifiedAt": "2026-10-23T20:58:20.064253+00:00",
+        "signatureCheck": "Hosted apksigner and exact archive/APK/log/checksum/source equality; PR QA artifact only",
+        "install": "PASS",
+        "uid": 10556,
+        "allRfRuntimeProfilesUnchanged": true,
+        "ownerPermissionsUnchanged": true,
+        "timePackageUnchanged": true,
+        "installedAt": "2026-10-23T20:59:09.234041+00:00"
+      },
+      "profile": {
+        "status": "PASS",
+        "versionCode": 1793,
+        "sameAgentEmail": true,
+        "sameAgentName": true,
+        "zeytunLabelVisible": true,
+        "agentShell": true,
+        "queueClean": true,
+        "loginAutomated": false
+      },
+      "nativeReadOnlyAcceptance": {
+        "status": "PASS",
+        "startedAt": "2026-10-23T20:59:46.802827+00:00",
+        "businessWrites": false,
+        "physicalBoundaryAcceptance": "NOT RUN",
+        "native": {
+          "status": "PASS",
+          "flow": "qa/customer-radius-read",
+          "phase": "complete",
+          "startedAt": "2026-10-23T21:00:09.448835+00:00",
+          "package": "com.mtmobileapp",
+          "versionCode": 1793,
+          "apkSha256": "257450a548cf3bd08e5cea9da44494fdd16c465dfda4a20bf4699515ca57fe1d",
+          "sourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+          "flowSha256": "11063ede1cbe26bdc98adcbc8142ac4781eb4599011097abb5ab0a479e66ff86",
+          "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+          "sourceFilesSha256": {
+            "scripts/e2e/route_field_native.py": "ab6d938e5f31cf19125daf218258f4f5fda2a7da582b54548d0ae0ea7007ad2e",
+            "scripts/e2e/route_field_guard.py": "1d58d266ab394c43bbb30ff75ddc5243c883f08d59ab79d69fbf239076765801",
+            "MTMobileApp/.maestro/route-field/qa/customer-radius-read.yaml": "11063ede1cbe26bdc98adcbc8142ac4781eb4599011097abb5ab0a479e66ff86",
+            "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+            "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "5903f3449d9e62bf3e22f27cb82f0d349498c72d721bf7f3f2f64cf6ab03a880",
+            "MTMobileApp/.maestro/route-field/shared/open-fixture-visits.yaml": "3ddfb36fb73be8224670c76ce077a94636e806ff8f3e8b2ade513db98a904c1b"
+          },
+          "exitCode": 0,
+          "tests": [
+            {
+              "name": "flow-private",
+              "seconds": "70.089",
+              "status": "PASS"
+            }
+          ],
+          "zeytunQaAgentShellVerified": true,
+          "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+          "finishedAt": "2026-10-23T21:02:18.601931+00:00"
+        },
+        "versionCode": 1793,
+        "sourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+        "allCanonicalVisitsUnchanged": true,
+        "oneQaPhoto": true,
+        "qaCustomerRadiusMeters": 250,
+        "allRuntimeProfilesUnchanged": true,
+        "timePackageUnchanged": true,
+        "networkUnchanged": true,
+        "finishedAt": "2026-10-23T21:02:35.978834+00:00"
+      },
+      "gates": {
+        "sourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+        "ci": {
+          "run": 40021891000,
+          "status": "SUCCESS"
+        },
+        "contract": {
+          "run": 40021891009,
+          "status": "SUCCESS"
+        },
+        "signedApk": {
+          "run": 40021890990,
+          "status": "SUCCESS"
+        }
+      },
+      "publicRelease": "PENDING final documentation-head checks and normal main workflow",
+      "remainingPhysicalBoundary": "NOT RUN; screen-read/helper/API contracts do not prove an actual150m check-in",
+      "displayLease": "v5 ACTIVE original2/temporary7, independent1200s recovery from20:56UTC; final restore required"
     }
   ]
 }
