@@ -73,11 +73,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   revokedReason: null,
 
   login: async (identifier: string, password: string) => {
+    useBootstrapStore.getState().clear()
     useKpiStore.getState().clearScope()
     signedIn(await api.login(identifier, password), set)
   },
 
   loginWithCode: async (setupToken: string, password: string) => {
+    useBootstrapStore.getState().clear()
     useKpiStore.getState().clearScope()
     signedIn(await api.setPasswordWithCode(setupToken, password), set)
   },

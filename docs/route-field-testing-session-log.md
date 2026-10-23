@@ -326,3 +326,25 @@
 - Controller restored networking EXACTLY: ownRF allowed, chain and Time/protectedTime UID rules/radios match baseline, restoration receiptPASS. No active network lease.5originalvisits remain protected; oneQA visit remains CHECKED_IN with1actualphoto. Do not replay offline on unchanged1730; this is a genuine product offline limitation.
 - Diagnosis: bootstrap store deliberately clears admitted data/capabilities and switches to closed offline on every transport failure; navigation then removes the field shell. Existing tests explicitly enforce a closed gate for unconfirmed offline access. A fix must add explicit bounded server authority for previously admitted offline work; do not just treat any cached role/offline value as admission or weaken answered revocation behavior.
 - Next: implement scoped server-issued offline permission and matching private current-session cache, with expiration/missinggrant/crossactor/crosstenant/revocation/clock guards; hosted verification and signed APK before rerunning only the blocked completion/restart/reconciliation stages. Passed GPS/websiteapproval/photo and singleQA checkin must remain preserved. UI errorafterwebsiteapproval stays open/rootunconfirmed. Screen leasev6 remains active with original2/1200s guard; restore/readback2 before stopping.
+
+
+## 2026-10-23T16:48:51.026575+00:00 — bounded offline permission implementation and targeted regression
+
+- Backend fix separate cleanworktree mtm-route-field-offline /codex/route-field-offline from currentmaincdee; PR1013 https://github.com/rashadoni/leaddrive-v2/pull/1013 attached, source70b2648f9 published. Purefactory11-case smokePASS; fullrequiredstatic/type checks running (draft skips are not counted). Additive grant only already-admitted AGENT+installation, seven-daylocalfielddrafts boundtenant/principal/device; queuedserverauth/RLS unchanged.
+- App runtime prepared: serialized sanitized bootstrap cache boundserver/scope/device/rotatinglogin nonce; explicitoffline-enabled only with validservergrant; privatecache expires and evicts on denial/logout/serverchange, clockrollback, mismatchedidentity, or newergrant withdrawal. Cache clear/writes serialized withgenerationguards. HRMworkday/attendance/location authority stripped; cachedpermission never confirmsworkday or drainsserverpush, inheritedbackgroundGPS remainsdisabled. Syncchip identifies cachedoffline state. Notinstalled.
+- Exact951 dependencylock entries match existing appcache; reuseditsdependencies with task-owned temporarysymlink, noinstall/buildonContabo. Firstfocusedcheck retained1FAIL/177PASS: logoutassertionstill expectedonly2keys after newlogin nonce removal. Updatedthatcontractexpectation. Current6focused suites/181tests PASS in2.667s, including expiry/account/server/device/session/403/401/malformed/late-response and officeadmission regressions. FullJest/typecheck/APK gates localNOT RUN perhostcontract; hostedgatesnext.
+- Currentnetworkrestored. OneQA visit remainsactive with1canonicalphoto; do NOT replaystart/GPS/approval/photo. Screenleasev7 active with1200s recovery/original2; restore/readback2 beforestopping. Next: finishsourcechecks/publishapp, hostedfullchecks/signedAPK, verifiedbackendrelease, inplaceinstall preservingcase/session/queue, then resumeonlyblockedofflinecompletion/restart/reconnect.
+
+
+## 2026-10-23T16:56:22.943722+00:00 — focused offline correction checks and release preparation
+
+- Additional authstore/navigation/runtime/sync-centre4suites44tests PASS. Narrow cache expiry test suite rerun after adding conservative request-start expiry anchoring; its actual result is retained by the tool trace and next checkpoint will record it. Full app typecheck/Jest/Android builds remainNOT RUN locally; hostedCI follows publication.
+- Prepared versionName/package3.11.52; CI remains responsible for a larger signed nativeversionCode. Staticlegacy wiretelemetry apkVersion3.11.4+61 is still an existing separate limitation; do not claim nativebuild telemetry fixed.
+- Server source70b PR1013 fullstatic/typecheck running; no backend production mutation yet. Installed phone remains1730, networkrestored, QA1active/1photo; no repeat native writes.
+
+
+## 2026-10-23T16:57:22.862901+00:00 — offline runtime checkpoint ready for hosted verification
+
+- Latest narrowcache suite19tests PASS in1.137s after conservative request-start expiry anchoring; waitingforserver neverextendslease. ChangedTypeScript syntaxPASS. Prior6suites181 and4suites44 passed at their recordedphase; fullcurrenttreeJest/typecheck/Android NOT RUN locally. New blockedscreen types exclude the admitted offline state aswellasenabled/legacy.
+- Preparing signed3.11.52 withautomaticCIversionCode. No dependencychanges; removed ONLY the task-created temporarynode_modules symlink after targetedchecks; underlyingreusedcache preserved.
+- Sourcefix must be verified by fullhostedCI andAPKsigning/provenance beforeinstallation. Existing1730 nativeofflineFAIL remains retained; do not callfixedonphone yet. ServerPR1013 requiredchecks pending; no productionrelease yet.

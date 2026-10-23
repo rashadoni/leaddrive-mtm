@@ -892,7 +892,7 @@ describe("ApiClient — logout", () => {
     expect(client.agentId).toBeNull()
     expect(client._agentRole).toBeNull()
     expect(clearAgentContext).toHaveBeenCalled()
-    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(["@mtm_token", "@mtm_agent"])
+    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(["@mtm_token", "@mtm_agent", "@leaddrive_route_field_v3:offline-login-session-v1"])
   })
 })
 

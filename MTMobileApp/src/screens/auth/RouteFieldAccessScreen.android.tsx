@@ -9,7 +9,7 @@ import { redial } from "../../services/connection-health"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 
-type BlockedAccess = Exclude<RouteFieldAccess, "enabled" | "legacy">
+type BlockedAccess = Exclude<RouteFieldAccess, "enabled" | "legacy" | "offline-enabled">
 
 function copyKey(access: BlockedAccess): "checking" | "disabled" | "unavailable" | "offline" {
   if (access === "pending") return "checking"
