@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T16:59:24.444837+00:00",
+  "lastUpdatedAt": "2026-10-23T17:20:43.616069+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -546,6 +546,71 @@
         "deployed": false
       },
       "preservedState": "oneQA CHECKED_IN visit withonecanonicalcamera photo;5original visits unchanged; do not repeat checkin/GPS/approval/photo"
+    },
+    {
+      "at": "2026-10-23T17:20:43.615815+00:00",
+      "ownerOfflineReleaseApproved": true,
+      "serverCorrection": {
+        "pr": 1013,
+        "sourceSha": "70b2648f99961a13ace22b5afde55b31392bcddd",
+        "requiredChecks": "ALL5 ACTUAL SUCCESS",
+        "baseline": "18 unchanged known failing files/no new failing files",
+        "mergeSha": "deb8de1c0b0c4a71d3ff565276699ddac846bc8f",
+        "deployRun": 39992858222,
+        "deploy": "RUNNING; public smoke NOT RUN"
+      },
+      "appCorrection": {
+        "status": "PASS",
+        "package": "com.mtmobileapp",
+        "versionCode": 1787,
+        "versionName": "3.11.52",
+        "apkSha256": "66d668c29aa4ee4fe7aec46397b05837ab34213a63974a74292f68155b816366",
+        "publishedSourceSha": "0962215e757a1310ba077425679b7ff7c565bd39",
+        "checkoutSha": "ba79f198e93fdc6a00e3a94d350fef835909d20c",
+        "compiledSourcesEqual": true,
+        "release": "PR199-build787",
+        "workflowRun": 39991076110,
+        "workflowJob": 120542673377,
+        "artifactId": 12516994949,
+        "archiveSha256": "3abcb4ceb26ed476d4370b90f1f830dbf23bd30d1e00318fc8e8ca4f7ff818b9",
+        "certificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+        "nativeAbis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "signatureCheck": "GitHub apksigner full verification; exact artifact and APK digest matched",
+        "install": "PASS",
+        "uid": 10556,
+        "timePackageUnchanged": true,
+        "ownerPermissionsUnchanged": true,
+        "installedAt": "2026-10-23T17:16:52.618947+00:00"
+      },
+      "appHostedVerification": {
+        "sourceSha": "0962215e757a1310ba077425679b7ff7c565bd39",
+        "jestSuitesPassed": 271,
+        "jestTestsPassed": 2406,
+        "jestTodo": 1,
+        "typecheck": "PASS",
+        "contract": "PASS",
+        "signedAndroidBuild": "PASS"
+      },
+      "nativeSessionAfterUpdate": {
+        "status": "PASS",
+        "versionCode": 1787,
+        "sameAgentEmail": true,
+        "sameAgentName": true,
+        "zeytunLabelVisible": true,
+        "agentShell": true,
+        "queueClean": true,
+        "loginAutomated": false
+      },
+      "retainedProfileReadFailure": {
+        "attempt": "profile1787-v1",
+        "outcome": "FAIL returning from profile: back button content-description selector was not matched by private text-only helper; name/email/tenant identity read passed. Corrected native readback/return v2 PASS; no product auth issue"
+      },
+      "offline1787": "NOT RUN: wait new server SHA and fresh online grant",
+      "screenLease": "v8 active bounded1200s/original2; restore required",
+      "preservedState": "same manually signed-in Seymur/Zeytun; existing QA1CHECKED_IN/1camera photo; original5visits unchanged"
     }
   ]
 }
