@@ -20,7 +20,7 @@ import xml.etree.ElementTree as ET
 
 from route_field_guard import (agent_shell, auth_form, fixture_auth_form, manager_shell, owner_permissions, require, verify_apk,
                                verify_auth_preserved, verify_manager_case,
-                               verify_fixture_case, verify_observation_window, verify_owner_task_case)
+                               verify_fixture_case, verify_zeytun_qa_case, verify_observation_window, verify_owner_task_case)
 
 REPO = Path(__file__).resolve().parents[2]
 APP = REPO / "MTMobileApp"
@@ -41,10 +41,11 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-complete"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
+    parser.add_argument("--qa-case", type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     # Refuse reuse: every attempt, including failures, keeps its original evidence.
@@ -53,10 +54,11 @@ def main():
     manager_flow = args.flow in ("manager-signin", "manager-tabs")
     manager_switch = args.flow == "manager-signin"
     fixture_flow = args.flow.startswith("fixture-")
+    qa_flow = args.flow.startswith("zeytun-")
     fixture_switch = args.flow in ("fixture-signin", "fixture-signin-resume")
     fixture_resume = args.flow == "fixture-signin-resume"
-    flow_group = "fixtures" if fixture_flow else "journeys" if task_flow or manager_switch else "smoke"
-    flow_name = args.flow.removeprefix("fixture-") if fixture_flow else args.flow
+    flow_group = "qa" if qa_flow else "fixtures" if fixture_flow else "journeys" if task_flow or manager_switch else "smoke"
+    flow_name = args.flow.removeprefix("zeytun-") if qa_flow else args.flow.removeprefix("fixture-") if fixture_flow else args.flow
     report = {"status": "FAIL", "flow": flow_group + "/" + flow_name, "phase": "preflight"}
     started = datetime.now(timezone.utc)
     report["startedAt"] = started.isoformat()
@@ -98,6 +100,15 @@ def main():
                 if args.flow == "fixture-location-request":
                     require(fixture_case["bootstrap"].get("policies", {}).get("agentPermissions", {})
                             .get("customerLocationRequest") is True, "RF_LOCATION_REQUEST_DISABLED")
+            qa_case = None
+            if qa_flow:
+                require(args.qa_case is not None, "RF_ZEYTUN_CASE_REQUIRED")
+                qa_case = private_json(args.qa_case)
+                verify_zeytun_qa_case(qa_case, expected["publishedSourceSha"])
+                if args.flow.startswith("zeytun-visit-") or args.flow == "zeytun-location-request":
+                    report["ownerPermissionsBefore"] = owner_permissions(package)
+                    require(report["ownerPermissionsBefore"]["ACCESS_FINE_LOCATION"]["granted"],
+                            "RF_LOCATION_PERMISSION_REQUIRED")
             manager_case = None
             if manager_flow:
                 require(args.manager_case is not None, "RF_MANAGER_CASE_REQUIRED")
@@ -121,7 +132,7 @@ def main():
             before_xml = ui()
             # Retain the actual window even when a shell admission check fails.
             (args.out / "preflight-private.xml").write_text(before_xml)
-            if (task_flow or manager_switch or (fixture_flow and not fixture_switch)) and agent_shell(before_xml, home_required=False) is None:
+            if (task_flow or manager_switch or (fixture_flow and not fixture_switch) or qa_flow) and agent_shell(before_xml, home_required=False) is None:
                 root = ET.fromstring(before_xml)
                 tab = next(node for node in root.iter("node") if node.get("package") == PACKAGE
                            and node.get("resource-id") == "guide-spot-tab.Today")
@@ -145,6 +156,8 @@ def main():
                 before = auth_form(before_xml, placeholder) if args.flow == "auth-entry" else agent_shell(before_xml)
                 if fixture_flow:
                     require(before.endswith(", " + fixture_case["expectedName"]), "RF_FIXTURE_IDENTITY_REFUSED")
+            if qa_flow:
+                require(before.endswith(", " + qa_case["agent"]["name"]), "RF_ZEYTUN_IDENTITY_REFUSED")
             (args.out / "before-private.xml").write_text(before_xml)
             flow = APP / f".maestro/route-field/{flow_group}/{flow_name}.yaml"
             labels = flow.parent.parent / "shared/labels.js"
@@ -161,6 +174,10 @@ def main():
                     dependencies.append(flow.parent.parent / "shared/fixture-auth.yaml")
                 if args.flow.startswith("fixture-visit-"):
                     dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
+            if qa_flow:
+                dependencies += [flow.parent.parent / "shared/qa-labels.js"]
+                if args.flow.startswith("zeytun-visit-"):
+                    dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
             report["sourceFilesSha256"] = {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()
                                          for path in dependencies}
             report["phase"] = "maestro"
@@ -174,6 +191,8 @@ def main():
                 gate = "RF_MANAGER_PREFLIGHT=owner-verified-manager-readonly-v1"
             if fixture_flow:
                 gate = "RF_FIXTURE_PREFLIGHT=separate-owned-route-field-v1"
+            if qa_flow:
+                gate = "RF_QA_PREFLIGHT=zeytun-owner-selected-website-qa-v1"
             command = [str(args.maestro), "test", "-e", "LOCALE=" + args.locale,
                        "-e", gate]
             if task_case:
@@ -216,6 +235,17 @@ def main():
                                          fixture_case.get("priorTaskTitle", "")), "RF_PRIOR_TASK_REQUIRED")
                     private_env["RF_FIXTURE_PASSWORD"] = fixture_case["login"]["password"]
                     private_env["RF_PRIOR_TASK_TITLE"] = fixture_case["priorTaskTitle"]
+            if qa_case:
+                private_env = {"RF_QA_CUSTOMER_NAME": qa_case["customer"]["name"],
+                    "RF_QA_NO_COORDINATES": words["visit"]["noCoordinatesTitle"],
+                    "RF_QA_CHECKIN": words["visit"]["checkInButton"],
+                    "RF_QA_CUSTOMER_HERE": words["visit"]["customerIsHere"],
+                    "RF_QA_PHOTO_CAPTURE": words["photoCapture"]["capture"],
+                    "RF_QA_PHOTO_USE": words["photoCapture"]["usePhoto"],
+                    "RF_QA_PHOTO_ALLOW": words["photoCapture"]["allow"],
+                    "RF_QA_PHOTO_PERMISSION_BODY": words["photoCapture"]["permissionBody"],
+                    "RF_QA_NOTES_PLACEHOLDER": words["notesModal"]["placeholder"],
+                    "RF_QA_NOTES_SUBMIT": words["notesModal"]["submit"]}
             if private_env:
                 run_path = args.out / "flow-private.yaml"
                 run_path.write_text("appId: " + PACKAGE + "\nenv: " + json.dumps(private_env, ensure_ascii=False)
@@ -249,6 +279,10 @@ def main():
             if args.flow == "auth-entry":
                 verify_auth_preserved(before, auth_form(after_xml, placeholder))
                 report["loginDraftPreserved"] = True
+            elif qa_flow:
+                require(agent_shell(after_xml).endswith(", " + qa_case["agent"]["name"]), "RF_ZEYTUN_IDENTITY_REFUSED")
+                report["zeytunQaAgentShellVerified"] = True
+                report["qaCustomerId"] = qa_case["customer"]["id"]
             elif fixture_flow:
                 greeting = agent_shell(after_xml)
                 require(greeting.endswith(", " + fixture_case["expectedName"]), "RF_FIXTURE_IDENTITY_REFUSED")

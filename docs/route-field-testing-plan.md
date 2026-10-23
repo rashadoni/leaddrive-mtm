@@ -78,3 +78,8 @@ Backend PR1003 is merged and main06e7 deployed successfully through workflow3995
 Protected read-only encrypted access PR1007 is awaiting required static/typecheck39962906981 on exactb7; narrow10 crypto/controller tests and runner/scan passed. After green merge and provenance-checked private delivery, run20 scope/snapshot cases and the six prepared native flows. These remain NOT RUN; the phone channel does not answer and one reconnection question is pending.
 
 App draft PR199 exact72 has hosted270 suites/2386 tests+TypeScript,71 contract checks and test-only packaging-skip proof PASS. Installed APK/runtime unchanged. The previously accepted real website task is complete and must not be replayed. The broader matrix, original source hypotheses and the separate Time24h failure remain open.
+
+
+## 2026-10-23T15:08:05.533895+00:00 — user-selected target supersedes fictional handset plan
+
+User explicitly requested Zeytun testing and said they completed sign-in. Preserve that session and identify its actual actor/role without retyping login. Fictional handset journeys are superseded, none passed; server-only fixture/security results remain retained. Continue the requested manager/agent CRM→app→CRM cycle in Zeytun using clear QA entities, within normal scope, preserving unrelated visits/workdays/routes/customer coordinates. Do not bypass fixed fictional guards with a substituted real-tenant manifest. Display lease is restored to original2; no phone network lease entered.

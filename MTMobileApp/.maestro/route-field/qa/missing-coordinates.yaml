@@ -1,0 +1,45 @@
+appId: com.mtmobileapp
+name: A marked QA place without coordinates cannot create a visit
+---
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-website-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+- tapOn:
+    id: guide-spot-tab.More
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- scrollUntilVisible:
+    element:
+      id: more-action-Visits
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Visits
+- tapOn: ${output.qa.visit.search}
+- inputText: ${RF_QA_CUSTOMER_NAME}
+- scrollUntilVisible:
+    element:
+      text: ${RF_QA_CUSTOMER_NAME}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${RF_QA_CUSTOMER_NAME}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.start}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.qa.visit.start}
+- tapOn: ${output.qa.checkIn}
+- assertVisible: ${output.qa.noCoordinates}
+# Cancel the offer; neither report-to-manager nor location submission is used.
+- tapOn:
+    id: app-choice-button-0
+- extendedWaitUntil:
+    notVisible: ${output.qa.noCoordinates}
+    timeout: 5000
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

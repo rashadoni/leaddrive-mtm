@@ -181,6 +181,29 @@ def verify_fixture_case(case, source_sha):
             "RF_FIXTURE_IDENTITY_REFUSED")
 
 
+def verify_zeytun_qa_case(case, source_sha):
+    """User-selected Zeytun session; only the website-created reserved QA place."""
+    org = "cmu9ih71e01vbkpd4fvgjhlba"
+    require(case.get("version") == 1 and case.get("marker") == "rf-zeytun-qa-20261023-v1"
+            and case.get("ownerAuthorized") is True and case.get("sourceSha") == source_sha
+            and case.get("targetTenant") == "zeytun" and case.get("organizationId") == org,
+            "RF_ZEYTUN_CASE_REFUSED")
+    actor = case.get("agent") or {}
+    require(actor.get("organizationId") == org and actor.get("role") == "AGENT"
+            and all(isinstance(actor.get(key), str) and bool(actor[key]) for key in ("id", "name", "email"))
+            and case.get("nativeProfileBound") is True and case.get("ordinaryManagerWebBound") is True,
+            "RF_ZEYTUN_ACTOR_REFUSED")
+    customer = case.get("customer") or {}
+    require(case.get("createdViaWebsite") is True
+            and re.fullmatch(r"[a-f0-9-]{36}", case.get("browserRunId", ""))
+            and customer.get("organizationId") == org
+            and isinstance(customer.get("id"), str) and bool(customer["id"])
+            and customer.get("name") == case.get("customerName") == "RF-E2E-ZEY-20261023 QA GPS"
+            and actor["id"] in customer.get("assignedAgentIds", []),
+            "RF_ZEYTUN_QA_CUSTOMER_REFUSED")
+    require("login" not in case and "password" not in case, "RF_ZEYTUN_REAUTH_REFUSED")
+
+
 def verify_observation_window(progress, now, maximum_seconds=360):
     """Do not take the shared phone during the Time controller's final UI window."""
     if progress.get("status") != "RUNNING":

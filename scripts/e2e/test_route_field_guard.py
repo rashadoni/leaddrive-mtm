@@ -7,7 +7,7 @@ from xml.sax.saxutils import quoteattr
 from route_field_guard import (
     FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form, fixture_auth_form,
     verify_apk, verify_auth_preserved, verify_fixture, verify_fixture_case, verify_manager_case,
-    verify_observation_window, verify_owner_task_case, manager_shell, owner_permissions,
+    verify_observation_window, verify_owner_task_case, verify_zeytun_qa_case, manager_shell, owner_permissions,
 )
 
 
@@ -137,6 +137,42 @@ class FixtureAdmissionTests(unittest.TestCase):
         bootstrap["manifest"]["modules"]["routeField"]["enabled"] = False
         with self.assertRaisesRegex(ValueError, "^RF_ROUTE_MODULE_REFUSED$"):
             verify_fixture(manifest, bootstrap, "AGENT")
+
+
+class ZeytunQaAdmissionTests(unittest.TestCase):
+    def case(self):
+        org = "cmu9ih71e01vbkpd4fvgjhlba"
+        return {"version": 1, "marker": "rf-zeytun-qa-20261023-v1", "ownerAuthorized": True,
+                "sourceSha": "a" * 40, "targetTenant": "zeytun", "organizationId": org,
+                "agent": {"id": "test-agent", "name": "Test Agent", "email": "qa@example.invalid",
+                          "organizationId": org, "role": "AGENT"},
+                "nativeProfileBound": True, "ordinaryManagerWebBound": True,
+                "createdViaWebsite": True, "browserRunId": "b" * 36,
+                "customerName": "RF-E2E-ZEY-20261023 QA GPS",
+                "customer": {"id": "test-place", "name": "RF-E2E-ZEY-20261023 QA GPS",
+                             "organizationId": org, "assignedAgentIds": ["test-agent"]}}
+
+    def test_website_qa_customer_and_existing_agent_context_are_admitted(self):
+        verify_zeytun_qa_case(self.case(), "a" * 40)
+
+    def test_other_tenants_roles_and_unverified_native_sessions_are_refused(self):
+        for key, value in (("organizationId", FIXTURE_ORG), ("targetTenant", "other"),
+                           ("nativeProfileBound", False), ("ordinaryManagerWebBound", False)):
+            case = self.case(); case[key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                verify_zeytun_qa_case(case, "a" * 40)
+        case = self.case(); case["agent"]["role"] = "MANAGER"
+        with self.assertRaises(ValueError): verify_zeytun_qa_case(case, "a" * 40)
+
+    def test_real_customers_outside_assignments_and_credential_input_are_refused(self):
+        for change in ("name", "assignment", "provenance", "credentials"):
+            case = self.case()
+            if change == "name": case["customer"]["name"] = "Existing real customer"
+            if change == "assignment": case["customer"]["assignedAgentIds"] = ["other-agent"]
+            if change == "provenance": case["createdViaWebsite"] = False
+            if change == "credentials": case["login"] = {"email": "qa@example.invalid"}
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify_zeytun_qa_case(case, "a" * 40)
 
 
 class SharedPhoneTests(unittest.TestCase):

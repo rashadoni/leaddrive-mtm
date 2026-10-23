@@ -1,0 +1,22 @@
+appId: com.mtmobileapp
+name: Complete the marked QA active visit with its single camera photo
+---
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-website-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- assertVisible: ${output.qa.visit.active}
+- assertVisible: ${RF_QA_CUSTOMER_NAME}
+- assertVisible: ${output.qa.visit.onePhoto}
+- tapOn: ${output.qa.visit.finish}
+- tapOn: ${output.qa.notesPlaceholder}
+- inputText: RF-QA marked QA visit completed
+- tapOn: ${output.qa.notesSubmit}
+# The driver records UI only. The orchestrator must separately prove either
+# pending persistence while UID-blocked or exact canonical completion online.
+- extendedWaitUntil:
+    notVisible: ${output.qa.notesPlaceholder}
+    timeout: 10000
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

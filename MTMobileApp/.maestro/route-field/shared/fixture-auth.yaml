@@ -8,10 +8,17 @@ name: Authenticate only the exact fictional company and verify its profile and t
     id: login-email
 - eraseText
 - inputText: ${RF_FIXTURE_EMAIL}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: login-password
+    direction: DOWN
+    timeout: 15000
 - tapOn:
     id: login-password
 - eraseText
 - inputText: ${RF_FIXTURE_PASSWORD}
+- hideKeyboard
 - scrollUntilVisible:
     element:
       id: login-submit

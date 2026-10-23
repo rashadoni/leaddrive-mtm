@@ -133,9 +133,9 @@
   "remainingGates": {
     "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
     "fullHostedChecks": "App PR199 exactc596 all4 PASS; backend1008 exact432c all5 plus11 controller/root tests PASS; mainf612 merged, its automatic deploy not yet verified",
-    "realVisitWorkdayGpsPhotoOffline": "NOT RUN: fictional company now created; private access delivery pending",
+    "realVisitWorkdayGpsPhotoOffline": "NOT RUN: user now requests Zeytun; identify existing session and create/use clearly marked QA entities without changing unrelated production facts",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
-    "fictionalNative": "signin-v4 IN PROGRESS on corrected manager-Profile flow; first3 retained FAIL, other5 fictional journeys NOT RUN",
+    "fictionalNative": "SUPERSEDED by user:continue inZeytun from manual sign-in. No fictional native PASS; all failed/interrupted attempts retained",
     "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
   },
   "backendArtifactsObserved": {
@@ -153,16 +153,20 @@
     "manager-tabs-v1": "final top-of-Team assertion; retained scroll and external foreground interruption observed",
     "fixture-signin-v1": "preflight manager shell unavailable before switch",
     "fixture-signin-v2": "preflight manager shell unavailable after normal wake;AOD observed independently",
-    "fixture-signin-v3": "Maestro42.579s FAIL:manager More is direct Profile;employee menu selector absent;no account switch"
+    "fixture-signin-v3": "Maestro42.579s FAIL:manager More is direct Profile;employee menu selector absent;no account switch",
+    "fixture-signin-v4": "FAIL101.734s: actual fixed fixture host selected, preauth name expected incorrectly; no fixture credential sent",
+    "fixture-signin-resume-v1": "FAIL58.098s: password field below keyboard; scroll/hide preparation not natively proven",
+    "fixture-signin-resume-v2": "Stopped on user steering, exit143/no JUnit cases. User reported wrong/repeated login; preserve manual Zeytun sign-in"
   },
   "phoneEndState": {
-    "principalRole": "MANAGER",
-    "screen": "Last observed manager shell before fictional sign-in attemptv2",
+    "principalRole": "NOT YET VERIFIED after user manual sign-in",
+    "screen": "Normal-wake/read-only inspection running; preserve user session",
     "taskStatus": "COMPLETED",
     "realVisitOrWorkdayCreated": false,
     "transport": "PASS:one ready physical device after user reconnect",
     "ownerPermissions": "fine/coarse/camera granted; flags recorded privately before any native fixture action",
-    "keyguard": "User unlocked; explicit normal MainActivity launch showed real manager shell. Earlier policy-only/implicit-launch failures retained; do not infer actual lock solely from policy showing flag"
+    "keyguard": "User unlocked; explicit normal MainActivity launch showed real manager shell. Earlier policy-only/implicit-launch failures retained; do not infer actual lock solely from policy showing flag",
+    "targetTenant": "zeytun"
   },
   "publicationAuthorized": true,
   "retainedBackendFailures": {
@@ -181,7 +185,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T14:50:52.942080+00:00",
+  "lastUpdatedAt": "2026-10-23T15:08:05.533895+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -226,8 +230,17 @@
     "original": "2",
     "temporary": "7",
     "deviceRecoverySeconds": 1200,
-    "active": true,
-    "restoreRequired": true,
-    "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged"
+    "active": false,
+    "restoreRequired": false,
+    "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged",
+    "originalRestored": true,
+    "restoreReadback": "2"
+  },
+  "activeTarget": {
+    "tenant": "zeytun",
+    "requestedByUser": true,
+    "preserveManualLogin": true,
+    "currentNativeActor": "NOT YET VERIFIED",
+    "previousFictionalNativeScope": "SUPERSEDED by explicit user steering"
   }
 }

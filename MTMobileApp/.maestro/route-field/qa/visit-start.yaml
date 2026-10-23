@@ -1,0 +1,30 @@
+appId: com.mtmobileapp
+name: Start only the marked QA GPS place after server setup
+---
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-website-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- tapOn: ${output.qa.visit.search}
+- inputText: ${RF_QA_CUSTOMER_NAME}
+- scrollUntilVisible:
+    element:
+      text: ${RF_QA_CUSTOMER_NAME}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${RF_QA_CUSTOMER_NAME}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.start}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.qa.visit.start}
+- tapOn: ${output.qa.checkIn}
+# An existing foreground location grant is required; denial is tested separately.
+- extendedWaitUntil:
+    visible: ${output.qa.visit.active}
+    timeout: 45000
+- assertVisible: ${RF_QA_CUSTOMER_NAME}
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today
