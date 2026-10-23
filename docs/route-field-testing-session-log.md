@@ -310,3 +310,11 @@
 - Independent CRM reconciliation PASS: exactly1QA visit CHECKED_IN,0photos,5originalvisits unchanged and unrelated requests unchanged. QA visit ID retained privately. Native full-flow PASS is NOT claimed.
 - Future start verifier and photo/completion/persistence flows now scroll UP to the active/pending card, and DOWN to the specific action, confined to the normal visits list. The map-screen no-swipe correction remains intact. Completion now waits for explicit saved-on-device/pending-sync text before returning, so restart cannot race async GPS/queue persistence. All touched executable YAML structures/diff PASS.
 - Next: captureoneactualcamera photo in this existingQA visit, independentserverphoto check, then completeoffline/restart/reconnect. No duplicatecheckin, GPSrequest or managerdecision.
+
+
+## 2026-10-23T16:18:39.295879+00:00 — actual camera gate PASS, offline admission next
+
+- zeytun-visit-photo-v1 physical Maestro PASS233.923s, exactcurrentagent postflight PASS. This journey independently read the activeQA card/name/0photos before capturing, then observed1photo; no second checkin or synthetic/gallery image. Independent manager gallery GET sees exactly1photo for the sameQA visit; full photo reconciliation is running. Original permissions were alreadygranted, unchangedAPK1730/sourcef1.
+- This successful active-card readback corroborates the earlier accepted business checkin without rerunning the write. Original full visit-start-v2 remains FAIL for its offscreen assertion; no false full-journeyPASS. All4 hosted checks exact8a88e33 PASS.
+- Private offline controller prepared with ordinary server baseline, bounded900s owner0RF-only UID denial, completion saved/pending text before restart, separate persistence Maestro, canonical CHECKED_IN+1photo whileblocked, exactnetworkrestore and foregroundsync, finalCHECKED_OUT/exactnotes/1photo and secondforegroundnochange, permissions/currentagent/emptyqueue checks. Not yet entered.
+- Active bounded display leasev6 renewed fromv5 around16:12UTC, original2/temp7,1200s device recovery. Restore/readback2 at end. No network/radio/clock change yet; no fakeworkday or realcustomerGPS mutation.

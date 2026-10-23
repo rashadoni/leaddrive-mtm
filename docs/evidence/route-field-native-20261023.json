@@ -178,6 +178,52 @@
       "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
       "finishedAt": "2026-10-23T15:59:42.649899+00:00",
       "attempt": "zeytun-location-request-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "qa/visit-photo",
+      "phase": "complete",
+      "startedAt": "2026-10-23T16:12:34.089725+00:00",
+      "package": "com.mtmobileapp",
+      "versionCode": 1730,
+      "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+      "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+      "ownerPermissionsBefore": {
+        "ACCESS_FINE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]"
+        },
+        "ACCESS_COARSE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        },
+        "CAMERA": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        }
+      },
+      "flowSha256": "aedd7c6b649d00f7ad2091406b33b889d94267f16991da1226cc80a097462b2c",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "40d36045bae6e49190911f6e03ae689c82b360b611f849871cef45631d028835",
+        "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+        "MTMobileApp/.maestro/route-field/qa/visit-photo.yaml": "aedd7c6b649d00f7ad2091406b33b889d94267f16991da1226cc80a097462b2c",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "5903f3449d9e62bf3e22f27cb82f0d349498c72d721bf7f3f2f64cf6ab03a880",
+        "MTMobileApp/.maestro/route-field/shared/open-fixture-visits.yaml": "3ddfb36fb73be8224670c76ce077a94636e806ff8f3e8b2ade513db98a904c1b"
+      },
+      "exitCode": 0,
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "233.923",
+          "status": "PASS"
+        }
+      ],
+      "zeytunQaAgentShellVerified": true,
+      "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+      "finishedAt": "2026-10-23T16:17:48.758708+00:00",
+      "attempt": "zeytun-visit-photo-v1"
     }
   ],
   "website": {
@@ -261,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T16:01:18.901806+00:00",
+  "lastUpdatedAt": "2026-10-23T16:18:39.295879+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -433,6 +479,36 @@
       "retainedGpsFailure": "v1 test swipe moved map603m; app refused;0 request created; fixed by removing map swipes and hiding keyboard",
       "managerWebsiteReviewRun": "554e4785-2eb2-4c83-8607-bcd8683e6dc7 RUNNING",
       "offlinePersistenceFlow": "PREPARED, NOT RUN; requires bounded owner0 RF-only UID lease and exact QA visit/photo baseline"
+    },
+    {
+      "at": "2026-10-23T16:18:39.295879+00:00",
+      "managerApproval": {
+        "status": "PASS",
+        "managerWebsiteApproval": true,
+        "canonicalStatus": "APPROVED",
+        "exactDeviceProposalStored": true,
+        "radiusPreserved": 250,
+        "qaCustomerOnly": true,
+        "postApprovalPageError": "OBSERVED: page recovered after retry; root cause unconfirmed",
+        "checkedAt": "2026-10-23T16:02:49.779073+00:00"
+      },
+      "visitStart": {
+        "status": "PASS",
+        "phase": "visit-start",
+        "checkedAt": "2026-10-23T16:10:39.403450+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_IN",
+        "photoCount": 0
+      },
+      "visitStartFullMaestro": "FAIL viewport assertion retained; business write accepted; do not repeat checkin",
+      "nativeActiveVisitReadback": "PASS as prerequisite assertions in successful photo journey",
+      "realCameraPhoto": "Native PASS233.923s; canonical count1 independently observed",
+      "nativeOffline": "NEXT, NOT ENTERED",
+      "screenLease": "v6 active,1200s recovery/original2; restore required"
     }
   ]
 }
