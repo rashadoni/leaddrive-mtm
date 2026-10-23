@@ -26,8 +26,12 @@ name: Queue three offline claims with the existing Android permissions
     direction: UP
     centerElement: true
     timeout: 45000
-- assertVisible:
-    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
 - scrollUntilVisible:
     element:
       id: office-workday-break
@@ -37,9 +41,11 @@ name: Queue three offline claims with the existing Android permissions
 - tapOn:
     id: office-workday-break
     enabled: true
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: "${output.copy.running}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
     timeout: 60000
 - runFlow:
     when:
@@ -66,9 +72,11 @@ name: Queue three offline claims with the existing Android permissions
 - assertVisible: "${output.copy.finishTitle}"
 - tapOn:
     id: app-choice-button-1
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       text: "${output.copy.completed}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
     timeout: 60000
 - runFlow:
     when:
@@ -83,8 +91,12 @@ name: Queue three offline claims with the existing Android permissions
     direction: UP
     centerElement: true
     timeout: 45000
-- assertVisible:
-    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
 - assertNotVisible:
     id: office-workday-return
 - assertNotVisible:

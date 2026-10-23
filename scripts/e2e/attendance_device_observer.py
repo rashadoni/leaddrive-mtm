@@ -101,10 +101,25 @@ ts_capture() {
         input tap "$((($1 + $3) / 2))" "$((($2 + $4) / 2))"
         timeout 12 uiautomator dump "$ts_ui" >> "$ts_dir/capture-$ts_capture_mode.log" 2>&1
         if grep -q 'Fictional office employee' "$ts_ui"; then
-          if [ "$ts_capture_mode" = probe ] ||
-             { grep -q 'resource-id="office-workday-pending"' "$ts_ui" &&
-               grep -q 'resource-id="office-workday-offline"' "$ts_ui" &&
-               grep -q 'Gün tamamlanıb' "$ts_ui"; }; then
+          if grep -q 'resource-id="office-workday-offline"' "$ts_ui" &&
+             grep -q 'Gün tamamlanıb' "$ts_ui"; then
+            # Identity/status and the queue can occupy different viewports.
+            # Preserve both, then scroll only inside this already-verified app.
+            cp "$ts_ui" "$ts_dir/admission-$ts_capture_mode-overview.xml"
+            timeout 15 screencap -p "$ts_dir/admission-$ts_capture_mode-overview.png"
+            ts_swipe_x=$((($1 + $3) / 2)); ts_swipe_y=$2
+            ts_scroll_try=0
+            while ! grep -q 'resource-id="office-workday-pending"' "$ts_ui" &&
+                  [ "$ts_scroll_try" -lt 5 ] && [ "$ts_swipe_y" -gt 300 ]; do
+              ts_scroll_try=$((ts_scroll_try + 1))
+              ts_heartbeat
+              input swipe "$ts_swipe_x" "$((ts_swipe_y - 80))" "$ts_swipe_x" "$((ts_swipe_y / 3))" 350
+              timeout 12 uiautomator dump "$ts_ui" >> "$ts_dir/capture-$ts_capture_mode.log" 2>&1
+            done
+            if grep -q 'resource-id="office-workday-pending"' "$ts_ui"; then
+              ts_capture_ok=true; break
+            fi
+          elif [ "$ts_capture_mode" = probe ]; then
             ts_capture_ok=true; break
           fi
         fi

@@ -1,4 +1,5 @@
 import subprocess
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -61,6 +62,31 @@ class DeviceObserverTests(unittest.TestCase):
         done = subprocess.run(["sh", "-c", definitions + '\n' + probe],
                               capture_output=True, text=True, check=True)
         self.assertEqual(done.stdout, '')
+
+    def test_phone_capture_keeps_identity_before_scrolling_to_a_queue_below_the_fold(self):
+        definitions = worker().split('\ncase "$1" in', 1)[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            (folder / 'overview').write_text('<node package="com.leaddrive.attendance" text="Fictional office employee"/><node resource-id="time-tab-OwnWorkday" bounds="[94,904][493,1058]"/><node text="Gün tamamlanıb"/><node resource-id="office-workday-offline"/>')
+            (folder / 'queue').write_text('<node package="com.leaddrive.attendance" resource-id="office-workday-pending"/>')
+            mocks = r'''
+pm() { echo package:/fake.apk; }
+sha256sum() { echo "$ts_apk /fake.apk"; }
+cat() { if [ "$1" = /proc/sys/kernel/random/boot_id ]; then echo "$ts_boot"; else command cat "$@"; fi; }
+wm() { :; }
+am() { :; }
+input() { if [ "$1" = swipe ]; then touch "$ts_dir/swiped"; fi; }
+timeout() { shift; "$@"; }
+uiautomator() { if [ -f "$ts_dir/swiped" ]; then cp "$ts_dir/queue" "$2"; else cp "$ts_dir/overview" "$2"; fi; }
+screencap() { touch "$2"; }
+'''
+            subprocess.run(['sh', '-c', definitions + '\n' + mocks + '\nts_dir=' + temporary + '\nts_capture before'],
+                           capture_output=True, text=True, check=True)
+            receipt = json.loads((folder / 'admission-before.json').read_text())
+            self.assertTrue(receipt['passed'])
+            self.assertTrue(receipt['pendingVisible'])
+            self.assertIn('Fictional office employee', (folder / 'admission-before-overview.xml').read_text())
+            self.assertNotIn('Fictional office employee', (folder / 'admission-before.xml').read_text())
 
     def test_tab_coordinates_come_only_from_the_named_attendance_tab(self):
         definitions = worker().split('\ncase "$1" in', 1)[0]
