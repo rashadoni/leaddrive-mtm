@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T17:20:43.616069+00:00",
+  "lastUpdatedAt": "2026-10-23T18:02:48.577704+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -611,6 +611,86 @@
       "offline1787": "NOT RUN: wait new server SHA and fresh online grant",
       "screenLease": "v8 active bounded1200s/original2; restore required",
       "preservedState": "same manually signed-in Seymur/Zeytun; existing QA1CHECKED_IN/1camera photo; original5visits unchanged"
+    },
+    {
+      "at": "2026-10-23T18:02:48.577373+00:00",
+      "serverCorrection": {
+        "status": "PASS",
+        "artifactSha": "deb8de1c0b0c4a71d3ff565276699ddac846bc8f",
+        "ping": "PASS",
+        "checks": [
+          {
+            "case": "agent-device",
+            "status": "PASS",
+            "grantPresent": true
+          },
+          {
+            "case": "agent-no-device",
+            "status": "PASS",
+            "grantPresent": false
+          },
+          {
+            "case": "manager-device",
+            "status": "PASS",
+            "grantPresent": false
+          }
+        ],
+        "checkedAt": "2026-10-23T17:38:53.131546+00:00",
+        "queuedWriteAuthorizationUnchanged": true
+      },
+      "serverWorkflow": "39992858222 SUCCESS",
+      "correctedApp1787Offline": {
+        "status": "FAIL",
+        "completionMaestroSeconds": "59.002",
+        "reason": "Active QA card displayed Foto:0 after restart while canonical count1; assertion before checkout stopped flow",
+        "admittedFieldShell": "PASS observed offline tabs and active QA card",
+        "networkRestoration": {
+          "ownNetworkingRestored": true,
+          "timeNetworkingUnchanged": true,
+          "protectedProfileUnchanged": true,
+          "radiosUnchanged": true,
+          "chainRestored": true
+        },
+        "checkoutQueued": false,
+        "restartPersistence": "NOT RUN"
+      },
+      "confirmedProgressCorrection": {
+        "head": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+        "targetedSuites": 6,
+        "targetedTestsPassed": 74,
+        "runnerGuardTestsPassed": 27,
+        "syntax": "PASS",
+        "hostedCI": {
+          "run": 39999680868,
+          "testsAndTypecheck": "SUCCESS"
+        },
+        "contract": {
+          "run": 39999680874,
+          "status": "SUCCESS"
+        },
+        "apkBuild": {
+          "run": 39999680887,
+          "status": "RUNNING"
+        },
+        "native": "NOT RUN; not installed"
+      },
+      "managerWebsiteRead": {
+        "status": "PASS",
+        "page": "CRM QA visit detail",
+        "sameOrganization": true,
+        "managerRole": "manager",
+        "qaNameVisible": true,
+        "completionNoteVisible": false,
+        "runtimeExceptionCount": 0,
+        "businessWrites": false
+      },
+      "retainedBrowserFailure": "pre-offline-v1 unsupported /ru URL prefix404, no business writes; corrected real /mtm/visits read v2 PASS",
+      "displayRestoration": {
+        "status": "PASS",
+        "originalRestored": 2,
+        "automatic": true
+      },
+      "phoneState": "APK1787/manualagent retained; protectedlock; no active network/display lease; do not request unlock until next signed APK ready"
     }
   ]
 }
