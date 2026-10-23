@@ -1,0 +1,86 @@
+appId: com.mtmobileapp
+name: Employee controls stay reachable with large text and landscape
+---
+# Read-only: no start-work, check-in, task transition or account change.
+# The operator owns a bounded display-settings lease outside this flow.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- runScript: ../shared/labels.js
+- takeScreenshot: today
+- tapOn:
+    id: guide-spot-tab.Route
+- runFlow:
+    when:
+      visible:
+        id: app-choice
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: route-section-today
+    timeout: 30000
+- takeScreenshot: route-day
+- tapOn:
+    id: route-section-tab-month
+- assertVisible:
+    id: route-section-month
+- takeScreenshot: route-month
+- tapOn:
+    id: route-section-tab-today
+- tapOn:
+    id: guide-spot-tab.Tasks
+- extendedWaitUntil:
+    visible:
+      id: tasks-filters
+    timeout: 30000
+- tapOn:
+    id: tasks-filter-ALL
+- takeScreenshot: tasks
+- scrollUntilVisible:
+    element:
+      id: tasks-order
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: tasks-order
+- assertVisible:
+    id: tasks-order-sheet
+- takeScreenshot: task-order
+- back
+- assertNotVisible:
+    id: tasks-order-sheet
+- tapOn:
+    id: guide-spot-tab.More
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- scrollUntilVisible:
+    element:
+      id: more-action-Visits
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: more
+- scrollUntilVisible:
+    element:
+      id: more-action-Profile
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: more-profile-link
+- tapOn:
+    id: more-action-Profile
+- assertVisible: ${output.copy.profileBack}
+- takeScreenshot: profile
+- tapOn:
+    id: guide-spot-tab.Clients
+- scrollUntilVisible:
+    element:
+      id: route-contacts-search
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: clients
+- tapOn:
+    id: guide-spot-tab.Today
+- assertVisible: ${output.copy.route}
+- assertNotVisible:
+    id: login-email

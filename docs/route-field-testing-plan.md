@@ -100,3 +100,21 @@ User explicitly requested Zeytun testing and said they completed sign-in. Preser
 The existing oneQA visit and oneactualcamera photo completed the offline cycle on1788/source918: queuedcheckout-v4PASS, coldrestart/pending+photo-v6PASS, independentserverCHECKED_INwhileblocked→CHECKED_OUTafterrestore/foreground, exactnote/onephoto/no secondforegroundduplicate, five originals unchanged, cleanqueue/sameagent/permissions andexactnetworkrestore. RealmanagerCRMwebsitepostcompletionPASS. Priorviewport/modal/USB failuresremainretained; correctedcoldscrollDOWNprovedpendingoperationwasnotlost. No morebusinesswritesare needed.
 
 Release only afterfinalevidenceheadCI, reviewedmainmergeandverifiedpublicsignedAPK. Backend1013isalreadydeployeddeb8. Broadoutside-zone/signature/large-text/landscape cases andseparateTime24h-v8failureare notclosedbythiscoreacceptance.
+
+
+## 2026-10-23T19:14:17.878469+00:00 — completed core scope and explicit follow-up boundary
+
+BackendPR1013 is released atmain deb8 via39992858222 withpublicSHA/grantsmokePASS. AppPR199 ismergedatmain7bab; publicAPK3.11.52/code1790 fromsuccessfulmainrun40007847247 isverifiedandinstalledinplace. Actualcurrentprofile/queueandreadonlyserver/network/powerfinalchecksPASS. Nativecoreofflineacceptanceoncodetested918/1788iscomposedcheckout-v4+coldpersistence-v6; public1790compiledruntimeequalandpostupdatesmokePASS. No newbusinessactionsnecessaryforrelease.
+
+Initialmatrixpendingstatusesabovearehistoricalandsupersededforactualtask/GPSrequest/camera/offlinecycle/updatecasesonly. Fulloriginalvisit-startMaestroremainsFAILdespiteseparatecanonicalstartconfirmation; outside-zone/inaccuratefix/deniedpermissions/signature/large-text/landscape/cross-accountnativecasesremainNOTRUN. SeparateTime24h-v8FAILremainsopen/notrunning. Do notreplaycompletedQAvisit/task/photo/approval. Follow-upusesisolatednegativepolicy/accesscasesandread-onlyUIchecks; actualmainreleaseissuccessful, no pendingbuildordeploygate. Seeappend-onlysessionjournalandevidencephaseUpdatesforfullprovenance.
+
+## 2026-10-23 20:49 UTC — extended phase and new customer-radius correction
+
+The prior native-denial/large-text/landscape NOT RUN snapshot is superseded for the actual candidate1792 cases: denied-grant/app-disclosure refusal PASS85.715s with complete permission restoration; 130% text PASS98.362s with full sync state visible; corrected landscape flow PASS103.825s. Original harness failures remain retained. Thirteen fictional API negatives passed without an accepted visit; temporary fictional coordinates were restored. This does not claim native boundary movement, Android system-deny or approximate-only proof.
+
+New confirmed finding: unplanned Visit screen ignored the customer's radius while the server enforced it. The four affected decisions now consume the existing customer override; targeted3suites/32tests PASS. Remaining release steps: checkpoint/publish PR200; full hosted CI/contract/signed new APK; provenance-checked in-place update preserving the manual actor and Time; read-only QA customer screen with no check-in; exact-head final gates/merge; normal main public APK and post-update identity/queue/permission/network/power readbacks. Candidate1792 cannot certify this new runtime. Do not replay the completed QA visit/task/photo/GPS approval.
+
+
+## 2026-10-23T21:03:19.112684+00:00 — radius implementation acceptance finished; release remains
+
+Full hosted CI/contract/signed793 and new native read-only customer flow PASS on1793/source79853cb. Sameactor/profile/queue/fullpermissions/Time/network and existing6visits/onephoto verified. No physicalboundary check-in claimed. Remaining work is finaldocsheadchecks→PR200mainmerge→normalpublic3.11.53APK→inplaceupdate/profile/canonical/network/powerrestoration. Do not replay completed business actions or repeat unrelated accepted tests.

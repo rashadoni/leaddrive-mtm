@@ -144,7 +144,7 @@ describe("a visit from the reported place, while the request waits", () => {
     const flow = visit.slice(visit.indexOf("const performCheckIn"), visit.indexOf("const { visit, operation } = await queueVisitCheckIn({"))
     expect(flow).toContain("const waitingFix = waitingLocationFixFor(customer.id)")
     expect(flow).toContain("if (!hasUsableCoordinates(customer) && !waitingFix) {")
-    expect(flow).toContain("const leaning = locationFixCoversCheckIn(waitingFix, coords, checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies))")
+    expect(flow).toContain("const leaning = locationFixCoversCheckIn(waitingFix, coords, checkInRadiusMeters(customer.geofenceRadius, useBootstrapStore.getState().data?.policies))")
     // Not at the reported place, and the customer has no pin: refused as it always was.
     expect(flow).toContain("if (!leaning && !hasUsableCoordinates(customer)) {")
     expect(flow).toContain("customer: leaning && waitingFix ? { ...customer, latitude: waitingFix.latitude, longitude: waitingFix.longitude } : customer,")

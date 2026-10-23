@@ -19,12 +19,32 @@ import sys
 import xml.etree.ElementTree as ET
 
 from route_field_guard import (agent_shell, auth_form, fixture_auth_form, manager_shell, owner_permissions, require, verify_apk,
+                               verify_location_denial_lease,
                                verify_auth_preserved, verify_manager_case,
                                verify_fixture_case, verify_zeytun_qa_case, verify_observation_window, verify_owner_task_case)
 
 REPO = Path(__file__).resolve().parents[2]
 APP = REPO / "MTMobileApp"
 PACKAGE = "com.mtmobileapp"
+AUDIT_CAPTURE_NAMES = ("today", "route-day", "route-month", "tasks", "task-order",
+                       "more", "more-profile-link", "profile", "clients")
+
+
+def audit_capture_hashes(attempt):
+    """Maestro nests bundles by timestamp/flow; reject ambiguous or escaped evidence."""
+    roots = list((attempt / "artifacts").rglob("takeScreenshot"))
+    require(len(roots) == 1 and roots[0].is_dir() and not roots[0].is_symlink(),
+            "RF_AUDIT_SCREENSHOTS_MISSING")
+    captures = roots[0]
+    require(captures.resolve().is_relative_to(attempt.resolve()), "RF_AUDIT_SCREENSHOTS_REFUSED")
+    result = {}
+    for name in AUDIT_CAPTURE_NAMES:
+        path = captures / (name + ".png")
+        require(path.is_file() and not path.is_symlink()
+                and path.resolve().is_relative_to(attempt.resolve()), "RF_AUDIT_SCREENSHOTS_MISSING")
+        require(path.stat().st_size > 0, "RF_AUDIT_SCREENSHOTS_MISSING")
+        result[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
 
 
 def private_json(path):
@@ -41,11 +61,12 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "employee-accessibility", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-location-denied", "zeytun-customer-radius-read", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
     parser.add_argument("--qa-case", type=Path)
+    parser.add_argument("--location-denial-lease", type=Path)
     args = parser.parse_args()
     os.umask(0o077)
     # Refuse reuse: every attempt, including failures, keeps its original evidence.
@@ -109,6 +130,16 @@ def main():
                     report["ownerPermissionsBefore"] = owner_permissions(package)
                     require(report["ownerPermissionsBefore"]["ACCESS_FINE_LOCATION"]["granted"],
                             "RF_LOCATION_PERMISSION_REQUIRED")
+                if args.flow == "zeytun-location-denied":
+                    require(args.location_denial_lease is not None, "RF_LOCATION_DENIAL_LEASE_REQUIRED")
+                    lease = private_json(args.location_denial_lease)
+                    report["ownerPermissionsBefore"] = owner_permissions(package)
+                    verify_location_denial_lease(lease, report["ownerPermissionsBefore"],
+                                                 expected["publishedSourceSha"], started)
+                    require(adb("shell", "pidof", PACKAGE).strip() == str(lease["coldPid"]),
+                            "RF_LOCATION_DENIAL_COLD_PROCESS_CHANGED")
+                    adb("shell", "test", "-f", lease["marker"])
+                    adb("shell", "kill", "-0", str(lease["recoveryPid"]))
             manager_case = None
             if manager_flow:
                 require(args.manager_case is not None, "RF_MANAGER_CASE_REQUIRED")
@@ -176,8 +207,10 @@ def main():
                     dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
             if qa_flow:
                 dependencies += [flow.parent.parent / "shared/qa-labels.js"]
-                if args.flow.startswith("zeytun-visit-"):
+                if args.flow.startswith("zeytun-visit-") or args.flow in ("zeytun-location-denied", "zeytun-customer-radius-read"):
                     dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
+                if args.flow == "zeytun-location-denied":
+                    dependencies.append(flow.parent.parent / "shared/location-denial-labels.js")
             report["sourceFilesSha256"] = {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()
                                          for path in dependencies}
             report["phase"] = "maestro"
@@ -195,6 +228,10 @@ def main():
                 gate = "RF_QA_PREFLIGHT=zeytun-owner-selected-qa-v1"
             command = [str(args.maestro), "test", "-e", "LOCALE=" + args.locale,
                        "-e", gate]
+            if args.flow == "employee-accessibility":
+                # Native screenshots may contain customer/account details.
+                # Keep the entire artifact bundle in this attempt's 0700 root.
+                command += ["--test-output-dir", str(args.out / "artifacts")]
             if task_case:
                 for key, value in (("TASK_ID", task_case["taskId"]), ("TASK_TITLE", task_case["title"]), ("TASK_RESULT", task_case["result"])):
                     command += ["-e", key + "=" + value]
@@ -296,6 +333,8 @@ def main():
             require((args.out / "report.xml").is_file(), "RF_JUNIT_MISSING")
             require(bool(cases) and all(case.find("failure") is None and case.find("error") is None
                                        and case.find("skipped") is None for case in cases), "RF_JUNIT_FAILED")
+            if args.flow == "employee-accessibility":
+                report["privateScreenshotsSha256"] = audit_capture_hashes(args.out)
             report["tests"] = [{"name": case.get("name"), "seconds": case.get("time"), "status": "PASS"} for case in cases]
             report["status"] = "PASS"
             report["phase"] = "complete"
