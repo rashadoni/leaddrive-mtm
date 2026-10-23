@@ -137,6 +137,27 @@ def verify_fixture(manifest, bootstrap, role):
         require(route_module.get("enabled") is True, "RF_ROUTE_MODULE_REFUSED")
 
 
+def verify_fixture_case(case, source_sha):
+    require(case.get("version") == 1 and case.get("marker") == "rf-native-fictional-v1"
+            and case.get("ownerAuthorized") is True and case.get("sourceSha") == source_sha,
+            "RF_FIXTURE_CASE_REFUSED")
+    prepared = case.get("preparation") or {}
+    require(prepared.get("status") == "PASS" and prepared.get("tenant") == FIXTURE_SLUG
+            and isinstance(prepared.get("artifactSha"), str)
+            and re.fullmatch(r"[a-f0-9]{40}", prepared["artifactSha"])
+            and (prepared.get("users"), prepared.get("agents"), prepared.get("customers")) == (1, 3, 3),
+            "RF_FIXTURE_PREPARATION_REFUSED")
+    verify_fixture(case.get("manifest") or {}, case.get("bootstrap") or {}, "AGENT")
+    login = case.get("login") or {}
+    require(login.get("email") == "agent@route-field-acceptance.example.invalid"
+            and isinstance(login.get("password"), str)
+            and re.fullmatch(r"[A-Za-z0-9_-]{64}", login["password"]),
+            "RF_FIXTURE_CREDENTIAL_REFUSED")
+    require(case.get("expectedName") == "RF QA fictional field employee"
+            and case.get("companyName") == "Route Field Native Acceptance (fictional)",
+            "RF_FIXTURE_IDENTITY_REFUSED")
+
+
 def verify_observation_window(progress, now, maximum_seconds=360):
     """Do not take the shared phone during the Time controller's final UI window."""
     if progress.get("status") != "RUNNING":

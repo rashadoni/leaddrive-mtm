@@ -1,0 +1,17 @@
+function fixtureLiteral(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+output.fixture = {};
+var fixtureValues = {
+  name: RF_FIXTURE_NAME, email: RF_FIXTURE_EMAIL, company: RF_FIXTURE_COMPANY_NAME,
+  priorName: RF_PRIOR_MANAGER_NAME, priorEmail: RF_PRIOR_MANAGER_EMAIL,
+  switchCompany: RF_SWITCH_COMPANY, switchConfirm: RF_SWITCH_CONFIRM,
+  switchMessage: RF_SWITCH_MESSAGE, noCoordinates: RF_NO_COORDINATES
+};
+Object.keys(fixtureValues).forEach(function (key) {
+  output.fixture[key] = fixtureLiteral(fixtureValues[key]);
+});
+output.fixture.visit = {
+  az: { search: "Məsələn, Mərkəzi Klinika", start: "Plansız ziyarətə başla" },
+  ru: { search: "Например, Центральная клиника", start: "Начать внеплановый визит" },
+  en: { search: "For example, Central Clinic", start: "Start unplanned visit" }
+}[LOCALE];
+if (!output.fixture.visit) throw new Error("RF_LOCALE_REFUSED");

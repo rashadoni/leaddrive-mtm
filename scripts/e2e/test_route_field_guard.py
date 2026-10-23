@@ -6,7 +6,7 @@ from xml.sax.saxutils import quoteattr
 
 from route_field_guard import (
     FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form,
-    verify_apk, verify_auth_preserved, verify_fixture, verify_manager_case,
+    verify_apk, verify_auth_preserved, verify_fixture, verify_fixture_case, verify_manager_case,
     verify_observation_window, verify_owner_task_case, manager_shell,
 )
 
@@ -172,6 +172,38 @@ class ManagerSwitchTests(unittest.TestCase):
                               '<node package="com.android.permissioncontroller"/></hierarchy>')):
             with self.assertRaises(ValueError):
                 manager_shell(xml)
+
+
+class FictionalNativeCaseTests(unittest.TestCase):
+    def case(self):
+        manifest, bootstrap = FixtureAdmissionTests().fixture()
+        return {"version": 1, "marker": "rf-native-fictional-v1", "ownerAuthorized": True,
+                "sourceSha": "a" * 40, "preparation": {"status": "PASS", "tenant": FIXTURE_SLUG,
+                "artifactSha": "b" * 40, "users": 1, "agents": 3, "customers": 3},
+                "manifest": manifest, "bootstrap": bootstrap,
+                "login": {"email": "agent@route-field-acceptance.example.invalid", "password": "p" * 64},
+                "expectedName": "RF QA fictional field employee", "companyName": "Route Field Native Acceptance (fictional)"}
+
+    def test_generated_fixture_credentials_cannot_be_replaced_with_customer_access(self):
+        case = self.case()
+        verify_fixture_case(case, "a" * 40)
+        for patch in ({"ownerAuthorized": False}, {"sourceSha": "c" * 40},
+                      {"login": {"email": "actual@example.invalid", "password": "p" * 64}},
+                      {"login": dict(case["login"], password=None)},
+                      {"expectedName": "Actual employee"}):
+            with self.subTest(patch=patch), self.assertRaises(ValueError):
+                verify_fixture_case(dict(case, **patch), "a" * 40)
+
+    def test_operational_success_does_not_replace_the_fresh_server_identity_and_grant(self):
+        case = self.case()
+        for change in ("preparation", "principal", "capability", "tenant"):
+            changed = deepcopy(case)
+            if change == "preparation": changed["preparation"]["status"] = "FAIL"
+            if change == "principal": changed["bootstrap"]["principal"]["id"] = "previous-agent"
+            if change == "capability": changed["bootstrap"]["capabilities"] = []
+            if change == "tenant": changed["bootstrap"]["tenant"]["id"] = "mtm-attendance-phone-v1"
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify_fixture_case(changed, "a" * 40)
 
 
 if __name__ == "__main__":

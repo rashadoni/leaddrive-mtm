@@ -1,0 +1,82 @@
+appId: com.mtmobileapp
+name: Switch only to the separately owned fictional Route Field employee
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- tapOn:
+    id: guide-spot-tab.More
+- assertVisible: ${output.fixture.priorName}
+- assertVisible: ${output.fixture.priorEmail}
+- scrollUntilVisible:
+    element:
+      text: ${output.fixture.switchCompany}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.fixture.switchCompany}
+- tapOn:
+    text: ${output.fixture.switchConfirm}
+    below: ${output.fixture.switchMessage}
+- extendedWaitUntil:
+    visible:
+      id: tenant-input
+    timeout: 30000
+- tapOn:
+    id: tenant-input
+- eraseText
+- inputText: route-field-acceptance
+- scrollUntilVisible:
+    element:
+      id: tenant-continue
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: tenant-continue
+- extendedWaitUntil:
+    visible:
+      id: login-tab-signin
+    timeout: 45000
+- tapOn:
+    id: login-tab-signin
+- assertVisible: ${output.fixture.company}
+- tapOn:
+    id: login-email
+- eraseText
+- inputText: ${RF_FIXTURE_EMAIL}
+- tapOn:
+    id: login-password
+- eraseText
+- inputText: ${RF_FIXTURE_PASSWORD}
+- scrollUntilVisible:
+    element:
+      id: login-submit
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible:
+      id: guide-spot-tab.Today
+    timeout: 45000
+- runFlow:
+    when:
+      visible:
+        id: guide-skip
+    commands:
+      - tapOn:
+          id: guide-skip
+- tapOn:
+    id: guide-spot-tab.More
+- scrollUntilVisible:
+    element:
+      id: more-action-Profile
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Profile
+- assertVisible: ${output.fixture.name}
+- assertVisible: ${output.fixture.email}
+- assertNotVisible: ${output.fixture.priorName}
+- assertNotVisible: ${output.fixture.priorEmail}
+- tapOn:
+    id: guide-spot-tab.Today
