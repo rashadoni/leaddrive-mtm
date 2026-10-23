@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "date": "2026-10-23",
+  "package": "com.mtmobileapp",
+  "versionCode": 1730,
+  "versionName": "3.11.51",
+  "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+  "publishedSourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+  "device": "physical Samsung Galaxy S23 Ultra / Android16 / owner0",
+  "maestroVersion": "2.11.0",
+  "journeys": [
+    {
+      "status": "PASS",
+      "flow": "journeys/task-start",
+      "startedAt": "2026-10-23T09:30:17.174489+00:00",
+      "finishedAt": "2026-10-23T09:32:01.056031+00:00",
+      "flowSha256": "67e91738922bcfe345481bff03c996d8e90da3cf7a73952998bed36ec92bf148",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "tests": [
+        {
+          "name": "Agent receives and starts the exact test task created on the CRM website",
+          "seconds": "56.226",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "status": "PASS",
+      "flow": "journeys/task-complete",
+      "startedAt": "2026-10-23T09:44:30.884401+00:00",
+      "finishedAt": "2026-10-23T09:46:29.448819+00:00",
+      "flowSha256": "6f94ec23010c2f7a6906bb0df056c9ed09c5c3034caa90272834bd2a7852675d",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "tests": [
+        {
+          "name": "Agent completes the exact CRM test task with a traceable result",
+          "seconds": "74.275",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "status": "PASS",
+      "flow": "smoke/employee-tabs",
+      "startedAt": "2026-10-23T09:50:05.776154+00:00",
+      "finishedAt": "2026-10-23T09:52:17.226736+00:00",
+      "flowSha256": "9f4e198c18e92df12bf74a1fc0b44af1fda25ac3b633dffc4ba500177114e2a5",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "tests": [
+        {
+          "name": "Field employee reads the five tabs and the route month without starting work",
+          "seconds": "89.831",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "status": "PASS",
+      "flow": "journeys/manager-signin",
+      "startedAt": "2026-10-23T09:55:43.626455+00:00",
+      "finishedAt": "2026-10-23T09:58:48.182171+00:00",
+      "flowSha256": "7e6cb13262f921b7a2c809dc5a4106c75907dd0fe6c237842116f56cbca8ec1a",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "3bf621749ccd1c75460a71d3cf40893797fb3afd674eac124eca6389c2fafa1f",
+        "scripts/e2e/route_field_guard.py": "52e017c2ba20440a01a8f26d801fac2acd1e3ab7add7697c2c7660d4069ca836",
+        "MTMobileApp/.maestro/route-field/journeys/manager-signin.yaml": "7e6cb13262f921b7a2c809dc5a4106c75907dd0fe6c237842116f56cbca8ec1a",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/manager-labels.js": "19c0f0be9362a18de2dd9679da841f88a62ca102569d8cf009d5b88c55d20eab"
+      },
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "138.4",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "attempt": "manager-tabs-v1",
+      "status": "RUNNING"
+    }
+  ],
+  "website": {
+    "creationRunId": "f2847d66-9815-40ff-bb3e-ce93646c768a",
+    "confirmationRunId": "fc76e123-e5c8-4b92-8e63-272a4cb6c10f",
+    "status": "PASS",
+    "visibleStatus": "COMPLETED",
+    "visibleReservedResultMatches": true
+  },
+  "serverReconciliation": {
+    "testTasks": 1,
+    "nonTestTasks": 0,
+    "nonTestTaskIdsUnchanged": true,
+    "nonTestTaskFactsUnchanged": true,
+    "status": "COMPLETED",
+    "version": 3,
+    "progress": 100,
+    "createdEvents": 1,
+    "startedEvents": 1,
+    "completedEvents": 1,
+    "reviewStatus": "PENDING",
+    "acceptedAtRequiredForStart": false
+  },
+  "remainingGates": {
+    "fixturePostgres": "NOT RUN: hosted isolated database required",
+    "fullHostedChecks": "NOT RUN: publication not authorized for this task",
+    "realVisitWorkdayGpsPhotoOffline": "NOT RUN: isolated fictional fixture required",
+    "time24h": "Separate v8 FAIL retained; no 24h PASS claimed"
+  }
+}

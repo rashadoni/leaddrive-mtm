@@ -63,6 +63,41 @@ def agent_shell(xml, home_required=True):
     return greetings[0] if greetings else None
 
 
+def manager_shell(xml):
+    root = ET.fromstring(xml)
+    require(all(node.get("package", "") in ("", PACKAGE, "com.android.systemui")
+                for node in root.iter("node")), "RF_FOREIGN_WINDOW_REFUSED")
+    ids = {node.get("resource-id") for node in root.iter("node") if node.get("package") == PACKAGE}
+    require(all("guide-spot-tab." + tab in ids for tab in ("Team", "Planning", "Approvals", "More"))
+            and "login-email" not in ids and "guide-spot-tab.Tasks" not in ids,
+            "RF_MANAGER_SHELL_REFUSED")
+    return "manager-shell"
+
+
+def verify_manager_case(case, source_sha):
+    require(case.get("version") == 1 and case.get("marker") == "rf-owner-manager-switch-v1"
+            and case.get("ownerAuthorized") is True and case.get("sourceSha") == source_sha,
+            "RF_MANAGER_CASE_REFUSED")
+    manager, login = case.get("manager") or {}, case.get("login") or {}
+    require(manager.get("role") == "MANAGER" and bool(manager.get("id"))
+            and bool(manager.get("organizationId")) and bool(manager.get("name"))
+            and manager.get("email") == login.get("email") and bool(login.get("email"))
+            and isinstance(login.get("password"), str) and bool(login["password"]),
+            "RF_MANAGER_IDENTITY_REFUSED")
+    prior = case.get("priorAgent") or {}
+    require(prior.get("organizationId") == manager["organizationId"] and bool(prior.get("name"))
+            and prior.get("id") != manager["id"], "RF_MANAGER_PRIOR_AGENT_REFUSED")
+    task = case.get("completedTask") or {}
+    require(task.get("status") == "COMPLETED" and task.get("version") == 3
+            and task.get("agentId") == prior.get("id") and bool(task.get("id"))
+            and case.get("nonTestTasksUnchanged") is True, "RF_MANAGER_TASK_NOT_RECONCILED")
+    title = task.get("title", "")
+    require(isinstance(title, str) and re.fullmatch(r"RF-E2E-[0-9]{8}-[0-9]{4} CRM-mobile-CRM TEST", title)
+            and task.get("result") == title.split(" ")[0] + " OK", "RF_MANAGER_TASK_NOT_RECONCILED")
+    require(isinstance(case.get("cleanSyncText"), str) and bool(case["cleanSyncText"].strip()),
+            "RF_UNSYNCED_AGENT_REFUSED")
+
+
 def verify_owner_task_case(case, source_sha, flow):
     require(flow in ("task-start", "task-complete"), "RF_TASK_FLOW_REFUSED")
     require(case.get("version") == 1 and case.get("marker") == "rf-owner-web-task-v1"

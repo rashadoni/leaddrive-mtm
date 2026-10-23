@@ -1,14 +1,51 @@
 appId: com.mtmobileapp
 name: Field manager reads the team and planning without publishing or messaging
 ---
-- assertTrue: ${RF_FIXTURE_ROLE === 'MANAGER'}
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
 - runScript: ../shared/labels.js
-- tapOn: ${output.copy.team}
+- runScript: ../shared/manager-labels.js
+- tapOn:
+    id: guide-spot-tab.Team
 - extendedWaitUntil:
     visible:
       id: manager-today-tiles
     timeout: 30000
-- tapOn: ${output.copy.planning}
+- scrollUntilVisible:
+    element:
+      id: ${'manager-agent-card-' + RF_AGENT_ID}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: ${'manager-agent-card-' + RF_AGENT_ID}
+- extendedWaitUntil:
+    visible:
+      id: manager-employee-give-task
+    timeout: 30000
+- assertVisible: ${output.managerAgentName}
+- tapOn:
+    id: manager-employee-give-task
+- assertVisible:
+    id: manager-task-sheet
+- tapOn:
+    id: manager-task-due-none
+# Empty title exercises local validation only: no task may be sent.
+- tapOn:
+    id: manager-task-send
+- assertVisible: ${output.managerTaskRequired}
+# Intentionally cancel: one BACK may dismiss the IME before the modal.
+- back
+- runFlow:
+    when:
+      visible:
+        id: manager-task-sheet
+    commands:
+      - back
+- assertNotVisible:
+    id: manager-task-sheet
+- tapOn:
+    id: manager-employee-back
+- tapOn:
+    id: guide-spot-tab.Planning
 - extendedWaitUntil:
     visible:
       id: planning-agent-open
@@ -22,9 +59,15 @@ name: Field manager reads the team and planning without publishing or messaging
 - back
 - assertNotVisible:
     id: planning-agent-sheet
-- tapOn: ${output.copy.approvals}
+- tapOn:
+    id: guide-spot-tab.Approvals
 - assertNotVisible:
     id: login-email
-- tapOn: ${output.copy.team}
+- tapOn:
+    id: guide-spot-tab.More
+- assertVisible: ${output.managerName}
+- assertVisible: ${output.managerEmail}
+- tapOn:
+    id: guide-spot-tab.Team
 - assertVisible:
     id: manager-today-tiles

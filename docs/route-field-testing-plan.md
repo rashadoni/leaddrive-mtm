@@ -1,7 +1,7 @@
 # Route & Field native acceptance plan
 
 Requested by the owner on 2026-10-23. Employee and manager acceptance are
-separate from Time's running real24h observation. Every result must name the
+separate from Time's real24h observation (v8 retained FAIL; not running). Every result must name the
 installed APK version, source SHA, APK digest, flow digest and actual device
 or emulator. A source test, parsed YAML or successful build is not a native
 journey result.
@@ -23,7 +23,8 @@ journey result.
 | Area | Employee check | Manager / server check | Current gate |
 | --- | --- | --- | --- |
 | Sign-in | Existing email survives local missing-password validation; both sign-in modes and reset cancel remain reachable; no code is sent | Wrong/missing credentials do not create a session | Partial old-APK steps only; full auth flow NOT RUN on current APK after owner signed in |
-| Shell | Five tabs, route day/month, task filters/order cancel, profile, clients and return to Today | Server role and capability open the intended shell | Native read-only flow in progress; no server-verified role claim |
+| Shell | Five tabs, route day/month, task filters/order cancel, profile, clients and return to Today | Server role and capability open the intended shell | PASS: employee-tabs-v5 on APK1730; agent identity independently matched before task execution |
+| Tasks | Exact manager-site task received, started and completed with a reserved result | Site confirms same task/version/result, one creation/start/completion, unchanged non-test facts | PASS: native start/completion + independent API + actual website; manager review remains separate |
 | Team | Employee never sees manager decisions | Manager sees own subordinate and cannot access outside-scope employee/day/visit | Fixture and native manager run pending |
 | Planning | Employee sees assigned current/future route and honest approval state | Draft, publish, edit/reassign/cancel within permitted scope; employee receives the actual version | Fixture pending; no route publication yet |
 | Visit lifecycle | Start planned and unplanned visits; only one active visit; complete with canonical times | One visit, correct customer/agent/route-point/status in CRM | Fixture pending |
@@ -50,3 +51,19 @@ journey result.
   until their exact run is recorded.
 - Protect Time's package, queue and tenant. The native runner refuses to take
   the shared phone during its final scheduled observation window.
+
+
+## Owner-authorized task exception and current stop (2026-10-23)
+
+The owner explicitly requested one real-account test task through the CRM
+website and authorized switching the app to the manager. That one reserved
+`RF-E2E` task is now COMPLETED/version3 and confirmed through the actual site.
+This exception does not permit real-account visit/workday writes. All broader
+GPS/photo/offline/isolation write journeys remain behind the fictional fixture.
+The agent read-only five-tab smoke passed. Manager switch/read-only checks are
+in progress; do not repeat the completed task or claim the full matrix passed.
+
+Prepared backend fixture checkpoint: `cd4892333`, branch
+`codex/route-field-acceptance-fixture`. Five unit checks passed; isolated
+PostgreSQL integration (two tests), full hosted checks and operational fixture
+execution are NOT RUN. No source push/merge/deploy was performed.

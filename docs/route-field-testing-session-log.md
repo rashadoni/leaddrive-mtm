@@ -44,3 +44,33 @@
 - Established an independent ordinary web-manager session, verified same tenant and web role manager. Correct web-scoped baseline before mobile execution: exactly one matching test task, zero non-test tasks for this agent, version1/PENDING, accepted/started/completed timestamps null. No task creation/status mutation was made through the probe API.
 - `task-start-v1` refused a missing private case during preflight, before Maestro or any write; retained. `task-start-v2` is now executing the exact UI-created task on APK1730, with source/byte/owner0/Time-window/case guards. Next: independently confirm IN_PROGRESS before starting completion flow.
 - Standalone fixture-controller bundle and sanitized-output validator PASS; manual-only operational workflow guard and YAML parse PASS. No fixture preparation, push, merge or deploy performed.
+
+
+## 2026-10-23T13:42:07.844090+04:00 — start confirmed; completion in progress
+
+- Real native `task-start-v2` PASS on pinned APK1730/source f1bcdcb; Maestro JUnit 56.226s, same signed-in agent greeting after return. Independent web-manager read confirms the exact website-created task is IN_PROGRESS/version2, server startedAt present, one STARTED event. Non-test task IDs and business fields unchanged.
+- Corrected an over-strict probe assumption: acceptedAt is optional and independent of STARTED under the current mobile task update contract. Its null value is not a confirmed product defect. No product code changed for this finding.
+- `task-complete-v1` now runs against the same exact task, with no duplicate creation or start replay. Next: server reconciliation, then manager website confirmation and authorized mobile manager checks.
+- Owner asked whether findings are fixed. Confirmed that verified defects are fixed; findings so far were harness scrolling/selectors/navigation assumptions, not confirmed runtime task defects. Do not claim app/CRM fixes that were not made.
+- Continuity correction: Time real24h v8 has a retained FAIL at 12:43 Baku, before this task start; last fully persisted sample had all assertions true. Its guarded cleanup reports own networking allowed, protected profile unchanged, radios/permissions restored. It is no longer RUNNING and no 24h PASS is claimed. Do not restart the long wait as part of the Route & Field cycle.
+
+
+## 2026-10-23T13:54:46.957026+04:00 — CRM/agent cycle and employee tabs PASS
+
+- `task-complete-v1` retained FAIL: Android BACK from hideKeyboard dismissed the result modal; independent read confirmed task still IN_PROGRESS/version2 with no completion mutation. Removed that unnecessary command. `task-complete-v2` PASS, JUnit 74.275s, same agent greeting after returning Today.
+- Independent ordinary web-manager read confirms COMPLETED/version3, progress100, exact reserved result, canonical timestamps and exactly one CREATED, one STARTED and one COMPLETED event. One matching task and unchanged non-test task IDs/facts. acceptedAt remains independently optional; no fabricated ACCEPTED event was added.
+- Actual CRM browser read `fc76e123-e5c8-4b92-8e63-272a4cb6c10f` completed successfully: visible «Завершена», result, version3 and exactly one start/completion. No website mutation during final read. End-to-end website creation → native agent start/complete → website reconciliation PASS. Review state is PENDING, separate from execution completion; no manager review decision is claimed.
+- `employee-tabs-v5` PASS on installed APK1730/source f1bcdcb, JUnit89.831s. Covers all five tabs, route day/month, task filtering/order cancel, retained More/Profile stack, clients and return Today with same greeting. Earlier failed attempts remain retained.
+- Added explicit owner-authorized manager switch/read-only admission, clean-sync UI requirement plus reconciled task prerequisite, private wrapper for credentials (no secret CLI arguments/tracked flows), source dependency hashes and preservation of failed JUnit outcomes before shell postflight. Current targeted Python guards15 PASS; syntax checks PASS before the latest small changes, final syntax rerun pending.
+- `manager-signin-v1` now runs using the already verified manager identity and owner-supplied access; before switching, agent Today showed synced and the single task was independently reconciled. Next: inspect actual manager identity/shell, run manager read-only tabs/employee checks, package findings/evidence. No app runtime changes, push, merge, deploy or second task creation.
+- Backend fixture prepared in checkpoint cd4892333. Its current-tree Vitest5 PASS and PostgreSQL2 SKIPPED/NOT RUN; hosted full checks and operational fixture execution remain NOT RUN.
+
+
+## 2026-10-23T14:04:14.648673+04:00 — manager sign-in PASS; checkpoint before hosted gate
+
+- `manager-signin-v1` refused preflight because the phone was on Tasks, not the agent Today screen; no logout or credential entry occurred. Native runner now safely selects the existing Today tab before checking the exact prior agent greeting and synced UI.
+- `manager-signin-v2` PASS on APK1730/source f1bcdcb, Maestro JUnit138.4s. Explicit logout/sign-in completed, manager profile name/email matched verified private identity, prior agent identity absent from that profile, returned to manager Team shell. No agent credentials were guessed or reset. Current phone session is the manager.
+- `manager-tabs-v1` is RUNNING, bounded to300s, reading team and the exact agent card, blank task form validation/cancel, planning/filter cancel, approvals/profile and return Team. No new task or manager decision is intended by this flow.
+- Tightened manager case to require the reserved completed task/result, same tenant, exact prior agent, owner authorization and non-empty clean-sync copy. Current targeted guards15 PASS; all8 complete multi-document Maestro YAML parse PASS; Python AST PASS; diff whitespace PASS; exact supplied credential exclusion from task-owned source/journal/evidence PASS. Full app/backend hosted checks NOT RUN.
+- Added public allowlisted evidence and a Russian findings report. Application runtime/business code remains unchanged; confirmed findings to date were test infrastructure assumptions. Native manager result and post-flow task reconciliation remain next before the final report.
+- Backend isolated fixture checkpoint cd4892333 is concrete and reviewable. Publishing to GitHub and production fixture workflow require active-task authorization under `/home/codex-alt/.codex/AGENTS.md` (host contract), despite the lower-priority repository standing-autonomy text. No push/merge/deploy performed.

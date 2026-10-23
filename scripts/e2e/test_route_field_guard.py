@@ -6,7 +6,8 @@ from xml.sax.saxutils import quoteattr
 
 from route_field_guard import (
     FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form,
-    verify_apk, verify_auth_preserved, verify_fixture, verify_observation_window, verify_owner_task_case,
+    verify_apk, verify_auth_preserved, verify_fixture, verify_manager_case,
+    verify_observation_window, verify_owner_task_case, manager_shell,
 )
 
 
@@ -137,6 +138,40 @@ class OwnerTaskTests(unittest.TestCase):
         self.assertIsNone(agent_shell(xml, home_required=False))
         with self.assertRaisesRegex(ValueError, "^RF_HOME_IDENTITY_UNAVAILABLE$"):
             agent_shell(xml)
+
+
+class ManagerSwitchTests(unittest.TestCase):
+    def test_customer_account_switch_requires_owner_scope_and_reconciled_task(self):
+        case = {"version": 1, "marker": "rf-owner-manager-switch-v1", "ownerAuthorized": True,
+                "sourceSha": "a" * 40, "manager": {"id": "manager", "organizationId": "org", "role": "MANAGER",
+                "name": "Fictional manager", "email": "manager@example.invalid"},
+                "login": {"email": "manager@example.invalid", "password": "fictional-input"},
+                "priorAgent": {"id": "agent", "organizationId": "org", "name": "Fictional agent"},
+                "completedTask": {"id": "test-task", "agentId": "agent", "status": "COMPLETED", "version": 3,
+                                  "title": "RF-E2E-20261023-1301 CRM-mobile-CRM TEST", "result": "RF-E2E-20261023-1301 OK"},
+                "nonTestTasksUnchanged": True, "cleanSyncText": "Synced"}
+        verify_manager_case(case, "a" * 40)
+        for field, patch in [("ownerAuthorized", False), ("sourceSha", "b" * 40),
+                             ("login", {"email": "other@example.invalid", "password": "fictional-input"}),
+                             ("priorAgent", {"id": "agent", "organizationId": "other", "name": "Fictional agent"}),
+                             ("completedTask", dict(case["completedTask"], status="IN_PROGRESS")),
+                             ("completedTask", dict(case["completedTask"], title="ordinary task")),
+                             ("cleanSyncText", None),
+                             ("nonTestTasksUnchanged", False)]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                verify_manager_case(dict(case, **{field: patch}), "a" * 40)
+
+    def test_agent_or_foreign_windows_cannot_be_reported_as_manager_shell(self):
+        def shell(tabs):
+            return '<hierarchy>' + ''.join(f'<node package="{PACKAGE}" resource-id="guide-spot-tab.{tab}"/>'
+                                           for tab in tabs) + '</hierarchy>'
+        manager_shell(shell(("Team", "Planning", "Approvals", "More")))
+        for xml in (shell(("Today", "Route", "Clients", "Tasks", "More")),
+                    shell(("Team", "Planning", "Approvals", "More", "Tasks")),
+                    shell(("Team", "Planning", "Approvals", "More")).replace('</hierarchy>',
+                              '<node package="com.android.permissioncontroller"/></hierarchy>')):
+            with self.assertRaises(ValueError):
+                manager_shell(xml)
 
 
 if __name__ == "__main__":
