@@ -22,6 +22,26 @@ def owner_permissions(package_dump):
     return result
 
 
+def runtime_permission_profiles(package_dump):
+    """Read actual installed-user states, never later package-query headings."""
+    result = {}
+    users = r"\bUser (\d+):[^\n]*\binstalled=(?:true|false).*?(?=\n\s*User \d+:|\Z)"
+    for user in re.finditer(users, package_dump, re.S):
+        permissions = {}
+        for permission in re.finditer(
+            r"^\s*(android\.permission\.[A-Z_]+): granted=(true|false)([^\n]*)", user[0], re.M,
+        ):
+            flags = re.search(r"flags=\s*(\[[^\]]*\])", permission[3])
+            permissions[permission[1]] = {
+                "granted": permission[2] == "true", "flags": flags[1] if flags else None,
+            }
+        if permissions:
+            require(user[1] not in result, "RF_RUNTIME_PERMISSION_PROFILE_AMBIGUOUS")
+            result[user[1]] = permissions
+    require("0" in result, "RF_PERMISSION_PROFILE_UNAVAILABLE")
+    return result
+
+
 def require(condition, code):
     if not condition:
         raise ValueError(code)

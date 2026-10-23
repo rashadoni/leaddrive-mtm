@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T19:40:25.297412+00:00",
+  "lastUpdatedAt": "2026-10-23T20:28:05.208470+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -905,6 +905,73 @@
       "confirmedVisualFinding": "P2 sync label truncated at 130% text; pending correction",
       "displayLease": "RESTORED with exact four original readbacks",
       "businessWrites": false
+    },
+    {
+      "at": "2026-10-23T20:28:05.208470+00:00",
+      "kind": "NATIVE_LOCATION_REFUSAL_PASS",
+      "runtimeVersionCode": 1792,
+      "runtimeSourceSha": "41250d7472d647290e16fe7e383afcad13546f34",
+      "nativeMaestro": {
+        "status": "PASS",
+        "flow": "qa/location-denied",
+        "phase": "complete",
+        "startedAt": "2026-10-23T20:23:14.227570+00:00",
+        "package": "com.mtmobileapp",
+        "versionCode": 1792,
+        "apkSha256": "dd4d5b4feac9cf168eb4e35533401368b21526e944de04133a154d6f81c92d13",
+        "sourceSha": "41250d7472d647290e16fe7e383afcad13546f34",
+        "ownerPermissionsBefore": {
+          "ACCESS_FINE_LOCATION": {
+            "granted": false,
+            "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]"
+          },
+          "ACCESS_COARSE_LOCATION": {
+            "granted": false,
+            "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+          },
+          "CAMERA": {
+            "granted": true,
+            "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+          }
+        },
+        "flowSha256": "4c384f4fc05a40cccf02422e6d49a9a83baf370b565c3a67b514727e9e50c0cc",
+        "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "sourceFilesSha256": {
+          "scripts/e2e/route_field_native.py": "d9f7db907a80ed04978975792b929840e4bb12ad982b215d8dab20aa2029855c",
+          "scripts/e2e/route_field_guard.py": "8277dfe08cc4f8222066c1672671639e1339d3eb9de4d25fba3788044118ac76",
+          "MTMobileApp/.maestro/route-field/qa/location-denied.yaml": "4c384f4fc05a40cccf02422e6d49a9a83baf370b565c3a67b514727e9e50c0cc",
+          "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+          "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "5903f3449d9e62bf3e22f27cb82f0d349498c72d721bf7f3f2f64cf6ab03a880",
+          "MTMobileApp/.maestro/route-field/shared/open-fixture-visits.yaml": "3ddfb36fb73be8224670c76ce077a94636e806ff8f3e8b2ade513db98a904c1b",
+          "MTMobileApp/.maestro/route-field/shared/location-denial-labels.js": "7a001a6255cf8c950af2ea721045ebd6d13b995106bf7a148f05f8fea0872cec"
+        },
+        "exitCode": 0,
+        "tests": [
+          {
+            "name": "flow-private",
+            "seconds": "85.715",
+            "status": "PASS"
+          }
+        ],
+        "zeytunQaAgentShellVerified": true,
+        "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+        "finishedAt": "2026-10-23T20:26:08.281778+00:00"
+      },
+      "startupDisclosureDeclined": true,
+      "allRfRuntimeProfilesRestored": true,
+      "timeProfilesUnchanged": true,
+      "networkUnchanged": true,
+      "allSixCanonicalVisitsUnchanged": true,
+      "oneQaPhoto": true,
+      "stayAwakeRestored": 2,
+      "retainedFailures": [
+        "v1 startup disclosure hides shell before Maestro",
+        "v2 label helper absent in isolated script; no UI taps"
+      ],
+      "notClaimed": [
+        "Android system-deny path",
+        "approximate-only location path"
+      ]
     }
   ]
 }
