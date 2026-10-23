@@ -132,10 +132,11 @@
   },
   "remainingGates": {
     "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
-    "fullHostedChecks": "App draft PR199 head4294304 all4 checks PASS; backend PR1003 f7b5ac888 typecheck PASS, static39949207009 RUNNING",
-    "realVisitWorkdayGpsPhotoOffline": "NOT RUN: isolated fictional fixture required",
+    "fullHostedChecks": "App draft PR199 exact72 all4 PASS; backend PR1003 exactf7 all5 PASS,18 unchanged known baseline files. PR1007 exactb7 required39962906981 static/typecheck RUNNING; narrow10-test/runner/scan PASS",
+    "realVisitWorkdayGpsPhotoOffline": "NOT RUN: fictional company now created; private access delivery pending",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
-    "fictionalNative": "NOT RUN: sign-in, missing coordinates and location request prepared; operational fixture not yet created"
+    "fictionalNative": "NOT RUN: six flows prepared (sign-in, missing coordinates, GPS request, visit start, actual photo, checkout); phone transport unavailable",
+    "fixtureScope": "NOT RUN:20 GET-only cases prepared; protected encrypted credential delivery pending"
   },
   "backendArtifactsObserved": {
     "initial": "e76620753f08e4ce716368f5ad3d249482134558",
@@ -173,5 +174,36 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T12:15:10.834783+00:00"
+  "lastUpdatedAt": "2026-10-23T13:54:11.990597+00:00",
+  "supersededSnapshots": [
+    {
+      "supersededAt": "2026-10-23T13:54:11.990597+00:00",
+      "remainingGates": {
+        "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
+        "fullHostedChecks": "App draft PR199 exact72 all4 PASS; backend PR1003 exactf7 all5 PASS,18 unchanged known baseline files. PR1007 exactb7 required39962906981 static/typecheck RUNNING; narrow10-test/runner/scan PASS",
+        "realVisitWorkdayGpsPhotoOffline": "NOT RUN: fictional company now created; private access delivery pending",
+        "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
+        "fictionalNative": "NOT RUN: six flows prepared (sign-in, missing coordinates, GPS request, visit start, actual photo, checkout); phone transport unavailable",
+        "fixtureScope": "NOT RUN:20 GET-only cases prepared; protected encrypted credential delivery pending"
+      },
+      "lastUpdatedAt": "2026-10-23T12:15:10.834783+00:00"
+    }
+  ],
+  "backendRelease": {
+    "sha": "06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada",
+    "deployRunId": "39952082312",
+    "status": "PASS",
+    "publicPingAndShaVerified": true
+  },
+  "fictionalFixture": {
+    "workflowRunId": "39957479723",
+    "artifactSha": "06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada",
+    "status": "PASS",
+    "created": true,
+    "users": 1,
+    "agents": 3,
+    "customers": 3,
+    "initialVisitWorkdayFacts": 0,
+    "access": "NOT RUN: encrypted delivery PR1007 required CI pending"
+  }
 }

@@ -69,3 +69,12 @@ Prepared backend fixture checkpoint: `cd4892333`, branch
 `codex/route-field-acceptance-fixture`. Five unit checks passed; isolated
 PostgreSQL integration (two tests), full hosted checks and operational fixture
 execution are NOT RUN. No source push/merge/deploy was performed.
+
+
+## 2026-10-23T13:54:11.990597+00:00 — current execution status (supersedes initial pending snapshot)
+
+Backend PR1003 is merged and main06e7 deployed successfully through workflow39952082312. Isolated PostgreSQL/controller7 and all required checks passed; the static gate retains18 unchanged known failures. Fictional company preparation39957479723 actually passed with one owner, three field principals, three places and no seeded visit/workday history. Do not recreate/reset it.
+
+Protected read-only encrypted access PR1007 is awaiting required static/typecheck39962906981 on exactb7; narrow10 crypto/controller tests and runner/scan passed. After green merge and provenance-checked private delivery, run20 scope/snapshot cases and the six prepared native flows. These remain NOT RUN; the phone channel does not answer and one reconnection question is pending.
+
+App draft PR199 exact72 has hosted270 suites/2386 tests+TypeScript,71 contract checks and test-only packaging-skip proof PASS. Installed APK/runtime unchanged. The previously accepted real website task is complete and must not be replayed. The broader matrix, original source hypotheses and the separate Time24h failure remain open.
