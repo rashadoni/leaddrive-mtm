@@ -46,6 +46,11 @@ class LocationDenialAdmissionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.verify()
 
+    def test_remaining_lease_must_cover_the_whole_native_timeout(self):
+        self.lease["startedAt"] = (self.now - timedelta(seconds=500)).isoformat()
+        with self.assertRaises(ValueError):
+            self.verify()
+
     def test_changed_flags_or_camera_are_refused(self):
         self.permissions["ACCESS_COARSE_LOCATION"]["flags"] = "[ USER_FIXED ]"
         with self.assertRaises(ValueError):

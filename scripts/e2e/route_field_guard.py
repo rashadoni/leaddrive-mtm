@@ -50,8 +50,11 @@ def verify_location_denial_lease(lease, permissions, source_sha, now):
             and type(lease.get("coldPid")) is int and lease["coldPid"] > 0,
             "RF_LOCATION_DENIAL_RECOVERY_REFUSED")
     started = datetime.fromisoformat(lease.get("startedAt", ""))
+    # Reserve the full 300s Maestro deadline plus admission/termination margin.
+    # Recovery must not grant location while a refusal flow can still press.
     require(started.tzinfo is not None and now.tzinfo is not None
-            and timedelta(seconds=-5) <= now - started < timedelta(seconds=900),
+            and timedelta(seconds=-5) <= now - started
+            and now - started + timedelta(seconds=420) < timedelta(seconds=900),
             "RF_LOCATION_DENIAL_EXPIRED")
     require(lease.get("restoresBackgroundLocation") is True
             and lease.get("restorePermissionNames") == [
