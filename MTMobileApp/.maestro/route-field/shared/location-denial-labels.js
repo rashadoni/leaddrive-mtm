@@ -1,3 +1,4 @@
+function denialLiteral(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 // Published in mobile-resources.ts and VisitScreen's inline copy, not locale JSON.
 var denialCopy = {
   az: { title: "Tətbiq məkanınızdan istifadə edir", decline: "İndi yox", issue: "Mövqeyinizi müəyyən etmək mümkün olmadı", body: "Tətbiqə məkan icazəsi verin və yenidən cəhd edin." },
@@ -6,4 +7,4 @@ var denialCopy = {
 }[LOCALE];
 if (!denialCopy) throw new Error("RF_LOCALE_REFUSED");
 output.denial = {};
-Object.keys(denialCopy).forEach(function (key) { output.denial[key] = qaLiteral(denialCopy[key]); });
+Object.keys(denialCopy).forEach(function (key) { output.denial[key] = denialLiteral(denialCopy[key]); });
