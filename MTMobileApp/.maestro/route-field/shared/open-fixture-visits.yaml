@@ -1,4 +1,6 @@
-# Called only inside a fixture-admitted physical journey.
+appId: com.mtmobileapp
+---
+# Called only inside an admitted QA/fixture physical journey.
 - tapOn:
     id: guide-spot-tab.More
 - runFlow:

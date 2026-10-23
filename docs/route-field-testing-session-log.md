@@ -287,3 +287,11 @@
 - All4 hosted checks exact8e41104 PASS. Manager website run554e4785-2eb2-4c83-8607-bcd8683e6dc7 pending in the existing manager profile; approve ONLY the exact QA request through its dedicated data-testid. Do not duplicate job or write an API decision while pending.
 - Read-only owner0 UID offline probe PASS: expected firmware/API36, RF allowed, chain disabled,0denies; no network mutation. Prepared restart-persistence YAML and admitted no-auth flow selection; NOT RUN. It must be paired with bounded480s RF-only networking recovery and independent canonical visit/photo reconciliation.
 - Next: wait manager website decision, read back exactapprovedQA coordinates, then startoneQA visit, captureoneactualphoto, completeoffline/restart/reconnect/exactlyonce. Active screen leasev5 original2,1200s recovery; restore/readback2 before stopping.
+
+
+## 2026-10-23T16:04:19.621452+00:00 — manager website GPS decision verified
+
+- Browser554e4785-2eb2-4c83-8607-bcd8683e6dc7 terminal complete: exactQA customer/agent/42m accuracy verified; dedicated approve button clicked once; successnotice and carddisappearance observed. Then application error page appeared; retry recovered with only the unrelated pending request. This is an observed UI finding; root cause UNCONFIRMED, do not call it a confirmed transient backend failure or pretend it was fixed. Browser service now reports insufficient balance for further runs; no extra browser task initiated and no pay flow requested. Continue native/API work.
+- Independent ordinary manager readback PASS: exactrequest APPROVED/reviewedAt, canonical QA pin exactly equals the real device proposal, radius250 preserved.5originalvisits unchanged,0QA visits, all unrelated pending requests unchanged.
+- Exact707db82 all4 hosted checks PASS. zeytun-visit-start-v1 running on unchanged1730; photo/offline remain NOT RUN. Do not replay GPS request or approve it again.
+- Prepared offline lease now additionally requires current employee Today clean-sync text before entry, and independent device recovery900s (supersedes earlier480s preparation; enough for completion+restart tests, still bounded). It remains NOT ENTERED.
