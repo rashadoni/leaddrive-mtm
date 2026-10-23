@@ -92,5 +92,57 @@ class SoakReplayTests(unittest.TestCase):
                 guard.verify_delayed_replay(self.before, events, iso(0), iso(86520))
 
 
+class SoakObservationReceiptTests(unittest.TestCase):
+    def test_each_failed_invariant_is_saved_before_rejection(self):
+        for key in guard.INVARIANTS:
+            with self.subTest(key=key):
+                sample = samples()[1]; sample[key] = False
+                saved = []
+                with self.assertRaisesRegex(ValueError, key.upper()):
+                    guard.record_soak_sample(iso(0), sample, saved.append, 0)
+                self.assertEqual(len(saved), 1)
+                self.assertEqual(saved[0]["failureCode"], key.upper())
+                self.assertEqual(saved[0]["status"], "REJECTED")
+                self.assertIs(saved[0][key], False)
+
+    def test_observation_gap_is_retained_instead_of_silently_restarting_time(self):
+        saved = []
+        with self.assertRaisesRegex(ValueError, "OBSERVATION_GAP"):
+            guard.record_soak_sample(iso(0), samples()[3], saved.append, 0)
+        self.assertEqual(saved[0]["hostElapsedSeconds"], 900)
+        self.assertEqual(saved[0]["failureCode"], "OBSERVATION_GAP")
+
+    def test_valid_receipt_excludes_private_payloads(self):
+        sample = samples()[1]
+        sample.update(token="private", coordinates=[40, 49], rawResponse={"secret": "private"})
+        saved = []
+        guard.record_soak_sample(iso(0), sample, saved.append, 0)
+        self.assertEqual(saved[0]["status"], "PASS")
+        self.assertFalse({"token", "coordinates", "rawResponse"} & saved[0].keys())
+
+    def test_malformed_timestamp_cannot_leak_its_value_into_diagnostics(self):
+        sample = samples()[1]; sample["checkedAt"] = "private-token-value"
+        saved = []
+        with self.assertRaisesRegex(ValueError, "TIMESTAMP_INVALID"):
+            guard.record_soak_sample(iso(0), sample, saved.append, 0)
+        self.assertNotIn("checkedAt", saved[0])
+        self.assertNotIn("private-token-value", str(saved))
+
+    def test_unwritten_receipt_cannot_be_reported_as_success(self):
+        def failed_write(_receipt):
+            raise OSError("unavailable evidence storage")
+        with self.assertRaises(OSError):
+            guard.record_soak_sample(iso(0), samples()[1], failed_write, 0)
+
+    def test_invalid_duration_is_saved_without_non_finite_json(self):
+        for value in (None, True, float("nan"), float("inf")):
+            with self.subTest(value=value):
+                sample = samples()[1]; sample["deviceElapsedSeconds"] = value
+                saved = []
+                with self.assertRaisesRegex(ValueError, "SAMPLE_INVALID"):
+                    guard.record_soak_sample(iso(0), sample, saved.append, 0)
+                self.assertNotIn("deviceElapsedSeconds", saved[0])
+
+
 if __name__ == "__main__":
     unittest.main()

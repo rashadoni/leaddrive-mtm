@@ -4,9 +4,12 @@ These checks complement physical UI execution and authenticated server reads.
 Samples contain durations and booleans, never coordinates, credentials or UIDs.
 """
 from datetime import datetime
+import math
 
 DAY_SECONDS = 24 * 60 * 60
 MAX_SAMPLE_GAP = 600
+INVARIANTS = ("sameDeviceBoot", "packageIdentityUnchanged", "packageNetworkBlocked",
+              "ordinaryMtmNetworkAllowed", "radiosUnchanged", "serverHistoryUnchanged")
 
 
 def require(condition, reason):
@@ -15,27 +18,62 @@ def require(condition, reason):
 
 
 def instant(value):
-    result = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    try:
+        result = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (AttributeError, TypeError, ValueError):
+        raise ValueError("TIMESTAMP_INVALID") from None
     require(result.tzinfo is not None, "TIMESTAMP_INVALID")
     return result
 
 
+def verify_soak_sample(started_at, sample, previous_elapsed=-1):
+    elapsed, device = sample.get("hostElapsedSeconds"), sample.get("deviceElapsedSeconds")
+    require(all(type(v) in (int, float) and math.isfinite(v) for v in (elapsed, device)),
+            "SAMPLE_INVALID")
+    wall = (instant(sample.get("checkedAt")) - instant(started_at)).total_seconds()
+    require(elapsed >= 0 and elapsed > previous_elapsed, "SAMPLES_OUT_OF_ORDER")
+    require(elapsed - max(0, previous_elapsed) <= MAX_SAMPLE_GAP, "OBSERVATION_GAP")
+    require(abs(wall - elapsed) <= 30, "HOST_CLOCK_CHANGED")
+    require(abs(device - elapsed) <= 30, "DEVICE_CLOCK_CHANGED")
+    for key in INVARIANTS:
+        require(sample.get(key) is True, key.upper())
+
+
+def record_soak_sample(started_at, sample, persist, previous_elapsed=-1):
+    """Persist failed observations too; do not leak arbitrary probe payloads.
+
+    A failed v8 observation raised before append/save, losing the condition
+    that stopped the run. The caller supplies its durable, task-owned writer.
+    Persistence errors also stop the run rather than creating an evidence gap.
+    """
+    receipt = {}
+    try:
+        receipt["checkedAt"] = instant(sample.get("checkedAt")).isoformat()
+    except ValueError:
+        pass
+    for key in ("hostElapsedSeconds", "deviceElapsedSeconds"):
+        value = sample.get(key)
+        if type(value) in (int, float) and math.isfinite(value):
+            receipt[key] = value
+    for key in (*INVARIANTS, "admissionAvailable", "pendingVisible", "expiredGateVisible"):
+        if type(sample.get(key)) is bool:
+            receipt[key] = sample[key]
+    try:
+        verify_soak_sample(started_at, sample, previous_elapsed)
+    except ValueError as error:
+        receipt.update(status="REJECTED", failureCode=str(error))
+        persist(receipt)
+        raise
+    receipt["status"] = "PASS"
+    persist(receipt)
+
+
 def verify_soak_window(started_at, samples):
     require(len(samples) >= 2, "SAMPLES_MISSING")
-    start = instant(started_at)
     previous = -1
     for sample in samples:
-        elapsed = sample["hostElapsedSeconds"]
-        wall = (instant(sample["checkedAt"]) - start).total_seconds()
-        require(elapsed >= 0 and elapsed > previous, "SAMPLES_OUT_OF_ORDER")
-        require(elapsed - max(0, previous) <= MAX_SAMPLE_GAP, "OBSERVATION_GAP")
-        require(abs(wall - elapsed) <= 30, "HOST_CLOCK_CHANGED")
-        require(abs(sample["deviceElapsedSeconds"] - elapsed) <= 30,
-                "DEVICE_CLOCK_CHANGED")
-        for key in ("sameDeviceBoot", "packageIdentityUnchanged", "packageNetworkBlocked",
-                    "ordinaryMtmNetworkAllowed", "radiosUnchanged", "serverHistoryUnchanged"):
-            require(sample.get(key) is True, key.upper())
-        previous = elapsed
+        verify_soak_sample(started_at, sample, previous)
+        previous = sample["hostElapsedSeconds"]
     require(previous >= DAY_SECONDS + 120, "FULL_DAY_NOT_ELAPSED")
     before = [s for s in samples if DAY_SECONDS - 900 <= s["hostElapsedSeconds"] < DAY_SECONDS - 60]
     require(any(s.get("admissionAvailable") is True and s.get("pendingVisible") is True
