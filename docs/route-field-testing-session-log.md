@@ -271,3 +271,11 @@
 - Exactb7db6c7 all4 hosted checks PASS. zeytun-missing-coordinates-v2 Maestro PASS82.689s, driver postflight exactagent shell PASS on unchanged APK1730/sourcef1. Only the failed search/keyboard gate was rerun; earlier failure remains retained.
 - Independent ordinary manager API reconciliation PASS:5 original visits byte-equivalent,0QA visits,0QA location requests and all unrelated pending requests unchanged. This establishes real no-coordinate refusal, not merely YAML parse or UI success.
 - Next flow zeytun-location-request-v1 started: actual foreground device fix only, no map manipulation or synthetic GPS. Manager website review/QA visit/photo/offline remain NOT RUN. Current screen leasev4 active, automatic restoration around15:58UTC, original2.
+
+
+## 2026-10-23T15:56:06.551682+00:00 — GPS request harness refusal retained and map gesture removed
+
+- zeytun-location-request-v1 retained FAIL150.667s at finding location-fix-send after comment. Server independently confirms0QA requests. Before comment the enabled-send admission passed; actual phone fix accuracy29m was visible.
+- Inspection supersedes the initial keyboard-only diagnosis: this map screen is NOT scrollable; the test scroll gesture panned its map while keyboard was open. Actual final pin603m from agent, app correctly showed pin-too-far and refused sending. NO location request/coordinate update/visit was created. Do not describe this failed attempt as containing no map gesture.
+- Corrected test removes BOTH scrollUntilVisible gestures on the map screen, hides keyboard after comment and after visit-completion notes. This keeps the initial real device pin and avoids the known map-pan action. YAML parse/diff PASS; runtime app unchanged.
+- Closed the unsubmitted map without saving and preserved employee shell. Bounded display leasev5 replacesv4, independent1200s recovery, original2; must restore/readback2 before stopping. Next: rerun only GPS request, then manager decision and QA visit/photo/offline.

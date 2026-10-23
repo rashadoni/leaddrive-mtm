@@ -11,6 +11,7 @@ name: Complete the marked QA active visit with its single camera photo
 - tapOn: ${output.qa.visit.finish}
 - tapOn: ${output.qa.notesPlaceholder}
 - inputText: RF-QA marked QA visit completed
+- hideKeyboard
 - tapOn: ${output.qa.notesSubmit}
 # The driver records UI only. The orchestrator must separately prove either
 # pending persistence while UID-blocked or exact canonical completion online.
