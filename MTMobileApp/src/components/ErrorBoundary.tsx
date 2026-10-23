@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React from "react"
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
+import { View, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Sentry } from "../services/sentry"
 import { i18n } from "../i18n"

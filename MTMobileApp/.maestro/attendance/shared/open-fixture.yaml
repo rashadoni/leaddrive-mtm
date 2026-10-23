@@ -1,0 +1,21 @@
+appId: com.leaddrive.attendance
+---
+- runScript: labels.js
+- runScript: offline-fixture.js
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: time-tab-OwnWorkday
+    timeout: 30000
+- tapOn:
+    id: time-tab-OwnWorkday
+- assertVisible: "${output.offlineFixtureName}"
+- assertNotVisible:
+    id: office-workday-unavailable
+- assertNotVisible:
+    id: office-workday-conflict

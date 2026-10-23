@@ -1,0 +1,168 @@
+<style>
+#attendance-compact-preview { --ac-ground:light-dark(#e3ece7,#0e1412); --ac-paper:light-dark(#fbfdfc,#161e1b); --ac-ink:light-dark(#13231f,#e5eeea); --ac-muted:light-dark(#5e7069,#9aaaa4); --ac-line:light-dark(#d6e3dc,#2a3631); --ac-green:light-dark(#055342,#16825f); --ac-soft:light-dark(#d9f1e8,#163a2f); --ac-accent:light-dark(#08705a,#4cc48c); --ac-on-green:#f8fcfa; --ac-amber:light-dark(#8b5a00,#e3ae45); --ac-amber-bg:light-dark(#faeecf,#3a2e15); color:var(--ac-ink); padding:16px 8px; font-family:system-ui,sans-serif; }
+#attendance-compact-preview * { box-sizing:border-box; }
+#attendance-compact-preview .ac-demo { display:flex; align-items:center; flex-wrap:wrap; gap:8px; max-width:400px; margin:0 auto 12px; font-size:12px; color:var(--ac-muted); padding-right:84px; }
+#attendance-compact-preview .ac-demo button { background:var(--ac-paper); border:1px solid var(--ac-line); color:var(--ac-ink); border-radius:8px; min-height:36px; padding:6px 10px; font:inherit; }
+#attendance-compact-preview .ac-phone { background:var(--ac-paper); width:100%; max-width:400px; margin:auto; border:1px solid var(--ac-line); border-radius:24px; overflow:clip; }
+#attendance-compact-preview .ac-bar { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 12px; border-bottom:1px solid var(--ac-line); gap:12px; }
+#attendance-compact-preview .ac-brand { font-size:15px; font-weight:700; letter-spacing:-.3px; color:var(--ac-accent); }
+#attendance-compact-preview button { font-family:inherit; -webkit-tap-highlight-color:transparent; }
+#attendance-compact-preview button:focus-visible, #attendance-compact-preview input:focus-visible { outline:3px solid var(--ac-accent); outline-offset:3px; }
+#attendance-compact-preview .ac-icon-button { display:inline-flex; align-items:center; justify-content:center; background:var(--ac-soft); color:var(--ac-ink); border:0; border-radius:50%; width:44px; height:44px; flex-shrink:0; }
+#attendance-compact-preview .ac-main { padding:16px; min-height:438px; }
+#attendance-compact-preview .ac-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:18px; }
+#attendance-compact-preview h2 { font-size:23px; font-weight:700; line-height:1.2; letter-spacing:-.5px; margin:0; color:var(--ac-ink); }
+#attendance-compact-preview .ac-date { font-size:12px; color:var(--ac-muted); }
+#attendance-compact-preview .ac-state-line { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+#attendance-compact-preview .ac-state-icon { width:42px; height:42px; border-radius:12px; background:var(--ac-soft); color:var(--ac-accent); display:grid; place-items:center; }
+#attendance-compact-preview .ac-state { font-size:18px; line-height:1.3; font-weight:650; }
+#attendance-compact-preview .ac-caption { font-size:13px; line-height:1.45; color:var(--ac-muted); margin-top:3px; }
+#attendance-compact-preview .ac-primary, #attendance-compact-preview .ac-secondary { display:flex; align-items:center; justify-content:center; gap:8px; border-radius:12px; min-height:50px; width:100%; padding:12px; font-size:15px; line-height:1.3; font-weight:600; border:0; }
+#attendance-compact-preview .ac-primary { background:var(--ac-green); color:var(--ac-on-green); }
+#attendance-compact-preview .ac-secondary { background:var(--ac-paper); color:var(--ac-ink); border:1px solid var(--ac-line); }
+#attendance-compact-preview .ac-actions { display:grid; gap:8px; margin:16px 0 14px; }
+#attendance-compact-preview .ac-button-row { display:flex; flex-wrap:wrap; gap:8px; }
+#attendance-compact-preview .ac-button-row > * { flex:1; min-width:110px; }
+#attendance-compact-preview .ac-text-button { color:var(--ac-accent); background:transparent; border:0; font-size:14px; font-weight:600; padding:12px 6px; min-height:44px; }
+#attendance-compact-preview button:disabled { opacity:.55; }
+#attendance-compact-preview .ac-reason { font-size:12px; color:var(--ac-muted); line-height:1.4; }
+#attendance-compact-preview .ac-row { display:flex; align-items:center; text-align:left; gap:10px; padding:13px 0; min-height:52px; width:100%; color:var(--ac-ink); background:transparent; border:0; border-bottom:1px solid var(--ac-line); font-size:14px; }
+#attendance-compact-preview .ac-row .ac-row-main { flex:1; min-width:0; }
+#attendance-compact-preview .ac-row-label { font-weight:550; }
+#attendance-compact-preview .ac-row-end { font-size:12px; color:var(--ac-muted); flex-shrink:0; }
+#attendance-compact-preview .ac-row > svg:first-child { color:var(--ac-accent); flex-shrink:0; }
+#attendance-compact-preview .ac-row > svg:last-child { color:var(--ac-muted); width:16px; height:16px; flex-shrink:0; }
+#attendance-compact-preview .ac-sync { font-size:12px; color:var(--ac-accent); display:flex; align-items:center; gap:8px; padding:0; border:0; background:transparent; min-height:42px; width:100%; text-align:left; }
+#attendance-compact-preview .ac-sync > span { flex:1; }
+#attendance-compact-preview .ac-offline { background:var(--ac-amber-bg); color:var(--ac-amber); border-radius:10px; padding:10px 12px; font-size:13px; line-height:1.45; margin-bottom:14px; }
+#attendance-compact-preview .ac-offline strong { font-weight:650; }
+#attendance-compact-preview .ac-notice { margin:10px 0 0; padding:10px 12px; border-radius:10px; background:var(--ac-soft); color:var(--ac-ink); font-size:13px; line-height:1.45; }
+#attendance-compact-preview .ac-details { padding:10px 0; font-size:13px; line-height:1.5; }
+#attendance-compact-preview .ac-detail-pair { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:6px 0; }
+#attendance-compact-preview .ac-detail-pair span:first-child { color:var(--ac-muted); }
+#attendance-compact-preview .ac-detail-pair span:last-child { text-align:right; }
+#attendance-compact-preview .ac-mark { display:grid; grid-template-columns:44px 1fr; align-items:start; gap:12px; padding:12px 0; border-bottom:1px solid var(--ac-line); font-size:14px; }
+#attendance-compact-preview .ac-mark-time { font-variant-numeric:tabular-nums; font-size:13px; padding-top:2px; color:var(--ac-muted); }
+#attendance-compact-preview .ac-mark button { display:flex; gap:6px; align-items:center; color:var(--ac-accent); background:transparent; border:0; padding:8px 0; min-height:44px; font-size:12px; }
+#attendance-compact-preview .ac-kicker { font-size:12px; font-weight:600; color:var(--ac-muted); margin:22px 0 5px; }
+#attendance-compact-preview .ac-back { display:flex; align-items:center; gap:4px; background:transparent; border:0; color:var(--ac-accent); padding:0; min-height:44px; font-size:14px; margin-bottom:8px; }
+#attendance-compact-preview .ac-camera { border:1px solid var(--ac-line); border-radius:16px; min-height:200px; display:grid; place-items:center; text-align:center; background:var(--ac-ground); padding:20px; margin:18px 0; }
+#attendance-compact-preview .ac-camera svg { width:76px; height:76px; color:var(--ac-accent); }
+#attendance-compact-preview .ac-copy { font-size:14px; line-height:1.5; margin:12px 0; }
+#attendance-compact-preview label { font-size:13px; display:grid; gap:6px; margin:14px 0; }
+#attendance-compact-preview input, #attendance-compact-preview textarea { color:var(--ac-ink); background:var(--ac-paper); border:1px solid var(--ac-line); border-radius:8px; padding:12px; min-height:46px; width:100%; font:inherit; font-size:16px; }
+#attendance-compact-preview .ac-time-fields { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+#attendance-compact-preview .ac-nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); border-top:1px solid var(--ac-line); padding:6px 4px; background:var(--ac-paper); }
+#attendance-compact-preview .ac-nav button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:8px 1px; min-height:58px; min-width:0; border:0; color:var(--ac-muted); background:transparent; font-size:11px; font-weight:500; overflow-wrap:anywhere; }
+#attendance-compact-preview .ac-nav button[aria-current=page] { color:var(--ac-accent); font-weight:650; }
+#attendance-compact-preview .ac-nav svg { width:21px; height:21px; }
+#attendance-compact-preview .ac-nav button[aria-current=page] svg { background:var(--ac-soft); border-radius:7px; outline:5px solid var(--ac-soft); }
+#attendance-compact-preview svg { width:19px; height:19px; stroke-width:1.8; }
+#attendance-compact-preview .ac-muted { color:var(--ac-muted); }
+@media (prefers-reduced-motion:no-preference) { #attendance-compact-preview .ac-main { animation:ac-enter .16s ease-out; } #attendance-compact-preview button:active { transform:scale(.98); } @keyframes ac-enter { from { opacity:.7; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } } }
+@media (max-width:360px) { #attendance-compact-preview { padding:8px 0; } #attendance-compact-preview .ac-main { padding:14px; } #attendance-compact-preview .ac-demo { padding-right:80px; } }
+</style>
+<div id="attendance-compact-preview" class="viz-dotted-background">
+  <div class="ac-demo"><span>Макет · пример данных</span><button type="button" class="cursor-interaction" data-action="network" aria-pressed="false">Без сети</button><button type="button" class="cursor-interaction" data-action="reset" aria-label="Начать демонстрацию сначала">Сначала</button></div>
+  <section class="ac-phone" aria-label="Компактный вариант LeadDrive Time">
+    <header class="ac-bar"><span class="ac-brand">LeadDrive Time</span><button type="button" class="ac-icon-button cursor-interaction" data-page="profile" aria-label="Открыть профиль"><i data-lucide="user-round" aria-hidden="true"></i></button></header>
+    <main class="ac-main"></main>
+    <nav class="ac-nav" aria-label="Разделы приложения"></nav>
+  </section>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('attendance-compact-preview');
+  const main = root.querySelector('.ac-main');
+  const nav = root.querySelector('.ac-nav');
+  const initial = () => ({ phase:'running', online:true, page:'day', detail:'', showMarks:false, note:'', tick:20, events:[{ action:'START', time:'09:00', received:true, qr:true }], requests:[] });
+  const saved = window.openai?.widgetState?.privateContent;
+  let state = saved?.version === 1 ? { ...initial(), ...saved.state, note:'' } : initial();
+  const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const pending = () => state.events.filter(item => !item.received).length;
+  const clock = () => '10:' + String(state.tick++).padStart(2,'0');
+  const markLabel = action => ({START:'Начало работы', PAUSE:'Перерыв', RESUME:'Возвращение', FINISH:'Завершение дня'})[action];
+  const save = () => window.openai?.setWidgetState?.({ modelContent:{ prototype:'attendance-compact', phase:state.phase, online:state.online, page:state.page }, privateContent:{ version:1, state } })?.catch(() => {});
+  const button = (text, action, cls='ac-secondary', disabled=false) => `<button type="button" class="${cls} cursor-interaction" data-action="${action}" ${disabled?'disabled':''}>${text}</button>`;
+  const row = (name, text, tail, action) => `<button type="button" class="ac-row cursor-interaction" data-action="${action}">${icon(name)}<span class="ac-row-main ac-row-label">${text}</span><span class="ac-row-end">${tail}</span>${icon('chevron-right')}</button>`;
+  const pair = (key, value) => `<div class="ac-detail-pair"><span>${key}</span><span>${value}</span></div>`;
+  const back = label => `<button type="button" class="ac-back cursor-interaction" data-page="day">${icon('chevron-left')}${label||'Рабочий день'}</button>`;
+  const note = () => state.note ? `<div class="ac-notice" role="status">${escape(state.note)}</div>` : '';
+  function add(action, qr=false) { state.events.push({action,time:clock(),received:state.online,qr}); state.detail=''; }
+  function marks() {
+    return state.events.map((e,index) => `<div class="ac-mark"><span class="ac-mark-time">${e.time}</span><div><strong>${markLabel(e.action)}</strong><div class="ac-caption">${e.received?'Получено сервером':'Сохранено на телефоне'}</div><button type="button" class="cursor-interaction" data-action="mark-${index}" aria-expanded="${state.detail==='mark-'+index}">Квитанция ${icon('chevron-down')}</button>${state.detail==='mark-'+index?`<div class="ac-details">${pair('Время отметки',e.time)}${pair('Доставка',e.received?e.time+' · получено':'Ожидает связи')}${['START','FINISH'].includes(e.action)?pair('QR',e.qr?'Подтверждён · тестовый филиал':'Без QR')+pair('GPS','Нет измерения в примере'):pair('Место','Во время перерыва не записывается')}</div>`:''}</div></div>`).join('');
+  }
+  function day() {
+    const done = state.phase==='completed', paused=state.phase==='paused';
+    const status = done?'День завершён':paused?'На перерыве':'На работе';
+    const last = state.events[state.events.length-1];
+    const sub = done?'Завершение в '+last.time:paused?'С '+last.time:'Начало в 09:00';
+    const actions = done ? (state.online && !pending()?button('Вернуться к работе','return','ac-secondary'):'') :
+      `${button(icon('scan-line')+'Отметиться по QR','qr','ac-primary',paused)}${paused?'<span class="ac-reason">Сканирование доступно после перерыва</span>':''}<div class="ac-button-row">${button(icon(paused?'play':'coffee')+(paused?'Продолжить работу':'Начать перерыв'),'pause','ac-secondary')}</div>${button('Завершить без QR','finish','ac-text-button')}`;
+    return `<div class="ac-heading"><h2>Рабочий день</h2><span class="ac-date">22 октября · чт</span></div>
+      ${!state.online?`<div class="ac-offline">${icon('wifi-off')} <strong>Нет сети</strong><br>Отметки сохранятся на телефоне.<br>Допуск до 23 октября, 09:00.</div>`:''}
+      <div class="ac-state-line"><div class="ac-state-icon">${icon(done?'circle-check':paused?'pause':'briefcase-business')}</div><div><div class="ac-state" role="status">${status}</div><div class="ac-caption">${sub}</div></div></div>
+      <div class="ac-actions">${actions}</div>
+      <button type="button" class="ac-sync cursor-interaction" data-action="delivery" aria-expanded="${state.detail==='delivery'}">${icon(pending()?'cloud-upload':'check-check')}<span>${pending()?'На телефоне · '+pending()+' к отправке':'Все отметки получены сервером'}</span>${icon('chevron-down')}</button>
+      ${state.detail==='delivery'?`<div class="ac-details">${pair('Доставка',pending()?'Автоматически после возврата связи':'Подтверждена сервером')}<p class="ac-caption">Получение сервером и решение кадровика — разные статусы. Время отметки сохраняется.</p></div>`:''}
+      ${note()}
+      ${row('list-checks','Отметки за день',String(state.events.length),'marks')}
+      ${state.showMarks?marks():''}
+      ${row('map-pin','GPS и QR','Подробнее','evidence')}
+      ${row('shield-check','Телефон и доступ','Разрешён','access')}
+      ${button('Исправить время','correction','ac-text-button',!!pending())}
+      ${pending()?'<p class="ac-reason">Исправление доступно после отправки отметок</p>':''}`;
+  }
+  function page() {
+    if(state.page==='day') return day();
+    if(state.page==='finish') return `${back()}<h2>Завершить день?</h2><p class="ac-copy">Время завершения будет сохранено${state.online?' и отправлено серверу.':' на телефоне. Отправим, когда появится сеть.'}</p><div class="ac-actions">${button('Завершить день','confirm-finish','ac-primary')}${button('Продолжить работу','cancel')}</div>`;
+    if(state.page==='qr') return `${back()}<h2>Сканирование QR</h2><div class="ac-camera"><div>${icon('scan-line')}<div class="ac-caption">Демонстрация камеры</div></div></div><p class="ac-copy">QR тестового филиала считан. Подтвердить завершение дня?</p><div class="ac-actions">${button('Подтвердить тестовую отметку','confirm-qr','ac-primary')}${button('Отмена','cancel')}</div>`;
+    if(state.page==='evidence') return `${back()}<h2>GPS и QR</h2><p class="ac-caption">Сведения только по вашим отметкам</p>${marks()}<p class="ac-caption">Новое измерение места при просмотре не выполняется.</p>`;
+    if(state.page==='access') return `${back()}<h2>Телефон и доступ</h2><div class="ac-details">${pair('Телефон','Разрешён кадровиком')}${pair('GPS','Только при начале и завершении')}${pair('Согласие','Принято')}${pair('Перерывы','Место не записывается')}</div><details><summary class="ac-text-button cursor-interaction">Как используется геолокация</summary><p class="ac-copy">При отметке сравниваем свежее измерение с рабочим филиалом. Результат и точность можно посмотреть в «GPS и QR». Без точного измерения результат остаётся неизвестным.</p></details>`;
+    if(state.page==='correction') return `${back()}<h2>Исправить время</h2><p class="ac-caption">Заявка кадровику · 22 октября</p><form data-correction><div class="ac-time-fields"><label>Начало<input name="start" type="time" value="09:00" required></label><label>Завершение<input name="end" type="time" value="${state.phase==='completed'?state.events.at(-1).time:'18:00'}" required></label></div><label>Причина<textarea name="reason" rows="2" required placeholder="Что нужно исправить?"></textarea></label><button class="ac-primary cursor-interaction" type="button" data-action="submit-correction">Отправить заявку</button><p class="ac-caption">В макете заявка сохраняется только для примера.</p></form>`;
+    if(state.page==='requests') return `<div class="ac-heading"><h2>Заявки</h2></div>${note()}${state.requests.length?state.requests.map(r=>row('clock-3','Исправление · 22 октября','На проверке','request-detail')).join(''):'<p class="ac-copy">Нет заявок на рассмотрении.</p>'}${button(icon('plus')+'Исправить время','correction','ac-secondary',!!pending())}${pending()?'<p class="ac-caption">Сначала дождитесь доставки отметок.</p>':''}`;
+    if(state.page==='request-detail') return `${back()}<h2>Исправление времени</h2><div class="ac-details">${pair('Статус','На проверке у кадровика')}${pair('Предложено',escape(state.requests.at(-1)?.start||'09:00')+' — '+escape(state.requests.at(-1)?.end||'18:00'))}</div><p class="ac-copy">${escape(state.requests.at(-1)?.reason||'')}</p>`;
+    if(state.page==='explanations') return `<h2>Объяснения</h2><p class="ac-copy">Новых запросов от кадровика нет.</p>${button('Вернуться к рабочему дню','cancel','ac-secondary')}`;
+    if(state.page==='inbox') return `<h2>Входящие</h2><div class="ac-mark"><span class="ac-mark-time">Вчера</span><div><strong>Телефон разрешён</strong><div class="ac-caption">Можно отмечать начало и завершение работы.</div></div></div>`;
+    return `<h2>Профиль</h2><p class="ac-copy">Тестовый сотрудник</p>${row('shield-check','Телефон и доступ','Разрешён','access')}${row('map-pin','Геолокация','По запросу','access')}<p class="ac-caption">LeadDrive Time · отдельное приложение</p>`;
+  }
+  function render() {
+    main.innerHTML=page();
+    const tabs=[['day','День','clock-3'],['requests','Заявки','file-text'],['explanations','Ответы','message-square'],['inbox','Входящие','bell'],['profile','Профиль','user-round']];
+    nav.innerHTML=tabs.map(([id,label,name])=>`<button type="button" class="cursor-interaction" data-page="${id}" ${state.page===id?'aria-current="page"':''}>${icon(name)}<span>${label}</span></button>`).join('');
+    const disclosure=root.querySelector('[data-action="marks"]');if(disclosure)disclosure.setAttribute('aria-expanded',String(state.showMarks));
+    const network=root.querySelector('[data-action="network"]');network.setAttribute('aria-pressed',String(!state.online));network.textContent=state.online?'Без сети':'Вернуть связь';
+    if(window.lucide) lucide.createIcons({attrs:{width:19,height:19}});
+  }
+  root.addEventListener('click', e => {
+    const target=e.target.closest('button');if(!target || target.disabled)return;
+    if(target.dataset.page) {state.page=target.dataset.page;state.note='';render();save();return;}
+    const action=target.dataset.action;if(!action)return;
+    if(action==='reset')state=initial();
+    else if(action==='network') {state.online=!state.online;if(state.online){state.events.forEach(item=>item.received=true);state.note='Связь восстановлена. Отметки доставлены.';}else state.note='';}
+    else if(action==='pause') {const paused=state.phase==='paused';state.phase=paused?'running':'paused';add(paused?'RESUME':'PAUSE');state.note=paused?'Работа продолжена.':'Перерыв начат. Место не записывается.';}
+    else if(action==='return') {state.phase='running';add('RESUME');state.note='Вы вернулись к работе.';}
+    else if(action==='finish') {state.page='finish';state.note='';}
+    else if(action==='qr') {state.page='qr';state.note='';}
+    else if(action==='confirm-finish' || action==='confirm-qr') {add('FINISH',action==='confirm-qr');state.phase='completed';state.page='day';state.note=state.online?'День завершён. Отметка получена сервером.':'День завершён. Отметка сохранена на телефоне.';}
+    else if(action==='submit-correction') {
+      const form=root.querySelector('[data-correction]');if(!form || !form.reportValidity())return;
+      const fields=new FormData(form);state.requests.push({start:String(fields.get('start')),end:String(fields.get('end')),reason:String(fields.get('reason'))});
+      state.page='requests';state.note='Заявка сохранена в макете. Реальные данные не менялись.';
+    }
+    else if(action==='cancel') {state.page='day';state.note='';}
+    else if(action==='marks') {state.showMarks=!state.showMarks;state.detail='';}
+    else if(action==='delivery' || action.startsWith('mark-'))state.detail=state.detail===action?'':action;
+    else if(['evidence','access','correction','request-detail'].includes(action)) {state.page=action;state.note='';}
+    render();save();
+  });
+  root.addEventListener('submit', e => {
+    if(!e.target.matches('[data-correction]'))return;
+    e.preventDefault();const fields=new FormData(e.target);
+    state.requests.push({start:String(fields.get('start')),end:String(fields.get('end')),reason:String(fields.get('reason'))});state.page='requests';state.note='Заявка сохранена в макете. Реальные данные не менялись.';render();save();
+  });
+  window.addEventListener('openai:set_globals',e=>{const next=e.detail?.globals?.widgetState?.privateContent;if(next?.version===1){state={...initial(),...next.state};render();}});
+  render();
+})();
+</script>

@@ -1,0 +1,55 @@
+appId: com.leaddrive.attendance
+name: Finish an admitted running fixture day using the actual Android location permission
+# Continuation after a verified REOPEN or START; consent must already be accepted.
+---
+- runScript: ../shared/labels.js
+- scrollUntilVisible:
+    element:
+      text: ${output.copy.running}
+    direction: UP
+    timeout: 60000
+- assertVisible: "Fictional office employee"
+- assertNotVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-offline
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: office-workday-action
+      enabled: true
+    timeout: 60000
+- tapOn:
+    id: office-workday-action
+    enabled: true
+- assertVisible: ${output.copy.finishTitle}
+- tapOn:
+    id: app-choice-button-1
+- extendedWaitUntil:
+    visible:
+      id: ".*:id/permission_allow_foreground_only_button"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: ".*:id/permission_location_accuracy_radio_fine"
+    commands:
+      - tapOn:
+          id: ".*:id/permission_location_accuracy_radio_fine"
+- tapOn:
+    id: ".*:id/permission_allow_foreground_only_button"
+- scrollUntilVisible:
+    element:
+      # The host pins the company date before the first write. An overnight
+      # finish can return to today's idle day instead of yesterday's completion.
+      text: "${typeof EXPECTED_STATE === 'undefined' ? output.copy.completed : EXPECTED_STATE}"
+    direction: UP
+    timeout: 60000
+- assertNotVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-conflict

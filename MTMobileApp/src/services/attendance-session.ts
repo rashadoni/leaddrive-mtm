@@ -25,6 +25,7 @@ export async function refreshAttendanceSession(continueSession?: () => void): Pr
   await reconcile()
   continueSession?.()
   guardOfficeAttendance(scope)
+  if (useBootstrapStore.getState().data?.attendanceOffline) return true
   await runMobileSync()
   continueSession?.()
   if (!current()) return false

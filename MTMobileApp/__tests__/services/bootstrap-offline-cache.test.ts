@@ -1,7 +1,7 @@
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"))
 jest.mock("../../src/services/api", () => ({ api: {
-  getBootstrap: jest.fn(), getOfflineBootstrapBinding: jest.fn(),
+  agentRole: "AGENT", getBootstrap: jest.fn(), getOfflineBootstrapBinding: jest.fn(),
 } }))
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -11,6 +11,7 @@ import { clearOfflineBootstrap, OFFLINE_BOOTSTRAP_KEY, readOfflineBootstrap,
   rememberOfflineBootstrap } from "../../src/services/bootstrap-offline-cache"
 import { setOfflineScope } from "../../src/services/offline-scope"
 import { useBootstrapStore } from "../../src/store/bootstrap"
+import { useSyncStatusStore } from "../../src/store/sync-status"
 
 const NOW = Date.parse("2026-10-23T12:00:00Z"), WEEK = 7 * 24 * 60 * 60 * 1000
 const binding = { scope: "tenant:agent", server: "https://tenant.example/api/v1/mtm", deviceId: "device-1", sessionId: "login-1" }
@@ -44,11 +45,19 @@ beforeEach(async () => {
   useBootstrapStore.getState().clear()
   await clearOfflineBootstrap(); await AsyncStorage.clear()
   setOfflineScope("tenant", "agent")
+  useSyncStatusStore.setState({ online: true })
   ;(api.getBootstrap as jest.Mock).mockReset()
   ;(api.getOfflineBootstrapBinding as jest.Mock).mockResolvedValue(binding)
 })
 afterEach(async () => {
-  useBootstrapStore.getState().clear(); await clearOfflineBootstrap(); jest.useRealTimers()
+  useBootstrapStore.getState().clear(); await clearOfflineBootstrap(); useSyncStatusStore.setState({ online: true }); jest.useRealTimers()
+})
+
+it("rechecks a field agent online even when the previous connectivity hint is offline", async () => {
+  useSyncStatusStore.setState({ online: false })
+  await admitOnline()
+  expect(api.getBootstrap).toHaveBeenCalledTimes(1)
+  expect(useBootstrapStore.getState().routeFieldAccess).toBe("enabled")
 })
 
 it("hydrates validated field data from private serialized state, without confirming a workday", async () => {
