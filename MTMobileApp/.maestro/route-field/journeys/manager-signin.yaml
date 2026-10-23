@@ -1,0 +1,68 @@
+appId: com.mtmobileapp
+name: Owner-authorized manager signs in after the agent task is reconciled
+---
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/manager-labels.js
+- tapOn:
+    id: guide-spot-tab.More
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- scrollUntilVisible:
+    element:
+      id: more-action-Profile
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Profile
+- scrollUntilVisible:
+    element:
+      text: ${output.managerLogout}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.managerLogout}
+- tapOn:
+    text: ${output.managerLogoutConfirm}
+    below: ${output.managerLogoutMessage}
+- extendedWaitUntil:
+    visible:
+      id: login-email
+    timeout: 30000
+- tapOn:
+    id: login-email
+- eraseText
+- inputText: ${RF_MANAGER_EMAIL}
+- tapOn:
+    id: login-password
+- eraseText
+- inputText: ${RF_MANAGER_PASSWORD}
+- scrollUntilVisible:
+    element:
+      id: login-submit
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible:
+      id: guide-spot-tab.Team
+    timeout: 45000
+- runFlow:
+    when:
+      visible:
+        id: guide-skip
+    commands:
+      - tapOn:
+          id: guide-skip
+- tapOn:
+    id: guide-spot-tab.More
+- assertVisible: ${output.managerName}
+- assertVisible: ${output.managerEmail}
+- assertNotVisible: ${output.managerAgentName}
+- tapOn:
+    id: guide-spot-tab.Team
+- assertVisible:
+    id: manager-today-tiles
