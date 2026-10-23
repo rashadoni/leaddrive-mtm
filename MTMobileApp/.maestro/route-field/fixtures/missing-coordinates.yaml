@@ -35,13 +35,11 @@ name: A fictional place without coordinates cannot create a visit
 - tapOn: ${output.fixture.checkIn}
 - assertVisible: ${output.fixture.noCoordinates}
 # Cancel the offer; neither report-to-manager nor location submission is used.
-- back
-- runFlow:
-    when:
-      visible: ${output.fixture.noCoordinates}
-    commands:
-      - back
-- assertNotVisible: ${output.fixture.noCoordinates}
+- tapOn:
+    id: app-choice-button-0
+- extendedWaitUntil:
+    notVisible: ${output.fixture.noCoordinates}
+    timeout: 5000
 - tapOn: ${output.copy.profileBack}
 - tapOn:
     id: guide-spot-tab.Today

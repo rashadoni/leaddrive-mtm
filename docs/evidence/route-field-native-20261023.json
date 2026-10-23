@@ -131,8 +131,8 @@
     "originalCompletionFactsPreserved": true
   },
   "remainingGates": {
-    "fixturePostgres": "PASS: head27f65b098 / verify-controller39945629370, 7 tests plus cleanup/bundle",
-    "fullHostedChecks": "App PR198 merged green; draft PR199 head e0f33bd all4 checks PASS; backend PR1003 head27f65b098 typecheck PASS, static-checks still running",
+    "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
+    "fullHostedChecks": "App draft PR199 head4294304 all4 checks PASS; backend PR1003 f7b5ac888 typecheck PASS, static39949207009 RUNNING",
     "realVisitWorkdayGpsPhotoOffline": "NOT RUN: isolated fictional fixture required",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
     "fictionalNative": "NOT RUN: sign-in, missing coordinates and location request prepared; operational fixture not yet created"
@@ -161,7 +161,8 @@
   "retainedBackendFailures": {
     "39938320051": "full-schema setup lacked vector;5 unit PASS,PG2 skipped",
     "39939248251": "all7 tests PASS, cleanup exceeded PG lock limit",
-    "39940341652": "static gate20 failing files/18 baseline; newly failing Prisma memory guard and cold report UI; fixes verified by targeted30 PASS, full rerun pending"
+    "39940341652": "static gate20 failing files/18 baseline; newly failing Prisma memory guard and cold report UI; fixes verified by targeted30 PASS, full rerun pending",
+    "39945629386": "19 failing files/18 baseline; newly failing finance-notifications cold first render; reproduced4 PASS/1 FAIL, harness fixed, targeted35 PASS, full f7 rerun pending"
   },
   "offlinePreparation": {
     "androidApi": 36,
@@ -172,5 +173,5 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T11:43:55.489388+00:00"
+  "lastUpdatedAt": "2026-10-23T12:15:10.834783+00:00"
 }
