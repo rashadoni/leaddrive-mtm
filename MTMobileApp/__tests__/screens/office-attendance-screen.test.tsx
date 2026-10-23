@@ -323,17 +323,22 @@ it.each(['ru', 'az', 'en'] as const)('keeps %s compact actions and identity visi
 })
 it('keeps compact offline expiry, local capture and correction restrictions visible', async () => {
   const verifiedAt = Date.parse('2026-10-22T05:00:00Z')
-  mockBootstrap.data.attendanceOffline = { verifiedAt, lastSeenAt: verifiedAt, validUntil: verifiedAt + 86400000, installation: null, location: null }
-  mockWorkday.activeWorkday = { key: 'org-fixture:office-fixture', workdayId: 'wd', startedAt: '2026-10-22T05:00:00Z', syncState: 'START_PENDING' }
-  const tree = await render(CompactWorkday)
-  expect(text(tree)).toContain(ru.attendanceCompact.offline)
-  expect(node(tree, 'office-workday-offline-until')).toBeDefined()
-  expect(text(tree)).toContain('09:00')
-  expect(node(tree, 'office-workday-pending')).toBeDefined()
-  expect(node(tree, 'office-workday-correct').props.disabled).toBe(true)
-  await press(tree, 'office-workday-correct'); expect(mockNavigate).not.toHaveBeenCalled()
-  await press(tree, 'office-workday-break'); expect(changeAttendanceWorkday).toHaveBeenCalledWith('pause')
-  capture(tree, 'compact-offline-pending')
+  // This case needs a live fixture admission even when CI runs on a later day.
+  // Keep real timers for settling effects; restore the clock after this case.
+  const clock = jest.spyOn(Date, 'now').mockReturnValue(verifiedAt + 60000)
+  try {
+    mockBootstrap.data.attendanceOffline = { verifiedAt, lastSeenAt: verifiedAt, validUntil: verifiedAt + 86400000, installation: null, location: null }
+    mockWorkday.activeWorkday = { key: 'org-fixture:office-fixture', workdayId: 'wd', startedAt: '2026-10-22T05:00:00Z', syncState: 'START_PENDING' }
+    const tree = await render(CompactWorkday)
+    expect(text(tree)).toContain(ru.attendanceCompact.offline)
+    expect(node(tree, 'office-workday-offline-until')).toBeDefined()
+    expect(text(tree)).toContain('09:00')
+    expect(node(tree, 'office-workday-pending')).toBeDefined()
+    expect(node(tree, 'office-workday-correct').props.disabled).toBe(true)
+    await press(tree, 'office-workday-correct'); expect(mockNavigate).not.toHaveBeenCalled()
+    await press(tree, 'office-workday-break'); expect(changeAttendanceWorkday).toHaveBeenCalledWith('pause')
+    capture(tree, 'compact-offline-pending')
+  } finally { clock.mockRestore() }
 })
 it('keeps compact conflict and HR-review warnings visible without opening details', async () => {
   ;(allOutboxOperations as jest.Mock).mockResolvedValue([{entity:'workdays',status:'conflict'}])

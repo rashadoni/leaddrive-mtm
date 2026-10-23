@@ -640,7 +640,7 @@
   "currentCandidate": {
     "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
     "versionCode": 1039,
-    "status": "CURRENT_SHORT_ACCEPTANCE_PASS_REAL24H_V8_PREPARING",
+    "status": "SHORT_ACCEPTANCE_PASS_REAL24H_V8_RUNNING_NEW_HEAD_CI_FIX_PENDING",
     "hostedGates": {
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "allExactHeadChecks": "PASS",
@@ -1182,7 +1182,7 @@
       "finishedAt": "2026-10-23T07:28:18.623647+00:00"
     },
     "currentReal24h": {
-      "status": "PREPARING",
+      "status": "RUNNING",
       "attempt": "physical-soak-20261023-v8",
       "strictOwner0UidOnly": true,
       "scopeProbe": {
@@ -1230,15 +1230,15 @@
         "finishedAt": "2026-10-23T07:45:50.290+00:00"
       },
       "progressSnapshot": {
-        "status": "PREPARING",
+        "status": "RUNNING",
         "startedPreparationAt": "2026-10-23T07:47:36.031+00:00",
         "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
         "scope": "package-only real 24h outage; original clocks and other apps preserved",
         "attempt": 8,
         "hrSessionVerificationIntervalSeconds": 14400,
         "readProbeMaxAttempts": 3,
-        "updatedAt": "2026-10-23T07:48:52.818+00:00",
-        "samplesObserved": 1,
+        "updatedAt": "2026-10-23T07:56:17.197+00:00",
+        "samplesObserved": 3,
         "gpsAcceptance": "Current APK inside native UI + outside/actual Android permission Maestro; separate from real24h",
         "qrAcceptance": "Current APK actual optical FINISH/VERIFIED + read-only native receipt after restart; original partial FAIL retained",
         "backendArtifactShaBefore": "22ca2202c6ffb2f24227ba331bfe92206b9d478a",
@@ -1249,8 +1249,38 @@
         "offlineAt": "2026-10-23T07:48:40.390+00:00",
         "apkVersionCode": 1039,
         "apkSha256": "4ffa2760d22c6092b1ff20dd42d4053220036ba6f412dbc032ec6f6fa681c2ca",
-        "earliestCompletion": "2026-10-24T11:50:40.390000+04:00"
-      }
+        "earliestCompletion": "2026-10-24T11:50:40.390000+04:00",
+        "capture": {
+          "flow": "journeys/offline-soak-capture",
+          "exit": 0,
+          "apkVersionCode": 1039,
+          "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+          "flowSha256": "c774d3d6cd42ad80aa76287a40922bed994836557e2bf0254e6d7c3419057ec7",
+          "tests": [
+            {
+              "name": "Capture three offline actions before a real 24-hour hold",
+              "seconds": "76.508",
+              "status": "PASS"
+            }
+          ]
+        },
+        "queueCaptured": true
+      },
+      "offlineCapture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1039,
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "flowSha256": "c774d3d6cd42ad80aa76287a40922bed994836557e2bf0254e6d7c3419057ec7",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "76.508",
+            "status": "PASS"
+          }
+        ]
+      },
+      "ownerOnlyWatchdogDeviceFileVerified": true
     },
     "currentOwnMarks": {
       "status": "PASS",
@@ -1314,6 +1344,14 @@
       "noWorkdayChanges": true,
       "settingsUnchanged": true,
       "finishedAt": "2026-10-23T07:22:04.253674+00:00"
+    },
+    "publishedTestCheckpoint": {
+      "sha": "bdcf9ec9f93c06017bf5f8346f08429bf07d9108",
+      "ci": "FAIL: expired fixed-date unit fixture; 282 suites passed, TypeScript skipped",
+      "ordinaryApk": "NOT BUILT: same unit failure",
+      "emulatorContract": "PASS",
+      "runtimeChanged": false,
+      "fix": "Single-case Date.now spy; targeted57PASS, hosted rerun pending"
     }
   }
 }
