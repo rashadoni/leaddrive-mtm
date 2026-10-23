@@ -25,6 +25,25 @@ from route_field_guard import (agent_shell, auth_form, fixture_auth_form, manage
 REPO = Path(__file__).resolve().parents[2]
 APP = REPO / "MTMobileApp"
 PACKAGE = "com.mtmobileapp"
+AUDIT_CAPTURE_NAMES = ("today", "route-day", "route-month", "tasks", "task-order",
+                       "more", "more-profile-link", "profile", "clients")
+
+
+def audit_capture_hashes(attempt):
+    """Maestro nests bundles by timestamp/flow; reject ambiguous or escaped evidence."""
+    roots = list((attempt / "artifacts").rglob("takeScreenshot"))
+    require(len(roots) == 1 and roots[0].is_dir() and not roots[0].is_symlink(),
+            "RF_AUDIT_SCREENSHOTS_MISSING")
+    captures = roots[0]
+    require(captures.resolve().is_relative_to(attempt.resolve()), "RF_AUDIT_SCREENSHOTS_REFUSED")
+    result = {}
+    for name in AUDIT_CAPTURE_NAMES:
+        path = captures / (name + ".png")
+        require(path.is_file() and not path.is_symlink()
+                and path.resolve().is_relative_to(attempt.resolve()), "RF_AUDIT_SCREENSHOTS_MISSING")
+        require(path.stat().st_size > 0, "RF_AUDIT_SCREENSHOTS_MISSING")
+        result[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
 
 
 def private_json(path):
@@ -301,15 +320,7 @@ def main():
             require(bool(cases) and all(case.find("failure") is None and case.find("error") is None
                                        and case.find("skipped") is None for case in cases), "RF_JUNIT_FAILED")
             if args.flow == "employee-accessibility":
-                captures = args.out / "artifacts" / "takeScreenshot"
-                expected_captures = ("today", "route-day", "route-month", "tasks", "task-order",
-                                     "more", "more-profile-link", "profile", "clients")
-                require(all((captures / (name + ".png")).is_file() for name in expected_captures),
-                        "RF_AUDIT_SCREENSHOTS_MISSING")
-                report["privateScreenshotsSha256"] = {
-                    name: hashlib.sha256((captures / (name + ".png")).read_bytes()).hexdigest()
-                    for name in expected_captures
-                }
+                report["privateScreenshotsSha256"] = audit_capture_hashes(args.out)
             report["tests"] = [{"name": case.get("name"), "seconds": case.get("time"), "status": "PASS"} for case in cases]
             report["status"] = "PASS"
             report["phase"] = "complete"
