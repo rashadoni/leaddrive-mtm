@@ -37,6 +37,32 @@ def verify_apk(identity, expected):
     require(re.fullmatch(r"[a-f0-9]{40}", expected.get("publishedSourceSha", "")), "RF_SOURCE_REFUSED")
 
 
+def verify_location_denial_lease(lease, permissions, source_sha, now):
+    """Only an owned, bounded owner0 permission test may press the refusal path."""
+    require(lease.get("status") == "ACTIVE" and lease.get("package") == PACKAGE
+            and lease.get("uid") == 10556 and lease.get("androidUser") == 0
+            and lease.get("sourceSha") == source_sha and lease.get("maximumSeconds") == 900,
+            "RF_LOCATION_DENIAL_LEASE_REFUSED")
+    marker = lease.get("marker", "")
+    require(bool(re.fullmatch(r"/data/local/tmp/rf-permission-denial-[a-f0-9]{32}", marker))
+            and lease.get("worker") == marker + ".sh"
+            and type(lease.get("recoveryPid")) is int and lease["recoveryPid"] > 0
+            and type(lease.get("coldPid")) is int and lease["coldPid"] > 0,
+            "RF_LOCATION_DENIAL_RECOVERY_REFUSED")
+    started = datetime.fromisoformat(lease.get("startedAt", ""))
+    require(started.tzinfo is not None and now.tzinfo is not None
+            and timedelta(seconds=-5) <= now - started < timedelta(seconds=900),
+            "RF_LOCATION_DENIAL_EXPIRED")
+    before = lease.get("originalPermissions") or {}
+    for name in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
+        require(before.get(name, {}).get("granted") is True
+                and bool(before[name].get("flags"))
+                and permissions.get(name) == {**before[name], "granted": False},
+                "RF_LOCATION_DENIAL_STATE_REFUSED")
+    require(before.get("CAMERA", {}).get("granted") is True
+            and permissions.get("CAMERA") == before["CAMERA"], "RF_LOCATION_DENIAL_CAMERA_CHANGED")
+
+
 def auth_form(xml, password_placeholder):
     """Return only in-memory values for comparison, never for public output."""
     root = ET.fromstring(xml)
