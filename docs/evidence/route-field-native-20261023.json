@@ -135,8 +135,8 @@
     "fullHostedChecks": "App draft PR199 exact72 all4 PASS; backend PR1003 exactf7 all5 PASS,18 unchanged known baseline files. PR1007 exactb7 required39962906981 static/typecheck RUNNING; narrow10-test/runner/scan PASS",
     "realVisitWorkdayGpsPhotoOffline": "NOT RUN: fictional company now created; private access delivery pending",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
-    "fictionalNative": "NOT RUN: six flows prepared (sign-in, missing coordinates, GPS request, visit start, actual photo, checkout); phone transport unavailable",
-    "fixtureScope": "NOT RUN:20 GET-only cases prepared; protected encrypted credential delivery pending"
+    "fictionalNative": "NOT RUN: six flows prepared. Phone transport recovered,owner0/APK verified; protected keyguard awaits physical unlock; fictional private access also pending",
+    "fixtureScope": "NOT RUN:20 GET-only cases prepared. Protected access39965410772 FAIL due standalone-path error; PR1008 exact432c full CI39966147428 RUNNING;11 narrow tests PASS"
   },
   "backendArtifactsObserved": {
     "initial": "e76620753f08e4ce716368f5ad3d249482134558",
@@ -156,14 +156,18 @@
     "principalRole": "MANAGER",
     "screen": "Last native-verified Team; latest read-only focus check found RF not foreground",
     "taskStatus": "COMPLETED",
-    "realVisitOrWorkdayCreated": false
+    "realVisitOrWorkdayCreated": false,
+    "transport": "PASS:one ready physical device after user reconnect",
+    "ownerPermissions": "fine/coarse/camera granted; flags recorded privately before any native fixture action",
+    "keyguard": "Screen woken through normal Android interface; protected keyguard still showing. Physical-unlock question pending"
   },
   "publicationAuthorized": true,
   "retainedBackendFailures": {
     "39938320051": "full-schema setup lacked vector;5 unit PASS,PG2 skipped",
     "39939248251": "all7 tests PASS, cleanup exceeded PG lock limit",
     "39940341652": "static gate20 failing files/18 baseline; newly failing Prisma memory guard and cold report UI; fixes verified by targeted30 PASS, full rerun pending",
-    "39945629386": "19 failing files/18 baseline; newly failing finance-notifications cold first render; reproduced4 PASS/1 FAIL, harness fixed, targeted35 PASS, full f7 rerun pending"
+    "39945629386": "19 failing files/18 baseline; newly failing finance-notifications cold first render; reproduced4 PASS/1 FAIL, harness fixed, targeted35 PASS, full f7 rerun pending",
+    "39965410772": "Encrypted access failed before credential retrieval: controller looked for revision outside supported standalone directory. Reproduced by full-root protocol regression; corrected path; all11 narrow tests PASS, full CI pending"
   },
   "offlinePreparation": {
     "androidApi": 36,
@@ -174,7 +178,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T13:54:11.990597+00:00",
+  "lastUpdatedAt": "2026-10-23T14:11:16.981404+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -204,6 +208,6 @@
     "agents": 3,
     "customers": 3,
     "initialVisitWorkdayFacts": 0,
-    "access": "NOT RUN: encrypted delivery PR1007 required CI pending"
+    "access": "39965410772 FAIL retained: revision marker pathname. One-line correction+root-protocol regression11 PASS, PR1008 pending full CI"
   }
 }
