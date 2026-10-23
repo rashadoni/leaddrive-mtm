@@ -1,13 +1,22 @@
 appId: com.mtmobileapp
-name: Complete the marked QA active visit with its single camera photo
+name: Save the marked QA visit completion while RF UID is offline
 ---
 - assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-qa-v1'}
 - runScript: ../shared/labels.js
 - runScript: ../shared/qa-labels.js
 - runFlow: ../shared/open-fixture-visits.yaml
-- assertVisible: ${output.qa.visit.active}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.active}
+    direction: UP
+    timeout: 45000
 - assertVisible: ${RF_QA_CUSTOMER_NAME}
 - assertVisible: ${output.qa.visit.onePhoto}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.finish}
+    direction: DOWN
+    timeout: 15000
 - tapOn: ${output.qa.visit.finish}
 - tapOn: ${output.qa.notesPlaceholder}
 - inputText: RF-QA marked QA visit completed
@@ -18,6 +27,11 @@ name: Complete the marked QA active visit with its single camera photo
 - extendedWaitUntil:
     notVisible: ${output.qa.notesPlaceholder}
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.waitingSync}
+    direction: UP
+    timeout: 45000
 - tapOn: ${output.copy.profileBack}
 - tapOn:
     id: guide-spot-tab.Today

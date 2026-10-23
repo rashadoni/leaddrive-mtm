@@ -25,8 +25,10 @@ name: Start only the marked QA GPS place after server setup
 - tapOn: ${output.qa.visit.start}
 - tapOn: ${output.qa.checkIn}
 # An existing foreground location grant is required; denial is tested separately.
-- extendedWaitUntil:
-    visible: ${output.qa.visit.active}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.active}
+    direction: UP
     timeout: 45000
 - assertVisible: ${RF_QA_CUSTOMER_NAME}
 - tapOn: ${output.copy.profileBack}

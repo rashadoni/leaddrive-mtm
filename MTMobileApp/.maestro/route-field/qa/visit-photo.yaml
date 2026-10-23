@@ -5,9 +5,18 @@ name: Capture one real camera photo for the marked QA active visit
 - runScript: ../shared/labels.js
 - runScript: ../shared/qa-labels.js
 - runFlow: ../shared/open-fixture-visits.yaml
-- assertVisible: ${output.qa.visit.active}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.active}
+    direction: UP
+    timeout: 45000
 - assertVisible: ${RF_QA_CUSTOMER_NAME}
 - assertVisible: ${output.qa.visit.zeroPhotos}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.addPhoto}
+    direction: DOWN
+    timeout: 15000
 - tapOn: ${output.qa.visit.addPhoto}
 # Capture is never replaced by a generated/gallery image. Permission admission
 # is scoped to this fixture camera; original flags are recorded by the driver.
@@ -38,8 +47,10 @@ name: Capture one real camera photo for the marked QA active visit
     visible: ${output.qa.photoUse}
     timeout: 30000
 - tapOn: ${output.qa.photoUse}
-- extendedWaitUntil:
-    visible: ${output.qa.visit.onePhoto}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.onePhoto}
+    direction: UP
     timeout: 45000
 - tapOn: ${output.copy.profileBack}
 - tapOn:

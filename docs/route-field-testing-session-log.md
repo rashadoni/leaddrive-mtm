@@ -295,3 +295,18 @@
 - Independent ordinary manager readback PASS: exactrequest APPROVED/reviewedAt, canonical QA pin exactly equals the real device proposal, radius250 preserved.5originalvisits unchanged,0QA visits, all unrelated pending requests unchanged.
 - Exact707db82 all4 hosted checks PASS. zeytun-visit-start-v1 running on unchanged1730; photo/offline remain NOT RUN. Do not replay GPS request or approve it again.
 - Prepared offline lease now additionally requires current employee Today clean-sync text before entry, and independent device recovery900s (supersedes earlier480s preparation; enough for completion+restart tests, still bounded). It remains NOT ENTERED.
+
+
+## 2026-10-23T16:06:35.795709+00:00 — shared visit flow format checked
+
+- zeytun-visit-start-v1 retained FAIL before business commands: Maestro Config Section Required in shared/open-fixture-visits.yaml;0JUnit cases, no newvisit. Fixed the required appId/header delimiter in947b713. This is a harness defect, not a reproduced app check-in failure.
+- Initial structural check mistakenly included project config.yaml as a flow and FAILED; excluded only that non-flow configuration file. Actual22 executable YAML flows each have a com.mtmobileapp config document plus command-list document: PASS. Syntax-only YAML parsing had not established this contract; no falsePASS claimed for the initial structural check.
+- Next: visit-start-v2, then actualcamera and offline completion/restart/reconciliation. Previously passed refusal/GPS/manager approval are preserved.
+
+
+## 2026-10-23T16:11:56.643456+00:00 — one canonical QA visit started; do not replay the write
+
+- zeytun-visit-start-v2 retained Maestro FAIL126.683s: active header was above retained list position after the action changed the card height. Actual screenshot/XML showed QA active history row and6total visits. This is a viewport assertion failure after a successful business write; NEVER rerun start to chase a green flow.
+- Independent CRM reconciliation PASS: exactly1QA visit CHECKED_IN,0photos,5originalvisits unchanged and unrelated requests unchanged. QA visit ID retained privately. Native full-flow PASS is NOT claimed.
+- Future start verifier and photo/completion/persistence flows now scroll UP to the active/pending card, and DOWN to the specific action, confined to the normal visits list. The map-screen no-swipe correction remains intact. Completion now waits for explicit saved-on-device/pending-sync text before returning, so restart cannot race async GPS/queue persistence. All touched executable YAML structures/diff PASS.
+- Next: captureoneactualcamera photo in this existingQA visit, independentserverphoto check, then completeoffline/restart/reconnect. No duplicatecheckin, GPSrequest or managerdecision.
