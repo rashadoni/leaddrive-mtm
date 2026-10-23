@@ -193,7 +193,10 @@ def main():
                                "RF_VISIT_CHECKIN": words["visit"]["checkInButton"],
                                "RF_CUSTOMER_HERE": words["visit"]["customerIsHere"]}
                 if fixture_switch:
+                    require(re.fullmatch(r"RF-E2E-[0-9]{8}-[0-9]{4} CRM-mobile-CRM TEST",
+                                         fixture_case.get("priorTaskTitle", "")), "RF_PRIOR_TASK_REQUIRED")
                     private_env["RF_FIXTURE_PASSWORD"] = fixture_case["login"]["password"]
+                    private_env["RF_PRIOR_TASK_TITLE"] = fixture_case["priorTaskTitle"]
             if private_env:
                 run_path = args.out / "flow-private.yaml"
                 run_path.write_text("appId: " + PACKAGE + "\nenv: " + json.dumps(private_env, ensure_ascii=False)

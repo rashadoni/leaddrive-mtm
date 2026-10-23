@@ -91,4 +91,10 @@ name: Switch only to the separately owned fictional Route Field employee
 - assertNotVisible: ${output.fixture.priorName}
 - assertNotVisible: ${output.fixture.priorEmail}
 - tapOn:
+    id: guide-spot-tab.Tasks
+- extendedWaitUntil:
+    visible: RF QA fictional visit checklist
+    timeout: 45000
+- assertNotVisible: ${RF_PRIOR_TASK_TITLE}
+- tapOn:
     id: guide-spot-tab.Today

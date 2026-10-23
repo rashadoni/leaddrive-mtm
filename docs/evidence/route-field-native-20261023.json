@@ -131,10 +131,11 @@
     "originalCompletionFactsPreserved": true
   },
   "remainingGates": {
-    "fixturePostgres": "RUNNING in backend PR1003 / verify-controller39938320051",
-    "fullHostedChecks": "Backend RUNNING; app PR publication in progress",
+    "fixturePostgres": "PASS: head27f65b098 / verify-controller39945629370, 7 tests plus cleanup/bundle",
+    "fullHostedChecks": "App PR198 merged green; draft PR199 head e0f33bd all4 checks PASS; backend PR1003 head27f65b098 typecheck PASS, static-checks still running",
     "realVisitWorkdayGpsPhotoOffline": "NOT RUN: isolated fictional fixture required",
-    "time24h": "Separate v8 FAIL retained; no 24h PASS claimed"
+    "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
+    "fictionalNative": "NOT RUN: sign-in, missing coordinates and location request prepared; operational fixture not yet created"
   },
   "backendArtifactsObserved": {
     "initial": "e76620753f08e4ce716368f5ad3d249482134558",
@@ -152,9 +153,24 @@
   },
   "phoneEndState": {
     "principalRole": "MANAGER",
-    "screen": "Team",
+    "screen": "Last native-verified Team; latest read-only focus check found RF not foreground",
     "taskStatus": "COMPLETED",
     "realVisitOrWorkdayCreated": false
   },
-  "publicationAuthorized": true
+  "publicationAuthorized": true,
+  "retainedBackendFailures": {
+    "39938320051": "full-schema setup lacked vector;5 unit PASS,PG2 skipped",
+    "39939248251": "all7 tests PASS, cleanup exceeded PG lock limit",
+    "39940341652": "static gate20 failing files/18 baseline; newly failing Prisma memory guard and cold report UI; fixes verified by targeted30 PASS, full rerun pending"
+  },
+  "offlinePreparation": {
+    "androidApi": 36,
+    "ownerUser": 0,
+    "uid": 10556,
+    "readOnlyProbe": "PASS",
+    "networkMutationPerformed": false,
+    "originalProbeFailureRetained": "appId/userId parser assumption",
+    "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
+  },
+  "lastUpdatedAt": "2026-10-23T11:43:55.489388+00:00"
 }
