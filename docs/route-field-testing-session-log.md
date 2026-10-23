@@ -454,3 +454,10 @@
 - RealCRMwebsitepost-completion readPASS throughboundedexistingChromium/CDP: sameSaidaemail/managerrole/org verified, QAnameandcompletionnotevisible,0runtimeexceptions,0businesswrites. Browserterminated, no paidservice/install/fullbrowserE2E. Originalpostapprovalerrornotreproducedbythisreadandnotclaimedfixed.
 - Appcodeunchangedsince918(273suites/2432PASS+1TODO,TS,contract,signedbuild788PASS). SubsequentchangesONLYtwoMaestroflowfixesanddocs/evidence. PublishingfinalevidenceheadthenactualrequiredCI, exactheadmerge/mainpublicAPKrelease. Do notrerunbusinesswrites. Backenddeb8release/featuregrantchecksremainPASS.
 - Displayv12original2/temp7/1200s active(~18:46); renewbeforeexpiryifneeded, finalrestore/readback2required. Time24hv8failed/unrunextrasremainexplicitlyopen; do notclaimentirebroadmatrixor24hdurationPASS.
+
+
+## 2026-10-23T19:06:34.091828+00:00 — exact main merge and public build in progress
+
+- Final feature419046296317b29a2b18cb3caf9d60ad3c641242 required CI40007467764 and contract40007467951 actualSUCCESS. Verified onlytwoMaestro/docs differences since signed/native-tested runtime918; merged PR199 into main7bab34dfbe6a41a895051823e06fbf9181f3bc1e. No runtime change betweenaccepted1788andmain. OptionalPRAPK40007467823/build789 stillrunningatmerge; do notclaimalreadyPASS.
+- Normal push-main Androidrun40007847247/build790 actualeventpush/head7bab/job120600248102 nowrunning; fullJest andTypeScriptsteps actualSUCCESS, Gradle/signature/publishingpending. Expected3.11.52/code1790 mustbeconfirmedagainstrealartifact/log/releasetag; no publicreleasePASSyet. Preparedprivateprovenanceverifier andinplaceinstaller, neitherexecutedwhilegatepending.
+- Phonechannelworks/samephysicaldevice. Reneweddisplayv12→v13at~19:04UTC: original2/temp7, independent1200sdevice recoveryconfirmedlivebeforeoldmarkerretired. NoRFnetworkleaseactive. Finalrestore/readback2required. MainAPKsmoke willonlyreadprofile/Today/cleanqueue; no repeatedvisit/photo/checkout/task/GPS/auth.
