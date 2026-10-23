@@ -186,7 +186,8 @@ def main():
                                "RF_FIXTURE_COMPANY_NAME": fixture_case["companyName"],
                                "RF_PRIOR_MANAGER_NAME": prior["name"], "RF_PRIOR_MANAGER_EMAIL": prior["email"],
                                "RF_SWITCH_COMPANY": profile["switchServer"], "RF_SWITCH_CONFIRM": profile["switchConfirm"],
-                               "RF_SWITCH_MESSAGE": profile["switchMessage"], "RF_NO_COORDINATES": words["visit"]["noCoordinatesTitle"]}
+                               "RF_SWITCH_MESSAGE": profile["switchMessage"], "RF_NO_COORDINATES": words["visit"]["noCoordinatesTitle"],
+                               "RF_VISIT_CHECKIN": words["visit"]["checkInButton"]}
                 if fixture_switch:
                     private_env["RF_FIXTURE_PASSWORD"] = fixture_case["login"]["password"]
             if private_env:

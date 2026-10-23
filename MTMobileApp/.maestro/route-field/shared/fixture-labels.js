@@ -4,7 +4,7 @@ var fixtureValues = {
   name: RF_FIXTURE_NAME, email: RF_FIXTURE_EMAIL, company: RF_FIXTURE_COMPANY_NAME,
   priorName: RF_PRIOR_MANAGER_NAME, priorEmail: RF_PRIOR_MANAGER_EMAIL,
   switchCompany: RF_SWITCH_COMPANY, switchConfirm: RF_SWITCH_CONFIRM,
-  switchMessage: RF_SWITCH_MESSAGE, noCoordinates: RF_NO_COORDINATES
+  switchMessage: RF_SWITCH_MESSAGE, noCoordinates: RF_NO_COORDINATES, checkIn: RF_VISIT_CHECKIN
 };
 Object.keys(fixtureValues).forEach(function (key) {
   output.fixture[key] = fixtureLiteral(fixtureValues[key]);

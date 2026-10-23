@@ -32,6 +32,7 @@ name: A fictional place without coordinates cannot create a visit
     direction: DOWN
     timeout: 15000
 - tapOn: ${output.fixture.visit.start}
+- tapOn: ${output.fixture.checkIn}
 - assertVisible: ${output.fixture.noCoordinates}
 # Cancel the offer; neither report-to-manager nor location submission is used.
 - back
