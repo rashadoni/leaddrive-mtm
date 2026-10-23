@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-missing-coordinates"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-missing-coordinates", "fixture-location-request"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
@@ -90,6 +90,9 @@ def main():
                 require(args.fixture_case is not None, "RF_FIXTURE_CASE_REQUIRED")
                 fixture_case = private_json(args.fixture_case)
                 verify_fixture_case(fixture_case, expected["publishedSourceSha"])
+                if args.flow == "fixture-location-request":
+                    require(fixture_case["bootstrap"].get("policies", {}).get("agentPermissions", {})
+                            .get("customerLocationRequest") is True, "RF_LOCATION_REQUEST_DISABLED")
             manager_case = None
             if manager_flow:
                 require(args.manager_case is not None, "RF_MANAGER_CASE_REQUIRED")
@@ -187,7 +190,8 @@ def main():
                                "RF_PRIOR_MANAGER_NAME": prior["name"], "RF_PRIOR_MANAGER_EMAIL": prior["email"],
                                "RF_SWITCH_COMPANY": profile["switchServer"], "RF_SWITCH_CONFIRM": profile["switchConfirm"],
                                "RF_SWITCH_MESSAGE": profile["switchMessage"], "RF_NO_COORDINATES": words["visit"]["noCoordinatesTitle"],
-                               "RF_VISIT_CHECKIN": words["visit"]["checkInButton"]}
+                               "RF_VISIT_CHECKIN": words["visit"]["checkInButton"],
+                               "RF_CUSTOMER_HERE": words["visit"]["customerIsHere"]}
                 if fixture_switch:
                     private_env["RF_FIXTURE_PASSWORD"] = fixture_case["login"]["password"]
             if private_env:

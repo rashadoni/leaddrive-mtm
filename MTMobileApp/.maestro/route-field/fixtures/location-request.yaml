@@ -1,0 +1,66 @@
+appId: com.mtmobileapp
+name: Submit the real device position for the fictional GPS place
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- tapOn:
+    id: guide-spot-tab.More
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- scrollUntilVisible:
+    element:
+      id: more-action-Visits
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Visits
+- tapOn: ${output.fixture.visit.search}
+- inputText: RF QA fictional GPS place
+- scrollUntilVisible:
+    element:
+      text: RF QA fictional GPS place
+    direction: DOWN
+    timeout: 15000
+- tapOn: RF QA fictional GPS place
+- scrollUntilVisible:
+    element:
+      text: ${output.fixture.visit.start}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.fixture.visit.start}
+- tapOn: ${output.fixture.checkIn}
+- assertVisible: ${output.fixture.noCoordinates}
+- tapOn: ${output.fixture.customerHere}
+# No map gesture or synthetic coordinate is used: the pin begins at the
+# actual foreground fix and the app/server enforce freshness and accuracy.
+- assertVisible: ${output.fixture.location.title}
+- scrollUntilVisible:
+    element:
+      id: location-fix-send
+    direction: DOWN
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: location-fix-send
+      enabled: true
+    timeout: 45000
+- tapOn: ${output.fixture.location.comment}
+- inputText: RF-QA fictional device GPS acceptance
+- scrollUntilVisible:
+    element:
+      id: location-fix-send
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: location-fix-send
+- extendedWaitUntil:
+    visible: ${output.fixture.location.sent}
+    timeout: 30000
+- tapOn: OK
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today
