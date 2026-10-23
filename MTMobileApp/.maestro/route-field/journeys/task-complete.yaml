@@ -1,0 +1,23 @@
+appId: com.mtmobileapp
+name: Agent completes the exact CRM test task with a traceable result
+---
+- runFlow: ../shared/open-owner-test-task.yaml
+- assertVisible: ${output.task.complete}
+- tapOn: ${output.task.complete}
+- tapOn: ${output.task.placeholder}
+- inputText: ${TASK_RESULT}
+# The preceding input explicitly opens the keyboard before Android BACK.
+- hideKeyboard
+- tapOn: ${output.task.submit}
+- scrollUntilVisible:
+    element:
+      text: ${TASK_RESULT}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${TASK_RESULT}
+- assertNotVisible: ${output.task.complete}
+- tapOn: ${output.task.back}
+- tapOn:
+    id: guide-spot-tab.Today
+- assertNotVisible:
+    id: login-email

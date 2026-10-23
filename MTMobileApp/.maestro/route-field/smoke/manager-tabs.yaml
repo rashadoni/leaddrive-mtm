@@ -1,0 +1,30 @@
+appId: com.mtmobileapp
+name: Field manager reads the team and planning without publishing or messaging
+---
+- assertTrue: ${RF_FIXTURE_ROLE === 'MANAGER'}
+- runScript: ../shared/labels.js
+- tapOn: ${output.copy.team}
+- extendedWaitUntil:
+    visible:
+      id: manager-today-tiles
+    timeout: 30000
+- tapOn: ${output.copy.planning}
+- extendedWaitUntil:
+    visible:
+      id: planning-agent-open
+    timeout: 30000
+- assertVisible:
+    id: planning-summary-routes
+- tapOn:
+    id: planning-agent-open
+- assertVisible:
+    id: planning-agent-sheet
+- back
+- assertNotVisible:
+    id: planning-agent-sheet
+- tapOn: ${output.copy.approvals}
+- assertNotVisible:
+    id: login-email
+- tapOn: ${output.copy.team}
+- assertVisible:
+    id: manager-today-tiles

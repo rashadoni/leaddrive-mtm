@@ -1,0 +1,90 @@
+appId: com.mtmobileapp
+name: Field employee reads the five tabs and the route month without starting work
+---
+# Read-only UI checks may use the account the owner has signed into. Write
+# journeys require a separately owned fixture and server reconciliation.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- runScript: ../shared/labels.js
+- runFlow:
+    when:
+      visible:
+        id: guide-skip
+    commands:
+      - tapOn:
+          id: guide-skip
+- tapOn:
+    id: guide-spot-tab.Route
+- runFlow:
+    when:
+      visible:
+        id: app-choice
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: route-section-today
+    timeout: 30000
+- tapOn:
+    id: route-section-tab-month
+- assertVisible:
+    id: route-section-month
+- tapOn:
+    id: route-section-tab-today
+- assertVisible:
+    id: route-section-today
+- tapOn:
+    id: guide-spot-tab.Tasks
+- extendedWaitUntil:
+    visible:
+      id: tasks-filters
+    timeout: 30000
+- tapOn:
+    id: tasks-filter-ALL
+- scrollUntilVisible:
+    element:
+      id: tasks-order
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: tasks-order
+- assertVisible:
+    id: tasks-order-sheet
+- back
+- assertNotVisible:
+    id: tasks-order-sheet
+- tapOn:
+    id: guide-spot-tab.More
+# More keeps its nested stack when switching tabs. Return from the previously
+# opened profile before expecting MoreHome; never assume a tab remount.
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- extendedWaitUntil:
+    visible:
+      id: more-action-Profile
+    timeout: 30000
+- assertVisible:
+    id: more-action-Visits
+- assertVisible:
+    id: more-action-GpsHistory
+- scrollUntilVisible:
+    element:
+      id: more-action-Profile
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Profile
+- assertVisible: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Clients
+- extendedWaitUntil:
+    visible:
+      id: route-contacts-search
+    timeout: 30000
+- tapOn:
+    id: guide-spot-tab.Today
+- assertVisible: ${output.copy.route}
+- assertNotVisible:
+    id: login-email

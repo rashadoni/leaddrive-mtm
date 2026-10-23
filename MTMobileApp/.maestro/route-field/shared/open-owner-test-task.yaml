@@ -1,0 +1,30 @@
+appId: com.mtmobileapp
+---
+- assertTrue: ${RF_TASK_PREFLIGHT === 'owner-web-created-v1'}
+- runScript: labels.js
+- runScript: task-labels.js
+- tapOn:
+    id: guide-spot-tab.Tasks
+- tapOn:
+    id: tasks-filter-ALL
+- scrollUntilVisible:
+    element:
+      id: tasks-order
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: tasks-order
+- tapOn:
+    id: tasks-order-newest
+- swipe:
+    start: 50%, 40%
+    end: 50%, 75%
+    duration: 500
+- scrollUntilVisible:
+    element:
+      id: ${'task-row-' + TASK_ID}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: ${'task-row-' + TASK_ID}
+- assertVisible: ${TASK_TITLE}
