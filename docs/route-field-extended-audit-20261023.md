@@ -40,3 +40,17 @@ The profile, task ordering sheet and route month remain reachable with larger te
 3. `/polish` — inspect the candidate screenshots after the actual correction.
 
 No synthetic phone GPS, signature, permission-denial or performance result is represented as a native pass. See the append-only session journal for API-layer negatives and remaining scope.
+
+## 2026-10-23 20:49 UTC — verified follow-up; supersedes pending states above
+
+Signed candidate 3.11.53 / 1792, source `41250d7472d647290e16fe7e383afcad13546f34`, passed the complete read-only large-text flow (98.362 s, font scale 1.3) and corrected landscape flow (103.825 s, actual rotation 1). Both retained nine private screenshot hashes and the same manually authenticated agent. The sync state is now fully visible on two lines. This closes the confirmed truncation finding; it does not change the retained original automation failures or resolve the P3 landscape composition concern. Original font/orientation values were restored; a separate bounded stay-awake lease supports the remaining update.
+
+The native location-refusal flow also passed (85.715 s): actual fine/coarse grants were denied, the app disclosure was declined, the persistent explanation appeared and no visit began. Exact complete runtime permission profiles/flags were restored, including background permission; the separate Time application and existing canonical visit/photo records were unchanged. Android system-dialog denial and approximate-only location remain NOT RUN.
+
+### P2 — unplanned visits ignore a customer's configured radius
+
+The customers API preserves `geofenceRadius`, and both interactive and offline server refusal responses enforce the customer's 250 m override. The unplanned Visit screen instead supplied `null` to the existing radius resolver in its admission, pending-location coverage, rejection fallback and distance colour. This can refuse an employee at 150 m when the company default is 100 m but that customer allows 250 m; a smaller customer override can produce the opposite misleading invitation.
+
+Correction prepared: retain the typed customer radius and pass it through those four existing decisions. The server rule stays unchanged. Three targeted suites / 32 tests and TSX syntax validation passed. Full hosted checks, a new signed APK and native read-only customer-screen verification are **NOT RUN for this new correction yet**. Candidate 1792 predates this change. A physical 150 m boundary check-in is NOT RUN and must not be inferred from helper/API tests or a screen-read flow.
+
+TalkBack, 200% text, runtime dark-mode/contrast, frame profiling and tablets remain NOT RUN; no overall numerical score is assigned.

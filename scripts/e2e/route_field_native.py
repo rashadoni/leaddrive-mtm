@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "employee-accessibility", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-location-denied", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "employee-accessibility", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-location-denied", "zeytun-customer-radius-read", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
@@ -207,7 +207,7 @@ def main():
                     dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
             if qa_flow:
                 dependencies += [flow.parent.parent / "shared/qa-labels.js"]
-                if args.flow.startswith("zeytun-visit-") or args.flow == "zeytun-location-denied":
+                if args.flow.startswith("zeytun-visit-") or args.flow in ("zeytun-location-denied", "zeytun-customer-radius-read"):
                     dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
                 if args.flow == "zeytun-location-denied":
                     dependencies.append(flow.parent.parent / "shared/location-denial-labels.js")

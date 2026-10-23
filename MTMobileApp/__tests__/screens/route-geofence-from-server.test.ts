@@ -19,6 +19,21 @@ describe("check-in zone", () => {
     ]).toEqual([400, 250, 100, 100, 100])
   })
 
+  it("allows 150m under a customer 250m zone despite a 100m organization default", () => {
+    const customer = { geofenceRadius: 250 }
+    const radius = checkInRadiusMeters(customer.geofenceRadius, { checkInGeofenceRadiusMeters: 100 })
+    expect(radius).toBe(250)
+    expect(150 <= radius).toBe(true)
+    expect(251 > radius).toBe(true)
+  })
+
+  it("keeps a smaller customer zone when the organization's default is larger", () => {
+    const customer = { geofenceRadius: 100 }
+    const radius = checkInRadiusMeters(customer.geofenceRadius, { checkInGeofenceRadiusMeters: 500 })
+    expect(radius).toBe(100)
+    expect(150 > radius).toBe(true)
+  })
+
   it("route and visit screens block and explain with that zone, not a bare 100", () => {
     const route = read("route/RouteScreen.tsx")
     expect(route).toContain("measuredDistance > pointCheckInRadius(point))")

@@ -94,6 +94,7 @@ interface Customer {
   category?: string
   latitude?: number
   longitude?: number
+  geofenceRadius?: number | null
   distanceMeters?: number
   coordinateState?: CustomerCoordinateState
 }
@@ -747,7 +748,7 @@ export default function VisitScreen() {
         showOutcomeSheet(t("visit.tooFarTitle"), t("visit.checkInRejectedTooFar", {
           name: customer.name,
           distance: formatCheckInDistance(outcome.distanceMeters),
-          max: outcome.maxMeters ?? checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies),
+          max: outcome.maxMeters ?? checkInRadiusMeters(customer.geofenceRadius, useBootstrapStore.getState().data?.policies),
         }))
         return
       case "no_coordinates":
@@ -877,7 +878,7 @@ export default function VisitScreen() {
       }
 
       // Standing at the place he reported, he is measured against it; anywhere else, against the pin as always.
-      const leaning = locationFixCoversCheckIn(waitingFix, coords, checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies))
+      const leaning = locationFixCoversCheckIn(waitingFix, coords, checkInRadiusMeters(customer.geofenceRadius, useBootstrapStore.getState().data?.policies))
       if (!leaning && !hasUsableCoordinates(customer)) {
         setCheckInIssue({ kind: "no-coordinates" })
         showNoCoordinates(customer)
@@ -898,8 +899,8 @@ export default function VisitScreen() {
       let forceCheckIn = false
       if (precondition.kind === "ready") {
         const distance = precondition.distanceMeters
-        // The organization's zone, as the server enforces it (lib/check-in-radius.ts).
-        const radius = checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies)
+        // The customer's override wins, matching direct and offline server check-in.
+        const radius = checkInRadiusMeters(customer.geofenceRadius, useBootstrapStore.getState().data?.policies)
         if (distance > radius) {
           // The organization may let its agents check in while not at the
           // client (recorded as outside the zone, reviewed by a manager). Then
@@ -1661,7 +1662,7 @@ function CustomerRow({ customer, selected, copy, touchTarget, onPress }: {
 }) {
   const { t } = useTranslation()
   const category = categoryTone(customer.category)
-  const distance = customer.distanceMeters == null ? null : distanceTone(customer.distanceMeters, checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies))
+  const distance = customer.distanceMeters == null ? null : distanceTone(customer.distanceMeters, checkInRadiusMeters(customer.geofenceRadius, useBootstrapStore.getState().data?.policies))
   return (
     <Pressable
       accessibilityRole="radio"
