@@ -101,3 +101,55 @@ def verify_delayed_replay(before, after, offline_at, reconnect_at):
                 for claim, e in zip(claims, events)), "DELAYED_CLAIM_NOT_PROVED")
     return {"status": "PASS", "newEvents": 3, "priorEventsUnchanged": len(before),
             "requiresServerReview": True}
+
+
+def verify_independent_soak_window(started_at, device_samples, server_samples, before_ui, after_ui):
+    """Verify separate phone observations and HR reads during an ADB outage.
+
+    Neither stream supplies missing observations for the other. The phone must
+    retain every frame, including failures; HR reads continue on the host while
+    USB is absent. UI receipts are captured on the same phone under the barrier.
+    """
+    start = instant(started_at).timestamp()
+    require(len(device_samples) >= 2 and len(server_samples) >= 2, "SAMPLES_MISSING")
+    previous = -1
+    flags = (*INVARIANTS[:-1], "protectedProfileNetworkAllowed", "denyScopeExact", "clockStable")
+    for frame in device_samples:
+        elapsed, epoch = frame.get("deviceElapsedSeconds"), frame.get("epoch")
+        require(all(type(v) in (int, float) and math.isfinite(v) for v in (elapsed, epoch)),
+                "DEVICE_SAMPLE_INVALID")
+        require(elapsed >= 0 and elapsed > previous, "SAMPLES_OUT_OF_ORDER")
+        require(elapsed - max(0, previous) <= MAX_SAMPLE_GAP, "DEVICE_OBSERVATION_GAP")
+        require(abs(epoch - start - elapsed) <= 10, "DEVICE_CLOCK_CHANGED")
+        for key in flags:
+            require(frame.get(key) is True, key.upper())
+        previous = elapsed
+    require(previous >= DAY_SECONDS + 120, "FULL_DAY_NOT_ELAPSED")
+    last_device_epoch = device_samples[-1]["epoch"]
+    previous = -1
+    for read in server_samples:
+        elapsed = read.get("hostElapsedSeconds")
+        require(type(elapsed) in (int, float) and math.isfinite(elapsed), "SERVER_SAMPLE_INVALID")
+        require(elapsed >= 0 and elapsed > previous, "SAMPLES_OUT_OF_ORDER")
+        require(elapsed - max(0, previous) <= MAX_SAMPLE_GAP, "SERVER_OBSERVATION_GAP")
+        require(abs(instant(read.get("checkedAt")).timestamp() - start - elapsed) <= 30,
+                "HOST_CLOCK_CHANGED")
+        require(read.get("serverHistoryUnchanged") is True, "SERVER_HISTORY_CHANGED")
+        previous = elapsed
+    require(previous >= DAY_SECONDS + 120, "SERVER_FULL_DAY_NOT_OBSERVED")
+    for receipt in (before_ui, after_ui):
+        require(type(receipt.get("epoch")) in (int, float)
+                and math.isfinite(receipt["epoch"]), "UI_TIMESTAMP_INVALID")
+        require(receipt.get("passed") is True, "UI_CAPTURE_FAILED")
+        require(receipt["epoch"] <= last_device_epoch + MAX_SAMPLE_GAP, "UI_DEVICE_WINDOW_MISMATCH")
+    before = before_ui["epoch"] - start
+    after = after_ui["epoch"] - start
+    require(before_ui.get("kind") == "before" and before_ui.get("pendingVisible") is True
+            and DAY_SECONDS - 900 <= before < DAY_SECONDS - 60, "BEFORE_EXPIRY_NOT_OBSERVED")
+    require(after_ui.get("kind") == "after" and after >= DAY_SECONDS + 120,
+            "EXPIRY_NOT_OBSERVED")
+    require(instant(server_samples[-1]["checkedAt"]).timestamp() >= after_ui["epoch"],
+            "SERVER_READ_BEFORE_FINAL_UI")
+    return {"status": "PASS", "observedSeconds": device_samples[-1]["deviceElapsedSeconds"],
+            "deviceSamples": len(device_samples), "serverSamples": len(server_samples),
+            "beforeExpiryAdmission": True, "afterExpiryBlocked": True}

@@ -62,6 +62,14 @@ class DeviceObserverTests(unittest.TestCase):
                               capture_output=True, text=True, check=True)
         self.assertEqual(done.stdout, '')
 
+    def test_tab_coordinates_come_only_from_the_named_attendance_tab(self):
+        definitions = worker().split('\ncase "$1" in', 1)[0]
+        fixture = '<node resource-id="unrelated" bounds="[1,2][3,4]"/><node package="com.leaddrive.attendance" resource-id="time-tab-OwnWorkday" bounds="[94,904][493,1058]"/>'
+        probe = "printf '%s' '" + fixture + "' | ts_tab_bounds"
+        done = subprocess.run(['sh', '-c', definitions + '\n' + probe],
+                              capture_output=True, text=True, check=True)
+        self.assertEqual(done.stdout.strip(), '94 904 493 1058')
+
     def test_recovery_disables_only_an_empty_known_chain_even_with_android_legend(self):
         definitions = worker().split('\ncase "$1" in', 1)[0]
         for extra_uid in ('', '  9510565 OEM_DENY_3_MATCH'):

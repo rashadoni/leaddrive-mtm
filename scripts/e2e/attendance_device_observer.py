@@ -64,6 +64,61 @@ ts_heartbeat() {
   mv "$ts_dir/heartbeat.$$" "$ts_dir/heartbeat"
 }
 
+ts_tab_bounds() {
+  grep -o '<node[^>]*resource-id="time-tab-OwnWorkday"[^>]*>' | \
+    sed -n 's/.*bounds="\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]".*/\1 \2 \3 \4/p'
+}
+
+ts_capture() {
+  ts_capture_mode=$1
+  ts_ui="$ts_dir/admission-$ts_capture_mode.xml"
+  ts_capture_ok=false
+  ts_path=$(pm path --user 0 com.leaddrive.attendance | sed -n '1s/^package://p')
+  [ -n "$ts_path" ] && [ "$(sha256sum "$ts_path" | cut -d ' ' -f1)" = "$ts_apk" ] || return 1
+  [ "$(cat /proc/sys/kernel/random/boot_id)" = "$ts_boot" ] || return 1
+  input keyevent KEYCODE_WAKEUP >/dev/null
+  wm dismiss-keyguard >/dev/null
+  am force-stop --user 0 com.leaddrive.attendance
+  timeout 15 am start -W --user 0 -n com.leaddrive.attendance/com.mtmobileapp.MainActivity > "$ts_dir/capture-$ts_capture_mode.log" 2>&1
+  ts_ui_try=0
+  while [ "$ts_ui_try" -lt 8 ]; do
+    ts_ui_try=$((ts_ui_try + 1))
+    ts_heartbeat
+    timeout 12 uiautomator dump "$ts_ui" >> "$ts_dir/capture-$ts_capture_mode.log" 2>&1
+    if [ "$ts_capture_mode" = after ]; then
+      if grep -q 'İnternet bağlantısı yoxdur' "$ts_ui" &&
+         ! grep -q 'resource-id="time-tab-OwnWorkday"' "$ts_ui" &&
+         ! grep -q 'resource-id="office-workday-action"' "$ts_ui" &&
+         ! grep -q 'resource-id="login-email"' "$ts_ui"; then
+        ts_capture_ok=true; break
+      fi
+    elif grep -q 'Fictional office employee' "$ts_ui" &&
+         grep -q 'package="com.leaddrive.attendance"' "$ts_ui" &&
+         grep -q 'resource-id="time-tab-OwnWorkday"' "$ts_ui"; then
+      ts_bounds=$(cat "$ts_ui" | ts_tab_bounds)
+      set -- $ts_bounds
+      if [ "$#" = 4 ] && [ "$3" -gt "$1" ] && [ "$4" -gt "$2" ]; then
+        input tap "$((($1 + $3) / 2))" "$((($2 + $4) / 2))"
+        timeout 12 uiautomator dump "$ts_ui" >> "$ts_dir/capture-$ts_capture_mode.log" 2>&1
+        if grep -q 'Fictional office employee' "$ts_ui"; then
+          if [ "$ts_capture_mode" = probe ] ||
+             { grep -q 'resource-id="office-workday-pending"' "$ts_ui" &&
+               grep -q 'resource-id="office-workday-offline"' "$ts_ui" &&
+               grep -q 'Gün tamamlanıb' "$ts_ui"; }; then
+            ts_capture_ok=true; break
+          fi
+        fi
+      fi
+    fi
+    sleep 3
+  done
+  ts_ui_pending=false; grep -q 'resource-id="office-workday-pending"' "$ts_ui" && ts_ui_pending=true
+  printf '{"kind":"%s","passed":%s,"pendingVisible":%s,"epoch":%s}\n' \
+    "$ts_capture_mode" "$ts_capture_ok" "$ts_ui_pending" "$(date +%s)" > "$ts_dir/admission-$ts_capture_mode.json"
+  timeout 15 screencap -p "$ts_dir/admission-$ts_capture_mode.png"
+  [ "$ts_capture_ok" = true ]
+}
+
 ts_release() {
   mkdir "$ts_dir/recovery-lock" 2>/dev/null || return 0
   ts_release_reason=$1
@@ -153,8 +208,17 @@ case "$1" in
       [ "$ts_clock_stable" = true ] || ts_bad=CLOCK_CHANGED
       if [ -n "$ts_bad" ]; then ts_release "$ts_bad"; exit 1; fi
       if [ -f "$ts_dir/cancel" ]; then ts_release CANCELLED; exit 1; fi
+      if [ @KEEP_AWAKE@ = true ] && [ "$ts_elapsed" -ge 85800 ] &&
+         [ ! -f "$ts_dir/admission-before.json" ]; then
+        ts_capture before || { ts_release BEFORE_EXPIRY_UI; exit 1; }
+      fi
       if [ "$ts_elapsed" -ge "$ts_hold" ]; then
         touch "$ts_dir/window-elapsed"
+        if [ @KEEP_AWAKE@ = true ] && [ ! -f "$ts_dir/admission-after.json" ]; then
+          ts_capture after || { ts_release AFTER_EXPIRY_UI; exit 1; }
+          # Leave the barrier up briefly for the host's final server read.
+          touch "$ts_dir/expiry-ui-complete"
+        fi
         # Host/owned UI capture has five minutes to finish after the full hold.
         # The watchdog restores independently even if no Mac reconnects.
       fi
@@ -179,6 +243,9 @@ case "$1" in
       fi
       sleep 2
     done
+    ;;
+  capture-probe)
+    ts_capture probe
     ;;
   *) exit 2 ;;
 esac
