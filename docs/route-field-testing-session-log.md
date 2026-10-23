@@ -279,3 +279,11 @@
 - Inspection supersedes the initial keyboard-only diagnosis: this map screen is NOT scrollable; the test scroll gesture panned its map while keyboard was open. Actual final pin603m from agent, app correctly showed pin-too-far and refused sending. NO location request/coordinate update/visit was created. Do not describe this failed attempt as containing no map gesture.
 - Corrected test removes BOTH scrollUntilVisible gestures on the map screen, hides keyboard after comment and after visit-completion notes. This keeps the initial real device pin and avoids the known map-pan action. YAML parse/diff PASS; runtime app unchanged.
 - Closed the unsubmitted map without saving and preserved employee shell. Bounded display leasev5 replacesv4, independent1200s recovery, original2; must restore/readback2 before stopping. Next: rerun only GPS request, then manager decision and QA visit/photo/offline.
+
+
+## 2026-10-23T16:01:18.901806+00:00 — actual GPS request PASS; manager website review pending
+
+- zeytun-location-request-v2 physical Maestro PASS133.31s and exactemployee postflight PASS on unchangedAPK1730/sourcef1; no map scroll gestures. Independent CRM reconciliation PASS: exactly1 SUBMITTED request for QA point/current agent, previous pinNULL, agent-to-proposed<=1m, actual device accuracy42m;0QA visits,5original visits unchanged, unrelated requests unchanged.
+- All4 hosted checks exact8e41104 PASS. Manager website run554e4785-2eb2-4c83-8607-bcd8683e6dc7 pending in the existing manager profile; approve ONLY the exact QA request through its dedicated data-testid. Do not duplicate job or write an API decision while pending.
+- Read-only owner0 UID offline probe PASS: expected firmware/API36, RF allowed, chain disabled,0denies; no network mutation. Prepared restart-persistence YAML and admitted no-auth flow selection; NOT RUN. It must be paired with bounded480s RF-only networking recovery and independent canonical visit/photo reconciliation.
+- Next: wait manager website decision, read back exactapprovedQA coordinates, then startoneQA visit, captureoneactualphoto, completeoffline/restart/reconnect/exactlyonce. Active screen leasev5 original2,1200s recovery; restore/readback2 before stopping.

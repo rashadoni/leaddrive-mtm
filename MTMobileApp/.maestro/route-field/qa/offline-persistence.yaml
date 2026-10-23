@@ -1,0 +1,23 @@
+appId: com.mtmobileapp
+name: QA visit completion survives an app restart while its UID is offline
+---
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+# The external controller must first verify the exact QA visit/photo and
+# install a bounded, owner0 RF-only network lease. No radios are changed.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: guide-spot-tab.Today
+    timeout: 45000
+- runFlow: ../shared/open-fixture-visits.yaml
+- extendedWaitUntil:
+    visible: ${output.qa.visit.waitingSync}
+    timeout: 45000
+- assertVisible: ${RF_QA_CUSTOMER_NAME}
+- assertVisible: ${output.qa.visit.onePhoto}
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

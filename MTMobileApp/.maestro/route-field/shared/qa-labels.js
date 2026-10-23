@@ -13,6 +13,11 @@ output.qa.visit = {
   en: { results: "Search results", search: "For example, Central Clinic", start: "Start unplanned visit", active: "Visit in progress", addPhoto: "Add photo", finish: "Finish visit", zeroPhotos: "Photos: 0", onePhoto: "Photos: 1" }
 }[LOCALE];
 if (!output.qa.visit) throw new Error("RF_LOCALE_REFUSED");
+output.qa.visit.waitingSync = qaLiteral({
+  az: "Bitirmə cihazda saxlanılıb və sinxronizasiyanı gözləyir.",
+  ru: "Завершение сохранено на устройстве и ждёт синхронизации.",
+  en: "Completion is saved on this device and is waiting to sync."
+}[LOCALE]);
 var locationCopy = {
   az: { title: "Müştəri əslində haradadır?", comment: "Şərh — istəyə görə (məsələn: giriş həyətdəndir)", sent: "Sorğu rəhbərə göndərildi" },
   ru: { title: "Где клиент на самом деле?", comment: "Комментарий — по желанию (например: вход со двора)", sent: "Запрос отправлен руководителю" },

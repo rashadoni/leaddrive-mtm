@@ -133,6 +133,51 @@
       "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
       "finishedAt": "2026-10-23T15:49:24.609874+00:00",
       "attempt": "zeytun-missing-coordinates-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "qa/location-request",
+      "phase": "complete",
+      "startedAt": "2026-10-23T15:56:27.613599+00:00",
+      "package": "com.mtmobileapp",
+      "versionCode": 1730,
+      "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+      "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+      "ownerPermissionsBefore": {
+        "ACCESS_FINE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]"
+        },
+        "ACCESS_COARSE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        },
+        "CAMERA": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        }
+      },
+      "flowSha256": "102d6731ab87d4e0c4f4fe601a4d26e1c6befda374909a956edf1a0b6dab2f23",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "20cebbf26d9b2ca8919d2a16a485b0a105020c4dca48108ff4ea0fb694d94737",
+        "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+        "MTMobileApp/.maestro/route-field/qa/location-request.yaml": "102d6731ab87d4e0c4f4fe601a4d26e1c6befda374909a956edf1a0b6dab2f23",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "1a9056f5167fe43d56cc8d33c9cfb4b1850fe89c443fd8396cbc0f71aeb91a50"
+      },
+      "exitCode": 0,
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "133.31",
+          "status": "PASS"
+        }
+      ],
+      "zeytunQaAgentShellVerified": true,
+      "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+      "finishedAt": "2026-10-23T15:59:42.649899+00:00",
+      "attempt": "zeytun-location-request-v2"
     }
   ],
   "website": {
@@ -216,7 +261,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T15:53:19.914293+00:00",
+  "lastUpdatedAt": "2026-10-23T16:01:18.901806+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -371,6 +416,23 @@
       "retainedAttempt": "zeytun-missing-coordinates-v1 FAIL: keyboard obscured QA row, corrected harness only",
       "gpsRequest": "RUNNING; not passed",
       "nativeRuntimeChanged": false
+    },
+    {
+      "at": "2026-10-23T16:01:18.901806+00:00",
+      "gpsNative": "PASS133.31s",
+      "gpsServer": {
+        "status": "PASS",
+        "phase": "gps-request",
+        "checkedAt": "2026-10-23T15:59:50.732937+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 0,
+        "qaRequestCount": 1,
+        "unrelatedRequestsUnchanged": true,
+        "accuracyMeters": 42
+      },
+      "retainedGpsFailure": "v1 test swipe moved map603m; app refused;0 request created; fixed by removing map swipes and hiding keyboard",
+      "managerWebsiteReviewRun": "554e4785-2eb2-4c83-8607-bcd8683e6dc7 RUNNING",
+      "offlinePersistenceFlow": "PREPARED, NOT RUN; requires bounded owner0 RF-only UID lease and exact QA visit/photo baseline"
     }
   ]
 }
