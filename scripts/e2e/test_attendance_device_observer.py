@@ -67,8 +67,8 @@ class DeviceObserverTests(unittest.TestCase):
         definitions = worker().split('\ncase "$1" in', 1)[0]
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
-            (folder / 'overview').write_text('<node package="com.leaddrive.attendance" text="Fictional office employee"/><node resource-id="time-tab-OwnWorkday" bounds="[94,904][493,1058]"/><node text="Gün tamamlanıb"/><node resource-id="office-workday-offline"/>')
-            (folder / 'queue').write_text('<node package="com.leaddrive.attendance" resource-id="office-workday-pending"/>')
+            (folder / 'overview').write_text('<node package="com.leaddrive.attendance" text="Fictional office employee"/><node resource-id="time-tab-OwnWorkday" bounds="[94,904][493,1058]"/><node text="Gün tamamlanıb"/><node resource-id="office-workday-offline"/><node resource-id="office-workday-pending" bounds="[181,874][1998,880]"/>')
+            (folder / 'queue').write_text('<node package="com.leaddrive.attendance" resource-id="office-workday-pending" bounds="[181,570][1998,630]"/>')
             mocks = r'''
 pm() { echo package:/fake.apk; }
 sha256sum() { echo "$ts_apk /fake.apk"; }
@@ -85,6 +85,8 @@ screencap() { touch "$2"; }
             receipt = json.loads((folder / 'admission-before.json').read_text())
             self.assertTrue(receipt['passed'])
             self.assertTrue(receipt['pendingVisible'])
+            self.assertTrue(receipt['pendingFullyVisible'])
+            self.assertTrue((folder / 'swiped').exists())
             self.assertIn('Fictional office employee', (folder / 'admission-before-overview.xml').read_text())
             self.assertNotIn('Fictional office employee', (folder / 'admission-before.xml').read_text())
 

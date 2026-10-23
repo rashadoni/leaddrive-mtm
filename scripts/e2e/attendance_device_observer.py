@@ -69,10 +69,19 @@ ts_tab_bounds() {
     sed -n 's/.*bounds="\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]".*/\1 \2 \3 \4/p'
 }
 
+ts_pending_ready() {
+  ts_pending_bounds=$(grep -o '<node[^>]*resource-id="office-workday-pending"[^>]*>' "$ts_ui" | \
+    sed -n 's/.*bounds="\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]".*/\1 \2 \3 \4/p')
+  set -- $ts_pending_bounds
+  [ "$#" = 4 ] && [ "$3" -gt "$1" ] && [ "$(($4 - $2))" -ge 40 ] &&
+    [ "$2" -ge "$((ts_swipe_y / 2))" ] && [ "$4" -le "$((ts_swipe_y - 80))" ]
+}
+
 ts_capture() {
   ts_capture_mode=$1
   ts_ui="$ts_dir/admission-$ts_capture_mode.xml"
   ts_capture_ok=false
+  ts_swipe_y=0
   ts_path=$(pm path --user 0 com.leaddrive.attendance | sed -n '1s/^package://p')
   [ -n "$ts_path" ] && [ "$(sha256sum "$ts_path" | cut -d ' ' -f1)" = "$ts_apk" ] || return 1
   [ "$(cat /proc/sys/kernel/random/boot_id)" = "$ts_boot" ] || return 1
@@ -109,14 +118,19 @@ ts_capture() {
             timeout 15 screencap -p "$ts_dir/admission-$ts_capture_mode-overview.png"
             ts_swipe_x=$((($1 + $3) / 2)); ts_swipe_y=$2
             ts_scroll_try=0
-            while ! grep -q 'resource-id="office-workday-pending"' "$ts_ui" &&
-                  [ "$ts_scroll_try" -lt 5 ] && [ "$ts_swipe_y" -gt 300 ]; do
+            while ! ts_pending_ready &&
+                  [ "$ts_scroll_try" -lt 6 ] && [ "$ts_swipe_y" -gt 300 ]; do
               ts_scroll_try=$((ts_scroll_try + 1))
               ts_heartbeat
-              input swipe "$ts_swipe_x" "$((ts_swipe_y - 80))" "$ts_swipe_x" "$((ts_swipe_y / 3))" 350
+              set -- $ts_pending_bounds
+              if [ "$#" = 4 ] && [ "$2" -lt "$((ts_swipe_y / 2))" ]; then
+                input swipe "$ts_swipe_x" "$((ts_swipe_y * 2 / 3))" "$ts_swipe_x" "$((ts_swipe_y - 80))" 600
+              else
+                input swipe "$ts_swipe_x" "$((ts_swipe_y - 80))" "$ts_swipe_x" "$((ts_swipe_y * 2 / 3))" 600
+              fi
               timeout 12 uiautomator dump "$ts_ui" >> "$ts_dir/capture-$ts_capture_mode.log" 2>&1
             done
-            if grep -q 'resource-id="office-workday-pending"' "$ts_ui"; then
+            if ts_pending_ready; then
               ts_capture_ok=true; break
             fi
           elif [ "$ts_capture_mode" = probe ]; then
@@ -127,9 +141,9 @@ ts_capture() {
     fi
     sleep 3
   done
-  ts_ui_pending=false; grep -q 'resource-id="office-workday-pending"' "$ts_ui" && ts_ui_pending=true
-  printf '{"kind":"%s","passed":%s,"pendingVisible":%s,"epoch":%s}\n' \
-    "$ts_capture_mode" "$ts_capture_ok" "$ts_ui_pending" "$(date +%s)" > "$ts_dir/admission-$ts_capture_mode.json"
+  ts_ui_pending=false; ts_pending_ready && ts_ui_pending=true
+  printf '{"kind":"%s","passed":%s,"pendingVisible":%s,"pendingFullyVisible":%s,"epoch":%s}\n' \
+    "$ts_capture_mode" "$ts_capture_ok" "$ts_ui_pending" "$ts_ui_pending" "$(date +%s)" > "$ts_dir/admission-$ts_capture_mode.json"
   timeout 15 screencap -p "$ts_dir/admission-$ts_capture_mode.png"
   [ "$ts_capture_ok" = true ]
 }
