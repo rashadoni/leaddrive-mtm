@@ -264,3 +264,10 @@
 - Exact127f5b6 all4 hosted checks PASS (39980254952/39980254946/39980255142). Actual QA assignment independently read back from organizations GET: one active PRIMARY for the selected employee, correct new QA customer only.
 - zeytun-missing-coordinates-v1 retained FAIL:65.842s Maestro, no visible QA row before business click; no login/account switch. Failed screenshot confirms keyboard open and list scrolled to historical visits. After hiding keyboard and bounded return to top, actual XML shows exact correctly typed QA search,1 matching QA row and blank-coordinate label. This is a harness visibility/selector failure, not a reproduced business refusal bug.
 - Narrow correction hides the keyboard after QA search and chooses the QA name BELOW search-results heading, avoiding the identical text in the input. Updated only3 selecting flows and shared AZ/RU/EN heading labels; YAML/JS parse,27 admission tests and diff PASS. Original failure retained. Next run only the failed case; do not replay completed task/tab/manager journeys.
+
+
+## 2026-10-23T15:50:06.285442+00:00 — first new native QA business gate PASS
+
+- Exactb7db6c7 all4 hosted checks PASS. zeytun-missing-coordinates-v2 Maestro PASS82.689s, driver postflight exactagent shell PASS on unchanged APK1730/sourcef1. Only the failed search/keyboard gate was rerun; earlier failure remains retained.
+- Independent ordinary manager API reconciliation PASS:5 original visits byte-equivalent,0QA visits,0QA location requests and all unrelated pending requests unchanged. This establishes real no-coordinate refusal, not merely YAML parse or UI success.
+- Next flow zeytun-location-request-v1 started: actual foreground device fix only, no map manipulation or synthetic GPS. Manager website review/QA visit/photo/offline remain NOT RUN. Current screen leasev4 active, automatic restoration around15:58UTC, original2.

@@ -102,6 +102,37 @@
         }
       ],
       "attempt": "manager-tabs-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "qa/missing-coordinates",
+      "phase": "complete",
+      "startedAt": "2026-10-23T15:47:03.422802+00:00",
+      "package": "com.mtmobileapp",
+      "versionCode": 1730,
+      "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+      "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+      "flowSha256": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "20cebbf26d9b2ca8919d2a16a485b0a105020c4dca48108ff4ea0fb694d94737",
+        "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+        "MTMobileApp/.maestro/route-field/qa/missing-coordinates.yaml": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "1a9056f5167fe43d56cc8d33c9cfb4b1850fe89c443fd8396cbc0f71aeb91a50"
+      },
+      "exitCode": 0,
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "82.689",
+          "status": "PASS"
+        }
+      ],
+      "zeytunQaAgentShellVerified": true,
+      "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+      "finishedAt": "2026-10-23T15:49:24.609874+00:00",
+      "attempt": "zeytun-missing-coordinates-v2"
     }
   ],
   "website": {
@@ -132,8 +163,8 @@
   },
   "remainingGates": {
     "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
-    "fullHostedChecks": "App PR199 exactc596 all4 PASS; backend1008 exact432c all5 plus11 controller/root tests PASS; mainf612 merged, its automatic deploy not yet verified",
-    "realVisitWorkdayGpsPhotoOffline": "NOT RUN: user now requests Zeytun; identify existing session and create/use clearly marked QA entities without changing unrelated production facts",
+    "fullHostedChecks": "App exactb7db6c7 all4 PASS; backend1008 exact432c all5 plus11 controller/root PASS; normalmainf612 release/public smoke PASS",
+    "realVisitWorkdayGpsPhotoOffline": "No-coordinate QA refusal native+server PASS. GPS request RUNNING; manager review/visit/photo/offline NOT RUN. Workforce workday route intentionally withdrawn410, not a positive workday gate.",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
     "fictionalNative": "SUPERSEDED by user:continue inZeytun from manual sign-in. No fictional native PASS; all failed/interrupted attempts retained",
     "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
@@ -185,7 +216,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T15:08:05.533895+00:00",
+  "lastUpdatedAt": "2026-10-23T15:53:19.914293+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -198,15 +229,53 @@
         "fixtureScope": "NOT RUN:20 GET-only cases prepared; protected encrypted credential delivery pending"
       },
       "lastUpdatedAt": "2026-10-23T12:15:10.834783+00:00"
+    },
+    {
+      "supersededAt": "2026-10-23T15:53:19.914293+00:00",
+      "reason": "Independently verified deployment/current native profile and QA refusal now supersede these earlier stopping-point fields",
+      "remainingGates": {
+        "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
+        "fullHostedChecks": "App exactb7db6c7 all4 PASS; backend1008 exact432c all5 plus11 controller/root PASS; normalmainf612 release/public smoke PASS",
+        "realVisitWorkdayGpsPhotoOffline": "No-coordinate QA refusal native+server PASS. GPS request RUNNING; manager review/visit/photo/offline NOT RUN. Workforce workday route intentionally withdrawn410, not a positive workday gate.",
+        "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
+        "fictionalNative": "SUPERSEDED by user:continue inZeytun from manual sign-in. No fictional native PASS; all failed/interrupted attempts retained",
+        "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
+      },
+      "activeTarget": {
+        "tenant": "zeytun",
+        "requestedByUser": true,
+        "preserveManualLogin": true,
+        "currentNativeActor": "VERIFIED: user-signed-in Seymur / AGENT / Zeytun; ordinary CRM agent GET matches actual profile",
+        "previousFictionalNativeScope": "SUPERSEDED by explicit user steering"
+      },
+      "backendRelease": {
+        "sha": "f6126b3b238de409a26404d59b73480e4a662353",
+        "deployRunId": "39970150130",
+        "status": "PASS",
+        "publicShaVerified": true,
+        "newMain": "f6126b3b238de409a26404d59b73480e4a662353",
+        "newMainDeployment": "PASS: hosted release and independent public app/zeytun artifact+ping verification"
+      },
+      "screenRetention": {
+        "original": "2",
+        "temporary": "7",
+        "deviceRecoverySeconds": 1200,
+        "active": true,
+        "restoreRequired": true,
+        "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged",
+        "originalRestored": false,
+        "restoreReadback": null,
+        "leaseVersion": 4
+      }
     }
   ],
   "backendRelease": {
-    "sha": "8fbfeb8e8db34d929fbfea5ce4672731314b58fa",
-    "deployRunId": "39965342404",
+    "sha": "f6126b3b238de409a26404d59b73480e4a662353",
+    "deployRunId": "39970150130",
     "status": "PASS",
     "publicShaVerified": true,
     "newMain": "f6126b3b238de409a26404d59b73480e4a662353",
-    "newMainDeployment": "NOT VERIFIED yet"
+    "newMainDeployment": "PASS: hosted release and independent public app/zeytun artifact+ping verification"
   },
   "fictionalFixture": {
     "workflowRunId": "39957479723",
@@ -230,17 +299,78 @@
     "original": "2",
     "temporary": "7",
     "deviceRecoverySeconds": 1200,
-    "active": false,
-    "restoreRequired": false,
+    "active": true,
+    "restoreRequired": true,
     "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged",
-    "originalRestored": true,
-    "restoreReadback": "2"
+    "originalRestored": false,
+    "restoreReadback": null,
+    "leaseVersion": 4
   },
   "activeTarget": {
     "tenant": "zeytun",
     "requestedByUser": true,
     "preserveManualLogin": true,
-    "currentNativeActor": "NOT YET VERIFIED",
+    "currentNativeActor": "VERIFIED: user-signed-in Seymur / AGENT / Zeytun; ordinary CRM agent GET matches actual profile",
     "previousFictionalNativeScope": "SUPERSEDED by explicit user steering"
-  }
+  },
+  "phaseUpdates": [
+    {
+      "at": "2026-10-23T15:50:06.285442+00:00",
+      "activeTenant": "zeytun",
+      "nativeAuthentication": "Stopped at user direction; manually signed-in AGENT preserved",
+      "qaPreparation": {
+        "method": "ordinary manager API",
+        "websiteCreation": "NOT COMPLETED: both browser runs exhausted budget without saving",
+        "createdCustomers": 1,
+        "assignedCustomers": 1,
+        "endedExistingAssignments": 0,
+        "radiusMeters": 250,
+        "initialCoordinates": "NULL"
+      },
+      "exactHostedSource": "b7db6c7",
+      "hostedChecks": "all4 PASS",
+      "nativeNoCoordinates": {
+        "status": "PASS",
+        "flow": "qa/missing-coordinates",
+        "phase": "complete",
+        "startedAt": "2026-10-23T15:47:03.422802+00:00",
+        "package": "com.mtmobileapp",
+        "versionCode": 1730,
+        "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+        "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+        "flowSha256": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+        "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "sourceFilesSha256": {
+          "scripts/e2e/route_field_native.py": "20cebbf26d9b2ca8919d2a16a485b0a105020c4dca48108ff4ea0fb694d94737",
+          "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+          "MTMobileApp/.maestro/route-field/qa/missing-coordinates.yaml": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+          "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+          "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "1a9056f5167fe43d56cc8d33c9cfb4b1850fe89c443fd8396cbc0f71aeb91a50"
+        },
+        "exitCode": 0,
+        "tests": [
+          {
+            "name": "flow-private",
+            "seconds": "82.689",
+            "status": "PASS"
+          }
+        ],
+        "zeytunQaAgentShellVerified": true,
+        "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+        "finishedAt": "2026-10-23T15:49:24.609874+00:00"
+      },
+      "serverNoCoordinates": {
+        "status": "PASS",
+        "phase": "no-coordinates",
+        "checkedAt": "2026-10-23T15:49:42.003319+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 0,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true
+      },
+      "retainedAttempt": "zeytun-missing-coordinates-v1 FAIL: keyboard obscured QA row, corrected harness only",
+      "gpsRequest": "RUNNING; not passed",
+      "nativeRuntimeChanged": false
+    }
+  ]
 }
