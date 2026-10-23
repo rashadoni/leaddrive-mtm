@@ -22,7 +22,8 @@
           "seconds": "56.226",
           "status": "PASS"
         }
-      ]
+      ],
+      "attempt": "task-start-v2"
     },
     {
       "status": "PASS",
@@ -37,7 +38,8 @@
           "seconds": "74.275",
           "status": "PASS"
         }
-      ]
+      ],
+      "attempt": "task-complete-v2"
     },
     {
       "status": "PASS",
@@ -52,7 +54,8 @@
           "seconds": "89.831",
           "status": "PASS"
         }
-      ]
+      ],
+      "attempt": "employee-tabs-v5"
     },
     {
       "status": "PASS",
@@ -74,11 +77,31 @@
           "seconds": "138.4",
           "status": "PASS"
         }
-      ]
+      ],
+      "attempt": "manager-signin-v2"
     },
     {
-      "attempt": "manager-tabs-v1",
-      "status": "RUNNING"
+      "status": "PASS",
+      "flow": "smoke/manager-tabs",
+      "startedAt": "2026-10-23T10:07:36.287633+00:00",
+      "finishedAt": "2026-10-23T10:09:55.867147+00:00",
+      "flowSha256": "0e877878a942259013e5b51a07950dcf3771a2e2105b613851805b625c5b332a",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "8e864fa6c1cf692e79a5d426ae3f859c645e92aa8179c96ebf2e28ab1ae0b72d",
+        "scripts/e2e/route_field_guard.py": "a0e2682f7de93350668bb7fce8004b72d9f38048a10a7b7d92923cce01f0182a",
+        "MTMobileApp/.maestro/route-field/smoke/manager-tabs.yaml": "0e877878a942259013e5b51a07950dcf3771a2e2105b613851805b625c5b332a",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/manager-labels.js": "b664d8d3f96d9a9afc91f3a6d53a157961dc19cedfe547e3f7072521ce5b8413"
+      },
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "98.741",
+          "status": "PASS"
+        }
+      ],
+      "attempt": "manager-tabs-v2"
     }
   ],
   "website": {
@@ -86,7 +109,9 @@
     "confirmationRunId": "fc76e123-e5c8-4b92-8e63-272a4cb6c10f",
     "status": "PASS",
     "visibleStatus": "COMPLETED",
-    "visibleReservedResultMatches": true
+    "visibleReservedResultMatches": true,
+    "managerReviewRunId": "757ce7cf-ca06-4713-a346-59d0e3078fdc",
+    "reviewStatus": "ACCEPTED"
   },
   "serverReconciliation": {
     "testTasks": 1,
@@ -94,18 +119,42 @@
     "nonTestTaskIdsUnchanged": true,
     "nonTestTaskFactsUnchanged": true,
     "status": "COMPLETED",
-    "version": 3,
+    "version": 4,
     "progress": 100,
     "createdEvents": 1,
     "startedEvents": 1,
     "completedEvents": 1,
-    "reviewStatus": "PENDING",
-    "acceptedAtRequiredForStart": false
+    "reviewStatus": "ACCEPTED",
+    "acceptedAtRequiredForStart": false,
+    "executionCompletionVersion": 3,
+    "acceptedReviewEvents": 1,
+    "originalCompletionFactsPreserved": true
   },
   "remainingGates": {
-    "fixturePostgres": "NOT RUN: hosted isolated database required",
-    "fullHostedChecks": "NOT RUN: publication not authorized for this task",
+    "fixturePostgres": "RUNNING in backend PR1003 / verify-controller39938320051",
+    "fullHostedChecks": "Backend RUNNING; app PR publication in progress",
     "realVisitWorkdayGpsPhotoOffline": "NOT RUN: isolated fictional fixture required",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed"
-  }
+  },
+  "backendArtifactsObserved": {
+    "initial": "e76620753f08e4ce716368f5ad3d249482134558",
+    "latest": "8eb9cdf18e74d222b9a0edd081c5ef92b5dd9ef2",
+    "note": "Production changed independently during testing. The app bytes stayed pinned; individual steps are observations rather than a claim of one immutable backend SHA."
+  },
+  "retainedFailures": {
+    "employee-tabs-v1": "stale APK preflight",
+    "employee-tabs-v2": "unnecessary centering",
+    "employee-tabs-v3": "profile-title assumption",
+    "employee-tabs-v4": "retained More/Profile stack",
+    "task-complete-v1": "BACK dismissed result form; no completion sent",
+    "manager-signin-v1": "agent not on Today; no sign-out performed",
+    "manager-tabs-v1": "final top-of-Team assertion; retained scroll and external foreground interruption observed"
+  },
+  "phoneEndState": {
+    "principalRole": "MANAGER",
+    "screen": "Team",
+    "taskStatus": "COMPLETED",
+    "realVisitOrWorkdayCreated": false
+  },
+  "publicationAuthorized": true
 }

@@ -6,10 +6,11 @@ name: Field manager reads the team and planning without publishing or messaging
 - runScript: ../shared/manager-labels.js
 - tapOn:
     id: guide-spot-tab.Team
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: manager-today-tiles
-    timeout: 30000
+    direction: UP
+    timeout: 15000
 - scrollUntilVisible:
     element:
       id: ${'manager-agent-card-' + RF_AGENT_ID}
@@ -69,5 +70,10 @@ name: Field manager reads the team and planning without publishing or messaging
 - assertVisible: ${output.managerEmail}
 - tapOn:
     id: guide-spot-tab.Team
+- scrollUntilVisible:
+    element:
+      id: manager-today-tiles
+    direction: UP
+    timeout: 15000
 - assertVisible:
     id: manager-today-tiles

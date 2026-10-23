@@ -24,8 +24,8 @@ journey result.
 | --- | --- | --- | --- |
 | Sign-in | Existing email survives local missing-password validation; both sign-in modes and reset cancel remain reachable; no code is sent | Wrong/missing credentials do not create a session | Partial old-APK steps only; full auth flow NOT RUN on current APK after owner signed in |
 | Shell | Five tabs, route day/month, task filters/order cancel, profile, clients and return to Today | Server role and capability open the intended shell | PASS: employee-tabs-v5 on APK1730; agent identity independently matched before task execution |
-| Tasks | Exact manager-site task received, started and completed with a reserved result | Site confirms same task/version/result, one creation/start/completion, unchanged non-test facts | PASS: native start/completion + independent API + actual website; manager review remains separate |
-| Team | Employee never sees manager decisions | Manager sees own subordinate and cannot access outside-scope employee/day/visit | Fixture and native manager run pending |
+| Tasks | Exact manager-site task received, started and completed with a reserved result | Site confirms same task/version/result, one creation/start/completion, unchanged non-test facts | PASS: native start/completion + independent API + actual website; manager site review ACCEPTED/version4 also PASS |
+| Team | Employee never sees manager decisions | Manager sees own subordinate and cannot access outside-scope employee/day/visit | PASS: manager sign-in, team/exact agent card and read-only tabs; outside-scope denial still requires fixture |
 | Planning | Employee sees assigned current/future route and honest approval state | Draft, publish, edit/reassign/cancel within permitted scope; employee receives the actual version | Fixture pending; no route publication yet |
 | Visit lifecycle | Start planned and unplanned visits; only one active visit; complete with canonical times | One visit, correct customer/agent/route-point/status in CRM | Fixture pending |
 | GPS | Foreground dialog, denial/retry, missing coordinates, inside/outside radius and inaccurate fix | Exact submitted evidence and an honest exception state; no invented coordinates | Fixture pending; Time GPS results do not count |
@@ -61,7 +61,9 @@ website and authorized switching the app to the manager. That one reserved
 This exception does not permit real-account visit/workday writes. All broader
 GPS/photo/offline/isolation write journeys remain behind the fictional fixture.
 The agent read-only five-tab smoke passed. Manager switch/read-only checks are
-in progress; do not repeat the completed task or claim the full matrix passed.
+PASS on APK1730. Manager accepted the result through the site: version4,
+ACCEPTED. The phone remains signed in as the manager. Do not repeat the
+completed task or claim the full matrix passed.
 
 Prepared backend fixture checkpoint: `cd4892333`, branch
 `codex/route-field-acceptance-fixture`. Five unit checks passed; isolated
