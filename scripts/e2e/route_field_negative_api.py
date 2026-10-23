@@ -132,7 +132,12 @@ def main():
         return run(args.access_root, args.out)
     except Exception:
         # Raw HTTP/credential exceptions are never suitable public evidence.
-        print(json.dumps({"status": "NOT_STARTED", "code": "RF_NEGATIVE_API_PREFLIGHT_REFUSED"}))
+        report = {"status": "FAIL", "code": "RF_NEGATIVE_API_CONTROLLER_REFUSED",
+                  "recovery": "Verify the private restoration state before any retry"}
+        if args.out.is_dir() and not args.out.is_symlink():
+            with (args.out / "controller-failure-sanitized.json").open("x") as output:
+                json.dump(report, output)
+        print(json.dumps(report))
         return 1
 
 
