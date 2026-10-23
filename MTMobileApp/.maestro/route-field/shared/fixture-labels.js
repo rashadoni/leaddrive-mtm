@@ -5,15 +5,17 @@ var fixtureValues = {
   priorName: RF_PRIOR_MANAGER_NAME, priorEmail: RF_PRIOR_MANAGER_EMAIL,
   switchCompany: RF_SWITCH_COMPANY, switchConfirm: RF_SWITCH_CONFIRM,
   switchMessage: RF_SWITCH_MESSAGE, noCoordinates: RF_NO_COORDINATES, checkIn: RF_VISIT_CHECKIN,
-  customerHere: RF_CUSTOMER_HERE
+  customerHere: RF_CUSTOMER_HERE, photoCapture: RF_PHOTO_CAPTURE, photoUse: RF_PHOTO_USE,
+  photoAllow: RF_PHOTO_ALLOW, photoPermissionBody: RF_PHOTO_PERMISSION_BODY,
+  notesPlaceholder: RF_NOTES_PLACEHOLDER, notesSubmit: RF_NOTES_SUBMIT
 };
 Object.keys(fixtureValues).forEach(function (key) {
   output.fixture[key] = fixtureLiteral(fixtureValues[key]);
 });
 output.fixture.visit = {
-  az: { search: "Məsələn, Mərkəzi Klinika", start: "Plansız ziyarətə başla" },
-  ru: { search: "Например, Центральная клиника", start: "Начать внеплановый визит" },
-  en: { search: "For example, Central Clinic", start: "Start unplanned visit" }
+  az: { search: "Məsələn, Mərkəzi Klinika", start: "Plansız ziyarətə başla", active: "Ziyarət indi davam edir", addPhoto: "Foto əlavə et", finish: "Ziyarəti bitir", zeroPhotos: "Foto: 0", onePhoto: "Foto: 1" },
+  ru: { search: "Например, Центральная клиника", start: "Начать внеплановый визит", active: "Визит идёт сейчас", addPhoto: "Добавить фото", finish: "Завершить визит", zeroPhotos: "Фото: 0", onePhoto: "Фото: 1" },
+  en: { search: "For example, Central Clinic", start: "Start unplanned visit", active: "Visit in progress", addPhoto: "Add photo", finish: "Finish visit", zeroPhotos: "Photos: 0", onePhoto: "Photos: 1" }
 }[LOCALE];
 if (!output.fixture.visit) throw new Error("RF_LOCALE_REFUSED");
 var locationCopy = {

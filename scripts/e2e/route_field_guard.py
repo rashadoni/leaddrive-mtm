@@ -9,6 +9,19 @@ FIXTURE_SLUG = "route-field-acceptance"
 FIXTURE_MARKER = "route-field-native-acceptance:fictional:v1"
 
 
+def owner_permissions(package_dump):
+    """Never borrow grants from the protected secondary Android profile."""
+    block = re.search(r"\bUser 0:.*?(?=\n\s*User \d+:|\Z)", package_dump, re.S)
+    require(block is not None, "RF_PERMISSION_PROFILE_UNAVAILABLE")
+    result = {}
+    for name in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"):
+        match = re.search(r"android\.permission\." + name + r": granted=(true|false)([^\n]*)", block[0])
+        result[name] = {"granted": bool(match and match[1] == "true"),
+                        "flags": re.search(r"flags=\s*(\[[^\]]*\])", match[2])[1]
+                        if match and re.search(r"flags=\s*(\[[^\]]*\])", match[2]) else None}
+    return result
+
+
 def require(condition, code):
     if not condition:
         raise ValueError(code)

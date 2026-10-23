@@ -1,0 +1,30 @@
+appId: com.mtmobileapp
+name: Start only the fictional GPS place after server setup
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- tapOn: ${output.fixture.visit.search}
+- inputText: RF QA fictional GPS place
+- scrollUntilVisible:
+    element:
+      text: RF QA fictional GPS place
+    direction: DOWN
+    timeout: 15000
+- tapOn: RF QA fictional GPS place
+- scrollUntilVisible:
+    element:
+      text: ${output.fixture.visit.start}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.fixture.visit.start}
+- tapOn: ${output.fixture.checkIn}
+# An existing foreground location grant is required; denial is tested separately.
+- extendedWaitUntil:
+    visible: ${output.fixture.visit.active}
+    timeout: 45000
+- assertVisible: RF QA fictional GPS place
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

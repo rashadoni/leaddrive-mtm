@@ -7,7 +7,7 @@ from xml.sax.saxutils import quoteattr
 from route_field_guard import (
     FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form,
     verify_apk, verify_auth_preserved, verify_fixture, verify_fixture_case, verify_manager_case,
-    verify_observation_window, verify_owner_task_case, manager_shell,
+    verify_observation_window, verify_owner_task_case, manager_shell, owner_permissions,
 )
 
 
@@ -18,6 +18,25 @@ def xml_form(password="Password", package=PACKAGE, overlay=False):
     return ('<hierarchy>' + node("login-tab-signin") + node("login-email", "saved@example.invalid")
             + node("login-password", password, True) + node("login-submit")
             + (node("app-choice") if overlay else "") + '</hierarchy>')
+
+
+class OwnerPermissionTests(unittest.TestCase):
+    def test_a_secondary_profile_grant_never_admits_the_owner(self):
+        own = "User 0: installed=true\n  android.permission.CAMERA: granted=false, flags=[ USER_SET ]\n"
+        secondary = "User 95: installed=true\n  android.permission.CAMERA: granted=true, flags=[ USER_SET ]\n"
+        for text in (own + secondary, secondary + own):
+            with self.subTest(order=text[:7]):
+                result = owner_permissions(text)
+                self.assertFalse(result["CAMERA"]["granted"])
+                self.assertEqual(result["CAMERA"]["flags"], "[ USER_SET ]")
+
+    def test_a_missing_owner_profile_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "RF_PERMISSION_PROFILE_UNAVAILABLE"):
+            owner_permissions("User 95: installed=true\n  android.permission.CAMERA: granted=true")
+
+    def test_missing_runtime_grants_are_never_inferred_from_requested_permissions(self):
+        result = owner_permissions("requested permissions:\n  android.permission.CAMERA\nUser 0: installed=true\n")
+        self.assertTrue(all(not value["granted"] and value["flags"] is None for value in result.values()))
 
 
 class ApkAdmissionTests(unittest.TestCase):

@@ -148,3 +148,25 @@
 - Fictional missing-coordinate flow now presses the explicit app-choice cancel button and waits for disappearance, instead of one or two Android BACK events. GPS request chooses the modal positive button by its pinned-source testID after asserting the exact action text, avoiding the same inline label behind the modal.11 complete YAML parse and diff check PASS. Native still NOT RUN.
 - Private ordinary-web-owner helper prepared: requires actual owned preparation/bootstrap proof and generated credential, uses a separate private cookie jar, verifies exact fictional owner ID/email/tenant/admin role; only authentication POST and read-only endpoints are admitted. AST PASS, NOT EXECUTED. A separate browser profile will be needed for CRM UI work because production COOKIE_DOMAIN may share sessions across subdomains; do not overwrite the actual manager browser session.
 - Backend f7 controller39949206982/typecheck PASS; static39949207009 still running its final baseline unit suite. No new code failure reported yet, no production action. This checkpoint preserves all original failures and unrun native cases.
+
+
+## 2026-10-23T12:20:28.028227+00:00 — backend green merge, production queue
+
+- Backend exact f7b5ac888fc75bfd9dd2e7124ff312a96fb27d78 all5 required checks and7-test controller gate PASS. Static39949207009/job120399642423 logs confirm18 known failing files in unchanged18-file baseline and no new failures. No claim of zero backend test failures.
+- PR1003 merged by exact-head GitHub operation at12:16:20UTC to06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada. Current main includes reviewed controller/bundler/workflow unchanged. Automatic deploy39952082312 started; quality running, build pending behind earlier main210d04 run39950994477. No direct deployment or fictional-company creation.
+- App draft PR199 exact45f71a6c47156f8c5900999ecea903f5f524f189 all4 hosted checks PASS. Installed RF remains1730/sourcef1; no phone UI/network mutation during CI waits. Next: wait main artifact deploy/ping/build-info, dispatch owned fixture workflow, initialize protected credential/bootstrap/web sessions, execute20 scope/snapshot cases and3 native flows, then radius/visit/photo/offline checks.
+
+
+## 2026-10-23T12:29:30.153028+00:00 — phone transport lost during deployment wait
+
+- Owner0 permission read timed out before returning data; fine/coarse/camera grant state is currently UNKNOWN, not assumed. No permission/network/UI mutation was attempted. Direct ADB protocol checks:5037 and35039 timeout;35038/35037 refuse.5037 local relay is listening as this user;35039 reverse listener exists but exposes no task-owned process to the user shell. Direct Mac-side service does not answer, so resetting the local relay would not repair it. No SSH/root/system process was killed.
+- One async user request pending: wake Mac and keep the existing phone connection window open, then reply ready; no new terminal commands requested. Do not ask again while this question is pending. Continue release/fixture/API work independently; recheck transport on reply.
+- Deploy39952082312 quality gates still running and build still queued behind39950994477 (its Next.js standalone build is active). This is an external GitHub build wait; do not repeat prior handset/task tests or use a direct production deploy.
+
+
+## 2026-10-23T12:40:25.895903+00:00 — native visit/camera/completion prepared
+
+- Added3 owned fictional journeys: fixed GPS place check-in, one actual camera capture (no gallery/generated substitute), and checkout with reserved QA notes. They share an explicit Visits navigation helper whose hash the driver records. Source remains tests-only; no runtime/APK change. These3 and earlier3 fixture journeys are all NOT RUN.
+- Physical driver now records owner0 fine/coarse/camera grants and permission flags before location/visit work, and refuses GPS paths without an existing fine grant. Camera flow admits only its own explanatory prompt/Android camera sheet; original flags must be restored after acceptance. New pure permission parsing tests prove that profile95 grants never admit owner0, missing owner0 is refused, and requested-but-ungranted permissions are not inferred. Targeted20 guard tests PASS,15 Maestro YAML files parse PASS, Python AST PASS, visit labels against AZ/RU/EN pinned native source PASS, diff check PASS. Small sequential checks ran after resource inspection.
+- Completion flow records only UI interaction. Before/after authenticated snapshots must separately prove canonical visit/photo/status/timestamps/notes and exactly-once behavior, or pending persistence while UID-blocked. Do not call its UI result a complete E2E pass without reconciliation. No pending queue inspection/phone mutation occurred during preparation.
+- Backend normal deploy39952082312 has left the build queue and is running dependency installation; quality gates reached final baseline unit suite at last read. Source main06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada remains the expected release. One Mac wake/connection question remains pending; do not repeat it.

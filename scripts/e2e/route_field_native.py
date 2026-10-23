@@ -18,7 +18,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-from route_field_guard import (agent_shell, auth_form, manager_shell, require, verify_apk,
+from route_field_guard import (agent_shell, auth_form, manager_shell, owner_permissions, require, verify_apk,
                                verify_auth_preserved, verify_manager_case,
                                verify_fixture_case, verify_observation_window, verify_owner_task_case)
 
@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-missing-coordinates", "fixture-location-request"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
@@ -90,6 +90,10 @@ def main():
                 require(args.fixture_case is not None, "RF_FIXTURE_CASE_REQUIRED")
                 fixture_case = private_json(args.fixture_case)
                 verify_fixture_case(fixture_case, expected["publishedSourceSha"])
+                if args.flow.startswith("fixture-visit-") or args.flow == "fixture-location-request":
+                    report["ownerPermissionsBefore"] = owner_permissions(package)
+                    require(report["ownerPermissionsBefore"]["ACCESS_FINE_LOCATION"]["granted"],
+                            "RF_LOCATION_PERMISSION_REQUIRED")
                 if args.flow == "fixture-location-request":
                     require(fixture_case["bootstrap"].get("policies", {}).get("agentPermissions", {})
                             .get("customerLocationRequest") is True, "RF_LOCATION_REQUEST_DISABLED")
@@ -148,6 +152,8 @@ def main():
                 dependencies.append(flow.parent.parent / "shared/manager-labels.js")
             if fixture_flow:
                 dependencies.append(flow.parent.parent / "shared/fixture-labels.js")
+                if args.flow.startswith("fixture-visit-"):
+                    dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
             report["sourceFilesSha256"] = {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()
                                          for path in dependencies}
             report["phase"] = "maestro"
@@ -191,7 +197,13 @@ def main():
                                "RF_SWITCH_COMPANY": profile["switchServer"], "RF_SWITCH_CONFIRM": profile["switchConfirm"],
                                "RF_SWITCH_MESSAGE": profile["switchMessage"], "RF_NO_COORDINATES": words["visit"]["noCoordinatesTitle"],
                                "RF_VISIT_CHECKIN": words["visit"]["checkInButton"],
-                               "RF_CUSTOMER_HERE": words["visit"]["customerIsHere"]}
+                               "RF_CUSTOMER_HERE": words["visit"]["customerIsHere"],
+                               "RF_PHOTO_CAPTURE": words["photoCapture"]["capture"],
+                               "RF_PHOTO_USE": words["photoCapture"]["usePhoto"],
+                               "RF_PHOTO_ALLOW": words["photoCapture"]["allow"],
+                               "RF_PHOTO_PERMISSION_BODY": words["photoCapture"]["permissionBody"],
+                               "RF_NOTES_PLACEHOLDER": words["notesModal"]["placeholder"],
+                               "RF_NOTES_SUBMIT": words["notesModal"]["submit"]}
                 if fixture_switch:
                     require(re.fullmatch(r"RF-E2E-[0-9]{8}-[0-9]{4} CRM-mobile-CRM TEST",
                                          fixture_case.get("priorTaskTitle", "")), "RF_PRIOR_TASK_REQUIRED")

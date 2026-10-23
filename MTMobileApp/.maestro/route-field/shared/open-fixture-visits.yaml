@@ -1,0 +1,15 @@
+# Called only inside a fixture-admitted physical journey.
+- tapOn:
+    id: guide-spot-tab.More
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- scrollUntilVisible:
+    element:
+      id: more-action-Visits
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Visits
