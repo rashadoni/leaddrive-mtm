@@ -20,7 +20,13 @@ name: Save the marked QA visit completion while RF UID is offline
 - tapOn: ${output.qa.visit.finish}
 - tapOn: ${output.qa.notesPlaceholder}
 - inputText: RF-QA marked QA visit completed
-- hideKeyboard
+# Android Back can cancel this modal when Maestro has already hidden the IME.
+# Its scrollable card keeps the action reachable while the field has focus.
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.notesSubmit}
+    direction: DOWN
+    timeout: 15000
 - tapOn: ${output.qa.notesSubmit}
 # The driver records UI only. The orchestrator must separately prove either
 # pending persistence while UID-blocked or exact canonical completion online.
