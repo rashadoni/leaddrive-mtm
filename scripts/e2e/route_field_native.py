@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "employee-accessibility", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
@@ -195,6 +195,10 @@ def main():
                 gate = "RF_QA_PREFLIGHT=zeytun-owner-selected-qa-v1"
             command = [str(args.maestro), "test", "-e", "LOCALE=" + args.locale,
                        "-e", gate]
+            if args.flow == "employee-accessibility":
+                # Native screenshots may contain customer/account details.
+                # Keep the entire artifact bundle in this attempt's 0700 root.
+                command += ["--test-output-dir", str(args.out / "artifacts")]
             if task_case:
                 for key, value in (("TASK_ID", task_case["taskId"]), ("TASK_TITLE", task_case["title"]), ("TASK_RESULT", task_case["result"])):
                     command += ["-e", key + "=" + value]
@@ -296,6 +300,16 @@ def main():
             require((args.out / "report.xml").is_file(), "RF_JUNIT_MISSING")
             require(bool(cases) and all(case.find("failure") is None and case.find("error") is None
                                        and case.find("skipped") is None for case in cases), "RF_JUNIT_FAILED")
+            if args.flow == "employee-accessibility":
+                captures = args.out / "artifacts" / "takeScreenshot"
+                expected_captures = ("today", "route-day", "route-month", "tasks", "task-order",
+                                     "more", "more-profile-link", "profile", "clients")
+                require(all((captures / (name + ".png")).is_file() for name in expected_captures),
+                        "RF_AUDIT_SCREENSHOTS_MISSING")
+                report["privateScreenshotsSha256"] = {
+                    name: hashlib.sha256((captures / (name + ".png")).read_bytes()).hexdigest()
+                    for name in expected_captures
+                }
             report["tests"] = [{"name": case.get("name"), "seconds": case.get("time"), "status": "PASS"} for case in cases]
             report["status"] = "PASS"
             report["phase"] = "complete"
