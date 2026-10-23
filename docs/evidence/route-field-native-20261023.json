@@ -255,7 +255,7 @@
   "remainingGates": {
     "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
     "fullHostedChecks": "App exactb7db6c7 all4 PASS; backend1008 exact432c all5 plus11 controller/root PASS; normalmainf612 release/public smoke PASS",
-    "realVisitWorkdayGpsPhotoOffline": "No-coordinate QA refusal native+server PASS. GPS request RUNNING; manager review/visit/photo/offline NOT RUN. Workforce workday route intentionally withdrawn410, not a positive workday gate.",
+    "realVisitWorkdayGpsPhotoOffline": "Refusal/GPS/camera native+server PASS; manager website approval PASS; one canonical QA checkin accepted (fullstartflow viewportFAIL retained). Offline1730 FAIL: admission blocks shell. Scoped server/app correction096/70b is in hostedCI; correctednativecompletion/restart/reconnect NOT RUN.",
     "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
     "fictionalNative": "SUPERSEDED by user:continue inZeytun from manual sign-in. No fictional native PASS; all failed/interrupted attempts retained",
     "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T16:18:39.295879+00:00",
+  "lastUpdatedAt": "2026-10-23T16:59:24.444837+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -390,12 +390,12 @@
     "original": "2",
     "temporary": "7",
     "deviceRecoverySeconds": 1200,
-    "active": true,
-    "restoreRequired": true,
+    "active": false,
+    "restoreRequired": false,
     "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged",
-    "originalRestored": false,
-    "restoreReadback": null,
-    "leaseVersion": 4
+    "originalRestored": true,
+    "restoreReadback": "2",
+    "leaseVersion": 7
   },
   "activeTarget": {
     "tenant": "zeytun",
@@ -509,6 +509,43 @@
       "realCameraPhoto": "Native PASS233.923s; canonical count1 independently observed",
       "nativeOffline": "NEXT, NOT ENTERED",
       "screenLease": "v6 active,1200s recovery/original2; restore required"
+    },
+    {
+      "at": "2026-10-23T16:59:24.444837+00:00",
+      "offline1730": "FAIL: route tabs removed on bootstrap transport failure, no checkout journey started",
+      "networkRestoration": {
+        "ownNetworkingRestored": true,
+        "timeNetworkingUnchanged": true,
+        "protectedProfileUnchanged": true,
+        "radiosUnchanged": true,
+        "chainRestored": true
+      },
+      "displayRestoration": {
+        "status": "PASS",
+        "originalRestored": 2,
+        "activeDisplayLease": false,
+        "verifiedAt": "2026-10-23T16:58:06.146978+00:00"
+      },
+      "proposedAppFix": {
+        "head": "0962215",
+        "pr": 199,
+        "versionName": "3.11.52",
+        "nativeResult": "NOT RUN: not installed",
+        "ciRuns": [
+          "39991076059",
+          "39991076064",
+          "39991076110"
+        ]
+      },
+      "proposedServerFix": {
+        "head": "70b2648f9",
+        "pr": 1013,
+        "ciRun": "39988772222",
+        "typecheck": "PASS",
+        "staticChecks": "RUNNING",
+        "deployed": false
+      },
+      "preservedState": "oneQA CHECKED_IN visit withonecanonicalcamera photo;5original visits unchanged; do not repeat checkin/GPS/approval/photo"
     }
   ]
 }

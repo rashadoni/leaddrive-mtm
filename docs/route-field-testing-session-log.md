@@ -348,3 +348,11 @@
 - Latest narrowcache suite19tests PASS in1.137s after conservative request-start expiry anchoring; waitingforserver neverextendslease. ChangedTypeScript syntaxPASS. Prior6suites181 and4suites44 passed at their recordedphase; fullcurrenttreeJest/typecheck/Android NOT RUN locally. New blockedscreen types exclude the admitted offline state aswellasenabled/legacy.
 - Preparing signed3.11.52 withautomaticCIversionCode. No dependencychanges; removed ONLY the task-created temporarynode_modules symlink after targetedchecks; underlyingreusedcache preserved.
 - Sourcefix must be verified by fullhostedCI andAPKsigning/provenance beforeinstallation. Existing1730 nativeofflineFAIL remains retained; do not callfixedonphone yet. ServerPR1013 requiredchecks pending; no productionrelease yet.
+
+
+## 2026-10-23T16:59:24.444837+00:00 — exact published correction heads and safe phone stopping state
+
+- App source0962215 published oncodex/route-field-e2e; draftPR199 description/title rewritten for finalofflinefix+deviceacceptance scope viaREST because installedghpr edit hits retiredProjectsGraphQL. Hosted appCI39991076059, contract39991076064, actualAndroidbuild39991076110 running. Do not install until requiredchecks/buildsignature/sourceprovenancePASS.
+- BackendPR1013 exact70b2648f9: typecheckPASS, prscope/runnerpolicy/scanPASS, static39988772222 runningunitbaseline gate. ProductionbuildPRjobskipped asnormal; no newserverrelease yet. FullstaticmustactuallyPASS, draftskips areNOTchecks.
+- Independent bounded displayv7 auto-restoredoriginal2; readback2PASS. Privatelease markedRESTORED, sanitizedreceiptretained. No activenetwork OR displaylease. No furtherphoneUIneededuntilAPKready; do not askphysicalunlock whilecode/CIcanprogress.
+- Phone stilloriginalAPK1730/sourcef1, logged-in user sessionpreserved; QAvisit remainsCHECKED_IN with1photo. Original5visits unchanged. Resumeonlycompletion/restart/reconnect after verifiedofflinegrantrelease and signedAPK inplaceupdate. Preservepre-fixcase/identityreceipts whenupdatingcase sourceSHA; neveroverwrite1730proof or restartcheckin/GPS/photo.
