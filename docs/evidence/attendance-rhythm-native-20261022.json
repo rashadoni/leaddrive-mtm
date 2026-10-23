@@ -640,7 +640,7 @@
   "currentCandidate": {
     "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
     "versionCode": 1039,
-    "status": "SHORT_ACCEPTANCE_PASS_REAL24H_V8_RUNNING_NEW_HEAD_CI_FIX_PENDING",
+    "status": "CURRENT_SHORT_ACCEPTANCE_AND_HEAD_CI_PASS_REAL24H_V8_RUNNING",
     "hostedGates": {
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "allExactHeadChecks": "PASS",
@@ -1237,8 +1237,8 @@
         "attempt": 8,
         "hrSessionVerificationIntervalSeconds": 14400,
         "readProbeMaxAttempts": 3,
-        "updatedAt": "2026-10-23T07:56:17.197+00:00",
-        "samplesObserved": 3,
+        "updatedAt": "2026-10-23T08:01:27.598+00:00",
+        "samplesObserved": 4,
         "gpsAcceptance": "Current APK inside native UI + outside/actual Android permission Maestro; separate from real24h",
         "qrAcceptance": "Current APK actual optical FINISH/VERIFIED + read-only native receipt after restart; original partial FAIL retained",
         "backendArtifactShaBefore": "22ca2202c6ffb2f24227ba331bfe92206b9d478a",
@@ -1352,6 +1352,20 @@
       "emulatorContract": "PASS",
       "runtimeChanged": false,
       "fix": "Single-case Date.now spy; targeted57PASS, hosted rerun pending"
+    },
+    "latestPublishedTestCheckpoint": {
+      "sha": "aa80b56af4390606212014e144e556d4757b4885",
+      "ciRun": 39921407153,
+      "tests": "283 suites / 2523 passed / 1 TODO",
+      "typeScript": "PASS",
+      "emulatorContractRun": 39921407179,
+      "emulatorContract": "PASS",
+      "ordinaryBuildRun": 39921407148,
+      "ordinaryBuild": "RUNNING; tests and TypeScript PASS",
+      "runtimeChanged": false,
+      "targeted57Tests": "PASS",
+      "targetedEslint": "PASS 0 errors",
+      "newApkInstalled": false
     }
   }
 }
