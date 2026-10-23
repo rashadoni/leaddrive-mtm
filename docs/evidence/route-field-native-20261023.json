@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T18:56:43.182882+00:00",
+  "lastUpdatedAt": "2026-10-23T19:14:17.878469+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -780,6 +780,78 @@
         "Original manager post-approval page error root unconfirmed/not fixed",
         "Separate Time24h-v8 FAIL retained; not running"
       ]
+    },
+    {
+      "at": "2026-10-23T19:14:17.878469+00:00",
+      "kind": "PUBLIC_MAIN_RELEASE_INSTALLED_PASS",
+      "appPr": 199,
+      "mainSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+      "publicRelease": {
+        "status": "PASS",
+        "verifiedAt": "2026-10-23T19:09:33.320419+00:00",
+        "package": "com.mtmobileapp",
+        "versionCode": 1790,
+        "versionName": "3.11.52",
+        "apkSha256": "f71d8c8ef28fedb57f77b498649420a443feb574498f8513323e7522afb5de15",
+        "publishedSourceSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+        "checkoutSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+        "compiledSourcesEqualPreviouslyTested": true,
+        "previouslyTestedSourceSha": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+        "release": "v3.11.52-build790",
+        "releaseUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/tag/v3.11.52-build790",
+        "downloadUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/v3.11.52-build790/leaddrive-mtm-v3.11.52.apk",
+        "releaseAssetId": 670109443,
+        "releaseAssetDigest": "sha256:f71d8c8ef28fedb57f77b498649420a443feb574498f8513323e7522afb5de15",
+        "workflowRun": 40007847247,
+        "workflowJob": 120600248102,
+        "certificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+        "nativeAbis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "testSuites": 273,
+        "testsPassed": 2432,
+        "testsTodo": 1,
+        "signatureCheck": "Successful hosted apksigner verification with exact main checkout, release asset/API/checksum/job-log SHA256 equality",
+        "install": "PASS",
+        "uid": 10556,
+        "timePackageUnchanged": true,
+        "ownerPermissionsUnchanged": true,
+        "installedAt": "2026-10-23T19:10:44.574039+00:00"
+      },
+      "nativePostUpdateProfile": {
+        "status": "PASS",
+        "versionCode": 1790,
+        "sameAgentEmail": true,
+        "sameAgentName": true,
+        "zeytunLabelVisible": true,
+        "agentShell": true,
+        "queueClean": true,
+        "loginAutomated": false
+      },
+      "readOnlyFinalVerification": {
+        "status": "PASS",
+        "versionCode": 1790,
+        "businessWrites": false,
+        "networkExactOriginal": true,
+        "timeNetworkingUnchanged": true,
+        "radiosUnchanged": true,
+        "canonicalStatus": "CHECKED_OUT",
+        "qaVisitCount": 1,
+        "qaPhotoCount": 1,
+        "allSixVisitsExactlyUnchangedSinceAcceptedSync": true,
+        "displayOriginalRestored": true,
+        "displayReadback": 2,
+        "finishedAt": "2026-10-23T19:12:39.788537+00:00"
+      },
+      "binaryRuntimeMatchesNativeAcceptedSource": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+      "nativeAcceptanceEvidence": "checkout-v4 PASS + cold-persistence-v6 PASS; prior failures retained",
+      "backendReleasedMainSha": "deb8de1c0b0c4a71d3ff565276699ddac846bc8f",
+      "noRepeatedBusinessWrites": true,
+      "remainingNativeCases": "outside-zone/inaccurate-fix/permission-denial/signature/large-text/landscape/cross-account NOT RUN",
+      "separateTime24h": "v8 FAIL; not running",
+      "currentStop": "Today, same agent/tenant, clean queue; no active network/display lease",
+      "nextPhase": "isolated negative policy/GPS/access cases and separate Time investigation"
     }
   ]
 }
