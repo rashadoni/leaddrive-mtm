@@ -5,6 +5,7 @@ import { getFieldDeviceId } from "./field-device-id"
 import { noteAnswered, noteUnanswered } from "./connection-health"
 import type { MobileRouteCommandRequest } from "./route-command-journal"
 import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
+import { clearOfflineBootstrap, newOfflineSessionId, OFFLINE_SESSION_KEY } from "./bootstrap-offline-cache"
 
 /**
  * Canonical reason string set when the backend returns a mid-session 401
@@ -570,6 +571,8 @@ class ApiClient {
 
   /** A sign-in the server accepted, by password or by a code: the session this phone keeps. */
   private async acceptSession(data: any) {
+    await clearOfflineBootstrap()
+    await AsyncStorage.setItem(OFFLINE_SESSION_KEY, newOfflineSessionId())
     this.token = data.data.token
     this.agentId = data.data.agent?.id || null
     this._agentRole = data.data.agent?.role || null
@@ -590,7 +593,8 @@ class ApiClient {
     this._agentRole = null
     this._agentName = null
     this._agentCode = null
-    await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT])
+    await clearOfflineBootstrap()
+    await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT, OFFLINE_SESSION_KEY])
     // M1-3: wipe Sentry scope so anonymous post-logout traces aren't
     // misattributed to the previous user.
     clearAgentContext()
@@ -616,6 +620,19 @@ class ApiClient {
   async getStoredAgent() {
     const raw = await AsyncStorage.getItem(STORAGE_KEY_AGENT)
     return raw ? JSON.parse(raw) : null
+  }
+
+  /** Private cache binding only; never expose the bearer token to the cache. */
+  async getOfflineBootstrapBinding() {
+    const token = this.token
+    if (!token || !this.baseUrl) return null
+    let sessionId = await AsyncStorage.getItem(OFFLINE_SESSION_KEY)
+    if (!sessionId) {
+      sessionId = newOfflineSessionId()
+      await AsyncStorage.setItem(OFFLINE_SESSION_KEY, sessionId)
+    }
+    const deviceId = await getFieldDeviceId()
+    return this.token === token ? { server: this.baseUrl, sessionId, deviceId } : null
   }
 
   // --- Bootstrap ---

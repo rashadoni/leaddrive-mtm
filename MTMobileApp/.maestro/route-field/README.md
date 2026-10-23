@@ -36,3 +36,8 @@ Broader write acceptance uses a fixture matching the fixed ownership marker,
 organization, principal and server grants in `route_field_guard.py`. The one
 explicitly authorized CRM task is a separately guarded exception, not permission
 to create real workday or visit facts. Time's real24h tenant is never a fallback.
+
+
+### Previously uploaded photos during offline acceptance
+
+After installing a corrected APK, run the guarded `zeytun-visit-progress-read` journey online against the existing marked QA visit. This reads its confirmed workspace/count and returns to Today; it does not start a visit or take another photo. Only then enter the bounded RF-UID-only offline lease for completion and process-restart persistence. An existing failed attempt must keep its original result and directory. The cache requires the current server-issued offline grant and exact tenant/principal/server/installation/login binding; answered permission denials invalidate it.

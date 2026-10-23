@@ -9,6 +9,19 @@ FIXTURE_SLUG = "route-field-acceptance"
 FIXTURE_MARKER = "route-field-native-acceptance:fictional:v1"
 
 
+def owner_permissions(package_dump):
+    """Never borrow grants from the protected secondary Android profile."""
+    block = re.search(r"\bUser 0:.*?(?=\n\s*User \d+:|\Z)", package_dump, re.S)
+    require(block is not None, "RF_PERMISSION_PROFILE_UNAVAILABLE")
+    result = {}
+    for name in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"):
+        match = re.search(r"android\.permission\." + name + r": granted=(true|false)([^\n]*)", block[0])
+        result[name] = {"granted": bool(match and match[1] == "true"),
+                        "flags": re.search(r"flags=\s*(\[[^\]]*\])", match[2])[1]
+                        if match and re.search(r"flags=\s*(\[[^\]]*\])", match[2]) else None}
+    return result
+
+
 def require(condition, code):
     if not condition:
         raise ValueError(code)
@@ -46,6 +59,16 @@ def auth_form(xml, password_placeholder):
 
 def verify_auth_preserved(before, after):
     require(before == after, "RF_AUTH_DRAFT_CHANGED")
+
+
+def fixture_auth_form(xml, password_placeholder):
+    """Resume only a blank-password form bound to the owned fixture host."""
+    result = auth_form(xml, password_placeholder)
+    own_texts = {node.get("text", "") for node in ET.fromstring(xml).iter("node")
+                 if node.get("package") == PACKAGE}
+    require(FIXTURE_SLUG in own_texts and FIXTURE_SLUG + ".leaddrivecrm.org" in own_texts,
+            "RF_FIXTURE_AUTH_HOST_REFUSED")
+    return result
 
 
 def agent_shell(xml, home_required=True):
@@ -135,6 +158,59 @@ def verify_fixture(manifest, bootstrap, role):
     if role == "AGENT":
         route_module = (contract.get("modules") or {}).get("routeField") or {}
         require(route_module.get("enabled") is True, "RF_ROUTE_MODULE_REFUSED")
+
+
+def verify_fixture_case(case, source_sha):
+    require(case.get("version") == 1 and case.get("marker") == "rf-native-fictional-v1"
+            and case.get("ownerAuthorized") is True and case.get("sourceSha") == source_sha,
+            "RF_FIXTURE_CASE_REFUSED")
+    prepared = case.get("preparation") or {}
+    require(prepared.get("status") == "PASS" and prepared.get("tenant") == FIXTURE_SLUG
+            and isinstance(prepared.get("artifactSha"), str)
+            and re.fullmatch(r"[a-f0-9]{40}", prepared["artifactSha"])
+            and (prepared.get("users"), prepared.get("agents"), prepared.get("customers")) == (1, 3, 3),
+            "RF_FIXTURE_PREPARATION_REFUSED")
+    verify_fixture(case.get("manifest") or {}, case.get("bootstrap") or {}, "AGENT")
+    login = case.get("login") or {}
+    require(login.get("email") == "agent@route-field-acceptance.example.invalid"
+            and isinstance(login.get("password"), str)
+            and re.fullmatch(r"[A-Za-z0-9_-]{64}", login["password"]),
+            "RF_FIXTURE_CREDENTIAL_REFUSED")
+    require(case.get("expectedName") == "RF QA fictional field employee"
+            and case.get("companyName") == "Route Field Native Acceptance (fictional)",
+            "RF_FIXTURE_IDENTITY_REFUSED")
+
+
+def verify_zeytun_qa_case(case, source_sha):
+    """User-selected Zeytun session; only a reserved, provenanced QA place."""
+    org = "cmu9ih71e01vbkpd4fvgjhlba"
+    require(case.get("version") == 1 and case.get("marker") == "rf-zeytun-qa-20261023-v1"
+            and case.get("ownerAuthorized") is True and case.get("sourceSha") == source_sha
+            and case.get("targetTenant") == "zeytun" and case.get("organizationId") == org,
+            "RF_ZEYTUN_CASE_REFUSED")
+    actor = case.get("agent") or {}
+    require(actor.get("organizationId") == org and actor.get("role") == "AGENT"
+            and all(isinstance(actor.get(key), str) and bool(actor[key]) for key in ("id", "name", "email"))
+            and case.get("nativeProfileBound") is True and case.get("ordinaryManagerWebBound") is True,
+            "RF_ZEYTUN_ACTOR_REFUSED")
+    customer = case.get("customer") or {}
+    creation = case.get("creation") or {}
+    website = case.get("createdViaWebsite") is True and bool(
+        re.fullmatch(r"[a-f0-9-]{36}", case.get("browserRunId", "")))
+    manager_api = (case.get("createdViaWebsite") is False
+                   and creation.get("kind") == "ordinary-manager-api"
+                   and creation.get("method") == "POST"
+                   and creation.get("path") == "/api/v1/mtm/customers"
+                   and creation.get("customerId") == customer.get("id")
+                   and creation.get("organizationId") == org
+                   and bool(creation.get("managerUserId"))
+                   and bool(re.fullmatch(r"[a-f0-9]{64}", creation.get("responseSha256", ""))))
+    require((website or manager_api) and customer.get("organizationId") == org
+            and isinstance(customer.get("id"), str) and bool(customer["id"])
+            and customer.get("name") == case.get("customerName") == "RF-E2E-ZEY-20261023 QA GPS"
+            and actor["id"] in customer.get("assignedAgentIds", []),
+            "RF_ZEYTUN_QA_CUSTOMER_REFUSED")
+    require("login" not in case and "password" not in case, "RF_ZEYTUN_REAUTH_REFUSED")
 
 
 def verify_observation_window(progress, now, maximum_seconds=360):

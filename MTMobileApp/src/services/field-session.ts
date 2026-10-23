@@ -28,6 +28,9 @@ export async function refreshRouteFieldSession(continueSession?: () => void): Pr
 
   let access = await useBootstrapStore.getState().fetchBootstrap()
   continueSession?.()
+  // Explicit cached field permission keeps local work usable; it cannot
+  // reconcile a workday or drain operations without a fresh server answer.
+  if (access === "offline-enabled") return access
   if (!hasRouteFieldAccess(access)) {
     const bootstrap = useBootstrapStore.getState().data
     if (isConfirmedRouteFieldWithdrawal(bootstrap, access)) {
@@ -53,6 +56,7 @@ export async function refreshRouteFieldSession(continueSession?: () => void): Pr
   // read bootstrap again so UI and GPS use the canonical post-transaction row.
   access = await useBootstrapStore.getState().fetchBootstrap()
   continueSession?.()
+  if (access === "offline-enabled") return access
   if (hasRouteFieldAccess(access)) {
     await reconcile()
     return access

@@ -1,0 +1,46 @@
+appId: com.mtmobileapp
+name: Capture one real camera photo for the fictional active visit
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- assertVisible: ${output.fixture.visit.active}
+- assertVisible: RF QA fictional GPS place
+- assertVisible: ${output.fixture.visit.zeroPhotos}
+- tapOn: ${output.fixture.visit.addPhoto}
+# Capture is never replaced by a generated/gallery image. Permission admission
+# is scoped to this fixture camera; original flags are recorded by the driver.
+- runFlow:
+    when:
+      visible: ${output.fixture.photoPermissionBody}
+    commands:
+      - tapOn: ${output.fixture.photoAllow}
+- runFlow:
+    when:
+      visible:
+        id: com.google.android.permissioncontroller:id/permission_allow_foreground_only_button
+    commands:
+      - tapOn:
+          id: com.google.android.permissioncontroller:id/permission_allow_foreground_only_button
+- runFlow:
+    when:
+      visible:
+        id: com.android.permissioncontroller:id/permission_allow_foreground_only_button
+    commands:
+      - tapOn:
+          id: com.android.permissioncontroller:id/permission_allow_foreground_only_button
+- extendedWaitUntil:
+    visible: ${output.fixture.photoCapture}
+    timeout: 20000
+- tapOn: ${output.fixture.photoCapture}
+- extendedWaitUntil:
+    visible: ${output.fixture.photoUse}
+    timeout: 30000
+- tapOn: ${output.fixture.photoUse}
+- extendedWaitUntil:
+    visible: ${output.fixture.visit.onePhoto}
+    timeout: 45000
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

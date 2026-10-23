@@ -93,3 +93,364 @@
 - Backend test branch3d9874427 pushed; PR https://github.com/rashadoni/leaddrive-v2/pull/1003 opened and attached. Hosted verify-controller39938320051 and PR checks39938320765 running; scope/runner-policy/scan already green at initial poll. No merge or deploy yet. Backend main has advanced independently; read current main/deployed SHA again before operational execution.
 - Found build workflow treating Maestro/root test/docs-only diffs as requiring packaging, and all main pushes always building/publishing. Added a fail-closed classifier for PR/push test-only scopes: source/native/dependency/unknown changes still build; explicit dispatch still builds. Existing required Jest/tsc steps and signing/publication checks are unchanged. This is a diagnosed CI behavior correction, not a weakened failing required gate. Four narrow classifier tests PASS and an actual source-base→test-checkpoint Git diff returns build=false. Workflow/Python parse PASS.
 - Next: checkpoint/push app test branch and open/attach its PR; inspect backend PostgreSQL and both repositories full checks; fix any red gate before merge. Five physical native journeys and manager website acceptance remain PASS on the pinned APK1730; source runtime unchanged.
+
+
+## 2026-10-23T14:33:03.823050+04:00 — app PR198 merged green; backend fixture correction in CI
+
+- App branch1e82239c83df588c06d2dcd1ed825303bdf58b8f pushed. GitHub connector could not create app PR (403 integration access); used already configured gh as authorized fallback. PR https://github.com/rashadoni/leaddrive-mtm/pull/198 opened and attached; no duplicate PR.
+- App exact-head CI39939022001 PASS:270 Jest suites/2386 tests PASS+1TODO, TypeScript PASS. Contract39939021878 PASS:66 Python checks. Build workflow39939021992 PASS: tests/tsc ran, keystore/build/package-signature/publication steps SKIPPED by test-only classification. Logs read and private evidence retained.
+- PR198 merged with exact-head match after all checks green. Main merge a60e0f278d950412a442f494ad2308a0cddda3d7 at10:30UTC. No runtime source change or phone installation; current device remains RF1730 / manager Team. Follow-up main packaging workflow must still be checked for no new APK.
+- Backend PR1003 initial verify-controller39938320051 FAIL: full Prisma schema references vector512 but plain PostgreSQL16 lacks vector. Targeted source correction cb4eee77075d408b3cfe6135e28fc00b31877307 switches to repository-standard mirrored pgvector image and initializes extension in the random owned CI schema; cleanup tracks successful ownership creation. Pushed; rerun39939248251/job120366328495 and required PR checks39939248265 still pending at last status. No backend merge/deploy/fixture operation.
+- Publication permission remains active; do not ask again. Next exact action: inspect the new PostgreSQL gate plus full static/type checks, fix any actual failures, merge only green reviewed backend source, wait for exact main artifact, then prepare separate fictional fixture via workflow. Broader native flows and fixture role/company switching can be prepared in parallel; do not create real-account visits/workdays.
+
+
+## 2026-10-23T14:51:31.156480+04:00 — follow-up native fixture entry prepared
+
+- New source-only fixture sign-in and missing-coordinate refusal flows prepared, not executed. Driver requires an owned preparation PASS, exact fictional tenant/principal/manifest grant, pinned physical APK source, fixed fictional login and root-generated credential format. Real-manager→fixture switch verifies prior and resulting profile identities. Negative coordinate flow cancels the explanatory offer instead of sending a location/report.
+- Updated targeted guards17 PASS (including two new fixture-case boundaries); all10 complete Maestro YAML parse PASS; driver Python AST PASS. Native fixture flows NOT RUN until backend main/gates/deploy/workflow produce the verified fixture and private case. No phone action since the successful manager unit.
+- App main BuildAndroid39939576454 PASS; keystore/package/publication steps SKIPPED as intended after merge. Packaging-only fix is verified on PR and main, phoneAPK unchanged.
+- Backend current head443519315552ab35ea7dec10d28f92a3bf54b36a: verify-controller39940341606/job120369930813 PASS, including all7 tests and cleanup/bundle; required static/typecheck39940341652 still pending. Do not merge until these are green. Prior vector/init and cleanup FAILs retained.
+- Probe fidelity observation for the next phase: the installed source profile advertises x-field-apk-version3.11.4+61, whereas installed Android metadata is3.11.51+1730. Build workflow updates Android versionCode only. This has not been classified as a runtime defect or changed; independent fixture bootstrap probes must use the actual source header instead of assuming physical APK metadata is the wire profile. Existing native/site task proof remains actual-device evidence; web-scoped task reconciliation is not version-header-dependent.
+
+
+## 2026-10-23T11:29:43.938860+00:00 — fixture follow-up and CI diagnosis
+
+- App draft PR199 exact head58bcc3f09e8ebffd72e3e2133f230aab34c49358 all4 hosted checks PASS. Native fixture entry/refusal remains NOT RUN pending the backend. Phone transport rechecked: exactly one ready device; no reconnection request or phone mutation.
+- Backend PR1003 head443519315 static FAIL retained: memory guard found the new PrismaClient without its ordinary options type; the existing report UI suite also failed its first cold route load. Both diagnosed/fixed in backend checkpoint27f65b0984f07dbefe0ec6f3785a6c06c49f43e5. Report test awaits the real response, with value assertions/baseline unchanged. Targeted30 PASS, runner/YAML PASS. New fixture gate39945629370 PASS including all7 assertions and cleanup/bundle; required static/typecheck39945629386 still running. No backend merge/deploy/fixture creation.
+- Prepared GET-only private scope probe covering18 allow/deny cases across the3 fictional principals and a cross-tenant fictional resource; AST PASS, NOT EXECUTED before fixture preparation. No real-company list requested.
+- Added source-only native location-request flow for fixed fictional GPS place: the pin comes from the phone, no synthetic map gesture; checks explicit permission, sends reserved QA comment and returns Today. Sign-in now explicitly opens Profile rather than relying on a retained nested screen. Targeted fixture guards17 PASS;11 complete YAML parse PASS; driver AST and AZ/RU/EN labels against native source PASS. All3 fixture native journeys NOT RUN. No runtime source or APK change.
+- Next: complete backend exact-head gates, merge green source through supported release, dispatch owned fixture workflow, run actual role isolation and native sign-in/missing-coordinate/location-request. Preserve original failures and full matrix NOT RUN cases.
+
+
+## 2026-10-23T11:43:55.489388+00:00 — isolation and bounded offline preparation
+
+- Draft PR199 head e0f33bde8e37c6d9e5d83a78fc8cb96555c62ee7 all4 hosted checks PASS. Added an explicit native account-switch assertion: the fictional employee must receive the seeded fictional task and must not show the reserved prior-company task. NOT RUN until operational fixture exists. No runtime/APK change.
+- GET-only fixture scope probe now includes20 prepared cases, including own-workday and manager location-request snapshots for before/after reconciliation. AST PASS; NOT EXECUTED. All access/bootstrap/case preparation remains gated by actual workflow evidence.
+- Private own-UID offline lease prepared with owner0/source/hash/actual Android connectivity-framework digest guards and an independent device-side eight-minute recovery. No lease or firewall mutation has run. First read-only probe FAIL retained: Android16 dumpsys reports appId instead of legacy userId. After correcting the parser, read-only probe PASS:RF UID10556 allowed, chain disabled,0 test denies; Time owner/protected profile rules read unchanged. Battery100%,AC charging. Latest focus read says RF not foreground; restore/check normal app window before native work.
+- Backend head27f65b098 typecheck PASS; static39945629386 remains at the blocking baseline unit suite. Fixture verification39945629370 PASS. Current origin/main independently advanced to06ac56ac35b8da0766f3067d03aac937698568b3; no diff to registered production contract, secure DB helper, bootstrap, customer or visit routes from the fixture base. Re-read main/build-info before operation. No backend merge/deploy/fixture creation yet.
+- Next exact step: inspect final required static result, merge only all-green reviewed source, let the supported main artifact deploy, prepare owned fixture via main/SHA-bound workflow, then run native entry/refusal/GPS and reconcile each result. Time real24h remains separate FAIL, not a prerequisite to repeat.
+
+
+## 2026-10-23T12:07:18.011018+00:00 — latest CI retry and next native cases
+
+- Backend PR1003 head27f65b098 static39945629386/job120387632351 retained FAIL:19 failing files/18 unchanged baseline, only newly failing finance-notifications-page.test.ts cold first render. Prior memory/report fixes passed that full run. Finance harness failure reproduced locally (4 PASS/1 FAIL); now awaits its actual initial GET and sets the act environment. All original assertions remain; no finance runtime, send or baseline change. Targeted4 files/35 PASS.
+- Backend fix checkpoint f7b5ac888fc75bfd9dd2e7124ff312a96fb27d78 pushed. PR checks39949207009 running; controller39949206982 PASS (7 assertions/cleanup/bundle), runner39949207052 and scan39949207016 PASS. Required static/typecheck still running. No merge, deploy, fictional company, real-account visit/workday or offline network mutation.
+- App draft PR199 head4294304da090fd5c09f01f2b16ced94ac860b518 all4 hosted checks PASS. PR metadata updated to cover GPS/account isolation; gh pr edit hit an obsolete Projects Classic API, so the same authorized metadata update succeeded through GitHub REST. No duplicate PR.
+- Upgrade candidate v3.11.52-build731 inspected read-only: published source0a4fbc7f1a25b6a846fbd6892335fcc4ad521421 belongs to claude/eval-questions-from-server and is NOT in current app main a60e0f278d950412a442f494ad2308a0cddda3d7;6 runtime paths differ from the pinned source. Candidate was NOT downloaded/installed; signature verification NOT RUN after provenance rejection. Do not silently introduce that unmerged feature. Upgrade remains NOT RUN pending an appropriate reviewed main artifact.
+- Read-only production build-info at12:03UTC reports76c7e48bef5492fa75665d89dd923a6575a33591, while origin/main is06ac56ac35b8da0766f3067d03aac937698568b3. These are independent releases; do not operate fixture until current main/deployed SHA agree and include the reviewed controller.
+- Prioritize a native per-customer-radius test after GPS setup: seeded GPS customer radius250m vs company default100m. VisitScreen currently calls checkInRadiusMeters(null, policies) at the unplanned check-in and customer distance display, while API sends customer.geofenceRadius and RouteScreen uses its point radius. Source-level discrepancy observed, NOT yet a handset-reproduced product failure. Use a fixed owned fictional point offset within250m but beyond100m, real device fix, and independent API evidence; preserve the first refusal before any fix/rerun. No real customer coordinate change.
+- Additional hypothesis only: unplanned cached-location fallback ignores the permission failure category. A native denial case must distinguish coarse-only permission from full denial; Android revocation can kill the process and clear the in-memory cache. Do not label this a privacy defect without reproducing the actual state.
+- Exact stopping point: waiting for f7 required hosted gates; 3 native fictional flows plus20 read-only isolation/snapshot cases prepared, none executed. After green: exact-head merge, supported main artifact deploy/ping/build-info, main/SHA-bound fixture workflow, private credential/bootstrap setup, role isolation baseline, restore/check phone window, native fictional sign-in/missing-coordinate/GPS request, then visit/photo/offline reconciliation. Existing real task cycle and5 native journeys remain PASS; do not repeat them.
+
+
+## 2026-10-23T12:15:10.834783+00:00 — deterministic fixture dialog actions prepared
+
+- Fictional missing-coordinate flow now presses the explicit app-choice cancel button and waits for disappearance, instead of one or two Android BACK events. GPS request chooses the modal positive button by its pinned-source testID after asserting the exact action text, avoiding the same inline label behind the modal.11 complete YAML parse and diff check PASS. Native still NOT RUN.
+- Private ordinary-web-owner helper prepared: requires actual owned preparation/bootstrap proof and generated credential, uses a separate private cookie jar, verifies exact fictional owner ID/email/tenant/admin role; only authentication POST and read-only endpoints are admitted. AST PASS, NOT EXECUTED. A separate browser profile will be needed for CRM UI work because production COOKIE_DOMAIN may share sessions across subdomains; do not overwrite the actual manager browser session.
+- Backend f7 controller39949206982/typecheck PASS; static39949207009 still running its final baseline unit suite. No new code failure reported yet, no production action. This checkpoint preserves all original failures and unrun native cases.
+
+
+## 2026-10-23T12:20:28.028227+00:00 — backend green merge, production queue
+
+- Backend exact f7b5ac888fc75bfd9dd2e7124ff312a96fb27d78 all5 required checks and7-test controller gate PASS. Static39949207009/job120399642423 logs confirm18 known failing files in unchanged18-file baseline and no new failures. No claim of zero backend test failures.
+- PR1003 merged by exact-head GitHub operation at12:16:20UTC to06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada. Current main includes reviewed controller/bundler/workflow unchanged. Automatic deploy39952082312 started; quality running, build pending behind earlier main210d04 run39950994477. No direct deployment or fictional-company creation.
+- App draft PR199 exact45f71a6c47156f8c5900999ecea903f5f524f189 all4 hosted checks PASS. Installed RF remains1730/sourcef1; no phone UI/network mutation during CI waits. Next: wait main artifact deploy/ping/build-info, dispatch owned fixture workflow, initialize protected credential/bootstrap/web sessions, execute20 scope/snapshot cases and3 native flows, then radius/visit/photo/offline checks.
+
+
+## 2026-10-23T12:29:30.153028+00:00 — phone transport lost during deployment wait
+
+- Owner0 permission read timed out before returning data; fine/coarse/camera grant state is currently UNKNOWN, not assumed. No permission/network/UI mutation was attempted. Direct ADB protocol checks:5037 and35039 timeout;35038/35037 refuse.5037 local relay is listening as this user;35039 reverse listener exists but exposes no task-owned process to the user shell. Direct Mac-side service does not answer, so resetting the local relay would not repair it. No SSH/root/system process was killed.
+- One async user request pending: wake Mac and keep the existing phone connection window open, then reply ready; no new terminal commands requested. Do not ask again while this question is pending. Continue release/fixture/API work independently; recheck transport on reply.
+- Deploy39952082312 quality gates still running and build still queued behind39950994477 (its Next.js standalone build is active). This is an external GitHub build wait; do not repeat prior handset/task tests or use a direct production deploy.
+
+
+## 2026-10-23T12:40:25.895903+00:00 — native visit/camera/completion prepared
+
+- Added3 owned fictional journeys: fixed GPS place check-in, one actual camera capture (no gallery/generated substitute), and checkout with reserved QA notes. They share an explicit Visits navigation helper whose hash the driver records. Source remains tests-only; no runtime/APK change. These3 and earlier3 fixture journeys are all NOT RUN.
+- Physical driver now records owner0 fine/coarse/camera grants and permission flags before location/visit work, and refuses GPS paths without an existing fine grant. Camera flow admits only its own explanatory prompt/Android camera sheet; original flags must be restored after acceptance. New pure permission parsing tests prove that profile95 grants never admit owner0, missing owner0 is refused, and requested-but-ungranted permissions are not inferred. Targeted20 guard tests PASS,15 Maestro YAML files parse PASS, Python AST PASS, visit labels against AZ/RU/EN pinned native source PASS, diff check PASS. Small sequential checks ran after resource inspection.
+- Completion flow records only UI interaction. Before/after authenticated snapshots must separately prove canonical visit/photo/status/timestamps/notes and exactly-once behavior, or pending persistence while UID-blocked. Do not call its UI result a complete E2E pass without reconciliation. No pending queue inspection/phone mutation occurred during preparation.
+- Backend normal deploy39952082312 has left the build queue and is running dependency installation; quality gates reached final baseline unit suite at last read. Source main06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada remains the expected release. One Mac wake/connection question remains pending; do not repeat it.
+
+
+## 2026-10-23T13:54:11.990597+00:00 — actual release, fictional company and protected access follow-up
+
+- Supersedes the earlier deployment/fixture-pending snapshot without erasing it: backend PR1003 exact f7 passed all five required checks and seven controller/PostgreSQL tests, merged to06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada. Normal main deploy39952082312 PASS including quality/build/deploy/smoke. Both app/zeytun ping200/ok and public artifact SHA matched06e7 at12:58UTC. Static gate accepted18 unchanged known failing files, no new failures; this is not zero backend test failures.
+- Main/SHA-bound owned fixture workflow39957479723 PASS on06e7. Actual sanitized receipt: created=true, tenant route-field-acceptance, one CRM owner, three mobile principals, three fictional places. No route/visit/workday history was seeded. Do not repeat the insert, reset the fixture or mutate real employee visits.
+- Direct read-only credential retrieval through registered production alias refused existing task LeadDrive identities; no authorized-key, permission, host, credential or production-data changes made. A necessary read-only encrypted delivery follow-up was prepared in separate backend worktree/branch codex/route-field-fixture-access, PR https://github.com/rashadoni/leaddrive-v2/pull/1007 (attached), exact b7c365c9e9044b3a73deb0e4fb2f8d9086e87939. Only the pinned public recipient is committed; private key stays outside Git. Controller binds reviewed current main and actual deployed app separately; original insert same-SHA guard remains unchanged.
+- PR1007 Node10, runner-policy80/workflow guards PASS locally and narrow hosted verify-access39962417674/runner/scan PASS. Ready-state required run39962906981 still running static/typecheck; draft-skipped checks do not count. Do not merge until exact-head required gates pass. No encrypted delivery or decryption has run; fictional auth/scope20/native6 remain NOT RUN.
+- App draft PR199 exact72bda7da24442a7e9809323f6d9d2bb1747ef03c all4 hosted checks PASS: CI39955107858 reports270 suites/2386 tests PASS+1TODO and TypeScript PASS; contract39955107795 reports71 checks PASS. Packaging39955107999 passed with keystore/build/signature/publication steps SKIPPED, no APK produced/installed. Runtime on phone remains1730/f1.
+- One Mac-wake/keep-existing-connection-open question remains pending; do not ask again while pending. No phone UI, permission, radio, network or clock changes since manager checks. Current owner0 location/camera grant state remains UNKNOWN after read timeout. Time24h remains separate FAIL, not running.
+- Next exact step: complete1007 exact-head CI, merge green, dispatch its protected read-only access binding current reviewed main and actual deployed app SHA, authenticate downloaded artifact provenance, decrypt privately, run fictional principal bootstrap/scope20 and owner web session. Then, when handset transport answers, execute the prepared fictional native flows with actual GPS/camera and independent server reconciliation.
+
+
+## 2026-10-23T14:11:16.981404+00:00 — access attempt diagnosis and handset recovery
+
+- PR1007 exactb7 passed all5 required checks (39962906981), with18 unchanged known failing baseline files and no new failures; merged by exact-head operation to8fbfeb8e8db34d929fbfea5ce4672731314b58fa. Protected encrypted access39965410772 retained FAIL/RF_ACCESS_FAILED; no credential retrieved, no API role case or new native journey executed.
+- Diagnosed owned controller pathname error: immutable releases store the revision marker inside .next/standalone, not checkout root. Full root/stdin regression first failed against the original code and all11 controller tests passed after the one-line fix. Follow-up backend PR https://github.com/rashadoni/leaddrive-v2/pull/1008 attached, exact432c0fd65acfb11cc7f7e48a28e4007619e975c5, branch codex/route-field-fixture-access-path. Hosted narrow11 PASS; full39966147428 running. Original failed workflow retained; no original gate, privacy boundary or data state changed.
+- User replied that phone was connected. Direct reverse transport now lists exactly1 ready device; owner0/APK1730 digest matches pinned source. Recorded original fine/coarse/camera grants and exact flags; all3 granted. Phone call state idle. Ordinary wake and wm dismiss-keyguard woke the display but Android still reports protected keyguard showing. One new physical-unlock question pending; no PIN requested or bypass attempted. No app launch/account switch, permission/network/radio/clock change. Prior reconnection question is resolved/superseded.
+- Separate fictional browser profile prepared (prof_455c6879936144ae), not default; no sign-in or browser run performed yet. Ordinary owner/API helpers parse and private modes validate; prepared GET-only scope runner now records response-contract mismatches as FAIL rather than losing that attempted evidence. Credential/bootstrap/scope20 remain NOT RUN.
+- Next: finish1008 hosted gates and exact-head merge, re-read current main/deployed SHA, deliver encrypted access through protected workflow, validate provenance/decrypt privately, bootstrap all3 roles and run scope20. On physical unlock, resume six fictional native journeys after identity verification. Restore real manager only after the fictional queue is reconciled and empty; do not replay the completed real task.
+
+
+## 2026-10-23T14:37:24.330265+00:00 — secure fixture access and actual API isolation
+
+- PR1008 exact432c all5 required checks and11 root/crypto checks PASS, full39966147428 completed. Static logs confirm18 unchanged known failing baseline files, no new failures. Exact-head merge to f6126b3b238de409a26404d59b73480e4a662353. Previous main8fb normal deploy39965342404 PASS; public artifact8fb matched before read-only dispatch. New mainf612 automatic deploy may still run separately; the read-only controller explicitly binds both revisions and does not require a new app deployment.
+- Protected encrypted delivery39970244047 PASS: controller currentmainf612, actual deployed app8fb. Authenticated run/job/artifact/source-blob provenance verified, OAEP context/recipient checked and credential decrypted to private0600 file outside Git. Private bootstrap setup PASS for all3 exact fictional principals, roles/tenant/route module and installed-source wire profile3.11.4+61 verified. No credential/token/private key copied to a journal or public artifact.
+- Actual GET-only scope baseline-v1:19 PASS /1 FAIL, original retained. All own/team customer/task/visit lists, forbidden manager read, outside-scope customer/visit/task and cross-tenant fictional resource refusals passed. Failed expectation was workday GET200: deployed source intentionally withdraws that Workforce path before auth and returns410 CRM_MODULE_UNAVAILABLE. This is a test-contract error, not evidence of a product defect. A targeted correction verifies exact410/refusal and Route-only bootstrap with no Workforce capability/workday state; original report retained. Positive Workforce workday remains NOT RUN/unavailable; do not re-enable withdrawn CRM modules to make the test pass.
+- Ordinary web-owner Auth.js session PASS: exact fictional owner/tenant/admin. Public browser check04a603bc-0c7d-4fe8-9efe-33d5eb937ace PASS: correct fictional company header and email/password form, no visible error, no credentials submitted; it does not prove authenticated browser operations.
+- User answered physical unlock. The policy-only keyguard predicate and implicit launch preflights failed and are retained; actual UI showed launcher and then explicit normal MainActivity launch showed the manager shell. Do not ask user to unlock again based only on the policy field. No secure lock bypass, permission/radio/network/clock mutation or real-account task replay. Starting guarded fictional sign-in attempt fixture-signin-v1 now; not yet a native PASS.
+- App docs-only c5964de published to PR199; all4 current-head hosted checks PASS (CI39968153790, contract39968153820, build39968153903). Packaging tests/tsc PASS, keystore/build/signature/publication steps SKIPPED. Phone bytes unchanged.
+
+
+## 2026-10-23T14:50:52.942080+00:00 — physical preflight timing and manager-profile selector correction
+
+- Fictional signin-v1 and-v2 retained preflight FAIL/RF_MANAGER_SHELL_REFUSED before any account switch. Actual dumps subsequently show Android SystemUI/AOD, not an application permission failure. Original display timeout30000ms, lock-after5000ms, stay-awake setting2 (USB only), but Android classifies connected power asAC; stay-on was false and keyguard imposed6000ms inactivity override.
+- Prepared a bounded device-side screen-retention lease: original2 temporarily7, independent shell recovery after1200s, current lease metadata in private route-field-e2e-20261023/screen-awake-lease-private.json. This changes only charging screen retention, not the secure lock, permission, radio, network or clock. First capability-probe command invocation failed before mutation (nested adb sh-c quoting); corrected direct probe and lease installation PASS. MUST restore exact2 after the native phase, or verify device recovery has done it; do not leave temporary7 behind. No active network/offline lease.
+- With screen retained, actual signin-v3 reached Maestro but FAIL42.579s: more-action-Profile absent. Screenshot shows manager More is Profile directly, matching pinned AppNavigatorAndroidV2 ManagerMoreScreen and already-proven manager-tabs flow. No account switch yet; this is a new test selector error, not a product failure. Removed employee-menu assumptions from initial manager portion and scrolls up to verify exact prior manager before company change. Employee post-login profile path remains explicit.
+- Driver now retains a private preflight XML before shell admission, so future refusal retains the actual inspected window. Existing guards remain unchanged. All15 YAML parse and driver AST PASS; correct direct targeted guard invocation20 PASS. An initial module-style unittest invocation failed before collecting tests due import path; command error retained, not misreported as a guard failure or pass. Diff check PASS.
+- Normal-wake private wrapper run_fixture_physical.py prepares only explicit owner0 app activity after idle-call check, snapshots actual window and invokes tracked guarded driver. No direct business command or bypass. signin-v4 started on the corrected flow, result pending at entry. No native fictional PASS claimed yet. Source APK remains1730/f1.
+- New mainf612 automatic deploy39970150130 still quality-unit/build-running at latest read. Protected credential delivery and19 security scope cases plus exact retired-workday refusal/Route-only omission already PASS; no need repeat those while native testing.
+
+
+## 2026-10-23T14:57:37.774886+00:00 — verified company switch; fixture-auth resume prepared
+
+- Native signin-v4 reached company selection, changed to fixed route-field-acceptance and opened its blank-password login form, but FAIL101.734s on the expected display name. Actual accessibility XML contains exact slug and route-field-acceptance.leaddrivecrm.org; pinned LoginScreen renders companyName or serverDomain, and the resolver supplies slug here. Full company name remains the verified server fixture identity but is not the pre-auth UI label. No fixture credentials had been submitted at this failure. Original report/screenshots retained.
+- Refactored shared fictional auth body and checks exact host on both initial entry and an explicit resume path. New fixture_auth_form combines existing blank-password/overlay/foreign-window refusal with exact own-package slug+host. Resume also requires the previously verified owned fixture case/source/bootstrap and the same private credential wrapper. No fallback to real accounts or blank tenant binding. Host suffix impersonation/other-tenant/system-label/password-draft boundaries tested;22 targeted guards PASS,17 complete YAML parse and3 Python AST PASS, diff check PASS.
+- signin-resume-v1 now running from the already observed fixture form. Native success pending; initial complete-switch attempt remains FAIL and must not be relabelled PASS. No auth-runtime or APK change.
+- Screen-retention lease original2→temporary7 is still active with an independent1200s recovery, started around14:44UTC. Before ending this native phase, restore exact2 using private screen-awake-lease-private.json and verify the readback; if it already expired, verify automatic recovery instead. No offline/network lease has been entered.
+
+
+## 2026-10-23T15:08:05.533895+00:00 — USER STEERING: use Zeytun and preserve manual sign-in
+
+- User asked which tenant/account/role was being entered, then reported wrong/repeated login typing and explicitly instructed «давай на зейтун тестируй», followed by saying they had signed in. This supersedes further fictional-company handset execution. Continue Route Field manager/employee acceptance in Zeytun using the user's current session; do not rerun authentication or switch away without task necessity. Inspect the current native profile/role first. Do not disguise Zeytun as the owned fictional fixture or relax fixture admission checks.
+- Stopped only the exact active Maestro process group for fixture-signin-resume-v2. Driver retained interrupted exit143/FAIL with no JUnit cases; it is NOT a successful auth/native journey. No other phone controller/process group was changed. User-observed duplicate login typing is recorded as an unconfirmed root cause; do not claim it fixed by parsed YAML.
+- signin-resume-v1 retained FAIL58.098s: password field below keyboard/not visible; screenshot verified. Shared auth flow now hides keyboard and scrolls password/submit; touched YAML parse/diff PASS, native correction not proven because the owner stopped isolated auth. Resume code from c51 remains draft; latest shared-YAML keyboard edit must be checkpointed as unproven test preparation.
+- All6 original fictional native flows remain unpassed; their future execution is superseded by user-selected Zeytun scope. Fictional server auth3, security19 and exact retired-module refusals remain valid separate proof. No fictional visit/workday/GPS/photo/offline business facts were created.
+- Bounded display recovery restored original stay-awake2 automatically; readback PASS, screen-awake-restoration-sanitized.json retained, private lease markedRESTORED. No active screen/network lease. Secure lock/permissions/radios/clock unchanged by the fixture attempts.
+- First read after user sign-in saw only SystemUI/AOD. A normal wake/explicit MainActivity launch and read-only UI inspection are now running to identify actual logged-in role/account without typing credentials. Current exact native account is NOT YET VERIFIED; do not assume it is fictional or Zeytun agent from an earlier screenshot.
+- For subsequent Zeytun writes use only explicitly marked QA records within the authenticated actor's actual permissions; preserve existing employee visits/workdays/routes and do not reuse the completed real QA task. User's target change does not justify payroll/workday fabrication or altering real customer GPS. Prefer isolated QA entities in the selected company as needed.
+
+
+## 2026-10-23T15:25:34.945707+00:00 — verified current Zeytun employee; website QA task active
+
+- After the user's physical unlock, actual profile XML shows Seymur Məmmədov /seymur.mammadov@zeytunpharmacy.az and exact zeytun.leaddrivecrm.org, five employee tabs, no login form. Ordinary manager Auth.js session and exact agent detail GET independently match his AGENT role/id/org. zeytun-native-context-sanitized.json PASS. Preserve this session: no further credential input/account switch.
+- New private zeytun-qa-case-private.json uses a separate owner-selected marker, exact tenant/current source/actor/server-profile match; no password/login field. Initial GET search RF-E2E-ZEY-20261023 finds0 QA customers. It is not yet admitted for business actions: createdViaWebsite=false and no customer ID until ordinary website creation/reconciliation.
+- Browser task75d985f8-da36-4910-9361-0b33af6c79d0 running in existing real-manager profile prof_169e6cec311a483c: create exactly one marked QA place RF-E2E-ZEY-20261023 QA GPS, assign only current employee, no coordinates/geocoding, no real client edit/visit/workday/order/user creation. Do not issue a duplicate browser task while pending; poll wait_for_run only.
+- Separate no-auth Zeytun admission and5 visit/GPS/photo YAML flows prepared (NOT RUN). Fixed fictional guards remain unchanged. New case requires exact Zeytun org, matched AGENT context, actual website provenance, reserved QA customer name/scope and no credentials. Targeted25 guards PASS,22 YAML and3 Python AST PASS, QA JS syntax and native AZ/RU/EN exact label matching PASS, diff check PASS. Source changes must be checkpointed and hosted checks run before publication/merge.
+- Native source APK unchanged. Screen leasev2 installed after first recovery; it was renewed under the owned marker into active private screen-awake-lease-v3-private.json with900s recovery around15:23UTC. Original remains2, temporary7. v2 marker removed only after new guard armed; old worker cannot restore during new lease. MUST restore/verify2 after phase, or verify auto recovery, before stopping. No secure-lock/permission/network/radio/clock change, no offline lease.
+- Backend normal mainf612 deploy39970150130 all quality/build/deploy/smoke jobs PASS. Independent public app/zeytun ping200/ok and exact artifactf612 PASS at15:10UTC (release-f612-public-sanitized.json). Internal access correction is released; no app runtime/APK change.
+- Next: wait website QA task, verify exact new customer/assignment/blank coordinates via ordinary manager API and admit case, execute no-coordinate refusal and reconcile no visits/requests created, then real-phone GPS request→manager site review→QA visit/photo/offline. Preserve all unrelated existing employee facts and the already completed real test task.
+
+
+## 2026-10-23T15:29:49.263396+00:00 — marked Zeytun setup and admission checkpoint
+
+- Browser run75d985f8-da36-4910-9361-0b33af6c79d0 reached its180s limit (249s reported), only partially filled the code, did NOT save a customer. Confirmed exact manager API QA-name search still0. No website-creation PASS claimed.
+- Narrow follow-up website run8308bf53-0f93-4b82-9013-39dcb7c8d69d now running (300s budget), only creates the single reserved QA organization via normal form; assignment/radius are explicitly subsequent steps. Do not run a duplicate while it is pending. Current real manager profile and employee app session preserved.
+- Independent real-agent visit baseline PASS:5 total historical visits, exact/untruncated full result,0 active visits. Raw response private; public digest/count retained in zeytun-visits-before-sanitized.json. Preserve these5 facts; no real workday/visit mutation has run.
+- Separate current-tree Zeytun admission25 tests,22 YAML/3 AST, QA native AZ/RU/EN literal matching and diff checks PASS. Hosted checks for these new paths NOT RUN yet; no native QA business case run before website customer is reconciled/admitted. Current only source edits are tests/harness/docs. No app-runtime change or APK install.
+
+
+## 2026-10-23T15:40:06.485588+00:00 — QA setup fallback, no reauthentication
+
+- Browser creation runs75d985f8 and8308bf53 both ended at time/step limits; neither saved a record. Exact manager API search still0 before fallback. Website QA-place creation is NOT COMPLETED and must not be reported PASS. Previously completed real website-task/mobile/website cycle is preserved.
+- Created exactly1 reserved QA place through ordinary authenticated manager API, not root/DB: RF-E2E-ZEY-20261023 QA GPS, empty coordinates, radius250. Single-point assignment preview/execution changed1 owned point, ended0 existing assignments, selected current Seymur only. Canonical customer GET readback PASS. Baseline5 existing visits/0active retained. No QA visit or GPS request has run yet.
+- Admission now records two distinct provenance types: website run OR exact ordinary manager POST receipt bound to QA customer/tenant/manager/hash. It does not claim website success for API preparation; other tenant/customer/role and credentials remain refused.27 targeted guards, Python AST/YAML parse and diff PASS. No runtime/APK change.
+- Active bounded screen lease v4 renewed fromv3, original2→temporary7, independent1200s recovery; restore/readback2 after native phase. No permission/network/radio/clock changes.
+- Next: publish harness checkpoint, hosted checks, then no-coordinate refusal and server reconciliation, followed by actual GPS request/review/visit/photo/offline. No login/account switch permitted.
+
+
+## 2026-10-23T15:46:41.076820+00:00 — first marked QA native attempt and precise harness correction
+
+- Exact127f5b6 all4 hosted checks PASS (39980254952/39980254946/39980255142). Actual QA assignment independently read back from organizations GET: one active PRIMARY for the selected employee, correct new QA customer only.
+- zeytun-missing-coordinates-v1 retained FAIL:65.842s Maestro, no visible QA row before business click; no login/account switch. Failed screenshot confirms keyboard open and list scrolled to historical visits. After hiding keyboard and bounded return to top, actual XML shows exact correctly typed QA search,1 matching QA row and blank-coordinate label. This is a harness visibility/selector failure, not a reproduced business refusal bug.
+- Narrow correction hides the keyboard after QA search and chooses the QA name BELOW search-results heading, avoiding the identical text in the input. Updated only3 selecting flows and shared AZ/RU/EN heading labels; YAML/JS parse,27 admission tests and diff PASS. Original failure retained. Next run only the failed case; do not replay completed task/tab/manager journeys.
+
+
+## 2026-10-23T15:50:06.285442+00:00 — first new native QA business gate PASS
+
+- Exactb7db6c7 all4 hosted checks PASS. zeytun-missing-coordinates-v2 Maestro PASS82.689s, driver postflight exactagent shell PASS on unchanged APK1730/sourcef1. Only the failed search/keyboard gate was rerun; earlier failure remains retained.
+- Independent ordinary manager API reconciliation PASS:5 original visits byte-equivalent,0QA visits,0QA location requests and all unrelated pending requests unchanged. This establishes real no-coordinate refusal, not merely YAML parse or UI success.
+- Next flow zeytun-location-request-v1 started: actual foreground device fix only, no map manipulation or synthetic GPS. Manager website review/QA visit/photo/offline remain NOT RUN. Current screen leasev4 active, automatic restoration around15:58UTC, original2.
+
+
+## 2026-10-23T15:56:06.551682+00:00 — GPS request harness refusal retained and map gesture removed
+
+- zeytun-location-request-v1 retained FAIL150.667s at finding location-fix-send after comment. Server independently confirms0QA requests. Before comment the enabled-send admission passed; actual phone fix accuracy29m was visible.
+- Inspection supersedes the initial keyboard-only diagnosis: this map screen is NOT scrollable; the test scroll gesture panned its map while keyboard was open. Actual final pin603m from agent, app correctly showed pin-too-far and refused sending. NO location request/coordinate update/visit was created. Do not describe this failed attempt as containing no map gesture.
+- Corrected test removes BOTH scrollUntilVisible gestures on the map screen, hides keyboard after comment and after visit-completion notes. This keeps the initial real device pin and avoids the known map-pan action. YAML parse/diff PASS; runtime app unchanged.
+- Closed the unsubmitted map without saving and preserved employee shell. Bounded display leasev5 replacesv4, independent1200s recovery, original2; must restore/readback2 before stopping. Next: rerun only GPS request, then manager decision and QA visit/photo/offline.
+
+
+## 2026-10-23T16:01:18.901806+00:00 — actual GPS request PASS; manager website review pending
+
+- zeytun-location-request-v2 physical Maestro PASS133.31s and exactemployee postflight PASS on unchangedAPK1730/sourcef1; no map scroll gestures. Independent CRM reconciliation PASS: exactly1 SUBMITTED request for QA point/current agent, previous pinNULL, agent-to-proposed<=1m, actual device accuracy42m;0QA visits,5original visits unchanged, unrelated requests unchanged.
+- All4 hosted checks exact8e41104 PASS. Manager website run554e4785-2eb2-4c83-8607-bcd8683e6dc7 pending in the existing manager profile; approve ONLY the exact QA request through its dedicated data-testid. Do not duplicate job or write an API decision while pending.
+- Read-only owner0 UID offline probe PASS: expected firmware/API36, RF allowed, chain disabled,0denies; no network mutation. Prepared restart-persistence YAML and admitted no-auth flow selection; NOT RUN. It must be paired with bounded480s RF-only networking recovery and independent canonical visit/photo reconciliation.
+- Next: wait manager website decision, read back exactapprovedQA coordinates, then startoneQA visit, captureoneactualphoto, completeoffline/restart/reconnect/exactlyonce. Active screen leasev5 original2,1200s recovery; restore/readback2 before stopping.
+
+
+## 2026-10-23T16:04:19.621452+00:00 — manager website GPS decision verified
+
+- Browser554e4785-2eb2-4c83-8607-bcd8683e6dc7 terminal complete: exactQA customer/agent/42m accuracy verified; dedicated approve button clicked once; successnotice and carddisappearance observed. Then application error page appeared; retry recovered with only the unrelated pending request. This is an observed UI finding; root cause UNCONFIRMED, do not call it a confirmed transient backend failure or pretend it was fixed. Browser service now reports insufficient balance for further runs; no extra browser task initiated and no pay flow requested. Continue native/API work.
+- Independent ordinary manager readback PASS: exactrequest APPROVED/reviewedAt, canonical QA pin exactly equals the real device proposal, radius250 preserved.5originalvisits unchanged,0QA visits, all unrelated pending requests unchanged.
+- Exact707db82 all4 hosted checks PASS. zeytun-visit-start-v1 running on unchanged1730; photo/offline remain NOT RUN. Do not replay GPS request or approve it again.
+- Prepared offline lease now additionally requires current employee Today clean-sync text before entry, and independent device recovery900s (supersedes earlier480s preparation; enough for completion+restart tests, still bounded). It remains NOT ENTERED.
+
+
+## 2026-10-23T16:06:35.795709+00:00 — shared visit flow format checked
+
+- zeytun-visit-start-v1 retained FAIL before business commands: Maestro Config Section Required in shared/open-fixture-visits.yaml;0JUnit cases, no newvisit. Fixed the required appId/header delimiter in947b713. This is a harness defect, not a reproduced app check-in failure.
+- Initial structural check mistakenly included project config.yaml as a flow and FAILED; excluded only that non-flow configuration file. Actual22 executable YAML flows each have a com.mtmobileapp config document plus command-list document: PASS. Syntax-only YAML parsing had not established this contract; no falsePASS claimed for the initial structural check.
+- Next: visit-start-v2, then actualcamera and offline completion/restart/reconciliation. Previously passed refusal/GPS/manager approval are preserved.
+
+
+## 2026-10-23T16:11:56.643456+00:00 — one canonical QA visit started; do not replay the write
+
+- zeytun-visit-start-v2 retained Maestro FAIL126.683s: active header was above retained list position after the action changed the card height. Actual screenshot/XML showed QA active history row and6total visits. This is a viewport assertion failure after a successful business write; NEVER rerun start to chase a green flow.
+- Independent CRM reconciliation PASS: exactly1QA visit CHECKED_IN,0photos,5originalvisits unchanged and unrelated requests unchanged. QA visit ID retained privately. Native full-flow PASS is NOT claimed.
+- Future start verifier and photo/completion/persistence flows now scroll UP to the active/pending card, and DOWN to the specific action, confined to the normal visits list. The map-screen no-swipe correction remains intact. Completion now waits for explicit saved-on-device/pending-sync text before returning, so restart cannot race async GPS/queue persistence. All touched executable YAML structures/diff PASS.
+- Next: captureoneactualcamera photo in this existingQA visit, independentserverphoto check, then completeoffline/restart/reconnect. No duplicatecheckin, GPSrequest or managerdecision.
+
+
+## 2026-10-23T16:18:39.295879+00:00 — actual camera gate PASS, offline admission next
+
+- zeytun-visit-photo-v1 physical Maestro PASS233.923s, exactcurrentagent postflight PASS. This journey independently read the activeQA card/name/0photos before capturing, then observed1photo; no second checkin or synthetic/gallery image. Independent manager gallery GET sees exactly1photo for the sameQA visit; full photo reconciliation is running. Original permissions were alreadygranted, unchangedAPK1730/sourcef1.
+- This successful active-card readback corroborates the earlier accepted business checkin without rerunning the write. Original full visit-start-v2 remains FAIL for its offscreen assertion; no false full-journeyPASS. All4 hosted checks exact8a88e33 PASS.
+- Private offline controller prepared with ordinary server baseline, bounded900s owner0RF-only UID denial, completion saved/pending text before restart, separate persistence Maestro, canonical CHECKED_IN+1photo whileblocked, exactnetworkrestore and foregroundsync, finalCHECKED_OUT/exactnotes/1photo and secondforegroundnochange, permissions/currentagent/emptyqueue checks. Not yet entered.
+- Active bounded display leasev6 renewed fromv5 around16:12UTC, original2/temp7,1200s device recovery. Restore/readback2 at end. No network/radio/clock change yet; no fakeworkday or realcustomerGPS mutation.
+
+
+## 2026-10-23T16:26:44.327998+00:00 — real offline admission blocker reproduced; networking restored
+
+- zeytun-offline-v1 FAIL/RF_OFFLINE_NATIVE_FLOW_FAILED. After verified owner0 RF-only UID denial, the normal wake wrapper saw the app Server cavab vermir gate with NO employee tabs; completion Maestro was never started. Actual UI says server not answering and routes will appear on connection return. No checkout was queued.
+- Controller restored networking EXACTLY: ownRF allowed, chain and Time/protectedTime UID rules/radios match baseline, restoration receiptPASS. No active network lease.5originalvisits remain protected; oneQA visit remains CHECKED_IN with1actualphoto. Do not replay offline on unchanged1730; this is a genuine product offline limitation.
+- Diagnosis: bootstrap store deliberately clears admitted data/capabilities and switches to closed offline on every transport failure; navigation then removes the field shell. Existing tests explicitly enforce a closed gate for unconfirmed offline access. A fix must add explicit bounded server authority for previously admitted offline work; do not just treat any cached role/offline value as admission or weaken answered revocation behavior.
+- Next: implement scoped server-issued offline permission and matching private current-session cache, with expiration/missinggrant/crossactor/crosstenant/revocation/clock guards; hosted verification and signed APK before rerunning only the blocked completion/restart/reconciliation stages. Passed GPS/websiteapproval/photo and singleQA checkin must remain preserved. UI errorafterwebsiteapproval stays open/rootunconfirmed. Screen leasev6 remains active with original2/1200s guard; restore/readback2 before stopping.
+
+
+## 2026-10-23T16:48:51.026575+00:00 — bounded offline permission implementation and targeted regression
+
+- Backend fix separate cleanworktree mtm-route-field-offline /codex/route-field-offline from currentmaincdee; PR1013 https://github.com/rashadoni/leaddrive-v2/pull/1013 attached, source70b2648f9 published. Purefactory11-case smokePASS; fullrequiredstatic/type checks running (draft skips are not counted). Additive grant only already-admitted AGENT+installation, seven-daylocalfielddrafts boundtenant/principal/device; queuedserverauth/RLS unchanged.
+- App runtime prepared: serialized sanitized bootstrap cache boundserver/scope/device/rotatinglogin nonce; explicitoffline-enabled only with validservergrant; privatecache expires and evicts on denial/logout/serverchange, clockrollback, mismatchedidentity, or newergrant withdrawal. Cache clear/writes serialized withgenerationguards. HRMworkday/attendance/location authority stripped; cachedpermission never confirmsworkday or drainsserverpush, inheritedbackgroundGPS remainsdisabled. Syncchip identifies cachedoffline state. Notinstalled.
+- Exact951 dependencylock entries match existing appcache; reuseditsdependencies with task-owned temporarysymlink, noinstall/buildonContabo. Firstfocusedcheck retained1FAIL/177PASS: logoutassertionstill expectedonly2keys after newlogin nonce removal. Updatedthatcontractexpectation. Current6focused suites/181tests PASS in2.667s, including expiry/account/server/device/session/403/401/malformed/late-response and officeadmission regressions. FullJest/typecheck/APK gates localNOT RUN perhostcontract; hostedgatesnext.
+- Currentnetworkrestored. OneQA visit remainsactive with1canonicalphoto; do NOT replaystart/GPS/approval/photo. Screenleasev7 active with1200s recovery/original2; restore/readback2 beforestopping. Next: finishsourcechecks/publishapp, hostedfullchecks/signedAPK, verifiedbackendrelease, inplaceinstall preservingcase/session/queue, then resumeonlyblockedofflinecompletion/restart/reconnect.
+
+
+## 2026-10-23T16:56:22.943722+00:00 — focused offline correction checks and release preparation
+
+- Additional authstore/navigation/runtime/sync-centre4suites44tests PASS. Narrow cache expiry test suite rerun after adding conservative request-start expiry anchoring; its actual result is retained by the tool trace and next checkpoint will record it. Full app typecheck/Jest/Android builds remainNOT RUN locally; hostedCI follows publication.
+- Prepared versionName/package3.11.52; CI remains responsible for a larger signed nativeversionCode. Staticlegacy wiretelemetry apkVersion3.11.4+61 is still an existing separate limitation; do not claim nativebuild telemetry fixed.
+- Server source70b PR1013 fullstatic/typecheck running; no backend production mutation yet. Installed phone remains1730, networkrestored, QA1active/1photo; no repeat native writes.
+
+
+## 2026-10-23T16:57:22.862901+00:00 — offline runtime checkpoint ready for hosted verification
+
+- Latest narrowcache suite19tests PASS in1.137s after conservative request-start expiry anchoring; waitingforserver neverextendslease. ChangedTypeScript syntaxPASS. Prior6suites181 and4suites44 passed at their recordedphase; fullcurrenttreeJest/typecheck/Android NOT RUN locally. New blockedscreen types exclude the admitted offline state aswellasenabled/legacy.
+- Preparing signed3.11.52 withautomaticCIversionCode. No dependencychanges; removed ONLY the task-created temporarynode_modules symlink after targetedchecks; underlyingreusedcache preserved.
+- Sourcefix must be verified by fullhostedCI andAPKsigning/provenance beforeinstallation. Existing1730 nativeofflineFAIL remains retained; do not callfixedonphone yet. ServerPR1013 requiredchecks pending; no productionrelease yet.
+
+
+## 2026-10-23T16:59:24.444837+00:00 — exact published correction heads and safe phone stopping state
+
+- App source0962215 published oncodex/route-field-e2e; draftPR199 description/title rewritten for finalofflinefix+deviceacceptance scope viaREST because installedghpr edit hits retiredProjectsGraphQL. Hosted appCI39991076059, contract39991076064, actualAndroidbuild39991076110 running. Do not install until requiredchecks/buildsignature/sourceprovenancePASS.
+- BackendPR1013 exact70b2648f9: typecheckPASS, prscope/runnerpolicy/scanPASS, static39988772222 runningunitbaseline gate. ProductionbuildPRjobskipped asnormal; no newserverrelease yet. FullstaticmustactuallyPASS, draftskips areNOTchecks.
+- Independent bounded displayv7 auto-restoredoriginal2; readback2PASS. Privatelease markedRESTORED, sanitizedreceiptretained. No activenetwork OR displaylease. No furtherphoneUIneededuntilAPKready; do not askphysicalunlock whilecode/CIcanprogress.
+- Phone stilloriginalAPK1730/sourcef1, logged-in user sessionpreserved; QAvisit remainsCHECKED_IN with1photo. Original5visits unchanged. Resumeonlycompletion/restart/reconnect after verifiedofflinegrantrelease and signedAPK inplaceupdate. Preservepre-fixcase/identityreceipts whenupdatingcase sourceSHA; neveroverwrite1730proof or restartcheckin/GPS/photo.
+
+
+## 2026-10-23T17:10:08.440539+00:00 — owner release approval and final gates
+
+- Owner explicitly approved: «Да, выпустить после всех проверок» for the seven-day server-authorized local field drafts correction and matching Route & Field APK. This satisfies the user-visible change approval; no further release permission needed for this scope.
+- Backend PR1013 exact70b2648f99961a13ace22b5afde55b31392bcddd is ready, mergeable/clean, all five required checks actual SUCCESS (draft skips excluded). App exact0962215e757a1310ba077425679b7ff7c565bd39 full271 Jest suites/2406 tests and TypeScript PASS; actual Android run39991076110/build787 SUCCESS with artifact12516994949. Native correction verification still NOT RUN.
+- Proceed exact-head backend merge, normal main/GitHub Actions deploy and public SHA/feature smoke; verify signed APK provenance then in-place update and resume existing QA visit only. Preserve original1730 evidence, manual Seymur/Zeytun session, one active QA visit/one photo and five original visits; no login automation/repeated checkin/GPS/photo.
+
+
+## 2026-10-23T17:18:32.545710+00:00 — approved server merge and signed in-place Android update
+
+- PR1013 merged with expected exacthead70b into main deb8de1c0b0c4a71d3ff565276699ddac846bc8f. Supported production workflow39992858222 running quality/database gates and immutable build; production smoke NOT RUN until completed revision is live. Static gate retains18 known baseline failing files, no new failing files; do not describe it as zero baseline failures.
+- App actualAndroid run39991076110/build787 PASS. Artifact12516994949 ZIP SHA2563abcb4ceb26ed476d4370b90f1f830dbf23bd30d1e00318fc8e8ca4f7ff818b9 matches downloadedbytes; APK SHA25666d668c29aa4ee4fe7aec46397b05837ab34213a63974a74292f68155b816366 matches hosted signature verification. Packagecom.mtmobileapp/1787/3.11.52; releasecertd6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b; arm64 supported/no x86. Actual PR checkoutba79f198e93fdc6a00e3a94d350fef835909d20c compiledapp/workflow/buildscript trees exactly match source0962215. It is a verified PR QA artifact, not yet published main release.
+- In-place adb install-r PASS: sameUID10556, original permissions unchanged, Timepackage identity/permissions unchanged. No uninstall/datareset/authautomation. Native Today greeting sameSeymur and cleanqueue PASS. Original1730 identity/case and private helper copies preserved; activecase/provenance now1787. Canonical preinstall QA1CHECKED_IN/1photo and5originalvisits unchanged PASS. No repeat checkin/GPS/photo.
+- User unlocked physicalphone after one request. Displayleasev8 original2/temp7 bounded1200s with independentdevice recovery, active; must restore/readback2 before stopping. No networkleaseactive. Prepared offline-v2 outputs with1787identity; oldoffline-v1FAIL retained. Next liveSHA/feature smoke, onlineprime and only blockedcompletion/restart/reconnect stages.
+
+
+## 2026-10-23T17:20:43.616069+00:00 — native profile preserved after verified update
+
+- Actual1787 profile name/email and Zeytun tenant label independently read PASS; returnedToday sameSeymur/cleanqueue PASS. Private read-only helperv1 failed only returning because back button uses accessibility content-description, not text; retainedFAIL, correctedselector-v2PASS. No reauthentication/product auth issue. Aggregate append-only phaseupdated; old1730/failingbusinessjourneys retained.
+- Waitingnormalserverworkflow39992858222, now quality/databasegates and productionbuild. Nativeoffline1787 NOT RUN until liveSHA+featuregrant confirmed. Displayv8original2/1200s recoveryactive, networkunchanged.
+
+
+## 2026-10-23T17:41:01.936534+00:00 — server correction deployed and offline1787 acceptance entered
+
+- Normal mainrelease39992858222 SUCCESS at deb8de1c0b0c4a71d3ff565276699ddac846bc8f. Independent registeredapphostnameping+publicbuild-info exactSHA PASS. Read-only ownedfixturebootstrap live checks PASS: AGENT+installation receives604800s boundgrant; missinginstallationNULL; MANAGERNULL. No APIwrite authorization changes or production shortcut.
+- PR199 nowready via configuredghCLI after connectorready mutation lacked permission; no bypass. Exact096 requiredscope/tests rerun39996069291 SUCCESS; earlierfullcontract/actualsignedAPK gatesPASS. Stillnotmerged; waitnativecorrectedofflineproof. Localdocscheckpoints remainunpublished to avoidrebuilding unchangedsource.
+-1787 coldONLINE startup sameSeymur/cleanqueuePASS after newserverlive; now boundedRF-only offline-v2controlleractive/arming, usespreservedexistingQAvisit/photo. No repeat checkin/GPS/approval/photo/auth. Displayv8 renewed safely toboundedv9(original2/temp7/1200s) beforeexpiry; restorev9/readback2beforestop.
+- Browserfallback now available without newdependencies/payment: existingChromium145+Node20experimentalWebSocket, one boundedreadonlyCRMpage viaCDP and existingmanagercookie, browser terminatedaftercheck. Initialpreoffline-v1 NOT_COMPLETED because privatechecker usedunsupported/ru URLprefix andgot404; authenticatedsameorganizationPASS/no runtimeexceptions, do not confuse this with originalapprovalpageerror. Correctedtoactual /mtm/visits route for finalpostcompletionread. No fullbrowserE2E/install/build ranonContabo.
+
+
+## 2026-10-23T17:48:19.662989+00:00 — offline admission works; second real defect retained, network restored
+
+- Corrected1787 zeytun-offline-v2 FAIL. Nativevisit completion flowv2 reachedactualofflinefield UI and activeQA card; its photo precondition saw Foto:0 although canonical server hasonephoto. No checkout command executed; failed59.002s atonePhoto assertion. RF-only networklease EXACTLY restored, Time/protectedprofile/radios unchanged. Restart/reconnect stages NOT RUN. Sourceoriginalnoofflineadmissiondefect is improved but fullcycle notyetPASS.
+- Rootconfirmed inuseActiveVisitProgress: server workspace photo count is onlyReact state/modulememory; afterprocessrestart serverphotos areunknown0 untilnetworkread succeeds. This is real missingofflineprojection, not a viewport ornetworksetupfailure. Newbootstrapgrant correctlykept fieldtabs/cacheddataavailable. PreserveoneexistingQA visit/onephoto and original5facts; no repeatcapture/checkin.
+- AppPR199 returnedtoDRAFT for narrowlyscoped correction: persist sanitizedserver-confirmed activevisit progress, boundserver/tenant/principal/device/login andvalidofflinegrant; hydratecount/requirements ontransportfailure, neveranswered401/403, nevercrossaccount/stalerevokedgrant. Tests must covercoldrestart, countoverlap/sessionbasis, scope/expiry, lateanswer andonlinecanonicalrefresh. Fullhostedgates/new signedAPKrequired;1787FAILretained. Backend1013deployed/feature-smokePASS remainsunchanged. Displayv9 original2/temp7/recovery1200s active; renewonlywhileactivework/restorebeforestop.
+
+
+## 2026-10-23T17:59:56.857708+00:00 — durable active-visit projection correction verified locally
+
+- Added sanitizedconfirmedactivevisitprogress cache (onlycount/requirementflags/outboxids), exactserver/scope/device/loginbinding and7-dayage bound. Readingrequiresactualvalidserverofflinegrant, expiry checkedagainafterstoragewait. Perprocessdirect-uploadbaselinepreventsremountdoublecount/coldrestartundercount. Queuedidsuniondeduplicated. No image/name/GPS/token/workspacepayloadstored.
+- Hookshowsadmissibleprojectionbeforewaitingnetwork; canonicalworkspaceansweralwaysreplacescount/policy. AnswereddenialclearscacheandcachedUI; globalsharedrequestsequence+serializedstoragepreventolderresponsesonothertabrevivingnewerdenial/replacingnewerprogress. Cachehydrateusessequence0 soanearlierin-flightrealserveranswerstillwins. Cachefailuredoesnoterasefreshonlineanswer.
+- First5focused suites53 PASS; final6suites74 PASS includingrealhookcoldread/transport/403/freshserver/lateactor/latecache andservicebinding/expiry/processbasis/outbox/lateclear/order cases. Sourceguard27 PASS; touchedTSsyntaxPASS, newreadonlyprogressflowYAMLparsePASS. FullJest/typecheck/Android NOT RUN locally (hostcontract); hostedCI/build next. Reusedunchangedlockmatcheddependenciesviaownedtemporarylink, thenremovedonlylink; cachepreserved. One earliercommand127didnotruntests becausewronglinkrelativepath; correctedbeforeactualruns.
+- AddedguardedreadonlyQAvisit-progress-read journeytoverifyandpersistalreadyuploadedonephotoonlinebeforeofflinelease. No capture/checkin/approval/noteswrite. Beforecorrectednativeattempt, newverifiedAPK,inplaceupdatesameUID/session, onlineprimebootstrapandthisworkspace, thenonlyblockedcompletion/restart/reconnect. Existing1730/1787nativeFAILretained.
+- Displayv9automaticallyrestoredoriginal2/readbackPASS; phoneisnowprotectedlocked. Noactivepower/networklease. Do notaskphysicalunlockuntilnewAPKready; continueCI independently. Backenddeb8deployed/publicgrant/Ping/SHAchecksPASSunchanged. PR199DRAFTwhileiterating.
+
+
+## 2026-10-23T18:02:48.577704+00:00 — exact progress-correction CI and working website fallback
+
+- Publishedsource9183a2e8fa96c427e935472c7ff68ad411c7b35c. FullCI39999680868 tests+TypeScript SUCCESS; contract39999680874 SUCCESS; actualsignedAndroidbuild39999680887/build788 stillrunning. No newnativePASSclaim. PR199 body updatedviaownedCLI becauseconnectorhasno metadata writepermission forMTM; draftwhiledevicefixpending.
+- ExistingheadlessChromium/NodeCDP fallback actuallyreadcorrect /mtm/visits?visitId QApage underexistingmanagerZeytuncookie: QAnamevisiblePASS, managerrole/sameorgPASS,0runtimeexceptions,0businesswrites. Privatebrowserprocess terminated. Initialwrong/ru privatechecker404 retainedNOTCOMPLETED, notproductdefect. Originalpostapprovalpageerrorstillrootunconfirmed/notfixed.
+- Aggregatephaseappended with1787photo-counterFAIL, exactnetworkrestore and918sourcependingnative. Phoneprotectedlocked/originaldisplay2/no networklease; signedAPKreadythenonephysicalunlockrequest ifnecessary. Do notrepeatQAcheckin/photo/GPS/task.
+
+
+## 2026-10-23T18:19:53.508213+00:00 — verified1788 installation and online QA workspace gate PASS
+
+- Fullsource918 CI actual273suites/2432testsPASS plus1TODO, TypeScriptPASS, contractPASS, signedAndroidrun39999680887/build788 PASS. Artifact12521509649 archiveSHA97351313d3d118f51a0c1cffd194e5cd32d977a7d805b51e622f3fbd2eb7253c; APK SHA7d8334d77bae472f64350b889653a0db584c6d21648c82de9845bfb402cfccd6. Realcheckout421f681166083b6f637ee9fd03975d260abe4c34 compiledtrees exactly match918. Samepinnedreleasecert/arm64/package; verifiedPRQAartifact, notpublicmainreleaseyet.
+- BriefMacADBemptydevice list recovered by existinghost reconnectoffline; no userreconnect/terminalcommand needed. Thenonephysicalprotectedunlockrequestedonlyafterbuildready; userOK, actualunlockverified. Displayleasev10 original2/temp7 bounded1200sindependentdevice recoveryactive (~18:13UTC); restorebeforestop. No activenetworkleaseuntilcontrollerenters.
+- In-place1787→1788 PASS sameUID10556 andoriginalcamera/locationgrants/flags; Timepackageunchanged. Old1787case/identity/failures preserved. FreshnewAPKprofile exactname/email/ZeytunPASS, TodaycleanqueuePASS, noauthautomation.
+- Guardedphysicalzeytun-visit-progress-read-v1 PASS38.547s, source918/1788: existingactiveQA/name/onephotoonline read; no camera/newvisit/GPS/manager/task write. Primedconfirmedworkspacecachebeforeofflinelease; actualpostflightsameSeymurPASS. QA1CHECKED_IN/1photo,5originals independentlyunchanged at18:09.
+- Nowrunonlyoffline-v3(existingQAcompletion→pendingreceipt→processrestart→canonicalstillCHECKED_INwhileblocked→exactrestore→CHECKED_OUT/onephoto/no duplicates/old5unchanged). Nativev3NOTFINISHED; do notclaimfullcyclePASSyet. PR199ready, source918allchecksPASS; holdmergeuntildeviceproof.
+
+
+## 2026-10-23T18:27:01.127733+00:00 —1788 offline count PASS; Maestro modal cancellation diagnosed, no checkout sent
+
+- Offline-v3 retainedFAIL: completionMaestro82.809s stopped atnotesSubmit("Təsdiq et") missing. Exactcommandtrace provesactiveQA/name/Foto:1 assertionspassedoffline, finishopenedNotesModal, ASCIIQAcommenttyped, thenhideKeyboardclosedthewholemodal beforeSubmit. NotesModal.onRequestClose legitimatelycancels; thisisautomationBack/IME handling, not a newappcount/accessdefect. No checkoutsubmitted/queued. CanonicalstillCHECKED_IN andnotesnotcompletionmarker; Todaycleanqueue/sameSeymur verifiedagainbeforev4.
+- Networkv3EXACTLYrestored: RF/chain/Time/protectedprofile/radiosunchanged. No duplicatevisit/photo/GPS/approval/task. RemovedthatBack-generatinghideKeyboardfromcompletionflow; reachSubmitviaitsownscrollablecardandtapwithkeyboardhandling. Source-onlyMaestrocorrection, no APKrebuildneeded; binarysource918/1788unchanged.
+- Newseparatecontroller/attemptv4 nowrunningblockedcheckout→coldpersistence→reconnectonly. v3failureandartifactskept; neverrelabelasPASS. Need coldrestartphoto/pendingproof andcanonicalexactlyonce beforemerge. Displayv10 original2/temp7/1200s recoveryactive; restorebeforestop.
+
+
+## 2026-10-23T18:29:47.238728+00:00 — precise preflight recovery before offline-v4
+
+- Firstv4preparationstoppedBEFORElease/nativejourney becauseTodaycombinedreadyassertionfailed; controllerfilehadnotbeencreated, no checkoutandno UIDdeny. Observedafterward: sameSeymurgreetingbutcachedofflinebadge. OrdinaryHome→foregroundrefreshedbootstrap/cleanqueue; noauthretry. This is the same explicitforegroundreconnect step the controller already uses for syntheticUID outages (globalNetInfo doesnotchange). Originalpreflightfailure retainedNOTSTARTED, not a newbusinesswrite ornativePASS.
+- Renewedowneddisplayv10→v11beforeexpiry: original2/temp7,1200sindependentrecovery. Newboundedoffline-v4controlleractuallyarming/runningwithcurrent1788/source918 andcorrectedNotesModaltest; oldv3FAILretained. NoAPKsourcechange.
+
+
+## 2026-10-23T18:43:07.006898+00:00 — original checkout saved; cold test interrupted by USB, read-only continuation active
+
+- v4 completionMaestro PASS75.014s, includingactiveQA/name/Foto1, noteSubmit, explicitpending-on-device receiptandreturnToday. This is theONEsavedcheckout; NEVERreruncheckout/completion. Coldpersistence-v4 FAIL38.939s: commandsprove stopAppCOMPLETED, launchAppFAILED deviceR5CXC0NP96Knotfound. OriginalfullcontrollerFAIL/RF_OFFLINE_ADB_FAILED retained, no falsefullcyclePASS.
+- RecoveredADBwithoutuseraction; direct35039and5037relaybothwork, serialsame, USBtransportre-enumerated18→25→31. Initialcleanup'sfinalreadfailed; independentcomplete snapshotafterward EXACTLYequalsoriginal(before), RFallowed/chaindisabled/0denies/Time/protected/radios/bootunchanged. OldV4lease nowRESTORED_VERIFIED_AFTER_INTERRUPTION, earlierfailurekeptinresult/trace. CanonicalQA stillCHECKED_IN/no completionmarker; appPIDabsentafterprovenstop.
+- Pendingread-onlycontinuationv5 admissionPASS: priorcompletionPASS+hashed completedstop/failedlaunch trace, same signed1788/source918/case, originalnetworkexactbaseline, stoppedapp, canonicaloneactiveQA/onephoto. Retiredonlyownedoldworker/marker afterrestoreverification. ArmedNEWbounded900sRF-onlylease withindependentrecovery; explicitpending-operationreceipt admissionreplacestheordinaryemptyqueuepreflight, noauthorbusinessguardbypassed. It runsONLYcoldpersistence-v5(no newcheckout), canonicalstillCHECKED_INwhileblocked, exactrestoreandforegroundsync/ACK/idempotency. CurrentresultNOTFINISHED.
+- Displayv11 original2/temp7/1200s active (~18:28UTC), expiry~18:48; renewbeforeexpiryifcontinuingthenrestore2atend. No source/harnesseditwhileMaestrorunning.
+
+
+## 2026-10-23T18:49:07.203050+00:00 — cold photo survives; pending banner assertion requires downward search
+
+- Pending-onlyv5 retainedFAIL: coldMaestro174.903s couldnotfindwaitingSync while scrollingUP. DeviceactualafterXML showscachedfieldUI/activeQA/Foto1 afterfullrestart: durablephotoprojectionpositivelyobserved. It doesNOT provependingoperationlost: pendingnoticeis renderedBELOWphoto counter, overtimewarning/address; currentcoldlistwasattopandviewportendsatphoto count. Rootpending-loss is UNCONFIRMED; do notpresentasnewproductdefect.
+- v5networkEXACTLYrestoredPASS. Force-stoppedRFwithoutclearingdata to preserveoriginalqueuedoperationwhileinvestigating; canonicalstillCHECKED_IN/no completionmarker. Currentdisplayv12 original2/temp7/1200sguardactive(~18:46UTC), oldv11retiredsafely.
+- Correctedreadonlycoldflow: alignactiveheadingUP, assertQAnameandonephoto, thenfindwaitingSyncDOWNwhereitscardactuallyrendersit. No runtime/appcodechange ornewAPKneeded. Newpending-onlyv6 uses the same guardedcompletion/stop/serverbaseline receipts and itsown bounded900sRF-onlylease; no newcheckout/camera/checkin/approval. Need actualpending+canonicalproof beforemerge.
+
+
+## 2026-10-23T18:56:43.182882+00:00 — core offline cycle and manager website PASS; release gates next
+
+- Physical1788/source918 core cycle PASS composed from acceptedcheckout-v4(75.014s) and finalcoldpersistence-v6(126.185s), with guardedonlineworkspace/photo read(38.547s). One queuedcheckout only; no repeatedstart/camera/GPS/approval/task. ColdrestartpreservedexplicitpendingreceiptANDonephoto. v5wasviewport/testdirection, notpendingdata loss; v6properDOWNsearchPASS. OriginalFAILresults preserved.
+- WhileRFUIDblocked: canonicalQAstillCHECKED_IN/onephoto, original5visitsandunrelatedpendingrequestsunchanged. Afterexactnetworkrestore+ordinaryforeground: CHECKED_OUTwithexactQAcompletionnote/onephoto. Secondforegroundleavescanonicalrecordbyte-equivalent, exactlyonevisit/photo, cleanqueue. SameSeymur/Zeytunsession andoriginalpermissionspreserved; Time/protectedprofile/radios/chainexactbaseline. NoactiveRFnetworklease.
+- RealCRMwebsitepost-completion readPASS throughboundedexistingChromium/CDP: sameSaidaemail/managerrole/org verified, QAnameandcompletionnotevisible,0runtimeexceptions,0businesswrites. Browserterminated, no paidservice/install/fullbrowserE2E. Originalpostapprovalerrornotreproducedbythisreadandnotclaimedfixed.
+- Appcodeunchangedsince918(273suites/2432PASS+1TODO,TS,contract,signedbuild788PASS). SubsequentchangesONLYtwoMaestroflowfixesanddocs/evidence. PublishingfinalevidenceheadthenactualrequiredCI, exactheadmerge/mainpublicAPKrelease. Do notrerunbusinesswrites. Backenddeb8release/featuregrantchecksremainPASS.
+- Displayv12original2/temp7/1200s active(~18:46); renewbeforeexpiryifneeded, finalrestore/readback2required. Time24hv8failed/unrunextrasremainexplicitlyopen; do notclaimentirebroadmatrixor24hdurationPASS.

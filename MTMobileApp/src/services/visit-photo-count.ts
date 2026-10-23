@@ -23,9 +23,9 @@
  *    `api/v1/mtm/mobile/visits/[id]/workspace`), so the server part stops at 20.
  *    The org default `maxPhotosPerVisit` is 10; a higher limit needs a real
  *    count from that endpoint.
- *  - Before the first workspace read succeeds the server part is unknown and
- *    counts as 0 — the same 0 the old counter showed on every start. The queue
- *    and this session's photos are counted meanwhile.
+ *  - Without a successful workspace read or a previously confirmed projection
+ *    admitted by a valid offline grant, the server part is unknown and counts
+ *    as 0. The queue and this session's photos are counted meanwhile.
  */
 
 export type VisitPhotoSnapshot = {

@@ -69,3 +69,34 @@ Prepared backend fixture checkpoint: `cd4892333`, branch
 `codex/route-field-acceptance-fixture`. Five unit checks passed; isolated
 PostgreSQL integration (two tests), full hosted checks and operational fixture
 execution are NOT RUN. No source push/merge/deploy was performed.
+
+
+## 2026-10-23T13:54:11.990597+00:00 — current execution status (supersedes initial pending snapshot)
+
+Backend PR1003 is merged and main06e7 deployed successfully through workflow39952082312. Isolated PostgreSQL/controller7 and all required checks passed; the static gate retains18 unchanged known failures. Fictional company preparation39957479723 actually passed with one owner, three field principals, three places and no seeded visit/workday history. Do not recreate/reset it.
+
+Protected read-only encrypted access PR1007 is awaiting required static/typecheck39962906981 on exactb7; narrow10 crypto/controller tests and runner/scan passed. After green merge and provenance-checked private delivery, run20 scope/snapshot cases and the six prepared native flows. These remain NOT RUN; the phone channel does not answer and one reconnection question is pending.
+
+App draft PR199 exact72 has hosted270 suites/2386 tests+TypeScript,71 contract checks and test-only packaging-skip proof PASS. Installed APK/runtime unchanged. The previously accepted real website task is complete and must not be replayed. The broader matrix, original source hypotheses and the separate Time24h failure remain open.
+
+
+## 2026-10-23T15:08:05.533895+00:00 — user-selected target supersedes fictional handset plan
+
+User explicitly requested Zeytun testing and said they completed sign-in. Preserve that session and identify its actual actor/role without retyping login. Fictional handset journeys are superseded, none passed; server-only fixture/security results remain retained. Continue the requested manager/agent CRM→app→CRM cycle in Zeytun using clear QA entities, within normal scope, preserving unrelated visits/workdays/routes/customer coordinates. Do not bypass fixed fictional guards with a substituted real-tenant manifest. Display lease is restored to original2; no phone network lease entered.
+
+
+## 2026-10-23T17:24:11.311164+00:00 — bounded offline fix release and remaining acceptance (supersedes earlier pending snapshots)
+
+- Target remains the owner's manually signed-in Seymur/Zeytun AGENT; preserve session and all unrelated facts. The single marked QA customer/visit/photo are existing; never replay accepted checkin, GPS proposal/approval, camera capture or completed task writes.
+- Complete real website→app→website task cycle PASS, manager/employee native tab checks PASS on1730. New1787 signed in-place update PASS with sameUID/permissions, Time unchanged; newnativeprofile name/email/Zeytun and Today cleanqueue PASS. The older full visit-start Maestro assertion remainsFAIL after a successful canonical checkin; later active-card and photo readbacks corroborate it without replay.
+- Server offline fix PR1013 exact70b approved by owner, all5requiredactualchecksPASS, mergedmain deb8de1c0b0c4a71d3ff565276699ddac846bc8f. Normal immutable productionworkflow39992858222 RUNNING; no direct deployment. App PR199 source096 full271suites/2406tests+TypeScript/contract/signedAPK PASS; candidate1787 nowinstalled from verified artifact12516994949, PRcheckoutba79 compiledtrees identical to096. No public appmainrelease claimed yet.
+- Immediate gate: waitserverworkflow, exactpublicartifactSHA+ping and read-only fixtureagent/device grant, missing-device NULL and manager NULL. Then foregroundnewAPK online, only existingQA checkoutwhileRFUIDdenied, processrestart/pendingreceipt, canonicalstillCHECKED_IN whileblocked, exactnetworkrestore, CHECKED_OUT/exactnotes/onephoto/no duplicate and original5unchanged aftertwoforegrounds. Newoffline1787 NOT RUN. Independent900sRFnetworkrecovery; originalradios/Time/profile rules unchanged.
+- Production/native release permission already explicitly given for this seven-day localdraft behavior. Keep ordinarycachedroles closed; everyserverwrite rechecks currentauth/RLS. Finish appPR/mainrelease only after exactchecks and newnative proof; publish finalscope/validation evidence without new businessactions.
+- Known limits retained: original1730offlineFAIL; actualmanagerapprovalpageerror observed/retryrecovered, rootunconfirmed/notfixed; websiteQAcreation attempts did notsave and finalcustomerwasordinarymanagerAPI (do not claimwebsitecreationPASS); retiredHRMworkdaypositive testwas410 and correctednegative separatelyPASS; remainingoutside-zone/signature/large-text/landscape matrix is NOT RUN, no inventedPASS. Separate Time24hv8 FAIL, notrunning and not a Route releaseprerequisite.
+
+
+## 2026-10-23T18:56:43.182882+00:00 — core acceptance finished; public app release pending
+
+The existing oneQA visit and oneactualcamera photo completed the offline cycle on1788/source918: queuedcheckout-v4PASS, coldrestart/pending+photo-v6PASS, independentserverCHECKED_INwhileblocked→CHECKED_OUTafterrestore/foreground, exactnote/onephoto/no secondforegroundduplicate, five originals unchanged, cleanqueue/sameagent/permissions andexactnetworkrestore. RealmanagerCRMwebsitepostcompletionPASS. Priorviewport/modal/USB failuresremainretained; correctedcoldscrollDOWNprovedpendingoperationwasnotlost. No morebusinesswritesare needed.
+
+Release only afterfinalevidenceheadCI, reviewedmainmergeandverifiedpublicsignedAPK. Backend1013isalreadydeployeddeb8. Broadoutside-zone/signature/large-text/landscape cases andseparateTime24h-v8failureare notclosedbythiscoreacceptance.

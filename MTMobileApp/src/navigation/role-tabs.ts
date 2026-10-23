@@ -67,7 +67,7 @@ export type MainShell =
   | { kind: "field" }
   | { kind: "manager"; tabs: readonly ManagerTabName[] }
   | { kind: "office" }
-  | { kind: "blocked"; attendance: boolean; access: Exclude<RouteFieldAccess, "enabled" | "legacy"> }
+  | { kind: "blocked"; attendance: boolean; access: Exclude<RouteFieldAccess, "enabled" | "legacy" | "offline-enabled"> }
 
 /**
  * Which shell the signed-in principal gets.

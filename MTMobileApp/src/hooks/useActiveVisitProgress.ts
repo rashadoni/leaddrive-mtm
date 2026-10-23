@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api } from "../services/api"
+import { isTransportFailure } from "../services/bootstrap"
+import { getOfflineScope } from "../services/offline-scope"
+import type { OfflineBootstrapBinding } from "../services/bootstrap-offline-cache"
+import { clearVisitProgressCache, nextVisitProgressRead, readOfflineVisitProgress, rememberVisitProgress } from "../services/visit-progress-cache"
 import { mediaUploadIdsForVisit } from "../services/media-outbox"
 import { runMobileSync } from "../services/sync-engine"
 import { hasQueuedVisitSignature, queueVisitSignature } from "../services/visit-signature"
@@ -21,8 +25,8 @@ import { toVisitWorkspace, type VisitRequirement, type VisitWorkspace } from "..
  * «Ziyarətlər» each hold this hook, and a photo taken on one tab has to count
  * on the other before that tab reads the workspace again — even when the sync
  * already sent a queued one and the other tab never saw it in the outbox. A
- * restart forgets both, which is right — by then the server lists those photos
- * or the outbox still holds them.
+ * restart forgets both. Confirmed workspace progress is also persisted, so a
+ * server photo remains visible when the next start has no network.
  */
 const sessionUploads = new Map<string, number>()
 const sessionQueued = new Map<string, string[]>()
@@ -51,8 +55,8 @@ function sessionQueuedFor(visitId: string) {
  * photos on the server. On each fresh copy of the visit the local queue is
  * re-read and shown at once; the server again only when the count held went
  * stale (a queued photo got uploaded, or a direct upload finished after the
- * last read). Until the first server read lands, photos already on the server
- * count as 0 — see the limits in that module.
+ * last read). An explicit valid offline grant permits restoring the last
+ * confirmed workspace projection while a fresh server read is pending.
  */
 export function useActiveVisitProgress(visit: { id: string } | null) {
   const visitId = visit?.id ?? null
@@ -69,6 +73,7 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
   const readSeq = useRef(0)
   const requirementsAppliedSeq = useRef(0)
   const currentVisitId = useRef<string | null>(visitId)
+  const cachedVisitId = useRef<string | null>(null)
   currentVisitId.current = visitId
 
   useEffect(() => {
@@ -89,7 +94,10 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
 
   const load = useCallback(async (force = false) => {
     if (!visitId) return
+    const scope = getOfflineScope()
+    const current = () => currentVisitId.current === visitId && getOfflineScope() === scope
     const read = ++readSeq.current
+    const projectionRead = nextVisitProgressRead()
     const uploadsAtReadStart = sessionUploadsFor(visitId)
     const sessionQueuedIds = sessionQueuedFor(visitId)
     const held = photosForVisit(photoStateRef.current, visitId)
@@ -101,20 +109,56 @@ export function useActiveVisitProgress(visit: { id: string } | null) {
     // bad, and the workspace read below can hang until its 20 s timeout; the
     // main button must not offer «Foto çək» again meanwhile.
     applyPhotos(read, visitId, { ...local, serverCount: null })
-    if (!force && !needsServerPhotoRead(held, queuedIds, uploadsAtReadStart, sessionQueuedIds)) return
+    let binding: OfflineBootstrapBinding | null = null
+    try {
+      const identity = scope ? await api.getOfflineBootstrapBinding?.() : null
+      if (identity && current()) binding = { ...identity, scope: scope! }
+    } catch {}
+    if (!current()) return
+    if (binding && photosForVisit(photoStateRef.current, visitId).serverCount === null) {
+      const cached = await readOfflineVisitProgress(binding, visitId, queuedIds, current).catch(() => null)
+      if (!current()) return
+      if (cached && photosForVisit(photoStateRef.current, visitId).serverCount === null) {
+        // Sequence zero: an in-flight real server answer always supersedes this
+        // older projection, even when that answer started before this load.
+        applyPhotos(0, visitId, cached.photoRead)
+        cachedVisitId.current = visitId
+        setRequirements(cached.requirements)
+      }
+    }
+    if (!force && cachedVisitId.current !== visitId && !needsServerPhotoRead(held, queuedIds, uploadsAtReadStart, sessionQueuedIds)) return
     const pending = await hasQueuedVisitSignature(visitId).catch(() => false)
     let workspace: VisitWorkspace | null = null
+    let denied = false
     try {
       const response = await api.getVisitWorkspace(visitId)
       if (response?.success && response.data?.visit) workspace = toVisitWorkspace(response.data.visit)
-    } catch {}
-    if (currentVisitId.current !== visitId) return
+      else denied = true
+    } catch (error) { denied = !isTransportFailure(error as { status?: number; message?: string }) }
+    if (!current()) return
+    if (denied && read >= photoStateRef.current.serverRead) {
+      await clearVisitProgressCache(current, projectionRead).catch(() => {})
+      if (!current()) return
+      if (cachedVisitId.current === visitId) {
+        cachedVisitId.current = null
+        photoStateRef.current = EMPTY_VISIT_PHOTO_STATE
+        applyPhotos(read, visitId, { ...local, serverCount: null })
+        setRequirements(null)
+      }
+    }
     setQueued(pending)
     if (workspace && read > requirementsAppliedSeq.current) {
       requirementsAppliedSeq.current = read
       setRequirements(workspace.requirements)
     }
-    if (workspace) applyPhotos(read, visitId, { ...local, serverCount: workspace.photosCount })
+    if (workspace) {
+      cachedVisitId.current = null
+      applyPhotos(read, visitId, { ...local, serverCount: workspace.photosCount })
+      if (binding && read === photoStateRef.current.serverRead) {
+        await rememberVisitProgress(binding, visitId, workspace, { ...local, serverCount: workspace.photosCount },
+          () => current() && read === photoStateRef.current.serverRead, projectionRead).catch(() => {})
+      }
+    }
   }, [applyPhotos, visitId])
 
   const loadRef = useRef(load)

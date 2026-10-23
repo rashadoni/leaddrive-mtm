@@ -5,9 +5,9 @@ import unittest
 from xml.sax.saxutils import quoteattr
 
 from route_field_guard import (
-    FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form,
-    verify_apk, verify_auth_preserved, verify_fixture, verify_manager_case,
-    verify_observation_window, verify_owner_task_case, manager_shell,
+    FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form, fixture_auth_form,
+    verify_apk, verify_auth_preserved, verify_fixture, verify_fixture_case, verify_manager_case,
+    verify_observation_window, verify_owner_task_case, verify_zeytun_qa_case, manager_shell, owner_permissions,
 )
 
 
@@ -18,6 +18,25 @@ def xml_form(password="Password", package=PACKAGE, overlay=False):
     return ('<hierarchy>' + node("login-tab-signin") + node("login-email", "saved@example.invalid")
             + node("login-password", password, True) + node("login-submit")
             + (node("app-choice") if overlay else "") + '</hierarchy>')
+
+
+class OwnerPermissionTests(unittest.TestCase):
+    def test_a_secondary_profile_grant_never_admits_the_owner(self):
+        own = "User 0: installed=true\n  android.permission.CAMERA: granted=false, flags=[ USER_SET ]\n"
+        secondary = "User 95: installed=true\n  android.permission.CAMERA: granted=true, flags=[ USER_SET ]\n"
+        for text in (own + secondary, secondary + own):
+            with self.subTest(order=text[:7]):
+                result = owner_permissions(text)
+                self.assertFalse(result["CAMERA"]["granted"])
+                self.assertEqual(result["CAMERA"]["flags"], "[ USER_SET ]")
+
+    def test_a_missing_owner_profile_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "RF_PERMISSION_PROFILE_UNAVAILABLE"):
+            owner_permissions("User 95: installed=true\n  android.permission.CAMERA: granted=true")
+
+    def test_missing_runtime_grants_are_never_inferred_from_requested_permissions(self):
+        result = owner_permissions("requested permissions:\n  android.permission.CAMERA\nUser 0: installed=true\n")
+        self.assertTrue(all(not value["granted"] and value["flags"] is None for value in result.values()))
 
 
 class ApkAdmissionTests(unittest.TestCase):
@@ -41,6 +60,23 @@ class ApkAdmissionTests(unittest.TestCase):
 
 
 class AuthDraftTests(unittest.TestCase):
+    def fixture_form(self, host=FIXTURE_SLUG + ".leaddrivecrm.org", password="Password", package=PACKAGE):
+        return xml_form(password).replace('</hierarchy>',
+            f'<node package={quoteattr(package)} text={quoteattr(FIXTURE_SLUG)}/>'
+            f'<node package={quoteattr(package)} text={quoteattr(host)}/></hierarchy>')
+
+    def test_fixture_resume_requires_the_exact_owned_host(self):
+        self.assertTrue(fixture_auth_form(self.fixture_form(), "Password")["passwordBlank"])
+        for host in ("zeytun.leaddrivecrm.org", FIXTURE_SLUG + ".leaddrivecrm.org.other.invalid", ""):
+            with self.subTest(host=host), self.assertRaisesRegex(ValueError, "RF_FIXTURE_AUTH_HOST_REFUSED"):
+                fixture_auth_form(self.fixture_form(host), "Password")
+
+    def test_fixture_resume_never_accepts_a_password_draft_or_foreign_tenant_label(self):
+        for xml in (self.fixture_form(password="masked-secret"), self.fixture_form(password="••••"),
+                    self.fixture_form(package="com.android.systemui")):
+            with self.subTest(xml=xml), self.assertRaises(ValueError):
+                fixture_auth_form(xml, "Password")
+
     def test_empty_and_placeholder_passwords_are_admitted(self):
         for value in ("", "Password"):
             self.assertTrue(auth_form(xml_form(value), "Password")["passwordBlank"])
@@ -101,6 +137,63 @@ class FixtureAdmissionTests(unittest.TestCase):
         bootstrap["manifest"]["modules"]["routeField"]["enabled"] = False
         with self.assertRaisesRegex(ValueError, "^RF_ROUTE_MODULE_REFUSED$"):
             verify_fixture(manifest, bootstrap, "AGENT")
+
+
+class ZeytunQaAdmissionTests(unittest.TestCase):
+    def case(self):
+        org = "cmu9ih71e01vbkpd4fvgjhlba"
+        return {"version": 1, "marker": "rf-zeytun-qa-20261023-v1", "ownerAuthorized": True,
+                "sourceSha": "a" * 40, "targetTenant": "zeytun", "organizationId": org,
+                "agent": {"id": "test-agent", "name": "Test Agent", "email": "qa@example.invalid",
+                          "organizationId": org, "role": "AGENT"},
+                "nativeProfileBound": True, "ordinaryManagerWebBound": True,
+                "createdViaWebsite": True, "browserRunId": "b" * 36,
+                "customerName": "RF-E2E-ZEY-20261023 QA GPS",
+                "customer": {"id": "test-place", "name": "RF-E2E-ZEY-20261023 QA GPS",
+                             "organizationId": org, "assignedAgentIds": ["test-agent"]}}
+
+    def test_website_qa_customer_and_existing_agent_context_are_admitted(self):
+        verify_zeytun_qa_case(self.case(), "a" * 40)
+
+    def api_case(self):
+        case = self.case()
+        case["createdViaWebsite"] = False
+        case.pop("browserRunId")
+        case["creation"] = {"kind": "ordinary-manager-api", "method": "POST",
+                            "path": "/api/v1/mtm/customers", "customerId": "test-place",
+                            "organizationId": case["organizationId"],
+                            "managerUserId": "test-manager", "responseSha256": "c" * 64}
+        return case
+
+    def test_api_setup_is_admitted_without_claiming_website_creation(self):
+        verify_zeytun_qa_case(self.api_case(), "a" * 40)
+
+    def test_api_receipt_for_another_place_tenant_or_endpoint_is_refused(self):
+        for key, value in (("customerId", "other"), ("organizationId", FIXTURE_ORG),
+                           ("path", "/api/v1/mtm/visits"), ("method", "GET"),
+                           ("managerUserId", ""), ("responseSha256", "")):
+            case = self.api_case(); case["creation"][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                verify_zeytun_qa_case(case, "a" * 40)
+
+    def test_other_tenants_roles_and_unverified_native_sessions_are_refused(self):
+        for key, value in (("organizationId", FIXTURE_ORG), ("targetTenant", "other"),
+                           ("nativeProfileBound", False), ("ordinaryManagerWebBound", False)):
+            case = self.case(); case[key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                verify_zeytun_qa_case(case, "a" * 40)
+        case = self.case(); case["agent"]["role"] = "MANAGER"
+        with self.assertRaises(ValueError): verify_zeytun_qa_case(case, "a" * 40)
+
+    def test_real_customers_outside_assignments_and_credential_input_are_refused(self):
+        for change in ("name", "assignment", "provenance", "credentials"):
+            case = self.case()
+            if change == "name": case["customer"]["name"] = "Existing real customer"
+            if change == "assignment": case["customer"]["assignedAgentIds"] = ["other-agent"]
+            if change == "provenance": case["createdViaWebsite"] = False
+            if change == "credentials": case["login"] = {"email": "qa@example.invalid"}
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify_zeytun_qa_case(case, "a" * 40)
 
 
 class SharedPhoneTests(unittest.TestCase):
@@ -172,6 +265,38 @@ class ManagerSwitchTests(unittest.TestCase):
                               '<node package="com.android.permissioncontroller"/></hierarchy>')):
             with self.assertRaises(ValueError):
                 manager_shell(xml)
+
+
+class FictionalNativeCaseTests(unittest.TestCase):
+    def case(self):
+        manifest, bootstrap = FixtureAdmissionTests().fixture()
+        return {"version": 1, "marker": "rf-native-fictional-v1", "ownerAuthorized": True,
+                "sourceSha": "a" * 40, "preparation": {"status": "PASS", "tenant": FIXTURE_SLUG,
+                "artifactSha": "b" * 40, "users": 1, "agents": 3, "customers": 3},
+                "manifest": manifest, "bootstrap": bootstrap,
+                "login": {"email": "agent@route-field-acceptance.example.invalid", "password": "p" * 64},
+                "expectedName": "RF QA fictional field employee", "companyName": "Route Field Native Acceptance (fictional)"}
+
+    def test_generated_fixture_credentials_cannot_be_replaced_with_customer_access(self):
+        case = self.case()
+        verify_fixture_case(case, "a" * 40)
+        for patch in ({"ownerAuthorized": False}, {"sourceSha": "c" * 40},
+                      {"login": {"email": "actual@example.invalid", "password": "p" * 64}},
+                      {"login": dict(case["login"], password=None)},
+                      {"expectedName": "Actual employee"}):
+            with self.subTest(patch=patch), self.assertRaises(ValueError):
+                verify_fixture_case(dict(case, **patch), "a" * 40)
+
+    def test_operational_success_does_not_replace_the_fresh_server_identity_and_grant(self):
+        case = self.case()
+        for change in ("preparation", "principal", "capability", "tenant"):
+            changed = deepcopy(case)
+            if change == "preparation": changed["preparation"]["status"] = "FAIL"
+            if change == "principal": changed["bootstrap"]["principal"]["id"] = "previous-agent"
+            if change == "capability": changed["bootstrap"]["capabilities"] = []
+            if change == "tenant": changed["bootstrap"]["tenant"]["id"] = "mtm-attendance-phone-v1"
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify_fixture_case(changed, "a" * 40)
 
 
 if __name__ == "__main__":

@@ -26,8 +26,10 @@ export type MobileCapability =
 export type NavGroup = "field" | "team" | "none"
 
 /**
- * Route Field never treats a role guess or a stale cached bootstrap as an
- * entitlement. `legacy` is deliberately narrow: it is only for a server that
+ * Route Field never treats a role guess or an ordinary cached bootstrap as an
+ * entitlement. Offline admission requires a separate bounded server grant
+ * bound to this installation/login; an unconfirmed `offline` stays closed.
+ * `legacy` is deliberately narrow: it is only for a server that
  * predates the additive manifest but explicitly exposed the old routes module
  * and field capability together.
  */
@@ -40,7 +42,7 @@ export type NavGroup = "field" | "team" | "none"
  * invites them to sign out mid-shift looking for a fix, and signing out is
  * the one thing that actually loses work.
  */
-export type RouteFieldAccess = "pending" | "enabled" | "legacy" | "disabled" | "unavailable" | "offline"
+export type RouteFieldAccess = "pending" | "enabled" | "legacy" | "disabled" | "unavailable" | "offline" | "offline-enabled"
 
 /**
  * The client refuses before it dials: `baseUrl` is empty because `api.init()`
@@ -318,8 +320,8 @@ function routeFieldPrincipalIsEligible(
   return manifest.principal.role === "AGENT" && capabilities.includes("FIELD_EXECUTE")
 }
 
-export function hasRouteFieldAccess(access: RouteFieldAccess): access is "enabled" | "legacy" {
-  return access === "enabled" || access === "legacy"
+export function hasRouteFieldAccess(access: RouteFieldAccess): access is "enabled" | "legacy" | "offline-enabled" {
+  return access === "enabled" || access === "legacy" || access === "offline-enabled"
 }
 
 /**
