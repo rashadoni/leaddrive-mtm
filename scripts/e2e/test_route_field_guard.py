@@ -5,7 +5,7 @@ import unittest
 from xml.sax.saxutils import quoteattr
 
 from route_field_guard import (
-    FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form,
+    FIXTURE_MARKER, FIXTURE_ORG, FIXTURE_SLUG, PACKAGE, agent_shell, auth_form, fixture_auth_form,
     verify_apk, verify_auth_preserved, verify_fixture, verify_fixture_case, verify_manager_case,
     verify_observation_window, verify_owner_task_case, manager_shell, owner_permissions,
 )
@@ -60,6 +60,23 @@ class ApkAdmissionTests(unittest.TestCase):
 
 
 class AuthDraftTests(unittest.TestCase):
+    def fixture_form(self, host=FIXTURE_SLUG + ".leaddrivecrm.org", password="Password", package=PACKAGE):
+        return xml_form(password).replace('</hierarchy>',
+            f'<node package={quoteattr(package)} text={quoteattr(FIXTURE_SLUG)}/>'
+            f'<node package={quoteattr(package)} text={quoteattr(host)}/></hierarchy>')
+
+    def test_fixture_resume_requires_the_exact_owned_host(self):
+        self.assertTrue(fixture_auth_form(self.fixture_form(), "Password")["passwordBlank"])
+        for host in ("zeytun.leaddrivecrm.org", FIXTURE_SLUG + ".leaddrivecrm.org.other.invalid", ""):
+            with self.subTest(host=host), self.assertRaisesRegex(ValueError, "RF_FIXTURE_AUTH_HOST_REFUSED"):
+                fixture_auth_form(self.fixture_form(host), "Password")
+
+    def test_fixture_resume_never_accepts_a_password_draft_or_foreign_tenant_label(self):
+        for xml in (self.fixture_form(password="masked-secret"), self.fixture_form(password="••••"),
+                    self.fixture_form(package="com.android.systemui")):
+            with self.subTest(xml=xml), self.assertRaises(ValueError):
+                fixture_auth_form(xml, "Password")
+
     def test_empty_and_placeholder_passwords_are_admitted(self):
         for value in ("", "Password"):
             self.assertTrue(auth_form(xml_form(value), "Password")["passwordBlank"])

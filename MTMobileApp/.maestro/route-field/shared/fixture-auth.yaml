@@ -1,0 +1,53 @@
+appId: com.mtmobileapp
+name: Authenticate only the exact fictional company and verify its profile and task isolation
+---
+- tapOn:
+    id: login-tab-signin
+- assertVisible: 'route-field-acceptance\.leaddrivecrm\.org'
+- tapOn:
+    id: login-email
+- eraseText
+- inputText: ${RF_FIXTURE_EMAIL}
+- tapOn:
+    id: login-password
+- eraseText
+- inputText: ${RF_FIXTURE_PASSWORD}
+- scrollUntilVisible:
+    element:
+      id: login-submit
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: login-submit
+- extendedWaitUntil:
+    visible:
+      id: guide-spot-tab.Today
+    timeout: 45000
+- runFlow:
+    when:
+      visible:
+        id: guide-skip
+    commands:
+      - tapOn:
+          id: guide-skip
+- tapOn:
+    id: guide-spot-tab.More
+- scrollUntilVisible:
+    element:
+      id: more-action-Profile
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Profile
+- assertVisible: ${output.fixture.name}
+- assertVisible: ${output.fixture.email}
+- assertNotVisible: ${output.fixture.priorName}
+- assertNotVisible: ${output.fixture.priorEmail}
+- tapOn:
+    id: guide-spot-tab.Tasks
+- extendedWaitUntil:
+    visible: RF QA fictional visit checklist
+    timeout: 45000
+- assertNotVisible: ${RF_PRIOR_TASK_TITLE}
+- tapOn:
+    id: guide-spot-tab.Today

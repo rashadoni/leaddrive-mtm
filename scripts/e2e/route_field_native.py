@@ -18,7 +18,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-from route_field_guard import (agent_shell, auth_form, manager_shell, owner_permissions, require, verify_apk,
+from route_field_guard import (agent_shell, auth_form, fixture_auth_form, manager_shell, owner_permissions, require, verify_apk,
                                verify_auth_preserved, verify_manager_case,
                                verify_fixture_case, verify_observation_window, verify_owner_task_case)
 
@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
@@ -53,7 +53,8 @@ def main():
     manager_flow = args.flow in ("manager-signin", "manager-tabs")
     manager_switch = args.flow == "manager-signin"
     fixture_flow = args.flow.startswith("fixture-")
-    fixture_switch = args.flow == "fixture-signin"
+    fixture_switch = args.flow in ("fixture-signin", "fixture-signin-resume")
+    fixture_resume = args.flow == "fixture-signin-resume"
     flow_group = "fixtures" if fixture_flow else "journeys" if task_flow or manager_switch else "smoke"
     flow_name = args.flow.removeprefix("fixture-") if fixture_flow else args.flow
     report = {"status": "FAIL", "flow": flow_group + "/" + flow_name, "phase": "preflight"}
@@ -128,7 +129,9 @@ def main():
                 require(len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1], "RF_HOME_TAB_REFUSED")
                 adb("shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2))
                 before_xml = ui()
-            if fixture_switch:
+            if fixture_resume:
+                before = fixture_auth_form(before_xml, placeholder)
+            elif fixture_switch:
                 before = manager_shell(before_xml)
             elif manager_switch:
                 before = agent_shell(before_xml)
@@ -154,6 +157,8 @@ def main():
                 dependencies.append(flow.parent.parent / "shared/manager-labels.js")
             if fixture_flow:
                 dependencies.append(flow.parent.parent / "shared/fixture-labels.js")
+                if fixture_switch:
+                    dependencies.append(flow.parent.parent / "shared/fixture-auth.yaml")
                 if args.flow.startswith("fixture-visit-"):
                     dependencies.append(flow.parent.parent / "shared/open-fixture-visits.yaml")
             report["sourceFilesSha256"] = {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()

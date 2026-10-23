@@ -61,6 +61,16 @@ def verify_auth_preserved(before, after):
     require(before == after, "RF_AUTH_DRAFT_CHANGED")
 
 
+def fixture_auth_form(xml, password_placeholder):
+    """Resume only a blank-password form bound to the owned fixture host."""
+    result = auth_form(xml, password_placeholder)
+    own_texts = {node.get("text", "") for node in ET.fromstring(xml).iter("node")
+                 if node.get("package") == PACKAGE}
+    require(FIXTURE_SLUG in own_texts and FIXTURE_SLUG + ".leaddrivecrm.org" in own_texts,
+            "RF_FIXTURE_AUTH_HOST_REFUSED")
+    return result
+
+
 def agent_shell(xml, home_required=True):
     root = ET.fromstring(xml)
     require(all(node.get("package", "") in ("", PACKAGE, "com.android.systemui")
