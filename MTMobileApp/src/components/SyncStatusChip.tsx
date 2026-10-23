@@ -118,11 +118,12 @@ export default function SyncStatusChip({ inverse = false }: Props) {
   const [customerNames, setCustomerNames] = useState<Record<string, string>>({})
   const routeFieldAccess = useBootstrapStore((state) => state.routeFieldAccess)
   const { phase, pending, mediaPending, lastSyncedAt, lastError, pipelines, online } = useSyncStatusStore()
+  const effectiveOnline = routeFieldAccess === "offline-enabled" ? false : online
   const syncAllowed = hasRouteFieldAccess(routeFieldAccess)
   // T8: лист знал про офлайн и молчал, а кнопка оставалась живой. Нажать
   // живую кнопку и не получить ничего — так учатся считать приложение
   // сломанным. Причина берётся из связи и доступа, а не из одного флага.
-  const centre = syncCentreState({ online, hasRouteFieldAccess: syncAllowed, busy: busyId !== null })
+  const centre = syncCentreState({ online: effectiveOnline, hasRouteFieldAccess: syncAllowed, busy: busyId !== null })
 
   const reload = useCallback(async () => {
     const scope = getOfflineScope()
@@ -153,16 +154,16 @@ export default function SyncStatusChip({ inverse = false }: Props) {
 
   const outstanding = pending + mediaPending
   const label = useMemo(() => {
-    const chip = syncChipLabel({ phase, online, conflicts: conflicts.length, outstanding })
+    const chip = syncChipLabel({ phase, online: effectiveOnline, conflicts: conflicts.length, outstanding })
     return "count" in chip ? t(chip.key, { count: chip.count }) : t(chip.key)
-  }, [conflicts.length, online, outstanding, phase, t])
+  }, [conflicts.length, effectiveOnline, outstanding, phase, t])
 
   const syncNow = async () => {
     if (!syncAllowed) {
       setActionError(t("routeFieldAccess.syncBlocked"))
       return
     }
-    if (online === false) {
+    if (effectiveOnline === false) {
       // Explain instead of spinning: nothing can be sent without a network.
       setActionError(t("syncCenter.offlineCannotSync"))
       return
@@ -247,7 +248,7 @@ export default function SyncStatusChip({ inverse = false }: Props) {
         <Text style={[styles.chipIcon, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictIcon]}>
           {phase === "syncing" ? "↻" : conflicts.length > 0 ? "!" : phase === "offline" ? "○" : "✓"}
         </Text>
-        <Text style={[styles.chipLabel, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictLabel]} numberOfLines={1}>{label}</Text>
+        <Text style={[styles.chipLabel, inverse && styles.inverseText, conflicts.length > 0 && styles.conflictLabel]} numberOfLines={2}>{label}</Text>
       </Pressable>
 
       <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>

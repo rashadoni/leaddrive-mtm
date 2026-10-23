@@ -3,7 +3,13 @@ import { api } from "../services/api"
 import { getOfflineScope } from "../services/offline-scope"
 import { forgetAttendanceOffline, rememberAttendanceOnline, restoreAttendanceOffline } from '../services/attendance-offline'
 import { useSyncStatusStore } from './sync-status'
+import { clearOfflineBootstrap, readOfflineBootstrap, rememberOfflineBootstrap } from "../services/bootstrap-offline-cache"
 let bootstrapGeneration = 0
+let offlineExpiryTimer: ReturnType<typeof setTimeout> | null = null
+function stopOfflineExpiry() {
+  if (offlineExpiryTimer) clearTimeout(offlineExpiryTimer)
+  offlineExpiryTimer = null
+}
 import {
   toBootstrap,
   type BootstrapData,
@@ -19,9 +25,10 @@ interface BootstrapState {
   /** Server-authoritative product admission for this Route Field APK. */
   routeFieldAccess: RouteFieldAccess
   loading: boolean
+  offlineValidUntil: number | null
   /**
-   * Load /mobile/bootstrap. Never throws; a failure fails closed and does not
-   * infer Route Field access from the locally cached role.
+   * Load /mobile/bootstrap. Never throws; transport failures may retain only
+   * an explicit bounded server offline grant, never a locally cached role.
    */
   fetchBootstrap: () => Promise<RouteFieldAccess>
   clear: () => void
@@ -47,30 +54,49 @@ async function bootstrapWithStoredServer() {
   }
 }
 
-export const useBootstrapStore = create<BootstrapState>((set) => ({
+async function offlineBinding(scope: string | null) {
+  if (!scope) return null
+  try {
+    const binding = await api.getOfflineBootstrapBinding?.()
+    return binding ? { ...binding, scope } : null
+  } catch { return null }
+}
+
+export const useBootstrapStore = create<BootstrapState>((set, get) => ({
   data: null,
   capabilities: [],
   routeFieldAccess: "pending",
   loading: false,
+  offlineValidUntil: null,
 
   fetchBootstrap: async () => {
     const generation = ++bootstrapGeneration, scope = getOfflineScope()
+    const requestedAt = Date.now()
     const current = () => generation === bootstrapGeneration && scope === getOfflineScope()
     set({ loading: true })
     try {
-      if (useSyncStatusStore.getState().online === false) throw new Error('NETWORK_OFFLINE')
+      // Keep Time's immediate bounded offline admission. Field agents still
+      // probe the server, so a stale connectivity hint cannot pin field access.
+      if (api.agentRole !== "AGENT" && useSyncStatusStore.getState().online === false) throw new Error("NETWORK_OFFLINE")
       const res = await bootstrapWithStoredServer()
       if (!current()) return "unavailable"
       if (res?.success && res.data) {
         const data = toBootstrap(res.data)
+        const binding = await offlineBinding(scope)
+        if (!current()) return "unavailable"
+        stopOfflineExpiry()
         set({
           data,
           capabilities: data.capabilities,
           routeFieldAccess: data.routeFieldAccess,
           loading: false,
+          offlineValidUntil: null,
         })
-        await rememberAttendanceOnline(data, scope, current)
-        if (!current()) return 'unavailable'
+        await rememberAttendanceOnline(data, scope, current).catch(() => {})
+        if (!current()) return "unavailable"
+        // Each product validates and stores only its own bounded entitlement.
+        await rememberOfflineBootstrap(data, res.data.offlineGrant, binding, current, requestedAt).catch(() => {})
+        if (!current()) return "unavailable"
         // Retired HRM routes remain closed. New own attendance requests
         // require their explicit permission and use a separate API. The app
         // reconciles the server-owned workday as its own minimal Route
@@ -78,22 +104,53 @@ export const useBootstrapStore = create<BootstrapState>((set) => ({
         // and can drain only through the server-confirmed Route Field path.
         return data.routeFieldAccess
       } else {
-        set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable" })
+        stopOfflineExpiry()
+        set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable", offlineValidUntil: null })
         await forgetAttendanceOffline().catch(() => {})
+        await clearOfflineBootstrap().catch(() => {})
         return "unavailable"
       }
     } catch (error) {
       if (!current()) return "unavailable"
       // A request that never got an answer says nothing about entitlement.
       const access = isTransportFailure(error as { status?: number; message?: string }) ? "offline" : "unavailable"
-      const data = access === 'offline' ? await restoreAttendanceOffline(scope, current) : null
-      if (!current()) return 'unavailable'
-      if (access !== 'offline') await forgetAttendanceOffline().catch(() => {})
-      if (!current()) return 'unavailable'
-      set({ data, capabilities: [], loading: false, routeFieldAccess: access })
+      const attendance = access === "offline" ? await restoreAttendanceOffline(scope, current) : null
+      if (!current()) return "unavailable"
+      if (attendance) {
+        stopOfflineExpiry()
+        set({ data: attendance, capabilities: [], loading: false, routeFieldAccess: "offline", offlineValidUntil: null })
+        return "offline"
+      }
+      if (access !== "offline") await forgetAttendanceOffline().catch(() => {})
+      if (!current()) return "unavailable"
+      if (access === "offline") {
+        const cached = await readOfflineBootstrap(await offlineBinding(scope), current).catch(() => null)
+        if (!current()) return "unavailable"
+        if (cached) {
+          stopOfflineExpiry()
+          set({ data: cached.data, capabilities: cached.data.capabilities, loading: false,
+            routeFieldAccess: "offline-enabled", offlineValidUntil: cached.validUntil })
+          offlineExpiryTimer = setTimeout(() => {
+            if (scope === getOfflineScope() && get().offlineValidUntil === cached.validUntil) {
+              set({ data: null, capabilities: [], routeFieldAccess: "offline", loading: false, offlineValidUntil: null })
+              void clearOfflineBootstrap().catch(() => {})
+            }
+          }, Math.max(0, cached.validUntil - Date.now()))
+          return "offline-enabled"
+        }
+      }
+      stopOfflineExpiry()
+      set({ data: null, capabilities: [], loading: false, routeFieldAccess: access, offlineValidUntil: null })
+      await clearOfflineBootstrap().catch(() => {})
       return access
     }
   },
 
-  clear: () => { bootstrapGeneration += 1; void forgetAttendanceOffline().catch(() => {}); set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false }) },
+  clear: () => {
+    bootstrapGeneration += 1
+    stopOfflineExpiry()
+    set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false, offlineValidUntil: null })
+    void forgetAttendanceOffline().catch(() => {})
+    void clearOfflineBootstrap().catch(() => {})
+  },
 }))

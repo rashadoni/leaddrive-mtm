@@ -1,6 +1,6 @@
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 jest.mock('../../src/services/api', () => ({ api: {
-  getAttendanceOfflineContext: jest.fn(), getAttendanceInstallation: jest.fn(), getAttendanceLocationConsent: jest.fn(), getBootstrap: jest.fn(),
+  agentRole: 'EMPLOYEE', getAttendanceOfflineContext: jest.fn(), getAttendanceInstallation: jest.fn(), getAttendanceLocationConsent: jest.fn(), getBootstrap: jest.fn(), getOfflineBootstrapBinding: jest.fn(),
 } }))
 jest.mock('../../src/services/field-device-id', () => ({ getFieldDeviceId: jest.fn() }))
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -13,6 +13,7 @@ import { setOfflineScope } from '../../src/services/offline-scope'
 import { officeAgent, officeBootstrap, officeBootstrapPayload } from '../../test-support/office-attendance'
 import { useBootstrapStore } from '../../src/store/bootstrap'
 import { useSyncStatusStore } from '../../src/store/sync-status'
+import { OFFLINE_BOOTSTRAP_KEY } from '../../src/services/bootstrap-offline-cache'
 const scope = `${officeAgent.organizationId}:${officeAgent.id}`
 const current = () => true
 beforeEach(async () => {
@@ -86,4 +87,34 @@ it('cannot publish a cached admission after the account changes during storage r
   const binding = api.getAttendanceOfflineContext as jest.Mock
   binding.mockImplementationOnce(async () => { setOfflineScope('other', 'other'); return { server: 'fixture.invalid', session: 'login-one' } })
   expect(await restoreAttendanceOffline(scope, current)).toBeNull()
+})
+
+it('restores office capture immediately offline without granting field execution', async () => {
+  ;(api.getBootstrap as jest.Mock).mockResolvedValueOnce({ success: true, data: officeBootstrapPayload() })
+  await useBootstrapStore.getState().fetchBootstrap()
+  useSyncStatusStore.setState({ online: false })
+  ;(api.getBootstrap as jest.Mock).mockClear()
+  expect(await useBootstrapStore.getState().fetchBootstrap()).toBe('offline')
+  expect(api.getBootstrap).not.toHaveBeenCalled()
+  expect(hasOfficeAttendanceAccess(useBootstrapStore.getState().data, officeAgent)).toBe(true)
+  expect(useBootstrapStore.getState().capabilities).toEqual([])
+  expect(useBootstrapStore.getState().offlineValidUntil).toBeNull()
+})
+
+it('does not let a seven-day field grant extend an employee beyond the office day', async () => {
+  const now = Date.now(), deviceId = 'rf-office-boundary-device-0001'
+  ;(getFieldDeviceId as jest.Mock).mockResolvedValue(deviceId)
+  ;(api.getOfflineBootstrapBinding as jest.Mock).mockResolvedValue({ server: 'fixture.invalid', sessionId: 'field-login', deviceId })
+  const data = { ...officeBootstrapPayload(), offlineGrant: {
+    version: 1, kind: 'LOCAL_FIELD_DRAFTS', tenantId: officeAgent.organizationId, principalId: officeAgent.id, deviceId,
+    issuedAt: new Date(now).toISOString(), expiresAt: new Date(now + 7 * ATTENDANCE_OFFLINE_WINDOW_MS).toISOString(),
+  } }
+  ;(api.getBootstrap as jest.Mock).mockResolvedValueOnce({ success: true, data })
+  await useBootstrapStore.getState().fetchBootstrap()
+  expect(await AsyncStorage.getItem(OFFLINE_BOOTSTRAP_KEY)).toBeNull()
+  jest.setSystemTime(now + ATTENDANCE_OFFLINE_WINDOW_MS)
+  useSyncStatusStore.setState({ online: false })
+  expect(await useBootstrapStore.getState().fetchBootstrap()).toBe('offline')
+  expect(useBootstrapStore.getState().data).toBeNull()
+  expect(hasOfficeAttendanceAccess(useBootstrapStore.getState().data, officeAgent)).toBe(false)
 })

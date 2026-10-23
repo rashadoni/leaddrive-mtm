@@ -1,0 +1,4 @@
+flows:
+  - smoke/auth-entry.yaml
+  - smoke/employee-tabs.yaml
+  - smoke/manager-tabs.yaml

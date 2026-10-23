@@ -1,0 +1,45 @@
+appId: com.mtmobileapp
+name: A fictional place without coordinates cannot create a visit
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- tapOn:
+    id: guide-spot-tab.More
+- runFlow:
+    when:
+      visible: ${output.copy.profileBack}
+    commands:
+      - tapOn: ${output.copy.profileBack}
+- scrollUntilVisible:
+    element:
+      id: more-action-Visits
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Visits
+- tapOn: ${output.fixture.visit.search}
+- inputText: RF QA fictional place without coordinates
+- scrollUntilVisible:
+    element:
+      text: RF QA fictional place without coordinates
+    direction: DOWN
+    timeout: 15000
+- tapOn: RF QA fictional place without coordinates
+- scrollUntilVisible:
+    element:
+      text: ${output.fixture.visit.start}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.fixture.visit.start}
+- tapOn: ${output.fixture.checkIn}
+- assertVisible: ${output.fixture.noCoordinates}
+# Cancel the offer; neither report-to-manager nor location submission is used.
+- tapOn:
+    id: app-choice-button-0
+- extendedWaitUntil:
+    notVisible: ${output.fixture.noCoordinates}
+    timeout: 5000
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

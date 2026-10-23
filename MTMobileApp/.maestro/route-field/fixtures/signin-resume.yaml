@@ -1,0 +1,8 @@
+appId: com.mtmobileapp
+name: Resume only the verified blank-password fictional company form
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- assertVisible: 'route-field-acceptance\.leaddrivecrm\.org'
+- runFlow: ../shared/fixture-auth.yaml

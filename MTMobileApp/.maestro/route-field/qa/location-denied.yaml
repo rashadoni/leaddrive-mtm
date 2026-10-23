@@ -1,0 +1,44 @@
+appId: com.mtmobileapp
+name: Refusing location keeps the completed QA visit unchanged
+---
+# Admission requires both RF owner0 location grants denied, a new process and
+# an independently armed recovery. No permission acceptance or visit is sent.
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+- runScript: ../shared/location-denial-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- tapOn: ${output.qa.visit.search}
+- inputText: ${RF_QA_CUSTOMER_NAME}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: ${RF_QA_CUSTOMER_NAME}
+      below: ${output.qa.visit.results}
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    text: ${RF_QA_CUSTOMER_NAME}
+    below: ${output.qa.visit.results}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.start}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.qa.visit.start}
+- tapOn: ${output.qa.checkIn}
+- assertVisible: ${output.denial.title}
+- tapOn: ${output.denial.decline}
+- extendedWaitUntil:
+    notVisible: ${output.denial.title}
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: ${output.denial.issue}
+    direction: DOWN
+    timeout: 15000
+- assertVisible: ${output.denial.body}
+- assertNotVisible: ${output.qa.visit.active}
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

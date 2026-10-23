@@ -1,0 +1,1168 @@
+{
+  "version": 1,
+  "date": "2026-10-23",
+  "package": "com.mtmobileapp",
+  "versionCode": 1730,
+  "versionName": "3.11.51",
+  "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+  "publishedSourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+  "device": "physical Samsung Galaxy S23 Ultra / Android16 / owner0",
+  "maestroVersion": "2.11.0",
+  "journeys": [
+    {
+      "status": "PASS",
+      "flow": "journeys/task-start",
+      "startedAt": "2026-10-23T09:30:17.174489+00:00",
+      "finishedAt": "2026-10-23T09:32:01.056031+00:00",
+      "flowSha256": "67e91738922bcfe345481bff03c996d8e90da3cf7a73952998bed36ec92bf148",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "tests": [
+        {
+          "name": "Agent receives and starts the exact test task created on the CRM website",
+          "seconds": "56.226",
+          "status": "PASS"
+        }
+      ],
+      "attempt": "task-start-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "journeys/task-complete",
+      "startedAt": "2026-10-23T09:44:30.884401+00:00",
+      "finishedAt": "2026-10-23T09:46:29.448819+00:00",
+      "flowSha256": "6f94ec23010c2f7a6906bb0df056c9ed09c5c3034caa90272834bd2a7852675d",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "tests": [
+        {
+          "name": "Agent completes the exact CRM test task with a traceable result",
+          "seconds": "74.275",
+          "status": "PASS"
+        }
+      ],
+      "attempt": "task-complete-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "smoke/employee-tabs",
+      "startedAt": "2026-10-23T09:50:05.776154+00:00",
+      "finishedAt": "2026-10-23T09:52:17.226736+00:00",
+      "flowSha256": "9f4e198c18e92df12bf74a1fc0b44af1fda25ac3b633dffc4ba500177114e2a5",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "tests": [
+        {
+          "name": "Field employee reads the five tabs and the route month without starting work",
+          "seconds": "89.831",
+          "status": "PASS"
+        }
+      ],
+      "attempt": "employee-tabs-v5"
+    },
+    {
+      "status": "PASS",
+      "flow": "journeys/manager-signin",
+      "startedAt": "2026-10-23T09:55:43.626455+00:00",
+      "finishedAt": "2026-10-23T09:58:48.182171+00:00",
+      "flowSha256": "7e6cb13262f921b7a2c809dc5a4106c75907dd0fe6c237842116f56cbca8ec1a",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "3bf621749ccd1c75460a71d3cf40893797fb3afd674eac124eca6389c2fafa1f",
+        "scripts/e2e/route_field_guard.py": "52e017c2ba20440a01a8f26d801fac2acd1e3ab7add7697c2c7660d4069ca836",
+        "MTMobileApp/.maestro/route-field/journeys/manager-signin.yaml": "7e6cb13262f921b7a2c809dc5a4106c75907dd0fe6c237842116f56cbca8ec1a",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/manager-labels.js": "19c0f0be9362a18de2dd9679da841f88a62ca102569d8cf009d5b88c55d20eab"
+      },
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "138.4",
+          "status": "PASS"
+        }
+      ],
+      "attempt": "manager-signin-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "smoke/manager-tabs",
+      "startedAt": "2026-10-23T10:07:36.287633+00:00",
+      "finishedAt": "2026-10-23T10:09:55.867147+00:00",
+      "flowSha256": "0e877878a942259013e5b51a07950dcf3771a2e2105b613851805b625c5b332a",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "8e864fa6c1cf692e79a5d426ae3f859c645e92aa8179c96ebf2e28ab1ae0b72d",
+        "scripts/e2e/route_field_guard.py": "a0e2682f7de93350668bb7fce8004b72d9f38048a10a7b7d92923cce01f0182a",
+        "MTMobileApp/.maestro/route-field/smoke/manager-tabs.yaml": "0e877878a942259013e5b51a07950dcf3771a2e2105b613851805b625c5b332a",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/manager-labels.js": "b664d8d3f96d9a9afc91f3a6d53a157961dc19cedfe547e3f7072521ce5b8413"
+      },
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "98.741",
+          "status": "PASS"
+        }
+      ],
+      "attempt": "manager-tabs-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "qa/missing-coordinates",
+      "phase": "complete",
+      "startedAt": "2026-10-23T15:47:03.422802+00:00",
+      "package": "com.mtmobileapp",
+      "versionCode": 1730,
+      "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+      "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+      "flowSha256": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "20cebbf26d9b2ca8919d2a16a485b0a105020c4dca48108ff4ea0fb694d94737",
+        "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+        "MTMobileApp/.maestro/route-field/qa/missing-coordinates.yaml": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "1a9056f5167fe43d56cc8d33c9cfb4b1850fe89c443fd8396cbc0f71aeb91a50"
+      },
+      "exitCode": 0,
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "82.689",
+          "status": "PASS"
+        }
+      ],
+      "zeytunQaAgentShellVerified": true,
+      "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+      "finishedAt": "2026-10-23T15:49:24.609874+00:00",
+      "attempt": "zeytun-missing-coordinates-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "qa/location-request",
+      "phase": "complete",
+      "startedAt": "2026-10-23T15:56:27.613599+00:00",
+      "package": "com.mtmobileapp",
+      "versionCode": 1730,
+      "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+      "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+      "ownerPermissionsBefore": {
+        "ACCESS_FINE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]"
+        },
+        "ACCESS_COARSE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        },
+        "CAMERA": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        }
+      },
+      "flowSha256": "102d6731ab87d4e0c4f4fe601a4d26e1c6befda374909a956edf1a0b6dab2f23",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "20cebbf26d9b2ca8919d2a16a485b0a105020c4dca48108ff4ea0fb694d94737",
+        "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+        "MTMobileApp/.maestro/route-field/qa/location-request.yaml": "102d6731ab87d4e0c4f4fe601a4d26e1c6befda374909a956edf1a0b6dab2f23",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "1a9056f5167fe43d56cc8d33c9cfb4b1850fe89c443fd8396cbc0f71aeb91a50"
+      },
+      "exitCode": 0,
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "133.31",
+          "status": "PASS"
+        }
+      ],
+      "zeytunQaAgentShellVerified": true,
+      "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+      "finishedAt": "2026-10-23T15:59:42.649899+00:00",
+      "attempt": "zeytun-location-request-v2"
+    },
+    {
+      "status": "PASS",
+      "flow": "qa/visit-photo",
+      "phase": "complete",
+      "startedAt": "2026-10-23T16:12:34.089725+00:00",
+      "package": "com.mtmobileapp",
+      "versionCode": 1730,
+      "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+      "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+      "ownerPermissionsBefore": {
+        "ACCESS_FINE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]"
+        },
+        "ACCESS_COARSE_LOCATION": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        },
+        "CAMERA": {
+          "granted": true,
+          "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+        }
+      },
+      "flowSha256": "aedd7c6b649d00f7ad2091406b33b889d94267f16991da1226cc80a097462b2c",
+      "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+      "sourceFilesSha256": {
+        "scripts/e2e/route_field_native.py": "40d36045bae6e49190911f6e03ae689c82b360b611f849871cef45631d028835",
+        "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+        "MTMobileApp/.maestro/route-field/qa/visit-photo.yaml": "aedd7c6b649d00f7ad2091406b33b889d94267f16991da1226cc80a097462b2c",
+        "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "5903f3449d9e62bf3e22f27cb82f0d349498c72d721bf7f3f2f64cf6ab03a880",
+        "MTMobileApp/.maestro/route-field/shared/open-fixture-visits.yaml": "3ddfb36fb73be8224670c76ce077a94636e806ff8f3e8b2ade513db98a904c1b"
+      },
+      "exitCode": 0,
+      "tests": [
+        {
+          "name": "flow-private",
+          "seconds": "233.923",
+          "status": "PASS"
+        }
+      ],
+      "zeytunQaAgentShellVerified": true,
+      "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+      "finishedAt": "2026-10-23T16:17:48.758708+00:00",
+      "attempt": "zeytun-visit-photo-v1"
+    }
+  ],
+  "website": {
+    "creationRunId": "f2847d66-9815-40ff-bb3e-ce93646c768a",
+    "confirmationRunId": "fc76e123-e5c8-4b92-8e63-272a4cb6c10f",
+    "status": "PASS",
+    "visibleStatus": "COMPLETED",
+    "visibleReservedResultMatches": true,
+    "managerReviewRunId": "757ce7cf-ca06-4713-a346-59d0e3078fdc",
+    "reviewStatus": "ACCEPTED"
+  },
+  "serverReconciliation": {
+    "testTasks": 1,
+    "nonTestTasks": 0,
+    "nonTestTaskIdsUnchanged": true,
+    "nonTestTaskFactsUnchanged": true,
+    "status": "COMPLETED",
+    "version": 4,
+    "progress": 100,
+    "createdEvents": 1,
+    "startedEvents": 1,
+    "completedEvents": 1,
+    "reviewStatus": "ACCEPTED",
+    "acceptedAtRequiredForStart": false,
+    "executionCompletionVersion": 3,
+    "acceptedReviewEvents": 1,
+    "originalCompletionFactsPreserved": true
+  },
+  "remainingGates": {
+    "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
+    "fullHostedChecks": "App exactb7db6c7 all4 PASS; backend1008 exact432c all5 plus11 controller/root PASS; normalmainf612 release/public smoke PASS",
+    "realVisitWorkdayGpsPhotoOffline": "Refusal/GPS/camera native+server PASS; manager website approval PASS; one canonical QA checkin accepted (fullstartflow viewportFAIL retained). Offline1730 FAIL: admission blocks shell. Scoped server/app correction096/70b is in hostedCI; correctednativecompletion/restart/reconnect NOT RUN.",
+    "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
+    "fictionalNative": "SUPERSEDED by user:continue inZeytun from manual sign-in. No fictional native PASS; all failed/interrupted attempts retained",
+    "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
+  },
+  "backendArtifactsObserved": {
+    "initial": "e76620753f08e4ce716368f5ad3d249482134558",
+    "latest": "8fbfeb8e8db34d929fbfea5ce4672731314b58fa",
+    "note": "Production changed independently during testing. The app bytes stayed pinned; individual steps are observations rather than a claim of one immutable backend SHA."
+  },
+  "retainedFailures": {
+    "employee-tabs-v1": "stale APK preflight",
+    "employee-tabs-v2": "unnecessary centering",
+    "employee-tabs-v3": "profile-title assumption",
+    "employee-tabs-v4": "retained More/Profile stack",
+    "task-complete-v1": "BACK dismissed result form; no completion sent",
+    "manager-signin-v1": "agent not on Today; no sign-out performed",
+    "manager-tabs-v1": "final top-of-Team assertion; retained scroll and external foreground interruption observed",
+    "fixture-signin-v1": "preflight manager shell unavailable before switch",
+    "fixture-signin-v2": "preflight manager shell unavailable after normal wake;AOD observed independently",
+    "fixture-signin-v3": "Maestro42.579s FAIL:manager More is direct Profile;employee menu selector absent;no account switch",
+    "fixture-signin-v4": "FAIL101.734s: actual fixed fixture host selected, preauth name expected incorrectly; no fixture credential sent",
+    "fixture-signin-resume-v1": "FAIL58.098s: password field below keyboard; scroll/hide preparation not natively proven",
+    "fixture-signin-resume-v2": "Stopped on user steering, exit143/no JUnit cases. User reported wrong/repeated login; preserve manual Zeytun sign-in"
+  },
+  "phoneEndState": {
+    "principalRole": "NOT YET VERIFIED after user manual sign-in",
+    "screen": "Normal-wake/read-only inspection running; preserve user session",
+    "taskStatus": "COMPLETED",
+    "realVisitOrWorkdayCreated": false,
+    "transport": "PASS:one ready physical device after user reconnect",
+    "ownerPermissions": "fine/coarse/camera granted; flags recorded privately before any native fixture action",
+    "keyguard": "User unlocked; explicit normal MainActivity launch showed real manager shell. Earlier policy-only/implicit-launch failures retained; do not infer actual lock solely from policy showing flag",
+    "targetTenant": "zeytun"
+  },
+  "publicationAuthorized": true,
+  "retainedBackendFailures": {
+    "39938320051": "full-schema setup lacked vector;5 unit PASS,PG2 skipped",
+    "39939248251": "all7 tests PASS, cleanup exceeded PG lock limit",
+    "39940341652": "static gate20 failing files/18 baseline; newly failing Prisma memory guard and cold report UI; fixes verified by targeted30 PASS, full rerun pending",
+    "39945629386": "19 failing files/18 baseline; newly failing finance-notifications cold first render; reproduced4 PASS/1 FAIL, harness fixed, targeted35 PASS, full f7 rerun pending",
+    "39965410772": "Encrypted access failed before credential retrieval: controller looked for revision outside supported standalone directory. Reproduced by full-root protocol regression; corrected path; all11 narrow tests PASS, full CI pending"
+  },
+  "offlinePreparation": {
+    "androidApi": 36,
+    "ownerUser": 0,
+    "uid": 10556,
+    "readOnlyProbe": "PASS",
+    "networkMutationPerformed": false,
+    "originalProbeFailureRetained": "appId/userId parser assumption",
+    "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
+  },
+  "lastUpdatedAt": "2026-10-23T20:28:05.208470+00:00",
+  "supersededSnapshots": [
+    {
+      "supersededAt": "2026-10-23T13:54:11.990597+00:00",
+      "remainingGates": {
+        "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
+        "fullHostedChecks": "App draft PR199 exact72 all4 PASS; backend PR1003 exactf7 all5 PASS,18 unchanged known baseline files. PR1007 exactb7 required39962906981 static/typecheck RUNNING; narrow10-test/runner/scan PASS",
+        "realVisitWorkdayGpsPhotoOffline": "NOT RUN: fictional company now created; private access delivery pending",
+        "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
+        "fictionalNative": "NOT RUN: six flows prepared (sign-in, missing coordinates, GPS request, visit start, actual photo, checkout); phone transport unavailable",
+        "fixtureScope": "NOT RUN:20 GET-only cases prepared; protected encrypted credential delivery pending"
+      },
+      "lastUpdatedAt": "2026-10-23T12:15:10.834783+00:00"
+    },
+    {
+      "supersededAt": "2026-10-23T15:53:19.914293+00:00",
+      "reason": "Independently verified deployment/current native profile and QA refusal now supersede these earlier stopping-point fields",
+      "remainingGates": {
+        "fixturePostgres": "PASS: head f7b5ac888 / run39949206982,7 tests plus cleanup/bundle",
+        "fullHostedChecks": "App exactb7db6c7 all4 PASS; backend1008 exact432c all5 plus11 controller/root PASS; normalmainf612 release/public smoke PASS",
+        "realVisitWorkdayGpsPhotoOffline": "No-coordinate QA refusal native+server PASS. GPS request RUNNING; manager review/visit/photo/offline NOT RUN. Workforce workday route intentionally withdrawn410, not a positive workday gate.",
+        "time24h": "Separate v8 FAIL retained; no 24h PASS claimed",
+        "fictionalNative": "SUPERSEDED by user:continue inZeytun from manual sign-in. No fictional native PASS; all failed/interrupted attempts retained",
+        "fixtureScope": "PASS:19 own/team/outside/cross-tenant GET cases; retired-workday exact410 and Route-only bootstrap omission confirmed separately. Initial baseline expectation FAIL retained, not a positive Workforce pass"
+      },
+      "activeTarget": {
+        "tenant": "zeytun",
+        "requestedByUser": true,
+        "preserveManualLogin": true,
+        "currentNativeActor": "VERIFIED: user-signed-in Seymur / AGENT / Zeytun; ordinary CRM agent GET matches actual profile",
+        "previousFictionalNativeScope": "SUPERSEDED by explicit user steering"
+      },
+      "backendRelease": {
+        "sha": "f6126b3b238de409a26404d59b73480e4a662353",
+        "deployRunId": "39970150130",
+        "status": "PASS",
+        "publicShaVerified": true,
+        "newMain": "f6126b3b238de409a26404d59b73480e4a662353",
+        "newMainDeployment": "PASS: hosted release and independent public app/zeytun artifact+ping verification"
+      },
+      "screenRetention": {
+        "original": "2",
+        "temporary": "7",
+        "deviceRecoverySeconds": 1200,
+        "active": true,
+        "restoreRequired": true,
+        "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged",
+        "originalRestored": false,
+        "restoreReadback": null,
+        "leaseVersion": 4
+      }
+    }
+  ],
+  "backendRelease": {
+    "sha": "f6126b3b238de409a26404d59b73480e4a662353",
+    "deployRunId": "39970150130",
+    "status": "PASS",
+    "publicShaVerified": true,
+    "newMain": "f6126b3b238de409a26404d59b73480e4a662353",
+    "newMainDeployment": "PASS: hosted release and independent public app/zeytun artifact+ping verification"
+  },
+  "fictionalFixture": {
+    "workflowRunId": "39957479723",
+    "artifactSha": "06e7f6b4b61f5e2bf8dccdb48e08729ca7bf0ada",
+    "status": "PASS",
+    "created": true,
+    "users": 1,
+    "agents": 3,
+    "customers": 3,
+    "initialVisitWorkdayFacts": 0,
+    "access": "PASS:protected workflow39970244047,controllerf612/deployed8fb,provenance/source-bound private OAEP decryption;3 exact principals/bootstrap verified",
+    "scope": {
+      "allowDenyCasesPassed": 19,
+      "initialReadModelExpectationFailureRetained": true,
+      "retiredWorkdayRefusal": "PASS:410 CRM_MODULE_UNAVAILABLE",
+      "routeOnlyBootstrapOmission": "PASS",
+      "workforcePositive": "NOT RUN/unavailable in CRM"
+    }
+  },
+  "screenRetention": {
+    "original": "2",
+    "temporary": "7",
+    "deviceRecoverySeconds": 1200,
+    "active": false,
+    "restoreRequired": false,
+    "reason": "AC-powered device was not retained by USB-only setting; secure lock/permission/radio/network/clock unchanged",
+    "originalRestored": true,
+    "restoreReadback": "2",
+    "leaseVersion": 7
+  },
+  "activeTarget": {
+    "tenant": "zeytun",
+    "requestedByUser": true,
+    "preserveManualLogin": true,
+    "currentNativeActor": "VERIFIED: user-signed-in Seymur / AGENT / Zeytun; ordinary CRM agent GET matches actual profile",
+    "previousFictionalNativeScope": "SUPERSEDED by explicit user steering"
+  },
+  "phaseUpdates": [
+    {
+      "at": "2026-10-23T15:50:06.285442+00:00",
+      "activeTenant": "zeytun",
+      "nativeAuthentication": "Stopped at user direction; manually signed-in AGENT preserved",
+      "qaPreparation": {
+        "method": "ordinary manager API",
+        "websiteCreation": "NOT COMPLETED: both browser runs exhausted budget without saving",
+        "createdCustomers": 1,
+        "assignedCustomers": 1,
+        "endedExistingAssignments": 0,
+        "radiusMeters": 250,
+        "initialCoordinates": "NULL"
+      },
+      "exactHostedSource": "b7db6c7",
+      "hostedChecks": "all4 PASS",
+      "nativeNoCoordinates": {
+        "status": "PASS",
+        "flow": "qa/missing-coordinates",
+        "phase": "complete",
+        "startedAt": "2026-10-23T15:47:03.422802+00:00",
+        "package": "com.mtmobileapp",
+        "versionCode": 1730,
+        "apkSha256": "2d8646113c7cc881b4dccc43ce4350e1ba551e89827e3202a29e0b1110cd00e9",
+        "sourceSha": "f1bcdcb2c0213eba73da8a10dfd89715b3e40a6d",
+        "flowSha256": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+        "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "sourceFilesSha256": {
+          "scripts/e2e/route_field_native.py": "20cebbf26d9b2ca8919d2a16a485b0a105020c4dca48108ff4ea0fb694d94737",
+          "scripts/e2e/route_field_guard.py": "f615e5e89ab4c5f8527ed0580f36a584ceb03f8203a695e8552f35a43a693e39",
+          "MTMobileApp/.maestro/route-field/qa/missing-coordinates.yaml": "b5f5801dea38a37e55e508e5adcb4108022893b5ab836f3835b9a796e8b5cbfa",
+          "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+          "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "1a9056f5167fe43d56cc8d33c9cfb4b1850fe89c443fd8396cbc0f71aeb91a50"
+        },
+        "exitCode": 0,
+        "tests": [
+          {
+            "name": "flow-private",
+            "seconds": "82.689",
+            "status": "PASS"
+          }
+        ],
+        "zeytunQaAgentShellVerified": true,
+        "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+        "finishedAt": "2026-10-23T15:49:24.609874+00:00"
+      },
+      "serverNoCoordinates": {
+        "status": "PASS",
+        "phase": "no-coordinates",
+        "checkedAt": "2026-10-23T15:49:42.003319+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 0,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true
+      },
+      "retainedAttempt": "zeytun-missing-coordinates-v1 FAIL: keyboard obscured QA row, corrected harness only",
+      "gpsRequest": "RUNNING; not passed",
+      "nativeRuntimeChanged": false
+    },
+    {
+      "at": "2026-10-23T16:01:18.901806+00:00",
+      "gpsNative": "PASS133.31s",
+      "gpsServer": {
+        "status": "PASS",
+        "phase": "gps-request",
+        "checkedAt": "2026-10-23T15:59:50.732937+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 0,
+        "qaRequestCount": 1,
+        "unrelatedRequestsUnchanged": true,
+        "accuracyMeters": 42
+      },
+      "retainedGpsFailure": "v1 test swipe moved map603m; app refused;0 request created; fixed by removing map swipes and hiding keyboard",
+      "managerWebsiteReviewRun": "554e4785-2eb2-4c83-8607-bcd8683e6dc7 RUNNING",
+      "offlinePersistenceFlow": "PREPARED, NOT RUN; requires bounded owner0 RF-only UID lease and exact QA visit/photo baseline"
+    },
+    {
+      "at": "2026-10-23T16:18:39.295879+00:00",
+      "managerApproval": {
+        "status": "PASS",
+        "managerWebsiteApproval": true,
+        "canonicalStatus": "APPROVED",
+        "exactDeviceProposalStored": true,
+        "radiusPreserved": 250,
+        "qaCustomerOnly": true,
+        "postApprovalPageError": "OBSERVED: page recovered after retry; root cause unconfirmed",
+        "checkedAt": "2026-10-23T16:02:49.779073+00:00"
+      },
+      "visitStart": {
+        "status": "PASS",
+        "phase": "visit-start",
+        "checkedAt": "2026-10-23T16:10:39.403450+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_IN",
+        "photoCount": 0
+      },
+      "visitStartFullMaestro": "FAIL viewport assertion retained; business write accepted; do not repeat checkin",
+      "nativeActiveVisitReadback": "PASS as prerequisite assertions in successful photo journey",
+      "realCameraPhoto": "Native PASS233.923s; canonical count1 independently observed",
+      "nativeOffline": "NEXT, NOT ENTERED",
+      "screenLease": "v6 active,1200s recovery/original2; restore required"
+    },
+    {
+      "at": "2026-10-23T16:59:24.444837+00:00",
+      "offline1730": "FAIL: route tabs removed on bootstrap transport failure, no checkout journey started",
+      "networkRestoration": {
+        "ownNetworkingRestored": true,
+        "timeNetworkingUnchanged": true,
+        "protectedProfileUnchanged": true,
+        "radiosUnchanged": true,
+        "chainRestored": true
+      },
+      "displayRestoration": {
+        "status": "PASS",
+        "originalRestored": 2,
+        "activeDisplayLease": false,
+        "verifiedAt": "2026-10-23T16:58:06.146978+00:00"
+      },
+      "proposedAppFix": {
+        "head": "0962215",
+        "pr": 199,
+        "versionName": "3.11.52",
+        "nativeResult": "NOT RUN: not installed",
+        "ciRuns": [
+          "39991076059",
+          "39991076064",
+          "39991076110"
+        ]
+      },
+      "proposedServerFix": {
+        "head": "70b2648f9",
+        "pr": 1013,
+        "ciRun": "39988772222",
+        "typecheck": "PASS",
+        "staticChecks": "RUNNING",
+        "deployed": false
+      },
+      "preservedState": "oneQA CHECKED_IN visit withonecanonicalcamera photo;5original visits unchanged; do not repeat checkin/GPS/approval/photo"
+    },
+    {
+      "at": "2026-10-23T17:20:43.615815+00:00",
+      "ownerOfflineReleaseApproved": true,
+      "serverCorrection": {
+        "pr": 1013,
+        "sourceSha": "70b2648f99961a13ace22b5afde55b31392bcddd",
+        "requiredChecks": "ALL5 ACTUAL SUCCESS",
+        "baseline": "18 unchanged known failing files/no new failing files",
+        "mergeSha": "deb8de1c0b0c4a71d3ff565276699ddac846bc8f",
+        "deployRun": 39992858222,
+        "deploy": "RUNNING; public smoke NOT RUN"
+      },
+      "appCorrection": {
+        "status": "PASS",
+        "package": "com.mtmobileapp",
+        "versionCode": 1787,
+        "versionName": "3.11.52",
+        "apkSha256": "66d668c29aa4ee4fe7aec46397b05837ab34213a63974a74292f68155b816366",
+        "publishedSourceSha": "0962215e757a1310ba077425679b7ff7c565bd39",
+        "checkoutSha": "ba79f198e93fdc6a00e3a94d350fef835909d20c",
+        "compiledSourcesEqual": true,
+        "release": "PR199-build787",
+        "workflowRun": 39991076110,
+        "workflowJob": 120542673377,
+        "artifactId": 12516994949,
+        "archiveSha256": "3abcb4ceb26ed476d4370b90f1f830dbf23bd30d1e00318fc8e8ca4f7ff818b9",
+        "certificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+        "nativeAbis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "signatureCheck": "GitHub apksigner full verification; exact artifact and APK digest matched",
+        "install": "PASS",
+        "uid": 10556,
+        "timePackageUnchanged": true,
+        "ownerPermissionsUnchanged": true,
+        "installedAt": "2026-10-23T17:16:52.618947+00:00"
+      },
+      "appHostedVerification": {
+        "sourceSha": "0962215e757a1310ba077425679b7ff7c565bd39",
+        "jestSuitesPassed": 271,
+        "jestTestsPassed": 2406,
+        "jestTodo": 1,
+        "typecheck": "PASS",
+        "contract": "PASS",
+        "signedAndroidBuild": "PASS"
+      },
+      "nativeSessionAfterUpdate": {
+        "status": "PASS",
+        "versionCode": 1787,
+        "sameAgentEmail": true,
+        "sameAgentName": true,
+        "zeytunLabelVisible": true,
+        "agentShell": true,
+        "queueClean": true,
+        "loginAutomated": false
+      },
+      "retainedProfileReadFailure": {
+        "attempt": "profile1787-v1",
+        "outcome": "FAIL returning from profile: back button content-description selector was not matched by private text-only helper; name/email/tenant identity read passed. Corrected native readback/return v2 PASS; no product auth issue"
+      },
+      "offline1787": "NOT RUN: wait new server SHA and fresh online grant",
+      "screenLease": "v8 active bounded1200s/original2; restore required",
+      "preservedState": "same manually signed-in Seymur/Zeytun; existing QA1CHECKED_IN/1camera photo; original5visits unchanged"
+    },
+    {
+      "at": "2026-10-23T18:02:48.577373+00:00",
+      "serverCorrection": {
+        "status": "PASS",
+        "artifactSha": "deb8de1c0b0c4a71d3ff565276699ddac846bc8f",
+        "ping": "PASS",
+        "checks": [
+          {
+            "case": "agent-device",
+            "status": "PASS",
+            "grantPresent": true
+          },
+          {
+            "case": "agent-no-device",
+            "status": "PASS",
+            "grantPresent": false
+          },
+          {
+            "case": "manager-device",
+            "status": "PASS",
+            "grantPresent": false
+          }
+        ],
+        "checkedAt": "2026-10-23T17:38:53.131546+00:00",
+        "queuedWriteAuthorizationUnchanged": true
+      },
+      "serverWorkflow": "39992858222 SUCCESS",
+      "correctedApp1787Offline": {
+        "status": "FAIL",
+        "completionMaestroSeconds": "59.002",
+        "reason": "Active QA card displayed Foto:0 after restart while canonical count1; assertion before checkout stopped flow",
+        "admittedFieldShell": "PASS observed offline tabs and active QA card",
+        "networkRestoration": {
+          "ownNetworkingRestored": true,
+          "timeNetworkingUnchanged": true,
+          "protectedProfileUnchanged": true,
+          "radiosUnchanged": true,
+          "chainRestored": true
+        },
+        "checkoutQueued": false,
+        "restartPersistence": "NOT RUN"
+      },
+      "confirmedProgressCorrection": {
+        "head": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+        "targetedSuites": 6,
+        "targetedTestsPassed": 74,
+        "runnerGuardTestsPassed": 27,
+        "syntax": "PASS",
+        "hostedCI": {
+          "run": 39999680868,
+          "testsAndTypecheck": "SUCCESS"
+        },
+        "contract": {
+          "run": 39999680874,
+          "status": "SUCCESS"
+        },
+        "apkBuild": {
+          "run": 39999680887,
+          "status": "RUNNING"
+        },
+        "native": "NOT RUN; not installed"
+      },
+      "managerWebsiteRead": {
+        "status": "PASS",
+        "page": "CRM QA visit detail",
+        "sameOrganization": true,
+        "managerRole": "manager",
+        "qaNameVisible": true,
+        "completionNoteVisible": false,
+        "runtimeExceptionCount": 0,
+        "businessWrites": false
+      },
+      "retainedBrowserFailure": "pre-offline-v1 unsupported /ru URL prefix404, no business writes; corrected real /mtm/visits read v2 PASS",
+      "displayRestoration": {
+        "status": "PASS",
+        "originalRestored": 2,
+        "automatic": true
+      },
+      "phoneState": "APK1787/manualagent retained; protectedlock; no active network/display lease; do not request unlock until next signed APK ready"
+    },
+    {
+      "at": "2026-10-23T18:56:43.182882+00:00",
+      "kind": "CORE_OFFLINE_ACCEPTANCE_PASS",
+      "runtimeSourceSha": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+      "installedVersionCode": 1788,
+      "onlineConfirmedPhotoRead": {
+        "journey": "zeytun-visit-progress-read-v1",
+        "status": "PASS",
+        "seconds": "38.547"
+      },
+      "queuedCheckout": {
+        "journey": "zeytun-visit-complete-offline-v4",
+        "status": "PASS",
+        "seconds": "75.014"
+      },
+      "coldPendingAndPhotoPersistence": {
+        "journey": "zeytun-offline-persistence-v6",
+        "status": "PASS",
+        "seconds": "126.185"
+      },
+      "whileBlockedCanonical": {
+        "status": "PASS",
+        "phase": "offline-before-reconnect",
+        "checkedAt": "2026-10-23T18:52:22.085660+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_IN",
+        "photoCount": 1
+      },
+      "afterReconnect": {
+        "status": "PASS",
+        "phase": "visit-complete",
+        "checkedAt": "2026-10-23T18:52:43.845955+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_OUT",
+        "photoCount": 1
+      },
+      "secondForegroundNoDuplicate": {
+        "status": "PASS",
+        "phase": "visit-complete-idempotent",
+        "checkedAt": "2026-10-23T18:52:52.459361+00:00",
+        "existingVisitsUnchanged": 5,
+        "qaVisitCount": 1,
+        "qaRequestCount": 0,
+        "unrelatedRequestsUnchanged": true,
+        "visitId": "visit-1792771759746-3806ph33",
+        "canonicalStatus": "CHECKED_OUT",
+        "photoCount": 1
+      },
+      "queueEmpty": true,
+      "agentSessionPreserved": true,
+      "ownerPermissionsUnchanged": true,
+      "networkRestoration": {
+        "ownNetworkingRestored": true,
+        "timeNetworkingUnchanged": true,
+        "protectedProfileUnchanged": true,
+        "radiosUnchanged": true,
+        "chainRestored": true
+      },
+      "managerWebsite": {
+        "status": "PASS",
+        "page": "CRM QA visit detail",
+        "sameOrganization": true,
+        "sameManagerEmail": true,
+        "managerRole": "manager",
+        "qaNameVisible": true,
+        "completionNoteVisible": true,
+        "runtimeExceptionCount": 0,
+        "businessWrites": false
+      },
+      "retainedFailureResolution": {
+        "v3": "hideKeyboard cancelled NotesModal before submit; test fixed, no checkout sent",
+        "v4": "completed checkout retained; cold launch lost USB; exact network baseline independently verified afterward",
+        "v5": "cold photo1 observed; waiting notice was below viewport while test scrolled UP; corrected test direction DOWN, no pending data loss"
+      },
+      "appRelease": "pending final evidence-head CI/main merge/public signed APK",
+      "remainingLimits": [
+        "Outside-zone/signature/large-text/landscape extra matrix NOT RUN",
+        "Original manager post-approval page error root unconfirmed/not fixed",
+        "Separate Time24h-v8 FAIL retained; not running"
+      ]
+    },
+    {
+      "at": "2026-10-23T19:14:17.878469+00:00",
+      "kind": "PUBLIC_MAIN_RELEASE_INSTALLED_PASS",
+      "appPr": 199,
+      "mainSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+      "publicRelease": {
+        "status": "PASS",
+        "verifiedAt": "2026-10-23T19:09:33.320419+00:00",
+        "package": "com.mtmobileapp",
+        "versionCode": 1790,
+        "versionName": "3.11.52",
+        "apkSha256": "f71d8c8ef28fedb57f77b498649420a443feb574498f8513323e7522afb5de15",
+        "publishedSourceSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+        "checkoutSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+        "compiledSourcesEqualPreviouslyTested": true,
+        "previouslyTestedSourceSha": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+        "release": "v3.11.52-build790",
+        "releaseUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/tag/v3.11.52-build790",
+        "downloadUrl": "https://github.com/rashadoni/leaddrive-mtm/releases/download/v3.11.52-build790/leaddrive-mtm-v3.11.52.apk",
+        "releaseAssetId": 670109443,
+        "releaseAssetDigest": "sha256:f71d8c8ef28fedb57f77b498649420a443feb574498f8513323e7522afb5de15",
+        "workflowRun": 40007847247,
+        "workflowJob": 120600248102,
+        "certificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+        "nativeAbis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "testSuites": 273,
+        "testsPassed": 2432,
+        "testsTodo": 1,
+        "signatureCheck": "Successful hosted apksigner verification with exact main checkout, release asset/API/checksum/job-log SHA256 equality",
+        "install": "PASS",
+        "uid": 10556,
+        "timePackageUnchanged": true,
+        "ownerPermissionsUnchanged": true,
+        "installedAt": "2026-10-23T19:10:44.574039+00:00"
+      },
+      "nativePostUpdateProfile": {
+        "status": "PASS",
+        "versionCode": 1790,
+        "sameAgentEmail": true,
+        "sameAgentName": true,
+        "zeytunLabelVisible": true,
+        "agentShell": true,
+        "queueClean": true,
+        "loginAutomated": false
+      },
+      "readOnlyFinalVerification": {
+        "status": "PASS",
+        "versionCode": 1790,
+        "businessWrites": false,
+        "networkExactOriginal": true,
+        "timeNetworkingUnchanged": true,
+        "radiosUnchanged": true,
+        "canonicalStatus": "CHECKED_OUT",
+        "qaVisitCount": 1,
+        "qaPhotoCount": 1,
+        "allSixVisitsExactlyUnchangedSinceAcceptedSync": true,
+        "displayOriginalRestored": true,
+        "displayReadback": 2,
+        "finishedAt": "2026-10-23T19:12:39.788537+00:00"
+      },
+      "binaryRuntimeMatchesNativeAcceptedSource": "9183a2e8fa96c427e935472c7ff68ad411c7b35c",
+      "nativeAcceptanceEvidence": "checkout-v4 PASS + cold-persistence-v6 PASS; prior failures retained",
+      "backendReleasedMainSha": "deb8de1c0b0c4a71d3ff565276699ddac846bc8f",
+      "noRepeatedBusinessWrites": true,
+      "remainingNativeCases": "outside-zone/inaccurate-fix/permission-denial/signature/large-text/landscape/cross-account NOT RUN",
+      "separateTime24h": "v8 FAIL; not running",
+      "currentStop": "Today, same agent/tenant, clean queue; no active network/display lease",
+      "nextPhase": "isolated negative policy/GPS/access cases and separate Time investigation"
+    },
+    {
+      "at": "2026-10-23T19:40:25.297412+00:00",
+      "kind": "EXTENDED_LAYOUT_BASELINE",
+      "apkVersionCode": 1790,
+      "publishedSourceSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+      "defaultTabs": {
+        "status": "PASS",
+        "seconds": 101.994
+      },
+      "largeText": {
+        "status": "PASS",
+        "checkedAt": "2026-10-23T19:30:11.678848+00:00",
+        "kind": "read-only correction of prior report artifact lookup; no native replay",
+        "priorDriverResult": "FAIL RF_AUDIT_SCREENSHOTS_MISSING retained",
+        "maestroExitCode": 0,
+        "maestroSeconds": "98.707",
+        "sameAgent": true,
+        "flowSha256": "8b7a52e514fb08d5631982d2d420b909fd08e8f0b5ab7440b7c670f9838bae49",
+        "sourceSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+        "versionCode": 1790,
+        "privateScreenshotsSha256": {
+          "today": "9c27225ad94bcc2523ec99bafeed239cf68eedce22ab42b45f636712435bc7ca",
+          "route-day": "ce6e286c91e6505cc0ddc3d066884b55420f9bc4e6464fbda9004e8e695bfa03",
+          "route-month": "a895fb3d77739e7b1c4702523eb9d13023c85cf582bf7badc845ef8bb6a077cc",
+          "tasks": "0e116c6264f86a78df1d1b5dbb0e3f0823bd8ab9539fc0abff6da3ada2e3597b",
+          "task-order": "07cf01483a45ecd3c0802aebf63b50ef63ddf844f45b4d42712203627253120a",
+          "more": "93012eeacf81a4bb053e715232f9805b1e513d31a1151c7f40059f4aa44fd3e9",
+          "more-profile-link": "93012eeacf81a4bb053e715232f9805b1e513d31a1151c7f40059f4aa44fd3e9",
+          "profile": "05fe5a618d38d173b2963e0135fb90f09d3495a35a6fe94edadcf006d18226a5",
+          "clients": "a2ae2f5730b390dd4842ab7df8fa9ed43bf81896d7d663a87e3e5b78d9cdf040"
+        },
+        "remainingVisualFinding": "Today sync chip truncates at font_scale1.3; not fixed yet"
+      },
+      "landscapeContinuation": {
+        "status": "PASS",
+        "kind": "controlled scroll after retained landscape Maestro FAIL",
+        "searchReachableAfterScroll": true,
+        "scrollGestures": 1,
+        "headerScrollsWithList": true,
+        "productSearchLossConfirmed": false,
+        "priorNativeFailure": "waited for offscreen search without scrolling",
+        "returnedTodaySameAgent": true,
+        "noBusinessWrites": true,
+        "checkedAt": "2026-10-23T19:36:09.449179+00:00"
+      },
+      "originalFailuresRetained": [
+        "large-text driver screenshot lookup",
+        "landscape search wait without scrolling"
+      ],
+      "confirmedVisualFinding": "P2 sync label truncated at 130% text; pending correction",
+      "displayLease": "RESTORED with exact four original readbacks",
+      "businessWrites": false
+    },
+    {
+      "at": "2026-10-23T20:28:05.208470+00:00",
+      "kind": "NATIVE_LOCATION_REFUSAL_PASS",
+      "runtimeVersionCode": 1792,
+      "runtimeSourceSha": "41250d7472d647290e16fe7e383afcad13546f34",
+      "nativeMaestro": {
+        "status": "PASS",
+        "flow": "qa/location-denied",
+        "phase": "complete",
+        "startedAt": "2026-10-23T20:23:14.227570+00:00",
+        "package": "com.mtmobileapp",
+        "versionCode": 1792,
+        "apkSha256": "dd4d5b4feac9cf168eb4e35533401368b21526e944de04133a154d6f81c92d13",
+        "sourceSha": "41250d7472d647290e16fe7e383afcad13546f34",
+        "ownerPermissionsBefore": {
+          "ACCESS_FINE_LOCATION": {
+            "granted": false,
+            "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]"
+          },
+          "ACCESS_COARSE_LOCATION": {
+            "granted": false,
+            "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+          },
+          "CAMERA": {
+            "granted": true,
+            "flags": "[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]"
+          }
+        },
+        "flowSha256": "4c384f4fc05a40cccf02422e6d49a9a83baf370b565c3a67b514727e9e50c0cc",
+        "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+        "sourceFilesSha256": {
+          "scripts/e2e/route_field_native.py": "d9f7db907a80ed04978975792b929840e4bb12ad982b215d8dab20aa2029855c",
+          "scripts/e2e/route_field_guard.py": "8277dfe08cc4f8222066c1672671639e1339d3eb9de4d25fba3788044118ac76",
+          "MTMobileApp/.maestro/route-field/qa/location-denied.yaml": "4c384f4fc05a40cccf02422e6d49a9a83baf370b565c3a67b514727e9e50c0cc",
+          "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+          "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "5903f3449d9e62bf3e22f27cb82f0d349498c72d721bf7f3f2f64cf6ab03a880",
+          "MTMobileApp/.maestro/route-field/shared/open-fixture-visits.yaml": "3ddfb36fb73be8224670c76ce077a94636e806ff8f3e8b2ade513db98a904c1b",
+          "MTMobileApp/.maestro/route-field/shared/location-denial-labels.js": "7a001a6255cf8c950af2ea721045ebd6d13b995106bf7a148f05f8fea0872cec"
+        },
+        "exitCode": 0,
+        "tests": [
+          {
+            "name": "flow-private",
+            "seconds": "85.715",
+            "status": "PASS"
+          }
+        ],
+        "zeytunQaAgentShellVerified": true,
+        "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+        "finishedAt": "2026-10-23T20:26:08.281778+00:00"
+      },
+      "startupDisclosureDeclined": true,
+      "allRfRuntimeProfilesRestored": true,
+      "timeProfilesUnchanged": true,
+      "networkUnchanged": true,
+      "allSixCanonicalVisitsUnchanged": true,
+      "oneQaPhoto": true,
+      "stayAwakeRestored": 2,
+      "retainedFailures": [
+        "v1 startup disclosure hides shell before Maestro",
+        "v2 label helper absent in isolated script; no UI taps"
+      ],
+      "notClaimed": [
+        "Android system-deny path",
+        "approximate-only location path"
+      ]
+    },
+    {
+      "at": "2026-10-23T20:46:53.205457+00:00",
+      "kind": "EXTENDED_LAYOUT_PASS_CUSTOMER_RADIUS_CORRECTION_PENDING",
+      "nativeReadOnlyFlows": [
+        {
+          "status": "PASS",
+          "versionCode": 1792,
+          "sourceSha": "41250d7472d647290e16fe7e383afcad13546f34",
+          "tests": [
+            {
+              "name": "Employee controls stay reachable with large text and landscape",
+              "seconds": "98.362",
+              "status": "PASS"
+            }
+          ],
+          "finishedAt": "2026-10-23T20:32:41.088743+00:00",
+          "privateScreenshotsSha256": {
+            "today": "400701caa6e846891e85efeef5dfcf3b7f3481aff0db24ac778cb924d80b5b25",
+            "route-day": "0f1f5ca1e5a06844f93cdb02172af9dc300959148044d4a3103409f444e2d5f2",
+            "route-month": "322ff6dedd54fc0c8503d5d5aea18f824117e6e3aa99c0deef1a283a50f11311",
+            "tasks": "a5617a57b0ec41372e49fc8c1787f1a3c91f906850ac0affa1d0c9bbceed5e4e",
+            "task-order": "bd9601d4d029c4f57504824fae904da904a097ac14e2094d86b6c8ce27e07e19",
+            "more": "a421734d2f70bd7da0a5e2bb4659a63af0e6a4c0d55ff8f6925430812a2d10cc",
+            "more-profile-link": "a421734d2f70bd7da0a5e2bb4659a63af0e6a4c0d55ff8f6925430812a2d10cc",
+            "profile": "a65068c471a4778b0a4a6f158b06b7c2ffeeca47829c469dbf914a5079fa4f37",
+            "clients": "0742d27e46740c7a48b70b257ecc1732fb0375579d20881060d693b810a3355b"
+          }
+        },
+        {
+          "status": "PASS",
+          "versionCode": 1792,
+          "sourceSha": "41250d7472d647290e16fe7e383afcad13546f34",
+          "tests": [
+            {
+              "name": "Employee controls stay reachable with large text and landscape",
+              "seconds": "103.825",
+              "status": "PASS"
+            }
+          ],
+          "finishedAt": "2026-10-23T20:36:35.840061+00:00",
+          "privateScreenshotsSha256": {
+            "today": "967d31312824fbeb9b266138170892221d05c3f301000a36df30cd6a78a0213d",
+            "route-day": "8343f80be2872bd3a331c2c0a37c066420135dc95d142b23ae1102a2b2a011fe",
+            "route-month": "2bfa756d3483f9f1b8b5449ddabefc42711ecb02a6a7523853c202d28274c9ec",
+            "tasks": "125e0998744950828da01ef5daf27e6d0af0923586febb96cd225a38e3dc7a28",
+            "task-order": "bfdc592a0c20560b1c677ed45a065a3bc71f1bc7021d3dc9e11bcb6ccca6d382",
+            "more": "bc728747bd5bd96a2d116db93b4a13c5f413ed078a218c5c1b2cfbe18d075eba",
+            "more-profile-link": "bc728747bd5bd96a2d116db93b4a13c5f413ed078a218c5c1b2cfbe18d075eba",
+            "profile": "c2d209b05cebb50ac22c9c10c627426adc29aaa897a7d7acde1057fdfb789d26",
+            "clients": "e4bf2d7034b42b6525fe49392558cfa90c6e6ef4d5521661f0658b7796c0f7d4"
+          }
+        }
+      ],
+      "syncLabelVisual": {
+        "status": "PASS",
+        "method": "actual screenshot visually inspected by agent",
+        "fontScale": 1.3,
+        "beforeVersionCode": 1790,
+        "afterVersionCode": 1792,
+        "before": "Sinxronizasiya edi…",
+        "after": "Sinxronizasiya edilib, fully visible on two lines",
+        "beforeSha256": "9c27225ad94bcc2523ec99bafeed239cf68eedce22ab42b45f636712435bc7ca",
+        "afterSha256": "400701caa6e846891e85efeef5dfcf3b7f3481aff0db24ac778cb924d80b5b25",
+        "noRedesign": true,
+        "checkedAt": "2026-10-23T20:33:46.704888+00:00"
+      },
+      "newFinding": "Unplanned visits omitted customer geofenceRadius in four client decisions; server customer override already enforced",
+      "newCorrection": "Customer radius passed to existing resolver; targeted3suites32tests PASS; full CI/new APK/native read-only NOT RUN yet",
+      "businessWrites": false,
+      "originalLayoutRestored": {
+        "fontScale": 1.0,
+        "autoRotate": 1,
+        "userRotation": 0
+      },
+      "stayAwake": "original2/temporary7; independent1200s display-v4 recovery",
+      "remainingLimits": [
+        "Physical 150m boundary acceptance NOT RUN",
+        "Android system-deny/approximate-only NOT RUN",
+        "TalkBack/200%/dark-mode/performance/tablets NOT RUN",
+        "Separate Time24h-v8 FAIL; not running"
+      ]
+    },
+    {
+      "at": "2026-10-23T21:03:19.112684+00:00",
+      "kind": "CUSTOMER_RADIUS_CANDIDATE_NATIVE_READ_PASS",
+      "candidate": {
+        "status": "PASS",
+        "package": "com.mtmobileapp",
+        "versionCode": 1793,
+        "versionName": "3.11.53",
+        "apkSha256": "257450a548cf3bd08e5cea9da44494fdd16c465dfda4a20bf4699515ca57fe1d",
+        "publishedSourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+        "checkoutSha": "b35e0a3fc4a2aad6f01241cdd37ac68de3877b3c",
+        "compiledSourcesEqual": true,
+        "release": "PR200-build793",
+        "workflowRun": 40021890990,
+        "workflowJob": 120648234495,
+        "artifactId": 12531711110,
+        "archiveSha256": "da50c989229b678dff674451d75ac3b06d09576265960ca387bcffcc6977ed58",
+        "certificateSha256": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+        "nativeAbis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "testSuites": 273,
+        "testsPassed": 2434,
+        "testsTodo": 1,
+        "verifiedAt": "2026-10-23T20:58:20.064253+00:00",
+        "signatureCheck": "Hosted apksigner and exact archive/APK/log/checksum/source equality; PR QA artifact only",
+        "install": "PASS",
+        "uid": 10556,
+        "allRfRuntimeProfilesUnchanged": true,
+        "ownerPermissionsUnchanged": true,
+        "timePackageUnchanged": true,
+        "installedAt": "2026-10-23T20:59:09.234041+00:00"
+      },
+      "profile": {
+        "status": "PASS",
+        "versionCode": 1793,
+        "sameAgentEmail": true,
+        "sameAgentName": true,
+        "zeytunLabelVisible": true,
+        "agentShell": true,
+        "queueClean": true,
+        "loginAutomated": false
+      },
+      "nativeReadOnlyAcceptance": {
+        "status": "PASS",
+        "startedAt": "2026-10-23T20:59:46.802827+00:00",
+        "businessWrites": false,
+        "physicalBoundaryAcceptance": "NOT RUN",
+        "native": {
+          "status": "PASS",
+          "flow": "qa/customer-radius-read",
+          "phase": "complete",
+          "startedAt": "2026-10-23T21:00:09.448835+00:00",
+          "package": "com.mtmobileapp",
+          "versionCode": 1793,
+          "apkSha256": "257450a548cf3bd08e5cea9da44494fdd16c465dfda4a20bf4699515ca57fe1d",
+          "sourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+          "flowSha256": "11063ede1cbe26bdc98adcbc8142ac4781eb4599011097abb5ab0a479e66ff86",
+          "labelsSha256": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+          "sourceFilesSha256": {
+            "scripts/e2e/route_field_native.py": "ab6d938e5f31cf19125daf218258f4f5fda2a7da582b54548d0ae0ea7007ad2e",
+            "scripts/e2e/route_field_guard.py": "1d58d266ab394c43bbb30ff75ddc5243c883f08d59ab79d69fbf239076765801",
+            "MTMobileApp/.maestro/route-field/qa/customer-radius-read.yaml": "11063ede1cbe26bdc98adcbc8142ac4781eb4599011097abb5ab0a479e66ff86",
+            "MTMobileApp/.maestro/route-field/shared/labels.js": "549b3a5de8dc5e340b1cea446dc2c94ceb99cfff34fcd280b25819d56005d288",
+            "MTMobileApp/.maestro/route-field/shared/qa-labels.js": "5903f3449d9e62bf3e22f27cb82f0d349498c72d721bf7f3f2f64cf6ab03a880",
+            "MTMobileApp/.maestro/route-field/shared/open-fixture-visits.yaml": "3ddfb36fb73be8224670c76ce077a94636e806ff8f3e8b2ade513db98a904c1b"
+          },
+          "exitCode": 0,
+          "tests": [
+            {
+              "name": "flow-private",
+              "seconds": "70.089",
+              "status": "PASS"
+            }
+          ],
+          "zeytunQaAgentShellVerified": true,
+          "qaCustomerId": "cmvl4wybr01axkp7fs68u44vs",
+          "finishedAt": "2026-10-23T21:02:18.601931+00:00"
+        },
+        "versionCode": 1793,
+        "sourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+        "allCanonicalVisitsUnchanged": true,
+        "oneQaPhoto": true,
+        "qaCustomerRadiusMeters": 250,
+        "allRuntimeProfilesUnchanged": true,
+        "timePackageUnchanged": true,
+        "networkUnchanged": true,
+        "finishedAt": "2026-10-23T21:02:35.978834+00:00"
+      },
+      "gates": {
+        "sourceSha": "79853cbbed4e3741c44f41c6edf9856fe278fcd9",
+        "ci": {
+          "run": 40021891000,
+          "status": "SUCCESS"
+        },
+        "contract": {
+          "run": 40021891009,
+          "status": "SUCCESS"
+        },
+        "signedApk": {
+          "run": 40021890990,
+          "status": "SUCCESS"
+        }
+      },
+      "publicRelease": "PENDING final documentation-head checks and normal main workflow",
+      "remainingPhysicalBoundary": "NOT RUN; screen-read/helper/API contracts do not prove an actual150m check-in",
+      "displayLease": "v5 ACTIVE original2/temporary7, independent1200s recovery from20:56UTC; final restore required"
+    }
+  ]
+}

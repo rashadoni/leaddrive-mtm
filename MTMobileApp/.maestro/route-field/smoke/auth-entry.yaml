@@ -1,0 +1,82 @@
+appId: com.mtmobileapp
+name: Existing blank-password form validates locally and keeps both ways in reachable
+---
+# The runner verifies that this is already a signed-out, blank-password form.
+# No launch/clearState, inputText, request-code, password reset or login request.
+- assertTrue: ${RF_AUTH_PREFLIGHT === 'blank-password-v1'}
+- runScript: ../shared/labels.js
+- assertVisible:
+    id: login-tab-signin
+# Android hideKeyboard uses BACK. Focus the existing field first, so BACK
+# dismisses an actual keyboard instead of leaving an already keyboard-free app.
+- tapOn:
+    id: login-email
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: login-submit
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: login-submit
+- assertVisible: ${output.copy.missing}
+# The error expands the form; the submit button may move below the viewport.
+- scrollUntilVisible:
+    element:
+      id: login-submit
+    direction: DOWN
+    timeout: 15000
+- assertVisible:
+    id: login-submit
+- scrollUntilVisible:
+    element:
+      id: login-forgot
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: login-forgot
+- extendedWaitUntil:
+    visible:
+      id: login-code-phone
+    timeout: 15000
+- tapOn:
+    id: login-code-phone
+- hideKeyboard
+- assertVisible:
+    id: login-code-send
+- scrollUntilVisible:
+    element:
+      id: login-code-cancel
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: login-code-cancel
+- scrollUntilVisible:
+    element:
+      id: login-tab-first
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: login-tab-first
+- extendedWaitUntil:
+    visible:
+      id: login-code-phone
+    timeout: 15000
+- tapOn:
+    id: login-code-phone
+- hideKeyboard
+- assertVisible:
+    id: login-code-send
+- scrollUntilVisible:
+    element:
+      id: login-tab-signin
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: login-tab-signin
+- assertVisible:
+    id: login-email
+- assertVisible:
+    id: login-password
+- assertNotVisible:
+    id: login-code-phone

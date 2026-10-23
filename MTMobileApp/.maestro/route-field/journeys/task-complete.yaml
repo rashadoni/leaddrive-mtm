@@ -1,0 +1,23 @@
+appId: com.mtmobileapp
+name: Agent completes the exact CRM test task with a traceable result
+---
+- runFlow: ../shared/open-owner-test-task.yaml
+- assertVisible: ${output.task.complete}
+- tapOn: ${output.task.complete}
+- tapOn: ${output.task.placeholder}
+- inputText: ${TASK_RESULT}
+# Input injection does not guarantee an open IME. Android BACK can cancel
+# this native modal instead of hiding a keyboard; submit the visible action.
+- tapOn: ${output.task.submit}
+- scrollUntilVisible:
+    element:
+      text: ${TASK_RESULT}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${TASK_RESULT}
+- assertNotVisible: ${output.task.complete}
+- tapOn: ${output.task.back}
+- tapOn:
+    id: guide-spot-tab.Today
+- assertNotVisible:
+    id: login-email

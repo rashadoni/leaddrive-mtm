@@ -1,0 +1,15 @@
+appId: com.mtmobileapp
+name: Agent receives and starts the exact test task created on the CRM website
+---
+- runFlow: ../shared/open-owner-test-task.yaml
+- assertVisible: ${output.task.start}
+- tapOn: ${output.task.start}
+- extendedWaitUntil:
+    visible: ${output.task.complete}
+    timeout: 30000
+# The website/API must independently confirm IN_PROGRESS before completion.
+- tapOn: ${output.task.back}
+- tapOn:
+    id: guide-spot-tab.Today
+- assertNotVisible:
+    id: login-email

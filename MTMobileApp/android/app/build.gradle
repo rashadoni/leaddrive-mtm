@@ -105,7 +105,7 @@ android {
         // build used to carry 43. 1000+ stays above the installed base (42/43)
         // and keeps growing with each run. A local build without it stays 43.
         versionCode((System.getenv("MTM_VERSION_CODE") ?: "99").toInteger())
-        versionName "3.11.51"
+        versionName "3.11.53"
         if (attendanceApp) versionName "1.0.0"
     }
     if (attendanceApp) {

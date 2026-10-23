@@ -1,0 +1,22 @@
+appId: com.mtmobileapp
+name: Complete the fictional active visit with its single camera photo
+---
+- assertTrue: ${RF_FIXTURE_PREFLIGHT === 'separate-owned-route-field-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/fixture-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- assertVisible: ${output.fixture.visit.active}
+- assertVisible: RF QA fictional GPS place
+- assertVisible: ${output.fixture.visit.onePhoto}
+- tapOn: ${output.fixture.visit.finish}
+- tapOn: ${output.fixture.notesPlaceholder}
+- inputText: RF-QA fictional visit completed
+- tapOn: ${output.fixture.notesSubmit}
+# The driver records UI only. The orchestrator must separately prove either
+# pending persistence while UID-blocked or exact canonical completion online.
+- extendedWaitUntil:
+    notVisible: ${output.fixture.notesPlaceholder}
+    timeout: 10000
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today
