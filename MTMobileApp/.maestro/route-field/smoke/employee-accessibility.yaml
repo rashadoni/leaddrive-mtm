@@ -73,10 +73,11 @@ name: Employee controls stay reachable with large text and landscape
 - takeScreenshot: profile
 - tapOn:
     id: guide-spot-tab.Clients
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: route-contacts-search
-    timeout: 30000
+    direction: DOWN
+    timeout: 15000
 - takeScreenshot: clients
 - tapOn:
     id: guide-spot-tab.Today

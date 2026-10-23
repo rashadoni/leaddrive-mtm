@@ -307,7 +307,7 @@
     "originalProbeFailureRetained": "appId/userId parser assumption",
     "plannedRecovery": "device-side bounded own-UID recovery; lease NOT RUN"
   },
-  "lastUpdatedAt": "2026-10-23T19:14:17.878469+00:00",
+  "lastUpdatedAt": "2026-10-23T19:40:25.297412+00:00",
   "supersededSnapshots": [
     {
       "supersededAt": "2026-10-23T13:54:11.990597+00:00",
@@ -852,6 +852,59 @@
       "separateTime24h": "v8 FAIL; not running",
       "currentStop": "Today, same agent/tenant, clean queue; no active network/display lease",
       "nextPhase": "isolated negative policy/GPS/access cases and separate Time investigation"
+    },
+    {
+      "at": "2026-10-23T19:40:25.297412+00:00",
+      "kind": "EXTENDED_LAYOUT_BASELINE",
+      "apkVersionCode": 1790,
+      "publishedSourceSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+      "defaultTabs": {
+        "status": "PASS",
+        "seconds": 101.994
+      },
+      "largeText": {
+        "status": "PASS",
+        "checkedAt": "2026-10-23T19:30:11.678848+00:00",
+        "kind": "read-only correction of prior report artifact lookup; no native replay",
+        "priorDriverResult": "FAIL RF_AUDIT_SCREENSHOTS_MISSING retained",
+        "maestroExitCode": 0,
+        "maestroSeconds": "98.707",
+        "sameAgent": true,
+        "flowSha256": "8b7a52e514fb08d5631982d2d420b909fd08e8f0b5ab7440b7c670f9838bae49",
+        "sourceSha": "7bab34dfbe6a41a895051823e06fbf9181f3bc1e",
+        "versionCode": 1790,
+        "privateScreenshotsSha256": {
+          "today": "9c27225ad94bcc2523ec99bafeed239cf68eedce22ab42b45f636712435bc7ca",
+          "route-day": "ce6e286c91e6505cc0ddc3d066884b55420f9bc4e6464fbda9004e8e695bfa03",
+          "route-month": "a895fb3d77739e7b1c4702523eb9d13023c85cf582bf7badc845ef8bb6a077cc",
+          "tasks": "0e116c6264f86a78df1d1b5dbb0e3f0823bd8ab9539fc0abff6da3ada2e3597b",
+          "task-order": "07cf01483a45ecd3c0802aebf63b50ef63ddf844f45b4d42712203627253120a",
+          "more": "93012eeacf81a4bb053e715232f9805b1e513d31a1151c7f40059f4aa44fd3e9",
+          "more-profile-link": "93012eeacf81a4bb053e715232f9805b1e513d31a1151c7f40059f4aa44fd3e9",
+          "profile": "05fe5a618d38d173b2963e0135fb90f09d3495a35a6fe94edadcf006d18226a5",
+          "clients": "a2ae2f5730b390dd4842ab7df8fa9ed43bf81896d7d663a87e3e5b78d9cdf040"
+        },
+        "remainingVisualFinding": "Today sync chip truncates at font_scale1.3; not fixed yet"
+      },
+      "landscapeContinuation": {
+        "status": "PASS",
+        "kind": "controlled scroll after retained landscape Maestro FAIL",
+        "searchReachableAfterScroll": true,
+        "scrollGestures": 1,
+        "headerScrollsWithList": true,
+        "productSearchLossConfirmed": false,
+        "priorNativeFailure": "waited for offscreen search without scrolling",
+        "returnedTodaySameAgent": true,
+        "noBusinessWrites": true,
+        "checkedAt": "2026-10-23T19:36:09.449179+00:00"
+      },
+      "originalFailuresRetained": [
+        "large-text driver screenshot lookup",
+        "landscape search wait without scrolling"
+      ],
+      "confirmedVisualFinding": "P2 sync label truncated at 130% text; pending correction",
+      "displayLease": "RESTORED with exact four original readbacks",
+      "businessWrites": false
     }
   ]
 }
