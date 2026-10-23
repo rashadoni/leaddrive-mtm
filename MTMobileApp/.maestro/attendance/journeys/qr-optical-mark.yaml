@@ -91,4 +91,9 @@ name: Read a real branch QR with the camera and verify the finish receipt
     direction: DOWN
     timeout: 30000
 - assertVisible: ${QR_VERIFIED_TEXT}
+- scrollUntilVisible:
+    element:
+      text: ${QR_BRANCH_NAME}
+    direction: DOWN
+    timeout: 30000
 - assertVisible: ${QR_BRANCH_NAME}

@@ -1271,3 +1271,27 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Подготовлены, но NOT RUN: package_1039_receipts_v1, package_1039_marks_v1, package_1039_correction_v1. Требуют текущий QR PASS и актуальные source/date/baseline. Эти файлы не доказывают прохождение тестов. Аккаунты/настройки во время подготовки не менялись. Суточный тест NOT RUN; Route & Field остаётся следующим этапом после Time.
 - PR196 body обновлён фактическими результатами landscape/GPS и явными оставшимися проверками; draft=true, опубликованный head845. Локальный checkpoint d3a03ae сохраняет GPS и новый план; приложение после845 не менялось.
 - Точная остановка: камера текущего QR flow ждёт человека, чтобы навести телефон на свежий код. Следующее действие: проверить результат и серверную FINISH/VERIFIED, затем текущие квитанции/собственные отметки/исправление/изоляцию и начать новую реальную 24h. После всех Time — Route & Field.
+
+
+### 2026-10-23, 10:43 Баку — возобновление после ответа о наведении QR
+
+- Пользователь ответил «енаправил» на вчерашний запрос физического наведения. Фактическое время ответа 23Oct утром; вчерашний QR flow v3 уже завершился 22Oct22:13UTC: FAIL после 364.161s, новых событий нет, grants и все flags восстановлены. Этот FAIL остаётся в evidence и supersedes прежнюю запись RUNNING.
+- Проверены ADB35039 (device), тот же server c665, owned employee STARTED 23Oct; worktree codex/attendance-standalone, origin rashadoni/leaddrive-mtm. Source845/APK1039 не менялись. Ресурсы перед малым Maestro: 14GB available RAM, 143GB disk, memory pressure0. Full builds/E2E локально NOT RUN по host contract; опубликованные source845 hosted gates остаются отдельными фактическими результатами.
+- Старый viewer завершился по TTL; остановлен только его идентифицированный owned cloudflared (PID/starttime/UID/command проверены). Новый viewer v7: loopback/public HTML+fresh PNG HTTP200, открыт справа. Новый immutable QR v4 требует неизменную историю обеих вымышленных учёток после прежнего FAIL, точную текущую сборку и исходные разрешения. Запущен один UI actor, итог пока RUNNING. Новый код открыт без повторного запроса команд или подключения Mac.
+
+
+### 2026-10-23, 10:53 Баку — QR действительно считан, отметка подтверждена; исправлен шаг прокрутки Maestro
+
+- Пользователь подтвердил, что НОВЫЙ QR виден внутри камеры. Optical flow v4 распознал код, подтвердил его через приложение и создал ровно одну FINISH 23Oct; QR VERIFIED нужного филиала, facts VALID. GPS этой отметки UNAVAILABLE, что не отменяет независимое QR-подтверждение. Parent v4 FAIL сохранился: последний assertVisible русского названия филиала находился ниже viewport, а скролл искал только начало контейнера. Это не ошибка распознавания.
+- Независимый canonical-optical-audit PASS: прежние 105 событий сохранены, другой аккаунт и обе истории заявок не изменены, package/radios/network/grants/flags восстановлены точно. Token injection не было. Повторять optical FINISH не будем.
+- Добавлен scrollUntilVisible для названия филиала в qr-optical-mark.yaml и отдельный read-only qr-existing-receipt.yaml для проверки существующей квитанции после cold restart. Обе YAML parse проверки PASS. Новых app runtime изменений нет; APK1039/source845 остаётся прежней, flow hashes фиксируются отдельно.
+- Read-only native continuation package-1039-qr-receipt-v1 RUNNING как единственный UI actor. После его завершения будут отдельно проверены видимость QR VERIFIED/названия, отсутствие новых событий и исходные настройки. Камеру/новое наведение пользователь больше не должен удерживать.
+
+
+### 2026-10-23, 10:56 Баку — текущий QR composite PASS, дальнейшая регрессия запущена
+
+- Read-only qr-existing-receipt Maestro PASS 67.965s; итоговый independent audit PASS 06:55:22UTC. Actual verified-receipt-native.png просмотрен: подтверждение и точное русское название филиала видны после cold restart. Все canonical events/marks, обе истории заявок и другой аккаунт unchanged, permissions/flags восстановлены.
+- Composite package-1039-qr-composite-acceptance-v1 PASS включает фактический optical write v4 (одна FINISH/VERIFIED), native receipt после restart и independent data audit. Camera foreground permission assertion и tap имеют status COMPLETED в исходном commands.json; предварительной выдачи для optical flow не было. Первоначальный v4 FAIL не переименован.
+- Viewer v7 и cloudflared остановлены после проверки точной принадлежности PID/starttime/UID/command; внешняя выдача временных QR завершена.
+- Запущен единственный следующий UI actor package_1039_receipts_v1: REOPEN/RESUME/PAUSE/RESUME/FINISH существующего текущего дня, restart и серверные квитанции. Результат RUNNING; own-marks/correction/isolation и новая 24h ещё NOT RUN. Исторические GPS/QR предыдущих событий должны остаться неизменными.
+- Сохраняем тестовую правку и новый read-only Maestro flow отдельным checkpoint. App runtime/source845/APK1039 unchanged. Full Jest/TS/build/browser E2E на этом Contabo NOT RUN по host contract; это test-YAML/docs изменение проверено YAML parse и фактическим Maestro. Новые hosted CI этого checkpoint ещё NOT RUN, push/deploy этой фазы не выполнен.

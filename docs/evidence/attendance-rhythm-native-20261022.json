@@ -640,7 +640,7 @@
   "currentCandidate": {
     "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
     "versionCode": 1039,
-    "status": "NATIVE_UI_ACCEPTANCE_PASS_GPS_COMPOSITE_PASS_QR_RUNNING_WAITING_PHYSICAL_AIM",
+    "status": "NATIVE_UI_GPS_AND_QR_COMPOSITE_PASS_RECEIPTS_RUNNING",
     "hostedGates": {
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "allExactHeadChecks": "PASS",
@@ -1021,14 +1021,97 @@
     },
     "nextUserRequestedPhase": "Route & Field Maestro after all Time acceptance, isolated data and role/server/offline checks",
     "currentOpticalQr": {
-      "status": "RUNNING",
+      "status": "COMPOSITE_PASS",
       "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
       "apkVersionCode": 1039,
-      "evidence": "package-1039-qr-v3",
-      "cameraNativeScreenshotInspected": true,
-      "qrPass": false,
-      "physicalAimRequested": true,
-      "tokenInjected": false
+      "fullOpticalFlow": "FAIL preserved; final branch-name visibility assertion below viewport",
+      "canonicalAudit": {
+        "status": "PASS_CANONICAL_OPTICAL_QR_SCOPE",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "apkVersionCode": 1039,
+        "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+        "newEvents": [
+          "FINISH"
+        ],
+        "canonicalWorkDate": "2026-10-23",
+        "factsState": "VALID",
+        "qrState": "VERIFIED",
+        "branchName": "Тестовое рабочее место QR",
+        "priorEventsUnchanged": 105,
+        "otherAccountAndRequestsUnchanged": true,
+        "settingsPermissionsAndFlagsRestored": true,
+        "opticalCameraUsed": true,
+        "tokenInjected": false,
+        "priorAttempt": "FAIL preserved: final branch name visibility assertion, not QR recognition",
+        "readOnlyNativeReceiptFollowup": "NOT RUN",
+        "checkedAt": "2026-10-23T06:52:06.254226+00:00"
+      },
+      "evidence": "package-1039-qr-v4",
+      "nativeReadOnlyReceipt": {
+        "status": "PASS",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "apkVersionCode": 1039,
+        "startedAt": "2026-10-23T06:53:21.229402+00:00",
+        "scope": "read-only existing optical QR receipt; no new mark",
+        "maestro": {
+          "flow": "journeys/qr-existing-receipt",
+          "exit": 0,
+          "apkVersionCode": 1039,
+          "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+          "flowSha256": "b8e69419e126cbbb6b291b702c2aac3b773bab4c4a80b01a577d8b981d55f175",
+          "tests": [
+            {
+              "name": "Read the verified branch QR receipt after a cold restart without new marks",
+              "seconds": "67.965",
+              "status": "PASS"
+            }
+          ]
+        },
+        "readOnly": true,
+        "canonicalHistoryAndMarksUnchanged": true,
+        "requestsAndOtherAccountUnchanged": true,
+        "verifiedStateAndBranchVisibleAfterRestart": true,
+        "opticalWriteEvidence": "package-1039-qr-v4/canonical-optical-audit-sanitized.json",
+        "originalOpticalFlowFailurePreserved": true,
+        "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+        "originalPermissionsAndFlagsRestored": true,
+        "finishedAt": "2026-10-23T06:55:22.330560+00:00"
+      },
+      "newMarkAlreadyWritten": true,
+      "compositeAcceptance": {
+        "status": "PASS",
+        "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+        "apkVersionCode": 1039,
+        "backendArtifactSha": "c6654e0c50192e5e00a70fd68b6b970439ce4cfc",
+        "opticalCameraAndConfirmationCompleted": true,
+        "actualAndroidCameraPermissionDialogCompleted": true,
+        "preGrantedForOpticalFlow": false,
+        "oneCanonicalFinish": true,
+        "qrState": "VERIFIED",
+        "canonicalAudit": "package-1039-qr-v4/canonical-optical-audit-sanitized.json",
+        "nativeReceiptAfterRestart": {
+          "flow": "journeys/qr-existing-receipt",
+          "exit": 0,
+          "apkVersionCode": 1039,
+          "sourceSha": "84534c6ed32da9943e4d0b464ce6e3d8e7831538",
+          "flowSha256": "b8e69419e126cbbb6b291b702c2aac3b773bab4c4a80b01a577d8b981d55f175",
+          "tests": [
+            {
+              "name": "Read the verified branch QR receipt after a cold restart without new marks",
+              "seconds": "67.965",
+              "status": "PASS"
+            }
+          ]
+        },
+        "canonicalHistoryAndOtherAccountUnchanged": true,
+        "originalPermissionsAndFlagsRestored": true,
+        "originalOpticalFlow": "FAIL preserved: final branch text below viewport",
+        "continuation": "Read-only; no repeated FINISH",
+        "tokenInjected": false,
+        "finishedAt": "2026-10-23T06:56:01.276165+00:00"
+      },
+      "actualReceiptScreenshotInspected": true,
+      "temporaryViewerStopped": true
     }
   }
 }
