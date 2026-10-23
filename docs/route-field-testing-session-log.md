@@ -257,3 +257,10 @@
 - Admission now records two distinct provenance types: website run OR exact ordinary manager POST receipt bound to QA customer/tenant/manager/hash. It does not claim website success for API preparation; other tenant/customer/role and credentials remain refused.27 targeted guards, Python AST/YAML parse and diff PASS. No runtime/APK change.
 - Active bounded screen lease v4 renewed fromv3, original2→temporary7, independent1200s recovery; restore/readback2 after native phase. No permission/network/radio/clock changes.
 - Next: publish harness checkpoint, hosted checks, then no-coordinate refusal and server reconciliation, followed by actual GPS request/review/visit/photo/offline. No login/account switch permitted.
+
+
+## 2026-10-23T15:46:41.076820+00:00 — first marked QA native attempt and precise harness correction
+
+- Exact127f5b6 all4 hosted checks PASS (39980254952/39980254946/39980255142). Actual QA assignment independently read back from organizations GET: one active PRIMARY for the selected employee, correct new QA customer only.
+- zeytun-missing-coordinates-v1 retained FAIL:65.842s Maestro, no visible QA row before business click; no login/account switch. Failed screenshot confirms keyboard open and list scrolled to historical visits. After hiding keyboard and bounded return to top, actual XML shows exact correctly typed QA search,1 matching QA row and blank-coordinate label. This is a harness visibility/selector failure, not a reproduced business refusal bug.
+- Narrow correction hides the keyboard after QA search and chooses the QA name BELOW search-results heading, avoiding the identical text in the input. Updated only3 selecting flows and shared AZ/RU/EN heading labels; YAML/JS parse,27 admission tests and diff PASS. Original failure retained. Next run only the failed case; do not replay completed task/tab/manager journeys.

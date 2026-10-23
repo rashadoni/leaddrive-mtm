@@ -7,12 +7,16 @@ name: Start only the marked QA GPS place after server setup
 - runFlow: ../shared/open-fixture-visits.yaml
 - tapOn: ${output.qa.visit.search}
 - inputText: ${RF_QA_CUSTOMER_NAME}
+- hideKeyboard
 - scrollUntilVisible:
     element:
       text: ${RF_QA_CUSTOMER_NAME}
+      below: ${output.qa.visit.results}
     direction: DOWN
     timeout: 15000
-- tapOn: ${RF_QA_CUSTOMER_NAME}
+- tapOn:
+    text: ${RF_QA_CUSTOMER_NAME}
+    below: ${output.qa.visit.results}
 - scrollUntilVisible:
     element:
       text: ${output.qa.visit.start}

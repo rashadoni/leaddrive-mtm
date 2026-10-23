@@ -20,12 +20,16 @@ name: Submit the real device position for the marked QA GPS place
     id: more-action-Visits
 - tapOn: ${output.qa.visit.search}
 - inputText: ${RF_QA_CUSTOMER_NAME}
+- hideKeyboard
 - scrollUntilVisible:
     element:
       text: ${RF_QA_CUSTOMER_NAME}
+      below: ${output.qa.visit.results}
     direction: DOWN
     timeout: 15000
-- tapOn: ${RF_QA_CUSTOMER_NAME}
+- tapOn:
+    text: ${RF_QA_CUSTOMER_NAME}
+    below: ${output.qa.visit.results}
 - scrollUntilVisible:
     element:
       text: ${output.qa.visit.start}
