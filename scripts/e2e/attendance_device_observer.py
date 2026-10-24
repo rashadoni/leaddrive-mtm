@@ -258,6 +258,8 @@ case "$1" in
     touch "$ts_dir/watchdog-ready"
     while [ ! -f "$ts_dir/done" ]; do
       ts_now=$(date +%s)
+      printf '%s\n' "$ts_now" > "$ts_dir/watchdog-heartbeat.$$"
+      mv "$ts_dir/watchdog-heartbeat.$$" "$ts_dir/watchdog-heartbeat"
       ts_last=$(cat "$ts_dir/heartbeat" 2>/dev/null)
       case "$ts_last" in ''|*[!0-9]*) ts_last=0 ;; esac
       if [ "$ts_last" -gt 0 ] && [ "$((ts_now - ts_last))" -ge "$ts_timeout" ]; then
