@@ -12,4 +12,9 @@ describe("taskWorkflowStatus", () => {
   it("keeps terminal tasks completed", () => {
     expect(taskWorkflowStatus({ status: "COMPLETED", persistedStatus: "COMPLETED" })).toBe("COMPLETED")
   })
+
+  it("does not turn a cancelled task back into work to start", () => {
+    expect(taskWorkflowStatus({ status: "CANCELLED" })).toBe("CANCELLED")
+    expect(taskWorkflowStatus({ status: "CANCELLED", persistedStatus: "CANCELLED" })).toBe("CANCELLED")
+  })
 })

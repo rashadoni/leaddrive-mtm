@@ -17,11 +17,8 @@ const monthComponent = source.slice(
 )
 
 describe("agent month calendar", () => {
-  it("loads six weeks for a familiar 42-day month grid", () => {
-    expect(source).toContain("monthGridWindow(month)")
-    expect(source).toContain("Promise.all(window.weekStarts.map")
-    expect(source).toContain("combineCalendarWeeks(weeks, window)")
-  })
+  // Six reads and 42 selectable days are exercised by the rendered screen in
+  // week-refresh-on-focus.test.tsx, including restoration after a cold mount.
 
   it("shows the month first and one selected day below on a phone", () => {
     expect(phoneBranch).toContain("<MonthCalendar")

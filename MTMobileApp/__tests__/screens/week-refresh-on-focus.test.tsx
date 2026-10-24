@@ -8,6 +8,14 @@ import { join } from "path"
 import React from "react"
 import TestRenderer, { act } from "react-test-renderer"
 import { monthGridWindow, shiftDateKey, shiftMonthKey, type MonthGridWindow } from "../../src/services/week"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import { setOfflineScope } from "../../src/services/offline-scope"
+
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"))
+jest.mock("../../src/services/bootstrap-offline-cache", () => ({
+  readOfflineBootstrap: async () => ({ validUntil: Date.now() + 60_000 }),
+}))
 
 type WeekResponse = { success: boolean; data?: unknown }
 type FocusEffect = () => void | (() => void)
@@ -16,6 +24,7 @@ const mockGetWeek = jest.fn((_start: string): Promise<WeekResponse> => Promise.r
 const mockNavigate = jest.fn()
 const mockFocus: { effect: FocusEffect | null } = { effect: null }
 const mockSync = { online: true }
+const mockAuth = { agent: { id: "agent-1", organizationId: "tenant-1", role: "AGENT" } }
 
 jest.mock("@react-navigation/native", () => {
   const { useEffect } = jest.requireActual("react")
@@ -45,7 +54,7 @@ jest.mock("../../src/components/LightScreenStatusBar", () => () => null)
 jest.mock("../../src/components/NotificationBell", () => () => null)
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 0, useTabBarPadding: () => 0 }))
 jest.mock("../../src/store/auth", () => ({
-  useAuthStore: (selector: (state: unknown) => unknown) => selector({ agent: { id: "agent-1", role: "AGENT" } }),
+  useAuthStore: Object.assign((selector: (state: unknown) => unknown) => selector(mockAuth), { getState: () => mockAuth }),
 }))
 jest.mock("../../src/store/bootstrap", () => ({
   useBootstrapStore: (selector: (state: unknown) => unknown) => selector({ data: { policies: { canPlanOwnRoutes: true } } }),
@@ -54,7 +63,8 @@ jest.mock("../../src/store/sync-status", () => ({
   useSyncStatusStore: (selector: (state: { online: boolean }) => unknown) => selector(mockSync),
 }))
 jest.mock("../../src/services/api", () => ({
-  api: { getWeek: (start: string) => mockGetWeek(start) },
+  api: { getWeek: (start: string) => mockGetWeek(start), serverOrigin: () => "https://tenant.example",
+    getOfflineBootstrapBinding: async () => ({ server: "https://tenant.example", deviceId: "phone", sessionId: "login" }) },
 }))
 
 import WeekScreen from "../../src/screens/week/WeekScreen"
@@ -141,8 +151,11 @@ async function answer(which: "latest" | "all") {
   await settle()
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks()
+  await AsyncStorage.clear()
+  setOfflineScope("tenant-1", "agent-1")
+  mockSync.online = true
   routesByDate = {}
   held = null
   mockFocus.effect = null
@@ -155,6 +168,38 @@ afterEach(() => {
 })
 
 describe("the calendar reads the month again when the agent comes back to it", () => {
+  it("shows the saved plan after the screen is recreated without a network", async () => {
+    routesByDate[PLANNED] = [{ id: "route-saved", status: "PLANNED", points: [{ id: "p1" }, { id: "p2" }] }]
+    const first = await open()
+    await act(async () => { first.unmount() })
+    mounted.splice(mounted.indexOf(first), 1)
+    mockSync.online = false
+    mockGetWeek.mockRejectedValue(new TypeError("Network request failed"))
+    const restored = await open()
+    expect(cell(restored, PLANNED).props.accessibilityLabel).toContain("Marşrut nöqtələri: 2")
+    expect(screenText(restored)).not.toContain("Təqvimi açmaq alınmadı")
+  })
+
+  it("lets the employee return from an uncached offline month to the saved month", async () => {
+    const tree = await open()
+    mockSync.online = false
+    mockGetWeek.mockRejectedValue(new TypeError("Network request failed"))
+    await press(labelled(tree, "Növbəti ay"))
+    expect(screenText(tree)).toContain("Təqvimi açmaq alınmadı")
+    expect(cells(tree)).toHaveLength(0)
+    await press(labelled(tree, "Əvvəlki ay"))
+    expect(cells(tree)).toHaveLength(42)
+    expect(screenText(tree)).not.toContain("Təqvimi açmaq alınmadı")
+  })
+
+  it("removes the previously visible calendar after an access denial", async () => {
+    const tree = await open()
+    mockGetWeek.mockRejectedValue(Object.assign(new Error("denied"), { status: 403 }))
+    await focusAgain()
+    expect(cells(tree)).toHaveLength(0)
+    expect(screenText(tree)).toContain("Təqvimi açmaq alınmadı")
+  })
+
   it("shows the route just saved in the planner on the chosen day, without a pull-to-refresh", async () => {
     const tree = await open()
     expect(mockGetWeek).toHaveBeenCalledTimes(6)

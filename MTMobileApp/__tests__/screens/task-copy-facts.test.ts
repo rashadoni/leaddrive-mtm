@@ -50,14 +50,12 @@ describe("B10: tasks state facts, not advice", () => {
     for (const removed of ["requirementHint", "contextHint", "progressHint"]) {
       expect(detail).not.toContain(removed)
     }
-    // The evidence section keeps its line: it describes contents you cannot
-    // predict from the heading, which is a fact, not coaching.
-    expect(detail).toContain("hint={copy.evidenceHint}")
+    // The read-only limitation remains explicit inside the file sheet.
+    expect(detail).toContain("{copy.evidenceReadOnly}")
   })
 
-  it("lets a section stand without a subtitle", () => {
-    // Three of the four now pass no hint at all.
-    expect(detail).toContain("hint?: string")
-    expect(detail).toContain("{hint ? <Text style={styles.cardHint}>{hint}</Text> : null}")
+  it("lets the requirement stand without a coaching subtitle", () => {
+    expect(detail).toContain("<TaskSection title={copy.requirement}>")
+    expect(detail).not.toContain("copy.evidenceHint")
   })
 })
