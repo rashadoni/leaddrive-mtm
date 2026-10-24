@@ -16,15 +16,14 @@ name: Previously loaded monthly plan survives a cold offline start
       - back
 - tapOn:
     id: route-section-tab-month
-- extendedWaitUntil:
-    visible: ".*Marşrut nöqtələri:.*"
-    timeout: 60000
-- assertNotVisible: Təqvimi açmaq alınmadı
+# In short landscape the saved-data notice can occupy the first viewport;
+# reach the actual saved day instead of waiting for cells above the fold.
 - scrollUntilVisible:
     element:
       text: ${RF_MONTH_EXPECTED_DAY}
     direction: DOWN
-    timeout: 15000
+    timeout: 60000
+- assertNotVisible: Təqvimi açmaq alınmadı
 - assertVisible: ${RF_MONTH_EXPECTED_DAY}
 - takeScreenshot: offline-month-restored
 - tapOn: ${RF_MONTH_EXPECTED_DAY}
