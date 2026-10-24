@@ -609,12 +609,14 @@ function RouteExecutionGate({
   copy,
   onPress,
   disabled = false,
+  flushTop = false,
 }: {
   mode: "workday" | "route" | "paused"
   busy: boolean
   copy: (typeof ROUTE_COPY)[RouteLanguage]
   onPress: () => void
   disabled?: boolean
+  flushTop?: boolean
 }) {
   const workday = mode === "workday"
   const paused = mode === "paused"
@@ -629,7 +631,7 @@ function RouteExecutionGate({
       ? copy.workdayRequiredBody
       : copy.routeStartRequiredBody
   return (
-    <View style={styles.actionPanel} accessibilityLiveRegion="polite">
+    <View style={[styles.actionPanel, flushTop && styles.flushTop]} accessibilityLiveRegion="polite">
       {/* One title. It used to stand twice, once small and once large, one
           line under the other (owner's phone, 7 October 2026). */}
       <View style={styles.actionEyebrowRow}>
@@ -651,13 +653,14 @@ function RouteExecutionGate({
   )
 }
 
-function RouteFinishedPanel({ visited, total, copy }: {
+function RouteFinishedPanel({ visited, total, copy, flushTop = false }: {
   visited: number
   total: number
   copy: (typeof ROUTE_COPY)[RouteLanguage]
+  flushTop?: boolean
 }) {
   return (
-    <View style={styles.actionPanel} accessibilityLiveRegion="polite" testID="route-action-panel-finished">
+    <View style={[styles.actionPanel, flushTop && styles.flushTop]} accessibilityLiveRegion="polite" testID="route-action-panel-finished">
       <View style={styles.actionEyebrowRow}>
         <Icon name="checkmark-circle" size={19} color={fieldTheme.color.success} />
         <Text style={styles.actionEyebrow}>{copy.routeFinishedTitle}</Text>
@@ -673,9 +676,9 @@ function RouteFinishedPanel({ visited, total, copy }: {
 // Stands where the panel will be while routeActionPanelState cannot yet tell
 // which one it is: the loading words the list already uses, no order and no
 // button (Galaxy S23, 2026-09-14 — the gate asked to start a started route).
-function RouteActionPanelLoading({ copy }: { copy: (typeof ROUTE_COPY)[RouteLanguage] }) {
+function RouteActionPanelLoading({ copy, flushTop = false }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; flushTop?: boolean }) {
   return (
-    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading]} testID="route-action-panel-loading">
+    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading, flushTop && styles.flushTop]} testID="route-action-panel-loading">
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.actionEmptyText}>{copy.loading}</Text>
     </View>
@@ -927,6 +930,7 @@ function StopRow({
   visiting = false,
   nearest = false,
   visitFacts,
+  flushTop = false,
 }: {
   point: RoutePoint
   index: number
@@ -938,6 +942,7 @@ function StopRow({
   nearest?: boolean
   /** The open visit's minutes and photos, shown on its stop. */
   visitFacts?: { minutes: number; photos: number }
+  flushTop?: boolean
   onPress: () => void
   language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
@@ -971,7 +976,7 @@ function StopRow({
       </View>
       {/* A stop still ahead is a white card on the line; a stop behind the
           agent is a quiet line of text, so the eye goes to what is left. */}
-      <View style={[styles.stopCard, done && styles.stopCardDone, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting]}>
+      <View style={[styles.stopCard, done && styles.stopCardDone, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, flushTop && styles.flushTop]}>
         <View style={styles.stopCopy}>
           <View style={styles.stopTitleRow}>
             <Text style={[styles.stopName, done && styles.stopNameDone, visiting && styles.stopNameVisiting]} numberOfLines={2}>
@@ -1064,6 +1069,7 @@ function PointActionPanel({
   onCheckOut,
   signature,
   onSignature,
+  flushTop = false,
 }: {
   point: RoutePoint | null
   nextPoint: RoutePoint | null
@@ -1084,6 +1090,7 @@ function PointActionPanel({
   onCheckOut: () => void
   signature: { visible: boolean; required: boolean; signed: boolean }
   onSignature: () => void
+  flushTop?: boolean
 }) {
   if (activeVisit && staleSinceLabel) {
     // Not «visit in progress»: a visit left open on another day. Today's
@@ -1091,7 +1098,7 @@ function PointActionPanel({
     // owner chose to show it with its date and let it only be closed.
     const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
     return (
-      <View style={[styles.actionPanel, styles.staleVisitPanel]} testID="route-stale-visit" accessibilityLiveRegion="polite">
+      <View style={[styles.actionPanel, styles.staleVisitPanel, flushTop && styles.flushTop]} testID="route-stale-visit" accessibilityLiveRegion="polite">
         <View style={styles.actionEyebrowRow}>
           <Icon name="alert-circle" size={18} color={fieldTheme.color.danger} />
           <Text style={[styles.actionEyebrow, styles.staleVisitEyebrow]}>{renderTemplate(copy.staleVisitTitle, { date: staleSinceLabel })}</Text>
@@ -1137,7 +1144,7 @@ function PointActionPanel({
     // The visit is to a doctor when its stop names one; the clinic is where.
     const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
     return (
-      <View style={styles.actionPanel}>
+      <View style={[styles.actionPanel, flushTop && styles.flushTop]}>
         <View style={styles.actionEyebrowRow}>
           <View style={styles.liveDot} />
           <Text style={styles.actionEyebrow}>{copy.activeVisit}</Text>
@@ -1248,7 +1255,7 @@ function PointActionPanel({
   const directionsFirst = hasDirections && !nearby
 
   return (
-    <View style={styles.actionPanel}>
+    <View style={[styles.actionPanel, flushTop && styles.flushTop]}>
       <Text style={styles.actionEyebrow}>{isRecommended ? copy.nextStop : copy.selectedStop}</Text>
       <Text style={styles.actionTitle}>{who.name}</Text>
       {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
@@ -2117,15 +2124,16 @@ export default function RouteScreen() {
     activeVisitKnown,
   })
   const actionPanel = actionPanelState === "loading" ? (
-    <RouteActionPanelLoading copy={copy} />
+    <RouteActionPanelLoading copy={copy} flushTop={tablet} />
   ) : actionPanelState === "finished" ? (
-    <RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} />
+    <RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} flushTop={tablet} />
   ) : actionPanelState === "route-unknown" ? (
     // The list beside it already says the route did not load and offers a
     // retry; a second card here would only repeat it.
     null
   ) : actionPanelState === "visit" || actionPanelState === "point" ? (
     <PointActionPanel
+      flushTop={tablet}
       point={focusPoint}
       nextPoint={nextPoint}
       activeVisit={activeVisit}
@@ -2147,6 +2155,7 @@ export default function RouteScreen() {
     />
   ) : (
     <RouteExecutionGate
+      flushTop={tablet}
       mode={actionPanelState === "gate-paused" ? "paused" : actionPanelState === "gate-route" ? "route" : "workday"}
       busy={workdayActive ? startingRoute : startingWorkday || workdayTransitionPending}
       copy={copy}
@@ -2214,13 +2223,13 @@ export default function RouteScreen() {
   const emptyMode = presentation.empty ?? "no-route"
   const emptyError = emptyMode === "offline-unavailable" || emptyMode === "slow-unavailable"
   const emptyState = emptyMode === "loading" ? (
-    <View style={styles.emptyState}>
+    <View style={[styles.emptyState, tablet && styles.flushTop]}>
       <GuideSpot id="route.first" />
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.emptyTitle}>{copy.loading}</Text>
     </View>
   ) : (
-    <View style={styles.emptyState} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
+    <View style={[styles.emptyState, tablet && styles.flushTop]} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
       <GuideSpot id="route.first" />
       <View style={[
         styles.emptyIcon,
@@ -2301,20 +2310,23 @@ export default function RouteScreen() {
             />
             {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
             {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
+            {/* The heading belongs above both columns. Keeping it inside
+                the list made its first card start lower than the action. */}
+            <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
+              <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+              <View style={styles.sectionHeadingEnd}>
+                <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
+              </View>
+            </View>
+            {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
           </View>
           <View style={styles.tabletBody}>
-            <View style={styles.tabletListPane}>
-              <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
-                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                <View style={styles.sectionHeadingEnd}>
-                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
-                </View>
-              </View>
-              {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
+            <View style={styles.tabletListPane} testID="route-list-pane">
               <View style={styles.tabletListContent}>
                 {displayedPoints.length === 0 ? emptyState : displayedPoints.map((item, position) => (
                   <StopRow
                     key={item.id}
+                    flushTop={position === 0}
                     point={item}
                     index={item.orderIndex}
                     selected={focusPoint?.id === item.id}
@@ -2333,9 +2345,9 @@ export default function RouteScreen() {
                 ))}
               </View>
             </View>
-            <View style={styles.tabletActionPane}>
+            <View style={styles.tabletActionPane} testID="route-action-pane">
               {remaining === 0 && totalPoints > 0 && !activeVisit ? (
-                <View style={styles.completeCard}>
+                <View style={[styles.completeCard, styles.flushTop]}>
                   <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
                   <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
                   <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
@@ -2734,15 +2746,14 @@ const styles = themed(() => StyleSheet.create({
   hintClose: { width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: "center", justifyContent: "center" },
 
   tabletTop: { paddingHorizontal: fieldTheme.space.xl },
+  flushTop: { marginTop: 0 },
   tabletBody: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
   // The stops stand on the ground as cards on the day line, as on the phone;
   // a white pane under white cards hid them (2026-10-18).
-  tabletListPane: { flex: 1, minWidth: 280 },
+  tabletListPane: { flex: 1, minWidth: 0 },
   tabletListContent: { paddingTop: 0 },
-  // The heading sat on the pane's edge: «Marşrut nöqtələri» touched the left
-  // border and «2 dayanacaq» the right one.
-  tabletSectionHeading: { marginTop: 0, paddingHorizontal: fieldTheme.space.md },
-  tabletActionPane: { flex: 1, minWidth: 300 },
+  tabletSectionHeading: { marginTop: fieldTheme.space.lg, marginBottom: 0, gap: fieldTheme.space.md, flexWrap: "wrap" },
+  tabletActionPane: { flex: 1, minWidth: 0 },
 
   modalLayer: { flex: 1, justifyContent: "flex-end" },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: fieldTheme.color.scrim },

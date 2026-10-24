@@ -17,7 +17,7 @@ name: Previously loaded monthly plan survives a cold offline start
 - tapOn:
     id: route-section-tab-month
 - extendedWaitUntil:
-    notVisible: Aylıq təqvim hazırlanır
+    visible: ".*Marşrut nöqtələri:.*"
     timeout: 60000
 - assertNotVisible: Təqvimi açmaq alınmadı
 - scrollUntilVisible:
