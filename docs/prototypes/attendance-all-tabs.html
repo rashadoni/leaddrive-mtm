@@ -1,0 +1,266 @@
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&family=Onest:wght@400;500;600;700&display=swap">
+<style>
+#attendance-all-tabs { --at-space:16px; }
+#attendance-all-tabs .at-stage { padding:52px 8px 20px; min-height:1020px; display:grid; justify-items:center; align-content:start; gap:10px; }
+#attendance-all-tabs .at-mount { width:min(100%,390px); }
+#attendance-all-tabs .at-preview { font:400 12px 'Nunito Sans',sans-serif; color:light-dark(#52665D,#BCC9C1); }
+#attendance-all-tabs .at-phone { --at-bg:light-dark(#F6F8F4,#131A17); --at-paper:light-dark(#FBFDFB,#1D2721); --at-ink:light-dark(#172D24,#EAF3ED); --at-muted:light-dark(#56685E,#AFBFB4); --at-line:light-dark(#D9E2D9,#3E4D42); --at-green:light-dark(#075941,#ADF0C9); --at-green-fill:light-dark(#075941,#1D6E4D); --at-on:light-dark(#F8FCFA,#F8FCFA); --at-soft:light-dark(#E4F0E7,#243E2F); --at-blue:light-dark(#2258BC,#ACC8FF); --at-blue-fill:light-dark(#2258BC,#315CA9); --at-blue-soft:light-dark(#EAF0FC,#25344D); --at-amber:light-dark(#785411,#F0CB7D); --at-amber-soft:light-dark(#FFF0D0,#3D3220); --at-danger:light-dark(#A3332D,#FFB7AD); --at-radius:18px; width:min(100%,390px); box-sizing:border-box; border:1px solid var(--at-line); border-radius:28px; background:var(--at-bg); color:var(--at-ink); font:400 15px/1.45 'Nunito Sans',sans-serif; overflow:clip; }
+#attendance-all-tabs .at-phone * { box-sizing:border-box; }
+#attendance-all-tabs h2,#attendance-all-tabs h3,#attendance-all-tabs h4,#attendance-all-tabs p { margin:0; }
+#attendance-all-tabs .at-phone h2 { font:600 25px/1.2 'Onest',sans-serif; letter-spacing:-.7px; }
+#attendance-all-tabs .at-phone h3 { font:600 18px/1.3 'Onest',sans-serif; letter-spacing:-.3px; }
+#attendance-all-tabs .at-phone h4 { font:600 16px/1.35 'Onest',sans-serif; }
+#attendance-all-tabs .at-phone button,#attendance-all-tabs .at-phone input,#attendance-all-tabs .at-phone select,#attendance-all-tabs .at-phone textarea { font:inherit; color:inherit; }
+#attendance-all-tabs .at-phone button { min-height:48px; border:0; background:transparent; padding:10px 12px; text-align:left; border-radius:12px; }
+#attendance-all-tabs .at-phone button:disabled { opacity:.6; }
+#attendance-all-tabs .at-phone button:active { transform:translateY(1px); }
+#attendance-all-tabs .at-phone button:hover { background:var(--at-soft); }
+#attendance-all-tabs .at-phone input[type="checkbox"] { accent-color:var(--at-green-fill); }
+#attendance-all-tabs .at-phone svg { width:20px; height:20px; flex-shrink:0; }
+#attendance-all-tabs .at-chrome { padding:18px 18px 14px; display:flex; align-items:center; gap:9px; background:var(--at-paper); border-bottom:1px solid var(--at-line); }
+#attendance-all-tabs .at-logo { width:30px; height:30px; display:grid; place-items:center; background:var(--at-green-fill); color:var(--at-on); border-radius:10px; }
+#attendance-all-tabs .at-wordmark { font:600 14px 'Onest',sans-serif; flex:1; }
+#attendance-all-tabs .at-person { background:var(--at-soft)!important; min-width:48px; text-align:center!important; font-weight:700!important; color:var(--at-green)!important; }
+#attendance-all-tabs .at-main { min-height:650px; position:relative; }
+#attendance-all-tabs .at-panel { padding:20px var(--at-space) 24px; }
+#attendance-all-tabs [hidden] { display:none!important; }
+#attendance-all-tabs .at-stack { display:grid; gap:var(--at-space); }
+#attendance-all-tabs .at-row { display:flex; align-items:center; gap:10px; min-width:0; }
+#attendance-all-tabs .at-between { justify-content:space-between; }
+#attendance-all-tabs .at-grow { flex:1; min-width:0; }
+#attendance-all-tabs .at-muted { color:var(--at-muted); font-size:13px; }
+#attendance-all-tabs .at-kicker { font-size:12px; color:var(--at-muted); letter-spacing:.15px; }
+#attendance-all-tabs .at-heading { margin:6px 0 20px; display:grid; gap:6px; }
+#attendance-all-tabs .at-status { display:inline-flex; align-items:center; gap:6px; padding:4px 8px; background:var(--at-soft); color:var(--at-green); border-radius:8px; font-size:12px; font-weight:700; width:max-content; max-width:100%; }
+#attendance-all-tabs .at-wait { background:var(--at-amber-soft); color:var(--at-amber); }
+#attendance-all-tabs .at-blue { color:var(--at-blue); }
+#attendance-all-tabs .at-work { background:var(--at-soft); padding:18px; border-radius:var(--at-radius); display:grid; gap:16px; }
+#attendance-all-tabs .at-work-title { display:flex; align-items:center; gap:10px; }
+#attendance-all-tabs .at-work-title > svg { width:24px; height:24px; color:var(--at-green); }
+#attendance-all-tabs .at-steps { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--at-muted); }
+#attendance-all-tabs .at-steps span { display:flex; gap:4px; align-items:center; }
+#attendance-all-tabs .at-steps > b { height:1px; flex:1; background:var(--at-line); }
+#attendance-all-tabs .at-steps svg { width:14px; height:14px; }
+#attendance-all-tabs .at-primary { display:flex; align-items:center; justify-content:center; gap:8px; background:var(--at-green-fill)!important; color:var(--at-on)!important; font-weight:700!important; width:100%; }
+#attendance-all-tabs .at-primary-blue { background:var(--at-blue-fill)!important; }
+#attendance-all-tabs .at-secondary { border:1px solid var(--at-line)!important; background:var(--at-paper)!important; font-weight:700!important; }
+#attendance-all-tabs .at-inline-actions { display:flex; gap:8px; }
+#attendance-all-tabs .at-inline-actions > button { flex:1; text-align:center; }
+#attendance-all-tabs .at-text-button { color:var(--at-green)!important; font-weight:700!important; }
+#attendance-all-tabs .at-time { font-variant-numeric:tabular-nums; }
+#attendance-all-tabs .at-timeline { margin:0; padding:0; list-style:none; }
+#attendance-all-tabs .at-timeline li { display:grid; grid-template-columns:45px 18px 1fr; gap:8px; align-items:start; min-height:36px; font-size:13px; }
+#attendance-all-tabs .at-point { position:relative; display:grid; place-items:center; color:var(--at-green); }
+#attendance-all-tabs .at-point:after { content:''; position:absolute; top:23px; width:1px; height:19px; background:var(--at-line); }
+#attendance-all-tabs .at-timeline li:last-child .at-point:after { display:none; }
+#attendance-all-tabs .at-point svg { width:17px; height:17px; }
+#attendance-all-tabs .at-list { display:grid; }
+#attendance-all-tabs .at-line { border-bottom:1px solid var(--at-line); padding:13px 0; }
+#attendance-all-tabs .at-line:last-child { border-bottom:0; }
+#attendance-all-tabs .at-disclosure { width:100%; padding:10px 0!important; display:flex; align-items:center; gap:10px; }
+#attendance-all-tabs .at-disclosure > span { flex:1; }
+#attendance-all-tabs .at-disclosure strong { display:block; font-weight:700; }
+#attendance-all-tabs .at-detail { font-size:13px; padding:4px 0 12px 30px; }
+#attendance-all-tabs .at-detail p + p { margin-top:8px; }
+#attendance-all-tabs .at-day-details .at-line { padding:6px 0; }
+#attendance-all-tabs .at-icon { display:grid; place-items:center; width:36px; height:36px; border-radius:11px; background:var(--at-blue-soft); color:var(--at-blue); flex-shrink:0; }
+#attendance-all-tabs .at-icon-warning { background:var(--at-amber-soft); color:var(--at-amber); }
+#attendance-all-tabs .at-section { font-size:12px; color:var(--at-muted); font-weight:700; margin-top:7px; }
+#attendance-all-tabs .at-tabs { border-top:1px solid var(--at-line); background:var(--at-paper); display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; padding:7px 5px 12px; }
+#attendance-all-tabs .at-tabs button { display:grid; justify-items:center; align-content:center; gap:4px; min-width:0; padding:7px 1px; font-size:11px; color:var(--at-muted); text-align:center; overflow-wrap:anywhere; border-radius:12px; }
+#attendance-all-tabs .at-tabs button[aria-selected="true"] { background:var(--at-soft); color:var(--at-green); font-weight:700; }
+#attendance-all-tabs .at-tabs svg { width:21px; height:21px; }
+#attendance-all-tabs .at-filter { display:flex; gap:6px; flex-wrap:wrap; }
+#attendance-all-tabs .at-filter button { min-height:40px; border:1px solid var(--at-line); font-size:13px; padding:8px 13px; }
+#attendance-all-tabs .at-filter button[aria-pressed="true"] { background:var(--at-paper); color:var(--at-green); border-color:var(--at-green); font-weight:700; }
+#attendance-all-tabs .at-request { display:grid; gap:8px; }
+#attendance-all-tabs .at-date { font-size:13px; color:var(--at-muted); }
+#attendance-all-tabs .at-quota { display:flex; align-items:center; gap:8px; padding:11px 12px!important; background:var(--at-blue-soft)!important; color:var(--at-blue)!important; width:100%; font-size:13px!important; }
+#attendance-all-tabs .at-attention { padding:16px; border-radius:var(--at-radius); background:var(--at-amber-soft); display:grid; gap:12px; }
+#attendance-all-tabs .at-attention .at-kicker { color:var(--at-amber); }
+#attendance-all-tabs .at-answer { background:var(--at-paper); padding:13px; border-radius:12px; border:1px solid var(--at-line); display:grid; gap:12px; }
+#attendance-all-tabs .at-phone textarea,#attendance-all-tabs .at-phone input,#attendance-all-tabs .at-phone select { border:1px solid var(--at-line); border-radius:10px; background:var(--at-paper); min-height:48px; width:100%; padding:10px; min-width:0; font-size:16px; }
+#attendance-all-tabs .at-phone textarea { resize:vertical; min-height:90px; }
+#attendance-all-tabs .at-label { font-size:13px; display:grid; gap:6px; }
+#attendance-all-tabs .at-sheet { background:var(--at-paper); border:1px solid var(--at-line); border-radius:var(--at-radius); padding:16px; display:grid; gap:14px; }
+#attendance-all-tabs .at-pair { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+#attendance-all-tabs .at-compose button { min-height:44px; }
+#attendance-all-tabs .at-error { color:var(--at-danger); font-size:13px; }
+#attendance-all-tabs .at-flash { margin-top:14px; font-size:13px; color:var(--at-green); background:var(--at-soft); padding:10px 12px; border-radius:10px; }
+#attendance-all-tabs .at-notice { width:100%; display:flex; align-items:flex-start; gap:10px; padding:12px 0!important; }
+#attendance-all-tabs .at-notice strong { display:block; font-size:14px; }
+#attendance-all-tabs .at-notice .at-muted { display:block; margin-top:4px; }
+#attendance-all-tabs .at-dot { width:7px; height:7px; border-radius:50%; background:var(--at-blue); margin-top:8px; }
+#attendance-all-tabs .at-avatar { width:50px; height:50px; background:var(--at-soft); color:var(--at-green); display:grid; place-items:center; border-radius:17px; font:600 18px 'Onest',sans-serif; flex-shrink:0; }
+#attendance-all-tabs .at-identity { display:flex; align-items:center; gap:12px; padding-bottom:18px; border-bottom:1px solid var(--at-line); }
+#attendance-all-tabs .at-settings { padding:5px 14px; border-radius:var(--at-radius); background:var(--at-paper); }
+#attendance-all-tabs .at-setting { display:flex; align-items:center; gap:10px; width:100%; padding:12px 0!important; border-bottom:1px solid var(--at-line)!important; border-radius:0!important; }
+#attendance-all-tabs .at-setting:last-child { border-bottom:0!important; }
+#attendance-all-tabs .at-setting .at-muted { display:block; }
+#attendance-all-tabs .at-danger { color:var(--at-danger)!important; }
+#attendance-all-tabs .at-check { display:flex; align-items:center; gap:8px; }
+#attendance-all-tabs .at-check input { width:20px; min-height:20px; }
+#attendance-all-tabs .at-offline { background:var(--at-amber-soft); color:var(--at-amber); padding:10px 12px; border-radius:10px; font-size:13px; }
+#attendance-all-tabs .at-sheet [data-act="cancel"] { color:var(--at-muted); }
+#attendance-all-tabs .at-quiet .at-chrome { background:var(--at-bg); border-bottom:0; }
+#attendance-all-tabs .at-quiet .at-work { background:transparent; border-top:1px solid var(--at-line); border-bottom:1px solid var(--at-line); border-radius:0; padding:20px 0; }
+#attendance-all-tabs .at-quiet .at-steps { display:none; }
+#attendance-all-tabs .at-quiet .at-day-order { display:flex; flex-direction:column; }
+#attendance-all-tabs .at-quiet .at-day-history { order:3; }
+#attendance-all-tabs .at-quiet .at-day-details { order:2; }
+#attendance-all-tabs .at-quiet .at-settings { background:transparent; padding:0; border-radius:0; }
+#attendance-all-tabs .at-quiet .at-attention { background:transparent; padding:0 0 18px; border-radius:0; border-bottom:1px solid var(--at-line); }
+#attendance-all-tabs .at-quiet .at-attention .at-answer { background:var(--at-bg); }
+#attendance-all-tabs .at-quiet .at-icon { border-radius:50%; width:28px; height:28px; }
+#attendance-all-tabs .at-quiet .at-tabs button[aria-selected="true"] { background:transparent; }
+#attendance-all-tabs .at-quiet .at-main { min-height:650px; }
+#attendance-all-tabs .at-quiet .at-heading h2 { font-size:23px; }
+#attendance-all-tabs .at-phone [data-live] { overflow-wrap:anywhere; }
+@media (prefers-reduced-motion:no-preference) { #attendance-all-tabs .at-phone button { transition:background-color 140ms,transform 100ms; } }
+@media (max-width:360px) { #attendance-all-tabs .at-stage { padding-left:0; padding-right:0; min-height:1100px; } #attendance-all-tabs .at-panel { padding-left:14px; padding-right:14px; } #attendance-all-tabs .at-phone h2 { font-size:23px; } }
+</style>
+<div id="attendance-all-tabs">
+  <div class="viz-carousel viz-dotted-background" aria-label="Два направления для пяти вкладок LeadDrive Time" data-previous-label="Предыдущий вариант" data-next-label="Следующий вариант">
+    <section data-variant="Ритм" aria-label="Выразительный вариант Ритм"><div class="at-stage"><span class="at-preview">Эскиз · вымышленные данные</span><div class="at-mount" data-design="rhythm"></div></div></section>
+    <section data-variant="Спокойный" aria-label="Сдержанный вариант Спокойный" hidden><div class="at-stage"><span class="at-preview">Эскиз · вымышленные данные</span><div class="at-mount" data-design="quiet"></div></div></section>
+  </div>
+  <template id="at-app-template">
+    <article class="at-phone" aria-label="LeadDrive Time">
+      <header class="at-chrome"><span class="at-logo"><i data-lucide="clock-3" aria-hidden="true"></i></span><span class="at-wordmark">LeadDrive Time</span><button type="button" class="at-person cursor-interaction" data-go="profile" aria-label="Профиль Лейлы">ЛМ</button></header>
+      <main class="at-main">
+        <section class="at-panel at-stack" data-panel="day" role="tabpanel">
+          <div class="at-heading"><p class="at-kicker">Четверг, 22 октября</p><h2>Хорошего дня, Лейла</h2><p class="at-muted">Сегодня · Центральный филиал</p></div>
+          <div class="at-offline" data-offline hidden>Сохранено на телефоне. Доставка начнётся после подключения.</div>
+          <div class="at-day-order at-stack">
+            <div class="at-work">
+              <div class="at-work-title"><i data-lucide="sun" aria-hidden="true"></i><div class="at-grow"><h3 data-day-title>Вы на работе</h3><p class="at-muted" data-day-copy>Начало в 09:03 · перерыв 30 минут</p></div><span class="at-status" data-day-badge>День идёт</span></div>
+              <div class="at-steps" aria-label="Этапы рабочего дня"><span><i data-lucide="check" aria-hidden="true"></i>Начало</span><b></b><span>Перерыв</span><b></b><span>Завершение</span></div>
+              <button type="button" class="at-primary cursor-interaction" data-act="scan"><i data-lucide="scan-qr-code" aria-hidden="true"></i><span data-scan-copy>Завершить по QR</span></button>
+              <div class="at-inline-actions"><button type="button" class="at-secondary cursor-interaction" data-act="pause" data-pause-copy>На перерыв</button><button type="button" class="at-text-button cursor-interaction" data-act="finish">Завершить</button></div>
+            </div>
+            <div class="at-stack at-day-history"><div class="at-row at-between"><h3>Ваш день</h3><span class="at-muted">По отметкам</span></div><ol class="at-timeline"><li><span class="at-time at-muted">09:03</span><span class="at-point"><i data-lucide="circle-check" aria-hidden="true"></i></span><span>Начало работы</span></li><li><span class="at-time at-muted">12:30</span><span class="at-point"><i data-lucide="coffee" aria-hidden="true"></i></span><span>Перерыв · 30 минут</span></li><li><span class="at-time at-muted">13:00</span><span class="at-point"><i data-lucide="circle-check" aria-hidden="true"></i></span><span>Продолжение работы</span></li></ol></div>
+            <div class="at-list at-day-details">
+              <div class="at-line"><button type="button" class="at-disclosure cursor-interaction" data-open="delivery" aria-expanded="false"><i data-lucide="cloud-check" aria-hidden="true"></i><span><strong data-delivery-label>Все отметки доставлены</strong><span class="at-muted">Квитанции и исходное время</span></span><i data-lucide="chevron-down" aria-hidden="true"></i></button><div class="at-detail" data-detail="delivery" hidden><p>Начало · 09:03. Перерыв · 12:30. Продолжение · 13:00.</p><p class="at-muted">Получение сервером и решение кадровика — разные статусы.</p></div></div>
+              <div class="at-line"><button type="button" class="at-disclosure cursor-interaction" data-open="evidence" aria-expanded="false"><i data-lucide="map-pin" aria-hidden="true"></i><span><strong>Место и QR</strong><span class="at-muted">Сведения только о ваших отметках</span></span><i data-lucide="chevron-down" aria-hidden="true"></i></button><div class="at-detail" data-detail="evidence" hidden><button type="button" class="at-text-button cursor-interaction" data-act="load-evidence">Показать сохранённые сведения</button><p data-evidence hidden>Начало: GPS в зоне филиала. QR не использовался. Это исторические сведения, новое измерение не выполняется.</p></div></div>
+            </div>
+          </div>
+        </section>
+        <section class="at-panel at-stack" data-panel="requests" role="tabpanel" hidden>
+          <div class="at-heading"><p class="at-kicker">Ваши обращения к кадровику</p><h2>Заявки</h2></div>
+          <button type="button" class="at-primary at-primary-blue cursor-interaction" data-act="new-request"><i data-lucide="plus" aria-hidden="true"></i>Новая заявка</button>
+          <div class="at-compose at-sheet" data-compose="request" hidden>
+            <div class="at-row at-between"><h3>Новая заявка</h3><button type="button" data-act="close-request" class="cursor-interaction" aria-label="Закрыть форму заявки"><i data-lucide="x" aria-hidden="true"></i></button></div>
+            <div class="at-stack" data-request-step="input"><label class="at-label">Что нужно оформить?<select name="kind"><option>Отпуск</option><option>Больничный</option><option>Отсутствие</option><option>Отлучиться на время</option><option>Командировка</option><option>Удалённая работа</option><option>Дополнительная работа</option><option>Исправление времени</option></select></label><div class="at-pair"><label class="at-label">С даты<input type="date" name="from" value="2026-10-26"></label><label class="at-label">По дату<input type="date" name="to" value="2026-10-27"></label></div><label class="at-label">Причина<textarea name="reason" placeholder="Коротко опишите причину"></textarea></label><p class="at-error" data-request-error role="alert" hidden>Проверьте даты и укажите причину от трёх символов.</p><button type="button" class="at-primary at-primary-blue cursor-interaction" data-act="review-request">Проверить заявку</button></div>
+            <div class="at-stack" data-request-step="review" hidden><h4>Проверьте перед отправкой</h4><p data-request-summary></p><p class="at-muted">В эскизе заявка останется демонстрационным черновиком.</p><div class="at-inline-actions"><button type="button" class="at-secondary cursor-interaction" data-act="edit-request">Изменить</button><button type="button" class="at-primary at-primary-blue cursor-interaction" data-act="demo-request">Готово</button></div></div>
+          </div>
+          <button type="button" class="at-quota cursor-interaction" data-open="quota" aria-expanded="false"><i data-lucide="timer" aria-hidden="true"></i><span>Часовые заявки · осталось 7 ч</span><i data-lucide="chevron-down" aria-hidden="true"></i></button><p class="at-detail at-muted" data-detail="quota" hidden>Общий лимит на отлучки и почасовое отсутствие за октябрь. Это не остаток дней отпуска. Локальная очередь учитывается отдельно.</p>
+          <div class="at-filter" aria-label="Фильтр заявок"><button type="button" class="cursor-interaction" data-request-filter="all" aria-pressed="true">Все</button><button type="button" class="cursor-interaction" data-request-filter="pending" aria-pressed="false">Ждут решения</button></div>
+          <div class="at-list"><div class="at-line at-request" data-request-item="pending"><div class="at-row at-between"><h4>Удалённая работа</h4><span class="at-status at-wait">На рассмотрении</span></div><p class="at-date">26–27 октября</p><p class="at-muted">Ответ кадровика появится здесь</p><button type="button" class="at-disclosure cursor-interaction" data-open="request-more" aria-expanded="false"><span class="at-blue">Подробности заявки</span><i data-lucide="chevron-down" aria-hidden="true"></i></button><div class="at-detail" data-detail="request-more" hidden><p>Причина: работа с документами из дома.</p><p class="at-muted">Отмена в приложении потребует подтверждения.</p></div></div><div class="at-line at-request" data-request-item="approved"><div class="at-row at-between"><h4>Отлучиться на время</h4><span class="at-status">Одобрено</span></div><p class="at-date">21 октября · 15:00–16:00</p><p class="at-muted">1 час · согласовано кадровиком</p></div></div>
+        </section>
+        <section class="at-panel at-stack" data-panel="replies" role="tabpanel" hidden>
+          <div class="at-heading"><p class="at-kicker">Контекст и ответ в одном месте</p><h2>Ответы кадровику</h2></div>
+          <div class="at-attention"><span class="at-kicker">КАДРОВИК ЗАПРОСИЛ ОБЪЯСНЕНИЕ</span><div class="at-row"><span class="at-icon at-icon-warning"><i data-lucide="message-circle" aria-hidden="true"></i></span><div><h3>Опоздание 21 октября</h3><p class="at-muted">Начало в 09:12 · на 12 минут позже</p></div></div><p>Уточните причину, чтобы кадровик мог рассмотреть этот день.</p><button type="button" class="at-primary cursor-interaction" data-act="answer">Ответить</button><div class="at-answer" data-compose="answer" hidden><label class="at-label">Что произошло?<textarea name="answer" placeholder="Напишите своими словами"></textarea></label><p class="at-error" data-answer-error role="alert" hidden>Добавьте причину от трёх символов.</p><button type="button" class="at-primary cursor-interaction" data-act="demo-answer">Подготовить ответ</button><button type="button" class="at-text-button cursor-interaction" data-act="close-answer">Отменить</button></div></div>
+          <h3>Ранее</h3><div class="at-list"><div class="at-line"><div class="at-row at-between"><h4>19 октября · отсутствие</h4><span class="at-status">Принято</span></div><p class="at-muted">Причина рассмотрена кадровиком</p></div><div class="at-line"><h4>Можно добавить объяснение</h4><p class="at-muted">Если нужно уточнить другие дни</p><button type="button" class="at-text-button cursor-interaction" data-act="voluntary-answer">Выбрать день</button></div></div>
+        </section>
+        <section class="at-panel at-stack" data-panel="inbox" role="tabpanel" hidden>
+          <div class="at-heading"><p class="at-kicker">Решения и важные изменения</p><h2>Входящие</h2></div><div class="at-filter" aria-label="Фильтр входящих"><button type="button" class="cursor-interaction" data-inbox-filter="all" aria-pressed="true">Все</button><button type="button" class="cursor-interaction" data-inbox-filter="unread" aria-pressed="false">Непрочитанные</button></div>
+          <div class="at-section">СЕГОДНЯ</div><div class="at-list">
+            <div class="at-line" data-notice="answer" data-unread="true"><button type="button" class="at-notice cursor-interaction" data-open="notice-answer" aria-expanded="false"><span class="at-icon at-icon-warning"><i data-lucide="message-circle" aria-hidden="true"></i></span><span class="at-grow"><strong>Нужен ваш ответ</strong><span class="at-muted">Опоздание 21 октября · новое</span></span><span class="at-dot" aria-hidden="true"></span></button><div class="at-detail" data-detail="notice-answer" hidden><p>Кадровик запросил объяснение.</p><button type="button" class="at-text-button cursor-interaction" data-go="replies">Открыть объяснение</button><button type="button" class="at-text-button cursor-interaction" data-read="answer">Отметить прочитанным</button></div></div>
+            <div class="at-line" data-notice="request" data-unread="false"><button type="button" class="at-notice cursor-interaction" data-open="notice-request" aria-expanded="false"><span class="at-icon"><i data-lucide="calendar-check" aria-hidden="true"></i></span><span class="at-grow"><strong>Часовая заявка одобрена</strong><span class="at-muted">21 октября · 15:00–16:00</span></span></button><div class="at-detail" data-detail="notice-request" hidden><button type="button" class="at-text-button cursor-interaction" data-go="requests">Открыть заявки</button></div></div>
+          </div><div class="at-section">ВЧЕРА</div><div class="at-line" data-notice="phone" data-unread="false"><button type="button" class="at-notice cursor-interaction" data-open="notice-phone" aria-expanded="false"><span class="at-icon"><i data-lucide="smartphone" aria-hidden="true"></i></span><span class="at-grow"><strong>Телефон допущен</strong><span class="at-muted">Кадровик подтвердил устройство</span></span></button><div class="at-detail" data-detail="notice-phone" hidden><button type="button" class="at-text-button cursor-interaction" data-go="profile">Телефон и доступ</button></div></div>
+        </section>
+        <section class="at-panel at-stack" data-panel="profile" role="tabpanel" hidden>
+          <div class="at-identity"><span class="at-avatar">ЛМ</span><div><h3>Лейла Мамедова</h3><p>Сотрудник</p><p class="at-muted">Центральный филиал</p></div></div>
+          <h4>Личные настройки</h4><div class="at-settings"><button type="button" class="at-setting cursor-interaction" data-open="language" aria-expanded="false"><i data-lucide="languages" aria-hidden="true"></i><span class="at-grow">Язык<span class="at-muted" data-language>Русский</span></span><i data-lucide="chevron-right" aria-hidden="true"></i></button><div class="at-detail" data-detail="language" hidden><label class="at-label">Язык приложения<select name="language"><option>Русский</option><option>Azərbaycan</option><option>English</option></select></label></div><label class="at-setting"><i data-lucide="circle-help" aria-hidden="true"></i><span class="at-grow">Подсказки<span class="at-muted">Короткая помощь по месту</span></span><span class="at-check"><input type="checkbox" name="hints" aria-label="Показывать подсказки" checked></span></label></div>
+          <h4>Устройство и приватность</h4><div class="at-settings"><button type="button" class="at-setting cursor-interaction" data-open="device" aria-expanded="false"><i data-lucide="smartphone" aria-hidden="true"></i><span class="at-grow">Этот телефон<span class="at-muted">Допущен кадровиком</span></span><i data-lucide="chevron-right" aria-hidden="true"></i></button><div class="at-detail" data-detail="device" hidden>Если организация требует допуск, новый телефон подтверждает администратор. Доступ показывается для текущего аккаунта и устройства.</div><button type="button" class="at-setting cursor-interaction" data-open="privacy" aria-expanded="false"><i data-lucide="map-pin" aria-hidden="true"></i><span class="at-grow">Геолокация<span class="at-muted">Согласие принято · на телефоне выключено</span></span><i data-lucide="chevron-right" aria-hidden="true"></i></button><div class="at-detail at-stack" data-detail="privacy" hidden><p>Согласие организации и разрешение телефона показываются отдельно. Место проверяется при отметке, фонового отслеживания нет.</p><p class="at-muted">В приложении здесь открываются утверждённый текст и отдельное действие отзыва согласия. Эскиз не меняет разрешения.</p></div></div>
+          <div class="at-settings"><button type="button" class="at-setting cursor-interaction" data-open="company" aria-expanded="false"><i data-lucide="building-2" aria-hidden="true"></i><span class="at-grow">Компания и соединение<span class="at-muted">Подробности подключения</span></span><i data-lucide="chevron-right" aria-hidden="true"></i></button><div class="at-detail" data-detail="company" hidden>Демонстрационная компания · сведения о сервере и смена компании доступны в приложении.</div><button type="button" class="at-setting at-danger cursor-interaction" data-act="logout-demo"><i data-lucide="log-out" aria-hidden="true"></i><span>Выйти из аккаунта</span></button></div><p class="at-kicker">LeadDrive Time · эскиз интерфейса</p>
+        </section>
+        <div class="at-panel" data-dialog hidden role="dialog" aria-modal="false" aria-label="Подтверждение"><div class="at-sheet at-stack"><h3 data-dialog-title></h3><p data-dialog-copy></p><button type="button" class="at-primary cursor-interaction" data-act="confirm-dialog">Подтвердить</button><button type="button" class="at-secondary cursor-interaction" data-act="cancel-dialog">Оставить как есть</button></div></div>
+      </main>
+      <div class="at-panel at-flash" role="status" aria-live="polite" data-live hidden></div>
+      <nav class="at-tabs" role="tablist" aria-label="Основные вкладки"><button type="button" class="cursor-interaction" data-go="day" role="tab" aria-selected="true"><i data-lucide="clock-3" aria-hidden="true"></i>День</button><button type="button" class="cursor-interaction" data-go="requests" role="tab" aria-selected="false"><i data-lucide="calendar-days" aria-hidden="true"></i>Заявки</button><button type="button" class="cursor-interaction" data-go="replies" role="tab" aria-selected="false"><i data-lucide="message-circle" aria-hidden="true"></i>Ответы</button><button type="button" class="cursor-interaction" data-go="inbox" role="tab" aria-selected="false"><i data-lucide="bell" aria-hidden="true"></i>Входящие</button><button type="button" class="cursor-interaction" data-go="profile" role="tab" aria-selected="false"><i data-lucide="user-round" aria-hidden="true"></i>Профиль</button></nav>
+    </article>
+  </template>
+</div>
+<script>
+(function(){
+  const root=document.getElementById('attendance-all-tabs');
+  const saved=window.openai?.widgetState||{};
+  const models={},renders={};
+  const template=root.querySelector('#at-app-template');
+  function persist(){
+    const choices={};Object.keys(models).forEach(key=>{const m=models[key];choices[key]={tab:m.tab,state:m.state,spacing:m.spacing,offline:m.offline};});
+    window.openai?.setWidgetState?.({modelContent:{attendanceDesigns:choices},privateContent:null})?.catch(()=>{});
+  }
+  root.querySelectorAll('[data-design]').forEach(mount=>{
+    const id=mount.dataset.design;
+    const initial=saved.modelContent?.attendanceDesigns?.[id]||{};
+    const model=models[id]={tab:['day','requests','replies','inbox','profile'].includes(initial.tab)?initial.tab:'day',state:['Работа','Перерыв','Завершён'].includes(initial.state)?initial.state:'Работа',spacing:initial.spacing==='Свободнее'?'Свободнее':'Компактно',offline:initial.offline===true};
+    const fragment=template.content.cloneNode(true);mount.append(fragment);
+    const app=mount.querySelector('.at-phone');if(id==='quiet')app.classList.add('at-quiet');
+    app.setAttribute('aria-label',id==='rhythm'?'Ритм: пять вкладок':'Спокойный: пять вкладок');
+    let dialogAction=null;
+    const q=selector=>app.querySelector(selector);
+    const qa=selector=>app.querySelectorAll(selector);
+    function flash(text){q('[data-live]').hidden=false;q('[data-live]').textContent=text;}
+    function render(){
+      app.style.setProperty('--at-space',model.spacing==='Свободнее'?'20px':'14px');
+      qa('[data-panel]').forEach(panel=>{panel.hidden=panel.dataset.panel!==model.tab;panel.id=`at-${id}-${panel.dataset.panel}`;panel.setAttribute('aria-labelledby',`at-${id}-tab-${panel.dataset.panel}`);});
+      qa('.at-tabs [data-go]').forEach(button=>{button.id=`at-${id}-tab-${button.dataset.go}`;button.setAttribute('aria-controls',`at-${id}-${button.dataset.go}`);button.setAttribute('aria-selected',String(button.dataset.go===model.tab));});
+      const finished=model.state==='Завершён',paused=model.state==='Перерыв';
+      q('[data-day-title]').textContent=finished?'Рабочий день завершён':paused?'Вы на перерыве':'Вы на работе';
+      q('[data-day-badge]').textContent=finished?'Завершён':paused?'Перерыв':'День идёт';
+      q('[data-day-copy]').textContent=finished?'Отметка сохранена в эскизе':paused?'Начало в 09:03 · сейчас перерыв':'Начало в 09:03 · перерыв 30 минут';
+      q('[data-pause-copy]').textContent=finished?'Вернуться к работе':paused?'Продолжить':'На перерыв';
+      q('[data-scan-copy]').textContent=finished?'QR доступен при начале и завершении':paused?'QR недоступен во время перерыва':'Завершить по QR';
+      q('[data-act="scan"]').disabled=finished||paused||model.offline;
+      q('[data-act="pause"]').disabled=finished&&model.offline;
+      q('[data-act="finish"]').hidden=finished;
+      q('[data-offline]').hidden=!model.offline;
+      q('[data-delivery-label]').textContent=model.offline?'Ждёт доставки · сохранено на телефоне':'Все отметки доставлены';
+    }
+    function go(tab){model.tab=tab;q('[data-dialog]').hidden=true;q('[data-live]').hidden=true;render();persist();}
+    function openDialog(kind,title,copy){dialogAction=kind;q('[data-dialog-title]').textContent=title;q('[data-dialog-copy]').textContent=copy;qa('[data-panel]').forEach(p=>p.hidden=true);q('[data-dialog]').hidden=false;}
+    function filterInbox(unread){
+      let count=0;qa('[data-notice]').forEach(row=>{row.hidden=unread&&row.dataset.unread!=='true';if(!row.hidden)count++;});
+      const headings=qa('[data-panel="inbox"] .at-section');headings[0].hidden=q('[data-notice="answer"]').hidden&&q('[data-notice="request"]').hidden;headings[1].hidden=q('[data-notice="phone"]').hidden;
+      let empty=q('[data-inbox-empty]');if(!empty){empty=document.createElement('p');empty.dataset.inboxEmpty='';empty.className='at-muted';empty.textContent='Нет непрочитанных уведомлений';q('[data-panel="inbox"]').append(empty);}empty.hidden=count>0;
+    }
+    app.addEventListener('click',event=>{
+      const button=event.target.closest('button');if(!button||button.disabled)return;
+      if(button.dataset.go){go(button.dataset.go);return;}
+      if(button.dataset.open){const block=q(`[data-detail="${button.dataset.open}"]`);if(!block)return;block.hidden=!block.hidden;button.setAttribute('aria-expanded',String(!block.hidden));return;}
+      if(button.dataset.requestFilter){const filter=button.dataset.requestFilter;qa('[data-request-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));qa('[data-request-item]').forEach(row=>row.hidden=filter!=='all'&&row.dataset.requestItem!==filter);return;}
+      if(button.dataset.inboxFilter){const unread=button.dataset.inboxFilter==='unread';qa('[data-inbox-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));filterInbox(unread);return;}
+      if(button.dataset.read){const row=button.closest('[data-notice]');row.dataset.unread='false';row.querySelector('.at-dot')?.remove();row.querySelector('.at-muted').textContent='Опоздание 21 октября · прочитано';button.hidden=true;filterInbox(q('[data-inbox-filter="unread"]').getAttribute('aria-pressed')==='true');flash('В эскизе уведомление отмечено прочитанным');persist();return;}
+      switch(button.dataset.act){
+        case 'pause':model.state=model.state==='Работа'?'Перерыв':'Работа';render();persist();break;
+        case 'finish':openDialog('finish','Завершить рабочий день?','Время и доставка отметки будут показаны отдельно. Здесь изменится только эскиз.');break;
+        case 'scan':flash('В приложении откроется камера. В эскизе камера не используется.');break;
+        case 'confirm-dialog':if(dialogAction==='finish')model.state='Завершён';q('[data-dialog]').hidden=true;render();flash(dialogAction==='finish'?'Завершение показано в эскизе':'Выход в эскизе не выполняется');persist();break;
+        case 'cancel-dialog':q('[data-dialog]').hidden=true;render();break;
+        case 'load-evidence':q('[data-evidence]').hidden=false;break;
+        case 'new-request':q('[data-compose="request"]').hidden=false;q('[data-request-step="input"]').hidden=false;q('[data-request-step="review"]').hidden=true;break;
+        case 'close-request':q('[data-compose="request"]').hidden=true;break;
+        case 'review-request':{
+          const from=q('[name="from"]').value,to=q('[name="to"]').value,reason=q('[name="reason"]').value.trim();
+          if(!from||!to||to<from||reason.length<3){q('[data-request-error]').hidden=false;break;}
+          q('[data-request-error]').hidden=true;q('[data-request-summary]').textContent=`${q('[name="kind"]').value} · ${from} — ${to}. ${reason}`;q('[data-request-step="input"]').hidden=true;q('[data-request-step="review"]').hidden=false;break;
+        }
+        case 'edit-request':q('[data-request-step="input"]').hidden=false;q('[data-request-step="review"]').hidden=true;break;
+        case 'demo-request':q('[data-compose="request"]').hidden=true;flash('Демонстрационный черновик готов. Кадровику ничего не отправлено.');break;
+        case 'answer':q('[data-compose="answer"]').hidden=false;break;
+        case 'close-answer':q('[data-compose="answer"]').hidden=true;break;
+        case 'demo-answer':if(q('[name="answer"]').value.trim().length<3){q('[data-answer-error]').hidden=false;break;}q('[data-answer-error]').hidden=true;q('[data-compose="answer"]').hidden=true;flash('Ответ подготовлен в эскизе. Отправка не выполнялась.');break;
+        case 'voluntary-answer':flash('В приложении здесь будет список дней, которые можно пояснить.');break;
+        case 'logout-demo':openDialog('logout','Выйти из аккаунта?','Сохранённые отметки не удаляются. В эскизе выход не выполняется.');break;
+      }
+    });
+    app.addEventListener('change',event=>{if(event.target.name==='language'){q('[data-language]').textContent=event.target.value;flash('Выбран язык в эскизе; тексты приложения здесь не переводятся.');}persist();});
+    renders[id]=render;render();
+    if(globalThis.Tweak){const tweak=new Tweak({container:app,onChange:()=>{render();persist();}});tweak.addSelect(model,'spacing',{label:'Плотность',options:['Компактно','Свободнее']});tweak.addSelect(model,'state',{label:'Рабочий день',options:['Работа','Перерыв','Завершён']});tweak.addToggle(model,'offline',{label:'Нет интернета'});}
+  });
+  if(globalThis.lucide)lucide.createIcons({attrs:{width:20,height:20}});
+  window.addEventListener('openai:set_globals',event=>{const state=event.detail?.globals?.widgetState?.modelContent?.attendanceDesigns;if(!state)return;Object.keys(models).forEach(key=>{const next=state[key];if(!next)return;const model=models[key];if(['day','requests','replies','inbox','profile'].includes(next.tab))model.tab=next.tab;if(['Работа','Перерыв','Завершён'].includes(next.state))model.state=next.state;if(['Компактно','Свободнее'].includes(next.spacing))model.spacing=next.spacing;if(typeof next.offline==='boolean')model.offline=next.offline;renders[key]();});});
+})();
+</script>

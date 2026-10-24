@@ -28,7 +28,7 @@ function host(value:TestRenderer.ReactTestRendererJSON|TestRenderer.ReactTestRen
 }
 function capture(tree:TestRenderer.ReactTestRenderer,name:string){const dir=process.env.MTM_ATTENDANCE_RENDER_DIR;if(dir){mkdirSync(dir,{recursive:true});writeFileSync(join(dir,name+'.json'),JSON.stringify(host(tree.toJSON()),null,2))}}
 beforeAll(async()=>{await locale.init({lng:'ru',fallbackLng:'ru',resources:{ru:{translation:ru},az:{translation:az},en:{translation:en}},interpolation:{escapeValue:false}})})
-beforeEach(()=>{jest.clearAllMocks();(guardAttendanceQr as jest.Mock).mockReset();confirm.mockResolvedValue(undefined);mockPermission.hasPermission=true;AppState.currentState='active';jest.spyOn(AppState,'addEventListener').mockImplementation((_event,listener)=>{background=listener;return {remove:jest.fn()}})})
+beforeEach(()=>{jest.clearAllMocks();(guardAttendanceQr as jest.Mock).mockReset();confirm.mockResolvedValue(undefined);mockPermission.hasPermission=true;mockPermission.requestPermission.mockReset().mockResolvedValue(true);AppState.currentState='active';jest.spyOn(AppState,'addEventListener').mockImplementation((_event,listener)=>{background=listener;return {remove:jest.fn()}})})
 afterEach(async()=>{await act(async()=>roots.splice(0).forEach(root=>root.unmount()));jest.restoreAllMocks()})
 it.each(['ru','az','en'])('requires explicit %s confirmation and never renders or records the raw QR',async language=>{
  const tree=await render(language),camera=node(tree,'attendance-qr-camera')
@@ -60,5 +60,51 @@ it('does not mount a camera after attendance admission is lost',async()=>{
  (guardAttendanceQr as jest.Mock).mockImplementation(()=>{throw new Error('revoked')})
  const tree=await render()
  expect(node(tree,'attendance-qr-camera')).toBeUndefined()
+ expect(confirm).not.toHaveBeenCalled()
+})
+
+it('keeps the scanner through its own OS permission dialog and resumes scanning after return',async()=>{
+ mockPermission.hasPermission=false
+ let answer!:(value:boolean)=>void
+ mockPermission.requestPermission.mockImplementationOnce(()=>new Promise<boolean>(resolve=>{answer=resolve}))
+ const tree=await render()
+ await act(async()=>node(tree,'attendance-qr-permission').props.onPress())
+ await act(async()=>{AppState.currentState='background';background('background')})
+ expect(close).not.toHaveBeenCalled()
+ await act(async()=>{mockPermission.hasPermission=true;AppState.currentState='active';background('active');answer(true)})
+ await settle()
+ expect(close).not.toHaveBeenCalled()
+ expect(node(tree,'attendance-qr-camera').props.isActive).toBe(true)
+ await act(async()=>mockScan([{type:'qr',value:raw}]))
+ expect(node(tree,'attendance-qr-confirm')).toBeDefined()
+ expect(confirm).not.toHaveBeenCalled()
+})
+it('closes if permission finishes while the app remains in the background',async()=>{
+ mockPermission.hasPermission=false
+ let answer!:(value:boolean)=>void
+ mockPermission.requestPermission.mockImplementationOnce(()=>new Promise<boolean>(resolve=>{answer=resolve}))
+ const tree=await render()
+ await act(async()=>node(tree,'attendance-qr-permission').props.onPress())
+ await act(async()=>{AppState.currentState='background';background('background');answer(true)})
+ await settle()
+ expect(close).toHaveBeenCalledTimes(1)
+ await act(async()=>mockScan([{type:'qr',value:raw}]))
+ expect(node(tree,'attendance-qr-confirm')).toBeUndefined()
+ expect(confirm).not.toHaveBeenCalled()
+})
+
+it('rechecks account admission after the OS permission reply',async()=>{
+ mockPermission.hasPermission=false
+ let answer!:(value:boolean)=>void
+ mockPermission.requestPermission.mockImplementationOnce(()=>new Promise<boolean>(resolve=>{answer=resolve}))
+ const tree=await render()
+ await act(async()=>node(tree,'attendance-qr-permission').props.onPress())
+ await act(async()=>{AppState.currentState='background';background('background')})
+ ;(guardAttendanceQr as jest.Mock).mockImplementation(()=>{throw new Error('revoked')})
+ await act(async()=>{mockPermission.hasPermission=true;AppState.currentState='active';background('active');answer(true)})
+ await settle()
+ expect(node(tree,'attendance-qr-camera')).toBeUndefined()
+ await act(async()=>mockScan([{type:'qr',value:raw}]))
+ expect(node(tree,'attendance-qr-confirm')).toBeUndefined()
  expect(confirm).not.toHaveBeenCalled()
 })

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "status": "BLOCKED",
+  "checkedAt": "2026-10-21T17:28:32.357003+00:00",
+  "candidates": [
+    {
+      "fixtureAccount": "office",
+      "date": "2026-10-21",
+      "timezone": "Asia/Baku",
+      "status": "BLOCKED",
+      "reason": "WORKDAY_OCCUPIED"
+    },
+    {
+      "fixtureAccount": "admin",
+      "date": "2026-10-21",
+      "timezone": "Asia/Baku",
+      "status": "BLOCKED",
+      "reason": "WORKDAY_OCCUPIED"
+    }
+  ],
+  "physicalShift": "NOT_RUN",
+  "guardSha256": "750282ae915ace13cbe767934bf5ecbed8b41c854bc8b6fd10721d6dc4bbedd4",
+  "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+  "apkVersionCode": 1016,
+  "radios": {
+    "wifi_on": "1",
+    "mobile_data": "1",
+    "airplane_mode_on": "0"
+  },
+  "permissionGrants": {
+    "android.permission.CAMERA": false,
+    "android.permission.ACCESS_FINE_LOCATION": false,
+    "android.permission.ACCESS_COARSE_LOCATION": false
+  },
+  "installedPackages": {
+    "com.leaddrive.attendance": {
+      "name": "1.0.0",
+      "code": 1016
+    },
+    "com.mtmobileapp": {
+      "name": "3.11.49",
+      "code": 1710
+    }
+  },
+  "testDataMutations": 0,
+  "nextCandidate": {
+    "fixtureAccount": "admin",
+    "date": "2026-10-22",
+    "earliestAt": "2026-10-21T20:00:00Z",
+    "requiresFreshPreflight": true
+  },
+  "validation": {
+    "unitTests": 13,
+    "unitResult": "PASS",
+    "historicalInvalidHrRefused": true,
+    "fixtureSelectorCases": 7,
+    "fixtureSelectorResult": "PASS"
+  }
+}

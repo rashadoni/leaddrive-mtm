@@ -1,0 +1,70 @@
+{
+  "status": "PASS_CONCEPT_V2_CURRENT_CAPABILITIES",
+  "at": "2026-10-24T14:25:44.870052+00:00",
+  "supersedes": "Earlier concept attachment/result-entry controls were proposals beyond current TaskDetail read-only evidence scope; removed before sharing final concept. Earlier receipt retained.",
+  "fragmentSha256": "9586e6fbce5f81c6e1831c17830e8af694cd49d75c8a083275f8760aa39afc73",
+  "cases": [
+    {
+      "width": 320,
+      "scheme": "light",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 320,
+      "scheme": "light",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 320,
+      "scheme": "dark",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 320,
+      "scheme": "dark",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "light",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "light",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "dark",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "dark",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    }
+  ],
+  "scope": "Local synthetic concept: filters, open/back, start, progress+10, read-only files, confirmation, quick-status sheet; no app source/backend writes",
+  "limitations": [
+    "No native implementation",
+    "No real file upload or editable result implied",
+    "No locale/real sync tests in HTML concept"
+  ]
+}

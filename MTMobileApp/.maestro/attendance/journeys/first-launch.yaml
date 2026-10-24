@@ -1,0 +1,58 @@
+appId: com.leaddrive.attendance
+name: Separate app first launch, company lookup and empty credentials
+---
+- runScript: ../shared/labels.js
+- launchApp:
+    clearState: false
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible:
+      id: tenant-input
+    timeout: 30000
+- hideKeyboard
+- runFlow:
+    when:
+      visible: ${output.login.clear}
+    commands:
+      - tapOn: ${output.login.clear}
+- assertVisible: LeadDrive Time
+- tapOn:
+    id: tenant-continue
+- assertVisible: ${output.login.missingCompany}
+- tapOn:
+    id: tenant-input
+- inputText: no-such-attendance-maestro-company
+- hideKeyboard
+- tapOn:
+    id: tenant-continue
+- extendedWaitUntil:
+    visible: ${output.login.unknownCompany}
+    timeout: 30000
+- tapOn: ${output.login.clear}
+- tapOn:
+    id: tenant-input
+- inputText: mtm-attendance-phone
+- assertVisible:
+    id: tenant-input
+    text: mtm-attendance-phone
+- hideKeyboard
+- tapOn:
+    id: tenant-continue
+- extendedWaitUntil:
+    visible:
+      id: login-tab-signin
+    timeout: 30000
+- tapOn:
+    id: login-tab-signin
+- hideKeyboard
+- assertVisible: LeadDrive Time
+- assertVisible:
+    id: login-email
+- assertVisible:
+    id: login-password
+- tapOn:
+    id: login-submit
+- assertVisible: ${output.login.missingCredentials}
+- assertNotVisible:
+    id: time-tab-OwnWorkday

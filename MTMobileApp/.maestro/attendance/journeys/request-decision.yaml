@@ -1,0 +1,32 @@
+appId: com.leaddrive.attendance
+name: The employee sees the exact request and the HR decision
+---
+- runFlow: ../shared/open-fixture.yaml
+- assertTrue: ${/^maestro-[a-z0-9-]+$/.test(RUN_ID)}
+- assertTrue: ${REQUEST_ID.length > 0 && EXPECTED_STATUS.length > 0}
+- tapOn:
+    id: time-tab-OwnRequests
+- extendedWaitUntil:
+    visible:
+      id: attendance-refresh
+    timeout: 30000
+- tapOn:
+    id: attendance-refresh
+- scrollUntilVisible:
+    element:
+      text: ${RUN_ID}
+      id: attendance-request-reason-${REQUEST_ID}
+    direction: DOWN
+    timeout: 60000
+- assertVisible:
+    text: ${RUN_ID}
+    id: attendance-request-reason-${REQUEST_ID}
+- scrollUntilVisible:
+    element:
+      text: ${EXPECTED_STATUS}
+      id: attendance-request-status-${REQUEST_ID}
+    direction: UP
+    timeout: 60000
+- assertVisible:
+    text: ${EXPECTED_STATUS}
+    id: attendance-request-status-${REQUEST_ID}

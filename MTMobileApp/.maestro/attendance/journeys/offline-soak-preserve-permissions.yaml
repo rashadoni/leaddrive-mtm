@@ -1,0 +1,103 @@
+appId: com.leaddrive.attendance
+name: Queue three offline claims with the existing Android permissions
+# The host verifies the fictional office account and starts this app natively.
+# Deliberately no launchApp: Maestro otherwise grants permissions by default.
+# GPS refusal must remain visible to HR as unavailable, never an inside fix.
+---
+- runScript: ../shared/labels.js
+- assertVisible: "Fictional office employee"
+- assertVisible:
+    id: office-workday-offline
+- assertVisible: "${output.copy.running}"
+- assertNotVisible:
+    id: office-workday-pending
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-break
+    enabled: true
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.paused}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-break
+    enabled: true
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Tətbiq məkanınızdan istifadə edir"
+    commands:
+      - assertVisible: "İndi yox"
+      - tapOn:
+          id: app-choice-button-0
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-action
+    enabled: true
+- assertVisible: "${output.copy.finishTitle}"
+- tapOn:
+    id: app-choice-button-1
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.completed}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Tətbiq məkanınızdan istifadə edir"
+    commands:
+      - assertVisible: "İndi yox"
+      - tapOn:
+          id: app-choice-button-0
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.completed}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- assertNotVisible:
+    id: office-workday-return
+- assertNotVisible:
+    id: office-workday-action

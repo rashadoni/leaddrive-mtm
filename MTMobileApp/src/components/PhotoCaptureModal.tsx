@@ -1,3 +1,4 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React, { useEffect, useRef, useState } from "react"
 import {
   ActivityIndicator,
@@ -7,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native"
 import {
