@@ -131,7 +131,7 @@ describe("route action panel: no instruction before the facts are read", () => {
     expect(call).toContain("routeKnownAbsent,")
     expect(call).toContain("workdayHydrated,")
     expect(call).toContain("activeVisitKnown,")
-    expect(call).toContain('actionPanelState === "loading" ? (\n    <RouteActionPanelLoading copy={copy} />')
+    expect(call).toMatch(/actionPanelState === "loading" \? \(\s*<RouteActionPanelLoading\b[^>]*copy=\{copy\}/)
     expect(call).not.toContain("activeVisit || routeExecutionReady")
     expect(call).toContain('actionPanelState === "route-unknown" ? (')
 
@@ -189,7 +189,7 @@ describe("route action panel after the route is done", () => {
 
   it("keeps today's finished route and moves the panel on after a check-out", () => {
     expect(source).toContain("const statusRank: Record<string, number> = { IN_PROGRESS: 2, PLANNED: 1, COMPLETED: 0 }")
-    expect(source).toContain('<RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} />')
+    expect(source).toMatch(/<RouteFinishedPanel\b[^>]*visited=\{visitedPoints\}[^>]*total=\{totalPoints\}[^>]*copy=\{copy\}/)
     expect(source.match(/routeFinishedBody: "/g)).toHaveLength(3)
     const checkOut = source.slice(source.indexOf("const performCheckOut"), source.indexOf("const performCheckOut") + 1500)
     expect(checkOut).toContain("setSelectedPointId(null)")

@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,7 +30,7 @@ import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice } from "../../lib/cached-view
 import { useSyncStatusStore } from "../../store/sync-status"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
-import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { isExpandedTabletWidth } from "../../theme/layoutBreakpoints"
 import FeedbackToast from "../../components/FeedbackToast"
 import { pendingTaskStatusOverlay, taskDetailPrimaryAction } from "./task-detail-state"
 import { taskWorkflowStatus } from "./tasks-workflow-state"
@@ -67,7 +68,6 @@ type FriendlyCopy = {
   back: string
   requirement: string
   noDescription: string
-  context: string
   customer: string
   due: string
   assignee: string
@@ -78,7 +78,6 @@ type FriendlyCopy = {
   progressSaved: string
   progressNeedsConnection: string
   evidence: string
-  evidenceHint: string
   evidenceLoading: string
   evidenceEmpty: string
   evidenceFailed: string
@@ -87,8 +86,6 @@ type FriendlyCopy = {
   result: string
   moreDetails: string
   showDetails: string
-  hideDetails: string
-  nextStep: string
   start: string
   starting: string
   complete: string
@@ -121,7 +118,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     back: "Назад",
     requirement: "Что требуется",
     noDescription: "Описание не добавлено. Уточните ожидаемый результат у руководителя.",
-    context: "Срок и клиент",
     customer: "Клиент",
     due: "Срок",
     assignee: "Исполнитель",
@@ -132,7 +128,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     progressSaved: "Прогресс сохранён на сервере.",
     progressNeedsConnection: "Чтобы изменить прогресс, нужен интернет.",
     evidence: "Подтверждение и файлы",
-    evidenceHint: "Здесь видны результат и файлы, уже прикреплённые к задаче.",
     evidenceLoading: "Проверяю прикреплённые файлы…",
     evidenceEmpty: "К этой задаче пока нет прикреплённых файлов.",
     evidenceFailed: "Не удалось загрузить список файлов.",
@@ -141,8 +136,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     result: "Результат",
     moreDetails: "Дополнительные детали",
     showDetails: "Показать хронологию и повтор",
-    hideDetails: "Скрыть дополнительные детали",
-    nextStep: "Следующий шаг",
     start: "Начать задачу",
     starting: "Начинаю…",
     complete: "Завершить задачу",
@@ -162,7 +155,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     savedOnDevice: "Сохранено на устройстве",
     savedOnDeviceBody: "Изменение отправится на сервер, когда появится интернет.",
     serverSavedBody: "Изменение подтверждено сервером.",
-    completedBody: "Задача завершена. Результат и подтверждения можно проверить выше.",
+    completedBody: "Задача завершена. Результат и файлы доступны ниже.",
     cancelledBody: "Задача отменена. Дополнительные действия не требуются.",
     overdueBody: "Просроченная задача доступна здесь только для просмотра. Уточните следующий шаг у руководителя.",
     readOnlyBody: "Эта задача доступна вам для просмотра.",
@@ -173,7 +166,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     back: "Geri",
     requirement: "Nə etmək lazımdır",
     noDescription: "Təsvir əlavə edilməyib. Gözlənilən nəticəni rəhbərdən dəqiqləşdirin.",
-    context: "Son tarix və müştəri",
     customer: "Müştəri",
     due: "Son tarix",
     assignee: "İcraçı",
@@ -184,7 +176,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     progressSaved: "İrəliləyiş serverdə saxlanıldı.",
     progressNeedsConnection: "İrəliləyişi dəyişmək üçün internet lazımdır.",
     evidence: "Təsdiq və fayllar",
-    evidenceHint: "Tapşırığa əlavə edilmiş nəticə və fayllar burada görünür.",
     evidenceLoading: "Əlavə edilmiş fayllar yoxlanılır…",
     evidenceEmpty: "Bu tapşırığa hələ fayl əlavə edilməyib.",
     evidenceFailed: "Fayl siyahısını yükləmək alınmadı.",
@@ -193,8 +184,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     result: "Nəticə",
     moreDetails: "Əlavə məlumat",
     showDetails: "Xronologiya və təkrarı göstər",
-    hideDetails: "Əlavə məlumatı gizlət",
-    nextStep: "Növbəti addım",
     start: "Tapşırığı başla",
     starting: "Başladılır…",
     complete: "Tapşırığı tamamla",
@@ -214,7 +203,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     savedOnDevice: "Cihazda saxlanıldı",
     savedOnDeviceBody: "İnternet gələndə dəyişiklik serverə göndəriləcək.",
     serverSavedBody: "Dəyişiklik server tərəfindən təsdiqləndi.",
-    completedBody: "Tapşırıq tamamlanıb. Nəticə və təsdiqləri yuxarıda yoxlaya bilərsiniz.",
+    completedBody: "Tapşırıq tamamlanıb. Nəticə və fayllar aşağıdadır.",
     cancelledBody: "Tapşırıq ləğv edilib. Əlavə əməliyyat lazım deyil.",
     overdueBody: "Gecikmiş tapşırıq burada yalnız baxış üçündür. Növbəti addımı rəhbərlə dəqiqləşdirin.",
     readOnlyBody: "Bu tapşırıq sizə baxış üçün açıqdır.",
@@ -225,7 +214,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     back: "Back",
     requirement: "What is required",
     noDescription: "No description was added. Ask your manager to clarify the expected outcome.",
-    context: "Due date and customer",
     customer: "Customer",
     due: "Due date",
     assignee: "Assignee",
@@ -236,7 +224,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     progressSaved: "Progress was saved on the server.",
     progressNeedsConnection: "An internet connection is required to change progress.",
     evidence: "Evidence and files",
-    evidenceHint: "The result and files already attached to this task appear here.",
     evidenceLoading: "Checking attached files…",
     evidenceEmpty: "No files have been attached to this task yet.",
     evidenceFailed: "The file list could not be loaded.",
@@ -245,8 +232,6 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     result: "Result",
     moreDetails: "Additional details",
     showDetails: "Show timeline and recurrence",
-    hideDetails: "Hide additional details",
-    nextStep: "Next step",
     start: "Start task",
     starting: "Starting…",
     complete: "Complete task",
@@ -266,7 +251,7 @@ const COPY: Record<"ru" | "az" | "en", FriendlyCopy> = {
     savedOnDevice: "Saved on this device",
     savedOnDeviceBody: "The change will be sent to the server when a connection is available.",
     serverSavedBody: "The server confirmed the change.",
-    completedBody: "This task is complete. Review the result and evidence above.",
+    completedBody: "This task is complete. Review the result and files below.",
     cancelledBody: "This task was cancelled. No further action is needed.",
     overdueBody: "This overdue task is read-only here. Ask your manager to confirm the next step.",
     readOnlyBody: "This task is available to you as read-only.",
@@ -340,7 +325,7 @@ export default function TaskDetailScreen() {
   const insets = useSafeAreaInsets()
   const { width } = useWindowDimensions()
   const expandedTablet = isExpandedTabletWidth(width)
-  const touchTarget = expandedTablet ? LAYOUT_TOUCH_TARGETS.expandedTablet : LAYOUT_TOUCH_TARGETS.compact
+  const touchTarget = 48
 
   const [task, setTask] = useState(() => toTaskDetail(route.params.task))
   const myAgentId = useAuthStore((state) => state.agent?.id)
@@ -355,7 +340,7 @@ export default function TaskDetailScreen() {
   const [taskConflict, setTaskConflict] = useState(false)
   const [taskPending, setTaskPending] = useState(false)
   const [noteAction, setNoteAction] = useState<"complete" | null>(null)
-  const [showMore, setShowMore] = useState(false)
+  const [detailSheet, setDetailSheet] = useState<"files" | "history" | null>(null)
   const [progressSaving, setProgressSaving] = useState(false)
   const [progressMessage, setProgressMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null)
   const [pendingTaskUpdates, setPendingTaskUpdates] = useState(0)
@@ -563,36 +548,45 @@ export default function TaskDetailScreen() {
       <LightScreenStatusBar />
       <View style={[styles.header, { paddingTop: headerTop }]}>
         <View style={styles.headerInner}>
-          <View style={styles.headerTools}>
-            <TouchableOpacity
-              style={[styles.backButton, { minHeight: touchTarget }]}
-              onPress={() => navigation.goBack()}
-              accessibilityRole="button"
-              accessibilityLabel={copy.back}
-            >
-              <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
-              <Text style={styles.backText}>{copy.back}</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.headerTitle, expandedTablet && styles.headerTitleTablet]}>{task.title}</Text>
-          <View style={styles.headerSignals}>
-            <View style={styles.headerPill}>
-              <Icon name={statusTone.icon} size={17} color={statusTone.ink} />
-              <Text style={[styles.headerPillText, { color: statusTone.ink }]}>{statusLabel}</Text>
-            </View>
-            <View style={styles.headerPill}>
-              <Icon name={priorityTone.icon} size={17} color={priorityTone.ink} />
-              <Text style={[styles.headerPillText, { color: priorityTone.ink }]}>{priorityLabel}</Text>
-            </View>
-          </View>
+          <TouchableOpacity
+            style={[styles.backButton, { minHeight: touchTarget }]}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel={copy.back}
+          >
+            <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
+            <Text style={styles.backText}>{copy.back}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 132 + Math.max(insets.bottom, 12) }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentFrame}>
+          <View style={styles.summary}>
+            <Text style={[styles.headerTitle, expandedTablet && styles.headerTitleTablet]}>{task.title}</Text>
+            <View style={styles.headerSignals}>
+              <View style={styles.headerPill}>
+                <Icon name={statusTone.icon} size={17} color={statusTone.ink} />
+                <Text style={[styles.headerPillText, { color: statusTone.ink }]}>{statusLabel}</Text>
+              </View>
+              <View style={styles.headerPill}>
+                <Icon name={priorityTone.icon} size={17} color={priorityTone.ink} />
+                <Text style={[styles.headerPillText, { color: priorityTone.ink }]}>{priorityLabel}</Text>
+              </View>
+            </View>
+
+            <View style={styles.contextSummary}>
+              <InfoRow icon="business-outline" label={copy.customer} value={task.customerName || copy.notProvided} secondary={task.customerAddress || undefined} last />
+              <View style={styles.contextDates}>
+                <View style={styles.contextItem}>
+                  <InfoRow icon="calendar-outline" label={copy.due} value={task.dueDate ? toDateLabel(task.dueDate, i18n.language) : copy.notProvided} last />
+                </View>
+                <View style={styles.contextItem}>
+                  <InfoRow icon="person-outline" label={copy.assignee} value={task.agentName || copy.notProvided} last />
+                </View>
+              </View>
+            </View>
+          </View>
           {phase === "syncing" ? (
             <Notice icon="sync-outline" tone="blue" title={copy.syncingTitle} body={copy.syncingBody} busy />
           ) : phase === "error" || taskConflict ? (
@@ -612,54 +606,22 @@ export default function TaskDetailScreen() {
             <Notice icon="return-down-back-outline" tone="danger" title={copy.returnedTitle} body={`${task.returnReason}\n${copy.returnedHint}`} />
           ) : null}
 
-          {expandedTablet ? (
-            <View style={styles.tabletFlow}>
-              <FlowStep number="1" label={copy.requirement} />
-              <Icon name="arrow-forward" size={18} color={fieldTheme.color.inkMuted} />
-              <FlowStep number="2" label={copy.context} />
-              <Icon name="arrow-forward" size={18} color={fieldTheme.color.inkMuted} />
-              <FlowStep number="3" label={copy.progress} />
-              <Icon name="arrow-forward" size={18} color={fieldTheme.color.inkMuted} />
-              <FlowStep number="4" label={copy.evidence} />
-            </View>
-          ) : null}
-
+          {!primaryAction ? <InlineMessage tone={task.status === "COMPLETED" ? "success" : "warning"} text={noActionBody} /> : null}
           <View style={[styles.columns, expandedTablet && styles.columnsTablet]}>
-            <View style={styles.primaryColumn}>
-              <SectionCard step={expandedTablet ? null : "1"} icon="reader-outline" title={copy.requirement}>
+            <View style={[styles.primaryColumn, expandedTablet && styles.primaryColumnTablet]}>
+              <TaskSection title={copy.requirement}>
                 <Text style={[styles.description, !task.description && styles.descriptionMuted]}>
                   {task.description || copy.noDescription}
                 </Text>
-              </SectionCard>
-
-              <SectionCard step={expandedTablet ? null : "2"} icon="location-outline" title={copy.context}>
-                <InfoRow
-                  icon="business-outline"
-                  label={copy.customer}
-                  value={task.customerName || copy.notProvided}
-                  secondary={task.customerAddress || undefined}
-                />
-                <InfoRow
-                  icon="calendar-outline"
-                  label={copy.due}
-                  value={task.dueDate ? toDateLabel(task.dueDate, i18n.language) : copy.notProvided}
-                />
-                <InfoRow
-                  icon="person-outline"
-                  label={copy.assignee}
-                  value={task.agentName || copy.notProvided}
-                  last
-                />
-              </SectionCard>
-
-              <SectionCard step={expandedTablet ? null : "3"} icon="trending-up-outline" title={copy.progress}>
+              </TaskSection>
+              <TaskSection title={copy.progress}>
                 {task.progress !== null || canReportProgress ? (
                   <>
                     <View style={styles.progressTop}>
                       <Text style={styles.progressValue}>{task.progress ?? 0}%</Text>
                       {progressSaving ? <ActivityIndicator size="small" color={fieldTheme.color.primary} /> : null}
                     </View>
-                    <View style={styles.progressTrack} accessibilityRole="progressbar">
+                    <View style={styles.progressTrack} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: task.progress ?? 0 }}>
                       <View style={[styles.progressFill, { width: `${task.progress ?? 0}%` }]} />
                     </View>
                     {canReportProgress ? (
@@ -699,158 +661,149 @@ export default function TaskDetailScreen() {
                     {taskPending ? copy.progressPendingStatus : isOwnTask && task.status === "PENDING" ? copy.progressLocked : copy.notProvided}
                   </Text>
                 )}
-              </SectionCard>
+              </TaskSection>
             </View>
-
-            <View style={styles.secondaryColumn}>
-              <SectionCard step={expandedTablet ? null : "4"} icon="shield-checkmark-outline" title={copy.evidence} hint={copy.evidenceHint}>
-                {task.result ? (
-                  <View style={styles.resultBlock}>
-                    <View style={styles.resultHeading}>
-                      <Icon name="checkmark-done-outline" size={20} color={fieldTheme.color.success} />
-                      <Text style={styles.resultLabel}>{copy.result}</Text>
-                    </View>
-                    <Text style={styles.resultText}>{task.result}</Text>
-                  </View>
-                ) : null}
-
-                {documentsLoading ? (
-                  <View style={styles.evidenceState}>
-                    <ActivityIndicator size="small" color={fieldTheme.color.primary} />
-                    <Text style={styles.evidenceStateText}>{copy.evidenceLoading}</Text>
-                  </View>
-                ) : documentsError ? (
-                  <View style={styles.evidenceState}>
-                    <Icon name="cloud-offline-outline" size={22} color={fieldTheme.color.danger} />
-                    <Text style={styles.evidenceStateText}>{copy.evidenceFailed}</Text>
-                    <TouchableOpacity
-                      style={[styles.retryButton, { minHeight: touchTarget }]}
-                      onPress={() => loadDocuments()}
-                      accessibilityRole="button"
-                    >
-                      <Icon name="refresh" size={18} color={fieldTheme.color.primaryStrong} />
-                      <Text style={styles.retryText}>{copy.retry}</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : documents.length === 0 ? (
-                  <View style={styles.evidenceState}>
-                    <Icon name="document-outline" size={24} color={fieldTheme.color.inkMuted} />
-                    <Text style={styles.evidenceStateText}>{copy.evidenceEmpty}</Text>
-                  </View>
-                ) : (
-                  <View style={styles.fileList}>
-                    {documents.map((document) => (
-                      <View key={document.id} style={styles.fileRow}>
-                        <View style={styles.fileIcon}>
-                          <Icon name={fileIcon(document.mimeType)} size={22} color={fieldTheme.color.primaryStrong} />
-                        </View>
-                        <View style={styles.fileCopy}>
-                          <Text style={styles.fileName} numberOfLines={2}>{document.title || document.fileName}</Text>
-                          <Text style={styles.fileMeta}>{formatBytes(document.sizeBytes)}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-                <View style={styles.readOnlyNote}>
-                  <Icon name="eye-outline" size={18} color={fieldTheme.color.inkMuted} />
-                  <Text style={styles.readOnlyText}>{copy.evidenceReadOnly}</Text>
-                </View>
-              </SectionCard>
-
-              <View style={styles.card}>
+            <View style={[styles.secondaryColumn, expandedTablet && styles.secondaryColumnTablet]}>
+              {task.result ? (
+                <TaskSection title={copy.result}>
+                  <Text style={styles.resultText}>{task.result}</Text>
+                </TaskSection>
+              ) : null}
+              <View style={styles.detailLinks}>
                 <TouchableOpacity
-                  style={[styles.disclosureButton, { minHeight: touchTarget }]}
-                  onPress={() => setShowMore((current) => !current)}
+                  style={styles.detailLink}
+                  onPress={() => setDetailSheet("files")}
                   accessibilityRole="button"
-                  accessibilityState={{ expanded: showMore }}
+                  testID="task-detail-files"
                 >
-                  <View style={styles.disclosureCopy}>
-                    <Text style={styles.cardTitle}>{copy.moreDetails}</Text>
-                    <Text style={styles.cardHint}>{showMore ? copy.hideDetails : copy.showDetails}</Text>
-                  </View>
-                  <Icon name={showMore ? "chevron-up" : "chevron-down"} size={22} color={fieldTheme.color.primaryStrong} />
+                  <Icon name="attach-outline" size={22} color={fieldTheme.color.primaryStrong} />
+                  <Text style={styles.detailLinkText}>{copy.evidence}</Text>
+                  {documentsLoading ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
+                    : documentsError ? <Icon name="alert-circle-outline" size={20} color={fieldTheme.color.amber} />
+                    : <Text style={styles.detailLinkCount}>{documents.length}</Text>}
+                  <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
                 </TouchableOpacity>
-                {showMore ? (
-                  <View style={styles.additionalDetails}>
-                    {timeline.length > 0 ? (
-                      <View style={styles.detailGroup}>
-                        <Text style={styles.detailGroupTitle}>{t("task.sectionTimeline")}</Text>
-                        {timeline.map((entry, index) => (
-                          <View key={`${entry.key}-${index}`} style={styles.timelineRow}>
-                            <View style={styles.timelineRail}>
-                              <View style={[styles.timelineDot, entry.kind === "target" && styles.timelineDotTarget]} />
-                              {index < timeline.length - 1 ? <View style={styles.timelineLine} /> : null}
-                            </View>
-                            <View style={styles.timelineCopy}>
-                              <Text style={styles.timelineLabel}>{t(TIMELINE_KEY[entry.key])}</Text>
-                              <Text style={styles.timelineTime}>{toDateLabel(entry.at, i18n.language, true)}</Text>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                    {task.recurrence ? (
-                      <View style={styles.detailGroup}>
-                        <Text style={styles.detailGroupTitle}>{t("task.sectionRecurrence")}</Text>
-                        <InfoRow
-                          icon="repeat-outline"
-                          label={t("task.fieldRepeats")}
-                          value={task.recurrence.interval > 1
-                            ? `${t("task.recurEvery", { count: task.recurrence.interval })} · ${t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}`
-                            : t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}
-                          secondary={task.recurrence.until ? `${t("task.fieldUntil")}: ${toDateLabel(task.recurrence.until, i18n.language)}` : undefined}
-                          last
-                        />
-                      </View>
-                    ) : null}
-                    {timeline.length === 0 && !task.recurrence ? <Text style={styles.emptyText}>{copy.notProvided}</Text> : null}
-                  </View>
-                ) : null}
+                <TouchableOpacity
+                  style={styles.detailLink}
+                  onPress={() => setDetailSheet("history")}
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.showDetails}
+                  testID="task-detail-history"
+                >
+                  <Icon name="time-outline" size={22} color={fieldTheme.color.primaryStrong} />
+                  <Text style={styles.detailLinkText}>{copy.moreDetails}</Text>
+                  <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+                </TouchableOpacity>
               </View>
-
             </View>
           </View>
         </View>
       </ScrollView>
 
-      <View style={[styles.actionDock, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <View style={[styles.actionDockInner, expandedTablet && styles.actionDockInnerTablet]}>
-          <View style={styles.actionDockCopy}>
-            <View style={styles.nextStepRow}>
-              <View style={styles.nextStepNumber}><Icon name="arrow-forward" size={14} color={fieldTheme.color.primaryStrong} /></View>
-              <Text style={styles.nextStepLabel}>{copy.nextStep}</Text>
-            </View>
-            {!primaryAction ? <Text style={styles.actionDockHint}>{noActionBody}</Text> : null}
+      {primaryAction ? (
+        <View style={[styles.actionDock, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={styles.actionDockInner}>
             {taskPending ? <Text style={styles.actionDockError}>{copy.pendingBody}</Text> : null}
             {taskConflict ? <Text style={styles.actionDockError}>{copy.syncErrorTitle}</Text> : null}
-          </View>
-          {primaryAction ? (
             <TouchableOpacity
-              style={[styles.primaryButton, expandedTablet && styles.primaryButtonTablet, { minHeight: touchTarget }, primaryBlocked && styles.disabled]}
+              style={[styles.primaryButton, { minHeight: touchTarget }, primaryBlocked && styles.disabled]}
               onPress={handlePrimaryAction}
               disabled={primaryBlocked}
               accessibilityRole="button"
               accessibilityLabel={actionLabel}
+              testID="task-detail-primary"
             >
-              {actionBusy ? (
-                <ActivityIndicator size="small" color={fieldTheme.color.onColor} />
-              ) : (
-                <Icon name={actionIcon} size={21} color={fieldTheme.color.onColor} />
-              )}
+              {actionBusy ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} /> : <Icon name={actionIcon} size={21} color={fieldTheme.color.onColor} />}
               <Text style={styles.primaryButtonText}>{actionLabel}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      ) : <View style={{ height: insets.bottom }} />}
+
+      <DetailSheet
+        visible={detailSheet !== null}
+        title={detailSheet === "files" ? copy.evidence : copy.moreDetails}
+        closeLabel={copy.back}
+        onClose={() => setDetailSheet(null)}
+      >
+        {detailSheet === "files" ? <View testID="task-detail-files-content">
+          {documentsLoading ? (
+            <View style={styles.evidenceState}>
+              <ActivityIndicator size="small" color={fieldTheme.color.primary} />
+              <Text style={styles.evidenceStateText}>{copy.evidenceLoading}</Text>
+            </View>
+          ) : documentsError ? (
+            <View style={styles.evidenceState}>
+              <Icon name="cloud-offline-outline" size={22} color={fieldTheme.color.danger} />
+              <Text style={styles.evidenceStateText}>{copy.evidenceFailed}</Text>
+              <TouchableOpacity
+                style={[styles.retryButton, { minHeight: touchTarget }]}
+                onPress={() => loadDocuments()}
+                accessibilityRole="button"
+              >
+                <Icon name="refresh" size={18} color={fieldTheme.color.primaryStrong} />
+                <Text style={styles.retryText}>{copy.retry}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : documents.length === 0 ? (
+            <View style={styles.evidenceState}>
+              <Icon name="document-outline" size={24} color={fieldTheme.color.inkMuted} />
+              <Text style={styles.evidenceStateText}>{copy.evidenceEmpty}</Text>
+            </View>
           ) : (
-            <View style={styles.finishedIcon}>
-              <Icon
-                name={task.status === "COMPLETED" ? "checkmark-done" : "eye-outline"}
-                size={23}
-                color={task.status === "COMPLETED" ? fieldTheme.color.success : fieldTheme.color.inkMuted}
-              />
+            <View style={styles.fileList}>
+              {documents.map((document) => (
+                <View key={document.id} style={styles.fileRow}>
+                  <View style={styles.fileIcon}>
+                    <Icon name={fileIcon(document.mimeType)} size={22} color={fieldTheme.color.primaryStrong} />
+                  </View>
+                  <View style={styles.fileCopy}>
+                    <Text style={styles.fileName} numberOfLines={2}>{document.title || document.fileName}</Text>
+                    <Text style={styles.fileMeta}>{formatBytes(document.sizeBytes)}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           )}
-        </View>
-      </View>
+          <View style={styles.readOnlyNote}>
+            <Icon name="eye-outline" size={18} color={fieldTheme.color.inkMuted} />
+            <Text style={styles.readOnlyText}>{copy.evidenceReadOnly}</Text>
+          </View>
+        </View> : <View style={styles.additionalDetails} testID="task-detail-history-content">
+          {timeline.length > 0 ? (
+            <View style={styles.detailGroup}>
+              <Text style={styles.detailGroupTitle}>{t("task.sectionTimeline")}</Text>
+              {timeline.map((entry, index) => (
+                <View key={`${entry.key}-${index}`} style={styles.timelineRow}>
+                  <View style={styles.timelineRail}>
+                    <View style={[styles.timelineDot, entry.kind === "target" && styles.timelineDotTarget]} />
+                    {index < timeline.length - 1 ? <View style={styles.timelineLine} /> : null}
+                  </View>
+                  <View style={styles.timelineCopy}>
+                    <Text style={styles.timelineLabel}>{t(TIMELINE_KEY[entry.key])}</Text>
+                    <Text style={styles.timelineTime}>{toDateLabel(entry.at, i18n.language, true)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {task.recurrence ? (
+            <View style={styles.detailGroup}>
+              <Text style={styles.detailGroupTitle}>{t("task.sectionRecurrence")}</Text>
+              <InfoRow
+                icon="repeat-outline"
+                label={t("task.fieldRepeats")}
+                value={task.recurrence.interval > 1
+                  ? `${t("task.recurEvery", { count: task.recurrence.interval })} · ${t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}`
+                  : t(RECUR_KEY[task.recurrence.rule] ?? "task.recurDaily")}
+                secondary={task.recurrence.until ? `${t("task.fieldUntil")}: ${toDateLabel(task.recurrence.until, i18n.language)}` : undefined}
+                last
+              />
+            </View>
+          ) : null}
+          {timeline.length === 0 && !task.recurrence ? <Text style={styles.emptyText}>{copy.notProvided}</Text> : null}
+        </View>}
+      </DetailSheet>
 
       <ActionNoteModal
         visible={noteAction !== null}
@@ -878,40 +831,38 @@ export default function TaskDetailScreen() {
   )
 }
 
-function SectionCard({
-  step,
-  icon,
-  title,
-  hint,
-  children,
-}: {
-  step: string | null
-  icon: string
-  title: string
-  hint?: string
-  children: React.ReactNode
-}) {
+function TaskSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.card}>
-      <View style={styles.sectionHeading}>
-        {step ? <View style={styles.stepNumber}><Text style={styles.stepNumberText}>{step}</Text></View> : null}
-        <View style={styles.sectionIcon}><Icon name={icon} size={21} color={fieldTheme.color.primaryStrong} /></View>
-        <View style={styles.sectionCopy}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          {hint ? <Text style={styles.cardHint}>{hint}</Text> : null}
-        </View>
-      </View>
+    <View style={styles.section}>
+      <Text style={styles.cardTitle} accessibilityRole="header">{title}</Text>
       <View style={styles.sectionBody}>{children}</View>
     </View>
   )
 }
 
-function FlowStep({ number, label }: { number: string; label: string }) {
+function DetailSheet({ visible, title, closeLabel, onClose, children }: {
+  visible: boolean
+  title: string
+  closeLabel: string
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  const insets = useSafeAreaInsets()
   return (
-    <View style={styles.flowStep}>
-      <View style={styles.flowStepNumber}><Text style={styles.flowStepNumberText}>{number}</Text></View>
-      <Text style={styles.flowStepLabel} numberOfLines={2}>{label}</Text>
-    </View>
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.sheetRoot, { paddingTop: insets.top + 16 }]}>
+        <Pressable style={styles.sheetBackdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} />
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]} accessibilityViewIsModal testID="task-detail-sheet">
+          <View style={styles.sheetHeading}>
+            <Text style={styles.sheetTitle} accessibilityRole="header">{title}</Text>
+            <TouchableOpacity style={styles.sheetClose} onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} testID="task-detail-sheet-close">
+              <Icon name="close" size={24} color={fieldTheme.color.ink} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.sheetContent}>{children}</ScrollView>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -1069,72 +1020,69 @@ function ActionNoteModal({
 }
 
 const styles = themed(() => StyleSheet.create({
-  container: { flex: 1, backgroundColor: fieldTheme.color.canvas },
+  container: { flex: 1, backgroundColor: fieldTheme.color.surface },
   // White like the tabs' headers (owner-approved colours, 2026-10-18).
   header: {
     backgroundColor: fieldTheme.color.surface,
     borderBottomWidth: 1,
     borderBottomColor: fieldTheme.color.border,
     paddingHorizontal: fieldTheme.space.lg,
-    paddingBottom: fieldTheme.space.xl,
+    paddingBottom: fieldTheme.space.xs,
   },
+  scroll: { flex: 1 },
+  summary: { paddingBottom: fieldTheme.space.md, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
+  contextSummary: { marginTop: fieldTheme.space.sm },
+  contextDates: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md },
+  contextItem: { flexGrow: 1, flexBasis: 180, minWidth: 0 },
+  section: { paddingVertical: fieldTheme.space.sm },
+  detailLinks: { borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
+  detailLink: { minHeight: 56, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
+  detailLinkText: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 21, fontWeight: "700" },
+  detailLinkCount: { color: fieldTheme.color.inkMuted, fontSize: 14 },
+  sheetRoot: { flex: 1, justifyContent: "flex-end" },
+  sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: fieldTheme.color.scrim },
+  sheet: { maxHeight: "90%", width: "100%", maxWidth: 720, alignSelf: "center", backgroundColor: fieldTheme.color.surface, borderTopLeftRadius: fieldTheme.radius.lg, borderTopRightRadius: fieldTheme.radius.lg },
+  sheetHeading: { flexDirection: "row", alignItems: "center", paddingLeft: fieldTheme.space.lg, paddingRight: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm },
+  sheetTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 20, lineHeight: 26, fontWeight: "800" },
+  sheetClose: { minWidth: 48, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  sheetContent: { padding: fieldTheme.space.lg },
   headerInner: { width: "100%", maxWidth: 1120, alignSelf: "center" },
-  headerTools: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
   backButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingRight: fieldTheme.space.md },
   backText: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "800" },
-  headerTitle: { color: fieldTheme.color.ink, fontSize: 25, lineHeight: 31, fontWeight: "900", marginTop: fieldTheme.space.xs },
-  headerTitleTablet: { fontSize: 32, lineHeight: 39, maxWidth: 780 },
-  headerSignals: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.lg },
-  headerPill: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 32 },
-  headerPillText: { fontSize: 13, fontWeight: "800" },
-  scrollContent: { padding: fieldTheme.space.lg },
+  headerTitle: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 31, fontWeight: "900" },
+  headerTitleTablet: { fontSize: 28, lineHeight: 35, maxWidth: 780 },
+  headerSignals: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: fieldTheme.space.xs },
+  headerPill: { flexDirection: "row", alignItems: "center", maxWidth: "100%", gap: 6, minHeight: 32 },
+  headerPillText: { flexShrink: 1, fontSize: 13, lineHeight: 18, fontWeight: "800" },
+  scrollContent: { padding: fieldTheme.space.lg, paddingBottom: fieldTheme.space.xl },
   contentFrame: { width: "100%", maxWidth: 1120, alignSelf: "center", gap: fieldTheme.space.md },
-  tabletFlow: { minHeight: 64, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: fieldTheme.space.lg, paddingVertical: fieldTheme.space.sm },
-  flowStep: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  flowStepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: fieldTheme.color.primary },
-  flowStepNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
-  flowStepLabel: { flex: 1, color: fieldTheme.color.ink, fontSize: 12, lineHeight: 16, fontWeight: "800" },
   columns: { gap: fieldTheme.space.md },
-  columnsTablet: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.lg },
-  primaryColumn: { flex: 1.15, gap: fieldTheme.space.md, minWidth: 0 },
-  secondaryColumn: { flex: 0.85, gap: fieldTheme.space.md, minWidth: 0 },
-  card: {
-    backgroundColor: fieldTheme.color.surface,
-    borderRadius: fieldTheme.radius.md,
-    borderWidth: 1,
-    borderColor: fieldTheme.color.border,
-    padding: fieldTheme.space.lg,
-  },
-  sectionHeading: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm },
-  stepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: fieldTheme.color.primary },
-  stepNumberText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
-  sectionIcon: { width: 32, height: 32, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
-  sectionCopy: { flex: 1, minWidth: 0 },
+  columnsTablet: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.xl },
+  primaryColumnTablet: { flex: 1.15 },
+  secondaryColumnTablet: { flex: 0.85 },
+  primaryColumn: { flexGrow: 1.15, flexBasis: "auto", gap: fieldTheme.space.lg, minWidth: 0 },
+  secondaryColumn: { flexGrow: 0.85, flexBasis: "auto", gap: fieldTheme.space.lg, minWidth: 0 },
   cardTitle: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 22, fontWeight: "900" },
-  cardHint: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, marginTop: 2 },
-  sectionBody: { marginTop: fieldTheme.space.lg },
-  description: { color: fieldTheme.color.ink, fontSize: 17, lineHeight: 26, fontWeight: "600" },
+  sectionBody: { marginTop: fieldTheme.space.sm },
+  description: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 24 },
   descriptionMuted: { color: fieldTheme.color.inkMuted, fontStyle: "italic", fontWeight: "500" },
-  infoRow: { flexDirection: "row", gap: fieldTheme.space.md, paddingVertical: fieldTheme.space.md, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
+  infoRow: { flexDirection: "row", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.sm, borderBottomWidth: 1, borderBottomColor: fieldTheme.color.border },
   infoRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
-  infoIcon: { width: 36, height: 36, borderRadius: fieldTheme.radius.sm, alignItems: "center", justifyContent: "center" },
+  infoIcon: { width: 24, alignItems: "center", paddingTop: 2 },
   infoCopy: { flex: 1, minWidth: 0 },
   infoLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
-  infoValue: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 22, fontWeight: "800", marginTop: 2 },
+  infoValue: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 20, fontWeight: "700", marginTop: 2 },
   infoSecondary: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
   progressTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: fieldTheme.space.sm },
-  progressValue: { color: fieldTheme.color.primaryStrong, fontSize: 28, fontWeight: "900" },
-  progressTrack: { height: 14, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, overflow: "hidden" },
-  progressFill: { height: 14, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
-  progressButtons: { flexDirection: "row", gap: fieldTheme.space.md, marginTop: fieldTheme.space.lg },
+  progressValue: { color: fieldTheme.color.primaryStrong, fontSize: 22, lineHeight: 28, fontWeight: "800" },
+  progressTrack: { height: 6, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.surfaceStrong, overflow: "hidden" },
+  progressFill: { height: 6, borderRadius: fieldTheme.radius.pill, backgroundColor: fieldTheme.color.primary },
+  progressButtons: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.sm },
   progressButton: { flex: 1 },
   secondaryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.md },
   secondaryButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "800" },
   inlineMessage: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
   inlineMessageText: { flex: 1, fontSize: 13, lineHeight: 18, fontWeight: "700" },
-  resultBlock: { borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, borderLeftWidth: 4, borderLeftColor: fieldTheme.color.success, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.md, marginBottom: fieldTheme.space.md },
-  resultHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  resultLabel: { color: fieldTheme.color.success, fontSize: 13, fontWeight: "900" },
   resultText: { color: fieldTheme.color.ink, fontSize: 15, lineHeight: 22, marginTop: fieldTheme.space.sm },
   evidenceState: { alignItems: "center", gap: fieldTheme.space.sm, paddingVertical: fieldTheme.space.lg },
   evidenceStateText: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "center" },
@@ -1148,9 +1096,7 @@ const styles = themed(() => StyleSheet.create({
   fileMeta: { color: fieldTheme.color.inkMuted, fontSize: 12, marginTop: 2 },
   readOnlyNote: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md, paddingTop: fieldTheme.space.md, borderTopWidth: 1, borderTopColor: fieldTheme.color.border },
   readOnlyText: { flex: 1, color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 18 },
-  disclosureButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: fieldTheme.space.md },
-  disclosureCopy: { flex: 1 },
-  additionalDetails: { marginTop: fieldTheme.space.lg, paddingTop: fieldTheme.space.lg, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, gap: fieldTheme.space.lg },
+  additionalDetails: { gap: fieldTheme.space.lg },
   detailGroup: { gap: fieldTheme.space.sm },
   detailGroupTitle: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 },
   timelineRow: { flexDirection: "row", gap: fieldTheme.space.md },
@@ -1167,19 +1113,11 @@ const styles = themed(() => StyleSheet.create({
   noticeCopy: { flex: 1, minWidth: 0 },
   noticeTitle: { fontSize: 15, lineHeight: 20, fontWeight: "900" },
   noticeBody: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 19, marginTop: 3 },
-  actionDock: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: fieldTheme.color.surface, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.md },
-  actionDockInner: { width: "100%", maxWidth: 1120, alignSelf: "center", gap: fieldTheme.space.md },
-  actionDockInnerTablet: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  actionDockCopy: { flex: 1, minWidth: 0 },
-  nextStepRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
-  nextStepNumber: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: fieldTheme.color.primary },
-  nextStepLabel: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 },
-  actionDockHint: { color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, marginTop: 4 },
+  actionDock: { backgroundColor: fieldTheme.color.surface, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.sm },
+  actionDockInner: { width: "100%", maxWidth: 680, alignSelf: "center", gap: fieldTheme.space.sm },
   actionDockError: { color: fieldTheme.color.danger, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 4 },
   primaryButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.primary, paddingHorizontal: fieldTheme.space.xl },
-  primaryButtonTablet: { minWidth: 230 },
-  primaryButtonText: { color: fieldTheme.color.onColor, fontSize: 16, fontWeight: "900" },
-  finishedIcon: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center", alignSelf: "flex-end" },
+  primaryButtonText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 16, lineHeight: 22, fontWeight: "900", textAlign: "center", paddingVertical: fieldTheme.space.sm },
   disabled: { opacity: 0.45 },
   modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", padding: fieldTheme.space.lg, backgroundColor: fieldTheme.color.scrim },
   modalCard: { width: "100%", maxWidth: 520, borderRadius: fieldTheme.radius.lg, backgroundColor: fieldTheme.color.surface, padding: fieldTheme.space.xl },
