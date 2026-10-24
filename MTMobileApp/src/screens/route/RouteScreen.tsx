@@ -631,23 +631,25 @@ function RouteExecutionGate({
       ? copy.workdayRequiredBody
       : copy.routeStartRequiredBody
   return (
-    <View style={[styles.actionPanel, flushTop && styles.flushTop]} accessibilityLiveRegion="polite">
+    <View style={[styles.actionPanel, flushTop && styles.paneStateCard]} accessibilityLiveRegion="polite">
       {/* One title. It used to stand twice, once small and once large, one
           line under the other (owner's phone, 7 October 2026). */}
       <View style={styles.actionEyebrowRow}>
         <Icon name={workday || paused ? "briefcase-outline" : "play-circle-outline"} size={22} color={fieldTheme.color.amber} />
-        <Text style={[styles.actionTitle, styles.gateTitle]}>{title}</Text>
+        <Text style={[styles.actionTitle, styles.gateTitle, flushTop && styles.paneStateTitle]}>{title}</Text>
       </View>
       <Text style={styles.actionAddress}>{body}</Text>
       {!paused ? (
-        <ActionButton
-          label={busy
-            ? (workday ? copy.workdaySyncing : copy.routeStarting)
-            : (workday ? copy.startWorkday : copy.startRoute)}
-          icon={busy ? "hourglass-outline" : "play-circle"}
-          onPress={onPress}
-          disabled={busy || disabled}
-        />
+        <View style={flushTop && styles.paneStateFooter}>
+          <ActionButton
+            label={busy
+              ? (workday ? copy.workdaySyncing : copy.routeStarting)
+              : (workday ? copy.startWorkday : copy.startRoute)}
+            icon={busy ? "hourglass-outline" : "play-circle"}
+            onPress={onPress}
+            disabled={busy || disabled}
+          />
+        </View>
       ) : null}
     </View>
   )
@@ -678,7 +680,7 @@ function RouteFinishedPanel({ visited, total, copy, flushTop = false }: {
 // button (Galaxy S23, 2026-09-14 — the gate asked to start a started route).
 function RouteActionPanelLoading({ copy, flushTop = false }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; flushTop?: boolean }) {
   return (
-    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading, flushTop && styles.flushTop]} testID="route-action-panel-loading">
+    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading, flushTop && styles.paneStateCard]} testID="route-action-panel-loading">
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.actionEmptyText}>{copy.loading}</Text>
     </View>
@@ -2223,35 +2225,38 @@ export default function RouteScreen() {
   const emptyMode = presentation.empty ?? "no-route"
   const emptyError = emptyMode === "offline-unavailable" || emptyMode === "slow-unavailable"
   const emptyState = emptyMode === "loading" ? (
-    <View style={[styles.emptyState, tablet && styles.flushTop]}>
+    <View style={[styles.emptyState, tablet && styles.paneStateCard]}>
       <GuideSpot id="route.first" />
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.emptyTitle}>{copy.loading}</Text>
     </View>
   ) : (
-    <View style={[styles.emptyState, tablet && styles.flushTop]} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
+    <View style={[styles.emptyState, tablet && styles.paneStateCard]} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
       <GuideSpot id="route.first" />
-      <View style={[
-        styles.emptyIcon,
-        emptyMode === "offline-unavailable" && styles.emptyIconOffline,
-        emptyMode === "slow-unavailable" && styles.emptyIconSlow,
-      ]}>
-        <Icon
-          name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : emptyMode === "awaiting-approval" ? "time-outline" : "calendar-outline"}
-          size={30}
-          color={emptyMode === "offline-unavailable" ? fieldTheme.color.coral : emptyMode === "slow-unavailable" ? fieldTheme.color.amber : fieldTheme.color.primary}
-        />
+      <View style={tablet ? styles.paneStateHeading : styles.emptyHeading}>
+        <View style={[
+          styles.emptyIcon,
+          emptyMode === "offline-unavailable" && styles.emptyIconOffline,
+          emptyMode === "slow-unavailable" && styles.emptyIconSlow,
+          tablet && styles.paneStateIcon,
+        ]}>
+          <Icon
+            name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : emptyMode === "awaiting-approval" ? "time-outline" : "calendar-outline"}
+            size={tablet ? 22 : 30}
+            color={emptyMode === "offline-unavailable" ? fieldTheme.color.coral : emptyMode === "slow-unavailable" ? fieldTheme.color.amber : fieldTheme.color.primary}
+          />
+        </View>
+        <Text style={[styles.emptyTitle, tablet && styles.paneStateTitle]}>
+          {emptyMode === "offline-unavailable"
+            ? copy.offlineUnavailableTitle
+            : emptyMode === "slow-unavailable"
+              ? copy.slowTitle
+              : emptyMode === "awaiting-approval"
+                ? copy.awaitingApprovalTitle
+                : t("route.noRouteTitle")}
+        </Text>
       </View>
-      <Text style={styles.emptyTitle}>
-        {emptyMode === "offline-unavailable"
-          ? copy.offlineUnavailableTitle
-          : emptyMode === "slow-unavailable"
-            ? copy.slowTitle
-            : emptyMode === "awaiting-approval"
-              ? copy.awaitingApprovalTitle
-              : t("route.noRouteTitle")}
-      </Text>
-      <Text style={styles.emptyBody}>
+      <Text style={[styles.emptyBody, tablet && styles.paneStateBody]}>
         {emptyMode === "offline-unavailable"
           ? copy.offlineUnavailableBody
           : emptyMode === "slow-unavailable"
@@ -2275,17 +2280,19 @@ export default function RouteScreen() {
           ))}
         </View>
       ) : null}
-      <ActionButton
-        label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
-        icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
-        onPress={() => {
-          // Changing today's waiting route opens on today; a new plan asks
-          // for its day after the clients.
-          if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder", emptyMode === "awaiting-approval" ? { initialDate: localRouteDateKey() } : undefined)
-          else { setLoading(true); fetchRoute() }
-        }}
-        tone="secondary"
-      />
+      <View style={tablet && styles.paneStateFooter}>
+        <ActionButton
+          label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
+          icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
+          onPress={() => {
+            // Changing today's waiting route opens on today; a new plan asks
+            // for its day after the clients.
+            if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder", emptyMode === "awaiting-approval" ? { initialDate: localRouteDateKey() } : undefined)
+            else { setLoading(true); fetchRoute() }
+          }}
+          tone="secondary"
+        />
+      </View>
     </View>
   )
 
@@ -2320,7 +2327,7 @@ export default function RouteScreen() {
             </View>
             {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
           </View>
-          <View style={styles.tabletBody}>
+          <View style={[styles.tabletBody, displayedPoints.length === 0 && styles.tabletEmptyBody]}>
             <View style={styles.tabletListPane} testID="route-list-pane">
               <View style={styles.tabletListContent}>
                 {displayedPoints.length === 0 ? emptyState : displayedPoints.map((item, position) => (
@@ -2723,6 +2730,7 @@ const styles = themed(() => StyleSheet.create({
   completeTitle: { color: fieldTheme.color.success, fontSize: 20, fontWeight: "700" },
   completeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   emptyState: { alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xxl, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, marginTop: fieldTheme.space.lg },
+  emptyHeading: { alignItems: "center", gap: fieldTheme.space.md },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   emptyIconOffline: {},
   emptyIconSlow: {},
@@ -2748,10 +2756,19 @@ const styles = themed(() => StyleSheet.create({
   tabletTop: { paddingHorizontal: fieldTheme.space.xl },
   flushTop: { marginTop: 0 },
   tabletBody: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
+  // Empty-route and workday states are peers: the taller content determines
+  // both cards' height; text can grow without a fixed-height clipping trap.
+  tabletEmptyBody: { alignItems: "stretch" },
+  paneStateCard: { flexGrow: 1, minHeight: 0, marginTop: 0, alignItems: "stretch", justifyContent: "flex-start", padding: fieldTheme.space.lg, gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.lg },
+  paneStateHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  paneStateIcon: { width: 22, height: 22, flexShrink: 0 },
+  paneStateTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 18, lineHeight: 24, fontWeight: "700", textAlign: "left" },
+  paneStateBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "left", maxWidth: "100%" },
+  paneStateFooter: { marginTop: "auto" },
   // The stops stand on the ground as cards on the day line, as on the phone;
   // a white pane under white cards hid them (2026-10-18).
   tabletListPane: { flex: 1, minWidth: 0 },
-  tabletListContent: { paddingTop: 0 },
+  tabletListContent: { paddingTop: 0, flexGrow: 1 },
   tabletSectionHeading: { marginTop: fieldTheme.space.lg, marginBottom: 0, gap: fieldTheme.space.md, flexWrap: "wrap" },
   tabletActionPane: { flex: 1, minWidth: 0 },
 
