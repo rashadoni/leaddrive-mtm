@@ -23,6 +23,7 @@ const styles = themed(() => StyleSheet.create({
 }))
 
 const mounted = { count: 0 }
+const renderedTrees: TestRenderer.ReactTestRenderer[] = []
 
 function Rows() {
   const colorScheme = useFieldColorScheme()
@@ -57,6 +58,7 @@ function render(element: React.ReactElement) {
   act(() => {
     tree = TestRenderer.create(element)
   })
+  renderedTrees.push(tree)
   const host = (testID: string) => tree.root.findAll((node) => typeof node.type === "string" && node.props.testID === testID)[0]
   return {
     tree,
@@ -75,6 +77,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  act(() => { renderedTrees.splice(0).forEach(tree => tree.unmount()) })
   act(() => setFieldColorScheme("light"))
 })
 

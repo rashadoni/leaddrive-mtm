@@ -259,3 +259,20 @@ it('a definitely rejected fresh mark does not inherit the original scanned QR',a
   await useWorkdayStore.getState().retryAttendanceMark(scope,first.operationId)
   const [next]=await allOutboxOperations();expect(next.operationId).not.toBe(first.operationId);expect(next.data.attendanceQr).toEqual({version:1,token:null})
 })
+it('captures only contemporaneous offline location under cached consent and immediately redacts on offline withdrawal', async () => {
+  data.attendanceOffline = { verifiedAt: Date.now(), lastSeenAt: Date.now(), validUntil: Date.now() + 86400000, installation: null, location: accepted }
+  await useWorkdayStore.getState().start(scope)
+  expect(api.getAttendanceLocationConsent).not.toHaveBeenCalled()
+  expect((await allOutboxOperations())[0].data.attendanceMark).toMatchObject({ locationState: 'AVAILABLE', location: fix, consentRevisionId: 'exact-receipt' })
+  await expect(changeAttendanceConsent(scope, accepted, false)).rejects.toThrow('ATTENDANCE_ONLINE_REQUIRED')
+  expect(api.setAttendanceLocationConsent).not.toHaveBeenCalled()
+  expect((await allOutboxOperations())[0].data.attendanceMark).toMatchObject({ locationState: 'NO_CONSENT', location: null })
+  ;(readAttendanceLocationFix as jest.Mock).mockClear()
+  expect((await captureAttendanceMark(scope, timestamp, false))?.locationState).toBe('NO_CONSENT')
+  expect(readAttendanceLocationFix).not.toHaveBeenCalled()
+})
+it('does not invent offline consent when the last online snapshot did not contain one', async () => {
+  data.attendanceOffline = { verifiedAt: Date.now(), lastSeenAt: Date.now(), validUntil: Date.now() + 86400000, installation: null, location: null }
+  expect((await captureAttendanceMark(scope, timestamp, false))?.locationState).toBe('NO_CONSENT')
+  expect(readAttendanceLocationFix).not.toHaveBeenCalled(); expect(api.getAttendanceLocationConsent).not.toHaveBeenCalled()
+})

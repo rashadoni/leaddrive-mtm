@@ -46,6 +46,7 @@ import TasksScreen from "../../src/screens/tasks/TasksScreen"
 
 type Tree = TestRenderer.ReactTestRenderer
 type Node = TestRenderer.ReactTestInstance
+const renderedTrees: Tree[] = []
 
 const day = (offset: number) => {
   const date = new Date()
@@ -76,6 +77,7 @@ function texts(node: Node): string[] {
 async function open(): Promise<Tree> {
   let tree!: Tree
   await act(async () => { tree = TestRenderer.create(<TasksScreen />) })
+  renderedTrees.push(tree)
   for (let i = 0; i < 4; i++) await act(async () => { await Promise.resolve() })
   return tree
 }
@@ -88,6 +90,10 @@ beforeEach(() => {
   mockGetTasks.mockReset().mockResolvedValue({ success: true, data: { tasks: TASKS } })
   mockQueue.mockReset().mockResolvedValue(undefined)
   mockNavigate.mockReset()
+})
+
+afterEach(async () => {
+  await act(async () => { renderedTrees.splice(0).forEach(tree => tree.unmount()) })
 })
 
 describe("all the agent's tasks in one list", () => {

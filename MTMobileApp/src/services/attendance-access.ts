@@ -1,14 +1,16 @@
 import type { BootstrapData, RouteFieldAccess } from "./bootstrap"
 import { agentMayAttendanceRequests } from "../lib/agent-permissions"
+import { offlineCaptureValid } from './attendance-offline-policy'
 
 export type AttendancePrincipal = { id: string; organizationId: string; role: string } | null | undefined
 const OFFICE_ROLES = new Set(["EMPLOYEE", "ADMIN", "MANAGER", "SUPERVISOR"])
 
-/** Separate entitlement, never a FIELD_EXECUTE or tracking grant. Bootstrap is
- * memory-only and is discarded on refusal; legacy/missing manifests stay shut. */
+/** Offline snapshots permit provisional own capture only, never field work.
+ * Refusals discard the snapshot; missing/legacy manifests remain closed. */
 export function hasOfficeAttendanceAccess(data: BootstrapData | null | undefined, agent: AttendancePrincipal): boolean {
   const manifest = data?.manifest
   return !!agent && OFFICE_ROLES.has(agent.role) && !!manifest
+    && (!data?.attendanceOffline || offlineCaptureValid(data.attendanceOffline))
     && manifest.tenant.id === agent.organizationId && data?.tenant?.id === agent.organizationId
     && manifest.principal.id === agent.id && data?.principal?.id === agent.id
     && manifest.principal.role === agent.role && data?.principal?.role === agent.role

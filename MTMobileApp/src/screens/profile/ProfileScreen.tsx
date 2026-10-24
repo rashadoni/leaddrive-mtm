@@ -1,3 +1,6 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
+import TimeProfile from "../../attendance/ui/TimeProfile"
+import { useTimePresentation } from "../../attendance/ui/TimeUI"
 import AttendanceLocationConsentCard from "../../components/AttendanceLocationConsentCard"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
@@ -7,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   useWindowDimensions,
   View,
 } from "react-native"
@@ -65,8 +67,9 @@ const LANGUAGE_LABEL_KEY: Record<string, string> = {
  * navigator hands in «Mövqeyimi paylaş», moved here from «Komanda» — this
  * screen, shared with agents and office staff, does not load GPS code itself.
  */
-export default function ProfileScreen({ managerShell = false, managerCard = null }: { managerShell?: boolean; managerCard?: React.ReactNode } = {}) {
+export default function ProfileScreen({ managerShell = false, managerCard = null, versionLabel = `Route & Field v${APP_VERSION}` }: { managerShell?: boolean; managerCard?: React.ReactNode; versionLabel?: string } = {}) {
   const { t, i18n } = useTranslation()
+  const rhythm = useTimePresentation()
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { width } = useWindowDimensions()
   const twoColumn = isExpandedTabletWidth(width)
@@ -137,6 +140,8 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
     } finally {
       if (ticket === loadEpoch.current) { setLoading(false); setRefreshing(false) }
     }
+  // Identity dependencies retire a response when accounts change, even with the same role.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [office, ownAttendance, agent?.id, agent?.organizationId])
 
   useEffect(() => { void load(); return () => { loadEpoch.current += 1 } }, [load])
@@ -160,6 +165,13 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
       </View>
     )
   }
+
+  if (rhythm && !managerShell) return <TimeProfile key={`${serverDomain}:${agent?.organizationId}:${agent?.id}`} agent={agent} server={serverDomain} headerTop={headerTop} bottom={tabBarPadding}
+    refreshing={refreshing} failed={loadError} locale={currentLocale} pickLocale={locale => { void onPickLocale(locale) }} hintsEnabled={hintsEnabled} setHintsEnabled={setHintsEnabled}
+    refresh={() => { void load(true) }} accountAction={setConfirmAction} version={versionLabel}>
+    <ConfirmSheet visible={confirmAction === "logout"} iconColor={fieldTheme.color.danger} title={t("profile.logoutTitle")} message={t("profile.logoutMessage")} confirmText={t("profile.logoutConfirm")} cancelText={t("common.cancel")} destructive onCancel={() => setConfirmAction(null)} onConfirm={handleConfirm} />
+    <ConfirmSheet visible={confirmAction === "switch"} iconColor={fieldTheme.color.primary} title={t("profile.switchTitle")} message={t("profile.switchMessage")} confirmText={t("profile.switchConfirm")} cancelText={t("common.cancel")} destructive onCancel={() => setConfirmAction(null)} onConfirm={handleConfirm} />
+  </TimeProfile>
 
   const mainColumn = (
     <View style={styles.column}>
@@ -340,7 +352,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
           {mainColumn}
           {settingsColumn}
         </View>
-        <Text style={styles.version}>Route & Field v{APP_VERSION}</Text>
+        <Text style={styles.version}>{versionLabel}</Text>
       </ScrollView>
       {/* The header scrolls away with the page: the band keeps the clock off the cards. */}
       <StatusBarBand tone="light" />

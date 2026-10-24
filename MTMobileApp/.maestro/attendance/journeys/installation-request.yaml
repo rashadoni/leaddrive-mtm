@@ -1,0 +1,23 @@
+appId: com.leaddrive.attendance
+name: Employee requests approval for this installation without creating a time mark
+# Owned phone fixture only; installation approval policy must be enabled by the harness.
+---
+- runFlow: ../shared/open-fixture.yaml
+- scrollUntilVisible:
+    element:
+      id: attendance-installation-request
+    direction: DOWN
+    timeout: 60000
+- assertNotVisible:
+    id: office-workday-action
+- assertVisible: ${output.device.request}
+- tapOn:
+    id: attendance-installation-request
+- scrollUntilVisible:
+    element:
+      text: ${output.device.PENDING}
+    direction: UP
+    timeout: 60000
+- assertVisible: ${output.device.PENDING}
+- assertNotVisible:
+    id: attendance-installation-pending

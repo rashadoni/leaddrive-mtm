@@ -1,0 +1,30 @@
+appId: com.leaddrive.attendance
+name: Employee reads only own attendance and survives a restart
+---
+- runFlow: ../shared/open-fixture.yaml
+- tapOn:
+    id: time-tab-OwnRequests
+- extendedWaitUntil:
+    visible:
+      id: attendance-new
+    timeout: 30000
+- assertNotVisible:
+    id: attendance-unavailable
+- tapOn:
+    id: time-tab-OwnInbox
+- assertVisible:
+    id: office-inbox-refresh
+- assertNotVisible:
+    id: office-inbox-unavailable
+- tapOn:
+    id: time-tab-OwnExplanations
+- extendedWaitUntil:
+    visible:
+      id: "explanations-empty|explanation-(asked|open|written)-.*"
+    timeout: 30000
+- assertNotVisible:
+    id: explanations-unavailable
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- assertNotVisible:
+    id: login-email

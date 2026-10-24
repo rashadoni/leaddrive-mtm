@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Pressable, StatusBar, StyleSheet, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"

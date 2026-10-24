@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
 import React, { useEffect, useState } from "react"
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { api } from "../../services/api"

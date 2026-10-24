@@ -1,0 +1,1131 @@
+{
+  "version": 1,
+  "status": "INCOMPLETE_PHYSICAL_ACCEPTANCE",
+  "runtimeSourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+  "install": {
+    "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+    "package": "com.leaddrive.attendance",
+    "version": "1.0.0",
+    "versionCode": 1022,
+    "physicalMaestro": "NOT_RUN",
+    "sha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+    "install": "PASS",
+    "sameStandaloneUid": true,
+    "mtmIdentityUnchangedDuringUpdate": true,
+    "authenticatedFixturePreserved": true,
+    "priorEventsUnchanged": 43
+  },
+  "server": {
+    "pullRequest": "https://github.com/rashadoni/leaddrive-v2/pull/978",
+    "testedHead": "392f8d16d1dc6f619abe0c63db85c32ce7627a26",
+    "mainSha": "376533a340f8d44b5034af7cc71c459d2c1d6f6e",
+    "e2eRun": 39750963496,
+    "e2ePassCases": 65,
+    "deployRun": 39754397126,
+    "deployStatus": "SUCCESS",
+    "publicBuildInfoMatches": true,
+    "pingOk": true,
+    "featureSmoke": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T09:48:47.326610+00:00",
+      "backendArtifactSha": "376533a340f8d44b5034af7cc71c459d2c1d6f6e",
+      "canonicalItemsCompared": 25,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "otherEmployeeDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "preparationPresent": true,
+      "physicalMaestro": "NOT_RUN: Mac connection unavailable",
+      "finishedAt": "2026-10-22T09:48:50.182854+00:00"
+    }
+  },
+  "physicalReceiptAttempts": [
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": 1,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "cfe341a559c0234038ff72962919922fe07678e0f1802e745f63a2c8e8f75c02",
+      "tests": [
+        {
+          "name": "Return to an existing fictional day and retain canonical delivery receipts",
+          "seconds": "362.925",
+          "status": "FAIL"
+        }
+      ]
+    },
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": 1,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "be9777ef3db8acd7c69853e3544a212ef58e16f0cce311d72f823852d1992901",
+      "tests": [
+        {
+          "name": "Return to an existing fictional day and retain canonical delivery receipts",
+          "seconds": "6.336",
+          "status": "FAIL"
+        }
+      ]
+    },
+    {
+      "flow": "journeys/receipt-existing-day",
+      "exit": -9,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "be9777ef3db8acd7c69853e3544a212ef58e16f0cce311d72f823852d1992901"
+    }
+  ],
+  "firstGpsPermission": {
+    "status": "FAIL",
+    "startedAt": "2026-10-22T09:26:55.130883+00:00",
+    "scope": "real foreground GPS through native app after explicit reviewed test consent",
+    "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+    "apkVersionCode": 1022,
+    "apkSha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+    "backendArtifactSha": "96c08c4e6222a31df74783a1bd57f026953ab40f",
+    "flowExit": 0,
+    "newEventTypes": [
+      "FINISH"
+    ],
+    "priorEventsUnchanged": 47,
+    "requestsUnchanged": true,
+    "locationMarks": [
+      {
+        "action": "FINISH",
+        "state": "UNAVAILABLE",
+        "distanceMeters": null,
+        "branchName": null
+      }
+    ],
+    "radioStatesUnchanged": true,
+    "permissionsAfter": {
+      "CAMERA": false,
+      "ACCESS_FINE_LOCATION": true,
+      "ACCESS_COARSE_LOCATION": true
+    },
+    "maestro": {
+      "flow": "journeys/location-finish-running",
+      "exit": 0,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "d0424a326cee4342e50652d42bfbbc02c352c3ad7a6c9c9e3b5e8630452309b2",
+      "tests": [
+        {
+          "name": "Finish an admitted running fixture day using the actual Android location permission",
+          "seconds": "44.159",
+          "status": "PASS"
+        }
+      ]
+    },
+    "failureType": "AssertionError",
+    "finishedAt": "2026-10-22T09:28:37.973549+00:00"
+  },
+  "gpsRetry": {
+    "status": "FAIL",
+    "startedAt": "2026-10-22T09:29:42.010255+00:00",
+    "scope": "real foreground GPS through native app after explicit reviewed test consent",
+    "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+    "apkVersionCode": 1022,
+    "apkSha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+    "backendArtifactSha": "96c08c4e6222a31df74783a1bd57f026953ab40f",
+    "flowExit": 1,
+    "newEventTypes": [
+      "REOPEN",
+      "RESUME"
+    ],
+    "priorEventsUnchanged": 48,
+    "requestsUnchanged": true,
+    "locationMarks": [],
+    "radioStatesUnchanged": true,
+    "permissionsAfter": {
+      "CAMERA": false,
+      "ACCESS_FINE_LOCATION": true,
+      "ACCESS_COARSE_LOCATION": true
+    },
+    "maestro": {
+      "flow": "journeys/location-finish-granted",
+      "exit": 1,
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "flowSha256": "cee7ce0b18980b61c3bf9745074d3fb6d2ba3f0071dafa6b169a8b29fa1c916c",
+      "tests": [
+        {
+          "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+          "seconds": "53.344",
+          "status": "FAIL"
+        }
+      ]
+    },
+    "failureType": "AssertionError",
+    "finishedAt": "2026-10-22T09:31:42.426781+00:00"
+  },
+  "connectionLoss": {
+    "status": "INCOMPLETE",
+    "reason": "Mac ADB tunnel unresponsive; own Maestro process stopped",
+    "canonicalDayStatus": "STARTED",
+    "newEventTypes": [
+      "REOPEN",
+      "RESUME"
+    ],
+    "priorEventsUnchanged": 51,
+    "requestsUnchanged": true,
+    "otherAccountHistoryUnchanged": true,
+    "appOnlyNetworkBlockStarted": false,
+    "real24hStarted": false
+  },
+  "correctionPrefill": "NOT_RUN: phone connection unavailable; use real-date admin fixture, office fixture day originates from preserved synthetic earlier case",
+  "ownMarksPhysical": "NOT_RUN: phone connection unavailable",
+  "newReal24h": "NOT_RUN",
+  "qrOn1022": "NOT_RUN",
+  "limitations": [
+    "First GPS OS permission flow PASS, coordinates UNAVAILABLE; no INSIDE pass on 1022 claimed.",
+    "Receipt attempt1 stopped before GPS permission response; test flow corrected.",
+    "Receipt attempt2 lost device during launch and wrote no events.",
+    "Receipt attempt3 stopped on unresponsive Mac tunnel after REOPEN/RESUME; no offline network block started."
+  ],
+  "latestPublishedEvidenceHead": "a5498375ead129e2c6ce7ed2f6b71965779edaf2",
+  "latestEvidenceCI": {
+    "run": 39757861641,
+    "status": "SUCCESS",
+    "emulatorContract": 39757861686,
+    "emulatorContractStatus": "SUCCESS",
+    "nativeBuilds": "SUCCESS",
+    "standaloneNativeRun": 39757854839,
+    "ordinaryMtmNativeRun": 39757861609
+  },
+  "laterBackendCompatibility": {
+    "checkedAt": "2026-10-22T10:28:26.907449+00:00",
+    "artifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+    "requiredAncestorSha": "376533a340f8d44b5034af7cc71c459d2c1d6f6e",
+    "ownMarksCount": 25,
+    "ownMarksRead": "PASS",
+    "requiredAncestorVerified": true,
+    "aheadByCommits": 2,
+    "deployRun": 39756130476,
+    "deployStatus": "SUCCESS"
+  },
+  "resumeAfterConnection20261022": {
+    "nativeFinish": {
+      "status": "PASS",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "startedAt": "2026-10-22T11:09:59.590380+00:00",
+      "scope": "answer existing Android permission denial; no repeated FINISH tap",
+      "oldEventsUnchanged": 53,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "dayCompleted": true,
+      "requestsUnchanged": true,
+      "settingsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "finishedAt": "2026-10-22T11:10:27.002341+00:00"
+    },
+    "receiptJourneyV4": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T11:13:31.017542+00:00",
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "maestro": {
+        "flow": "journeys/receipt-existing-day",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "c97312b5bcdc926adc9f9983d6f80af6d37fc6d5c3e1eca144c6325259679b7e",
+        "tests": [
+          {
+            "name": "Return to an existing fictional day and retain canonical delivery receipts",
+            "seconds": "110.634",
+            "status": "PASS"
+          }
+        ]
+      },
+      "priorEventsUnchanged": 54,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "requestsUnchanged": true,
+      "otherAccountHistoryUnchanged": true,
+      "settingsUnchanged": true,
+      "receiptVisibleAfterRestart": true,
+      "finishedAt": "2026-10-22T11:13:38.978421+00:00"
+    },
+    "priorAttemptsPreserved": true,
+    "maestroSyntax": "PASS: three changed flows with Maestro 2.11.0",
+    "runtimeChanged": false,
+    "ownMarksV4": {
+      "status": "PASS",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "startedAt": "2026-10-22T11:13:47.141730+00:00",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "dbd53ab8e85e818eb14c1d5da3dd50fb00e23fab07405f189ee9a1bbe177b76c",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "136.325",
+            "status": "PASS"
+          }
+        ]
+      },
+      "canonicalItemsCompared": 30,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "permissionsUnchanged": true,
+      "reportClosedAfterRestart": true,
+      "finishedAt": "2026-10-22T11:16:54.398023+00:00"
+    },
+    "correctionV4": {
+      "status": "PASS",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "fixtureAccount": "admin",
+      "startedAt": "2026-10-22T11:21:34.191149+00:00",
+      "maestro": {
+        "flow": "journeys/correction-from-day",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "c19b0043bbd054fe1dbe99fda5b73aa731b57fc3602a8f071ab38c4b4eb6bdc2",
+        "tests": [
+          {
+            "name": "Open a correction from the completed day without an accidental submission",
+            "seconds": "60.311",
+            "status": "PASS"
+          }
+        ]
+      },
+      "companyTimezone": "Asia/Baku",
+      "canonicalDatesAndMinutesPrefilled": true,
+      "noAccidentalRequest": true,
+      "noWorkdayChanges": true,
+      "settingsUnchanged": true,
+      "finishedAt": "2026-10-22T11:23:43.920900+00:00"
+    },
+    "accountSwitchV4": {
+      "status": "PASS",
+      "officeAccountRestored": true,
+      "bothHistoriesUnchanged": true,
+      "bothRequestListsUnchanged": true,
+      "checkedAt": "2026-10-22T11:26:10.450554+00:00"
+    },
+    "publishedTestHead": "c888d4f3022b7a4b99adaa8a958fcad80e119125",
+    "ci": {
+      "runId": 39769470008,
+      "status": "SUCCESS"
+    },
+    "emulatorContract": {
+      "runId": 39769470018,
+      "status": "SUCCESS"
+    },
+    "gpsV4": {
+      "status": "FAIL",
+      "startedAt": "2026-10-22T11:26:42.624276+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "apkSha256": "14aacdf18e2234309d2632707a4be446f29571d6cdce7d4a7a4cdba4c961fb5d",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 59,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "UNAVAILABLE",
+          "distanceMeters": null,
+          "branchName": null
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "a6d0dae5d1e446c332ae2e2ec1f4b97362b9e46c4a7011ceea0123f6f422fc4c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "48.369",
+            "status": "PASS"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T11:28:32.508687+00:00"
+    },
+    "qrV4": {
+      "status": "FAIL",
+      "startedAt": "2026-10-22T11:30:14.685886+00:00",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "optical": "actual camera; person aims phone; no token injection",
+      "maestro": {
+        "flow": "journeys/qr-optical-mark",
+        "exit": 1,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "42f3293db5560b21b2eb94d6bd11a197d0cceb02664f972bdd7481216e37d860",
+        "tests": [
+          {
+            "name": "Read a real branch QR with the camera and verify the finish receipt",
+            "seconds": "350.421",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "flowExit": 1,
+      "newEventTypes": [],
+      "failureType": "AssertionError",
+      "permissionsRestored": true,
+      "finishedAt": "2026-10-22T11:37:23.414989+00:00",
+      "reason": "No optical confirmation within five-minute camera wait; viewer had no external views or code requests"
+    },
+    "ordinaryNativeBuild": {
+      "runId": 39769470013,
+      "status": "SUCCESS"
+    },
+    "manualOpticalQrV5": {
+      "status": "PASS",
+      "scope": "Independent canonical validation of user optical camera confirmation; not a Maestro flow PASS",
+      "apkVersionCode": 1022,
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "priorEventsUnchanged": 64,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "qrState": "VERIFIED",
+      "branchName": "Тестовое рабочее место QR",
+      "factsState": "VALID",
+      "tokenInjected": false,
+      "verifiedAt": "2026-10-22T11:47:53.752694+00:00"
+    },
+    "opticalQrV8": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T11:47:11.917927+00:00",
+      "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+      "apkVersionCode": 1022,
+      "optical": "actual camera; person aims phone; no token injection",
+      "maestro": {
+        "flow": "journeys/qr-optical-mark",
+        "exit": 0,
+        "apkVersionCode": 1022,
+        "sourceSha": "0a48f24b36f5d985cf8aad91f02409c688b577b5",
+        "flowSha256": "42f3293db5560b21b2eb94d6bd11a197d0cceb02664f972bdd7481216e37d860",
+        "tests": [
+          {
+            "name": "Read a real branch QR with the camera and verify the finish receipt",
+            "seconds": "300.427",
+            "status": "PASS"
+          }
+        ]
+      },
+      "flowExit": 0,
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "qrState": "VERIFIED",
+      "branchName": "Тестовое рабочее место QR",
+      "priorEventsUnchanged": 67,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "factsState": "VALID",
+      "tokenInjected": false,
+      "permissionsRestored": true,
+      "finishedAt": "2026-10-22T11:53:10.975063+00:00"
+    }
+  },
+  "currentPhysicalAcceptance": {
+    "apkVersionCode": 1022,
+    "receipts": "PASS",
+    "ownMarks": "PASS",
+    "correctionPrefill": "PASS",
+    "gpsInside": "FAIL: fresh location UNAVAILABLE",
+    "opticalQr": "PASS: actual camera + Maestro + independent HR validation",
+    "real24h": "NOT_RUN",
+    "dayStatus": "COMPLETED",
+    "historicalEvents": 68,
+    "earlierAttemptStatusesRetained": true
+  },
+  "candidate1025": {
+    "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+    "artifactId": 12424026030,
+    "artifactDigest": "bba57a2befccb99973b91513cc6d3cdf4bc6d59b59674af157d77c8b39c3796f",
+    "install": {
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": 1025,
+      "physicalMaestro": "NOT_RUN",
+      "sha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "install": "PASS",
+      "sameStandaloneUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    "preservation": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "oldEventsUnchanged": 68,
+      "authenticatedFixturePreserved": true,
+      "otherAccountUnchanged": true,
+      "requestsUnchanged": true,
+      "settingsUnchanged": true,
+      "ordinaryMtmUnchanged": true,
+      "pendingAbsent": true,
+      "finishedAt": "2026-10-22T11:58:14.631246+00:00"
+    },
+    "ci": {
+      "runId": 39773369382,
+      "status": "SUCCESS",
+      "testSuites": 280,
+      "testsPassed": 2484,
+      "todo": 1,
+      "typescript": "PASS",
+      "standaloneBuild": 39773362822,
+      "ordinaryBuild": 39773369353,
+      "nativeStatus": "SUCCESS",
+      "emulatorContract": 39773369470
+    },
+    "gpsInsideAttempt1": {
+      "status": "FAIL",
+      "startedAt": "2026-10-22T11:58:14.690567+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 68,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "OUTSIDE",
+          "distanceMeters": 9678,
+          "branchName": "GPS test — 22.10.2026"
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "a6d0dae5d1e446c332ae2e2ec1f4b97362b9e46c4a7011ceea0123f6f422fc4c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "54.21",
+            "status": "PASS"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:00:05.279099+00:00"
+    },
+    "gpsOutside": {
+      "status": "PASS",
+      "scope": "Independent real outside-zone measurement; original INSIDE attempt remains FAIL",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "finding": "OUTSIDE",
+      "accuracyMeters": 100,
+      "distanceMeters": 9678,
+      "captureAfterActionSeconds": 7.258,
+      "distanceIndependentlyVerified": true,
+      "oldBranchRevisionPreserved": true
+    },
+    "testBranchCentreUpdate": {
+      "status": "PASS",
+      "scope": "owned fictional tenant only; centre from actual new app reading as authorized",
+      "branchName": "GPS test — 22.10.2026",
+      "previousRevisionPreserved": true,
+      "radiusMeters": 100,
+      "otherBranchesUnchanged": true,
+      "historicalEventsUnchanged": true,
+      "finishedAt": "2026-10-22T12:03:28.072414+00:00"
+    },
+    "real24h": "PREPARING: physical-soak-20261022-v4; no completed hold yet",
+    "gpsInside": {
+      "status": "PASS",
+      "startedAt": "2026-10-22T12:03:28.199372+00:00",
+      "scope": "real foreground GPS through native app after explicit reviewed test consent",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "flowExit": 0,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 71,
+      "requestsUnchanged": true,
+      "locationMarks": [
+        {
+          "action": "FINISH",
+          "state": "INSIDE",
+          "distanceMeters": 0,
+          "branchName": "GPS test — 22.10.2026"
+        }
+      ],
+      "radioStatesUnchanged": true,
+      "permissionsAfter": {
+        "CAMERA": false,
+        "ACCESS_FINE_LOCATION": true,
+        "ACCESS_COARSE_LOCATION": true
+      },
+      "maestro": {
+        "flow": "journeys/location-finish-granted",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "a6d0dae5d1e446c332ae2e2ec1f4b97362b9e46c4a7011ceea0123f6f422fc4c",
+        "tests": [
+          {
+            "name": "Record a fresh GPS finish with previously accepted consent and OS permission",
+            "seconds": "48.918",
+            "status": "PASS"
+          }
+        ]
+      },
+      "state": "INSIDE",
+      "realFirstAndroidPermissionPassed": false,
+      "previouslyGrantedPermission": true,
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:05:07.997532+00:00"
+    },
+    "regressionAttempt1": {
+      "result": {
+        "status": "FAIL",
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "apkVersionCode": 1025,
+        "startedAt": "2026-10-22T12:06:29.009522+00:00",
+        "failureType": "CalledProcessError",
+        "originalPermissionsRestored": true,
+        "finishedAt": "2026-10-22T12:08:47.676733+00:00"
+      },
+      "receiptFlow": {
+        "flow": "journeys/receipt-existing-day",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c97312b5bcdc926adc9f9983d6f80af6d37fc6d5c3e1eca144c6325259679b7e",
+        "tests": [
+          {
+            "name": "Return to an existing fictional day and retain canonical delivery receipts",
+            "seconds": "89.571",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "reason": "Maestro DeviceServerDied during hierarchy read after final restart",
+      "canonicalNewEvents": [
+        "REOPEN",
+        "RESUME",
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "priorEventsUnchanged": 74,
+      "dayCompleted": true,
+      "appOnlyNetworkBlockStarted": false
+    },
+    "receiptsV2": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "maestro": {
+        "flow": "journeys/receipt-existing-day",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c97312b5bcdc926adc9f9983d6f80af6d37fc6d5c3e1eca144c6325259679b7e",
+        "tests": [
+          {
+            "name": "Return to an existing fictional day and retain canonical delivery receipts",
+            "seconds": "99.712",
+            "status": "PASS"
+          }
+        ]
+      },
+      "priorEventsUnchanged": 79,
+      "newEventTypes": [
+        "REOPEN",
+        "RESUME",
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "requestsUnchanged": true,
+      "otherAccountHistoryUnchanged": true,
+      "receiptVisibleAfterRestart": true,
+      "finishedAt": "2026-10-22T12:14:37.714224+00:00"
+    },
+    "regressionAttempt2": {
+      "status": "FAIL",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:12:05.881834+00:00",
+      "failureType": "AssertionError",
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:14:43.014932+00:00",
+      "reason": "Read-only helper filename mistakenly used 20261025 instead of saved 20261022 baseline; no own-marks UI run in this attempt"
+    },
+    "ownMarksAttempt3": {
+      "status": "FAIL",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:16:17.561446+00:00",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "dbd53ab8e85e818eb14c1d5da3dd50fb00e23fab07405f189ee9a1bbe177b76c",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "123.632",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "finishedAt": "2026-10-22T12:19:01.457787+00:00",
+      "reason": "48-item preserved history exceeded the 60-second remote scroll budget; read succeeded, close control not reached"
+    },
+    "ownMarksV4": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:21:47.786296+00:00",
+      "backendArtifactSha": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "maestro": {
+        "flow": "journeys/own-mark-details",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "19fedae7cfb61b458289979b71f846b7edb44ced71d1e14d82c2498bf88e2b64",
+        "tests": [
+          {
+            "name": "Read canonical receipts and own historical mark evidence after restart",
+            "seconds": "147.306",
+            "status": "PASS"
+          }
+        ]
+      },
+      "canonicalItemsCompared": 48,
+      "readOnly": true,
+      "noStore": true,
+      "anonymousDenied": true,
+      "unknownDayDenied": true,
+      "scopeOverrideDenied": true,
+      "breakCoordinatesAbsent": true,
+      "permissionsUnchanged": true,
+      "reportClosedAfterRestart": true,
+      "finishedAt": "2026-10-22T12:25:12.026069+00:00"
+    },
+    "correctionV4": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "fixtureAccount": "admin",
+      "startedAt": "2026-10-22T12:26:50.064817+00:00",
+      "maestro": {
+        "flow": "journeys/correction-from-day",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c19b0043bbd054fe1dbe99fda5b73aa731b57fc3602a8f071ab38c4b4eb6bdc2",
+        "tests": [
+          {
+            "name": "Open a correction from the completed day without an accidental submission",
+            "seconds": "51.713",
+            "status": "PASS"
+          }
+        ]
+      },
+      "companyTimezone": "Asia/Baku",
+      "canonicalDatesAndMinutesPrefilled": true,
+      "noAccidentalRequest": true,
+      "noWorkdayChanges": true,
+      "settingsUnchanged": true,
+      "finishedAt": "2026-10-22T12:28:36.757583+00:00"
+    },
+    "functionalRegression": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "apkVersionCode": 1025,
+      "startedAt": "2026-10-22T12:21:28.262294+00:00",
+      "receiptsEvidence": "package-1025-physical-v2/receipts-result-sanitized.json",
+      "ownMarks": "PASS",
+      "correction": "PASS",
+      "receipts": "PASS",
+      "officeAccountRestored": true,
+      "noFurtherWorkdayEvents": true,
+      "requestListsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "originalPermissionsRestored": true,
+      "finishedAt": "2026-10-22T12:30:24.315478+00:00"
+    },
+    "soakAttempt4": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:32:12.749+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 4,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:35:40.041+00:00",
+      "samplesObserved": 1,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:32:13.300+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T16:53:07+04:00",
+      "offlineAt": "2026-10-22T12:33:12.196+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:35:12.196000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "cf7af9e53614097144cc7585f270dd88a5f2c7029c29d48d381072a96a498fbb",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "89.95",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true,
+        "originalOfficeAccountRetained": true
+      },
+      "finishedAt": "2026-10-22T12:35:40.041+00:00",
+      "cause": "Enabled control below viewport after upward status scroll; not a completed 24h run",
+      "completionEstimateCancelled": true
+    },
+    "soakAttempt4Recovery": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "startedAt": "2026-10-22T12:44:24.306+00:00",
+      "priorEventsPreserved": 86,
+      "serverEvents": 87,
+      "recoveredTypes": [
+        "PAUSE"
+      ],
+      "originalClaimRetained": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingAbsent": true,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "permissionsRadiosPackagesUnchanged": true,
+      "dayState": "PAUSED",
+      "finishedAt": "2026-10-22T12:45:34.934+00:00"
+    },
+    "soakAttempt5Preparation": {
+      "status": "PREPARING",
+      "fromDayState": "PAUSED",
+      "expectedPreparationEvents": [
+        "RESUME"
+      ],
+      "real24h": "NOT_RUN until queue capture and confirmed RUNNING"
+    },
+    "soakAttempt5": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:46:17.910+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 5,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:51:11.143+00:00",
+      "samplesObserved": 1,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:46:18.265+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:07:19+04:00",
+      "offlineAt": "2026-10-22T12:47:24.188+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:49:24.188000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 1,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "84c25d1728979669c8fea870405bff1375c9b6770fa46fcadc0e3ad1e5e76c90",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "156.208",
+            "status": "FAIL"
+          }
+        ]
+      },
+      "failureType": "AssertionError",
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "radiosUnchanged": true,
+        "originalTaskPermissionsRestored": true,
+        "originalOfficeAccountRetained": true
+      },
+      "finishedAt": "2026-10-22T12:51:11.143+00:00",
+      "completionEstimateCancelled": true,
+      "cause": "Incorrect test expected online-only return control after offline FINISH; source explicitly hides it while offline/FINISH_PENDING. Capture reached completed with pending queue."
+    },
+    "soakAttempt5Recovery": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "startedAt": "2026-10-22T12:51:59.714+00:00",
+      "priorEventsPreserved": 88,
+      "serverEvents": 91,
+      "recoveredTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "originalClaimsRetained": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingAbsent": true,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "permissionsRadiosPackagesUnchanged": true,
+      "dayState": "COMPLETED",
+      "finishedAt": "2026-10-22T12:53:12.260+00:00"
+    },
+    "soakAttempt6Start": {
+      "status": "RUNNING",
+      "startedPreparationAt": "2026-10-22T12:53:48.920+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 6,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T12:57:34.610+00:00",
+      "samplesObserved": 2,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:53:49.173+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:14:45+04:00",
+      "offlineAt": "2026-10-22T12:54:49.357+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:56:49.357000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c774d3d6cd42ad80aa76287a40922bed994836557e2bf0254e6d7c3419057ec7",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "93.169",
+            "status": "PASS"
+          }
+        ]
+      },
+      "queueCaptured": true
+    },
+    "soakAttempt6InitialObservations": [
+      {
+        "checkedAt": "2026-10-22T12:54:55.341+00:00",
+        "hostElapsedSeconds": 5.984,
+        "deviceElapsedSeconds": 6.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true
+      },
+      {
+        "checkedAt": "2026-10-22T12:57:27.302+00:00",
+        "hostElapsedSeconds": 157.945,
+        "deviceElapsedSeconds": 158.0,
+        "sameDeviceBoot": true,
+        "packageIdentityUnchanged": true,
+        "packageNetworkBlocked": true,
+        "ordinaryMtmNetworkAllowed": true,
+        "radiosUnchanged": true,
+        "serverHistoryUnchanged": true,
+        "admissionAvailable": true,
+        "pendingVisible": true
+      }
+    ],
+    "attempt6FinalAfterConnectionLoss": {
+      "status": "FAIL",
+      "startedPreparationAt": "2026-10-22T12:53:48.920+00:00",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "scope": "package-only real 24h outage; original clocks and other apps preserved",
+      "attempt": 6,
+      "hrSessionVerificationIntervalSeconds": 14400,
+      "readProbeMaxAttempts": 3,
+      "updatedAt": "2026-10-22T13:39:39.191+00:00",
+      "samplesObserved": 9,
+      "gpsAcceptance": "Actual fresh location and independent inside-zone acceptance PASS on this APK; 24h is a separate gate",
+      "backendArtifactShaBefore": "1561c43906fd1fa50ac87c86fef3766bbbb49016",
+      "lastHrSessionVerifiedAt": "2026-10-22T12:53:49.173+00:00",
+      "deviceRecoveryHeartbeatTimeoutSeconds": 900,
+      "deviceRecoveryLimitation": "Detached timer verified while USB available; recovery across USB loss or Android sleep is not guaranteed. Only the dedicated test app is blocked.",
+      "deviceRecoveryDeadline": "2026-10-23T17:14:45+04:00",
+      "offlineAt": "2026-10-22T12:54:49.357+00:00",
+      "apkVersionCode": 1025,
+      "apkSha256": "4d15021dc914aa9a1d6e2b4d57747a7d085bf7014ddf2be123907d42b3f36615",
+      "earliestCompletion": "2026-10-23T16:56:49.357000+04:00",
+      "capture": {
+        "flow": "journeys/offline-soak-capture",
+        "exit": 0,
+        "apkVersionCode": 1025,
+        "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+        "flowSha256": "c774d3d6cd42ad80aa76287a40922bed994836557e2bf0254e6d7c3419057ec7",
+        "tests": [
+          {
+            "name": "Capture three offline actions before a real 24-hour hold",
+            "seconds": "93.169",
+            "status": "PASS"
+          }
+        ]
+      },
+      "queueCaptured": true,
+      "failureType": "RuntimeError",
+      "cleanupFailure": true,
+      "finishedAt": "2026-10-22T13:39:39.191+00:00"
+    },
+    "attempt6CompletionEstimateCancelled": true,
+    "attempt6Recovery": "PASS after USB restoration; 93 previous events preserved, 3 claims delivered, cleanup confirmed",
+    "attempt6RecoveryBeforeUsb": "WAITING_FOR_DEVICE: all known Mac reverse ports refused; cleanup could not be confirmed",
+    "attempt6RecoveryAfterUsb": {
+      "status": "PASS",
+      "sourceSha": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+      "startedAt": "2026-10-22T14:20:25.356+00:00",
+      "scope": "Recovery of interrupted attempt 6",
+      "real24hAcceptance": "NOT PASSED: the original attempt failed",
+      "alreadyReceivedBeforeRecovery": 3,
+      "networkReturnCheckedAt": "2026-10-22T14:20:31.720+00:00",
+      "priorEventsPreserved": 93,
+      "serverEvents": 96,
+      "recoveredTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "originalClaimsRetained": true,
+      "noDuplicatesAfterRestart": true,
+      "pendingAbsent": true,
+      "requestsUnchanged": true,
+      "otherAccountUnchanged": true,
+      "dayState": "COMPLETED",
+      "factsState": "VALID",
+      "sameDeviceBoot": true,
+      "cleanup": {
+        "ownNetworkingAllowed": true,
+        "ordinaryMtmAllowed": true,
+        "originalPermissionsRestored": true,
+        "radiosUnchanged": true,
+        "packagesUnchanged": true
+      },
+      "cleanupRetries": 0,
+      "finishedAt": "2026-10-22T14:21:22.427+00:00"
+    }
+  },
+  "latestTestOnlyPublishedHead": {
+    "sha": "d56a15eecfe95c46eca98cf4ee994d0f67605932",
+    "ciRun": 39777195289,
+    "ciStatus": "SUCCESS",
+    "emulatorContract": 39777195358,
+    "emulatorStatus": "SUCCESS",
+    "ordinaryBuild": 39777195278,
+    "standaloneBuild": 39777185632,
+    "nativeStatus": "SUCCESS",
+    "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4"
+  },
+  "latestTestOnlyGates9b54": {
+    "sha": "9b54cb96b05aa3a7c4058251d194de7c8db7a468",
+    "CI": 39779282800,
+    "emulatorContract": 39779283007,
+    "ordinaryAndroid": 39779282832,
+    "standaloneAndroid": 39779274056,
+    "status": "SUCCESS",
+    "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4",
+    "apkNotInstalled": true
+  },
+  "latestFlowFixGates": {
+    "sha": "dcdddfc7e2ac18c55fd61136257628da878503ad",
+    "CI": {
+      "run": 39782171350,
+      "status": "SUCCESS"
+    },
+    "emulatorContract": {
+      "run": 39782171208,
+      "status": "SUCCESS"
+    },
+    "ordinaryAndroid": {
+      "run": 39782171136,
+      "status": "IN_PROGRESS"
+    },
+    "standaloneAndroid": {
+      "run": 39782163319,
+      "status": "IN_PROGRESS"
+    },
+    "runtimeEquivalentTo": "3ae30f7304d56f976f75833ee20b42f4d00e80d4"
+  }
+}

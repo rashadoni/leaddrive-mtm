@@ -1,3 +1,4 @@
+jest.mock("../../src/store/sync-status", () => ({ useSyncStatusStore: { getState: () => ({ online: true }) } }))
 jest.mock("../../src/services/api", () => ({ api: { getOwnAttendanceNotifications: jest.fn(), markOwnAttendanceNotifications: jest.fn() } }))
 jest.mock("../../src/store/auth", () => ({ useAuthStore: { getState: jest.fn() } }))
 jest.mock("../../src/store/bootstrap", () => ({ useBootstrapStore: { getState: jest.fn() } }))
