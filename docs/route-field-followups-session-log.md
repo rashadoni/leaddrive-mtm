@@ -241,3 +241,10 @@ New scoped continuation tmp/rf-route-card-style-continuation-20261024 checks ONL
 
 
 2026-10-24T13:21:23.495525+00:00 — PR201 description updated/GET confirmed current9f head,draft,unmerged and native1807/coldmonth1806 scopes. Then local Time updater integration6199fb3,45 targeted PASS on integrated tree. Time /time page code in separate CRM branch406c30e;12 rendered-layout cases PASS and6PNG viewed. New publication permission requested once; awaiting reply, no new public APK or push. Details docs/time-app-updates-session-log.md.
+
+
+## 2026-10-24T13:57:06.315900+00:00 — user requests a native-feeling Tasks UI
+
+User dislikes tasks looking like expandable web links. Actual RF1807 portraitlist/detail inspected throughread-onlynavigation; restoredclosedgroup. NoFieldbusinessactions,login,settings,permissionsorbuildchange. FoundhiddenrecordunderAll andoversizednumberedTaskDetailsections. Source confirmsnativeTaskDetailnavigation; complaintisUX,notactualWebView. SavedfullRussianreport docs/route-field-tasks-design-audit-20261024.md. Proposedcompactcards vsdeadline-orientedlist,explicitcardnavigation,separate48dpquickstatus,bottomsheetandoneprimaryaction; preserve4filters,alltasks,offline/conflict andhistory. Interactiveconceptusesonlydemodata; noTaskUI sourcechange/publication. OfficialImpeccableCLINOTRUN(unavailable/noinstall),narrowindependentsourcescanrecorded.
+
+2026-10-24T13:59:19.029567+00:00 — Concept verification:8 bounded Chromium cases PASS (cards/agenda ×320/736 ×light/dark), covering open,start,localresult/photo,confirmcompletion,filter,quickstatusdismiss/back. Actual narrow preview review caught crampedfilter/statuslabels; fixedflexwidth andreran8PASS.4representativescreenshotsreviewed; finalnarrowcardscheckedagain. Firstmockstatecallbackbug andpreviewoverwrite-refusal retainedintrace; noappsourceaffected. FragmentreadbackPASS(noescapedmarkup/nofulldocument). Evidence docs/evidence/route-field-tasks-concept-20261024.json.

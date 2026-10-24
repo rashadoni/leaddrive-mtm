@@ -57,3 +57,19 @@ Prepared implementation is reviewable. Asked one authorization for this newly re
 
 
 2026-10-24T13:22:55.120858+00:00 — user authorization received: «Да, опубликовать и выпустить после проверок» for /time page, separate Time download/latest and in-app updater. Authorized push, hosted CI/build and checked release; public APK remains conditional on outstanding Time acceptance. Proceed autonomously, no repeat permission for this package.
+
+
+## 2026-10-24T13:29:06.050397+00:00 — published exact source and hosted gates
+
+CRM branch head6335af276e5c1792513929a38aba268986621bc7 published as PR1025, attached and ready for review; production-build label added. Exact-head PR checks/build run40098006338 active. Earlier draft/ready runs superseded by label event; skipped drafts are not PASS. Required live main contexts verified: pr-scope/static-checks/typecheck/runner-policy/scan. Registry and deployment docs agree13.140.132.245:/opt/leaddrive-v2 via GitHub Actions. No production mutation yet.
+
+Integrated mobile head74e32574db99d13aa1db5e039b999e2a24764339 published PR201draft. CI40097939448/job120884037882 SUCCESS:291suites2654PASS+1TODO,TypeScriptPASS. Contract40097939421PASS is not emulator execution. RF build40097939406 stillbuilding1808; don't reinstall RF because only Time updater changed. Explicit Time workflow dispatch40097984669/job120884141795 builds QA1046 from exact74e, tests/TS alreadyPASS, Android build/signature/artifact stillpending. PR201description updated/currenthead/draft/unmerged confirmed.
+
+Read-only production baseline tmp/time-app-release-20261024/before-sanitized.json: ping200, build-info cb1c604e274d75cfde10534b94978ce293f8f121, Fieldlatest1795 unchanged; /time307→login and Timelatest404 before deployment. New page and public APK are not yet live. Prepared passive Time in-place upgrade verification: no existing launchApp Maestro flows that impose DENY permissions, no new marks/auth input, preserve all profiles/Field1807/network/display. Old recovery queueEmpty from11:16UTC is historical; fresh app-private queue retention is NOT_PROVEN until appropriate current evidence, never infer from old receipt. Actual updater-offer native branch cannot be proven with release=null; unit tests cover offer logic, real public offer stays a separate gate. Root will execute bounded install only after exact signed artifact is accepted.
+
+
+## 2026-10-24T13:57:06.315900+00:00 — hosted Time1046 and passive native upgrade
+
+Time workflow40097984669/job120884141795 SUCCESS,291suites2654PASS+1TODO,TypeScriptPASS; signedTime1.0.0/1046 exact74e32574db99d13aa1db5e039b999e2a24764339 verified. Artifact12561389732 APKaf3339700476908e31cdc07d8a0711df51b876133116bef61c3c1316932b457b. Installed1042→1046 in place with -r/owner0, no grants/clears/logins/business taps/settings writes or Field launch. Native cold/reentry PASS; all20 snapshot checks PASS: same UI employee,UID,allprofile permissions/userstates,RF1807,network/display/radios andcanonical records. Root before/after screenshotreviewPASS. Evidence docs/evidence/time-updater-native-upgrade-20261024.json. Privatequeuebytes/authtokenidentity NOT_PROVEN; publicofferUI NOT_RUN becausemanifestunavailable; physicalMaestro NOT_RUN in this passive upgrade. Priorfull24FAIL unchanged, publicTimeAPK remainsnull.
+
+CRM6335 policyrestoreCI had preexistingduplicateindex fixturefailure; existingreviewedPR1021 fix imported withattribution and publishedCRM head e743a6a0a918dc46b3906f8ef2d7c77f381b7cc2. Freshhostedgates running. No serverdeploy yet.

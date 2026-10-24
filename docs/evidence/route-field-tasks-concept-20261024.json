@@ -1,0 +1,79 @@
+{
+  "scope": "Concept mock, not app implementation or native E2E",
+  "status": "PASS_LAYOUT_AND_LOCAL_INTERACTIONS",
+  "cases": [
+    {
+      "width": 320,
+      "scheme": "light",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 320,
+      "scheme": "light",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 320,
+      "scheme": "dark",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 320,
+      "scheme": "dark",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "light",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "light",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "dark",
+      "layout": "cards",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    },
+    {
+      "width": 736,
+      "scheme": "dark",
+      "layout": "agenda",
+      "status": "PASS",
+      "scope": "mock layout and local interaction only"
+    }
+  ],
+  "fragmentSha256": "55fb28a10cfafcbd706d2f32e4619ceeaa02e8b4bfd3a2de9cf42387faf9f357",
+  "nativeObservations": {
+    "apkVersionCode": 1807,
+    "readOnlyTaskNavigation": true,
+    "sourceFilesUnchangedBetweenInstalledAndPublished": true,
+    "screenshots": {
+      "list-before.png": "b4b30c5abc99ec4f0aefb93733242c38951184adf699dd6b433c7bc49698dd19",
+      "list-expanded.png": "a45f0726177c6bd7f0aa8c7a5861cbf6a45b125714054c0261956d0fe53398aa",
+      "detail.png": "9d6ea061c41a98e8c6b76636c5cf2761b7919c5ec723152f541ee0407dcffff8"
+    }
+  },
+  "limits": [
+    "Synthetic Russian tasks only; no CRM writes",
+    "No native active/error state or AZ/EN requalification",
+    "Official Impeccable CLI NOT_RUN; unavailable installed detector"
+  ],
+  "initialMockFailure": "State persistence callback closed confirmation panel; fixed by restoring modal target/state. First preview render overwrite refusal preserved in trace; final8cases rerun PASS."
+}
