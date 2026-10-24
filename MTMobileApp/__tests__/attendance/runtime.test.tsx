@@ -5,7 +5,7 @@ import NetInfo from "@react-native-community/netinfo"
 import Geolocation from "@react-native-community/geolocation"
 
 jest.mock("react-native", () => ({
-  AppState: { addEventListener: jest.fn() },
+  AppState: { currentState: "active", addEventListener: jest.fn() },
   PermissionsAndroid: { request: jest.fn(), requestMultiple: jest.fn() },
   useWindowDimensions: () => ({ width: 390, height: 800, scale: 3, fontScale: 1 }),
   View: "View", ActivityIndicator: "ActivityIndicator", StatusBar: "StatusBar",
@@ -28,6 +28,9 @@ jest.mock("../../src/services/app-feedback", () => ({ dismissAllChoices: jest.fn
 jest.mock("../../src/i18n/index.android", () => ({ initI18n: jest.fn(async () => {}) }))
 jest.mock("../../src/theme/fieldTheme", () => ({ fieldTheme: { color: { canvas: "white" } }, useFieldColorScheme: () => "light" }))
 
+jest.mock("../../src/services/time-app-update", () => ({ checkTimeAppUpdate: jest.fn(async () => {}) }))
+import { checkTimeAppUpdate } from "../../src/services/time-app-update"
+
 import AttendanceApp from "../../src/attendance/AttendanceApp"
 import { useAuthStore } from "../../src/store/auth"
 import { useBootstrapStore } from "../../src/store/bootstrap"
@@ -43,7 +46,13 @@ beforeEach(() => {
   jest.clearAllMocks()
   ;(startForegroundSyncRetry as jest.Mock).mockReturnValue(stopRetry)
   ;(NetInfo.addEventListener as jest.Mock).mockImplementation(callback => { network = callback; return removeNetwork })
-  ;(AppState.addEventListener as jest.Mock).mockImplementation((_event, callback) => { lifecycle = callback; return { remove: removeLifecycle } })
+  AppState.currentState = "active"
+  const callbacks = new Set<(state: string) => void>()
+  lifecycle = state => { AppState.currentState = state as typeof AppState.currentState; callbacks.forEach(callback => callback(state)) }
+  ;(AppState.addEventListener as jest.Mock).mockImplementation((_event, callback) => {
+    callbacks.add(callback)
+    return { remove: () => { callbacks.delete(callback); removeLifecycle() } }
+  })
   useAuthStore.setState({ isLoggedIn: true, agent: officeAgent as never, checkAuth: async () => {} })
   useBootstrapStore.setState({ data: officeBootstrap() })
 })
@@ -84,4 +93,21 @@ it("revalidates the bounded local admission immediately when connectivity is los
   await mount()
   await act(async () => { network({ isConnected: false, isInternetReachable: false }) })
   expect(refreshAttendanceSession).toHaveBeenCalledTimes(2)
+})
+
+
+it("offers only Time updates after startup and once per foreground transition, even signed out", async () => {
+  useAuthStore.setState({ isLoggedIn: false, agent: null })
+  await mount()
+  expect(checkTimeAppUpdate).toHaveBeenCalledTimes(1)
+  expect(checkTimeAppUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ coldStart: true }))
+  await act(async () => { lifecycle("background"); lifecycle("active"); lifecycle("active") })
+  expect(checkTimeAppUpdate).toHaveBeenCalledTimes(2)
+  expect(checkTimeAppUpdate).toHaveBeenLastCalledWith(expect.objectContaining({ coldStart: false }))
+  const options = (checkTimeAppUpdate as jest.Mock).mock.calls[1][0]
+  expect(options.isCurrent()).toBe(true)
+  await act(async () => { tree?.unmount(); tree = undefined })
+  expect(options.isCurrent()).toBe(false)
+  lifecycle("background"); lifecycle("active")
+  expect(checkTimeAppUpdate).toHaveBeenCalledTimes(2)
 })

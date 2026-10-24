@@ -1436,5 +1436,13 @@
     "queueWaiting": "Waiting to send: {{count}}",
     "queueNeedsAttention": "Queued items need attention: {{count}}",
     "finishReplyDraft": "Send or close your current draft before opening the request from your inbox."
+  },
+  "timeAppUpdate": {
+    "title": "A Time update is available",
+    "messageApk": "LeadDrive Time {{version}} is ready. Download the APK, then confirm installation in Android. Install over the existing Time app without uninstalling it to keep its local data.",
+    "messagePlay": "LeadDrive Time {{version}} is available. Open Google Play to check and install the update.",
+    "download": "Download",
+    "openPlay": "Open Google Play",
+    "later": "Later"
   }
 }

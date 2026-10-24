@@ -16,6 +16,7 @@ import { refreshAttendanceSession } from "../services/attendance-session"
 import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
 import { followPhoneColorScheme } from "../services/follow-phone-color-scheme"
 import { dismissAllChoices } from "../services/app-feedback"
+import { checkTimeAppUpdate } from "../services/time-app-update"
 import { fieldTheme, useFieldColorScheme } from "../theme/fieldTheme"
 import AttendanceNavigator from "./AttendanceNavigator"
 import { TimePresentationProvider } from "./ui/TimePresentation"
@@ -39,6 +40,23 @@ export default function AttendanceApp() {
     })
     return () => { mounted = false }
   }, [])
+  useEffect(() => {
+    if (!ready) return
+    let mounted = true
+    let coldStart = true
+    let previous = AppState.currentState
+    const check = () => {
+      if (AppState.currentState !== "active") return
+      void checkTimeAppUpdate({ coldStart, isCurrent: () => mounted })
+      coldStart = false
+    }
+    check()
+    const lifecycle = AppState.addEventListener("change", next => {
+      if (previous !== "active" && next === "active") check()
+      previous = next
+    })
+    return () => { mounted = false; lifecycle.remove() }
+  }, [ready])
   useEffect(() => {
     if (!isLoggedIn) { dismissAllChoices(); return }
     const refresh = () => { void refreshAttendanceSession().catch(() => {}) }
