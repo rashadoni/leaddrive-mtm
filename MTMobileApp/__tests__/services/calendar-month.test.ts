@@ -128,15 +128,13 @@ it.each(["{", JSON.stringify({ version: 1, binding, months: [{ month: MONTH, sto
     expect((await load(offline))?.data).toBeNull()
   })
 it("storage failure cannot hide a successful online month", async () => {
-  const write = jest.spyOn(AsyncStorage, "setItem").mockRejectedValueOnce(new Error("disk full"))
+  ;(AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(new Error("disk full"))
   expect((await load())?.data?.days).toHaveLength(42)
-  write.mockRestore()
 })
 it("a failed cache removal cannot revive denied data in the running app", async () => {
   await load()
-  const remove = jest.spyOn(AsyncStorage, "removeItem").mockRejectedValueOnce(new Error("storage unavailable"))
+  ;(AsyncStorage.removeItem as jest.Mock).mockRejectedValueOnce(new Error("storage unavailable"))
   await load(async () => ({ success: false, data: null }) as any)
-  remove.mockRestore()
   expect((await load(offline))?.data).toBeNull()
   await load()
   expect((await load(offline))?.data?.days).toHaveLength(42)
