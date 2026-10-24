@@ -75,3 +75,23 @@
 Состояние на 24 октября 09:50 UTC: Time v11 RUNNING,168 HR samples, оба итоговых файла отсутствуют. Controller PID2388017 и independent reviewer PID2412961 работают. Прежний installed RF1795 и Time1042 сохраняются; телефон в этой фазе вообще не управлялся.
 
 Последнее завершённое действие: проверены оба новых подписанных архива/APK, усилены и опубликованы два RED→GREEN сценария карты, обновлены описания PR и checkpoints. Остановка — реальное суточное окно, а не новый повтор того же теста. Следующее — проверить итог CI/Time evidence, затем inplace native RF1802, шапка landscape/130% и вкладки/cold offline с точным восстановлением всех профилей и settings. Выпуск только после реальных результатов.
+
+
+## 2026-10-24T10:26:55.887872+00:00 — подготовлен и поставлен в ожидание bounded native follow-up
+
+По повторному «начинай» продолжены проверки, не перезапущен Time. Server PR1022/a4 теперь полностью прошёл собственные hosted gates/build (с неизменёнными baseline и сохранённой Next trace warning). Мобильный кандидат остаётся source d35a2cc / RF3.11.54 code1802 с прежним проверенным digest; нового APK/build ради orchestration не создавалось.
+
+Подготовлен отдельный частный orchestration script `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/rf_after_time_native.py`. Он поставлен в ожидание, PID58634, максимум14h от24Oct10:23UTC. SHA256:
+`cedd85aa0e329323577f50061414b31d9a292da73542a2a180a8148eb818439e`
+
+14 focused qualification tests PASS0.032s (допуск и display recovery script, не native Maestro). Проверены: отсутствие любого/одного итога; FAIL/review backend/source drift; неполное/неboolean cleanup; повреждённый JSON; hash-binding независимого итога; запрет следующего полного flow около recovery deadline; shell syntax recovery и точное восстановление исходных/null settings. На настоящем текущем Time gate статус WAITING_TIME,0 phone commands; mock-qualification не подменяет физический результат. Qualification proof: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-qualification-sanitized.json`.
+
+После ДВУХ actual Time PASS с source1042/cleanup и hash binding script снова проверит hosted CI/signature gate, локальный APK digest, pinned app/test source, актуальный backend SHA; возьмёт тот же global phone-ui.lock, проверит owner0/звонок/Time и RF всех профилей, чистую синхронизацию и прежний профиль Zeytun по имени/email. Никакого логина/секретов в вводе. Затем только inplace RF1802 и formal readonly Maestro employee-accessibility: портрет1.0 и landscape130%, по9 private screenshots. Ни workday/визит/фото/task/GPS decision, ни permission/network/radio write в сценарии нет.
+
+До изменения display обязан работать device-local20min recovery с проверенным checksum/syntax/pid; после обеих flows возвращаются исходные display/power значения и проверяются полные grants/flags всех профилей обоих приложений и network/radios. Реальная потеря host для НОВОГО display recovery NOT RUN; тестируется script logic и фактический процесс before mutation, не заявляется уже выполненная physical recovery.
+
+Если вход/телефон/исходные grants/пакет/receipt/бэкенд/CI не совпадут, будет сохранён отказ, без auth automation или повторов принятых бизнесдействий. Исходные historical RF1795 pointer/case файлы не переписываются; при install PASS фактический1802 читается из нового результата. Auto merge/deploy отсутствуют.
+
+Наблюдение: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-observer-sanitized.json`. Итог native: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-v1/result-sanitized.json`; отказ до native: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-gate-refusal-sanitized.json`. Даже PASS_MAESTRO_AWAITING_VISUAL_AND_OFFLINE_REVIEW не является release acceptance: просмотр настоящих PNG и отдельный cold-offline bootstrap остаются следующей фазой.
+
+Остановка: тот же Time v11,24Oct10:22UTC176HR samples, итогов нет. Минимум25Oct02:44:14Баку плюс replay/review. Следующее — прочитать Time/native terminal receipts, проверить новые PNG и cold offline; при отказе сначала диагностировать его, не начинать круг business tests заново.
