@@ -351,7 +351,7 @@ function statusLabel(state: TaskState, copy: FriendlyCopy): string {
 }
 
 type Row =
-  | { kind: "group"; group: "open" | "closed"; count: number; collapsed: boolean }
+  | { kind: "group"; group: "open" | "closed"; count: number }
   | { kind: "task"; task: Task; closed: boolean }
 
 export default function TasksScreen() {
@@ -371,8 +371,6 @@ export default function TasksScreen() {
   const [loadError, setLoadError] = useState(false)
   const [filter, setFilter] = useState<TaskFilter>("ALL")
   const [order, setOrder] = useState<TaskOrder>("urgent")
-  const [openCollapsed, setOpenCollapsed] = useState(false)
-  const [closedCollapsed, setClosedCollapsed] = useState(true)
   const [statusTask, setStatusTask] = useState<Task | null>(null)
   const [orderSheet, setOrderSheet] = useState(false)
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
@@ -524,13 +522,10 @@ export default function TasksScreen() {
     if (filter === "COMPLETED") return closed
     if (filter !== "ALL") return open
     return [
-      { kind: "group", group: "open", count: open.length, collapsed: openCollapsed },
-      ...(openCollapsed ? [] : open),
-      ...(closed.length > 0
-        ? [{ kind: "group", group: "closed", count: closed.length, collapsed: closedCollapsed } as Row, ...(closedCollapsed ? [] : closed)]
-        : []),
+      ...(open.length > 0 ? [{ kind: "group", group: "open", count: open.length } as Row, ...open] : []),
+      ...(closed.length > 0 ? [{ kind: "group", group: "closed", count: closed.length } as Row, ...closed] : []),
     ]
-  }, [closedCollapsed, filter, openCollapsed, order, tasks])
+  }, [filter, order, tasks])
 
   const openTask = (task: Task) => navigation.navigate("TaskDetail", { task })
   const refresh = () => {
@@ -543,17 +538,10 @@ export default function TasksScreen() {
     if (item.kind === "group") {
       return (
         <View style={styles.listCell}>
-          <Pressable
-            style={({ pressed }) => [styles.groupHeader, pressed && styles.pressed]}
-            onPress={() => (item.group === "open" ? setOpenCollapsed((value) => !value) : setClosedCollapsed((value) => !value))}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: !item.collapsed }}
-            testID={`tasks-group-${item.group}`}
-          >
-            <Icon name={item.collapsed ? "chevron-forward" : "chevron-down"} size={18} color={fieldTheme.color.ink} />
+          <View style={styles.groupHeader} accessibilityRole="header" testID={`tasks-group-${item.group}`}>
             <Text style={styles.groupTitle}>{item.group === "open" ? copy.openGroup : copy.closedGroup}</Text>
             <View style={styles.groupCount}><Text style={styles.groupCountText}>{item.count}</Text></View>
-          </Pressable>
+          </View>
         </View>
       )
     }
@@ -803,37 +791,42 @@ function TaskRow({
   const returned = isReturnedTask(task)
   const customerName = task.customer?.name?.trim()
   return (
-    <TouchableOpacity
-      style={[styles.row, closed && styles.rowClosed]}
-      activeOpacity={0.82}
-      onPress={onOpen}
-      accessibilityRole="button"
-      accessibilityLabel={task.title}
-      testID={`task-row-${task.id}`}
-    >
-      <View style={styles.rowBody}>
-        <View style={styles.rowTitleLine}>
-          <Icon name={priorityGlyph.icon} size={16} color={fieldTheme.color[priorityGlyph.tone]} accessibilityLabel={priorityCopy} style={styles.rowPriority} />
-          <Text style={[styles.rowTitle, closed && styles.rowTitleClosed]} numberOfLines={3}>{task.title}</Text>
-        </View>
-        <Text style={[styles.rowDue, overdue && styles.rowDueLate]}>{dueText(task, copy, language, now)}</Text>
-        {returned ? <Text style={styles.rowReturned} numberOfLines={2}>{copy.returned(task.returnReason?.trim() ?? "")}</Text> : null}
-        {customerName ? <Text style={styles.rowCustomer} numberOfLines={1}>{customerName}</Text> : null}
-      </View>
-      <Pressable
-        style={({ pressed }) => [styles.statusChip, closed && styles.statusChipClosed, pressed && styles.pressed]}
-        onPress={onStatus}
-        disabled={closed || busy}
+    <View style={styles.row}>
+      <TouchableOpacity
+        style={styles.rowOpen}
+        activeOpacity={0.82}
+        onPress={onOpen}
         accessibilityRole="button"
-        accessibilityLabel={`${copy.statusTitle}: ${statusLabel(state, copy)}`}
-        accessibilityState={{ disabled: closed || busy }}
-        testID={`task-status-${task.id}`}
+        accessibilityLabel={task.title}
+        testID={`task-row-${task.id}`}
       >
-        {busy ? <ActivityIndicator size="small" color={fieldTheme.color.primary} /> : <Icon name={glyph.icon} size={16} color={fieldTheme.color[glyph.tone]} />}
-        <Text style={styles.statusText} numberOfLines={1}>{statusLabel(state, copy)}</Text>
-        {closed ? null : <Icon name="chevron-down" size={14} color={fieldTheme.color.inkMuted} />}
-      </Pressable>
-    </TouchableOpacity>
+        <View style={styles.rowBody}>
+          <View style={styles.rowTitleLine}>
+            <Icon name={priorityGlyph.icon} size={18} color={fieldTheme.color[priorityGlyph.tone]} accessibilityLabel={priorityCopy} style={styles.rowPriority} />
+            <Text style={styles.rowTitle} numberOfLines={3}>{task.title}</Text>
+          </View>
+          {customerName ? <Text style={styles.rowCustomer} numberOfLines={2}>{customerName}</Text> : null}
+          {returned ? <Text style={styles.rowReturned} numberOfLines={2}>{copy.returned(task.returnReason?.trim() ?? "")}</Text> : null}
+        </View>
+        <Icon name="chevron-forward" size={22} color={fieldTheme.color.inkMuted} />
+      </TouchableOpacity>
+      <View style={styles.rowFooter}>
+        <Text style={[styles.rowDue, overdue && styles.rowDueLate]}>{dueText(task, copy, language, now)}</Text>
+        <Pressable
+          style={({ pressed }) => [styles.statusChip, closed && styles.statusChipClosed, pressed && styles.pressed]}
+          onPress={onStatus}
+          disabled={closed || busy}
+          accessibilityRole="button"
+          accessibilityLabel={`${copy.statusTitle}: ${statusLabel(state, copy)}`}
+          accessibilityState={{ disabled: closed || busy }}
+          testID={`task-status-${task.id}`}
+        >
+          {busy ? <ActivityIndicator size="small" color={fieldTheme.color.primary} /> : <Icon name={glyph.icon} size={16} color={fieldTheme.color[glyph.tone]} />}
+          <Text style={styles.statusText}>{statusLabel(state, copy)}</Text>
+          {closed ? null : <Icon name="chevron-down" size={14} color={fieldTheme.color.inkMuted} />}
+        </Pressable>
+      </View>
+    </View>
   )
 }
 
@@ -961,33 +954,35 @@ const styles = themed(() => StyleSheet.create({
   disabled: { opacity: 0.45 },
   // A chosen filter is outlined dark, never filled (owner-approved colours, 2026-10-18).
   filters: { width: "100%", maxWidth: 640, flexDirection: "row", flexWrap: "nowrap", gap: 4 },
-  filterChip: { minHeight: 40, minWidth: 0, flexGrow: 1, flexShrink: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 8 },
+  filterChip: { minHeight: 48, minWidth: 0, flexGrow: 1, flexShrink: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 8 },
   filterChipOn: { borderWidth: 2, borderColor: fieldTheme.color.primaryStrong },
   filterText: { flexShrink: 1, color: fieldTheme.color.ink, fontSize: 13, fontWeight: "700" },
   filterTextOn: { color: fieldTheme.color.primaryStrong, fontWeight: "900" },
   filterCount: { flexShrink: 0, color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
-  orderButton: { minHeight: 40, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2, marginTop: 4 },
+  orderButton: { minHeight: 48, flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 2, marginTop: 4 },
   orderLabel: { color: fieldTheme.color.inkMuted, fontSize: 13 },
   orderValue: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "800" },
   groupHeader: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 6, paddingTop: fieldTheme.space.sm },
   groupTitle: { color: fieldTheme.color.ink, fontSize: 15, fontWeight: "900" },
   groupCount: { minWidth: 26, borderRadius: 6, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 6, paddingVertical: 1, alignItems: "center" },
   groupCountText: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "800" },
-  row: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.sm, paddingVertical: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, marginBottom: 6 },
-  rowClosed: { opacity: 0.62 },
+  row: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: fieldTheme.radius.md, marginBottom: fieldTheme.space.md, overflow: "hidden" },
+
+  rowOpen: { minHeight: 72, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.md },
+  rowFooter: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, borderTopWidth: 1, borderTopColor: fieldTheme.color.border, paddingHorizontal: fieldTheme.space.md, paddingVertical: fieldTheme.space.xs },
   rowBody: { flex: 1, minWidth: 0 },
   rowTitleLine: { flexDirection: "row", alignItems: "flex-start", gap: 6 },
-  rowPriority: { marginTop: 2 },
-  rowTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 15, lineHeight: 20, fontWeight: "800" },
-  rowTitleClosed: { fontWeight: "600" },
-  rowDue: { color: fieldTheme.color.inkMuted, fontSize: 12.5, lineHeight: 17, marginTop: 3, marginLeft: 22 },
+  rowPriority: { marginTop: 3 },
+  rowTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 18, lineHeight: 24, fontWeight: "800" },
+
+  rowDue: { flex: 1, minWidth: 0, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
   rowDueLate: { color: fieldTheme.color.danger, fontWeight: "800" },
-  rowReturned: { color: fieldTheme.color.amber, fontSize: 12.5, lineHeight: 17, fontWeight: "800", marginTop: 2, marginLeft: 22 },
-  rowCustomer: { color: fieldTheme.color.inkMuted, fontSize: 12.5, lineHeight: 17, marginTop: 1, marginLeft: 22 },
+  rowReturned: { color: fieldTheme.color.amber, fontSize: 13, lineHeight: 18, fontWeight: "700", marginTop: 6 },
+  rowCustomer: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: 6 },
   // The status is the colour of its mark and words on white, not a tinted pill.
-  statusChip: { minHeight: 40, maxWidth: 150, flexDirection: "row", alignItems: "center", gap: 5, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 9 },
+  statusChip: { minHeight: 48, maxWidth: "65%", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 10, paddingVertical: 6 },
   statusChipClosed: { borderColor: fieldTheme.color.surface },
-  statusText: { flexShrink: 1, color: fieldTheme.color.ink, fontSize: 12.5, fontWeight: "800" },
+  statusText: { flexShrink: 1, color: fieldTheme.color.ink, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   sheetRoot: { flex: 1, justifyContent: "flex-end" },
   sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: fieldTheme.color.scrim },
   sheet: { backgroundColor: fieldTheme.color.surface, borderTopLeftRadius: fieldTheme.radius.lg, borderTopRightRadius: fieldTheme.radius.lg, paddingHorizontal: fieldTheme.space.lg, paddingTop: fieldTheme.space.sm },

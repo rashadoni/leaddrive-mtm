@@ -35,7 +35,7 @@ jest.mock("../../src/store/auth", () => ({ useAuthStore: { getState: () => ({ ag
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 0, useTabBarPadding: () => 0 }))
 jest.mock("../../src/hooks/useAutoRefresh", () => {
   const { useEffect } = jest.requireActual("react")
-  return { useAutoRefresh: (load: () => void) => { useEffect(() => { load() }, []) } }
+  return { useAutoRefresh: (load: () => void) => { useEffect(() => { load() }, [load]) } }
 })
 jest.mock("../../src/components/FeedbackToast", () => () => null)
 jest.mock("../../src/components/StatusBarBand", () => () => null)
@@ -97,14 +97,23 @@ afterEach(async () => {
 })
 
 describe("all the agent's tasks in one list", () => {
-  it("shows every open task at once, overdue first and the returned one next, closed ones folded away", async () => {
+  it("shows all tasks immediately, overdue and returned first, without hiding completed records", async () => {
     const tree = await open()
     expect(ids(tree, "tasks-group-")).toEqual(["open", "closed"])
-    expect(ids(tree, "task-row-")).toEqual(["t-overdue", "t-returned", "t-later"])
+    expect(ids(tree, "task-row-")).toEqual(["t-overdue", "t-returned", "t-later", "t-done"])
     expect(texts(one(tree, "task-row-t-returned")).join(" ")).toContain("Возвращена: No price tags")
 
-    await press(tree, "tasks-group-closed")
     expect(ids(tree, "task-row-")).toEqual(["t-overdue", "t-returned", "t-later", "t-done"])
+  })
+
+  it("shows a completed-only list under All, with no extra expand action", async () => {
+    mockGetTasks.mockResolvedValue({ success: true, data: { tasks: [TASKS[1]] } })
+    const tree = await open()
+    expect(ids(tree, "task-row-")).toEqual(["t-done"])
+    expect(ids(tree, "tasks-group-")).toEqual(["closed"])
+    await press(tree, "task-row-t-done")
+    expect(mockNavigate).toHaveBeenCalledWith("TaskDetail", { task: TASKS[1] })
+    expect(mockQueue).not.toHaveBeenCalled()
   })
 
   it("narrows to «Взяты» or «Выполнены» and counts each", async () => {
@@ -140,6 +149,7 @@ describe("all the agent's tasks in one list", () => {
     const tree = await open()
     await press(tree, "task-status-t-overdue")
     expect(one(tree, "tasks-status-sheet")).toBeTruthy()
+    expect(mockNavigate).not.toHaveBeenCalled()
     await press(tree, "tasks-status-IN_PROGRESS")
     expect(mockQueue).toHaveBeenCalledWith("t-overdue", "IN_PROGRESS", undefined)
   })
@@ -151,7 +161,6 @@ describe("all the agent's tasks in one list", () => {
     expect(mockQueue).not.toHaveBeenCalled()
     expect(tree.root.findAll((node) => node.props.placeholder === "Например: согласовано, документы отправлены").length).toBeGreaterThan(0)
 
-    await press(tree, "tasks-group-closed")
     expect(one(tree, "task-status-t-done").props.disabled).toBe(true)
   })
 
@@ -159,5 +168,6 @@ describe("all the agent's tasks in one list", () => {
     const tree = await open()
     await press(tree, "task-row-t-later")
     expect(mockNavigate).toHaveBeenCalledWith("TaskDetail", { task: expect.objectContaining({ id: "t-later" }) })
+    expect(mockQueue).not.toHaveBeenCalled()
   })
 })

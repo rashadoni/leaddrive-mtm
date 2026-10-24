@@ -1,0 +1,58 @@
+appId: com.mtmobileapp
+name: Task cards open native details and dismiss secondary sheets without changing work
+---
+# Coordinator verifies the signed APK, existing completed task/actor, unchanged
+# server snapshot, permissions and device state. No launchApp/permission writes,
+# sorting changes, task transitions, uploads or fixture creation in this flow.
+- assertTrue: ${RF_TASKS_PREFLIGHT === 'completed-task-readonly-v1'}
+- assertTrue: ${TASK_ID.length > 0 && TASK_TITLE.length > 0}
+- tapOn:
+    id: guide-spot-tab.Tasks
+- tapOn:
+    id: tasks-filter-ALL
+- scrollUntilVisible:
+    element:
+      id: ${'task-row-' + TASK_ID}
+    direction: DOWN
+    timeout: 15000
+- takeScreenshot: tasks-cards
+- tapOn:
+    id: ${'task-row-' + TASK_ID}
+- assertVisible: ${TASK_TITLE}
+- assertNotVisible:
+    id: task-detail-primary
+- takeScreenshot: task-detail
+- scrollUntilVisible:
+    element:
+      id: task-detail-files
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: task-detail-files
+- assertVisible:
+    id: task-detail-files-content
+- takeScreenshot: task-files
+- back
+- assertNotVisible:
+    id: task-detail-sheet
+- scrollUntilVisible:
+    element:
+      id: task-detail-history
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: task-detail-history
+- assertVisible:
+    id: task-detail-history-content
+- takeScreenshot: task-history
+- tapOn:
+    id: task-detail-sheet-close
+- assertNotVisible:
+    id: task-detail-sheet
+- back
+- assertVisible:
+    id: ${'task-row-' + TASK_ID}
+- tapOn:
+    id: guide-spot-tab.Today
+- assertNotVisible:
+    id: login-email
