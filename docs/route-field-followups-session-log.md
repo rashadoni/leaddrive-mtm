@@ -66,3 +66,12 @@
 - На24Oct09:34UTC Time v11 RUNNING,164 HRsamples, итоговых result/release-acceptance нет. Полный минимум25Oct02:44:14Баку плюс replay/review. Не менялись телефон/ADB/сеть/разрешения/часы/записи. Следующее: оба TimePASS → квалифицированная inplace установка RF1802 и readonly native landscape130%/табов/coldoffline с восстановлением settings и всех profiles. Не повторять принятые визит/фото/GPS request/approve/tasks. Не создавать автоскрипт production merge/deploy.
 
 - При checkpoint journal secret scan ошибочно распознал сочетание «API digest» и следующей публичной APK SHA как generic-api-key. Уточнена формулировка нового draft entry; hash/source evidence сохранены, scanner/hook не отключался и allowlist не добавлялся.
+
+
+## 2026-10-24T09:55:11.939238+00:00 — сохранённая точка продолжения
+
+Описание PR201 обновлено фактическими полными CI и signed artifact proof; remote head остаётся `d35a2cc`, doc-only checkpoint `3aa4711` пока только в worktree. Time doc-only checkpoint `75bf4ef` также локальный, runtime source/controller не менялись. TimePR196 остаётся draft с заметным запретом отдельного merge; PR201 draft, auto-merge выключен. Усиленная серверная регрессия опубликована отдельно в PR1022/a4bf9b410, targeted 14 PASS; актуальный полный CI ещё идёт, его terminal evidence сохранит отдельный read-only observer.
+
+Состояние на 24 октября 09:50 UTC: Time v11 RUNNING,168 HR samples, оба итоговых файла отсутствуют. Controller PID2388017 и independent reviewer PID2412961 работают. Прежний installed RF1795 и Time1042 сохраняются; телефон в этой фазе вообще не управлялся.
+
+Последнее завершённое действие: проверены оба новых подписанных архива/APK, усилены и опубликованы два RED→GREEN сценария карты, обновлены описания PR и checkpoints. Остановка — реальное суточное окно, а не новый повтор того же теста. Следующее — проверить итог CI/Time evidence, затем inplace native RF1802, шапка landscape/130% и вкладки/cold offline с точным восстановлением всех профилей и settings. Выпуск только после реальных результатов.
