@@ -19,15 +19,14 @@ import { statusLabel } from "../../lib/status-labels"
 import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
+import { getOfflineScope } from "../../services/offline-scope"
+import { loadCalendarMonth } from "../../services/calendar-month"
 import { CACHED_VIEW_NOTICE_KEYS, cachedViewNotice, type CachedViewNotice } from "../../lib/cached-view-notice"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import {
-  combineCalendarWeeks,
-  monthGridWindow,
   shiftMonthKey,
-  toWeekData,
   type WeekData,
   type WeekDay,
   type WeekTaskItem,
@@ -385,29 +384,30 @@ export default function WeekScreen() {
 
   const fetchMonth = useCallback(async (month: string) => {
     const request = ++latestRequest.current
+    const scope = getOfflineScope(), session = useAuthStore.getState().agent
+    const server = api.serverOrigin()
+    const current = () => request === latestRequest.current && getOfflineScope() === scope
+      && useAuthStore.getState().agent === session && api.serverOrigin() === server
     try {
-      const window = monthGridWindow(month)
-      const responses = await Promise.all(window.weekStarts.map((start) => api.getWeek(start)))
-      if (request !== latestRequest.current) return
-      if (responses.every((response) => response.success && response.data)) {
-        const weeks = responses.map((response) => toWeekData(response.data))
-        setData(combineCalendarWeeks(weeks, window))
-        setOffline(false)
-      } else {
-        setOffline(true)
+      const identity = scope ? await api.getOfflineBootstrapBinding().catch(() => null) : null
+      if (!current()) return
+      const result = await loadCalendarMonth({ month, binding: identity && scope ? { ...identity, scope } : null,
+        current, getWeek: start => api.getWeek(start), today: localDateKey() })
+      if (result && current()) {
+        setData(result.data)
+        setOffline(result.stale)
       }
-    } catch (error: any) {
-      // SESSION_EXPIRED is handled by the API interceptor. There is no month
-      // cache yet, so every other failure must be visible instead of looking
-      // like a genuinely empty calendar.
-      if (request === latestRequest.current && error.message !== "SESSION_EXPIRED") setOffline(true)
+    } catch {
+      if (current()) { setData(null); setOffline(true) }
     } finally {
-      if (request === latestRequest.current) {
+      if (current()) {
         setLoading(false)
         setRefreshing(false)
       }
     }
   }, [])
+
+  useEffect(() => () => { latestRequest.current++ }, [])
 
   useEffect(() => {
     fetchMonth(anchor)
@@ -457,7 +457,7 @@ export default function WeekScreen() {
   const currentMonth = Boolean(data?.today && sameMonth(data.today, anchor))
 
   const changeMonth = (offset: number) => {
-    if (!data || loading) return
+    if (loading) return
     setLoading(true)
     setAnchor(shiftMonthKey(anchor, offset))
   }
@@ -538,7 +538,7 @@ export default function WeekScreen() {
         onPlan={canPlanOwnRoutes ? openOwnRoutePlanner : undefined}
       />
       <MonthNavigation
-        range={data ? formatMonthTitle(anchor, i18n.language) : ""}
+        range={formatMonthTitle(anchor, i18n.language)}
         todayLabel={t("week.today")}
         previousLabel={copy.previousWeek}
         nextLabel={copy.nextWeek}
