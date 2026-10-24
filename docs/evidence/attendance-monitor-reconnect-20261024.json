@@ -1,0 +1,52 @@
+{
+  "status": "PASS_ADB_RECONNECT_AND_DEVICE_WATCHDOG_ONLY",
+  "startedAt": "2026-10-24T16:39:17.858910+00:00",
+  "full24hAccepted": false,
+  "businessActions": false,
+  "permissionWrites": false,
+  "radioWrites": false,
+  "actualMacSleepTested": false,
+  "liveReconnect": {
+    "commandAccepted": true,
+    "seconds": 0.906,
+    "unavailableReads": 0,
+    "physicalUsbUnplug": false
+  },
+  "workersSurvivedAdbReconnect": true,
+  "watchdogReconnect": {
+    "commandAccepted": true,
+    "seconds": 0.86,
+    "unavailableReads": 0,
+    "physicalUsbUnplug": false
+  },
+  "deviceWatchdogRestoredBeforeHostCleanup": true,
+  "cleanup": {
+    "networkExact": true,
+    "displayExact": true,
+    "timeAllProfilesExact": true,
+    "fieldAllProfilesExact": true
+  },
+  "finishedAt": "2026-10-24T16:40:43.474500+00:00",
+  "timeVersionCode": 1046,
+  "fieldVersionCode": 1811,
+  "priorAttempt": "transport-qualification-v1 FAIL_RECONNECT_REFUSED: command returned0 with empty stdout, all4 cleanup checks true; preserved unchanged",
+  "qualificationControllerSha256": "f21b6b25a993edba658031a2fa4395c56311f21d751acf584a8f83bbeded5b64",
+  "newControllerSha256": "880d86bfaf529ac9e9941572a9ddfef3315478b248cbc6fb73e3478542a2e2ba",
+  "controllerScopeTests": {
+    "passed": 14,
+    "seconds": 0.13,
+    "type": "mocked no phone/HTTP; valid owned return reaches exactly one tap; invalid cases reach zero",
+    "sha256": "819f9a09dcd9bb231a6eb9722c36e9719081df83eba8ae4240d51fe9b4d6527d"
+  },
+  "nativePreflight": {
+    "ownFictionalEmployee": true,
+    "completed": true,
+    "pending": false,
+    "offline": false,
+    "returnEnabled": true,
+    "screenshotReviewed": true,
+    "screenshotSha256": "4409dd32e3e6779042b7ff7272e49d5884d12a00879f08fe5edfb4000e54d12a"
+  },
+  "full24hStarted": false,
+  "publicTimeReleased": false
+}
