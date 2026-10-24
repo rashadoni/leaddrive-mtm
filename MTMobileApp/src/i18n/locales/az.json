@@ -1436,5 +1436,13 @@
     "queueWaiting": "Göndərilmə növbəsində: {{count}}",
     "queueNeedsAttention": "Növbədə diqqət tələb edən qeydlər var: {{count}}",
     "finishReplyDraft": "Gələn sorğuya keçmək üçün əvvəlcə açıq qaralamanı göndərin və ya bağlayın."
+  },
+  "timeAppUpdate": {
+    "title": "Time yeniləməsi hazırdır",
+    "messageApk": "LeadDrive Time {{version}} hazırdır. APK faylını yükləyin, sonra Android-də quraşdırmanı təsdiqləyin. Telefonda saxlanan məlumatları qorumaq üçün tətbiqi silmədən mövcud Time üzərinə quraşdırın.",
+    "messagePlay": "LeadDrive Time {{version}} əlçatandır. Yeniləməni yoxlamaq və quraşdırmaq üçün Google Play-i açın.",
+    "download": "Yüklə",
+    "openPlay": "Google Play-i aç",
+    "later": "Sonra"
   }
 }

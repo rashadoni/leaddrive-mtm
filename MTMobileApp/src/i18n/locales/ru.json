@@ -1436,5 +1436,13 @@
     "queueWaiting": "В очереди на отправку: {{count}}",
     "queueNeedsAttention": "В очереди есть отметки, требующие внимания: {{count}}",
     "finishReplyDraft": "Чтобы перейти к запросу из входящих, сначала отправьте или закройте открытый черновик."
+  },
+  "timeAppUpdate": {
+    "title": "Доступно обновление Time",
+    "messageApk": "Готов LeadDrive Time {{version}}. Скачайте APK и подтвердите установку в Android. Чтобы сохранить локальные данные, устанавливайте поверх существующего Time, не удаляя приложение.",
+    "messagePlay": "Доступен LeadDrive Time {{version}}. Откройте Google Play, чтобы проверить и установить обновление.",
+    "download": "Скачать",
+    "openPlay": "Открыть Google Play",
+    "later": "Позже"
   }
 }
