@@ -95,3 +95,25 @@
 Наблюдение: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-observer-sanitized.json`. Итог native: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-v1/result-sanitized.json`; отказ до native: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/after-time-native-gate-refusal-sanitized.json`. Даже PASS_MAESTRO_AWAITING_VISUAL_AND_OFFLINE_REVIEW не является release acceptance: просмотр настоящих PNG и отдельный cold-offline bootstrap остаются следующей фазой.
 
 Остановка: тот же Time v11,24Oct10:22UTC176HR samples, итогов нет. Минимум25Oct02:44:14Баку плюс replay/review. Следующее — прочитать Time/native terminal receipts, проверить новые PNG и cold offline; при отказе сначала диагностировать его, не начинать круг business tests заново.
+
+
+## 2026-10-24T14:45:54.567188+04:00 — подготовлен cold-offline этап после native RF
+
+По новому «начинай» возобновлены сохранённые worktrees, а не созданы повторные бизнессценарии. Вариант Time «Ритм» остаётся выбранным; новый выбор в старой визуализации не перезапускает выполненный дизайн. Published mobile source d35a2cc / APK1802 и server a4bf9b410 / актуальный CI остаются прежними; production mutation отсутствует.
+
+Первый post-Time native worker PID58634 остаётся WAITING_TIME; controller PID2388017 и reviewer PID2412961 работают. На этой фазе тоже0 команд телефону: новый gate проверялся только по host files/мокам. Последний Time progress: 2026-10-24T10:42:57.179933+00:00, 181 HR samples, RUNNING; оба итоговых файла отсутствуют. Исходный минимум окончания25Oct02:44:14Баку плюс replay/review не переносился.
+
+Подготовлен частный скрипт `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/rf_cold_offline_after_native.py`. Поставлен в ожидание после Time и двух native RF flows: PID114294, максимум14h от24Oct14:42:51Баку. SHA256:
+`38229973689d95bb1887230380a2220b637eefad68e33c6c013bd6f436e176c1`
+Он привязан к неизменённому parent source:
+`cedd85aa0e329323577f50061414b31d9a292da73542a2a180a8148eb818439e`
+
+14 focused qualification tests PASS0.024s. Это проверка механизма допуска/сети, НЕ native offline PASS. Проверены все предыдущие receipts/источники/hash binding/полный boolean cleanup/обе9-PNG flows, отсутствие входа в телефон при незавершённом настоящем Time, setter только UID10556, запрет чужого UID, fail при изменении любого protected UID, живой device recovery до deny, сохранение постороннего deny и точное восстановление исходной сети. После первого12-test прогона отдельно добавлены два meaningful protected-scope/restoration cases; итог14PASS. Shell syntax recovery проверен локально, физическая потеря host для этой новой lease NOT RUN. Proof: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/cold-offline-qualification-sanitized.json`.
+
+После всех предыдущих PASS и актуального backend/CI повторно сверяются APK1802, owner0, полный Time/RF package+grants/flags и сеть/display. Android36 Binder constants должны совпасть с уже квалифицированным checksum framework-connectivity.jar (chain9/get84/set83). Затем только RF owner0 UID10556 лишается сети; оба Time UID и protected RF UID9510556 неизменны, радиомодули/разрешения/display не записываются. Перед блокировкой устанавливается независимый15min device recovery с hash/syntax/pid proof. Повторный coldstart должен дать новый PID, прежний AGENT shell и cached profile Zeytun; formal readonly employee-accessibility Maestro проходит все вкладки/месяц/фильтр/профиль и сохраняет9privatePNG. Ни day/visit/photo/task/GPS decision, ни login input в сценарии нет.
+
+После теста восстанавливаются точные network/radios и все profiles/display, затем обычный online coldstart и чистая синхронизация. Другую внезапно появившуюся deny lease script не удалит: запишет FAIL, сохранив чужой scope. При потере связи device watchdog должен вернуть только RF; при невозможности фактического cleanup verification остаётся FAIL, не PASS. Historical RF1795 active pointer/case и все принятые actions сохраняются.
+
+Наблюдение: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/cold-offline-observer-sanitized.json`. Итог: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/cold-offline-after-native-v1/result-sanitized.json`; отказ до hardware: `/mnt/HC_Volume_106454338/codex-alt-data/tmp/route-field-followups-20261024/cold-offline-gate-refusal-sanitized.json`. Ранний отказ первого native этапа останавливает и этот этап. Максимальный успех называется PASS_COLD_OFFLINE_AWAITING_VISUAL_REVIEW; автоматического merge/deploy и объявления общей приёмки нет.
+
+Точка продолжения: Timev11 → RF1802 install/portrait/landscape130% → RF cold offline/online cleanup подготовлены и ждут реальных результатов. Native новых шагов NOT RUN до текущего окна. Последнее действие — квалифицирован и поставлен в ожидание последний cold-offline этап. Следующее — читать terminal receipts/отказы, затем визуально проверить реальные PNG и выполнить общий release review. Не повторять принятые визит/фото/запросы/GPS approvals/tasks.
