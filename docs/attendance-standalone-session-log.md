@@ -1598,3 +1598,24 @@ Transport qualification v1 FAIL сохранён: adb reconnect device возв�
 Подготовлен отдельный immutable private controller /mnt/HC_Volume_106454338/codex-alt-data/tmp/time-acceptance-20261024-1046/physical_soak_1046_v1.py SHA256 880d86bfaf529ac9e9941572a9ddfef3315478b248cbc6fb73e3478542a2e2ba. Он требует текущую qualification, точные версии/hash/profiles, fresh owned snapshot, неизменённые127events, тот же unlocked completed day и normal native return. Возврат должен добавить только REOPEN+RESUME при сохранении127events; затем3 новых PAUSE/RESUME/FINISH в офлайне, фактические24h+120s, expiryUI, replay/HR/delayed review/no duplicates и cleanup. Встроен current watch_android_window30s/20stimeout; HR240s, потеря наблюдения завершает попытку, не ждёт слепо24h. Runtime74e32574..., current test helpers hash-bound; различия currentHEAD от APKsource только3 RF taskfiles. Смена календарной даты сохраняет FINISH_PENDING через durable projected outbox; физический rollover остаётся частью новых суток.
 
 14 focused mocked controller scope tests PASS0.130s, без phone/HTTP: valid fixture доходит до единственного return tap; wrongtenant/account/day/status/approval/history/APK/permissions/network/shorttoken отклоняются ДО business tap. Python compile PASS. Full local build/TypeScript/browser E2E NOT RUN: Contabo contract; app runtime не менялся, прежние exact-source1046 hosted291suites2654PASS+1TODO остаются provenance, не новым запуском. New24h ещё НЕзапущен на этой записи. Следующее — запустить этот отдельный controller и подтвердить actual Maestro capture/coldqueue/первые liveness+HRsamples; старыйv11FAIL не переписывать. PublicTime gated, RF1811 не повторять.
+
+
+### 2026-10-24T20:52:59.480248+04:00 — physical soak Time1046 v1
+
+{"status": "FAIL", "offlineAt": "2026-10-24T16:45:52+00:00", "earliestCompletion": "2026-10-25T20:47:52+04:00", "finishedAt": "2026-10-24T16:52:58.768103+00:00", "window": null, "replay": null, "cleanup": {"originalNetworkAndRadios": true, "timePackageAndAllProfiles": true, "rfPackageAndAllProfiles": true, "originalDisplayPower": true}, "backendCompatibilityReviewRequired": null, "failureType": "TimeoutExpired"}
+Итог physical-soak-1046-v1/result-sanitized.json сохранён. Прежний v11 FAIL неизменён. Следующее: отдельная независимая сверка полного окна, оригинальных timestamps, replay/cleanup и backend delta. Time public release запрещён до всех gates; RF1811 не повторять.
+
+
+### 2026-10-24T16:53:20.226923+00:00 — независимая сверка Time1046
+
+{"status": "REFUSED", "failureType": "AssertionError", "publicReleaseAuthorizedByThisReceipt": false, "startedAt": "2026-10-24T16:51:50.219693+00:00", "finishedAt": "2026-10-24T16:53:20.226617+00:00"}
+Автоматический итог не публикует APK. Следующее: просмотреть actual before/after PNG, проверить backenddelta при наличии, завершить явное решение о Timerelease. Исходные FAIL сохранены.
+
+
+## 2026-10-24T16:57:07.734053+00:00 — найдена и исправлена ошибочная геометрия capture
+
+Time1046-v1 действительно начал окно24Oct16:45:52UTC и прошёл Maestro164.529s: PAUSE/RESUME/FINISH без изменения permissions. Cold screenshot helper не вернулся за160s; controller FAIL, срок25Oct20:47:52Баку отменён. All4cleanup true, обычный foreground отправил3claims:129 прежнихevents неизменны, итог132; reviewREFUSED сохраняет full24h failure. Источники и receipts этой попытки НЕменять.
+
+Просмотренный actualPNG и XML показывают полностью видимую очередь bounds[103,884,975,946] внутри scrolling viewport[0,405,1080,1981]. Старый тест ошибочно требовал y>=tabTop/2=1002, хотя текст уже виден, и повторял невозможную прокрутку вниз при scrollTop0. Это bug тестового helper, не потеря очереди приложения. Current observer исправлен: проверяет собственный реальный ScrollView viewport, полную высоту>=40 и отсутствие перекрытия tabbar; midpoint более не является gate. Прежние original workers/results неизменны.
+
+12 focused actual-shell observer tests PASS0.322s, в том числе realgeometry regression и6 clipped/overlap/foreignviewport случаев. Replay всей capture-функции на сохранённом physicalXML PASS0.042s без swipe; это recordedXML, не новый physical24h. Отдельный upcoming1046-v2 controller обязан связаться с exact132 canonicalevents и повторно проверить nativecoldcapture ДО объявления RUNNING. Изменён только тестовый observer; runtime1046/RF1811 неизменны. Next: checkpoint, отдельная попытка с исправленным helper, проверить очередь/первые30smonitorframes и final evidence. Новые сутки ещё не запущены.

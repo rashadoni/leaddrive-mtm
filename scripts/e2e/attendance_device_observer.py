@@ -70,11 +70,20 @@ ts_tab_bounds() {
 }
 
 ts_pending_ready() {
+  # A readable notice may be above the screen midpoint. Use the actual
+  # scrolling content viewport; centering it can be impossible at scrollTop=0.
+  ts_viewport_top=0; ts_viewport_bottom=0
+  ts_viewport_bounds=$(grep -o '<node[^>]*class="android.widget.ScrollView"[^>]*package="com.leaddrive.attendance"[^>]*scrollable="true"[^>]*>' "$ts_ui" | \
+    sed -n '1s/.*bounds="\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]".*/\1 \2 \3 \4/p')
+  set -- $ts_viewport_bounds
+  [ "$#" = 4 ] && [ "$3" -gt "$1" ] && [ "$4" -gt "$2" ] || return 1
+  ts_viewport_top=$2; ts_viewport_bottom=$4
   ts_pending_bounds=$(grep -o '<node[^>]*resource-id="office-workday-pending"[^>]*>' "$ts_ui" | \
     sed -n 's/.*bounds="\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]\[\([0-9][0-9]*\),\([0-9][0-9]*\)\]".*/\1 \2 \3 \4/p')
   set -- $ts_pending_bounds
   [ "$#" = 4 ] && [ "$3" -gt "$1" ] && [ "$(($4 - $2))" -ge 40 ] &&
-    [ "$2" -ge "$((ts_swipe_y / 2))" ] && [ "$4" -le "$((ts_swipe_y - 80))" ]
+    [ "$2" -ge "$ts_viewport_top" ] && [ "$4" -le "$ts_viewport_bottom" ] &&
+    [ "$4" -le "$ts_swipe_y" ]
 }
 
 ts_capture() {
@@ -123,7 +132,7 @@ ts_capture() {
               ts_scroll_try=$((ts_scroll_try + 1))
               ts_heartbeat
               set -- $ts_pending_bounds
-              if [ "$#" = 4 ] && [ "$2" -lt "$((ts_swipe_y / 2))" ]; then
+              if [ "$#" = 4 ] && [ "$2" -lt "$ts_viewport_top" ]; then
                 input swipe "$ts_swipe_x" "$((ts_swipe_y * 2 / 3))" "$ts_swipe_x" "$((ts_swipe_y - 80))" 600
               else
                 input swipe "$ts_swipe_x" "$((ts_swipe_y - 80))" "$ts_swipe_x" "$((ts_swipe_y * 2 / 3))" 600

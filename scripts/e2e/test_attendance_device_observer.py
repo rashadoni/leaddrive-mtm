@@ -67,8 +67,9 @@ class DeviceObserverTests(unittest.TestCase):
         definitions = worker().split('\ncase "$1" in', 1)[0]
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
-            (folder / 'overview').write_text('<node package="com.leaddrive.attendance" text="Fictional office employee"/><node resource-id="time-tab-OwnWorkday" bounds="[94,904][493,1058]"/><node text="Gün tamamlanıb"/><node resource-id="office-workday-offline"/><node resource-id="office-workday-pending" bounds="[181,874][1998,880]"/>')
-            (folder / 'queue').write_text('<node package="com.leaddrive.attendance" resource-id="office-workday-pending" bounds="[181,570][1998,630]"/>')
+            viewport = '<node class="android.widget.ScrollView" package="com.leaddrive.attendance" scrollable="true" bounds="[0,100][2000,880]"/>'
+            (folder / 'overview').write_text(viewport + '<node package="com.leaddrive.attendance" text="Fictional office employee"/><node resource-id="time-tab-OwnWorkday" bounds="[94,904][493,1058]"/><node text="Gün tamamlanıb"/><node resource-id="office-workday-offline"/><node resource-id="office-workday-pending" bounds="[181,874][1998,880]"/>')
+            (folder / 'queue').write_text(viewport + '<node package="com.leaddrive.attendance" resource-id="office-workday-pending" bounds="[181,570][1998,630]"/>')
             mocks = r'''
 pm() { echo package:/fake.apk; }
 sha256sum() { echo "$ts_apk /fake.apk"; }
@@ -89,6 +90,26 @@ screencap() { touch "$2"; }
             self.assertTrue((folder / 'swiped').exists())
             self.assertIn('Fictional office employee', (folder / 'admission-before-overview.xml').read_text())
             self.assertNotIn('Fictional office employee', (folder / 'admission-before.xml').read_text())
+
+    def test_readability_uses_viewport_not_screen_midpoint(self):
+        definitions = worker().split('\ncase "$1" in', 1)[0]
+        viewport = '<node class="android.widget.ScrollView" package="com.leaddrive.attendance" scrollable="true" bounds="[0,405][1080,1981]"/>'
+        cases = [
+            ('[103,884][975,946]', viewport, True),  # Actual Time1046 capture.
+            ('[103,1975][975,1981]', viewport, False),  # Six clipped pixels.
+            ('[103,380][975,442]', viewport, False),  # Under the fixed header.
+            ('[103,1950][975,2012]', viewport, False),  # Under the tab bar.
+            ('[103,884][975,946]', '', False),
+            ('[103,884][975,946]', viewport.replace('com.leaddrive.attendance', 'other.app'), False),
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'screen.xml'
+            for bounds, content, expected in cases:
+                with self.subTest(bounds=bounds, viewport=content):
+                    path.write_text(content + '<node resource-id="office-workday-pending" bounds="' + bounds + '"/>')
+                    done = subprocess.run(['sh', '-c', definitions + '\nts_ui=' + str(path) + '\nts_swipe_y=2005\nts_pending_ready'],
+                                          capture_output=True, text=True)
+                    self.assertEqual(done.returncode == 0, expected)
 
     def test_tab_coordinates_come_only_from_the_named_attendance_tab(self):
         definitions = worker().split('\ncase "$1" in', 1)[0]
