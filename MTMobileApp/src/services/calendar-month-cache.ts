@@ -10,6 +10,7 @@ type Entry = { month: string; storedAt: number; weeks: WeekData[] }
 type Cache = { version: 1; binding: OfflineBootstrapBinding; months: Entry[] }
 let operations: Promise<unknown> = Promise.resolve()
 let sequence = 0, lastDecision = 0
+let denied = false
 export function nextCalendarRead(): number { return ++sequence }
 function serial<T>(work: () => Promise<T>): Promise<T> {
   const next = operations.then(work, work)
@@ -50,6 +51,9 @@ export function clearCalendarMonthCache(current: () => boolean, read: number): P
   return serial(async () => {
     if (!current() || read < lastDecision) return
     lastDecision = read
+    // A storage error must not revive the just-denied projection in this
+    // process. Only a later successful server read/write can reopen it.
+    denied = true
     await AsyncStorage.removeItem(CALENDAR_MONTH_CACHE_KEY)
   })
 }
@@ -71,18 +75,19 @@ export function rememberCalendarMonth(binding: OfflineBootstrapBinding, month: s
     const entry = { month, storedAt: now, weeks: weeks.map(projectWeek) }
     const cache: Cache = { version: 1, binding: { ...binding }, months: [...months, entry].slice(-MAX_MONTHS) }
     await AsyncStorage.setItem(CALENDAR_MONTH_CACHE_KEY, JSON.stringify(cache))
+    denied = false
   })
 }
 
 export async function readOfflineCalendarMonth(binding: OfflineBootstrapBinding, month: string,
   current: () => boolean): Promise<WeekData[] | null> {
   const admission = await readOfflineBootstrap(binding, current)
-  if (!admission || !current()) return null
+  if (!admission || !current() || denied) return null
   return serial(async () => {
     try {
       const cache = JSON.parse(await AsyncStorage.getItem(CALENDAR_MONTH_CACHE_KEY) ?? "null") as Cache | null
       const now = Date.now()
-      if (!current() || now >= admission.validUntil || cache?.version !== 1 || !sameBinding(binding, cache.binding)) return null
+      if (!current() || denied || now >= admission.validUntil || cache?.version !== 1 || !sameBinding(binding, cache.binding)) return null
       const entry = cache.months.find(saved => saved.month === month)
       if (!entry || !Number.isFinite(entry.storedAt) || now + 5000 < entry.storedAt
         || now - entry.storedAt >= MAX_AGE || !isCompleteCalendarMonth(entry.weeks, month)) return null
