@@ -1503,3 +1503,10 @@ CRM E2E прогон `39556643325` для `092221a2f1a7302458ad0ed050443c1c38e68
 - Own Time commits включены ordinary merge только в RF worktree/PR201 d35a2cc; Time runtime source2ec1bc7,installed1042,controller/reviewer не менялись. Финальный порядок supersedes отдельный Time-first merge: после обоих actualv11PASS и native финального Field один reviewed merge201 включает оба источника;196 затем закрывается included. Публикуемый Time остаётся exact tested1042, не новая QA1045.
 - Combined source CI288suites/2588PASS+1TODO/TS SUCCESS и обе подписанные QA сборки прошли; новая Time1045 служит только проверкой отдельной конфигурации и НЕ устанавливалась/не получила physicalPASS. PR196 description ссылается на этот порядок. До окончания окна нет phone/network/permission/APK/clock mutations и нет production deploy.
 - Read progress24Oct09:34UTC: v11RUNNING/164HRsamples, обоих итоговых файлов ещё нет. Минимум окончания25Oct02:44:14Баку плюс replay/review. Это промежуточный статус, не суточныйPASS.
+
+
+## 2026-10-24T10:26:55.887872+00:00 — RF follow-up ждёт два итоговых Time PASS
+
+Time v11/source/controller/phone не менялись. В другом частном процессе подготовлен future RF install + readonly portrait/landscape130% audit, PID58634. Его исходный WAITING_TIME и14 qualification cases подтверждают0 phone commands до ДВУХ PASS result+release-acceptance; дополнительно проверяется полный cleanup и binding к1042/исходному controller. Скрипт не меняет Time и не публикует production. Pin и результаты: /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-route-field-followups/docs/route-field-followups-session-log.md.
+
+Это не новый soak и не Time PASS: текущий v11 продолжается до исходного срока25Oct02:44:14Баку плюс replay/review. Весь Time evidence сохраняется; original controller/reviewer остаются единственным источником итогов.
