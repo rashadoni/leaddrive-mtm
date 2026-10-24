@@ -1517,3 +1517,33 @@ Time v11/source/controller/phone не менялись. В другом част
 К уже ожидающему post-Time RF native добавлен отдельный следующий cold-offline этап, PID114294. Он не может послать команду телефону до двух настоящих Time PASS, успешных native RF portrait/landscape и полного cleanup предыдущей фазы. Механизм квалифицирован14 focused mock/guard tests, НЕ physical/native PASS. Все текущие Time code/observer/controller/source/clock/network/permissions неизменны, суточное окно не перезапускалось. Детали/pins/result paths записаны в /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-route-field-followups/docs/route-field-followups-session-log.md.
 
 На момент записи исходный Time v11 RUNNING (181 HR samples, last update 2026-10-24T10:42:57.179933+00:00); результат и independent release acceptance отсутствуют. Исходный минимум25Oct02:44:14Баку плюс replay/review сохраняется. Следующее — дождаться этих точных итогов, не подменять их готовностью helper scripts.
+
+
+## 2026-10-24T15:10:33.697055+04:00 — reboot и остановка прерванного окна
+
+Пользователь подтвердил USB и затем сообщил физическую перезагрузку телефона. До неё prefix-audit-v2 достоверно обнаружил прекращение phone observer и watchdog после1049frames/~8h58m: последний24Oct11:40:14Баку, затем разрыв более3h. В тот момент исходный boot/сеть/пакеты были сохранны. Причина исчезновения обоих процессов не доказана; observer.log пуст. Это дефект надёжности наблюдения, не доказанный баг Time. Старые записи, FAIL и исходный controller сохранены.
+
+После сообщения «перезагрузил» direct ADB35039 снова видит Samsung; новый bootId подтверждён, Time UID10565 уже ALLOW. Не перезапускать старый observer с прежним boot/uptime: он более не может подтвердить исходное окно. Непрерывный24h PASS недопустим, прежнее ожидание до25Oct02:44:14Баку superseded фактической перезагрузкой. Начата безопасная остановка через предусмотренный controller STOP с сохранением исходного SHA. Следующее — дождаться finally/освобождения UI lock, проверить обычную отправку трёх прежних PAUSE/RESUME/FINISH, исходные claimedAt/дубли/кадровую историю и точный cleanup с отдельным учётом смены bootId. Новые бизнесдействия, установка и публикация пока не выполняются. Строгие RF workers не обходятся: их исходный gate при Time FAIL должен отказать; дальнейший physical RF будет отдельной явной фазой только после восстановления телефона. Доказательства в tmp/route-field-followups-20261024/time-reboot-recovery-v1. Автоматически новые сутки не запускаются.
+
+
+### 2026-10-24T15:12:10.784220+04:00 — physical soak v11
+
+{"status": "FAIL", "offlineAt": "2026-10-23T22:42:14+00:00", "earliestCompletion": "2026-10-25T02:44:14+04:00", "finishedAt": "2026-10-24T11:12:10.781459+00:00", "window": null, "replay": null, "cleanup": {"originalNetworkAndRadios": false, "timePackageAndAllProfiles": true, "rfPackageAndAllProfiles": true, "originalDisplayPower": true}, "backendCompatibilityReviewRequired": null, "failureType": "AssertionError"}
+Автоматический итог immutable physical-soak-20261024-v11/result-sanitized.json. ПрежниеFAILнеизменны. Следующее: сверитьокно/replay/cleanup иbackenddelta передTimePR196merge/release. Route&Field1795 проверенотдельно; егофактыповторноневыполнять.
+
+
+### 2026-10-24T11:12:17.821588+00:00 — независимый итог v11 с читаемой очередью
+
+{"status": "REFUSED", "kind": "Composite acceptance without changing the original v11 result", "startedAt": "2026-10-23T22:50:17.226800+00:00", "failureType": "AssertionError", "finishedAt": "2026-10-24T11:12:17.821228+00:00"}
+Merge/release допускаются только при PASS этого release-acceptance, а не по одному старому controller receipt; при backend delta требуется compatibility review. Первые clipped XML/PNG сохранены.
+
+
+## 2026-10-24T15:17:41.292061+04:00 — очередь после reboot восстановлена; отдельная RF фаза
+
+Исходный immutable v11 завершён FAIL по штатному STOP; independent acceptance REFUSED. OriginalNetworkAndRadios=false объясняется сменой bootId; отдельная фактическая проверка всех остальных полей сети доказывает точное восстановление. Исходные файлы не менялись, controller SHA67831dc4... сохранён. Оба прежних RF observers отказали TIME_CONTROLLER_NOT_PASS без native действий; отказы сохранены.
+
+Отдельный recovery-v1 прошёл проверки очереди/истории/cleanup, но терминальный guard ошибочно трактовал exit1 команды ps для отсутствующего старого PID как ADB failure. Его FAIL сохранён. Recovery-v2 исправляет только чтение отсутствующего /proc/PID/cmdline, повторно проверен обычный cold start, без action taps. Итог PASS_INTERRUPTED_REBOOT_RECOVERY, не24h PASS: ровно3 PAUSE/RESUME/FINISH добавлены к124 прежним записям; claimedAt23Oct22:43:18.638/22:43:41.676/22:44:18.011UTC, received24Oct11:11:56UTC. Старые124 неизменны, после coldstart127 без дублей, pending/offline отсутствуют, UI Serverə çatıb/Gün tamamlanıb видны и настоящий screenshot просмотрен. HR factsVALID/completed, delayed FINISH review присутствует, запросы обоих аккаунтов и история другого сотрудника неизменны. Полные package/runtime profiles обоих приложений, display/power и network/radios за исключением ожидаемого нового bootId восстановлены. Backend тот же64356065f3878a547bdd5fa87cbf9f789f1f92a2. Тестовая phone folder закрыта marker done, UI lock освобождён. В v2 receipt явно full24hAcceptance=false/timeReleaseAccepted=false.
+
+Supersedes прежнее ожидание RF после TimePASS как условие физического ресурса: отдельная новая RF phase может использовать освобождённый телефон после доказанной сверки очереди и cleanup. Это НЕ ослабляет условие выпуска Time и НЕ меняет исходный суточный FAIL. Новый частный rf_after_recovery_native_v2.py сохраняет original FAIL/REFUSED/hash binding, требует точный recovery/newEvents3/124 old unchanged/оригинальные timestamps/no duplicates/другую историю/4 boolean cleanup/тот же backend. 8 узких guard tests PASS0.246s; no physical native PASS пока нет. Native phase устанавливает только Field1802 и проверяет реальный профиль Zeytun, портрет и landscape130% по9 screenshots. Ни логин, визит, фото, GPS approve, задача, рабочий день, разрешения или network write в этой фазе не выполняются. Старые результаты не переписаны. Новые24h автоматически не запускаются.
+
+Доказательства: tmp/route-field-followups-20261024/time-reboot-recovery-v2/result-sanitized.json; original physical-soak-20261024-v11/result-sanitized.json и release-acceptance-sanitized.json. Следующее — actual RF1802 install/Maestro, просмотр новых PNG, отдельная cold-offline проверка; Time24h/expiry остаются непрошедшими.
