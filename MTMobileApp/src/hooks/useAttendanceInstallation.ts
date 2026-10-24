@@ -12,6 +12,8 @@ export function useAttendanceInstallation() {
   const [busy,setBusy]=useState(false),[failed,setFailed]=useState(false)
   const epoch=useRef(0),writing=useRef(false)
   const load=useCallback(async()=>{
+    // A pull-to-refresh must not retire the ticket that owns a durable POST.
+    if(writing.current)return
     const ticket=++epoch.current
     if(!available){setView({scope,own:null,pending:null,required:null});return}
     setBusy(true);setFailed(false)

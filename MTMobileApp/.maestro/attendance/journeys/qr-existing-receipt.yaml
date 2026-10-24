@@ -1,0 +1,44 @@
+appId: com.leaddrive.attendance
+name: Read the verified branch QR receipt after a cold restart without new marks
+---
+# Run only after the host has independently confirmed the owned fictional
+# day's canonical FINISH and VERIFIED branch. Never repeat the optical write
+# merely because a receipt assertion was below the viewport.
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.completed}
+- assertNotVisible:
+    id: office-workday-pending
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-evidence-disclosure
+- scrollUntilVisible:
+    element:
+      text: ${QR_VERIFIED_TEXT}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${QR_VERIFIED_TEXT}
+- scrollUntilVisible:
+    element:
+      text: ${QR_BRANCH_NAME}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${QR_BRANCH_NAME}
+- assertNotVisible:
+    id: office-workday-pending
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.completed}
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-evidence-disclosure
+- scrollUntilVisible:
+    element:
+      text: ${QR_BRANCH_NAME}
+    direction: DOWN
+    timeout: 30000
+- assertVisible: ${QR_VERIFIED_TEXT}
+- assertVisible: ${QR_BRANCH_NAME}
+- assertNotVisible:
+    id: office-workday-pending

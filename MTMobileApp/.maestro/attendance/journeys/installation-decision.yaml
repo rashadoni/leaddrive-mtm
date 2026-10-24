@@ -1,0 +1,22 @@
+appId: com.leaddrive.attendance
+name: Employee sees the actual HR installation decision
+---
+- evalScript: ${if (EXPECTED_STATE !== 'APPROVED' && EXPECTED_STATE !== 'REVOKED') throw new Error('Explicit decision required')}
+- runFlow: ../shared/open-fixture.yaml
+- runFlow:
+    file: ../shared/expand-disclosure.yaml
+    env:
+      DISCLOSURE_ID: attendance-installation-disclosure
+- scrollUntilVisible:
+    element:
+      id: attendance-installation-refresh
+    direction: DOWN
+    timeout: 60000
+- tapOn:
+    id: attendance-installation-refresh
+- scrollUntilVisible:
+    element:
+      text: ${output.device[EXPECTED_STATE]}
+    direction: UP
+    timeout: 60000
+- assertVisible: ${output.device[EXPECTED_STATE]}

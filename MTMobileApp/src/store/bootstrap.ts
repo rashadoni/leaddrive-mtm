@@ -1,6 +1,8 @@
 import { create } from "zustand"
 import { api } from "../services/api"
 import { getOfflineScope } from "../services/offline-scope"
+import { forgetAttendanceOffline, rememberAttendanceOnline, restoreAttendanceOffline } from '../services/attendance-offline'
+import { useSyncStatusStore } from './sync-status'
 import { clearOfflineBootstrap, readOfflineBootstrap, rememberOfflineBootstrap } from "../services/bootstrap-offline-cache"
 let bootstrapGeneration = 0
 let offlineExpiryTimer: ReturnType<typeof setTimeout> | null = null
@@ -73,6 +75,9 @@ export const useBootstrapStore = create<BootstrapState>((set, get) => ({
     const current = () => generation === bootstrapGeneration && scope === getOfflineScope()
     set({ loading: true })
     try {
+      // Keep Time's immediate bounded offline admission. Field agents still
+      // probe the server, so a stale connectivity hint cannot pin field access.
+      if (api.agentRole !== "AGENT" && useSyncStatusStore.getState().online === false) throw new Error("NETWORK_OFFLINE")
       const res = await bootstrapWithStoredServer()
       if (!current()) return "unavailable"
       if (res?.success && res.data) {
@@ -87,9 +92,11 @@ export const useBootstrapStore = create<BootstrapState>((set, get) => ({
           loading: false,
           offlineValidUntil: null,
         })
-        // Only an explicit server grant can be remembered. Disk failure must
-        // not erase a fresh, successfully confirmed online admission.
+        await rememberAttendanceOnline(data, scope, current).catch(() => {})
+        if (!current()) return "unavailable"
+        // Each product validates and stores only its own bounded entitlement.
         await rememberOfflineBootstrap(data, res.data.offlineGrant, binding, current, requestedAt).catch(() => {})
+        if (!current()) return "unavailable"
         // Retired HRM routes remain closed. New own attendance requests
         // require their explicit permission and use a separate API. The app
         // reconciles the server-owned workday as its own minimal Route
@@ -99,6 +106,7 @@ export const useBootstrapStore = create<BootstrapState>((set, get) => ({
       } else {
         stopOfflineExpiry()
         set({ data: null, capabilities: [], loading: false, routeFieldAccess: "unavailable", offlineValidUntil: null })
+        await forgetAttendanceOffline().catch(() => {})
         await clearOfflineBootstrap().catch(() => {})
         return "unavailable"
       }
@@ -106,6 +114,15 @@ export const useBootstrapStore = create<BootstrapState>((set, get) => ({
       if (!current()) return "unavailable"
       // A request that never got an answer says nothing about entitlement.
       const access = isTransportFailure(error as { status?: number; message?: string }) ? "offline" : "unavailable"
+      const attendance = access === "offline" ? await restoreAttendanceOffline(scope, current) : null
+      if (!current()) return "unavailable"
+      if (attendance) {
+        stopOfflineExpiry()
+        set({ data: attendance, capabilities: [], loading: false, routeFieldAccess: "offline", offlineValidUntil: null })
+        return "offline"
+      }
+      if (access !== "offline") await forgetAttendanceOffline().catch(() => {})
+      if (!current()) return "unavailable"
       if (access === "offline") {
         const cached = await readOfflineBootstrap(await offlineBinding(scope), current).catch(() => null)
         if (!current()) return "unavailable"
@@ -133,6 +150,7 @@ export const useBootstrapStore = create<BootstrapState>((set, get) => ({
     bootstrapGeneration += 1
     stopOfflineExpiry()
     set({ data: null, capabilities: [], routeFieldAccess: "pending", loading: false, offlineValidUntil: null })
+    void forgetAttendanceOffline().catch(() => {})
     void clearOfflineBootstrap().catch(() => {})
   },
 }))

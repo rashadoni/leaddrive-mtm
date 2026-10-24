@@ -1,7 +1,7 @@
+import { TimeText as Text } from "../attendance/ui/TimeText"
 import React, { useEffect, useRef } from "react"
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Modal,
@@ -61,7 +61,7 @@ export default function ConfirmSheet({
         Animated.timing(backdropAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start()
     }
-  }, [visible])
+  }, [visible, slideAnim, backdropAnim])
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onCancel}>

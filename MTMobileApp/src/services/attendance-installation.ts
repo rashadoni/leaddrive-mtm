@@ -39,12 +39,19 @@ export async function beginAttendanceInstallation(scope:string) {
   })
 }
 export async function readAttendanceInstallation(scope:string) {
+  guardAttendanceInstallation(scope)
+  const offline = useBootstrapStore.getState().data?.attendanceOffline
+  if (offline) {
+    if (!offline.installation) throw new Error('ATTENDANCE_INSTALLATION_UNAVAILABLE')
+    return offline.installation
+  }
   const ctx=await context(scope),response=await api.getAttendanceInstallation(ctx.guard);ctx.guard()
   if(response?.success!==true)throw new Error('ATTENDANCE_INSTALLATION_INVALID')
   return parseAttendanceInstallation(response.data)
 }
 /** GET never acknowledges a POST. Even after it reports approval, retry this UUID. */
 export async function sendAttendanceInstallation(scope:string,item:PendingAttendanceInstallation) {
+  if (useBootstrapStore.getState().data?.attendanceOffline) throw new Error('ATTENDANCE_ONLINE_REQUIRED')
   const ctx=await context(scope),pending=await read(ctx.storageKey);ctx.guard()
   if(!pending || pending.requestId!==item.requestId)throw new Error('ATTENDANCE_INSTALLATION_CHANGED')
   let response

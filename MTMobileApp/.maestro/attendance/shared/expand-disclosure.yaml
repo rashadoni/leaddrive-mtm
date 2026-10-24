@@ -1,0 +1,15 @@
+appId: com.leaddrive.attendance
+name: Open the requested compact detail section without closing an open section
+---
+- scrollUntilVisible:
+    element:
+      id: ${DISCLOSURE_ID}
+    direction: DOWN
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: ${DISCLOSURE_ID}-collapsed
+    commands:
+      - tapOn:
+          id: ${DISCLOSURE_ID}

@@ -1,3 +1,4 @@
+jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 import React from 'react'
 import TestRenderer, { act } from 'react-test-renderer'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -20,10 +21,10 @@ const accepted: OwnAttendanceLocation = { policy: { id: 'fictional-policy', vers
 let own: OwnAttendanceLocation, pending: OutboxOperation | null
 const locale = i18next.createInstance(), roots: TestRenderer.ReactTestRenderer[] = []
 const settle = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) }) }
-async function render(language = 'ru') {
+async function render(language = 'ru', compact=false) {
   await locale.changeLanguage(language)
   let tree!: TestRenderer.ReactTestRenderer
-  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><AttendanceLocationConsentCard /></I18nextProvider>) })
+  await act(async () => { tree = TestRenderer.create(<I18nextProvider i18n={locale}><AttendanceLocationConsentCard compact={compact} /></I18nextProvider>) })
   roots.push(tree); await settle(); return tree
 }
 const node = (tree: TestRenderer.ReactTestRenderer, id: string) => tree.root.findAll(item => item.props.testID === id, { deep: false })[0]
@@ -93,4 +94,32 @@ it('does not publish after leaving while the durable write is still completing',
   own=accepted; let finish!:(item:OutboxOperation)=>void; (beginAttendanceConsent as jest.Mock).mockImplementationOnce(()=>new Promise<OutboxOperation>(done=>{finish=done}))
   const tree=await render(); await press(tree,'attendance-consent-revoke'); await act(async()=>tree.unmount()); await act(async()=>finish({entity:'attendanceConsents'} as OutboxOperation))
   expect(sendAttendanceConsent).not.toHaveBeenCalled()
+})
+
+it.each(['ru','az','en'] as const)('requires reading the full published %s consent in compact mode', async language => {
+  own={...accepted,consent:null,maySendLocation:false}
+  const tree=await render(language,true)
+  expect(node(tree,'attendance-location-disclosure').props.accessibilityState.expanded).toBe(true)
+  expect(node(tree,'attendance-consent-text')).toBeUndefined()
+  expect(node(tree,'attendance-consent-accept')).toBeUndefined()
+  await press(tree,'attendance-consent-disclosure')
+  expect(text(tree)).toContain(accepted.policy!.texts[language])
+  expect(node(tree,'attendance-consent-check').props.value).toBe(false)
+  await press(tree,'attendance-consent-accept');expect(beginAttendanceConsent).not.toHaveBeenCalled()
+  await act(async () => node(tree,'attendance-consent-check').props.onValueChange(true))
+  await press(tree,'attendance-consent-accept')
+  expect(beginAttendanceConsent).toHaveBeenCalledWith('org-fixture:office-fixture',expect.objectContaining({consent:null}),true)
+})
+it('keeps accepted consent reachable and withdrawal durable from compact details', async () => {
+  own=accepted
+  const tree=await render('ru',true)
+  expect(node(tree,'attendance-consent-revoke')).toBeUndefined()
+  expect(text(tree)).toContain(ru.attendanceLocation.accepted)
+  await press(tree,'attendance-location-disclosure')
+  expect(node(tree,'attendance-consent-revoke')).toBeDefined()
+  ;(sendAttendanceConsent as jest.Mock).mockRejectedValueOnce(new Error('offline'))
+  await press(tree,'attendance-consent-revoke')
+  expect(beginAttendanceConsent).toHaveBeenCalledWith('org-fixture:office-fixture',accepted,false)
+  expect(text(tree)).toContain(ru.attendanceLocation.pendingWithdrawal)
+  expect(node(tree,'attendance-consent-retry')).toBeDefined()
 })
