@@ -1,0 +1,49 @@
+appId: com.leaddrive.attendance
+name: Start, pause, restart, resume, cancel finish, finish
+---
+- runFlow: ../shared/open-fixture.yaml
+# Fail before the first write if this is not a fresh fictional day.
+- assertVisible: ${output.copy.notStarted}
+- tapOn:
+    id: office-workday-action
+- extendedWaitUntil:
+    visible: ${output.copy.running}
+    timeout: 60000
+- assertNotVisible:
+    id: office-workday-pending
+- tapOn:
+    id: office-workday-break
+- extendedWaitUntil:
+    visible: ${output.copy.paused}
+    timeout: 60000
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.paused}
+- tapOn:
+    id: office-workday-break
+- extendedWaitUntil:
+    visible: ${output.copy.running}
+    timeout: 60000
+- tapOn:
+    id: office-workday-action
+- assertVisible: ${output.copy.finishTitle}
+- tapOn:
+    id: app-choice-button-0
+- assertVisible: ${output.copy.running}
+- assertVisible:
+    id: office-workday-break
+- tapOn:
+    id: office-workday-action
+- assertVisible: ${output.copy.finishTitle}
+- tapOn:
+    id: app-choice-button-1
+- extendedWaitUntil:
+    visible: ${output.copy.completed}
+    timeout: 60000
+- assertNotVisible:
+    id: office-workday-pending
+- assertNotVisible:
+    id: office-workday-action
+- stopApp
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible: ${output.copy.completed}

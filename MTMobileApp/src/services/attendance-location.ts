@@ -37,6 +37,12 @@ export function guardAttendanceLocation(scope: string) {
 }
 export async function readAttendanceLocation(scope: string): Promise<OwnAttendanceLocation> {
   const guard = () => guardAttendanceLocation(scope)
+  guard()
+  const offline = useBootstrapStore.getState().data?.attendanceOffline
+  if (offline) {
+    if (!offline.location) throw new Error('ATTENDANCE_LOCATION_UNAVAILABLE')
+    return offline.location
+  }
   guard(); const response = await api.getAttendanceLocationConsent(guard); guard()
   if (response?.success !== true) throw new Error('ATTENDANCE_LOCATION_INVALID')
   return parseOwnAttendanceLocation(response.data)
@@ -64,6 +70,7 @@ export async function beginAttendanceConsent(scope: string, own: OwnAttendanceLo
 export async function sendAttendanceConsent(scope: string, item: OutboxOperation): Promise<void> {
   const guard = () => guardAttendanceLocation(scope)
   guard()
+  if (useBootstrapStore.getState().data?.attendanceOffline) throw new Error('ATTENDANCE_ONLINE_REQUIRED')
   if (item.scopeKey !== scope || item.entity !== 'attendanceConsents' || item.status !== 'pending') throw new Error('ATTENDANCE_CONSENT_CHANGED')
   const epoch = attendancePrivacyEpoch(scope)
   try {

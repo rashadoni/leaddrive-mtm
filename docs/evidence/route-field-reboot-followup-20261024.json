@@ -1,0 +1,98 @@
+{
+  "status": "SCOPED_TESTS_PASSED_RELEASE_NOT_ACCEPTED",
+  "recordedAt": "2026-10-24T11:41:38.118242+00:00",
+  "sourceSha": "d35a2ccbe2b951ee33a796a331b60fb7c626bba7",
+  "rf": {
+    "version": "3.11.54",
+    "versionCode": 1802,
+    "package": "com.mtmobileapp",
+    "apkSha256": "eb1533558e7d75dbce60b8aa30f2709ee5cdfd099f61056fcdeb92f03713c54b",
+    "inPlaceInstall": "PASS",
+    "portrait": [
+      {
+        "name": "Employee controls stay reachable with large text and landscape",
+        "seconds": "105.091",
+        "status": "PASS"
+      }
+    ],
+    "landscape130": [
+      {
+        "name": "Employee controls stay reachable with large text and landscape",
+        "seconds": "113.242",
+        "status": "PASS"
+      }
+    ],
+    "coldOfflineNavigation": [
+      {
+        "name": "Employee controls stay reachable with large text and landscape",
+        "seconds": "104.389",
+        "status": "PASS"
+      }
+    ],
+    "cachedProfileScroll": [
+      {
+        "name": "Cached agent email stays reachable offline after profile scroll",
+        "seconds": "18.925",
+        "status": "PASS"
+      }
+    ],
+    "sameCachedNameEmailTenant": true,
+    "cleanup": "PASS",
+    "screensReviewed": 28,
+    "offlineMonthCache": "NOT_AVAILABLE",
+    "newBusinessActions": false,
+    "authInput": false
+  },
+  "time": {
+    "installedVersionCode": 1042,
+    "runtimeSource": "2ec1bc791c77b53d64bff680284f4ce3636d5d4f",
+    "physical24h": "FAIL_INTERRUPTED_OBSERVER_GAP_AND_USER_REBOOT",
+    "expiry": "NOT_RUN",
+    "rebootQueueRecovery": "PASS",
+    "previousEventsUnchanged": 124,
+    "replayedOriginalEvents": 3,
+    "noDuplicates": true,
+    "originalTimesPreserved": true,
+    "cleanupExcludingExpectedBootChange": "PASS",
+    "releaseAccepted": false
+  },
+  "limits": [
+    "Readonly navigation does not prove availability of all cached screen data. Month has no durable cache; current WeekScreen source explicitly documents that limitation.",
+    "Today landscape130 header remains tall; P3 composition follow-up.",
+    "TalkBack and full accessibility matrix NOT RUN.",
+    "No production or public release; original failed receipts retained."
+  ],
+  "receiptBindings": {
+    "native": {
+      "name": "after-time-recovery-native-v3/result-sanitized.json",
+      "sha256": "a2ece473a09814acb397007ed38f8d6ba03a4ec380fde30c61c188ec0395718d"
+    },
+    "coldAttempt": {
+      "name": "cold-offline-after-recovery-v3/result-sanitized.json",
+      "sha256": "3bf7721789d8dafe825a00189bf529815cd3e830053859dda2c8fb2526336e94"
+    },
+    "coldMaestro": {
+      "name": "maestro/result-sanitized.json",
+      "sha256": "f7922704d1516e57e78d498f8237b014fad823b299aade23a8a2f4f01eacf5a7"
+    },
+    "continuation": {
+      "name": "cold-profile-scroll-continuation-v1/result-sanitized.json",
+      "sha256": "692e8408ac4a314333a6e72ed284f21e239f721516d7790a34e9361899d9782d"
+    },
+    "timeRecovery": {
+      "name": "time-reboot-recovery-v2/result-sanitized.json",
+      "sha256": "7029adb499750847ea4bde94aff60fc47d612f1aa602fcd161f3502191330da9"
+    },
+    "visual": {
+      "name": "route-field-followups-20261024/native-visual-review-v1-sanitized.json",
+      "sha256": "c72a4b28ea20bad724004f6ffc1d7adde99331d1ac34ec5de37bd503f0c30e8a"
+    }
+  },
+  "extraProfilePngSha256": "fca5190333d5deab9bbfdffb443b782a7321cec3641eb06420666d2741db8e73",
+  "focusedGuardTests": {
+    "recoveryGate": 8,
+    "accessibilitySelector": 3,
+    "coldNetworkScope": 14
+  },
+  "publicRelease": false
+}

@@ -1,0 +1,117 @@
+{
+  "status": "PASS_SCOPED_ROUTE_CARD_VISUAL_AFTER_REVIEW",
+  "reviewedAt": "2026-10-24T13:13:57.181003+00:00",
+  "sourceSha": "9f7d58ecdfe072c5c98645470548824c64207b3b",
+  "artifact": {
+    "status": "PASS_QA_ARTIFACT_NOT_RELEASED",
+    "sourceHead": "9f7d58ecdfe072c5c98645470548824c64207b3b",
+    "compiledCheckout": "08e57d3ebecf98e6af8c0438edd4675ea3943f0c",
+    "sourceAndCompiledTree": "4b126b06b759d8c17af3ba9846b5d94f06613b99",
+    "compiledTreesEqual": true,
+    "artifactId": 12560712411,
+    "archiveSha256": "f28c60cf4eaf47ca9701749a6bec3f80f94b423f860e07fdc4e9fa73a9ebd7ac",
+    "apkSha256": "0f5e951d5794ce0a84655529cfeaf5980cb602a89e98aa17ea0e4644ba021d13",
+    "package": "com.mtmobileapp",
+    "versionName": "3.11.54",
+    "versionCode": 1807,
+    "workflowRun": 40095858587,
+    "workflowJob": 120877861387,
+    "ciRun": 40095858586,
+    "hostedPinnedSigningCertificate": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+    "installed": false,
+    "publicRelease": false
+  },
+  "originalAttempt": {
+    "status": "FAIL",
+    "reason": "RF_AGENT_OR_SYNC_UNAVAILABLE",
+    "receiptSha256": "78eb60467e3b0521dc0758344cecfecd4635b0e22f215b0dfae3be4e8a3c0d57",
+    "cleanup": {
+      "ownDisplayRestored": true,
+      "networkExact": true,
+      "displayExact": true,
+      "timeAllProfilesExact": true,
+      "fieldAllProfilesExact": true,
+      "onlineSyncClean": true
+    }
+  },
+  "continuation": {
+    "receiptSha256": "0738116f5dfe2c50a62b833a794edf6c40087715ca5a7ae7072273cd5afb1a35",
+    "harnessSha256": "f3eebbfd8428299e608a6b6e5f68040bed74ca39ad5ddeaa643a0b71ad2206c4",
+    "geometry": {
+      "landscape100": {
+        "status": "PASS_GEOMETRY_AWAITING_VISUAL",
+        "leftBounds": [
+          68,
+          279,
+          1057,
+          828
+        ],
+        "rightBounds": [
+          1124,
+          279,
+          2114,
+          828
+        ]
+      },
+      "landscape130": {
+        "status": "PASS_GEOMETRY_AWAITING_VISUAL",
+        "leftBounds": [
+          68,
+          125,
+          1057,
+          778
+        ],
+        "rightBounds": [
+          1124,
+          125,
+          2114,
+          778
+        ]
+      }
+    },
+    "cleanup": {
+      "ownDisplayRestored": true,
+      "networkExact": true,
+      "displayExact": true,
+      "timeAllProfilesExact": true,
+      "fieldAllProfilesExact": true,
+      "onlineSyncClean": true
+    },
+    "reinstalled": false
+  },
+  "screenshots": [
+    {
+      "name": "portrait-route-top-private.png",
+      "sha256": "c47f02ba9f89001fc61c25beb646a70ef32fa59e7801a4fb7731613eaa1be4c4",
+      "review": "PASS"
+    },
+    {
+      "name": "landscape100-route-panels-private.png",
+      "sha256": "fe0acf6bce4f589f18d15fd5cc7a804e6f467c10d388679de407245055bffbdb",
+      "review": "PASS"
+    },
+    {
+      "name": "landscape130-route-panels-private.png",
+      "sha256": "1231da89c6b8b1c7c49701314217a485da54582625cc29228629e51b346e05c0",
+      "review": "PASS"
+    }
+  ],
+  "visualReview": {
+    "portrait": "Existing phone layout retained; visible route navigation and empty state readable.",
+    "landscape100": "Equal visible card height/width/top/bottom, primary borders/radii/padding; headings and bottom buttons align; no text or button clipping.",
+    "landscape130": "Same card geometry and border styling; text wraps without clipping, bottom buttons align.",
+    "scope": "Empty-route + start-workday-gate state, light theme, physical Samsung Android 16."
+  },
+  "backendArtifact": "cb1c604e274d75cfde10534b94978ce293f8f121",
+  "authInput": false,
+  "businessActions": false,
+  "permissionWrites": false,
+  "radioWrites": false,
+  "publicRelease": false,
+  "time24hAccepted": false,
+  "unrun": [
+    "Full accessibility/TalkBack matrix",
+    "All route business states native rerun",
+    "New Time 24h/expiry run"
+  ]
+}

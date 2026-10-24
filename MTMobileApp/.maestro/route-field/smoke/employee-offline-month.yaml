@@ -1,0 +1,32 @@
+appId: com.mtmobileapp
+name: Previously loaded monthly plan survives a cold offline start
+---
+# The native harness first loads the month online, records an actual nonempty
+# day, blocks only this app's owner UID, and force-stops/restarts the process.
+# It restores the original network state in finally. No login or business tap.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_MONTH_EXPECTED_DAY.length > 0}
+- tapOn:
+    id: guide-spot-tab.Route
+- runFlow:
+    when:
+      visible:
+        id: app-choice
+    commands:
+      - back
+- tapOn:
+    id: route-section-tab-month
+# In short landscape the saved-data notice can occupy the first viewport;
+# reach the actual saved day instead of waiting for cells above the fold.
+- scrollUntilVisible:
+    element:
+      text: ${RF_MONTH_EXPECTED_DAY}
+    direction: DOWN
+    timeout: 60000
+- assertNotVisible: Təqvimi açmaq alınmadı
+- assertVisible: ${RF_MONTH_EXPECTED_DAY}
+- takeScreenshot: offline-month-restored
+- tapOn: ${RF_MONTH_EXPECTED_DAY}
+- takeScreenshot: offline-month-selected-day
+- assertNotVisible:
+    id: login-email

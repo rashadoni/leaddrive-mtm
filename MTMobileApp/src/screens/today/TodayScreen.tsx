@@ -80,9 +80,10 @@ type TeamMessageSummary = { id: string; title: string; lastMessage?: { body?: st
 export default function TodayScreen() {
   const { t, i18n } = useTranslation()
   const navigation = useNavigation<NavigationProp<TodayNavigationParams>>()
-  const { width } = useWindowDimensions()
+  const { width, height } = useWindowDimensions()
   const twoPane = isExpandedTabletWidth(width)
-  const compactHeader = width < 420
+  const shortLandscape = width > height && height < 560
+  const compactHeader = width < 420 || shortLandscape
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
   const agent = useAuthStore((state) => state.agent)
@@ -115,6 +116,7 @@ export default function TodayScreen() {
   const [installationRefusal, setInstallationRefusal] = useState<'installation' | 'app' | null>(null)
   const recovery = useAttendanceMarkRecovery()
   const installation = useAttendanceInstallation()
+  const reloadInstallation = installation.reload
   const [scan,setScan] = useState<{scope:string;action:'START'|'FINISH';workdayId?:string}|null>(null)
   // The server's "no" about one particular day, kept with that day's id so it
   // never speaks for another.
@@ -304,11 +306,11 @@ export default function TodayScreen() {
       const code = (failure as {code?: string})?.code
       setInstallationRefusal(code === 'MTM_ATTENDANCE_INSTALLATION_APPROVAL_REQUIRED' ? 'installation' : code === 'MTM_ATTENDANCE_INSTALLATION_APP_REQUIRED' ? 'app' : null)
       setWorkdayError(true)
-      await installation.reload()
+      await reloadInstallation()
     } finally {
       setWorkdayBusy(false)
     }
-  }, [installation.reload, currentWorkdayKey, finishedWorkday?.workdayId, refresh, workdayBusy, workdayHydrated, workdayReturnable])
+  }, [reloadInstallation, currentWorkdayKey, finishedWorkday?.workdayId, refresh, workdayBusy, workdayHydrated, workdayReturnable])
 
   const requestWorkdayAction = useCallback(() => {
     if (recovery.operation || installation.blocked) return
@@ -452,7 +454,7 @@ export default function TodayScreen() {
       startRoute: false,
       startWorkday: false,
     }
-  }, [awaitingRoute, canPlanOwnRoutes, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive, workdayStarting])
+  }, [awaitingRoute, canPlanOwnRoutes, nextKind, route, routeSource, routeSummaryText, startingRoute, t, taskRemaining, workdayActive])
 
   const open = (destination: Destination) => {
     if (destination === "Calendar") navigation.navigate("Route", { view: "month" })
@@ -558,7 +560,7 @@ export default function TodayScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.header, { paddingTop: headerTop }]}>
+        <View style={[styles.header, shortLandscape && styles.headerShortWindow, { paddingTop: headerTop }]}>
           <View style={[styles.headerInner, compactHeader && styles.headerInnerCompact]}>
             <View style={styles.headerCopy}>
               {/* The greeting has the line to itself. The bell stands beside
@@ -1009,6 +1011,9 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: fieldTheme.space.lg,
+  },
+  headerShortWindow: {
+    paddingBottom: fieldTheme.space.md,
   },
   headerCopy: {
     flex: 1,

@@ -179,10 +179,16 @@ async function performSync(): Promise<MobileSyncResult> {
   if (!agent || !scopeKey) return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
   const officeData = useBootstrapStore.getState().data
   if (hasOfficeAttendanceAccess(officeData, agent)) {
-    const guard = () => guardOfficeAttendance(scopeKey)
+    // Cached office data may capture provisional events, never send them.
+    if (officeData?.attendanceOffline) return { success: false, sent: 0, deferred: 0, conflicted: 0, mediaSent: 0 }
+    const guard = () => {
+      guardOfficeAttendance(scopeKey)
+      if (useBootstrapStore.getState().data?.attendanceOffline) throw new Error('ATTENDANCE_ONLINE_REQUIRED')
+    }
     // No route commands, pull, v2, field media or derived field counters.
     const result = await flushOutbox(operations => pushAttendanceAndLegacy(operations, guard), {
       guard,
+      orderedWorkdays: true,
       select: item => item.scopeKey === scopeKey && (item.entity === "workdays"
         || (item.entity === "attendanceConsents" && useBootstrapStore.getState().data?.policies.agentPermissions?.attendanceLocation === true)
         || (item.entity === "attendanceRequests" && useBootstrapStore.getState().data?.policies.agentPermissions?.attendanceRequests === true)),

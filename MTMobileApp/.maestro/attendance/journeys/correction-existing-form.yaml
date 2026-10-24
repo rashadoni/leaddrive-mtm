@@ -1,0 +1,38 @@
+appId: com.leaddrive.attendance
+name: Verify canonical times and cancel the already opened fictional correction
+---
+# The host must verify the owned fixture and the preceding selected-date
+# assertion. Continue that form without repeating its successful opening.
+- assertVisible:
+    id: attendance-form
+- scrollUntilVisible:
+    element:
+      id: attendance-startTime
+    direction: UP
+    centerElement: true
+    timeout: 30000
+# TimeDateField exposes the localized field label and value together.
+- assertVisible:
+    id: attendance-startTime
+    text: "${'.*: ' + EXPECTED_START_TIME}"
+- scrollUntilVisible:
+    element:
+      id: attendance-endTime
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- assertVisible:
+    id: attendance-endTime
+    text: "${'.*: ' + EXPECTED_END_TIME}"
+- scrollUntilVisible:
+    element:
+      id: attendance-close-form
+    direction: UP
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: attendance-close-form
+- assertNotVisible:
+    id: attendance-form
+- assertVisible:
+    id: attendance-new

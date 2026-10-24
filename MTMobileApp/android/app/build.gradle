@@ -1,7 +1,9 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: "com.google.gms.google-services"
+// A separate install, selected only by the dedicated attendance build job.
+def attendanceApp = project.findProperty("attendanceApp") == "true"
+if (!attendanceApp) apply plugin: "com.google.gms.google-services"
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
 /**
@@ -53,6 +55,7 @@ react {
     // hermesFlags = ["-O", "-output-source-map"]
 
     /* Autolinking */
+    if (attendanceApp) entryFile = file("../../index.attendance.js")
     autolinkLibrariesWithApp()
 }
 
@@ -90,6 +93,7 @@ android {
     namespace "com.mtmobileapp"
     defaultConfig {
         applicationId "com.mtmobileapp"
+        if (attendanceApp) applicationId "com.leaddrive.attendance"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Route Field is an in-place update of the shipping MTM APK.  Keep
@@ -101,7 +105,19 @@ android {
         // build used to carry 43. 1000+ stays above the installed base (42/43)
         // and keeps growing with each run. A local build without it stays 43.
         versionCode((System.getenv("MTM_VERSION_CODE") ?: "99").toInteger())
-        versionName "3.11.53"
+        versionName "3.11.54"
+        if (attendanceApp) versionName "1.0.0"
+    }
+    if (attendanceApp) {
+        sourceSets {
+            main {
+                manifest.srcFile "src/attendance/AndroidManifest.xml"
+                java.srcDir "src/attendance/java"
+            }
+            // Build-type resources override the ordinary Field launcher name.
+            debug.res.srcDir "src/attendance/res"
+            release.res.srcDir "src/attendance/res"
+        }
     }
     signingConfigs {
         debug {

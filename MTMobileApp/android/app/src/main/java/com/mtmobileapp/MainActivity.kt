@@ -1,15 +1,22 @@
 package com.mtmobileapp
 
 import android.os.Bundle
+import android.os.Build
+import android.content.res.Configuration
+import android.graphics.Color
 import android.view.View
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.ReactApplication
+import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
+  private var attendanceFontScale: Float? = null
 
   /**
    * React Native Screens fragments must be recreated by React Navigation,
@@ -17,7 +24,49 @@ class MainActivity : ReactActivity() {
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(null)
+    if (BuildConfig.APPLICATION_ID == "com.leaddrive.attendance") {
+      attendanceFontScale = resources.configuration.fontScale
+    }
     keepContentOutOfNavigationBar()
+    updateAttendanceSystemNavigation(resources.configuration)
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    if (BuildConfig.APPLICATION_ID != "com.leaddrive.attendance") return
+    val fontChanged = attendanceFontScale != null && attendanceFontScale != newConfig.fontScale
+    attendanceFontScale = newConfig.fontScale
+    updateAttendanceSystemNavigation(newConfig)
+    // Update Fabric's font multiplier before JS receives Dimensions. A queued
+    // requestLayout alone can let freshly replaced paragraphs measure with
+    // the previous multiplier and retain those line boxes.
+    reactDelegate?.reactRootView?.let { root ->
+      root.forceLayout()
+      if (fontChanged && root.measuredWidth > 0 && root.measuredHeight > 0) {
+        root.measure(
+          View.MeasureSpec.makeMeasureSpec(root.measuredWidth, View.MeasureSpec.EXACTLY),
+          View.MeasureSpec.makeMeasureSpec(root.measuredHeight, View.MeasureSpec.EXACTLY)
+        )
+      }
+      root.requestLayout()
+    }
+    // Only refresh font metrics; keep the Activity, React forms and drafts.
+    val context = (application as ReactApplication).reactHost?.currentReactContext
+    (context?.getNativeModule("DeviceInfo") as? LifecycleEventListener)?.onHostResume()
+  }
+
+  @Suppress("DEPRECATION") // navigationBarColor is needed on pre-edge-to-edge Android.
+  private fun updateAttendanceSystemNavigation(config: Configuration) {
+    if (BuildConfig.APPLICATION_ID != "com.leaddrive.attendance") return
+    val dark = config.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    // Matches TimeUI.surface; the padded area behind Android's navigation
+    // buttons otherwise keeps the colour from Activity creation.
+    window.decorView.setBackgroundColor(Color.parseColor(if (dark) "#18251F" else "#FCFDFB"))
+    window.navigationBarColor = Color.TRANSPARENT
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      window.isNavigationBarContrastEnforced = false
+    }
+    WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = !dark
   }
 
   /**

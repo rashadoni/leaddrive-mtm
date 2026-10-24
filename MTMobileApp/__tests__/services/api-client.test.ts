@@ -16,6 +16,15 @@
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
+jest.mock("react-native-device-info", () => ({
+  __esModule: true,
+  default: {
+    getBundleId: jest.fn(() => "com.mtmobileapp"),
+    getVersion: jest.fn(() => "3.11.54"),
+    getBuildNumber: jest.fn(() => "1802"),
+  },
+}))
+
 jest.mock("@react-native-async-storage/async-storage", () => ({
   __esModule: true,
   default: {
@@ -617,7 +626,7 @@ describe("ApiClient — request error handling", () => {
     const [, opts] = mockFetch.mock.calls[0]
     expect(opts.headers.Authorization).toBe("Bearer bearer-abc")
     expect(opts.headers["x-field-device-id"]).toBe("rf-test-0000001-0000002-0000003")
-    expect(opts.headers["x-field-apk-version"]).toBe("3.11.4+61")
+    expect(opts.headers["x-field-apk-version"]).toBe("3.11.54+1802")
   })
 
   it("uses the deployed v1 API for mobile message lists and threads", async () => {
@@ -707,7 +716,7 @@ describe("ApiClient — Route Field device identity", () => {
     const [, options] = mockFetch.mock.calls[0]
     expect(JSON.parse(options.body).clientId).toBeUndefined()
     expect(options.headers["x-field-device-id"]).toBeUndefined()
-    expect(options.headers["x-field-apk-version"]).toBe("3.11.4+61")
+    expect(options.headers["x-field-apk-version"]).toBe("3.11.54+1802")
   })
 })
 
@@ -729,7 +738,7 @@ describe("ApiClient — Route Field sync v2 transport", () => {
     expect(options.headers).toMatchObject({
       Authorization: "Bearer bearer-abc",
       "x-field-device-id": "rf-test-0000001-0000002-0000003",
-      "x-field-apk-version": "3.11.4+61",
+      "x-field-apk-version": "3.11.54+1802",
     })
   })
 

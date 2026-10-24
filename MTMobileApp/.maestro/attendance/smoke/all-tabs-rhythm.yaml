@@ -1,0 +1,137 @@
+appId: com.leaddrive.attendance
+name: Rhythm all tabs discover filters, draft controls and privacy without writes
+---
+- runFlow: ../shared/open-fixture.yaml
+- assertVisible:
+    id: office-workday-qr
+- tapOn:
+    id: time-tab-OwnRequests
+- extendedWaitUntil:
+    visible:
+      id: attendance-filter-waiting
+    timeout: 30000
+- tapOn:
+    id: attendance-filter-waiting
+- tapOn:
+    id: attendance-filter-all
+- tapOn:
+    id: attendance-new
+- assertVisible:
+    id: attendance-form
+- assertNotVisible:
+    id: attendance-list
+- tapOn:
+    id: attendance-change-kind
+- scrollUntilVisible:
+    element:
+      id: attendance-kind-TIME_CORRECTION
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-kind-TIME_CORRECTION
+- scrollUntilVisible:
+    element:
+      id: attendance-startDate
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-startDate
+- assertVisible:
+    id: calendar-next
+- tapOn:
+    id: time-picker-close
+- scrollUntilVisible:
+    element:
+      id: attendance-startTime
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-startTime
+- assertVisible:
+    id: time-picker-value
+- tapOn:
+    id: time-picker-close
+- scrollUntilVisible:
+    element:
+      id: attendance-close-form
+    direction: UP
+    timeout: 30000
+- tapOn:
+    id: attendance-close-form
+- assertNotVisible:
+    id: attendance-form
+- tapOn:
+    id: time-tab-OwnExplanations
+- extendedWaitUntil:
+    visible:
+      id: explanations-filter-history
+    timeout: 30000
+- tapOn:
+    id: explanations-filter-history
+- tapOn:
+    id: explanations-filter-action
+- tapOn:
+    id: time-tab-OwnInbox
+- extendedWaitUntil:
+    visible:
+      id: inbox-filter-unread
+    timeout: 30000
+- tapOn:
+    id: inbox-filter-unread
+- tapOn:
+    id: inbox-filter-all
+- tapOn:
+    id: time-tab-OwnProfile
+- scrollUntilVisible:
+    element:
+      id: time-language-.*
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: time-hints
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: time-connection-disclosure
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: time-connection-disclosure
+- assertVisible:
+    id: time-connection-disclosure-expanded
+- scrollUntilVisible:
+    element:
+      id: time-switch-company
+    direction: DOWN
+    centerElement: true
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: time-connection-disclosure
+    direction: UP
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: time-connection-disclosure
+- assertVisible:
+    id: time-connection-disclosure-collapsed
+- assertNotVisible:
+    id: time-switch-company
+- tapOn:
+    id: time-tab-OwnWorkday
+- stopApp
+- launchApp:
+    clearState: false
+    permissions:
+      android.permission.CAMERA: deny
+      android.permission.ACCESS_FINE_LOCATION: deny
+      android.permission.ACCESS_COARSE_LOCATION: deny
+- extendedWaitUntil:
+    visible:
+      id: office-workday-qr
+    timeout: 30000
