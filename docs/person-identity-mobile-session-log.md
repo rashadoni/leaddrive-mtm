@@ -17,3 +17,10 @@ Validation: git diff --check PASS. Jest/TypeScript/Android/Maestro NOT RUN local
 ## 2026-10-25 — draft PR204 and native module import correction
 
 Published eaf19d5, draft PR https://github.com/rashadoni/leaddrive-mtm/pull/204 attached. Hosted tests40213607938 ran2620 tests successfully but three suites could not load because the new eager DeviceInfo import instantiated a missing NativeEventEmitter in test/metadata-unavailable environments. Corrected to the repository’s existing lazy metadata lookup pattern; Native AttendanceIdentity still takes priority, and company-discovery/API modules can load without a native metadata bridge. Build40213607853 stopped at the same tests; no APK was produced or published. New exact-source CI required.
+
+## 2026-10-25T18:02:15.913145+00:00 — common-account recovery client (UTC)
+
+- c21a488 hosted scope/tests40213969736 and APK40213969447 PASS. No publication or Time-specific candidate was performed.
+- Added installed application to code request/verify/password setup, trusted stored company slug to setup, and opaque server challenge held only in the current screen and replaced on resend/phone change. Preserved existing session acceptance and actor-based offline queue scope. Confirmed common-account recovery explains the shared password and other-device re-login in az/ru/en.
+- Updated native request/rendered-flow cases for Time, fresh challenge on resend and common-password notice. Diff and translation JSON parse PASS. Jest/types/Android/Maestro NOT RUN locally: no native dependencies and Contabo heavy-work policy. Hosted CI required. Backend routes must be deployed before this client because the old code endpoints use strict request schemas. No version bump, APK publication, production account change or real WhatsApp send.
+- Next: qualify draft PR204 exact-source hosted tests/build; complete server onboarding/public recovery acceptance before release.

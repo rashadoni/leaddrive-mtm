@@ -119,6 +119,7 @@
     "codeConfirming": "Yoxlanılır…",
     "newPasswordTitle": "Şifrə təyin edin",
     "newPasswordBody": "{{name}} — nömrə təsdiqləndi. Bundan sonra bu şifrə ilə daxil olacaqsınız.",
+    "commonPasswordBody": "Yeni parol bu şirkətdə giriş icazəniz olan Time və digər LeadDrive tətbiqlərində keçərli olacaq. Digər cihazlarda yenidən daxil olmaq lazım gələcək.",
     "newPassword": "Yeni şifrə",
     "repeatPassword": "Şifrəni təkrarlayın",
     "ruleLength": "Ən azı 12 simvol, boşluqsuz",

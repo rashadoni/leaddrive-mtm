@@ -550,18 +550,19 @@ class ApiClient {
     throw err
   }
 
-  async requestLoginCode(phone: string, language: string): Promise<{ resendAfterSeconds: number; expiresInSeconds: number }> {
+  async requestLoginCode(phone: string, language: string): Promise<{ resendAfterSeconds: number; expiresInSeconds: number; challengeId?: string }> {
     const data = await this.request("/mobile/auth/code", {
       method: "POST",
-      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), phone, language }),
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), application: clientApplication(), phone, language }),
     })
-    return { resendAfterSeconds: Number(data.data?.resendAfterSeconds) || 60, expiresInSeconds: Number(data.data?.expiresInSeconds) || 600 }
+    return { resendAfterSeconds: Number(data.data?.resendAfterSeconds) || 60, expiresInSeconds: Number(data.data?.expiresInSeconds) || 600,
+      ...(typeof data.data?.challengeId === "string" ? { challengeId: data.data.challengeId } : {}) }
   }
 
-  async verifyLoginCode(phone: string, code: string): Promise<{ setupToken: string; name: string; organizationName: string }> {
+  async verifyLoginCode(phone: string, code: string, challengeId?: string): Promise<{ setupToken: string; name: string; organizationName: string }> {
     const data = await this.request("/mobile/auth/code/verify", {
       method: "POST",
-      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), phone, code }),
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), application: clientApplication(), phone, code, ...(challengeId ? { challengeId } : {}) }),
     })
     return { setupToken: String(data.data?.setupToken ?? ""), name: String(data.data?.agent?.name ?? ""), organizationName: String(data.data?.organizationName ?? "") }
   }
@@ -569,7 +570,7 @@ class ApiClient {
   async setPasswordWithCode(setupToken: string, password: string) {
     const data = await this.request("/mobile/auth/password", {
       method: "POST",
-      body: JSON.stringify({ setupToken, password }),
+      body: JSON.stringify({ setupToken, password, organizationSlug: await this.companySlugForCode(), application: clientApplication() }),
     })
     if (data.success && data.data.token) await this.acceptSession(data)
     return data
