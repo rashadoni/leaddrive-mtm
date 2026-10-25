@@ -97,6 +97,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
   const [step, setStep] = useState<Step>("phone")
   const [phone, setPhone] = useState(initialPhone.trim() || "+994 ")
   const [code, setCode] = useState("")
+  const [challengeId, setChallengeId] = useState<string | undefined>()
   const [password, setPassword] = useState("")
   const [repeat, setRepeat] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -123,6 +124,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
     setBusy(true); setError(null)
     try {
       const answer = await api.requestLoginCode(phone.trim(), language)
+      setChallengeId(answer.challengeId)
       setResendAt(Date.now() + answer.resendAfterSeconds * 1000)
       setNow(Date.now())
       setCode("")
@@ -139,7 +141,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
     if (code.length !== CODE_LENGTH) { setError("auth.codeInvalid"); return }
     setBusy(true); setError(null)
     try {
-      const proof = await api.verifyLoginCode(phone.trim(), code)
+      const proof = await api.verifyLoginCode(phone.trim(), code, challengeId)
       setSetup({ token: proof.setupToken, name: proof.name, organizationName: proof.organizationName })
       setStep("password")
     } catch (e) {
@@ -157,7 +159,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
       await loginWithCode(setup.token, password)
     } catch (e) {
       const key = errorKey(e)
-      if (key === "auth.setupExpired") { setSetup(null); setPassword(""); setRepeat(""); setStep("phone") }
+      if (key === "auth.setupExpired") { setSetup(null); setPassword(""); setRepeat(""); setChallengeId(undefined); setStep("phone") }
       setError(key)
     } finally {
       setBusy(false)
@@ -188,7 +190,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
 
   // Back to where the person came from. On the first tab the tabs above lead
   // out, so «Назад» returns to the number, and on the number step there is none.
-  const goBack = purpose === "first" ? () => { setStep("phone"); setSetup(null); setPassword(""); setRepeat(""); setError(null) } : onCancel
+  const goBack = purpose === "first" ? () => { setStep("phone"); setChallengeId(undefined); setSetup(null); setPassword(""); setRepeat(""); setError(null) } : onCancel
   const back = purpose === "first" && step === "phone" ? null : (
     <Pressable testID="login-code-cancel" accessibilityRole="button" onPress={goBack} disabled={busy} style={[styles.link, styles.back]}>
       <Icon name="arrow-back" size={17} color={fieldTheme.color.primary} />
@@ -210,7 +212,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
               testID="login-code-phone"
               style={styles.input}
               value={phone}
-              onChangeText={(value) => { setPhone(value); if (error) setError(null) }}
+              onChangeText={(value) => { setPhone(value); setChallengeId(undefined); if (error) setError(null) }}
               placeholder="+994 50 123 45 67"
               placeholderTextColor="#81928B"
               keyboardType="phone-pad"
@@ -267,7 +269,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
                 <Text style={styles.linkText}>{t("auth.codeResend")}</Text>
               </Pressable>
             )}
-            <Pressable testID="login-code-change-phone" accessibilityRole="button" onPress={() => { setStep("phone"); setError(null) }} disabled={busy} style={styles.link}>
+            <Pressable testID="login-code-change-phone" accessibilityRole="button" onPress={() => { setStep("phone"); setChallengeId(undefined); setError(null) }} disabled={busy} style={styles.link}>
               <Text style={styles.linkText}>{t("auth.codeChangePhone")}</Text>
             </Pressable>
           </View>
@@ -280,6 +282,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
         <>
           <Text style={styles.title}>{t("auth.newPasswordTitle")}</Text>
           <Text style={styles.body}>{t("auth.newPasswordBody", { name: setup.name || setup.organizationName })}</Text>
+          {(setup.token.startsWith("lds2.") || setup.token.startsWith("lds3.")) ? <Text style={styles.body}>{t("auth.commonPasswordBody")}</Text> : null}
           {(["newPassword", "repeatPassword"] as const).map((field) => (
             <View key={field}>
               <Text style={styles.label}>{t(`auth.${field}`)}</Text>

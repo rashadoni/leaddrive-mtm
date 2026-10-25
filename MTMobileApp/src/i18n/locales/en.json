@@ -119,6 +119,7 @@
     "codeConfirming": "Checking…",
     "newPasswordTitle": "Set your password",
     "newPasswordBody": "{{name}} — number confirmed. You will sign in with this password from now on.",
+    "commonPasswordBody": "Your new password will work in Time and the other LeadDrive apps you can access in this company. You will need to sign in again on your other devices.",
     "newPassword": "New password",
     "repeatPassword": "Repeat the password",
     "ruleLength": "At least 12 characters, no spaces",
