@@ -24,3 +24,9 @@ Published eaf19d5, draft PR https://github.com/rashadoni/leaddrive-mtm/pull/204 
 - Added installed application to code request/verify/password setup, trusted stored company slug to setup, and opaque server challenge held only in the current screen and replaced on resend/phone change. Preserved existing session acceptance and actor-based offline queue scope. Confirmed common-account recovery explains the shared password and other-device re-login in az/ru/en.
 - Updated native request/rendered-flow cases for Time, fresh challenge on resend and common-password notice. Diff and translation JSON parse PASS. Jest/types/Android/Maestro NOT RUN locally: no native dependencies and Contabo heavy-work policy. Hosted CI required. Backend routes must be deployed before this client because the old code endpoints use strict request schemas. No version bump, APK publication, production account change or real WhatsApp send.
 - Next: qualify draft PR204 exact-source hosted tests/build; complete server onboarding/public recovery acceptance before release.
+
+## 2026-10-25T18:46:08.969798+00:00 — first-login common-password notice (UTC)
+
+- e334fe2 exact-source native scope/tests40219410648 and signed Field APK40219410662/job121247504692 PASS. No APK release/promotion occurred.
+- Extended existing confirmed-setup explanation to reviewed first-login v2 as well as common-password recovery v3. The native client still carries only the server challenge, installed application and selected company; it does not create grants or interpret an OTP as a session. Added both cases to rendered-flow tests.
+- Diff check PASS. Jest/types/Android/Maestro NOT RUN locally: absent dependencies and host workload policy. Publish the checkpoint for hosted qualification and request a standalone Time candidate artifact (build only, no website promotion). Server first-login registration remains unfinished/unreleased; backend must precede native rollout.

@@ -99,8 +99,8 @@ describe("signing in with a code from WhatsApp", () => {
     expect(mockVerify).toHaveBeenCalledWith("+994501234567", "482913", "fresh-challenge")
   })
 
-  it("explains the shared password only for a confirmed common-account recovery", async () => {
-    mockVerify.mockResolvedValue({ setupToken: ["lds3", "test"].join("."), name: "Fictional", organizationName: "Fixture" })
+  it.each(["lds2", "lds3"])("explains the shared password for confirmed onboarding or recovery: %s", async version => {
+    mockVerify.mockResolvedValue({ setupToken: [version, "test"].join("."), name: "Fictional", organizationName: "Fixture" })
     const { tree } = await render("+994501234567")
     await press(tree, "login-code-send")
     await type(tree, "login-code-input", "482913")

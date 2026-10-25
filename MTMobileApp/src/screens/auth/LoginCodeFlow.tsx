@@ -282,7 +282,7 @@ export default function LoginCodeFlow({ initialPhone, onCancel, purpose = "reset
         <>
           <Text style={styles.title}>{t("auth.newPasswordTitle")}</Text>
           <Text style={styles.body}>{t("auth.newPasswordBody", { name: setup.name || setup.organizationName })}</Text>
-          {setup.token.startsWith("lds3.") ? <Text style={styles.body}>{t("auth.commonPasswordBody")}</Text> : null}
+          {(setup.token.startsWith("lds2.") || setup.token.startsWith("lds3.")) ? <Text style={styles.body}>{t("auth.commonPasswordBody")}</Text> : null}
           {(["newPassword", "repeatPassword"] as const).map((field) => (
             <View key={field}>
               <Text style={styles.label}>{t(`auth.${field}`)}</Text>
