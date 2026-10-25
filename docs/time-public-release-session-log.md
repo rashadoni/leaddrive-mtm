@@ -78,3 +78,10 @@ Published5d7df1b889258ae0ea86864a1bac9ce0c07a8f15: CI40132492005 and contract401
 ### 2026-10-24T21:20:44.433933+00:00 — published mobile checks complete
 
 Exact published5d7df1b889258ae0ea86864a1bac9ce0c07a8f15 now has CI40132492005, contract40132492002 and signed Field QA40132492062 SUCCESS (job120986983326). No new Field APK installed or public manifest changed; original Field1811 remains part of active physical baseline. PR203 description corrected through REST to reflect actual completed builds. Additional local commits only preserve append-only evidence; Time runtime/native/package inputs remain equal signed3daf009. Current1047 physical monitor/server samples continue OBSERVED/PASS; full-day result is not yet present.
+
+
+### 2026-10-25T01:07:50.727988+00:00 — ongoing1047 acceptance, no device intervention
+
+Read only existing sanitized monitor/server files. Monitor 2026-10-25T01:07:43.197343+00:00 status OBSERVED, frame age 20s; server sample 2026-10-25T01:07:44.779925+00:00 status PASS, canonical history unchanged=True. No final result file yet. Earliest full24h+120s remains26October01:07:08Asia/Baku; expiry/replay/cleanup/visual/backend review still required before public Time promotion. Existing phone UI lease/TimeUID deny/stayawake intentionally remain under the original controller; no ADB/UI/install/radio/profile/test-source mutation. Current native upgrade/replay PASS and signed build are not reclassified as full-day acceptance.
+
+Continued independent inactive CRM identity foundation in its dedicated worktree/PR1028 while phone is occupied; no shared runtime switched. Source review confirms current logout/clearOfflineScope do not themselves delete durable outbox, but new audience/person queue migration still needs a future separate physical test. Time runtime remains signed source3daf009, published5d7df1b checks unchanged. Next action for Time: original controller/verifier result after actual time window, inspect real expiry PNGs and backend delta/all cleanup, then authorized release gates. No automatic model wakeup configured.
