@@ -47,6 +47,7 @@ jest.mock("../../src/services/field-device-id", () => ({
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { NativeModules } from "react-native"
 import { setAgentContext, clearAgentContext } from "../../src/services/sentry"
 import { getFieldDeviceId } from "../../src/services/field-device-id"
 // Import the singleton after mocks are in place
@@ -835,6 +836,7 @@ describe("ApiClient — login", () => {
 describe("ApiClient — sign-in by number and by a WhatsApp code", () => {
   const sent = () => (global.fetch as jest.Mock).mock.calls.map(([url, init]) => ({ url, body: JSON.parse(String(init.body)) }))
   const answer = (body: unknown, status = 200) => jest.fn().mockResolvedValue({ status, ok: status < 400, json: async () => body })
+  afterEach(() => { delete NativeModules.AttendanceIdentity })
 
   beforeEach(() => {
     resetClient()
@@ -845,14 +847,21 @@ describe("ApiClient — sign-in by number and by a WhatsApp code", () => {
   it("signs in with a number instead of an email, with the company", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-phone", agent: { id: "ag-2", role: "EMPLOYEE", organizationId: "org-2" } } })
     await api.login("+994 50 123 45 67", "Fictional-Pass-2026!")
-    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth", body: { phone: "+994 50 123 45 67", password: "Fictional-Pass-2026!", organizationSlug: "zeytun" } }])
+    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth", body: { phone: "+994 50 123 45 67", password: "Fictional-Pass-2026!", application: "ROUTE_FIELD", organizationSlug: "zeytun" } }])
     expect(client.token).toBe("tok-phone")
   })
 
   it("keeps signing in by email as before", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-mail", agent: { id: "ag-3" } } })
     await api.login("agent@example.test", "pass")
-    expect(sent()[0].body).toEqual({ email: "agent@example.test", password: "pass", organizationSlug: "zeytun" })
+    expect(sent()[0].body).toEqual({ email: "agent@example.test", password: "pass", application: "ROUTE_FIELD", organizationSlug: "zeytun" })
+  })
+  it("asks for the Time card for the same number when installed as Time", async () => {
+    NativeModules.AttendanceIdentity = { applicationId: "com.leaddrive.attendance", apkVersion: "1.0.0+1048" }
+    ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-time", agent: { id: "time-card", role: "EMPLOYEE", organizationId: "org-2" } } })
+    await api.login("+994 50 123 45 67", "Fictional-Pass-2026!")
+    expect(sent()[0].body).toEqual({ phone: "+994 50 123 45 67", password: "Fictional-Pass-2026!", application: "TIME", organizationSlug: "zeytun" })
+    expect(client.token).toBe("tok-time")
   })
 
   it("asks for a code with the company, the number and the app's language", async () => {

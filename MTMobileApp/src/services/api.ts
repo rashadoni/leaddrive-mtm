@@ -4,7 +4,7 @@ import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 import { getFieldDeviceId } from "./field-device-id"
 import { noteAnswered, noteUnanswered } from "./connection-health"
 import type { MobileRouteCommandRequest } from "./route-command-journal"
-import { clientApkVersion } from "../runtime/client-release"
+import { clientApkVersion, clientApplication } from "../runtime/client-release"
 import { clearOfflineBootstrap, newOfflineSessionId, OFFLINE_SESSION_KEY } from "./bootstrap-offline-cache"
 
 /**
@@ -530,7 +530,7 @@ class ApiClient {
     const credential = identifier.includes("@") ? { email: identifier } : { phone: identifier }
     const data = await this.request("/mobile/auth", {
       method: "POST",
-      body: JSON.stringify({ ...credential, password, ...(organizationSlug ? { organizationSlug } : {}) }),
+      body: JSON.stringify({ ...credential, password, application: clientApplication(), ...(organizationSlug ? { organizationSlug } : {}) }),
     })
     if (data.success && data.data.token) await this.acceptSession(data)
     return data
