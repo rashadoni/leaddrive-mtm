@@ -1,0 +1,58 @@
+{
+  "status": "PASS_SCOPED_COLD_MONTH_AFTER_BACKEND_REVIEW",
+  "reviewedAt": "2026-10-24T13:04:39.158171+00:00",
+  "sourceHead": "27dd4583573a62ec3056c1fd059c7589ef117898",
+  "installedVersionCode": 1806,
+  "installedApkSha256": "d432848c6f5431d6efb0b418c4410245194d49078eb3dc32d295698ab3953d01",
+  "originalStatus": "REVIEW_REQUIRED_BACKEND_CHANGED",
+  "originalReceiptSha256": "812f23690e2e3525d24001e4afe31b01def6b68b140f282a8455e53b99b83e7e",
+  "nativeHarnessSha256": "11bc626b8016c46b789f699799975ae2551d73310fc37b55263b040a27b990d4",
+  "maestro": {
+    "exit": 0,
+    "tests": [
+      {
+        "name": "Previously loaded monthly plan survives a cold offline start",
+        "seconds": "46.358",
+        "status": "PASS"
+      }
+    ],
+    "flowSha256": "33ff86c02431ef82dd3a1df8db2422f047449dbdea9949a4ee7628a63dae53e3"
+  },
+  "onlineCalendarCellsObserved": 42,
+  "offlineVisibleLabelsMatched": 35,
+  "nonemptyDayRestored": true,
+  "coldProcess": true,
+  "onlyOwnerFieldUidBlocked": true,
+  "screenshotsVisuallyReviewed": {
+    "offline-month-selected-day.png": "e79b89dbb32ef2853ee7eee1ce2056fbb38efa0b976e15913c679dde000d3156",
+    "offline-month-restored.png": "eedcc9580b7a100e33507661a27ecf67a624fca7f96f253cd0a82180706b40a4"
+  },
+  "backendReview": {
+    "before": "64356065f3878a547bdd5fa87cbf9f789f1f92a2",
+    "after": "cb1c604e274d75cfde10534b94978ce293f8f121",
+    "commitCount": 1,
+    "changedFiles": [
+      ".github/workflows/booking-release-preflight.yml",
+      "docs/booking-release-cutover-plan.md",
+      "docs/booking-release-preflight-session-log.md",
+      "scripts/booking/inspect-production.mjs",
+      "scripts/booking/inspect-production.sql",
+      "scripts/booking/inspect-production.test.mjs"
+    ],
+    "mobileRuntimeChanges": false
+  },
+  "calendarRuntimeUnchangedInStyleSource": "9f7d58ecdfe072c5c98645470548824c64207b3b",
+  "cleanup": {
+    "ownNetworkRestored": true,
+    "ownDisplayRestored": true,
+    "networkExact": true,
+    "displayExact": true,
+    "timeAllProfilesExact": true,
+    "fieldAllProfilesExact": true,
+    "onlineSyncClean": true
+  },
+  "businessActions": false,
+  "authInput": false,
+  "publicRelease": false,
+  "time24hAccepted": false
+}

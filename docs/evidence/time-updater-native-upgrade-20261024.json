@@ -1,0 +1,54 @@
+{
+  "status": "PASS_PASSIVE_NATIVE_UPGRADE",
+  "sourceSha": "74e32574db99d13aa1db5e039b999e2a24764339",
+  "versionCode": 1046,
+  "apkSha256": "af3339700476908e31cdc07d8a0711df51b876133116bef61c3c1316932b457b",
+  "workflowRun": 40097984669,
+  "signatureEvidence": "Exact-source hosted apksigner/aapt identity-permission verification step passed; local archive and APK checksums match",
+  "observedWindow": [
+    "2026-10-24T13:48:56.549646+00:00",
+    "2026-10-24T13:51:00.340745+00:00"
+  ],
+  "canonicalEventCount": 127,
+  "otherEmployeeEventCount": 6,
+  "checks": {
+    "candidateIdentity": true,
+    "candidateProvenanceRecorded": true,
+    "candidateCertificate": true,
+    "candidateHash": true,
+    "startingTime1042": true,
+    "installedTime1046": true,
+    "sameTimeUid": true,
+    "timeAllPermissionProfilesExact": true,
+    "noTimeBackgroundLocation": true,
+    "field1807Unchanged": true,
+    "networkBootAndRadiosExact": true,
+    "displaySettingsExact": true,
+    "androidUsersExact": true,
+    "allUserStatesCaptured": true,
+    "bothAppUserStatesExact": true,
+    "canonicalScopeAndRecordsExact": true,
+    "boundedSameAttempt": true,
+    "existingUiIdentityRetained": true,
+    "noUnexpectedChoiceOrPermissionDialog": true,
+    "noVisiblePendingOrConflict": true
+  },
+  "limits": {
+    "queueRetention": "NOT_PROVEN_PRIVATE_QUEUE_NOT_OBSERVED",
+    "authTokenContinuity": "NOT_PROVEN_UI_IDENTITY_ONLY",
+    "realUpdateOfferUi": "NOT_RUN_PUBLIC_MANIFEST_UNAVAILABLE",
+    "full24hAcceptance": "NOT_RUN_EXISTING_FAILURE_NOT_SUPERSEDED"
+  },
+  "physicalMaestro": "NOT_RUN_PASSIVE_ADB_UI_UPGRADE_ONLY",
+  "evidenceHashes": {
+    "before-private.json": "1c8f16d6b99c5ada5565f674af94380cfeebb5ea7f1d6041c83ab00ffc95e9ce",
+    "after-private.json": "bb9487c1faf8e95196b0177677d1b6e1711534f33680976b3119e7220d22fa30",
+    "before-day-private.xml": "2a4a9d5e70272530250893c508ebfecf3316f17caec71afc661151734e5c516e",
+    "after-cold-private.xml": "15d4997be1becb161984692b4ae40c827cd91dabc341119ae854ac099e9718f4",
+    "after-resume-private.xml": "15d4997be1becb161984692b4ae40c827cd91dabc341119ae854ac099e9718f4",
+    "comparison-sanitized.json": "890682e9b4a963d5e21c236359d7772518c89a9d8f5c59418df417faee3af1bd",
+    "upgrade-result-sanitized.json": "3f7add93cdf72046add9a62053a18271b88a1102bb3718ba14c8e8a72e02bad1"
+  },
+  "visualReview": "Before and after-resume PNGs inspected; same owned employee/day/receipts UI; no permission/update choice shown",
+  "publicRelease": false
+}

@@ -4,7 +4,7 @@ import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 import { getFieldDeviceId } from "./field-device-id"
 import { noteAnswered, noteUnanswered } from "./connection-health"
 import type { MobileRouteCommandRequest } from "./route-command-journal"
-import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
+import { clientApkVersion } from "../runtime/client-release"
 import { clearOfflineBootstrap, newOfflineSessionId, OFFLINE_SESSION_KEY } from "./bootstrap-offline-cache"
 
 /**
@@ -67,6 +67,12 @@ async function readJsonBody(res: Response): Promise<any> {
 }
 
 class ApiClient {
+  private attendanceContextWrites: Promise<unknown> = Promise.resolve()
+  private mutateAttendanceContext<T>(write: () => Promise<T>): Promise<T> {
+    const next = this.attendanceContextWrites.then(write)
+    this.attendanceContextWrites = next.catch(() => {})
+    return next
+  }
   private token: string | null = null
   private agentId: string | null = null
   /**
@@ -335,7 +341,7 @@ class ApiClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "x-field-apk-version": ROUTE_FIELD_PROFILE.apkVersion,
+      "x-field-apk-version": clientApkVersion(),
     }
     try {
       headers["x-field-device-id"] = await getFieldDeviceId()
@@ -407,7 +413,7 @@ class ApiClient {
       // Device identity is deliberately opaque and installation-scoped; it is
       // never derived from the logged-in agent. If AsyncStorage is temporarily
       // unavailable, keep v1 compatible by omitting only the cohort header.
-      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      headers["x-field-apk-version"] = clientApkVersion()
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
       } catch {}
@@ -580,6 +586,12 @@ class ApiClient {
     this._agentCode = data.data.agent?.code || null
     await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
     await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
+    // A restored login retains this nonce; every new login gets a new one.
+    // It is an identity binding, never a credential or offline entitlement.
+    const loginToken = data.data.token
+    await this.mutateAttendanceContext(async () => {
+      if (this.token === loginToken) await AsyncStorage.setItem('@mtm_attendance_login_v1', `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    })
     // M1-3: surface agent identity to Sentry so field crashes can be
     // filtered per-rep and per-org. Org id isn't returned by login
     // (it's bound on the server side via subdomain), so we attach
@@ -595,6 +607,9 @@ class ApiClient {
     this._agentCode = null
     await clearOfflineBootstrap()
     await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT, OFFLINE_SESSION_KEY])
+    await this.mutateAttendanceContext(async () => {
+      if (!this.token) await AsyncStorage.removeItem('@mtm_attendance_login_v1')
+    })
     // M1-3: wipe Sentry scope so anonymous post-logout traces aren't
     // misattributed to the previous user.
     clearAgentContext()
@@ -639,6 +654,20 @@ class ApiClient {
 
   async getBootstrap(signal?: AbortSignal) {
     return this.request("/mobile/bootstrap", { signal })
+  }
+
+  async getAttendanceOfflineContext(create = false): Promise<{ server: string; session: string } | null> {
+    const token = this.token
+    if (!token) return null
+    return this.mutateAttendanceContext(async () => {
+      const server = await this.getStoredServer()
+      let session = await AsyncStorage.getItem('@mtm_attendance_login_v1')
+      if (!session && create && this.token === token) {
+        session = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        await AsyncStorage.setItem('@mtm_attendance_login_v1', session)
+      }
+      return server && session && this.token === token ? { server, session } : null
+    })
   }
 
   // --- Profile ---
@@ -706,6 +735,9 @@ class ApiClient {
   }
 
   // Attendance uses the existing authenticated transport and its own narrow API.
+  getOwnAttendanceMarks(workdayId: string, guard: () => void) {
+    return this.request(`/mobile/route-field/attendance/marks?workdayId=${encodeURIComponent(workdayId)}`, { method: 'GET' }, 10_000, 2, guard)
+  }
   getAttendanceInstallation(guard: () => void) {
     return this.request('/mobile/route-field/attendance/installation', {method:'GET'}, 20_000, 2, guard)
   }
@@ -1243,7 +1275,7 @@ class ApiClient {
     if (requestToken) {
       headers.Authorization = `Bearer ${requestToken}`
       // Do NOT set Content-Type — fetch sets multipart boundary automatically
-      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      headers["x-field-apk-version"] = clientApkVersion()
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
       } catch {}

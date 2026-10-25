@@ -67,8 +67,9 @@ import { currentRouteName, navigationRef } from "./navigation-ref"
 import GuideOverlay from "../components/guide/GuideOverlay"
 import GuideTabButton from "../components/guide/GuideTabButton"
 import { useGuideStore } from "../store/guide"
+import type { OwnAttendanceParamList } from './attendance-routes'
 
-export type RootStackParamList = {
+export type RootStackParamList = OwnAttendanceParamList & {
   Main: undefined
   Login: undefined
   Server: undefined
@@ -85,11 +86,6 @@ export type RootStackParamList = {
   Base: undefined
   GpsHistory: undefined
   Profile: undefined
-  /** The manager's own-attendance screens, pushed from his workday tab. */
-  OwnRequests: undefined
-  OwnExplanations: undefined
-  OwnInbox: undefined
-  OwnProfile: undefined
   /** Type-only legacy entry keeps an unmounted manager source file type-safe;
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined

@@ -1,0 +1,70 @@
+{
+  "status": "FIXED_CAPTURE_GEOMETRY_TEST",
+  "failedAttempt": {
+    "status": "FAIL",
+    "capture": {
+      "exit": 0,
+      "flowSha256": "1da96b4de3992919eec42819f167914da2fcf5b11d9c0cede65b0d0116452dac",
+      "permissionsWritten": false,
+      "launchAppUsed": false,
+      "tests": [
+        {
+          "name": "Queue three offline claims with the existing Android permissions",
+          "seconds": "164.529",
+          "status": "PASS"
+        }
+      ]
+    },
+    "cleanup": {
+      "originalNetworkAndRadios": true,
+      "timePackageAndAllProfiles": true,
+      "rfPackageAndAllProfiles": true,
+      "originalDisplayPower": true
+    },
+    "failure": "Native screenshot helper required an already-readable notice to be below the screen midpoint; unnecessary scrolling exhausted timeout160s."
+  },
+  "recovery": {
+    "priorEventsPreserved": true,
+    "priorCount": 129,
+    "afterCount": 132,
+    "newTypes": [
+      "FINISH",
+      "PAUSE",
+      "RESUME"
+    ]
+  },
+  "actualNoticeBounds": [
+    103,
+    884,
+    975,
+    946
+  ],
+  "actualScrollViewport": [
+    0,
+    405,
+    1080,
+    1981
+  ],
+  "tabTop": 2005,
+  "regression": {
+    "status": "PASS_RECORDED_XML_CAPTURE_NO_SWIPE",
+    "full24hPass": false,
+    "realPhoneActions": false,
+    "sourceXmlSha256": "972353d4b91a16a8e2a8b7e16297f95a8cec1772747d539021b4a7c12f51d37e",
+    "observerSha256": "0dbf418de31340e58e746258b814ccf1f71469004e1a2677ecd10878887c0e06"
+  },
+  "observerTests": {
+    "passed": 12,
+    "seconds": 0.322,
+    "edgeCases": [
+      "visible above midpoint",
+      "six clipped pixels",
+      "header overlap",
+      "tab overlap",
+      "missing viewport",
+      "other-package viewport"
+    ]
+  },
+  "full24hPassed": false,
+  "nextAttemptStarted": false
+}

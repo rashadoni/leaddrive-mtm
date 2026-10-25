@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "scope": "One isolated local mockup; no app/backend/device writes",
+  "checks": [
+    "Next workday action visible on first render",
+    "QR action is discoverable and enabled while running",
+    "QR is above the initial fold",
+    "QR disabled during break with a visible reason",
+    "Disabled QR reason is visible",
+    "Finishing requires explicit confirmation",
+    "Cancelling finish preserves active day",
+    "Offline limit remains visible",
+    "Offline finish updates workday state",
+    "Three pending claims remain explicit",
+    "Correction unavailable before delivery",
+    "Online-only return is absent while offline",
+    "All original mark times available through disclosure",
+    "Reconnection changes delivery status",
+    "Delivery retains original mark times",
+    "Correction is explicitly demo-only",
+    "Scanner clearly labelled as demonstration",
+    "QR success does not assert a GPS measurement",
+    "Access detail has its own concise privacy explanation",
+    "Break location privacy is accessible",
+    "No horizontal overflow at 320px",
+    "First screen stays concise at 320px",
+    "No horizontal overflow at 390px",
+    "First screen stays concise at 390px",
+    "No horizontal overflow at 736px",
+    "First screen stays concise at 736px",
+    "No browser runtime errors"
+  ],
+  "pageErrors": [],
+  "prototypeSha256": "e5f484105cf436c85feb5066f5986f2e9207a775391faba6dee150559c184a79",
+  "screenshotsVisuallyInspected": [
+    "light",
+    "dark"
+  ],
+  "nativeRuntimeModified": false,
+  "androidBuild": "NOT RUN: prototype/docs only",
+  "fullProjectE2E": "NOT RUN: not required for isolated mockup",
+  "physicalNativeAcceptance": "NOT RUN: actual APK unchanged; real24h still running"
+}
