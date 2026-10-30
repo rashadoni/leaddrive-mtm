@@ -60,6 +60,7 @@ export default function ManagerJointVisitEntry({ agents }: { agents: ManagerTeam
   const session = state?.session ?? null
   const current = state ? currentJointVisit(state) : null
   const waiting = state ? unratedJointVisits(state).length : 0
+  const recent = state?.visits.filter((visit) => visit.joint).length ?? 0
   const today = state?.today ?? ""
   const plans = (state?.plans ?? []).filter((row) => planStage(row, today) !== "removed")
   const todays = plans.filter((row) => row.date === today)
@@ -112,14 +113,18 @@ export default function ManagerJointVisitEntry({ agents }: { agents: ManagerTeam
           </View>
           <View style={styles.openPill}><Text style={styles.openText}>{t("jointVisit.open")}</Text></View>
         </Pressable>
-      ) : waiting > 0 ? (
+      ) : waiting > 0 || recent > 0 ? (
+        // Yesterday's visit, rated or not, can still be seen and re-rated today:
+        // the list stays one tap away (live check 2026-10-31, past midnight).
         <Pressable
           accessibilityRole="button"
           testID="manager-joint-visit-waiting"
           onPress={open}
           style={({ pressed }) => [styles.waitingRow, pressed && styles.pressed]}
         >
-          <Text style={styles.cardWaiting}>{t("jointVisit.toRate", { count: waiting })}</Text>
+          <Text style={waiting > 0 ? styles.cardWaiting : styles.cardBody}>
+            {waiting > 0 ? t("jointVisit.toRate", { count: waiting }) : t("jointVisit.jointVisits")}
+          </Text>
           <Text style={styles.openText}>{t("jointVisit.open")}</Text>
         </Pressable>
       ) : null}

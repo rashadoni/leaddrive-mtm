@@ -121,6 +121,8 @@ describe("joint visit in the app", () => {
     // «Команда» opens the planner; no session is started from the new app.
     expect(entry).toContain('navigation.navigate(\n    "ManagerJointVisitPlan",')
     expect(entry).not.toContain("startJointVisit")
+    // A rated visit of yesterday, no plan today: the list is still one tap away.
+    expect(entry).toContain("waiting > 0 || recent > 0 ? (")
     expect(planScreen).toContain("await managerApi.saveJointPlans(planBody({ agentId, date, stopIds: [...ticked], extras }))")
     expect(planScreen).toContain('testID="joint-plan-add-extra"')
     // Saved: back to the list, never a second list on top of the planner.
