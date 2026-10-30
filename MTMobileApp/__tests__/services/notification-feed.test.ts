@@ -99,6 +99,23 @@ describe("what the server's inbox means, in the agent's language", () => {
     expect(updated.target).toEqual({ screen: "Route" })
   })
 
+  // The owner's bug, 2026-10-30: the joint-visit line led nowhere when tapped.
+  it("opens the route of the day a manager plans a joint visit for, in the server's own words", () => {
+    const items = feed({
+      sources: {
+        server: [
+          row("j1", { domain: "route", event: "joint_visit_planned", date: "2026-10-18", managerAgentId: "m1" }, { title: "Saida bu gün sizinlə birgə vizitə gedəcək", body: "Fictional Clinic." }),
+          row("j2", { domain: "route", event: "joint_visit_planned", date: "2026-10-21", managerAgentId: "m1" }, { title: "Saida 21.10 sizinlə birgə vizitə gedəcək" }),
+          row("j3", { domain: "route", jointSessionId: "s1", managerAgentId: "m1" }, { title: "Saida bu gün sizinlə birgə vizitdədir" }),
+        ],
+      },
+    })
+    const today = items.find((item) => item.id === "server:j1")!
+    expect(today).toMatchObject({ kind: "route", title: "Saida bu gün sizinlə birgə vizitə gedəcək", body: "Fictional Clinic.", target: { screen: "Route" } })
+    expect(items.find((item) => item.id === "server:j2")!.target).toEqual({ screen: "Calendar" })
+    expect(items.find((item) => item.id === "server:j3")!.target).toEqual({ screen: "Route" })
+  })
+
   /** Production held «Müraciət təsdiqləndi» beside «Заявка одобрена»: the phone says it in one language. */
   it("words an attendance decision in the app's language, whatever the server wrote", () => {
     const rows = [

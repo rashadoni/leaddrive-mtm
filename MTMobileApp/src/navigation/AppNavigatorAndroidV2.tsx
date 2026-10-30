@@ -58,6 +58,7 @@ import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.an
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
 import ManagerTeamMessageScreen from "../screens/manager/ManagerTeamMessageScreen.android"
 import ManagerJointVisitScreen from "../screens/manager/ManagerJointVisitScreen.android"
+import ManagerJointVisitPlanScreen from "../screens/manager/ManagerJointVisitPlanScreen.android"
 import ManagerVisitEvaluationScreen from "../screens/manager/ManagerVisitEvaluationScreen.android"
 import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
 import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
@@ -95,6 +96,8 @@ export type RootStackParamList = OwnAttendanceParamList & {
   ManagerTeamMessage: undefined
   /** «Совместный визит» from «Komanda»: the agent the manager is with, and his ratings (owner, 2026-10-20). */
   ManagerJointVisit: undefined
+  /** «Запланировать совместный визит»: agent, day, clients of his route or an extra one (owner, 2026-10-30). */
+  ManagerJointVisitPlan: { agentId?: string; agentName?: string; date?: string }
   /** «Оценить агента» on one joint visit. */
   ManagerVisitEvaluation: { visit: JointVisitRow }
   /** The bell's list (owner-approved mockup, 2026-10-18), over the tabs in both shells. */
@@ -504,6 +507,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="ManagerEmployee" component={withFieldColorScheme(ManagerEmployeeScreen)} />
                 <Stack.Screen name="ManagerTeamMessage" component={withFieldColorScheme(ManagerTeamMessageScreen)} />
                 <Stack.Screen name="ManagerJointVisit" component={withFieldColorScheme(ManagerJointVisitScreen)} />
+                <Stack.Screen name="ManagerJointVisitPlan" component={withFieldColorScheme(ManagerJointVisitPlanScreen)} />
                 <Stack.Screen name="ManagerVisitEvaluation" component={withFieldColorScheme(ManagerVisitEvaluationScreen)} />
                 {/* His own workday tab opens these by name; in the office shell they are tabs. */}
                 {office ? (

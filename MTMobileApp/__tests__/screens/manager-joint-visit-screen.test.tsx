@@ -9,6 +9,8 @@ import TestRenderer, { act } from "react-test-renderer"
 
 const mockGetJointVisit = jest.fn()
 const mockNavigate = jest.fn()
+const mockCancelJointPlan = jest.fn()
+const mockAsk = jest.fn()
 
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -23,10 +25,14 @@ jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
 jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }))
 jest.mock("../../src/components/LightScreenStatusBar", () => () => null)
 jest.mock("../../src/hooks/useTabBarHeight", () => ({ useHeaderTop: () => 0 }))
-jest.mock("../../src/services/app-feedback", () => ({ notify: jest.fn() }))
+jest.mock("../../src/services/app-feedback", () => ({ notify: jest.fn(), ask: (...args: unknown[]) => mockAsk(...args) }))
 jest.mock("../../src/services/api", () => ({ api: {} }))
 jest.mock("../../src/services/manager-api", () => ({
-  managerApi: { getJointVisit: (...args: unknown[]) => mockGetJointVisit(...args), endJointVisit: jest.fn() },
+  managerApi: {
+    getJointVisit: (...args: unknown[]) => mockGetJointVisit(...args),
+    endJointVisit: jest.fn(),
+    cancelJointPlan: (...args: unknown[]) => mockCancelJointPlan(...args),
+  },
 }))
 jest.mock("@react-navigation/native", () => {
   const ReactActual = jest.requireActual("react")
@@ -87,3 +93,67 @@ describe("the joint visit after the manager ended it", () => {
     expect(all(tree, "manager-joint-visit-other")).toHaveLength(0)
   })
 })
+
+/**
+ * Planned ahead (owner, 2026-10-30): the screen says where the manager goes
+ * with whom, and where each visit stands — not only «Закончить».
+ */
+describe("the planned joint visits", () => {
+  const plan = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    date: "2026-10-20",
+    source: "ROUTE",
+    agent: { id: "agent-elvin", name: "Fictional Elvin" },
+    customer: { id: "c1", name: "Fictional Clinic" },
+    contact: null,
+    plannedTime: null,
+    stopStatus: "PENDING",
+    visit: null,
+    ...extra,
+  })
+  const DONE = { ...RATED, id: "visit-done", status: "CHECKED_OUT", checkOutAt: "2026-10-20T16:29:00.000Z", evaluation: null }
+
+  beforeEach(() => {
+    mockAsk.mockReset().mockResolvedValue(true)
+    mockCancelJointPlan.mockReset().mockResolvedValue({ success: true, data: { session: null, visits: [], plans: [], today: "2026-10-20" } })
+    mockGetJointVisit.mockResolvedValue({
+      success: true,
+      data: {
+        today: "2026-10-20",
+        session: null,
+        visits: [DONE],
+        plans: [
+          plan("plan-next", { customer: { id: "c2", name: "Fictional Pharmacy" }, source: "EXTRA" }),
+          plan("plan-done", { stopStatus: "VISITED", visit: { id: "visit-done", status: "CHECKED_OUT", checkInAt: DONE.checkInAt, checkOutAt: DONE.checkOutAt, joint: true } }),
+        ],
+      },
+    })
+  })
+
+  it("lists the day's clients with the agent, rates the visit made together, and takes back the one ahead", async () => {
+    let tree!: Tree
+    await act(async () => { tree = TestRenderer.create(<ManagerJointVisitScreen />) })
+    await act(async () => { await Promise.resolve() })
+
+    expect(all(tree, "manager-joint-visit-day-2026-10-20")).toHaveLength(1)
+    const next = texts(all(tree, "manager-joint-plan-plan-next")[0]).join(" ")
+    expect(next).toContain("Fictional Pharmacy")
+    expect(next).toContain("jointVisit.planned.planned")
+    expect(next).toContain("jointVisit.planned.extra")
+    // The visit made together is rated from its row, and not listed twice.
+    expect(all(tree, "manager-joint-visit-row-visit-done")).toHaveLength(0)
+    await act(async () => { all(tree, "manager-joint-plan-rate-plan-done")[0].props.onPress() })
+    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-done" }) })
+
+    await act(async () => { all(tree, "manager-joint-plan-cancel-plan-next")[0].props.onPress() })
+    // The question, then the request: a few turns of the promise queue.
+    for (let turn = 0; turn < 5; turn++) await act(async () => { await Promise.resolve() })
+    expect(mockAsk).toHaveBeenCalledWith(expect.objectContaining({ title: "jointVisit.planned.cancelTitle" }))
+    expect(mockCancelJointPlan).toHaveBeenCalledWith("plan-next")
+    expect(all(tree, "manager-joint-plan-cancel-plan-done")).toHaveLength(0)
+
+    await act(async () => { all(tree, "manager-joint-visit-plan")[0].props.onPress() })
+    expect(mockNavigate).toHaveBeenCalledWith("ManagerJointVisitPlan", {})
+  })
+})
+
