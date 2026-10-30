@@ -944,7 +944,7 @@ export default function VisitScreen() {
       }
 
       // Joint visit (owner, 2026-10-20): the same question as on the route.
-      const joint = await askJointManagerForCheckIn(t)
+      const joint = await askJointManagerForCheckIn(t, { customerId: customer.id })
       if (!joint.proceed) return
 
       const { visit, operation } = await queueVisitCheckIn({

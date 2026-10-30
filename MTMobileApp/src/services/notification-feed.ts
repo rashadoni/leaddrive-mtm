@@ -303,6 +303,15 @@ export function classifyServerNotification(
   if (str(m.executionId) && str(m.reviewId)) return as("request", undefined, row.body)
 
   const event = str(m.event)
+  // Joint visits (2026-10-30): where the manager goes with the agent, in the
+  // agent's language as the server wrote it. The line opens his route of that
+  // day — a line that led nowhere was the bug the owner found. Notices of the
+  // older «manager is with you today» kind carry only the session.
+  if (event === "joint_visit_planned" || event === "joint_visit_cancelled" || event === "joint_visit_session" || str(m.jointSessionId)) {
+    const day = str(m.date)
+    return as("route", undefined, row.body, day && day !== todayKey ? { screen: "Calendar" } : { screen: "Route" })
+  }
+
   if (event === "route_published" || event === "route_updated" || event === "route_published_update") {
     const day = row.body?.match(ISO_DAY)?.[1]
     return as(

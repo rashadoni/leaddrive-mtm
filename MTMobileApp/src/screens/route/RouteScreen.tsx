@@ -36,7 +36,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
-import { refreshJointManagers } from "../../services/joint-visit"
+import { cachedJointPlans, jointManagersByStop, refreshJointManagers, type AgentJointPlan } from "../../services/joint-visit"
 import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
 import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
@@ -933,9 +933,12 @@ function StopRow({
   nearest = false,
   visitFacts,
   flushTop = false,
+  jointWith = null,
 }: {
   point: RoutePoint
   index: number
+  /** The manager(s) planning to visit this stop with the agent (2026-10-30). */
+  jointWith?: string | null
   selected: boolean
   recommended: boolean
   /** The agent's open visit is at this stop. */
@@ -991,6 +994,12 @@ function StopRow({
             ) : null}
           </View>
           {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
+          {jointWith ? (
+            <View style={styles.jointMark} testID={`route-joint-mark-${point.id}`}>
+              <Icon name="people" size={15} color={fieldTheme.color.primaryStrong} />
+              <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointWith })}</Text>
+            </View>
+          ) : null}
           {/* Where this client stands today, in words and in colour: visited
               (with the time), visit in progress, or still planned. */}
           <View style={styles.stopMeta}>
@@ -1354,6 +1363,11 @@ export default function RouteScreen() {
   const [phonePanelVisible, setPhonePanelVisible] = useState(false)
   const [navigationStartedFor, setNavigationStartedFor] = useState<string | null>(null)
   const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
+  // Stops a manager plans to visit with this agent (2026-10-30), from the
+  // last answer the phone kept: the mark shows offline too.
+  const [jointPlans, setJointPlans] = useState<AgentJointPlan[]>([])
+  const jointByStop = useMemo(() => jointManagersByStop(jointPlans), [jointPlans])
+  useEffect(() => { cachedJointPlans().then(setJointPlans).catch(() => {}) }, [])
   const [activeWorkspace, setActiveWorkspace] = useState<VisitWorkspace | null>(null)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
@@ -1631,7 +1645,10 @@ export default function RouteScreen() {
       fetchActiveVisit().catch(() => {}).then(() => setActiveVisitKnown(true))
       fetchActiveWorkspace(activeVisit?.id).catch(() => {})
       // Who is in the field with this agent, kept for an offline check-in (joint visit).
-      refreshJointManagers(() => api.getJointVisitManagers()).catch(() => {})
+      refreshJointManagers(() => api.getJointVisitManagers())
+        .then(() => cachedJointPlans())
+        .then(setJointPlans)
+        .catch(() => {})
     }, [activeVisit?.id, fetchRoute, fetchActiveVisit, fetchActiveWorkspace]),
   )
 
@@ -1997,8 +2014,9 @@ export default function RouteScreen() {
       }
 
       // Joint visit (owner, 2026-10-20): while a manager is in the field
-      // with this agent, the agent says whether he is on this visit.
-      const joint = await askJointManagerForCheckIn(t)
+      // with this agent, or planned this stop with him (2026-10-30), the
+      // agent says whether he is on this visit.
+      const joint = await askJointManagerForCheckIn(t, { routePointId: point.id, customerId: point.customer.id })
       if (!joint.proceed) {
         setMutating(false)
         return
@@ -2348,6 +2366,7 @@ export default function RouteScreen() {
                     visiting={visitingPointId === item.id}
                     nearest={nearestPointId === item.id}
                     visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
+                    jointWith={jointByStop.get(item.id)?.join(", ") ?? null}
                   />
                 ))}
               </View>
@@ -2423,6 +2442,7 @@ export default function RouteScreen() {
               visiting={visitingPointId === item.id}
               nearest={nearestPointId === item.id}
               visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
+              jointWith={jointByStop.get(item.id)?.join(", ") ?? null}
             />
           </View>
         )}
@@ -2720,6 +2740,18 @@ const styles = themed(() => StyleSheet.create({
   stopStatus: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
   stopStatusText: { fontSize: 12.5, fontWeight: "500" },
   stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: 2 },
+  jointMark: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: fieldTheme.space.xs,
+    paddingHorizontal: fieldTheme.space.sm,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: fieldTheme.color.primarySoft,
+  },
+  jointMarkText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
   stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
   stopVisitFacts: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.lg, marginTop: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
   stopVisitFactText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "500" },

@@ -10,27 +10,37 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { managerApi } from "../../services/manager-api"
-import { notify } from "../../services/app-feedback"
+import { ask, notify } from "../../services/app-feedback"
 import {
   clockTime,
   currentJointVisit,
   formatScore,
   jointVisitFailure,
   minutesSince,
+  planStage,
+  planVisitRow,
+  plansByDay,
   toJointVisitState,
   visitSubtitle,
   visitTitle,
   type JointVisitRow,
   type JointVisitState,
+  type ManagerJointPlan,
 } from "../../services/joint-visit"
+import { planFailure, relativeDay } from "../../services/joint-visit-plan"
+import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 
 /**
- * «Совместный визит» (owner-approved mockup, 2026-10-20): where the agent the
- * manager is with is now, and «Оценить агента» on a visit the agent marked as
- * joint; the day's visits together below it, and the visits still waiting for
- * his rating. The agent never sees any of it.
+ * «Совместные визиты» (owner, 2026-10-20; since 2026-10-30 planned ahead):
+ * where the manager goes with which agent, day by day — each client with
+ * where it stands now (planned, the agent is there, done) — «Оценить агента»
+ * on a visit the agent marked as joint, and «Запланировать» to add more. The
+ * visits still waiting for his rating follow. The agent never sees a rating.
+ *
+ * A session opened by an older app («Иду на визит с агентом») is still shown
+ * with «Закончить» until it ends.
  */
 export default function ManagerJointVisitScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -43,6 +53,7 @@ export default function ManagerJointVisitScreen() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "failed">("loading")
   const [refreshing, setRefreshing] = useState(false)
   const [ending, setEnding] = useState(false)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const alive = useRef(true)
 
@@ -86,13 +97,43 @@ export default function ManagerJointVisitScreen() {
   }
 
   const rate = (visit: JointVisitRow) => navigation.navigate("ManagerVisitEvaluation", { visit })
+  const plan = () => navigation.navigate("ManagerJointVisitPlan", {})
+
+  const cancel = async (row: ManagerJointPlan) => {
+    if (cancellingId) return
+    const sure = await ask<boolean>({
+      title: t("jointVisit.planned.cancelTitle"),
+      message: t(row.source === "EXTRA" ? "jointVisit.planned.cancelExtraBody" : "jointVisit.planned.cancelBody", { client: row.contactName || row.customerName, name: row.agent.name }),
+      tone: "warning",
+      buttons: [
+        { text: t("jointVisit.planned.keep"), value: false, style: "cancel" },
+        { text: t("jointVisit.planned.cancelYes"), value: true, style: "destructive" },
+      ],
+      dismissValue: false,
+    })
+    if (!sure) return
+    setCancellingId(row.id)
+    try {
+      const response = await managerApi.cancelJointPlan(row.id)
+      if (alive.current) setState(toJointVisitState(response))
+    } catch (error) {
+      const reason = planFailure(error)
+      if (reason !== "session") notify({ tone: "error", title: t(`jointVisit.plan.errors.${reason}`) })
+      load("silent").catch(() => {})
+    } finally {
+      if (alive.current) setCancellingId(null)
+    }
+  }
 
   const session = state?.session ?? null
   const current = state ? currentJointVisit(state) : null
   const together = state && session
     ? state.visits.filter((visit) => visit.agent.id === session.agent.id && visit.id !== current?.id && visit.checkInAt >= session.startedAt)
     : []
-  const shown = new Set([current?.id, ...together.map((visit) => visit.id)])
+  const plans = state?.plans ?? []
+  const today = state?.today ?? ""
+  const days = plansByDay(plans)
+  const shown = new Set([current?.id, ...together.map((visit) => visit.id), ...plans.map((row) => row.visit?.id)])
   // Every joint visit still within its rating window, rated or not: a rating
   // can be changed until the end of the next day, also after the manager has
   // ended the joint visit (seen on the S23, 2026-10-20 — a rated visit left
@@ -106,11 +147,10 @@ export default function ManagerJointVisitScreen() {
           <Icon name="arrow-back" size={22} color={fieldTheme.color.ink} />
         </Pressable>
         <View style={styles.headerCopy}>
-          {session ? <Text style={styles.eyebrow}>{t("jointVisit.eyebrow", { time: clockTime(session.startedAt) })}</Text> : null}
-          <Text style={styles.title} numberOfLines={1}>{session ? session.agent.name : t("jointVisit.over")}</Text>
+          <Text style={styles.title} numberOfLines={1}>{t("jointVisit.jointVisits")}</Text>
         </View>
       </View>
-      <Text style={styles.body}>{session ? t("jointVisit.body") : t("jointVisit.overBody")}</Text>
+      <Text style={styles.body}>{t("jointVisit.planned.body")}</Text>
     </View>
   )
 
@@ -149,6 +189,58 @@ export default function ManagerJointVisitScreen() {
         {/* The header scrolls with the page: nothing on this screen has a frame of its own. */}
         {header}
         <View style={[styles.content, tablet && styles.contentTablet]}>
+          <Pressable
+            accessibilityRole="button"
+            testID="manager-joint-visit-plan"
+            onPress={plan}
+            style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+          >
+            <Icon name="add-circle-outline" size={20} color={fieldTheme.color.onColor} />
+            <Text style={styles.primaryText}>{t("jointVisit.planned.planButton")}</Text>
+          </Pressable>
+
+          {days.length === 0 && !session ? (
+            <View style={styles.notice} testID="manager-joint-visit-empty">
+              <Icon name="people-outline" size={22} color={fieldTheme.color.inkMuted} />
+              <Text style={styles.noticeText}>{t("jointVisit.planned.empty")}</Text>
+            </View>
+          ) : null}
+
+          {days.map(({ date, plans: rows }) => {
+            const relative = relativeDay(date, today)
+            const written = formatLocalizedDate(new Date(`${date}T12:00:00.000Z`), i18n.language, { weekday: "long", day: "numeric", month: "long" })
+            return (
+              <View key={date} style={styles.dayBlock}>
+                <View style={styles.sectionRow}>
+                  <Text style={styles.sectionTitle}>{relative ? `${t(`jointVisit.plan.${relative}`)} · ${written}` : written}</Text>
+                  <Text style={styles.sectionCount}>{t("jointVisit.visitsCount", { count: rows.length })}</Text>
+                </View>
+                <View style={styles.list} testID={`manager-joint-visit-day-${date}`}>
+                  {rows.map((row, index) => (
+                    <PlannedRow
+                      key={row.id}
+                      plan={row}
+                      first={index === 0}
+                      today={today}
+                      now={now}
+                      language={i18n.language}
+                      ratingRow={state ? planVisitRow(row, state) : null}
+                      cancelling={cancellingId === row.id}
+                      onRate={rate}
+                      onCancel={(target) => { cancel(target).catch(() => {}) }}
+                    />
+                  ))}
+                </View>
+              </View>
+            )
+          })}
+
+          {session ? (
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>{t("jointVisit.activeTitle", { name: session.agent.name })}</Text>
+              <Text style={styles.sectionCount}>{t("jointVisit.activeSince", { time: clockTime(session.startedAt) })}</Text>
+            </View>
+          ) : null}
           {session && current ? (
             <View style={styles.panel} testID="manager-joint-visit-current">
               <View style={styles.liveRow}>
@@ -234,6 +326,75 @@ export default function ManagerJointVisitScreen() {
   )
 }
 
+function PlannedRow({
+  plan,
+  first,
+  today,
+  now,
+  language,
+  ratingRow,
+  cancelling,
+  onRate,
+  onCancel,
+}: {
+  plan: ManagerJointPlan
+  first: boolean
+  today: string
+  now: number
+  language: string
+  ratingRow: JointVisitRow | null
+  cancelling: boolean
+  onRate: (visit: JointVisitRow) => void
+  onCancel: (plan: ManagerJointPlan) => void
+}) {
+  const { t } = useTranslation()
+  const stage = planStage(plan, today)
+  const who = plan.contactName || plan.customerName
+  const where = plan.contactName ? [plan.contactSpecialty, plan.customerName].filter(Boolean).join(" · ") : ""
+  const status = stage === "atClient" && plan.visit
+    ? t("jointVisit.planned.atClient", { minutes: minutesSince(plan.visit.checkInAt, now) })
+    : stage === "done"
+      ? plan.visit && !plan.visit.joint
+        ? t("jointVisit.markedAlone")
+        : ratingRow?.evaluation?.average != null
+          ? t("jointVisit.ratingValue", { score: formatScore(ratingRow.evaluation.average, language) })
+          : t("jointVisit.planned.done")
+      : t(`jointVisit.planned.${stage}`)
+  const canRate = Boolean(ratingRow?.joint && ratingRow.canEvaluate)
+  return (
+    <View style={[styles.visitRow, !first && styles.visitDivider]} testID={`manager-joint-plan-${plan.id}`}>
+      <Text style={styles.visitTime}>{plan.visit ? clockTime(plan.visit.checkInAt) : plan.plannedTime ? clockTime(plan.plannedTime) : "—"}</Text>
+      <View style={styles.visitCopy}>
+        <Text style={styles.visitTitle} numberOfLines={2}>{who}</Text>
+        {where ? <Text style={styles.visitMeta} numberOfLines={1}>{where}</Text> : null}
+        <Text style={styles.visitMeta} numberOfLines={1}>
+          {plan.source === "EXTRA" ? `${plan.agent.name} · ${t("jointVisit.plan.extraTag")}` : plan.agent.name}
+        </Text>
+        <View style={styles.stageRow}>
+          {stage === "atClient" ? <View style={styles.liveDot} /> : null}
+          <Text style={[styles.visitMeta, styles[`stage_${stage}`]]} numberOfLines={2}>{status}</Text>
+        </View>
+      </View>
+      {canRate && ratingRow ? (
+        <Pressable accessibilityRole="button" testID={`manager-joint-plan-rate-${plan.id}`} onPress={() => onRate(ratingRow)} style={({ pressed }) => [styles.smallButton, pressed && styles.pressed]}>
+          <Text style={styles.smallButtonText}>{ratingRow.evaluation ? t("jointVisit.change") : t("jointVisit.rate")}</Text>
+        </Pressable>
+      ) : stage === "planned" ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("jointVisit.planned.cancelTitle")}
+          testID={`manager-joint-plan-cancel-${plan.id}`}
+          disabled={cancelling}
+          onPress={() => onCancel(plan)}
+          style={({ pressed }) => [styles.smallButton, styles.smallButtonQuiet, pressed && styles.pressed]}
+        >
+          {cancelling ? <ActivityIndicator size="small" color={fieldTheme.color.inkMuted} /> : <Text style={styles.smallButtonQuietText}>{t("jointVisit.planned.cancelShort")}</Text>}
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
 function VisitRow({
   visit,
   first,
@@ -280,7 +441,6 @@ const styles = themed(() => StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   backButton: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: fieldTheme.color.surfaceStrong },
   headerCopy: { flex: 1, minWidth: 0 },
-  eyebrow: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "500" },
   title: { color: fieldTheme.color.ink, fontSize: 24, lineHeight: 30, fontWeight: "700", letterSpacing: -0.3 },
   body: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.sm },
   content: { width: "100%", maxWidth: 760, alignSelf: "center", padding: fieldTheme.space.lg, gap: fieldTheme.space.md },
@@ -309,6 +469,15 @@ const styles = themed(() => StyleSheet.create({
   visitTitle: { color: fieldTheme.color.ink, fontSize: 14, fontWeight: "700" },
   visitMeta: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 17, marginTop: 2 },
   visitRated: { color: fieldTheme.color.success, fontWeight: "700" },
+  dayBlock: { gap: fieldTheme.space.sm },
+  stageRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  stage_planned: { color: fieldTheme.color.primaryStrong, fontWeight: "700", marginTop: 0 },
+  stage_atClient: { color: fieldTheme.color.success, fontWeight: "700", marginTop: 0 },
+  stage_done: { color: fieldTheme.color.ink, fontWeight: "600", marginTop: 0 },
+  stage_missed: { color: fieldTheme.color.amber, fontWeight: "600", marginTop: 0 },
+  stage_removed: { color: fieldTheme.color.inkMuted, marginTop: 0 },
+  smallButtonQuiet: { borderColor: fieldTheme.color.border },
+  smallButtonQuietText: { color: fieldTheme.color.inkMuted, fontSize: 13, fontWeight: "700" },
   smallButton: { paddingHorizontal: fieldTheme.space.md, paddingVertical: 6, borderRadius: 10, borderWidth: 2, borderColor: fieldTheme.color.primary },
   smallButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "700" },
   primary: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: fieldTheme.space.md, borderRadius: 16, backgroundColor: fieldTheme.color.primaryStrong },
