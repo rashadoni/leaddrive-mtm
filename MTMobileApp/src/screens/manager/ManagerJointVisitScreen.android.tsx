@@ -200,7 +200,9 @@ export default function ManagerJointVisitScreen() {
             <Text style={styles.primaryText}>{t("jointVisit.planned.planButton")}</Text>
           </Pressable>
 
-          {days.length === 0 && !session ? (
+          {/* «No joint visits yet» only when there truly are none — not above
+              yesterday's visit still listed below (live check 2026-10-31). */}
+          {days.length === 0 && !session && otherJoint.length === 0 ? (
             <View style={styles.notice} testID="manager-joint-visit-empty">
               <Icon name="people-outline" size={22} color={fieldTheme.color.inkMuted} />
               <Text style={styles.noticeText}>{t("jointVisit.planned.empty")}</Text>
