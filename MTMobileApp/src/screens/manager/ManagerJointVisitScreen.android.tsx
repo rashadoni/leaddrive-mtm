@@ -361,13 +361,15 @@ function PlannedRow({
           : t("jointVisit.planned.done")
       : t(`jointVisit.planned.${stage}`)
   const canRate = Boolean(ratingRow?.joint && ratingRow.canEvaluate)
+  const plannedAt = plan.visit?.checkInAt ?? plan.plannedTime
   return (
     <View style={[styles.visitRow, !first && styles.visitDivider]} testID={`manager-joint-plan-${plan.id}`}>
-      <Text style={styles.visitTime}>{plan.visit ? clockTime(plan.visit.checkInAt) : plan.plannedTime ? clockTime(plan.plannedTime) : "—"}</Text>
+      {/* No time yet: no empty column — the client's name takes the width (live check 2026-10-30). */}
+      {plannedAt ? <Text style={styles.visitTime}>{clockTime(plannedAt)}</Text> : null}
       <View style={styles.visitCopy}>
         <Text style={styles.visitTitle} numberOfLines={2}>{who}</Text>
         {where ? <Text style={styles.visitMeta} numberOfLines={1}>{where}</Text> : null}
-        <Text style={styles.visitMeta} numberOfLines={1}>
+        <Text style={styles.visitMeta} numberOfLines={2}>
           {plan.source === "EXTRA" ? `${plan.agent.name} · ${t("jointVisit.planned.extra")}` : plan.agent.name}
         </Text>
         <View style={styles.stageRow}>

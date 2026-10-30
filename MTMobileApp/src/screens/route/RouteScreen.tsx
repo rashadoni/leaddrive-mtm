@@ -2293,6 +2293,13 @@ export default function RouteScreen() {
               <View style={styles.awaitingStopCopy}>
                 <Text style={styles.awaitingStopName} numberOfLines={1}>{stop.name}</Text>
                 {stop.place ? <Text style={styles.awaitingStopPlace} numberOfLines={2}>{stop.place}</Text> : null}
+                {/* A waiting route still says where the manager goes with him (live check 2026-10-30). */}
+                {jointByStop.get(stop.key) ? (
+                  <View style={styles.jointMark} testID={`route-awaiting-joint-mark-${stop.key}`}>
+                    <Icon name="people" size={15} color={fieldTheme.color.primaryStrong} />
+                    <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointByStop.get(stop.key)!.join(", ") })}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
           ))}
