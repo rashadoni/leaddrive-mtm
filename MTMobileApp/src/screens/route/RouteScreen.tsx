@@ -1081,6 +1081,7 @@ function PointActionPanel({
   signature,
   onSignature,
   flushTop = false,
+  jointWith = null,
 }: {
   point: RoutePoint | null
   nextPoint: RoutePoint | null
@@ -1102,6 +1103,8 @@ function PointActionPanel({
   signature: { visible: boolean; required: boolean; signed: boolean }
   onSignature: () => void
   flushTop?: boolean
+  /** The managers going to this stop with him, when it is a planned joint visit. */
+  jointWith?: string | null
 }) {
   if (activeVisit && staleSinceLabel) {
     // Not «visit in progress»: a visit left open on another day. Today's
@@ -1270,6 +1273,13 @@ function PointActionPanel({
       <Text style={styles.actionEyebrow}>{isRecommended ? copy.nextStop : copy.selectedStop}</Text>
       <Text style={styles.actionTitle}>{who.name}</Text>
       {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
+      {/* The card that sends him there says it too (live check 2026-10-30). */}
+      {jointWith ? (
+        <View style={styles.jointMark} testID={`route-panel-joint-mark-${point.id}`}>
+          <Icon name="people" size={15} color={fieldTheme.color.violet} />
+          <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointWith })}</Text>
+        </View>
+      ) : null}
       {point.customer.address ? null : <Text style={styles.actionAddress}>{copy.noAddress}</Text>}
       <View style={styles.detailFacts}>
         <View style={styles.detailFact}>
@@ -2172,6 +2182,7 @@ export default function RouteScreen() {
       onCheckOut={handleCheckOut}
       signature={signature}
       onSignature={signature.openPad}
+      jointWith={focusPoint ? jointByStop.get(focusPoint.id)?.join(", ") ?? null : null}
     />
   ) : (
     <RouteExecutionGate

@@ -376,6 +376,11 @@ function PlannedRow({
           {stage === "atClient" ? <View style={styles.liveDot} /> : null}
           <Text style={[styles.visitMeta, styles[`stage_${stage}`]]} numberOfLines={2}>{status}</Text>
         </View>
+        {/* Rated while he is still with the client: the score shows here at once,
+            not only after the visit ends (live check 2026-10-30). */}
+        {stage === "atClient" && ratingRow?.evaluation?.average != null ? (
+          <Text style={[styles.visitMeta, styles.visitRated]}>{t("jointVisit.ratingValue", { score: formatScore(ratingRow.evaluation.average, language) })}</Text>
+        ) : null}
       </View>
       {canRate && ratingRow ? (
         <Pressable accessibilityRole="button" testID={`manager-joint-plan-rate-${plan.id}`} onPress={() => onRate(ratingRow)} style={({ pressed }) => [styles.smallButton, pressed && styles.pressed]}>

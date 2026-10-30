@@ -132,6 +132,10 @@ describe("joint visit in the app", () => {
     expect(routeScreen).toContain('i18next.t("jointVisit.routeMark", { name: jointWith })')
     // A route still waiting for approval lists its stops apart; the mark is there too.
     expect(routeScreen).toContain('testID={`route-awaiting-joint-mark-${stop.key}`}')
+    // The «next stop» card says it too, and a score given while he is at the
+    // client shows on the manager's row at once (live check 2026-10-30).
+    expect(routeScreen).toContain('jointWith={focusPoint ? jointByStop.get(focusPoint.id)?.join(", ") ?? null : null}')
+    expect(jointScreen).toContain('stage === "atClient" && ratingRow?.evaluation?.average != null')
     // In its own colour, violet, on the card and on the mark (owner, 2026-10-30).
     expect(routeScreen).toContain("Boolean(jointWith) && !done && styles.stopCardJoint")
     expect(routeScreen).toContain("stopCardJoint: { borderWidth: 1.5, borderColor: fieldTheme.color.violet")
