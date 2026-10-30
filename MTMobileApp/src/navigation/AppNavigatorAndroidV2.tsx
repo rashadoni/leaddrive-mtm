@@ -53,7 +53,7 @@ import RouteFieldAccessScreen from "../screens/auth/RouteFieldAccessScreen.andro
 import type { RawTask } from "../services/task-detail"
 import type { MobileProductPresentation } from "../services/product-presentations"
 import type { RoutePlanningTargetHint } from "../services/route-planning-target"
-import type { JointVisitRow } from "../services/joint-visit"
+import type { EvaluationQuestion, JointVisitRow } from "../services/joint-visit"
 import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.android"
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
 import ManagerTeamMessageScreen from "../screens/manager/ManagerTeamMessageScreen.android"
@@ -99,7 +99,7 @@ export type RootStackParamList = OwnAttendanceParamList & {
   /** «Запланировать совместный визит»: agent, day, clients of his route or an extra one (owner, 2026-10-30). */
   ManagerJointVisitPlan: { agentId?: string; agentName?: string; date?: string }
   /** «Оценить агента» on one joint visit. */
-  ManagerVisitEvaluation: { visit: JointVisitRow }
+  ManagerVisitEvaluation: { visit: JointVisitRow; questions?: EvaluationQuestion[] }
   /** The bell's list (owner-approved mockup, 2026-10-18), over the tabs in both shells. */
   Notifications: undefined
   /** The agent's own planner in the field shell; the team planner in the manager shell. */

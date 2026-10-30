@@ -43,6 +43,7 @@ jest.mock("@react-navigation/native", () => {
 })
 
 import ManagerJointVisitScreen from "../../src/screens/manager/ManagerJointVisitScreen.android"
+import { DEFAULT_EVALUATION_QUESTIONS } from "../../src/services/joint-visit"
 
 type Tree = TestRenderer.ReactTestRenderer
 const all = (tree: Tree, testID: string) => tree.root.findAll((node) => node.props.testID === testID, { deep: false })
@@ -82,7 +83,11 @@ describe("the joint visit after the manager ended it", () => {
     const change = all(tree, "manager-joint-visit-rate-visit-rated")[0]
     expect(texts(change).join(" ")).toBe("jointVisit.change")
     await act(async () => { change.props.onPress() })
-    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-rated" }) })
+    // The sheet gets the company's questions as this screen read them: here an older server, so the six.
+    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", {
+      visit: expect.objectContaining({ id: "visit-rated" }),
+      questions: DEFAULT_EVALUATION_QUESTIONS,
+    })
   })
 
   it("shows nothing to rate once the window is over", async () => {
@@ -143,7 +148,8 @@ describe("the planned joint visits", () => {
     // The visit made together is rated from its row, and not listed twice.
     expect(all(tree, "manager-joint-visit-row-visit-done")).toHaveLength(0)
     await act(async () => { all(tree, "manager-joint-plan-rate-plan-done")[0].props.onPress() })
-    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-done" }) })
+    // The planned row opens the same sheet as the session row: with the company's questions.
+    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-done" }), questions: DEFAULT_EVALUATION_QUESTIONS })
 
     await act(async () => { all(tree, "manager-joint-plan-cancel-plan-next")[0].props.onPress() })
     // The question, then the request: a few turns of the promise queue.

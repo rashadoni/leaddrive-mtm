@@ -12,10 +12,17 @@ import { requireOfflineScope } from "./offline-scope"
  *   агентом»); it ends with «Закончить совместный визит» or with the day;
  * - at «Я приехал — начать визит» the agent answers whether the manager is on
  *   this visit; only that answer makes the visit joint;
- * - the manager rates such a visit — six points 1..5, a skipped point did not
- *   happen — until the end of the next day. The agent never sees a rating.
+ * - the manager rates such a visit — the company's questions, 1..5 each, a
+ *   skipped point did not happen — until the end of the next day. The agent
+ *   never sees a rating.
+ *
+ * The questions are the company's own (owner, 2026-10-21: «в параметрах
+ * MTM»): the server sends its list of today with the joint visit, and every
+ * rating comes with the list it was given against. A server from before the
+ * lists sends neither: then the six below, in the words of this app.
  */
 
+/** The six questions every company had, and still has until it edits its list. */
 export const EVALUATION_CRITERIA = [
   "PREPARATION",
   "RAPPORT",
@@ -25,12 +32,19 @@ export const EVALUATION_CRITERIA = [
   "CLOSING",
 ] as const
 
-export type EvaluationCriterion = (typeof EVALUATION_CRITERIA)[number]
-export type EvaluationScores = Partial<Record<EvaluationCriterion, number>>
+export type QuestionLabels = { az: string; ru: string; en: string }
+/** One question of the sheet. `labels` null: one of the six, in this app's own words. */
+export type EvaluationQuestion = { id: string; labels: QuestionLabels | null }
+/** `{ PREPARATION: 4, … }` — the rated questions only, each 1..5. */
+export type EvaluationScores = Record<string, number>
+
+export const DEFAULT_EVALUATION_QUESTIONS: EvaluationQuestion[] = EVALUATION_CRITERIA.map((id) => ({ id, labels: null }))
 
 export const EVALUATION_COMMENT_MAX = 2000
 
 export type JointVisitEvaluation = {
+  /** The questions this rating was given against. */
+  questions: EvaluationQuestion[]
   scores: EvaluationScores
   average: number | null
   comment: string | null
@@ -76,6 +90,8 @@ export type ManagerJointPlan = {
 export type JointVisitState = {
   session: JointVisitSession | null
   visits: JointVisitRow[]
+  /** What the sheet asks today, in this order: the company's list. */
+  questions: EvaluationQuestion[]
   plans: ManagerJointPlan[]
   /** The organization's today, YYYY-MM-DD; empty from a server before plans. */
   today: string
@@ -84,20 +100,53 @@ export type JointVisitState = {
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "")
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
 
-/** Only the known points with a 1..5 integer. */
-export function readScores(value: unknown): EvaluationScores {
+/**
+ * A list of questions as the server sent it; null when there is none to read
+ * (an older server), and the caller takes the six. A language left empty
+ * reads as one that is not.
+ */
+export function readQuestions(value: unknown): EvaluationQuestion[] | null {
+  if (!Array.isArray(value)) return null
+  const seen = new Set<string>()
+  const questions = value.flatMap((raw): EvaluationQuestion[] => {
+    const row = (raw ?? {}) as Record<string, unknown>
+    const id = text(row.id)
+    const labels = (row.labels ?? {}) as Record<string, unknown>
+    const az = text(labels.az)
+    const ru = text(labels.ru)
+    const en = text(labels.en)
+    const any = ru || az || en
+    if (!id || seen.has(id) || !any) return []
+    seen.add(id)
+    return [{ id, labels: { az: az || any, ru: ru || any, en: en || any } }]
+  })
+  return questions.length ? questions : null
+}
+
+/** The question in the phone's language; one of the six without words from the server, in the app's own. */
+export function questionLabel(question: EvaluationQuestion, language: string, t: TFunction): string {
+  if (question.labels) {
+    const lang = language.toLowerCase()
+    return (lang.startsWith("az") ? question.labels.az : lang.startsWith("en") ? question.labels.en : question.labels.ru)
+      || question.labels.ru || question.labels.az || question.labels.en
+  }
+  return (EVALUATION_CRITERIA as readonly string[]).includes(question.id) ? t(`jointVisit.criteria.${question.id}`) : question.id
+}
+
+/** Only the points of `questions` with a 1..5 integer. */
+export function readScores(value: unknown, questions: EvaluationQuestion[] = DEFAULT_EVALUATION_QUESTIONS): EvaluationScores {
   const scores: EvaluationScores = {}
   if (!value || typeof value !== "object" || Array.isArray(value)) return scores
-  for (const key of EVALUATION_CRITERIA) {
-    const score = (value as Record<string, unknown>)[key]
-    if (typeof score === "number" && Number.isInteger(score) && score >= 1 && score <= 5) scores[key] = score
+  for (const { id } of questions) {
+    const score = (value as Record<string, unknown>)[id]
+    if (typeof score === "number" && Number.isInteger(score) && score >= 1 && score <= 5) scores[id] = score
   }
   return scores
 }
 
 /** The mean of the rated points, to one decimal; null when none is rated. */
 export function scoresAverage(scores: EvaluationScores): number | null {
-  const values = EVALUATION_CRITERIA.map((key) => scores[key]).filter((score): score is number => typeof score === "number")
+  const values = Object.values(scores).filter((score) => typeof score === "number")
   if (!values.length) return null
   return Math.round((values.reduce((sum, score) => sum + score, 0) / values.length) * 10) / 10
 }
@@ -105,8 +154,10 @@ export function scoresAverage(scores: EvaluationScores): number | null {
 function readEvaluation(value: unknown): JointVisitEvaluation | null {
   if (!value || typeof value !== "object") return null
   const row = value as Record<string, unknown>
-  const scores = readScores(row.scores)
+  const questions = readQuestions(row.questions) ?? DEFAULT_EVALUATION_QUESTIONS
+  const scores = readScores(row.scores, questions)
   return {
+    questions,
     scores,
     average: scoresAverage(scores),
     comment: text(row.comment) || null,
@@ -181,7 +232,13 @@ export function toJointVisitState(response: unknown): JointVisitState {
         : null,
     }]
   })
-  return { session, visits, plans, today: DATE_KEY.test(text(data.today)) ? text(data.today) : "" }
+  return {
+    session,
+    visits,
+    questions: readQuestions(data.questions) ?? DEFAULT_EVALUATION_QUESTIONS,
+    plans,
+    today: DATE_KEY.test(text(data.today)) ? text(data.today) : "",
+  }
 }
 
 
@@ -221,13 +278,15 @@ export function unratedJointVisits(state: JointVisitState): JointVisitRow[] {
 }
 
 /** What went wrong, in the words the screens have for it. */
-export type JointVisitFailure = "offline" | "notInTeam" | "notJoint" | "closed" | "invalid" | "session" | "failed"
+export type JointVisitFailure = "offline" | "notInTeam" | "notJoint" | "closed" | "invalid" | "questionsChanged" | "session" | "failed"
 
 const SERVER_CODES: Record<string, JointVisitFailure> = {
   MTM_JOINT_VISIT_AGENT_FORBIDDEN: "notInTeam",
   MTM_VISIT_EVALUATION_NOT_JOINT: "notJoint",
   MTM_VISIT_EVALUATION_CLOSED: "closed",
   MTM_VISIT_EVALUATION_INVALID: "invalid",
+  // The office edited the questions after the sheet was opened.
+  MTM_VISIT_EVALUATION_QUESTIONS_CHANGED: "questionsChanged",
 }
 
 export function jointVisitFailure(error: unknown): JointVisitFailure {

@@ -96,7 +96,8 @@ export default function ManagerJointVisitScreen() {
     }
   }
 
-  const rate = (visit: JointVisitRow) => navigation.navigate("ManagerVisitEvaluation", { visit })
+  // The sheet asks the company's questions of today, as this screen last read them.
+  const rate = (visit: JointVisitRow) => navigation.navigate("ManagerVisitEvaluation", { visit, questions: state?.questions })
   const plan = () => navigation.navigate("ManagerJointVisitPlan", {})
 
   const cancel = async (row: ManagerJointPlan) => {
