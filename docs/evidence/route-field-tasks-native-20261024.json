@@ -1,0 +1,174 @@
+{
+  "status": "PASS_SCOPED_PORTRAIT_TASK_UI_LANDSCAPE_NOT_PROVEN",
+  "reviewedAt": "2026-10-24T15:12:44.418857+00:00",
+  "sourceHead": "3649f5f466e9fec6c6db00b0a84a65101f2192f3",
+  "artifact": {
+    "status": "PASS_QA_ARTIFACT_NOT_RELEASED",
+    "sourceHead": "3649f5f466e9fec6c6db00b0a84a65101f2192f3",
+    "compiledCheckout": "007b9f348a3f997dd6329ecec2c175fd19843be1",
+    "sourceAndCompiledTree": "cf78e4459e4707af3da9d659fba87b7a3cd4f9b2",
+    "compiledTreesEqual": true,
+    "artifactId": 12563978401,
+    "archiveSha256": "290a63e88824949171f4c7a1ae4dd29f0c7afec9a36fe16acd20da9f80b95eda",
+    "apkSha256": "3a02171786c6d0b7b7a97c1a77128f5b6007037ff3d15cc66f5f4567c95e4fec",
+    "package": "com.mtmobileapp",
+    "versionName": "3.11.54",
+    "versionCode": 1809,
+    "workflowRun": 40104001542,
+    "workflowJob": 120901786397,
+    "ciRun": 40104001564,
+    "hostedPinnedSigningCertificate": "d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b",
+    "installed": false,
+    "publicRelease": false
+  },
+  "nativeInstalled": {
+    "package": "com.mtmobileapp",
+    "versionName": "3.11.54",
+    "versionCode": 1809,
+    "apkSha256": "3a02171786c6d0b7b7a97c1a77128f5b6007037ff3d15cc66f5f4567c95e4fec",
+    "inPlace": true
+  },
+  "nativeReceiptSha256": "0732e9d79696467989652c02fc69df11739ef6845d48dfb1e96d65cff1652a02",
+  "harnessSha256": "fbc7fdcc3d09cda02867d65c8768c97ba88528d9fc504cf7ebcdd2408b702988",
+  "maestroOriginalRuns": {
+    "portrait100": {
+      "exit": 0,
+      "tests": [
+        {
+          "name": "Task cards open native details and dismiss secondary sheets without changing work",
+          "seconds": "60.844",
+          "status": "PASS"
+        }
+      ],
+      "flowSha256": "70b279d0ae046020d1f23f76dd1e599e5d907f67f1e266cd0ab7eaa33b8ca09a"
+    },
+    "landscape130": {
+      "exit": 0,
+      "tests": [
+        {
+          "name": "Task cards open native details and dismiss secondary sheets without changing work",
+          "seconds": "56.705",
+          "status": "PASS"
+        }
+      ],
+      "flowSha256": "70b279d0ae046020d1f23f76dd1e599e5d907f67f1e266cd0ab7eaa33b8ca09a"
+    }
+  },
+  "actualScope": {
+    "portrait100": "PASS",
+    "portrait130": "PASS; requested 130% font is visibly larger",
+    "landscape130": "NOT RUN: original run label is not actual orientation; every PNG is 1080x2316. Original receipt preserved."
+  },
+  "visualReview": {
+    "cards": "Four single-line filters, completed task immediately visible in All, card opening chevron and separate status control readable.",
+    "detail": "Title/context scroll, requirement/progress/result readable, secondary files/history reachable; completed task has no primary action.",
+    "sheets": "Files and history native sheets are readable; Android Back and close return to the same task.",
+    "limits": "One existing completed fictional QA task, agent, AZ, light theme, Samsung Android 16. No physical active-task progress/completion, cancelled/foreign-task or full accessibility matrix claimed."
+  },
+  "screenshots": [
+    {
+      "originalRunLabel": "landscape130",
+      "name": "task-detail.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "cb30794437d79a206097b51ca8e5aefe4d8bed48062d64418c18d9f97cd8b463",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "landscape130",
+      "name": "task-files.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "e6697304a0965296e047a65fa8ea89aac0280f9ccc6bc519c9d980458658d095",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "landscape130",
+      "name": "task-history.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "536a314728cfc6c67739370ab1334f90aebd0171f02150f8e3ce93d76751b979",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "landscape130",
+      "name": "tasks-cards.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "f7d581403bbebd4f3720ec28a002038b50b74b6e00940ef49345b3c50d353f01",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "portrait100",
+      "name": "task-detail.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "4fb4a5c55fb5adf94fe82cbd00ddbabe354b49edb6e3f7984e67bc5207bd38c7",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "portrait100",
+      "name": "task-files.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "b1ef9305986d92c09f30a479fbb3c9f1f7abe6b4b56bd4281fbf9a40f68f9635",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "portrait100",
+      "name": "task-history.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "1a3017c1c64abc2515dc64f833e22e54ebb1b7b1504f252e61525b4747c8ebca",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    },
+    {
+      "originalRunLabel": "portrait100",
+      "name": "tasks-cards.png",
+      "width": 1080,
+      "height": 2316,
+      "sha256": "660d5244b4562428c94498eaf23bf1b452996317c2cff303d6e58e986ae0ab4c",
+      "actualOrientation": "portrait",
+      "visualReview": "PASS_SCOPED_READ_ONLY_TASK_UI"
+    }
+  ],
+  "cleanup": {
+    "displayRestored": true,
+    "networkAndRadiosExact": true,
+    "timePackageAllProfiles": true,
+    "fieldAllProfiles": true,
+    "fieldUid": true,
+    "serverTaskFactsUnchanged": true,
+    "onlineAgentRestored": true
+  },
+  "backendBefore": "6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376",
+  "backendAfter": "6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376",
+  "businessActions": false,
+  "permissionWrites": false,
+  "networkWrites": false,
+  "publicRelease": false,
+  "time24hAccepted": false,
+  "publicOffer": {
+    "checkedOn": [
+      "app.leaddrivecrm.org",
+      "zeytun.leaddrivecrm.org"
+    ],
+    "versionName": "3.11.53",
+    "versionCode": 1795,
+    "containsNewTaskCards": false,
+    "otherHandsetInstalledVersion": "NOT INSPECTED"
+  },
+  "remaining": [
+    "True landscape native task check with actual orientation evidence",
+    "Release scope isolation/review: PR201 also contains Time changes with unaccepted 24h gate",
+    "Public main build, distribution and updater verification",
+    "Time 24h/expiry acceptance remains separate and failed/unrun; no Time public APK"
+  ]
+}

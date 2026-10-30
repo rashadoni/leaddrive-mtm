@@ -69,14 +69,36 @@ export type JointVisitRow = {
 
 export type JointVisitSession = { id: string; startedAt: string; agent: { id: string; name: string } }
 
+/**
+ * A joint visit the manager planned ahead (2026-10-30): a stop of the agent's
+ * route on that day, or an extra client he added to it.
+ */
+export type ManagerJointPlan = {
+  id: string
+  date: string
+  source: "ROUTE" | "EXTRA"
+  agent: { id: string; name: string }
+  customerName: string
+  contactName: string | null
+  contactSpecialty: string | null
+  plannedTime: string | null
+  /** REMOVED: the stop left the agent's route. */
+  stopStatus: "PENDING" | "VISITED" | "SKIPPED" | "REMOVED"
+  visit: { id: string; status: string; checkInAt: string; checkOutAt: string | null; joint: boolean } | null
+}
+
 export type JointVisitState = {
   session: JointVisitSession | null
   visits: JointVisitRow[]
   /** What the sheet asks today, in this order: the company's list. */
   questions: EvaluationQuestion[]
+  plans: ManagerJointPlan[]
+  /** The organization's today, YYYY-MM-DD; empty from a server before plans. */
+  today: string
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "")
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * A list of questions as the server sent it; null when there is none to read
@@ -178,7 +200,69 @@ export function toJointVisitState(response: unknown): JointVisitState {
       evaluation: readEvaluation(row.evaluation),
     }]
   })
-  return { session, visits, questions: readQuestions(data.questions) ?? DEFAULT_EVALUATION_QUESTIONS }
+  const planRows = Array.isArray(data.plans) ? data.plans : []
+  const plans = planRows.flatMap((raw): ManagerJointPlan[] => {
+    const row = (raw ?? {}) as Record<string, unknown>
+    const agent = (row.agent ?? {}) as Record<string, unknown>
+    const customer = (row.customer ?? {}) as Record<string, unknown>
+    const contact = (row.contact ?? null) as Record<string, unknown> | null
+    const visit = (row.visit ?? null) as Record<string, unknown> | null
+    const id = text(row.id)
+    const date = text(row.date)
+    if (!id || !DATE_KEY.test(date) || !text(agent.id)) return []
+    const stopStatus = text(row.stopStatus)
+    return [{
+      id,
+      date,
+      source: row.source === "EXTRA" ? "EXTRA" : "ROUTE",
+      agent: { id: text(agent.id), name: text(agent.name) },
+      customerName: text(customer.name),
+      contactName: (contact && text(contact.displayName)) || null,
+      contactSpecialty: (contact && text(contact.specialtyName)) || null,
+      plannedTime: text(row.plannedTime) || null,
+      stopStatus: stopStatus === "VISITED" || stopStatus === "SKIPPED" || stopStatus === "REMOVED" ? stopStatus : "PENDING",
+      visit: visit && text(visit.id)
+        ? {
+            id: text(visit.id),
+            status: text(visit.status),
+            checkInAt: text(visit.checkInAt),
+            checkOutAt: text(visit.checkOutAt) || null,
+            joint: visit.joint === true,
+          }
+        : null,
+    }]
+  })
+  return {
+    session,
+    visits,
+    questions: readQuestions(data.questions) ?? DEFAULT_EVALUATION_QUESTIONS,
+    plans,
+    today: DATE_KEY.test(text(data.today)) ? text(data.today) : "",
+  }
+}
+
+
+/** Where a planned joint visit stands now, as the manager's screen says it. */
+export type PlanStage = "planned" | "atClient" | "done" | "missed" | "removed"
+
+export function planStage(plan: ManagerJointPlan, today: string): PlanStage {
+  if (plan.visit?.status === "CHECKED_IN") return "atClient"
+  if (plan.visit || plan.stopStatus === "VISITED") return "done"
+  if (plan.stopStatus === "REMOVED") return "removed"
+  if (plan.stopStatus === "SKIPPED" || (today && plan.date < today)) return "missed"
+  return "planned"
+}
+
+/** The plans by day, the days in order; each day's plans keep the server's (agent, route) order. */
+export function plansByDay(plans: ManagerJointPlan[]): Array<{ date: string; plans: ManagerJointPlan[] }> {
+  const days = new Map<string, ManagerJointPlan[]>()
+  for (const plan of plans) days.set(plan.date, [...(days.get(plan.date) ?? []), plan])
+  return [...days.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, rows]) => ({ date, plans: rows }))
+}
+
+/** The rating row for a planned visit the agent marked joint — null while there is none to rate. */
+export function planVisitRow(plan: ManagerJointPlan, state: JointVisitState): JointVisitRow | null {
+  return plan.visit ? state.visits.find((visit) => visit.id === plan.visit?.id) ?? null : null
 }
 
 /** The visit going on now with the accompanied agent, if there is one. */
@@ -306,8 +390,14 @@ export async function refreshJointManagers(
   fetchManagers: () => Promise<unknown>,
   now = new Date(),
 ): Promise<JointManager[]> {
-  const managers = toJointManagers(await fetchManagers())
+  const response = await fetchManagers()
+  const managers = toJointManagers(response)
   await rememberJointManagers(managers, now).catch(() => {})
+  // The same answer carries the planned joint visits (2026-10-30); a server
+  // without them leaves the last known list alone.
+  if (Array.isArray((response as { data?: { plans?: unknown } } | null)?.data?.plans)) {
+    await rememberJointPlans(toAgentJointPlans(response)).catch(() => {})
+  }
   return managers
 }
 
@@ -330,6 +420,82 @@ export async function jointManagersForCheckIn(
   } finally {
     if (timer) clearTimeout(timer)
   }
+}
+
+/** A stop of the agent's route a manager plans to visit with him (2026-10-30). */
+export type AgentJointPlan = {
+  id: string
+  date: string
+  routePointId: string
+  customerId: string
+  contactId: string | null
+  manager: JointManager
+}
+
+export function toAgentJointPlans(response: unknown): AgentJointPlan[] {
+  const rows = (response as { data?: { plans?: unknown } } | null)?.data?.plans
+  if (!Array.isArray(rows)) return []
+  return rows.flatMap((raw) => {
+    const row = (raw ?? {}) as Record<string, unknown>
+    const manager = (row.manager ?? {}) as Record<string, unknown>
+    const plan = {
+      id: text(row.id),
+      date: text(row.date),
+      routePointId: text(row.routePointId),
+      customerId: text(row.customerId),
+      contactId: text(row.contactId) || null,
+      manager: { id: text(manager.id), name: text(manager.name) },
+    }
+    return plan.id && DATE_KEY.test(plan.date) && plan.routePointId && plan.customerId && plan.manager.id && plan.manager.name ? [plan] : []
+  })
+}
+
+const PLANS_PREFIX = "@mtm_joint_plans_v1:"
+
+function plansKey() {
+  return `${PLANS_PREFIX}${requireOfflineScope()}`
+}
+
+export async function rememberJointPlans(plans: AgentJointPlan[]) {
+  await AsyncStorage.setItem(plansKey(), JSON.stringify({ plans }))
+}
+
+/** The plans last heard of, from today on: the route shows them offline too. */
+export async function cachedJointPlans(now = new Date()): Promise<AgentJointPlan[]> {
+  try {
+    const raw = await AsyncStorage.getItem(plansKey())
+    if (!raw) return []
+    const today = localDayKey(now)
+    return toAgentJointPlans({ data: JSON.parse(raw) }).filter((plan) => plan.date >= today)
+  } catch {
+    return []
+  }
+}
+
+/** The managers who plan to be at this stop — or at this client, for a visit outside the route — today. */
+export function plannedManagersAt(
+  plans: AgentJointPlan[],
+  stop: { routePointId?: string | null; customerId: string },
+  now = new Date(),
+): JointManager[] {
+  const today = localDayKey(now)
+  const managers = new Map<string, JointManager>()
+  for (const plan of plans) {
+    if (plan.date !== today) continue
+    if (stop.routePointId ? plan.routePointId !== stop.routePointId && plan.customerId !== stop.customerId : plan.customerId !== stop.customerId) continue
+    managers.set(plan.manager.id, plan.manager)
+  }
+  return [...managers.values()]
+}
+
+/** Stop id → the managers going there with the agent, for the route's «Совместный визит» mark. */
+export function jointManagersByStop(plans: AgentJointPlan[]): Map<string, string[]> {
+  const byStop = new Map<string, string[]>()
+  for (const plan of plans) {
+    const names = byStop.get(plan.routePointId) ?? []
+    if (!names.includes(plan.manager.name)) byStop.set(plan.routePointId, [...names, plan.manager.name])
+  }
+  return byStop
 }
 
 export const JOINT_ANSWER_ALONE = "__alone__"

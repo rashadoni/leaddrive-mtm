@@ -58,6 +58,7 @@ import ManagerWorkspaceScreen from "../screens/manager/ManagerWorkspaceScreen.an
 import ManagerEmployeeScreen from "../screens/manager/ManagerEmployeeScreen.android"
 import ManagerTeamMessageScreen from "../screens/manager/ManagerTeamMessageScreen.android"
 import ManagerJointVisitScreen from "../screens/manager/ManagerJointVisitScreen.android"
+import ManagerJointVisitPlanScreen from "../screens/manager/ManagerJointVisitPlanScreen.android"
 import ManagerVisitEvaluationScreen from "../screens/manager/ManagerVisitEvaluationScreen.android"
 import ManagerPlanningCalendarScreen from "../screens/manager/ManagerPlanningCalendarScreen.android"
 import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShare.android"
@@ -67,8 +68,9 @@ import { currentRouteName, navigationRef } from "./navigation-ref"
 import GuideOverlay from "../components/guide/GuideOverlay"
 import GuideTabButton from "../components/guide/GuideTabButton"
 import { useGuideStore } from "../store/guide"
+import type { OwnAttendanceParamList } from './attendance-routes'
 
-export type RootStackParamList = {
+export type RootStackParamList = OwnAttendanceParamList & {
   Main: undefined
   Login: undefined
   Server: undefined
@@ -85,11 +87,6 @@ export type RootStackParamList = {
   Base: undefined
   GpsHistory: undefined
   Profile: undefined
-  /** The manager's own-attendance screens, pushed from his workday tab. */
-  OwnRequests: undefined
-  OwnExplanations: undefined
-  OwnInbox: undefined
-  OwnProfile: undefined
   /** Type-only legacy entry keeps an unmounted manager source file type-safe;
    * it is not registered in the Route Field navigator. */
   ContactTransfer: undefined
@@ -99,6 +96,8 @@ export type RootStackParamList = {
   ManagerTeamMessage: undefined
   /** «Совместный визит» from «Komanda»: the agent the manager is with, and his ratings (owner, 2026-10-20). */
   ManagerJointVisit: undefined
+  /** «Запланировать совместный визит»: agent, day, clients of his route or an extra one (owner, 2026-10-30). */
+  ManagerJointVisitPlan: { agentId?: string; agentName?: string; date?: string }
   /** «Оценить агента» on one joint visit. */
   ManagerVisitEvaluation: { visit: JointVisitRow; questions?: EvaluationQuestion[] }
   /** The bell's list (owner-approved mockup, 2026-10-18), over the tabs in both shells. */
@@ -508,6 +507,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="ManagerEmployee" component={withFieldColorScheme(ManagerEmployeeScreen)} />
                 <Stack.Screen name="ManagerTeamMessage" component={withFieldColorScheme(ManagerTeamMessageScreen)} />
                 <Stack.Screen name="ManagerJointVisit" component={withFieldColorScheme(ManagerJointVisitScreen)} />
+                <Stack.Screen name="ManagerJointVisitPlan" component={withFieldColorScheme(ManagerJointVisitPlanScreen)} />
                 <Stack.Screen name="ManagerVisitEvaluation" component={withFieldColorScheme(ManagerVisitEvaluationScreen)} />
                 {/* His own workday tab opens these by name; in the office shell they are tabs. */}
                 {office ? (

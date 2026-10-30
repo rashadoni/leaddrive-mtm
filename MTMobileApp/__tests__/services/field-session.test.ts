@@ -84,4 +84,11 @@ describe("Route Field session refresh", () => {
     expect(reconcileFromServer).not.toHaveBeenCalled()
     expect(runMobileSync).not.toHaveBeenCalled()
   })
+
+  it("keeps cached field drafts usable without confirming a workday or pushing offline", async () => {
+    fetchBootstrap.mockResolvedValueOnce("offline-enabled")
+    await expect(refreshRouteFieldSession()).resolves.toBe("offline-enabled")
+    expect(reconcileFromServer).not.toHaveBeenCalled()
+    expect(runMobileSync).not.toHaveBeenCalled()
+  })
 })

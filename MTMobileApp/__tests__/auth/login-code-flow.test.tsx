@@ -54,7 +54,7 @@ const errorText = (tree: Tree) => textsOf(byTestId(tree, "login-code-error")).jo
 
 beforeEach(() => {
   jest.useFakeTimers()
-  mockRequest.mockReset().mockResolvedValue({ resendAfterSeconds: 60, expiresInSeconds: 600 })
+  mockRequest.mockReset().mockResolvedValue({ resendAfterSeconds: 60, expiresInSeconds: 600, challengeId: "fixture-challenge" })
   mockVerify.mockReset().mockResolvedValue({ setupToken: "setup-1", name: "Fictional Employee", organizationName: "Fictional Company" })
   mockLoginWithCode.mockReset().mockResolvedValue(undefined)
 })
@@ -79,13 +79,33 @@ describe("signing in with a code from WhatsApp", () => {
     await type(tree, "login-code-input", "48 29 13 7")
     expect(byTestId(tree, "login-code-input").props.value).toBe("482913")
     await press(tree, "login-code-confirm")
-    expect(mockVerify).toHaveBeenCalledWith("+994 50 123 45 67", "482913")
+    expect(mockVerify).toHaveBeenCalledWith("+994 50 123 45 67", "482913", "fixture-challenge")
 
     expect(has(tree, "login-code-step-password")).toBe(true)
     await type(tree, "login-code-newPassword", "Fictional-Pass-2026!")
     await type(tree, "login-code-repeatPassword", "Fictional-Pass-2026!")
     await press(tree, "login-code-save")
     expect(mockLoginWithCode).toHaveBeenCalledWith("setup-1", "Fictional-Pass-2026!")
+  })
+
+  it("uses the newest challenge after an explicit resend", async () => {
+    const { tree } = await render("+994501234567")
+    await press(tree, "login-code-send")
+    await act(async () => { jest.advanceTimersByTime(61_000) })
+    mockRequest.mockResolvedValue({ resendAfterSeconds: 60, expiresInSeconds: 600, challengeId: "fresh-challenge" })
+    await press(tree, "login-code-resend")
+    await type(tree, "login-code-input", "482913")
+    await press(tree, "login-code-confirm")
+    expect(mockVerify).toHaveBeenCalledWith("+994501234567", "482913", "fresh-challenge")
+  })
+
+  it.each(["lds2", "lds3"])("explains the shared password for confirmed onboarding or recovery: %s", async version => {
+    mockVerify.mockResolvedValue({ setupToken: [version, "test"].join("."), name: "Fictional", organizationName: "Fixture" })
+    const { tree } = await render("+994501234567")
+    await press(tree, "login-code-send")
+    await type(tree, "login-code-input", "482913")
+    await press(tree, "login-code-confirm")
+    expect(textsOf(tree.root).join(" ")).toContain("auth.commonPasswordBody")
   })
 
   it("starts with the country code when the number field is empty, and asks for a whole number", async () => {

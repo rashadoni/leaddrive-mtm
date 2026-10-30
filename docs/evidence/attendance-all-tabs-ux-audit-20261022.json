@@ -1,0 +1,90 @@
+{
+  "status": "UX_AUDIT_COMPLETE_PROPOSED_DESIGNS_READY",
+  "date": "2026-10-22",
+  "nativeInspection": {
+    "status": "PASS",
+    "tabsVisuallyInspected": 5,
+    "additionalStatesInspected": [
+      "request kind selection",
+      "request fields",
+      "explanation composer",
+      "profile privacy",
+      "profile preferences and exit"
+    ],
+    "sourceSha": "6aced57c99f492df71f92262f048f390d400b54b",
+    "versionCode": 1029,
+    "deviceFontScale": 1.0,
+    "serverEventsUnchanged": 101,
+    "requestsUnchanged": true,
+    "permissionsRadiosUnchanged": true,
+    "noFormSubmission": true,
+    "noticeReadActions": 0,
+    "emptyComposerClosed": true,
+    "returnedToDay": true,
+    "backendArtifactSha": "086f6efc85158fdf4558f67cd6bc633b07fdb883"
+  },
+  "designReview": {
+    "subjectiveScore": 23,
+    "maximum": 40,
+    "notAUserStudy": true,
+    "independentAssessments": 2,
+    "cognitiveChecklistFailures": {
+      "day": 1,
+      "requestsIncludingCreation": 5,
+      "explanations": 2,
+      "inbox": 3,
+      "profile": 2
+    }
+  },
+  "detector": {
+    "name": "impeccable",
+    "version": "2.3.2",
+    "mode": "offline/no-install",
+    "exit": 0,
+    "findings": [],
+    "coverage": "LIMITED: positive control detected CSS side stripe and missed equivalent RN borderLeftWidth; empty result is not a clean design verdict",
+    "additionalScan": "Separate TypeScript AST inventory; no parse diagnostics"
+  },
+  "sourceContrast": {
+    "theme": "dark",
+    "primaryStrongOnSurface": 3.555,
+    "onColorOnPrimary": 3.963,
+    "physicalDarkAccessibility": "NOT RUN: this phase inspected light native UI; source calculation and prototype dark preview are separate evidence"
+  },
+  "prototype": {
+    "variants": [
+      "Ритм",
+      "Спокойный"
+    ],
+    "recommended": "Ритм",
+    "tabsPerVariant": 5,
+    "verification": {
+      "status": "PASS",
+      "checks": 82,
+      "passed": 82,
+      "failed": 0,
+      "errors": [],
+      "scope": "Isolated static prototype only; not native app E2E",
+      "stateWriteInstrumentation": "PASS"
+    },
+    "widths": [
+      320,
+      390,
+      736
+    ],
+    "appearance": [
+      "light",
+      "dark"
+    ],
+    "sourceSha256": "f925a47f0f07bd804e32cbc5d921ace22b0016653a0b599be21340bd1a49c97e",
+    "bytes": 43448,
+    "fictionalData": true,
+    "nativeCameraLocationOrApiCalls": false,
+    "notInstalled": true
+  },
+  "runtimeAppChangedThisPhase": false,
+  "productionChangedThisPhase": false,
+  "nativeAccessibilityGates": "NOT RUN: TalkBack, system text 200%, all dark/empty/error states require a dedicated native acceptance phase",
+  "broaderPhysicalRegression1029": "Own marks/correction stopped at strict backend-version preflight before Maestro; current086 verified as containing our server merge; repeat must bind actual live SHA",
+  "real24h": "NOT PASSED; attempt6 failed, queue recovery passed, no active soak"
+}

@@ -4,7 +4,8 @@ import { retryAfterMsFromHeader, type RetryableSyncError } from "./sync-retry"
 import { getFieldDeviceId } from "./field-device-id"
 import { noteAnswered, noteUnanswered } from "./connection-health"
 import type { MobileRouteCommandRequest } from "./route-command-journal"
-import { ROUTE_FIELD_PROFILE } from "../runtime/route-field-profile"
+import { clientApkVersion, clientApplication } from "../runtime/client-release"
+import { clearOfflineBootstrap, newOfflineSessionId, OFFLINE_SESSION_KEY } from "./bootstrap-offline-cache"
 
 /**
  * Canonical reason string set when the backend returns a mid-session 401
@@ -66,6 +67,12 @@ async function readJsonBody(res: Response): Promise<any> {
 }
 
 class ApiClient {
+  private attendanceContextWrites: Promise<unknown> = Promise.resolve()
+  private mutateAttendanceContext<T>(write: () => Promise<T>): Promise<T> {
+    const next = this.attendanceContextWrites.then(write)
+    this.attendanceContextWrites = next.catch(() => {})
+    return next
+  }
   private token: string | null = null
   private agentId: string | null = null
   /**
@@ -334,7 +341,7 @@ class ApiClient {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "x-field-apk-version": ROUTE_FIELD_PROFILE.apkVersion,
+      "x-field-apk-version": clientApkVersion(),
     }
     try {
       headers["x-field-device-id"] = await getFieldDeviceId()
@@ -406,7 +413,7 @@ class ApiClient {
       // Device identity is deliberately opaque and installation-scoped; it is
       // never derived from the logged-in agent. If AsyncStorage is temporarily
       // unavailable, keep v1 compatible by omitting only the cohort header.
-      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      headers["x-field-apk-version"] = clientApkVersion()
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
       } catch {}
@@ -523,7 +530,7 @@ class ApiClient {
     const credential = identifier.includes("@") ? { email: identifier } : { phone: identifier }
     const data = await this.request("/mobile/auth", {
       method: "POST",
-      body: JSON.stringify({ ...credential, password, ...(organizationSlug ? { organizationSlug } : {}) }),
+      body: JSON.stringify({ ...credential, password, application: clientApplication(), ...(organizationSlug ? { organizationSlug } : {}) }),
     })
     if (data.success && data.data.token) await this.acceptSession(data)
     return data
@@ -543,18 +550,19 @@ class ApiClient {
     throw err
   }
 
-  async requestLoginCode(phone: string, language: string): Promise<{ resendAfterSeconds: number; expiresInSeconds: number }> {
+  async requestLoginCode(phone: string, language: string): Promise<{ resendAfterSeconds: number; expiresInSeconds: number; challengeId?: string }> {
     const data = await this.request("/mobile/auth/code", {
       method: "POST",
-      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), phone, language }),
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), application: clientApplication(), phone, language }),
     })
-    return { resendAfterSeconds: Number(data.data?.resendAfterSeconds) || 60, expiresInSeconds: Number(data.data?.expiresInSeconds) || 600 }
+    return { resendAfterSeconds: Number(data.data?.resendAfterSeconds) || 60, expiresInSeconds: Number(data.data?.expiresInSeconds) || 600,
+      ...(typeof data.data?.challengeId === "string" ? { challengeId: data.data.challengeId } : {}) }
   }
 
-  async verifyLoginCode(phone: string, code: string): Promise<{ setupToken: string; name: string; organizationName: string }> {
+  async verifyLoginCode(phone: string, code: string, challengeId?: string): Promise<{ setupToken: string; name: string; organizationName: string }> {
     const data = await this.request("/mobile/auth/code/verify", {
       method: "POST",
-      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), phone, code }),
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), application: clientApplication(), phone, code, ...(challengeId ? { challengeId } : {}) }),
     })
     return { setupToken: String(data.data?.setupToken ?? ""), name: String(data.data?.agent?.name ?? ""), organizationName: String(data.data?.organizationName ?? "") }
   }
@@ -562,7 +570,7 @@ class ApiClient {
   async setPasswordWithCode(setupToken: string, password: string) {
     const data = await this.request("/mobile/auth/password", {
       method: "POST",
-      body: JSON.stringify({ setupToken, password }),
+      body: JSON.stringify({ setupToken, password, organizationSlug: await this.companySlugForCode(), application: clientApplication() }),
     })
     if (data.success && data.data.token) await this.acceptSession(data)
     return data
@@ -570,6 +578,8 @@ class ApiClient {
 
   /** A sign-in the server accepted, by password or by a code: the session this phone keeps. */
   private async acceptSession(data: any) {
+    await clearOfflineBootstrap()
+    await AsyncStorage.setItem(OFFLINE_SESSION_KEY, newOfflineSessionId())
     this.token = data.data.token
     this.agentId = data.data.agent?.id || null
     this._agentRole = data.data.agent?.role || null
@@ -577,6 +587,12 @@ class ApiClient {
     this._agentCode = data.data.agent?.code || null
     await AsyncStorage.setItem(STORAGE_KEY_TOKEN, data.data.token)
     await AsyncStorage.setItem(STORAGE_KEY_AGENT, JSON.stringify(data.data.agent))
+    // A restored login retains this nonce; every new login gets a new one.
+    // It is an identity binding, never a credential or offline entitlement.
+    const loginToken = data.data.token
+    await this.mutateAttendanceContext(async () => {
+      if (this.token === loginToken) await AsyncStorage.setItem('@mtm_attendance_login_v1', `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    })
     // M1-3: surface agent identity to Sentry so field crashes can be
     // filtered per-rep and per-org. Org id isn't returned by login
     // (it's bound on the server side via subdomain), so we attach
@@ -590,7 +606,11 @@ class ApiClient {
     this._agentRole = null
     this._agentName = null
     this._agentCode = null
-    await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT])
+    await clearOfflineBootstrap()
+    await AsyncStorage.multiRemove([STORAGE_KEY_TOKEN, STORAGE_KEY_AGENT, OFFLINE_SESSION_KEY])
+    await this.mutateAttendanceContext(async () => {
+      if (!this.token) await AsyncStorage.removeItem('@mtm_attendance_login_v1')
+    })
     // M1-3: wipe Sentry scope so anonymous post-logout traces aren't
     // misattributed to the previous user.
     clearAgentContext()
@@ -618,10 +638,37 @@ class ApiClient {
     return raw ? JSON.parse(raw) : null
   }
 
+  /** Private cache binding only; never expose the bearer token to the cache. */
+  async getOfflineBootstrapBinding() {
+    const token = this.token
+    if (!token || !this.baseUrl) return null
+    let sessionId = await AsyncStorage.getItem(OFFLINE_SESSION_KEY)
+    if (!sessionId) {
+      sessionId = newOfflineSessionId()
+      await AsyncStorage.setItem(OFFLINE_SESSION_KEY, sessionId)
+    }
+    const deviceId = await getFieldDeviceId()
+    return this.token === token ? { server: this.baseUrl, sessionId, deviceId } : null
+  }
+
   // --- Bootstrap ---
 
   async getBootstrap(signal?: AbortSignal) {
     return this.request("/mobile/bootstrap", { signal })
+  }
+
+  async getAttendanceOfflineContext(create = false): Promise<{ server: string; session: string } | null> {
+    const token = this.token
+    if (!token) return null
+    return this.mutateAttendanceContext(async () => {
+      const server = await this.getStoredServer()
+      let session = await AsyncStorage.getItem('@mtm_attendance_login_v1')
+      if (!session && create && this.token === token) {
+        session = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        await AsyncStorage.setItem('@mtm_attendance_login_v1', session)
+      }
+      return server && session && this.token === token ? { server, session } : null
+    })
   }
 
   // --- Profile ---
@@ -689,6 +736,9 @@ class ApiClient {
   }
 
   // Attendance uses the existing authenticated transport and its own narrow API.
+  getOwnAttendanceMarks(workdayId: string, guard: () => void) {
+    return this.request(`/mobile/route-field/attendance/marks?workdayId=${encodeURIComponent(workdayId)}`, { method: 'GET' }, 10_000, 2, guard)
+  }
   getAttendanceInstallation(guard: () => void) {
     return this.request('/mobile/route-field/attendance/installation', {method:'GET'}, 20_000, 2, guard)
   }
@@ -1226,7 +1276,7 @@ class ApiClient {
     if (requestToken) {
       headers.Authorization = `Bearer ${requestToken}`
       // Do NOT set Content-Type — fetch sets multipart boundary automatically
-      headers["x-field-apk-version"] = ROUTE_FIELD_PROFILE.apkVersion
+      headers["x-field-apk-version"] = clientApkVersion()
       try {
         headers["x-field-device-id"] = await getFieldDeviceId()
       } catch {}

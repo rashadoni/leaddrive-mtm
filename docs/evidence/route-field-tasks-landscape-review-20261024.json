@@ -1,0 +1,72 @@
+{
+  "status": "PASS_TRUE_LANDSCAPE_MAESTRO_AWAITING_VISUAL",
+  "startedAt": "2026-10-24T15:16:38.917731+00:00",
+  "sourceHead": "3649f5f466e9fec6c6db00b0a84a65101f2192f3",
+  "versionCode": 1809,
+  "apkSha256": "3a02171786c6d0b7b7a97c1a77128f5b6007037ff3d15cc66f5f4567c95e4fec",
+  "reinstalled": false,
+  "businessActions": false,
+  "networkWrites": false,
+  "permissionWrites": false,
+  "publicRelease": false,
+  "time24hAccepted": false,
+  "sourceFlowSha256": "70b279d0ae046020d1f23f76dd1e599e5d907f67f1e266cd0ab7eaa33b8ca09a",
+  "wrapperSha256": "26c2734a60cdd3a6c5230741b0620da7c7d3f69e2f567f71c0c6da138fec8d1d",
+  "backendBefore": "6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376",
+  "maestro": {
+    "exit": 0,
+    "tests": [
+      {
+        "name": "Native task details in true landscape with large text",
+        "seconds": "68.26",
+        "status": "PASS"
+      }
+    ],
+    "flowSha256": "26c2734a60cdd3a6c5230741b0620da7c7d3f69e2f567f71c0c6da138fec8d1d"
+  },
+  "screenshots": [
+    {
+      "name": "task-detail.png",
+      "width": 2316,
+      "height": 1080,
+      "sha256": "1b2b27f7c3585e25b4b5bf58c57df92538c9030a8eae8b0c12b0c80cf2cec034"
+    },
+    {
+      "name": "task-files.png",
+      "width": 2316,
+      "height": 1080,
+      "sha256": "f0c1cd524a30d355ddd61f6fb60c45484973c152a34d51304a01131220ded3a3"
+    },
+    {
+      "name": "task-history.png",
+      "width": 2316,
+      "height": 1080,
+      "sha256": "202297c971e0c3fe4b4a94fff23dfbc9d45a60394fc6ce161d28bc4b2990f5e0"
+    },
+    {
+      "name": "tasks-cards.png",
+      "width": 2316,
+      "height": 1080,
+      "sha256": "8fe2d6faa933ce6452764828d57b1d8b18525c15ab16e1564bd15631a542c86a"
+    }
+  ],
+  "cleanup": {
+    "displayExact": true,
+    "networkExact": true,
+    "timeAllProfilesExact": true,
+    "fieldAllProfilesExact": true,
+    "serverTaskFactsUnchanged": true,
+    "onlineAgentRestored": true
+  },
+  "backendAfter": "6a755bb2329d2f4ff9a1cc9dc2bf5b7900507376",
+  "finishedAt": "2026-10-24T15:19:39.574254+00:00",
+  "review": {
+    "status": "FUNCTIONAL_PASS_VISUAL_ISSUE_FOUND",
+    "originalReceiptSha256": "20b6e5ebd758e1f9b4497dc64914a337e39ba22d9eef500d16a33fe7bb0ad459",
+    "reviewedAt": "2026-10-24T15:24:12.531068+00:00",
+    "detailFilesHistory": "Readable native detail and sheets; return/back passed. Long history scroll remains available.",
+    "list": "The initial landscape130 list view shows only the top border of the first card below an oversized header/filter/order block. Not accepted as the final compact design.",
+    "fix": "The isolated release adds short-window heading/subtitle layout and inline filters/order with full 48dp targets; portrait layout retained. New APK/native verification pending.",
+    "time24hAccepted": false
+  }
+}

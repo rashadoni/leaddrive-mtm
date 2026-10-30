@@ -1,0 +1,29 @@
+appId: com.mtmobileapp
+name: Read the existing QA customer under its server radius without checking in
+---
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- tapOn: ${output.qa.visit.search}
+- inputText: ${RF_QA_CUSTOMER_NAME}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: ${RF_QA_CUSTOMER_NAME}
+      below: ${output.qa.visit.results}
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    text: ${RF_QA_CUSTOMER_NAME}
+    below: ${output.qa.visit.results}
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.start}
+    direction: DOWN
+    timeout: 15000
+- assertNotVisible: ${output.qa.visit.active}
+# Never tap start: physical boundary acceptance would create another visit.
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

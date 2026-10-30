@@ -97,7 +97,7 @@ function optStr(value: unknown): string | undefined {
 function mapDay(raw: any): WeekDay {
   const routes = Array.isArray(raw?.routes) ? raw.routes : []
   const plannedStops = routes.reduce(
-    (sum: number, route: any) => sum + (Array.isArray(route?.points) ? route.points.length : 0),
+    (sum: number, route: any) => sum + (Array.isArray(route?.points) ? route.points.length : num(route?.totalPoints)),
     0,
   )
   const routeStatuses = routes

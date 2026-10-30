@@ -11,17 +11,24 @@ import {
   EVALUATION_CRITERIA,
   JOINT_ANSWER_ALONE,
   cachedJointManagers,
+  cachedJointPlans,
   currentJointVisit,
   formatScore,
   jointCheckInButtons,
+  jointManagersByStop,
   jointManagersForCheckIn,
   jointVisitFailure,
   personInitials,
   questionLabel,
   readQuestions,
+  planStage,
+  planVisitRow,
+  plannedManagersAt,
+  plansByDay,
   readScores,
   refreshJointManagers,
   scoresAverage,
+  toAgentJointPlans,
   toJointManagers,
   toJointVisitState,
   unratedJointVisits,
@@ -99,8 +106,8 @@ describe("what the manager's phone reads of a joint visit", () => {
   })
 
   it("reads an empty or broken answer as no session and no visits", () => {
-    expect(toJointVisitState(null)).toEqual({ session: null, visits: [], questions: DEFAULT_EVALUATION_QUESTIONS })
-    expect(toJointVisitState({ data: { session: { id: "s" }, visits: "x" } })).toEqual({ session: null, visits: [], questions: DEFAULT_EVALUATION_QUESTIONS })
+    expect(toJointVisitState(null)).toEqual({ session: null, visits: [], questions: DEFAULT_EVALUATION_QUESTIONS, plans: [], today: "" })
+    expect(toJointVisitState({ data: { session: { id: "s" }, visits: "x", plans: "x" } })).toEqual({ session: null, visits: [], questions: DEFAULT_EVALUATION_QUESTIONS, plans: [], today: "" })
   })
 })
 
@@ -242,3 +249,103 @@ describe("the agent's question at check-in", () => {
     expect(alone.data).not.toHaveProperty("jointManagerId")
   })
 })
+
+/**
+ * Planned joint visits (owner, 2026-10-30): the manager chooses which client
+ * of the agent's route — or an extra one — he goes to with the agent; the
+ * agent sees it on his route and is asked by that manager's name.
+ */
+describe("planned joint visits on the manager's phone", () => {
+  const plan = (id: string, date: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    date,
+    source: "ROUTE",
+    agent: { id: "agent-elvin", name: "Fictional Elvin" },
+    customer: { id: "c1", name: "Fictional Clinic" },
+    contact: null,
+    plannedTime: null,
+    stopStatus: "PENDING",
+    visit: null,
+    ...extra,
+  })
+
+  it("reads the plans and says where each stands", () => {
+    const state = toJointVisitState({
+      data: {
+        today: "2026-10-30",
+        session: null,
+        visits: [{ id: "visit-9", checkInAt: "2026-10-30T07:00:00.000Z", status: "CHECKED_OUT", agent: { id: "agent-elvin" }, customer: { name: "Fictional Clinic" }, joint: true, canEvaluate: true }],
+        plans: [
+          plan("p1", "2026-10-30"),
+          plan("p2", "2026-10-30", { visit: { id: "visit-8", status: "CHECKED_IN", checkInAt: "2026-10-30T09:00:00.000Z", joint: false } }),
+          plan("p3", "2026-10-30", { stopStatus: "VISITED", visit: { id: "visit-9", status: "CHECKED_OUT", checkInAt: "2026-10-30T07:00:00.000Z", joint: true } }),
+          plan("p4", "2026-10-31", { source: "EXTRA" }),
+          plan("p5", "2026-10-30", { stopStatus: "REMOVED" }),
+          plan("p6", "2026-10-29"),
+          { id: "broken", date: "tomorrow" },
+        ],
+      },
+    })
+    expect(state.today).toBe("2026-10-30")
+    expect(state.plans.map((row) => [row.id, planStage(row, state.today)])).toEqual([
+      ["p1", "planned"], ["p2", "atClient"], ["p3", "done"], ["p4", "planned"], ["p5", "removed"], ["p6", "missed"],
+    ])
+    expect(state.plans[3].source).toBe("EXTRA")
+    expect(plansByDay(state.plans).map((day) => [day.date, day.plans.length])).toEqual([["2026-10-29", 1], ["2026-10-30", 4], ["2026-10-31", 1]])
+    // The rating comes from the visit the agent marked joint, not from the plan.
+    expect(planVisitRow(state.plans[2], state)?.canEvaluate).toBe(true)
+    expect(planVisitRow(state.plans[0], state)).toBeNull()
+  })
+
+  it("reads an older server's answer without plans as none", () => {
+    const state = toJointVisitState({ data: { session: null, visits: [] } })
+    expect(state.plans).toEqual([])
+    expect(state.today).toBe("")
+  })
+})
+
+describe("planned joint visits on the agent's phone", () => {
+  const answer = {
+    data: {
+      managers: [],
+      plans: [
+        { id: "p1", date: "2026-10-30", routePointId: "stop-1", customerId: "c1", contactId: null, manager: { id: "m1", name: "Fictional Saida" } },
+        { id: "p2", date: "2026-10-31", routePointId: "stop-9", customerId: "c2", contactId: null, manager: { id: "m1", name: "Fictional Saida" } },
+        { id: "p3", date: "2026-10-30", routePointId: "stop-1", customerId: "c1", contactId: null, manager: { id: "m2", name: "Fictional Togrul" } },
+        { id: "no-stop", date: "2026-10-30", customerId: "c1", manager: { id: "m1", name: "x" } },
+      ],
+    },
+  }
+
+  beforeEach(async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-30T09:15:00.000Z"))
+    await AsyncStorage.clear()
+    setOfflineScope("org-1", "agent-elvin")
+  })
+  afterEach(() => jest.useRealTimers())
+
+  it("keeps the plans from the same answer and marks the stops by the managers' names", async () => {
+    expect(toAgentJointPlans(answer).map((row) => row.id)).toEqual(["p1", "p2", "p3"])
+    await refreshJointManagers(async () => answer)
+    const plans = await cachedJointPlans()
+    expect(jointManagersByStop(plans)).toEqual(new Map([["stop-1", ["Fictional Saida", "Fictional Togrul"]], ["stop-9", ["Fictional Saida"]]]))
+  })
+
+  it("names the planned manager at that stop today, and at that client for a visit outside the route", async () => {
+    await refreshJointManagers(async () => answer)
+    const plans = await cachedJointPlans()
+    expect(plannedManagersAt(plans, { routePointId: "stop-1", customerId: "c1" }).map((manager) => manager.id)).toEqual(["m1", "m2"])
+    expect(plannedManagersAt(plans, { customerId: "c1" }).map((manager) => manager.id)).toEqual(["m1", "m2"])
+    // Tomorrow's plan is not today's question.
+    expect(plannedManagersAt(plans, { routePointId: "stop-9", customerId: "c2" })).toEqual([])
+  })
+
+  it("keeps the last known plans when the server answers without them, and drops past days", async () => {
+    await refreshJointManagers(async () => answer)
+    await refreshJointManagers(async () => ({ data: { managers: [] } }))
+    expect((await cachedJointPlans()).map((row) => row.id)).toEqual(["p1", "p2", "p3"])
+    jest.setSystemTime(new Date("2026-10-31T09:15:00.000Z"))
+    expect((await cachedJointPlans()).map((row) => row.id)).toEqual(["p2"])
+  })
+})
+

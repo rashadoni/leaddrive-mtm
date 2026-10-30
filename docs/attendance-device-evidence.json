@@ -1,0 +1,918 @@
+{
+  "version": 1,
+  "device": {
+    "model": "SM-S918B",
+    "android": "16"
+  },
+  "maestroVersion": "2.11.0",
+  "attempts": [
+    {
+      "flow": "journeys/first-launch.yaml",
+      "apkSourceSha": "6eccb0ab1e6f5dccad14c84413b34145b7091819",
+      "apkVersionCode": 1002,
+      "status": "FAIL",
+      "cause": "Test erased only text before the caret; the company lookup correctly rejected the remaining suffix."
+    },
+    {
+      "flow": "journeys/first-launch.yaml",
+      "apkSourceSha": "6eccb0ab1e6f5dccad14c84413b34145b7091819",
+      "apkVersionCode": 1002,
+      "status": "PASS",
+      "elapsedSeconds": 142.376,
+      "checks": [
+        "separate product name",
+        "empty company rejected",
+        "nonexistent company rejected",
+        "owned fixture discovered",
+        "empty login rejected"
+      ]
+    },
+    {
+      "flow": "journeys/company-switch.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "cause": "USB transport disappeared during company input; DeviceServerDiedException. Device returned automatically."
+    },
+    {
+      "flow": "journeys/company-switch.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "PASS",
+      "elapsedSeconds": 203.668,
+      "checks": [
+        "configured company survives restart",
+        "company can be changed before sign-in",
+        "separate product name",
+        "empty company rejected",
+        "nonexistent company rejected",
+        "owned fixture discovered",
+        "empty login rejected"
+      ]
+    },
+    {
+      "flow": "smoke/employee.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 106.704,
+      "cause": "Existing backend office authentication denies explanations with 401; bootstrap and requests return 200 for the same valid principal. Fix e8af4fab3 prepared in CRM, not deployed."
+    },
+    {
+      "flow": "journeys/request-validation.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 260.137,
+      "cause": "Remote scrolling hit 20-second test timeout; screenshot shows the close-form button already visible. No request created."
+    },
+    {
+      "flow": "journeys/request-validation.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "PASS",
+      "elapsedSeconds": 221.86,
+      "serverRequestCountBefore": 8,
+      "serverRequestCountAfter": 8,
+      "historicalRequestsUnchanged": true
+    },
+    {
+      "flow": "journeys/workday.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "NOT_RUN",
+      "cause": "Maestro driver installation failed before any flow command; bounded retry used the restored connection."
+    },
+    {
+      "flow": "journeys/workday.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "PASS",
+      "elapsedSeconds": 316.893,
+      "hrJournal": {
+        "transport": "authenticated-http",
+        "factsState": "VALID",
+        "eventTypes": [
+          "START",
+          "PAUSE",
+          "RESUME",
+          "FINISH"
+        ],
+        "uniqueEvents": 4,
+        "cancelFinishCreatedNoEvent": true,
+        "bootstrapMatchesHrReport": true
+      }
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 77.193,
+      "cause": "Maestro expression parser rejected the date guard containing brace quantifiers; stopped before form creation.",
+      "requestCreated": false
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 154.061,
+      "cause": "Samsung landscape full-screen keyboard concealed the date field from the assertion; exact date was entered, submission had not been pressed.",
+      "requestCreated": false
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 319.233,
+      "cause": "Submission succeeded once, but closing the long form retained its scroll offset. The final downward search skipped the newest row above. Test now returns to the refresh control before looking for the server row.",
+      "serverSubmission": "PASS",
+      "oneRequestForMarker": true,
+      "historicalRequestsUnchanged": 8
+    },
+    {
+      "flow": "journeys/request-decision.yaml",
+      "apkSourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkVersionCode": 1004,
+      "status": "FAIL",
+      "elapsedSeconds": 165.149,
+      "cause": "Android accessibility flattens card children into sibling nodes, so childOf does not identify the exact request despite its reason and approved status being visible. Added exact request-bound text/status test IDs for the next APK."
+    },
+    {
+      "flow": "journeys/request-decision.yaml",
+      "apkSourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "apkVersionCode": 1007,
+      "status": "PASS",
+      "elapsedSeconds": 122.617,
+      "exactRequestIdReasonAndApprovedStatus": true,
+      "transport": "physical-maestro"
+    },
+    {
+      "flow": "journeys/request-submit.yaml",
+      "apkSourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "apkVersionCode": 1007,
+      "status": "PASS",
+      "elapsedSeconds": 234.456,
+      "exactlyOneNewServerRequest": true,
+      "previousRequestsUnchanged": 9,
+      "fullCorrectedFlow": true
+    },
+    {
+      "label": "employee-smoke-post-release-1007",
+      "flow": "smoke/employee",
+      "exit": 0,
+      "apkVersionCode": 1007,
+      "sourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "tests": [
+        {
+          "name": "Employee reads only own attendance and survives a restart",
+          "seconds": "137.761",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "offline-access-airplane-1007",
+      "flow": "journeys/offline-access",
+      "exit": 1,
+      "apkVersionCode": 1007,
+      "sourceSha": "0f6a37f96b839dbabd062f5231d7db2a083d8a27",
+      "tests": [
+        {
+          "name": "Previously authenticated employee retains workday access after offline cold start",
+          "seconds": "78.722",
+          "status": "FAIL"
+        }
+      ]
+    },
+    {
+      "label": "installation-request-1009",
+      "flow": "journeys/installation-request",
+      "exit": 1,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee requests approval for this installation without creating a time mark",
+          "seconds": "144.928",
+          "status": "FAIL"
+        }
+      ],
+      "reason": "App locale AZ, flow expected RU; no request was submitted"
+    },
+    {
+      "label": "installation-request-az-1009",
+      "flow": "journeys/installation-request",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee requests approval for this installation without creating a time mark",
+          "seconds": "81.743",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "installation-approved-1009",
+      "flow": "journeys/installation-decision",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee sees the actual HR installation decision",
+          "seconds": "64.718",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "installation-revoked-1009",
+      "flow": "journeys/installation-decision",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee sees the actual HR installation decision",
+          "seconds": "75.05",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "qr-camera-1009",
+      "flow": "journeys/qr-camera",
+      "exit": 1,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "QR camera opens only after explicit permission and closes when backgrounded",
+          "seconds": "135.635",
+          "status": "FAIL"
+        }
+      ],
+      "reason": "OS camera permission activity closes scanner via AppState; actual defect, native preview not reached"
+    },
+    {
+      "label": "qr-unavailable-1009",
+      "flow": "journeys/qr-unavailable",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "QR action stays visible when the company has not enabled scanning",
+          "seconds": "60.558",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "location-policy-off-1009",
+      "flow": "journeys/location-policy-off",
+      "exit": 0,
+      "apkVersionCode": 1009,
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "tests": [
+        {
+          "name": "Employee cannot enable location collection without a published policy",
+          "seconds": "127.602",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "label": "qr-camera-1012",
+      "flow": "journeys/qr-camera",
+      "exit": 0,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "5f4af5f0b8281406a4ef1d58fd6418714193a089807c40de044b3b55ee18dfe8",
+      "tests": [
+        {
+          "name": "QR camera opens only after explicit permission and closes when backgrounded",
+          "seconds": "229.611",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "flow": "journeys/offline-access.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "flowSha256": "5e3be0e23a08c9e7b9a0a72fe513e7f46a29a68e0e28fe5549aa1ec4169891fe",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedSeconds": 15.012
+    },
+    {
+      "flow": "journeys/offline-shift.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "flowSha256": "a3c4bd7cb3fd5d9adc49fd18c0e4f88eae71274efb73f07e0cd3921b9548772d",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedSeconds": 85.017
+    },
+    {
+      "flow": "journeys/offline-existing-shift.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "flowSha256": "6f1e9eefe186aa8c2e4e35133a9bf656b920e0c4e20632335ad91f81fe5a8feb",
+      "exitCode": 0,
+      "status": "PASS",
+      "elapsedSeconds": 64.56
+    },
+    {
+      "flow": "journeys/offline-shift.yaml",
+      "apkSourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "apkVersionCode": 1016,
+      "status": "NOT_RUN",
+      "cause": "Fresh-day preflight: both owned office principals already have a completed current day in Asia/Baku. No clocks, timezone, roles or history changed.",
+      "preflightEvidence": "docs/evidence/attendance-fresh-day-preflight-20261021.json"
+    }
+  ],
+  "installedIdentity": {
+    "package": "com.leaddrive.attendance",
+    "version": "1.0.0",
+    "versionCode": 1016,
+    "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+    "apkSha256": "64d06cc49a5881de80688ff339fc06dc2d6d9f9e9e03e2585e1699e06d40407a",
+    "separateAndroidUid": true,
+    "mtmVersion": "3.11.49",
+    "mtmVersionCode": "1710",
+    "backgroundLocationPermissionPresent": false
+  },
+  "pending": [
+    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture",
+    "24-hour physical offline soak: NOT_RUN; the real-date full sequence is a short bounded test"
+  ],
+  "credentials": "Not included",
+  "deviceSerial": "Not included",
+  "hrRequestDecision": {
+    "status": "PASS",
+    "transport": "browser-ui",
+    "ownFictionalTenant": true,
+    "exactPhoneCreatedRequest": true,
+    "decision": "APPROVED",
+    "visibleSavedConfirmation": true,
+    "independentServerReceipt": true,
+    "matchingInboxNotices": 1,
+    "historicalRequestsUnchanged": 8,
+    "phoneObservation": "PASS physical Maestro on APK1007; exact request ID, reason and approved status"
+  },
+  "installationHistory": [
+    {
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": "1004",
+      "mtmVersion": "3.11.49",
+      "mtmVersionCode": "1710",
+      "separateAndroidUid": true,
+      "backgroundLocationPermissionPresent": false,
+      "sourceSha": "cb08fffa6d75fcfc11e17c6d26ea3361e4c41709",
+      "apkSha256": "92725d779703771513f32d88aafeee12889b502f384cb3381f69de902682487c"
+    },
+    {
+      "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+      "versionCode": 1009,
+      "apkSha256": "e3ff29d677c3d9e5b65de365b76afe113e4afd5704b76dabb6624e5d0c6b5719",
+      "separateAndroidUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    },
+    {
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "versionCode": 1012,
+      "apkSha256": "36080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118",
+      "separateAndroidUid": true,
+      "mtmIdentityUnchangedDuringUpdate": true,
+      "backgroundLocationPermissionPresent": false
+    }
+  ],
+  "serverRelease": {
+    "artifactSha": "19b27dcccdfad3e311d5f231c31ea9caebe02d47",
+    "deploymentRunId": 39573591774,
+    "status": "PASS",
+    "authenticatedExplanations": "PASS",
+    "physicalEmployeeSmoke": "PASS",
+    "historicalRequestsUnchanged": 10
+  },
+  "offlineColdStart": {
+    "status": "FAIL",
+    "workdayTabVisible": false,
+    "networkSettingsRestored": true,
+    "onlineRecovery": "PASS",
+    "historicalDataUnchanged": true,
+    "fullOfflineShift": "NOT_RUN: admission unavailable after offline cold start",
+    "supersededBy": "offlineAcceptance1016.coldStart; historical failure retained"
+  },
+  "qrVisibilityBuild": {
+    "status": "PASS",
+    "sourceSha": "8548ee2a1de6e74ef17b806ec34c5d18fb4fe6db",
+    "standaloneRunId": 39578059050,
+    "ordinaryMtmRunId": 39578065585,
+    "ciRunId": 39578065878,
+    "jestSuites": 271,
+    "jestPassed": 2362,
+    "jestTodo": 1,
+    "targetedScreenTests": 41,
+    "fullTypecheck": "PASS"
+  },
+  "securityContractChecks": {
+    "status": "PASS",
+    "runner": "Vitest",
+    "tests": 46,
+    "files": 3,
+    "physicalLocation": "NOT_RUN: no reviewed location policy in owned fixture",
+    "hardwareAttestation": "NOT_IMPLEMENTED: installation ID approval only"
+  },
+  "installationApproval": {
+    "physicalRequest": "PASS",
+    "hrDecision": "PASS",
+    "hrTransport": "browser-ui",
+    "phoneApprovalObservation": "PASS",
+    "scope": "Owned fictional office account plus this installation",
+    "hardwareAttestation": false,
+    "onePhonePerEmployeeEnforced": false,
+    "hrRevoke": "PASS",
+    "phoneRevocationObservation": "PASS",
+    "originalRuleRestored": true
+  },
+  "qrCamera": {
+    "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "versionCode": 1012,
+    "transportSetup": "authenticated-http",
+    "originalQrEnabled": false,
+    "originalCameraPermission": false,
+    "cameraFlow": "PASS",
+    "opticalDecode": "NOT_RUN",
+    "verifiedTimeMark": "NOT_RUN",
+    "cameraFlowExit": 0,
+    "qrPolicyRestored": true,
+    "cameraPermissionRestored": true,
+    "workdayAndRequestsUnchanged": true,
+    "status": "PASS",
+    "physicalFlow": {
+      "flow": "journeys/qr-camera",
+      "exit": 0,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "5f4af5f0b8281406a4ef1d58fd6418714193a089807c40de044b3b55ee18dfe8",
+      "tests": [
+        {
+          "name": "QR camera opens only after explicit permission and closes when backgrounded",
+          "seconds": "229.611",
+          "status": "PASS"
+        }
+      ]
+    },
+    "osPermissionDialog": "PASS",
+    "nativePreview": "PASS",
+    "backgroundAndForeground": "PASS",
+    "foregroundLaunchStopApp": false
+  },
+  "qrVisibilityPhysical": {
+    "status": "PASS",
+    "versionCode": 1009,
+    "locale": "az",
+    "scanActionVisibleWithoutScrolling": true,
+    "disabledReasonVisible": true
+  },
+  "locationPolicyOffPhysical": {
+    "status": "PASS",
+    "versionCode": 1009,
+    "noPublishedPolicy": true,
+    "consentCannotBeAccepted": true,
+    "actualGpsComparison": "NOT_RUN"
+  },
+  "cameraFixBuild": {
+    "status": "PASS",
+    "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "standaloneRunId": 39582549024,
+    "ordinaryMtmRunId": 39582556235,
+    "ciRunId": 39582556141,
+    "jestSuites": 274,
+    "jestPassed": 2410,
+    "jestTodo": 1,
+    "fullTypecheck": "PASS",
+    "targetedBeforeBaseMerge": 51
+  },
+  "qrCameraHistory": [
+    {
+      "status": "FAIL",
+      "versionCode": 1009,
+      "osPermissionDialog": "PASS",
+      "nativePreview": "FAIL",
+      "opticalDecode": "NOT_RUN",
+      "verifiedTimeMark": "NOT_RUN",
+      "qrPolicyRestored": true,
+      "cameraPermissionRestored": true,
+      "workdayAndRequestsUnchanged": true
+    }
+  ],
+  "limitations": [
+    "Installation approval binds account plus app installation ID, not hardware attestation or one phone per account",
+    "Standalone background push is not configured; in-app inbox is tested",
+    "Physical journeys retain their own APK/source bindings; not all ran on one build",
+    "Earlier Maestro launch without an explicit permission map granted OS permissions; explicit deny was restored and policy remained disabled"
+  ],
+  "qrWorkplaceSetup": {
+    "date": "2026-10-21",
+    "status": "PASS",
+    "tenant": "owned fictional phone fixture",
+    "configurationTransport": "authenticated administration API",
+    "enableTransport": "actual HR browser UI",
+    "branchCount": 1,
+    "branchName": "Тестовое рабочее место QR",
+    "coordinates": "synthetic; location collection disabled",
+    "assignedTo": "fictional office employee",
+    "qrPolicyEnabled": true,
+    "phoneButtonEnabled": true,
+    "installedVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "preflightWorkdayStatus": "PAUSED",
+    "currentWorkdayStatus": "STARTED",
+    "newEvents": [
+      "RESUME"
+    ],
+    "priorEventsUnchanged": 7,
+    "requestsUnchanged": 10,
+    "newFlow": "MTMobileApp/.maestro/attendance/journeys/qr-optical-mark.yaml",
+    "syntaxCheck": "PASS",
+    "opticalScan": "NOT RUN: waiting for physical camera aiming by user",
+    "serverVerifiedQrMark": "NOT RUN",
+    "desiredFinalPolicy": "QR remains enabled per user instruction"
+  },
+  "qrOpticalMaestroAttempts": [
+    {
+      "attempt": "qr-optical-mark-1012",
+      "flow": "journeys/qr-optical-mark",
+      "exit": 143,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "6f848b0fdfadd2f224a5f2973e53f3f8f892eb7152459268208042a5e04b62b6",
+      "acceptance": "NOT RUN: interrupted during instrumentation or setup before optical scan",
+      "classifiedAsProductFailure": false
+    },
+    {
+      "attempt": "qr-optical-mark-retry-1012",
+      "flow": "journeys/qr-optical-mark",
+      "exit": 143,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "6f848b0fdfadd2f224a5f2973e53f3f8f892eb7152459268208042a5e04b62b6",
+      "acceptance": "NOT RUN: interrupted during instrumentation or setup before optical scan",
+      "classifiedAsProductFailure": false
+    },
+    {
+      "attempt": "qr-optical-mark-specific-permissions-1012",
+      "flow": "journeys/qr-optical-mark",
+      "exit": 143,
+      "apkVersionCode": 1012,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "flowSha256": "9fe9778d5244b0081339449660d48c2bccdcca3d41ecbd86d015d7b483130d03",
+      "acceptance": "NOT RUN: interrupted during instrumentation or setup before optical scan",
+      "classifiedAsProductFailure": false
+    }
+  ],
+  "qrOpticalDirectUi": {
+    "transport": "actual Android UI via ADB; person aims camera",
+    "tokenInjection": false,
+    "opticalScan": "NOT_RUN",
+    "confirmationTapped": false,
+    "serverVerifiedMark": "NOT_RUN",
+    "status": "INCOMPLETE",
+    "reason": "TimeoutError",
+    "apkVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "cameraOpened": true,
+    "osPermissionDialogAccepted": true,
+    "observation": "No decoded QR observed during bounded 240-second physical aiming window; physical alignment/display visibility unconfirmed"
+  },
+  "qrOpticalPauseCleanup": {
+    "status": "PASS",
+    "cameraClosed": true,
+    "originalCameraGrantRestored": true,
+    "qrRuleEnabled": true,
+    "qrButtonEnabled": true,
+    "workdayStatus": "STARTED",
+    "eventsUnchanged": 8,
+    "requestsUnchanged": 10,
+    "newFinishEvents": 0
+  },
+  "qrOpticalExpiredAttempt": {
+    "apkVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "transport": "actual Android UI via ADB; person aims camera",
+    "opticalScan": "PASS",
+    "tokenInjection": false,
+    "confirmationTapped": true,
+    "serverQrState": "EXPIRED",
+    "verifiedTimeMark": "NOT_PASS",
+    "claimedAtUtc": "2026-10-21T16:07:55.413Z",
+    "serverReceivedAtUtc": "2026-10-21T16:08:11.514Z",
+    "priorEventsUnchanged": 8,
+    "newEvents": [
+      "FINISH"
+    ],
+    "requestsUnchanged": 10,
+    "factsState": "VALID",
+    "scannedImageIdentity": "Not captured; older displayed code suspected, not proven"
+  },
+  "qrLiveRetryPreparation": {
+    "status": "PASS",
+    "reopenTransport": "actual phone UI",
+    "priorEventsUnchanged": 9,
+    "newEvents": [
+      "REOPEN",
+      "RESUME"
+    ],
+    "baselineEvents": 11,
+    "workdayStatus": "STARTED",
+    "factsState": "VALID",
+    "liveViewerHttp": "PASS",
+    "opticalResult": "FAIL: optical decoded; server QR INVALID; superseded by qrFinalAcceptance",
+    "cameraService": "ACTIVE; preview STREAMING; no camera error reported",
+    "physicalPreviewContent": "User confirmed QR visible in physical camera; remote screenshot black was not evidence of preview failure"
+  },
+  "qrLiveInvalidAttempt": {
+    "transport": "actual Android UI via ADB; person aims camera",
+    "tokenInjection": false,
+    "opticalScan": "PASS",
+    "confirmationTapped": true,
+    "serverVerifiedMark": "FAIL",
+    "scanObservedAtUtc": "2026-10-21T16:19:36.239948+00:00",
+    "status": "INCOMPLETE",
+    "reason": "AssertionError",
+    "serverQrState": "INVALID",
+    "priorEventsUnchanged": 11,
+    "newEvents": [
+      "FINISH"
+    ],
+    "claimedAtUtc": "2026-10-21T16:19:36.703Z",
+    "serverReceivedAtUtc": "2026-10-21T16:19:38.536Z",
+    "scannedImageIdentity": "Not captured; do not attribute INVALID to live viewer token without proof"
+  },
+  "qrBackendDiagnostic": {
+    "transport": "authenticated API; NOT optical",
+    "syntheticOtherEmployee": true,
+    "states": [
+      "VERIFIED",
+      "VERIFIED"
+    ],
+    "newEvents": [
+      "START",
+      "FINISH"
+    ],
+    "finalStatus": "COMPLETED",
+    "status": "PASS",
+    "initialHarnessError": "First request rejected before write: synthetic installation ID omitted required rf- prefix. Corrected in a new recorded attempt; no app defect implied."
+  },
+  "qrFinalAcceptance": {
+    "transport": "actual Android UI via ADB; person aims camera",
+    "tokenInjection": false,
+    "opticalScan": "PASS",
+    "confirmationTapped": true,
+    "serverVerifiedMark": "PASS",
+    "scanObservedAtUtc": "2026-10-21T16:25:47.613201+00:00",
+    "completedPhoneText": true,
+    "verifiedReceiptText": true,
+    "status": "PASS",
+    "apkVersionCode": 1012,
+    "runtimeSourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+    "hrReceipt": {
+      "status": "PASS",
+      "qrState": "VERIFIED",
+      "branchName": "Тестовое рабочее место QR",
+      "newEventTypes": [
+        "FINISH"
+      ],
+      "oldEventsUnchanged": 14,
+      "requestsUnchanged": true,
+      "factsState": "VALID",
+      "phoneBootstrapMatchesHrReport": true
+    },
+    "claimedAtUtc": "2026-10-21T16:25:48.076Z",
+    "serverReceivedAtUtc": "2026-10-21T16:25:50.749Z",
+    "maestroOptical": "NOT RUN: earlier instrumentation attempts interrupted before optical; this PASS is direct physical UI E2E",
+    "cleanup": {
+      "status": "PASS",
+      "temporaryQrViewerStopped": true,
+      "temporaryTunnelStopped": true,
+      "originalCameraGrantRestored": true,
+      "radiosRestored": true,
+      "qrPolicyEnabled": true,
+      "workdayStatus": "COMPLETED",
+      "eventsRetained": 15,
+      "requestsUnchanged": 10,
+      "lastQrState": "VERIFIED",
+      "historicalExpiredAndInvalidRetained": true
+    },
+    "visibleReceiptScreenshot": "docs/evidence/attendance-qr-verified-1012.png",
+    "verifiedBranchReceiptVisibleAfterAppRestart": true
+  },
+  "installedIdentityHistory": [
+    {
+      "package": "com.leaddrive.attendance",
+      "version": "1.0.0",
+      "versionCode": 1012,
+      "mtmVersion": "3.11.49",
+      "mtmVersionCode": "1710",
+      "separateAndroidUid": true,
+      "backgroundLocationPermissionPresent": false,
+      "sourceSha": "abb8a45f7f63dc5142276415d28a9627a1006bdc",
+      "apkSha256": "36080dcfcec6f46bf9081d20a0cbb823d8b0adf2fd1519601b2998f8da771118"
+    }
+  ],
+  "supersededPending": [
+    "Full offline shift: FAIL at cold-start admission; implementation required",
+    "Optical decoding and verified physical QR mark: NOT_RUN; camera UI does not prove a decoded code",
+    "Actual GPS/branch measurement: NOT_RUN; no reviewed location policy in owned fixture",
+    "Synthetic future-date full-shift timesheet: NOT_PASS due to frozen Asia/Baku rule; current-day supplementary HR calculation PASS. No history rewritten."
+  ],
+  "offlineBuild": {
+    "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+    "ciRunId": 39638977894,
+    "standaloneRunId": 39638966536,
+    "ordinaryMtmRunId": 39638977857,
+    "status": "PASS",
+    "jestSuites": 275,
+    "jestPassed": 2431,
+    "jestTodo": 1,
+    "fullTypecheck": "PASS"
+  },
+  "offlineAcceptance1016": {
+    "coldStart": {
+      "flow": "journeys/offline-access",
+      "exit": 0,
+      "apkVersionCode": 1016,
+      "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "flowSha256": "5e3be0e23a08c9e7b9a0a72fe513e7f46a29a68e0e28fe5549aa1ec4169891fe",
+      "tests": [
+        {
+          "name": "Previously authenticated employee retains workday access after offline cold start",
+          "seconds": "15.012",
+          "status": "PASS"
+        }
+      ]
+    },
+    "fullShiftMaestro": {
+      "flow": "journeys/offline-shift",
+      "exit": 0,
+      "apkVersionCode": 1016,
+      "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "flowSha256": "a3c4bd7cb3fd5d9adc49fd18c0e4f88eae71274efb73f07e0cd3921b9548772d",
+      "tests": [
+        {
+          "name": "Entire offline shift survives process restarts and stays provisional",
+          "seconds": "85.017",
+          "status": "PASS"
+        }
+      ]
+    },
+    "fullShiftServerDelivery": {
+      "status": "PASS",
+      "scope": "offline capture and ordered server delivery; separate from timesheet calculation",
+      "apkVersionCode": 1016,
+      "newEventTypes": [
+        "START",
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "claimTimes": [
+        "2026-10-21T17:09:13.883Z",
+        "2026-10-21T17:09:21.755Z",
+        "2026-10-21T17:09:35.757Z",
+        "2026-10-21T17:09:54.877Z"
+      ],
+      "receiptTimes": [
+        "2026-10-21T17:10:34.342Z",
+        "2026-10-21T17:10:35.018Z",
+        "2026-10-21T17:10:35.488Z",
+        "2026-10-21T17:10:36.163Z"
+      ],
+      "requestsUnchanged": true,
+      "priorEventsUnchanged": 15,
+      "radioStatesRestored": true,
+      "timezoneRestored": true,
+      "timesheet": "NOT PASS: synthetic future workdate2026-10-22; immutable baseline rule uses Asia/Baku"
+    },
+    "initialCombinedHarness": {
+      "status": "FAIL",
+      "mode": "physical Maestro, no clock or token injection",
+      "startedAt": "2026-10-21T17:06:59.181Z",
+      "fixtureTimezone": "Pacific/Kiritimati",
+      "syntheticWorkDate": "2026-10-22",
+      "offlineAt": "2026-10-21T17:07:43.054Z",
+      "accessFlowExit": 0,
+      "shiftFlowExit": 0,
+      "noServerEventsBeforeReconnect": true,
+      "networkReturnStartedAt": "2026-10-21T17:10:26.383Z",
+      "radioStatesRestored": true,
+      "networkRestoredAt": "2026-10-21T17:10:32.443Z",
+      "failureType": "AssertionError",
+      "failure": "",
+      "timezoneRestored": true,
+      "finishedAt": "2026-10-21T17:10:41.513Z"
+    },
+    "currentDaySupplementaryMaestro": {
+      "flow": "journeys/offline-existing-shift",
+      "exit": 0,
+      "apkVersionCode": 1016,
+      "sourceSha": "a3d03717d8c80161717af51153ffe692eee89ef8",
+      "flowSha256": "6f1e9eefe186aa8c2e4e35133a9bf656b920e0c4e20632335ad91f81fe5a8feb",
+      "tests": [
+        {
+          "name": "Existing current-day shift pauses, resumes and finishes offline across restarts",
+          "seconds": "64.56",
+          "status": "PASS"
+        }
+      ]
+    },
+    "currentDayHrReceipt": {
+      "status": "PASS",
+      "startedAt": "2026-10-21T17:14:07.912Z",
+      "workDate": "2026-10-21",
+      "fixtureTimezone": "Asia/Baku",
+      "reopenTypes": [
+        "REOPEN",
+        "RESUME"
+      ],
+      "offlineAt": "2026-10-21T17:14:42.839Z",
+      "flowExit": 0,
+      "noServerEventsBeforeReconnect": true,
+      "networkReturnStartedAt": "2026-10-21T17:16:21.113Z",
+      "radioStatesRestored": true,
+      "factsState": "VALID",
+      "serverEventTypes": [
+        "PAUSE",
+        "RESUME",
+        "FINISH"
+      ],
+      "claimTimes": [
+        "2026-10-21T17:15:29.112Z",
+        "2026-10-21T17:15:44.733Z",
+        "2026-10-21T17:16:03.046Z"
+      ],
+      "receiptTimes": [
+        "2026-10-21T17:16:29.099Z",
+        "2026-10-21T17:16:29.713Z",
+        "2026-10-21T17:16:30.343Z"
+      ],
+      "priorEventsUnchanged": 21,
+      "requestsUnchanged": true,
+      "noDuplicateAfterRestart": true,
+      "onlinePendingBannerGone": true,
+      "finishedAt": "2026-10-21T17:16:51.218Z"
+    },
+    "cleanup": {
+      "status": "PASS",
+      "settingsRestored": true,
+      "radiosRestored": true,
+      "originalPermissionGrantsRestored": true,
+      "workdayStatus": "COMPLETED",
+      "currentDayFactsState": "VALID",
+      "historicalEventsUnchanged": 15,
+      "eventsRetained": 24,
+      "requestsUnchanged": 10,
+      "noAdditionalPolicyOrUserCreated": true,
+      "mtmVersion": "3.11.49",
+      "mtmVersionCode": "1710"
+    },
+    "offlineWindowHours": 24,
+    "serverDelayedClaimReviewMinutes": 15,
+    "serverApprovalNotImpliedByLocalCapture": true,
+    "screenshots": [
+      "docs/evidence/attendance-offline-completed-1016.png",
+      "docs/evidence/attendance-offline-synced-1016.png"
+    ]
+  },
+  "freshRealDateOfflineAcceptance1016": {
+    "status": "PASS",
+    "workDate": "2026-10-22",
+    "timezone": "Asia/Baku",
+    "maestroSeconds": 70.36,
+    "factsState": "VALID",
+    "newEvents": 4,
+    "priorAdminEventsUnchanged": 2,
+    "otherOfficeEventsUnchanged": 24,
+    "requestCountsUnchanged": {
+      "admin": 0,
+      "office": 10
+    },
+    "backendArtifactSha": "de44f2a3325dbdc9a89e5fe14b266010cd84dff4",
+    "report": "docs/evidence/attendance-fresh-day-full-cycle-20261022.json",
+    "postAcceptanceCleanup": "PASS",
+    "originalOfficeAccountRestored": true,
+    "initialSyntheticFailureRetained": true,
+    "syntheticOfficeProjectionNow": "VALID after the real date arrived, with unchanged events; does not retroactively pass the earlier attempt"
+  }
+}

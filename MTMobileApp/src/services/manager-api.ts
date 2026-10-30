@@ -90,6 +90,36 @@ export const managerApi = {
     return api.requestLegacy("/mobile/manager/joint-visit", { method: "POST", body: JSON.stringify({ agentId }) })
   },
 
+  /**
+   * Planning a joint visit (2026-10-30): the agent's route on that day as the
+   * planner shows it, and the days that can be planned.
+   */
+  getJointPlanDay(agentId: string, date: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ agentId, date })
+    return api.requestLegacy(`/mobile/manager/joint-visit/plans?${query.toString()}`, { signal })
+  },
+
+  /** Plan: the ticked stops and the extra clients, which the server puts on the agent's route. */
+  saveJointPlans(data: { agentId: string; date: string; routePointIds: string[]; extras: Array<{ customerId: string; contactId: string | null }> }) {
+    return api.requestLegacy("/mobile/manager/joint-visit/plans", { method: "POST", body: JSON.stringify(data) })
+  },
+
+  /** Take a planned joint visit back, before it took place. */
+  cancelJointPlan(id: string) {
+    return api.requestLegacy(`/mobile/manager/joint-visit/plans/${encodeURIComponent(id)}`, { method: "DELETE" })
+  },
+
+  /**
+   * The clients the agent may visit that day — the route planner's picker,
+   * scoped by the server to the manager's team and the agent's assignments.
+   */
+  getAgentTargets(params: { agentId: string; date: string; search?: string; targetTypeId?: string }, signal?: AbortSignal) {
+    const query = new URLSearchParams({ agentId: params.agentId, date: params.date, limit: "30" })
+    if (params.search) query.set("search", params.search)
+    if (params.targetTypeId) query.set("targetTypeId", params.targetTypeId)
+    return api.requestLegacy(`/mobile/routes/targets?${query.toString()}`, { signal }, 20_000)
+  },
+
   /** «Закончить совместный визит». */
   endJointVisit() {
     return api.requestLegacy("/mobile/manager/joint-visit/end", { method: "POST", body: "{}" })

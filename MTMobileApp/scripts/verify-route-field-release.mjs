@@ -33,7 +33,10 @@ if (typeof packageJson.version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]
 }
 
 const applicationId = match(profile, /applicationId:\s*"([^"]+)"/, "Route Field application id")
-const apkVersion = match(profile, /apkVersion:\s*"([^"]+)"/, "Route Field APK version")
+// The build number comes from the installed APK; CI assigns it after this
+// pre-build check. A JS literal can never stay aligned with both CI and local
+// builds. Keep the package binding guarded, and test the native read in Jest.
+const versionApplicationId = match(profile, /get apkVersion\(\): string\s*\{\s*return installedApkVersion\("([^"]+)"\) \?\? "unknown"/, "native APK version getter")
 const gradleNamespace = match(gradle, /namespace\s+"([^"]+)"/, "Android namespace")
 const gradleApplicationId = match(gradle, /applicationId\s+"([^"]+)"/, "Android application id")
 // CI overrides it with MTM_VERSION_CODE; the literal fallback is the local build.
@@ -43,7 +46,7 @@ const versionName = match(gradle, /versionName\s+"([^"]+)"/, "Android versionNam
 requireEqual(gradleNamespace, applicationId, "namespace")
 requireEqual(gradleApplicationId, applicationId, "application id")
 requireEqual(versionName, packageJson.version, "version name")
-requireEqual(apkVersion, `${versionName}+${versionCode}`, "profile APK version")
+requireEqual(versionApplicationId, applicationId, "native version application id")
 
 if (!gradle.includes("Debug-signing fallback is disabled.")) {
   throw new Error("Release Gradle configuration must reject debug-signing fallback")
@@ -55,4 +58,4 @@ if (!/excludedModules:\s*\["workforceHrm",\s*"commercial"\]/.test(profile)) {
   throw new Error("Route Field release profile must exclude HRM and commercial modules")
 }
 
-console.log(`Route Field release profile verified: ${applicationId} ${apkVersion}`)
+console.log(`Route Field release profile verified: ${applicationId} ${versionName}; local build ${versionCode}, telemetry from installed APK`)

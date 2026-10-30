@@ -66,7 +66,7 @@ describe("the manager's shell keeps what a manager uses", () => {
     expect(navigator).toContain("OwnWorkday: ManagerOwnWorkdayScreen,")
     expect(workday).toContain('{managerShell ? null : <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>}')
     expect(workday).toContain("<AttendanceLocationConsentCard hideUntilEnabled={managerShell} />")
-    expect(workday).toContain('{managerShell ? null : <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile" as never)}>')
+    expect(workday).toContain('{managerShell ? null : <Pressable accessibilityRole="button" style={[styles.button, styles.secondary]} onPress={() => navigation.navigate("OwnProfile")}>')
     expect(consent).toContain("if (hideUntilEnabled && own?.policy?.enabled !== true && own?.consent?.accepted !== true && !pending) return null")
   })
 

@@ -3,6 +3,7 @@ import { create } from "zustand"
 import { allOutboxOperations, enqueueOutboxOperation, retryOutboxConflict, type OutboxOperation } from "../services/outbox"
 import { attendanceMarkRejection, canReplaceAttendanceMark } from '../services/attendance-mark-recovery'
 import { isWorkdayOpen, type BootstrapWorkday } from "../services/bootstrap"
+import { projectAttendanceWorkday } from '../services/attendance-workday-projection'
 
 const STORAGE_KEY = "@mtm_active_workday_v1"
 const FINISHED_STORAGE_KEY = "@mtm_finished_workday_v1"
@@ -175,6 +176,31 @@ function queueWorkday(input: Parameters<typeof enqueueOutboxOperation>[0], key: 
   return guard ? enqueueOutboxOperation(input, key) : enqueueOutboxOperation(input)
 }
 
+function officeCapture(key: string) {
+  try {
+    const { guardOfficeAttendance } = require('../services/attendance-session-guard') as typeof import('../services/attendance-session-guard')
+    guardOfficeAttendance(key); return true
+  } catch { return false }
+}
+
+async function guardOfficeSequence(key: string) {
+  if (!officeCapture(key)) return
+  const rows = await allOutboxOperations()
+  if (rows.some(row => row.scopeKey === key && row.entity === 'workdays' && row.status === 'conflict')) throw new Error('ATTENDANCE_QUEUE_CONFLICT')
+}
+
+function currentWorkDate(key: string) {
+  if (officeCapture(key)) {
+    const { useBootstrapStore } = require('./bootstrap') as typeof import('./bootstrap')
+    const timezone = useBootstrapStore.getState().data?.timezone
+    if (timezone) {
+      const parts = new Intl.DateTimeFormat('en', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+      return `${parts.find(p => p.type === 'year')!.value}-${parts.find(p => p.type === 'month')!.value}-${parts.find(p => p.type === 'day')!.value}`
+    }
+  }
+  return localDateKey()
+}
+
 export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   activeWorkday: null,
   finishedWorkday: null,
@@ -196,10 +222,15 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   },
   start: (key, guard, qrToken) => serializeMutation(async () => {
     guard?.()
+    await guardOfficeSequence(key); guard?.()
+    if (get().activeWorkday?.key === key) {
+      if (qrToken !== undefined) throw new Error('ATTENDANCE_QR_CHANGED')
+      return
+    }
     // Owner decision 4 (audit 2026-09-05): a finished day stays finished. A
     // break/resume control replaces the restart (task A7/B3, sprint 3).
     const finished = get().finishedWorkday
-    if (finished?.key === key && finished.dateKey === localDateKey()) return
+    if (finished?.key === key && finished.dateKey === currentWorkDate(key)) return
     if (qrToken !== undefined && get().activeWorkday?.key === key) throw new Error('ATTENDANCE_QR_CHANGED')
     const startedAt = new Date().toISOString()
     const workdayId = "wd-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10)
@@ -219,9 +250,10 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   }),
   end: (key, guard, qrToken) => serializeMutation(async () => {
     guard?.()
+    await guardOfficeSequence(key); guard?.()
     const activeWorkday = get().activeWorkday
-    if (activeWorkday?.key !== key) return
-    if (qrToken !== undefined && activeWorkday.syncState !== "CONFIRMED") throw new Error("ATTENDANCE_QR_CHANGED")
+    if (activeWorkday?.key !== key || activeWorkday.syncState === 'FINISH_PENDING') return
+    if (qrToken !== undefined && activeWorkday.syncState !== "CONFIRMED" && !officeCapture(key)) throw new Error("ATTENDANCE_QR_CHANGED")
     const occurredAt = new Date().toISOString()
     const { captureAttendanceMark } = require("../services/attendance-location") as typeof import('../services/attendance-location')
     const attendanceMark = await captureAttendanceMark(key, occurredAt, activeWorkday.paused === true)
@@ -234,7 +266,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     guard?.()
     await queueWorkday({ entity: "workdays", op: "create", data: { action: "FINISH", workdayId: activeWorkday.workdayId, occurredAt, ...(attendanceMark ? { attendanceMark } : {}), ...(attendanceQr ? { attendanceQr } : {}) } }, key, guard)
     guard?.()
-    const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING" }
+    const pendingFinish: ActiveWorkday = { ...activeWorkday, syncState: "FINISH_PENDING", lastMarkAt: occurredAt }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(pendingFinish))
     if (get().activeWorkday?.key === key) set({ activeWorkday: pendingFinish, syncError: null })
   }),
@@ -247,6 +279,9 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     if (!item || !canReplaceAttendanceMark(item)) throw new Error('ATTENDANCE_MARK_CHANGED')
     const action = item.data.action, local = get().activeWorkday
     const workdayId = action === 'START' ? item.data.id : item.data.workdayId
+    if ((await allOutboxOperations()).some(row => row.operationId !== operationId && belongsToWorkday(row, String(workdayId)))) {
+      throw new Error('ATTENDANCE_DEPENDENT_EVENTS_REQUIRE_REVIEW')
+    }
     if (typeof workdayId !== 'string' || (action === 'START' && local?.key === key && (local.workdayId !== workdayId || local.syncState === 'CONFIRMED'))
       || (action === 'FINISH' && (local?.key !== key || local.workdayId !== workdayId))) throw new Error('ATTENDANCE_MARK_CHANGED')
     const rejection = attendanceMarkRejection(item)
@@ -272,11 +307,12 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   }),
   pause: (key, guard) => serializeMutation(async () => {
     guard?.()
+    await guardOfficeSequence(key); guard?.()
     const activeWorkday = get().activeWorkday
-    // Only a confirmed, running shift can pause: pausing one the server has
-    // not yet accepted would queue PAUSE behind a START that may still be
-    // rejected, and the server answers MTM_WORKDAY_NOT_RUNNING anyway.
-    if (activeWorkday?.key !== key || activeWorkday.syncState !== "CONFIRMED" || activeWorkday.paused) return
+    // Field execution still requires a confirmed shift. Own office capture
+    // can queue behind START; its ordered sender holds dependent events
+    // until that predecessor is accepted.
+    if (activeWorkday?.key !== key || activeWorkday.syncState === 'FINISH_PENDING' || (activeWorkday.syncState !== "CONFIRMED" && !officeCapture(key)) || activeWorkday.paused) return
     const occurredAt = new Date().toISOString()
     guard?.()
     await queueWorkday({ entity: "workdays", op: "create", data: { action: "PAUSE", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
@@ -287,8 +323,9 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
   }),
   resume: (key, guard) => serializeMutation(async () => {
     guard?.()
+    await guardOfficeSequence(key); guard?.()
     const activeWorkday = get().activeWorkday
-    if (activeWorkday?.key !== key || activeWorkday.syncState !== "CONFIRMED" || !activeWorkday.paused) return
+    if (activeWorkday?.key !== key || activeWorkday.syncState === 'FINISH_PENDING' || (activeWorkday.syncState !== "CONFIRMED" && !officeCapture(key)) || !activeWorkday.paused) return
     const occurredAt = new Date().toISOString()
     guard?.()
     await queueWorkday({ entity: "workdays", op: "create", data: { action: "RESUME", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
@@ -301,6 +338,26 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     guard?.()
     const local = get().activeWorkday
     const open = isWorkdayOpen(workday)
+    if (officeCapture(key)) {
+      const rows = (await allOutboxOperations()).filter(row => row.scopeKey === key && row.entity === 'workdays')
+      guard?.()
+      if (rows.length) {
+        const base: ActiveWorkday | null = local?.key === key ? local : open ? {
+          key, workdayId: workday!.id, startedAt: workday!.startedAt!, syncState: 'CONFIRMED',
+          ...(workday!.status === 'PAUSED' ? { paused: true, pausedAt: workday!.pausedAt ?? undefined } : {}),
+        } : null
+        const projected = projectAttendanceWorkday(key, base, rows)
+        if (projected && rows.some(row => belongsToWorkday(row, projected.workdayId))) {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(projected)); guard?.()
+          set({ activeWorkday: projected, syncError: rows.some(row => row.status === 'conflict') ? 'START_CONFLICT' : null })
+          return
+        }
+      }
+      // A stale offline snapshot cannot undo a local action already ACKed
+      // while the following bootstrap response was lost.
+      const { useBootstrapStore } = require('./bootstrap') as typeof import('./bootstrap')
+      if (useBootstrapStore.getState().data?.attendanceOffline && local?.key === key) return
+    }
     const operations = local
       ? (await allOutboxOperations()).filter((item) => belongsToWorkday(item, local.workdayId))
       : []

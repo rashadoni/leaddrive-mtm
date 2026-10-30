@@ -221,9 +221,31 @@ export async function clearOutbox() {
 
 export async function flushOutbox(
   send: (operations: OutboxOperation[]) => Promise<{ results?: OutboxPushResult[] }>,
-  options?: { now?: () => number; random?: () => number; select?: (operation: OutboxOperation) => boolean; guard?: () => void },
-) {
+  options?: { now?: () => number; random?: () => number; select?: (operation: OutboxOperation) => boolean; guard?: () => void; orderedWorkdays?: boolean },
+): Promise<{ sent: number; deferred: number; conflicted: number; error?: string; retryAfterMs?: number }> {
   options?.guard?.()
+  if (options?.orderedWorkdays) {
+    // Read the whole journal, including delayed/conflicting predecessors.
+    // Filtering only due operations could send FINISH ahead of a lost START.
+    const rows = (await allOutboxOperations()).filter(item => !options.select || options.select(item))
+    const blocked = new Set<string>()
+    const total = { sent: 0, deferred: 0, conflicted: 0 }
+    for (const item of rows) {
+      options.guard?.()
+      const day = item.entity === 'workdays' ? String(item.data.id ?? item.data.workdayId) : null
+      if (day && blocked.has(day)) { if (item.status === 'pending') total.deferred += 1; continue }
+      if (item.status === 'conflict' || item.nextAttemptAt > (options.now?.() ?? Date.now())) {
+        if (day) blocked.add(day)
+        if (item.status === 'pending') total.deferred += 1
+        continue
+      }
+      const result = await flushOutbox(send, { ...options, orderedWorkdays: false,
+        select: candidate => candidate.operationId === item.operationId && (!options.select || options.select(candidate)) })
+      total.sent += result.sent; total.deferred += result.deferred; total.conflicted += result.conflicted
+      if (day && result.sent !== 1) blocked.add(day)
+    }
+    return total
+  }
   const pending = (await pendingOutboxOperations()).filter(item => options?.select ? options.select(item) : true)
   options?.guard?.()
   if (pending.length === 0) return { sent: 0, deferred: 0, conflicted: 0 }

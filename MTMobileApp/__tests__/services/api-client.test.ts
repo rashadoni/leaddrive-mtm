@@ -16,6 +16,15 @@
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
+jest.mock("react-native-device-info", () => ({
+  __esModule: true,
+  default: {
+    getBundleId: jest.fn(() => "com.mtmobileapp"),
+    getVersion: jest.fn(() => "3.11.54"),
+    getBuildNumber: jest.fn(() => "1802"),
+  },
+}))
+
 jest.mock("@react-native-async-storage/async-storage", () => ({
   __esModule: true,
   default: {
@@ -38,6 +47,7 @@ jest.mock("../../src/services/field-device-id", () => ({
 // ── Imports ───────────────────────────────────────────────────────────────────
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { NativeModules } from "react-native"
 import { setAgentContext, clearAgentContext } from "../../src/services/sentry"
 import { getFieldDeviceId } from "../../src/services/field-device-id"
 // Import the singleton after mocks are in place
@@ -617,7 +627,7 @@ describe("ApiClient — request error handling", () => {
     const [, opts] = mockFetch.mock.calls[0]
     expect(opts.headers.Authorization).toBe("Bearer bearer-abc")
     expect(opts.headers["x-field-device-id"]).toBe("rf-test-0000001-0000002-0000003")
-    expect(opts.headers["x-field-apk-version"]).toBe("3.11.4+61")
+    expect(opts.headers["x-field-apk-version"]).toBe("3.11.54+1802")
   })
 
   it("uses the deployed v1 API for mobile message lists and threads", async () => {
@@ -707,7 +717,7 @@ describe("ApiClient — Route Field device identity", () => {
     const [, options] = mockFetch.mock.calls[0]
     expect(JSON.parse(options.body).clientId).toBeUndefined()
     expect(options.headers["x-field-device-id"]).toBeUndefined()
-    expect(options.headers["x-field-apk-version"]).toBe("3.11.4+61")
+    expect(options.headers["x-field-apk-version"]).toBe("3.11.54+1802")
   })
 })
 
@@ -729,7 +739,7 @@ describe("ApiClient — Route Field sync v2 transport", () => {
     expect(options.headers).toMatchObject({
       Authorization: "Bearer bearer-abc",
       "x-field-device-id": "rf-test-0000001-0000002-0000003",
-      "x-field-apk-version": "3.11.4+61",
+      "x-field-apk-version": "3.11.54+1802",
     })
   })
 
@@ -826,6 +836,7 @@ describe("ApiClient — login", () => {
 describe("ApiClient — sign-in by number and by a WhatsApp code", () => {
   const sent = () => (global.fetch as jest.Mock).mock.calls.map(([url, init]) => ({ url, body: JSON.parse(String(init.body)) }))
   const answer = (body: unknown, status = 200) => jest.fn().mockResolvedValue({ status, ok: status < 400, json: async () => body })
+  afterEach(() => { delete NativeModules.AttendanceIdentity })
 
   beforeEach(() => {
     resetClient()
@@ -836,20 +847,27 @@ describe("ApiClient — sign-in by number and by a WhatsApp code", () => {
   it("signs in with a number instead of an email, with the company", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-phone", agent: { id: "ag-2", role: "EMPLOYEE", organizationId: "org-2" } } })
     await api.login("+994 50 123 45 67", "Fictional-Pass-2026!")
-    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth", body: { phone: "+994 50 123 45 67", password: "Fictional-Pass-2026!", organizationSlug: "zeytun" } }])
+    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth", body: { phone: "+994 50 123 45 67", password: "Fictional-Pass-2026!", application: "ROUTE_FIELD", organizationSlug: "zeytun" } }])
     expect(client.token).toBe("tok-phone")
   })
 
   it("keeps signing in by email as before", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-mail", agent: { id: "ag-3" } } })
     await api.login("agent@example.test", "pass")
-    expect(sent()[0].body).toEqual({ email: "agent@example.test", password: "pass", organizationSlug: "zeytun" })
+    expect(sent()[0].body).toEqual({ email: "agent@example.test", password: "pass", application: "ROUTE_FIELD", organizationSlug: "zeytun" })
+  })
+  it("asks for the Time card for the same number when installed as Time", async () => {
+    NativeModules.AttendanceIdentity = { applicationId: "com.leaddrive.attendance", apkVersion: "1.0.0+1048" }
+    ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-time", agent: { id: "time-card", role: "EMPLOYEE", organizationId: "org-2" } } })
+    await api.login("+994 50 123 45 67", "Fictional-Pass-2026!")
+    expect(sent()[0].body).toEqual({ phone: "+994 50 123 45 67", password: "Fictional-Pass-2026!", application: "TIME", organizationSlug: "zeytun" })
+    expect(client.token).toBe("tok-time")
   })
 
   it("asks for a code with the company, the number and the app's language", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { sent: true, resendAfterSeconds: 42, expiresInSeconds: 600 } })
     expect(await api.requestLoginCode("+994501234567", "az")).toEqual({ resendAfterSeconds: 42, expiresInSeconds: 600 })
-    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/code", body: { organizationSlug: "zeytun", phone: "+994501234567", language: "az" } }])
+    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/code", body: { organizationSlug: "zeytun", application: "ROUTE_FIELD", phone: "+994501234567", language: "az" } }])
   })
 
   it("passes the server's refusal code on, for the screen to say in words", async () => {
@@ -867,14 +885,26 @@ describe("ApiClient — sign-in by number and by a WhatsApp code", () => {
   it("checks the code and returns the setup token and the name", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { setupToken: "setup-9", agent: { name: "Fictional Employee" }, organizationName: "Fictional Company" } })
     expect(await api.verifyLoginCode("+994501234567", "482913")).toEqual({ setupToken: "setup-9", name: "Fictional Employee", organizationName: "Fictional Company" })
-    expect(sent()[0]).toEqual({ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/code/verify", body: { organizationSlug: "zeytun", phone: "+994501234567", code: "482913" } })
+    expect(sent()[0]).toEqual({ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/code/verify", body: { organizationSlug: "zeytun", application: "ROUTE_FIELD", phone: "+994501234567", code: "482913" } })
+  })
+
+  it("carries the opaque recovery challenge and Time scope through both code steps", async () => {
+    NativeModules.AttendanceIdentity = { applicationId: "com.leaddrive.attendance", apkVersion: "1.0.0+1048" }
+    const challengeId = "6caebf57-5046-416f-83b9-ce61396e46eb"
+    ;(global.fetch as jest.Mock) = answer({ success: true, data: { sent: true, challengeId } })
+    const challenge = await api.requestLoginCode("+994501234567", "az")
+    expect(challenge.challengeId).toBe(challengeId)
+    expect(sent()[0].body.application).toBe("TIME")
+    ;(global.fetch as jest.Mock) = answer({ success: true, data: { setupToken: ["lds3", "test"].join("."), agent: { name: "Fictional" } } })
+    await api.verifyLoginCode("+994501234567", "482913", challenge.challengeId)
+    expect(sent()[0].body).toEqual({ organizationSlug: "zeytun", application: "TIME", phone: "+994501234567", code: "482913", challengeId })
   })
 
   it("sets the person's own password and keeps the session it returns, like a password sign-in", async () => {
     const agent = { id: "ag-4", role: "EMPLOYEE", name: "Fictional Employee", organizationId: "org-4" }
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { token: "tok-code", agent } })
     await api.setPasswordWithCode("setup-9", "Fictional-Pass-2026!")
-    expect(sent()[0]).toEqual({ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/password", body: { setupToken: "setup-9", password: "Fictional-Pass-2026!" } })
+    expect(sent()[0]).toEqual({ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/password", body: { setupToken: "setup-9", password: "Fictional-Pass-2026!", organizationSlug: "zeytun", application: "ROUTE_FIELD" } })
     expect(client.token).toBe("tok-code")
     expect(client.agentId).toBe("ag-4")
     expect(AsyncStorage.setItem).toHaveBeenCalledWith("@mtm_token", "tok-code")
@@ -892,7 +922,7 @@ describe("ApiClient — logout", () => {
     expect(client.agentId).toBeNull()
     expect(client._agentRole).toBeNull()
     expect(clearAgentContext).toHaveBeenCalled()
-    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(["@mtm_token", "@mtm_agent"])
+    expect(AsyncStorage.multiRemove).toHaveBeenCalledWith(["@mtm_token", "@mtm_agent", "@leaddrive_route_field_v3:offline-login-session-v1"])
   })
 })
 

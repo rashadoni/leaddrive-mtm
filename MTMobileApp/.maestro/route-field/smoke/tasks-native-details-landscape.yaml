@@ -1,0 +1,7 @@
+appId: com.mtmobileapp
+name: Task cards and native details remain reachable in landscape
+---
+# The coordinator owns the display/font lease and restores the original settings.
+# Assert actual screenshot dimensions in the receipt; a requested rotation is not proof.
+- setOrientation: LANDSCAPE_LEFT
+- runFlow: tasks-native-details.yaml

@@ -36,7 +36,7 @@ import Icon from "react-native-vector-icons/Ionicons"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
-import { refreshJointManagers } from "../../services/joint-visit"
+import { cachedJointPlans, jointManagersByStop, refreshJointManagers, type AgentJointPlan } from "../../services/joint-visit"
 import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
 import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
@@ -609,12 +609,14 @@ function RouteExecutionGate({
   copy,
   onPress,
   disabled = false,
+  flushTop = false,
 }: {
   mode: "workday" | "route" | "paused"
   busy: boolean
   copy: (typeof ROUTE_COPY)[RouteLanguage]
   onPress: () => void
   disabled?: boolean
+  flushTop?: boolean
 }) {
   const workday = mode === "workday"
   const paused = mode === "paused"
@@ -629,35 +631,38 @@ function RouteExecutionGate({
       ? copy.workdayRequiredBody
       : copy.routeStartRequiredBody
   return (
-    <View style={styles.actionPanel} accessibilityLiveRegion="polite">
+    <View style={[styles.actionPanel, flushTop && styles.paneStateCard]} accessibilityLiveRegion="polite">
       {/* One title. It used to stand twice, once small and once large, one
           line under the other (owner's phone, 7 October 2026). */}
       <View style={styles.actionEyebrowRow}>
         <Icon name={workday || paused ? "briefcase-outline" : "play-circle-outline"} size={22} color={fieldTheme.color.amber} />
-        <Text style={[styles.actionTitle, styles.gateTitle]}>{title}</Text>
+        <Text style={[styles.actionTitle, styles.gateTitle, flushTop && styles.paneStateTitle]}>{title}</Text>
       </View>
       <Text style={styles.actionAddress}>{body}</Text>
       {!paused ? (
-        <ActionButton
-          label={busy
-            ? (workday ? copy.workdaySyncing : copy.routeStarting)
-            : (workday ? copy.startWorkday : copy.startRoute)}
-          icon={busy ? "hourglass-outline" : "play-circle"}
-          onPress={onPress}
-          disabled={busy || disabled}
-        />
+        <View style={flushTop && styles.paneStateFooter}>
+          <ActionButton
+            label={busy
+              ? (workday ? copy.workdaySyncing : copy.routeStarting)
+              : (workday ? copy.startWorkday : copy.startRoute)}
+            icon={busy ? "hourglass-outline" : "play-circle"}
+            onPress={onPress}
+            disabled={busy || disabled}
+          />
+        </View>
       ) : null}
     </View>
   )
 }
 
-function RouteFinishedPanel({ visited, total, copy }: {
+function RouteFinishedPanel({ visited, total, copy, flushTop = false }: {
   visited: number
   total: number
   copy: (typeof ROUTE_COPY)[RouteLanguage]
+  flushTop?: boolean
 }) {
   return (
-    <View style={styles.actionPanel} accessibilityLiveRegion="polite" testID="route-action-panel-finished">
+    <View style={[styles.actionPanel, flushTop && styles.flushTop]} accessibilityLiveRegion="polite" testID="route-action-panel-finished">
       <View style={styles.actionEyebrowRow}>
         <Icon name="checkmark-circle" size={19} color={fieldTheme.color.success} />
         <Text style={styles.actionEyebrow}>{copy.routeFinishedTitle}</Text>
@@ -673,9 +678,9 @@ function RouteFinishedPanel({ visited, total, copy }: {
 // Stands where the panel will be while routeActionPanelState cannot yet tell
 // which one it is: the loading words the list already uses, no order and no
 // button (Galaxy S23, 2026-09-14 — the gate asked to start a started route).
-function RouteActionPanelLoading({ copy }: { copy: (typeof ROUTE_COPY)[RouteLanguage] }) {
+function RouteActionPanelLoading({ copy, flushTop = false }: { copy: (typeof ROUTE_COPY)[RouteLanguage]; flushTop?: boolean }) {
   return (
-    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading]} testID="route-action-panel-loading">
+    <View style={[styles.actionPanelEmpty, styles.actionPanelLoading, flushTop && styles.paneStateCard]} testID="route-action-panel-loading">
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.actionEmptyText}>{copy.loading}</Text>
     </View>
@@ -927,9 +932,13 @@ function StopRow({
   visiting = false,
   nearest = false,
   visitFacts,
+  flushTop = false,
+  jointWith = null,
 }: {
   point: RoutePoint
   index: number
+  /** The manager(s) planning to visit this stop with the agent (2026-10-30). */
+  jointWith?: string | null
   selected: boolean
   recommended: boolean
   /** The agent's open visit is at this stop. */
@@ -938,6 +947,7 @@ function StopRow({
   nearest?: boolean
   /** The open visit's minutes and photos, shown on its stop. */
   visitFacts?: { minutes: number; photos: number }
+  flushTop?: boolean
   onPress: () => void
   language: string
   copy: (typeof ROUTE_COPY)[RouteLanguage]
@@ -971,7 +981,7 @@ function StopRow({
       </View>
       {/* A stop still ahead is a white card on the line; a stop behind the
           agent is a quiet line of text, so the eye goes to what is left. */}
-      <View style={[styles.stopCard, done && styles.stopCardDone, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting]}>
+      <View style={[styles.stopCard, done && styles.stopCardDone, Boolean(jointWith) && !done && styles.stopCardJoint, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, flushTop && styles.flushTop]}>
         <View style={styles.stopCopy}>
           <View style={styles.stopTitleRow}>
             <Text style={[styles.stopName, done && styles.stopNameDone, visiting && styles.stopNameVisiting]} numberOfLines={2}>
@@ -984,6 +994,12 @@ function StopRow({
             ) : null}
           </View>
           {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
+          {jointWith ? (
+            <View style={styles.jointMark} testID={`route-joint-mark-${point.id}`}>
+              <Icon name="people" size={15} color={fieldTheme.color.violet} />
+              <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointWith })}</Text>
+            </View>
+          ) : null}
           {/* Where this client stands today, in words and in colour: visited
               (with the time), visit in progress, or still planned. */}
           <View style={styles.stopMeta}>
@@ -1064,6 +1080,8 @@ function PointActionPanel({
   onCheckOut,
   signature,
   onSignature,
+  flushTop = false,
+  jointWith = null,
 }: {
   point: RoutePoint | null
   nextPoint: RoutePoint | null
@@ -1084,6 +1102,9 @@ function PointActionPanel({
   onCheckOut: () => void
   signature: { visible: boolean; required: boolean; signed: boolean }
   onSignature: () => void
+  flushTop?: boolean
+  /** The managers going to this stop with him, when it is a planned joint visit. */
+  jointWith?: string | null
 }) {
   if (activeVisit && staleSinceLabel) {
     // Not «visit in progress»: a visit left open on another day. Today's
@@ -1091,7 +1112,7 @@ function PointActionPanel({
     // owner chose to show it with its date and let it only be closed.
     const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
     return (
-      <View style={[styles.actionPanel, styles.staleVisitPanel]} testID="route-stale-visit" accessibilityLiveRegion="polite">
+      <View style={[styles.actionPanel, styles.staleVisitPanel, flushTop && styles.flushTop]} testID="route-stale-visit" accessibilityLiveRegion="polite">
         <View style={styles.actionEyebrowRow}>
           <Icon name="alert-circle" size={18} color={fieldTheme.color.danger} />
           <Text style={[styles.actionEyebrow, styles.staleVisitEyebrow]}>{renderTemplate(copy.staleVisitTitle, { date: staleSinceLabel })}</Text>
@@ -1137,7 +1158,7 @@ function PointActionPanel({
     // The visit is to a doctor when its stop names one; the clinic is where.
     const who = routeStopWho(point && point.id === activeVisit.routePointId ? point : { customer: activeVisit.customer })
     return (
-      <View style={styles.actionPanel}>
+      <View style={[styles.actionPanel, flushTop && styles.flushTop]}>
         <View style={styles.actionEyebrowRow}>
           <View style={styles.liveDot} />
           <Text style={styles.actionEyebrow}>{copy.activeVisit}</Text>
@@ -1248,10 +1269,17 @@ function PointActionPanel({
   const directionsFirst = hasDirections && !nearby
 
   return (
-    <View style={styles.actionPanel}>
+    <View style={[styles.actionPanel, flushTop && styles.flushTop]}>
       <Text style={styles.actionEyebrow}>{isRecommended ? copy.nextStop : copy.selectedStop}</Text>
       <Text style={styles.actionTitle}>{who.name}</Text>
       {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
+      {/* The card that sends him there says it too (live check 2026-10-30). */}
+      {jointWith ? (
+        <View style={styles.jointMark} testID={`route-panel-joint-mark-${point.id}`}>
+          <Icon name="people" size={15} color={fieldTheme.color.violet} />
+          <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointWith })}</Text>
+        </View>
+      ) : null}
       {point.customer.address ? null : <Text style={styles.actionAddress}>{copy.noAddress}</Text>}
       <View style={styles.detailFacts}>
         <View style={styles.detailFact}>
@@ -1345,6 +1373,11 @@ export default function RouteScreen() {
   const [phonePanelVisible, setPhonePanelVisible] = useState(false)
   const [navigationStartedFor, setNavigationStartedFor] = useState<string | null>(null)
   const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
+  // Stops a manager plans to visit with this agent (2026-10-30), from the
+  // last answer the phone kept: the mark shows offline too.
+  const [jointPlans, setJointPlans] = useState<AgentJointPlan[]>([])
+  const jointByStop = useMemo(() => jointManagersByStop(jointPlans), [jointPlans])
+  useEffect(() => { cachedJointPlans().then(setJointPlans).catch(() => {}) }, [])
   const [activeWorkspace, setActiveWorkspace] = useState<VisitWorkspace | null>(null)
   const [elapsedMin, setElapsedMin] = useState(0)
   const [notesVisible, setNotesVisible] = useState(false)
@@ -1622,7 +1655,10 @@ export default function RouteScreen() {
       fetchActiveVisit().catch(() => {}).then(() => setActiveVisitKnown(true))
       fetchActiveWorkspace(activeVisit?.id).catch(() => {})
       // Who is in the field with this agent, kept for an offline check-in (joint visit).
-      refreshJointManagers(() => api.getJointVisitManagers()).catch(() => {})
+      refreshJointManagers(() => api.getJointVisitManagers())
+        .then(() => cachedJointPlans())
+        .then(setJointPlans)
+        .catch(() => {})
     }, [activeVisit?.id, fetchRoute, fetchActiveVisit, fetchActiveWorkspace]),
   )
 
@@ -1988,8 +2024,9 @@ export default function RouteScreen() {
       }
 
       // Joint visit (owner, 2026-10-20): while a manager is in the field
-      // with this agent, the agent says whether he is on this visit.
-      const joint = await askJointManagerForCheckIn(t)
+      // with this agent, or planned this stop with him (2026-10-30), the
+      // agent says whether he is on this visit.
+      const joint = await askJointManagerForCheckIn(t, { routePointId: point.id, customerId: point.customer.id })
       if (!joint.proceed) {
         setMutating(false)
         return
@@ -2117,15 +2154,16 @@ export default function RouteScreen() {
     activeVisitKnown,
   })
   const actionPanel = actionPanelState === "loading" ? (
-    <RouteActionPanelLoading copy={copy} />
+    <RouteActionPanelLoading copy={copy} flushTop={tablet} />
   ) : actionPanelState === "finished" ? (
-    <RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} />
+    <RouteFinishedPanel visited={visitedPoints} total={totalPoints} copy={copy} flushTop={tablet} />
   ) : actionPanelState === "route-unknown" ? (
     // The list beside it already says the route did not load and offers a
     // retry; a second card here would only repeat it.
     null
   ) : actionPanelState === "visit" || actionPanelState === "point" ? (
     <PointActionPanel
+      flushTop={tablet}
       point={focusPoint}
       nextPoint={nextPoint}
       activeVisit={activeVisit}
@@ -2144,9 +2182,11 @@ export default function RouteScreen() {
       onCheckOut={handleCheckOut}
       signature={signature}
       onSignature={signature.openPad}
+      jointWith={focusPoint ? jointByStop.get(focusPoint.id)?.join(", ") ?? null : null}
     />
   ) : (
     <RouteExecutionGate
+      flushTop={tablet}
       mode={actionPanelState === "gate-paused" ? "paused" : actionPanelState === "gate-route" ? "route" : "workday"}
       busy={workdayActive ? startingRoute : startingWorkday || workdayTransitionPending}
       copy={copy}
@@ -2214,35 +2254,38 @@ export default function RouteScreen() {
   const emptyMode = presentation.empty ?? "no-route"
   const emptyError = emptyMode === "offline-unavailable" || emptyMode === "slow-unavailable"
   const emptyState = emptyMode === "loading" ? (
-    <View style={styles.emptyState}>
+    <View style={[styles.emptyState, tablet && styles.paneStateCard]}>
       <GuideSpot id="route.first" />
       <ActivityIndicator color={fieldTheme.color.primary} />
       <Text style={styles.emptyTitle}>{copy.loading}</Text>
     </View>
   ) : (
-    <View style={styles.emptyState} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
+    <View style={[styles.emptyState, tablet && styles.paneStateCard]} accessibilityLiveRegion={emptyError ? "polite" : "none"}>
       <GuideSpot id="route.first" />
-      <View style={[
-        styles.emptyIcon,
-        emptyMode === "offline-unavailable" && styles.emptyIconOffline,
-        emptyMode === "slow-unavailable" && styles.emptyIconSlow,
-      ]}>
-        <Icon
-          name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : emptyMode === "awaiting-approval" ? "time-outline" : "calendar-outline"}
-          size={30}
-          color={emptyMode === "offline-unavailable" ? fieldTheme.color.coral : emptyMode === "slow-unavailable" ? fieldTheme.color.amber : fieldTheme.color.primary}
-        />
+      <View style={tablet ? styles.paneStateHeading : styles.emptyHeading}>
+        <View style={[
+          styles.emptyIcon,
+          emptyMode === "offline-unavailable" && styles.emptyIconOffline,
+          emptyMode === "slow-unavailable" && styles.emptyIconSlow,
+          tablet && styles.paneStateIcon,
+        ]}>
+          <Icon
+            name={emptyMode === "offline-unavailable" ? "cloud-offline-outline" : emptyMode === "slow-unavailable" ? "speedometer-outline" : emptyMode === "awaiting-approval" ? "time-outline" : "calendar-outline"}
+            size={tablet ? 22 : 30}
+            color={emptyMode === "offline-unavailable" ? fieldTheme.color.coral : emptyMode === "slow-unavailable" ? fieldTheme.color.amber : fieldTheme.color.primary}
+          />
+        </View>
+        <Text style={[styles.emptyTitle, tablet && styles.paneStateTitle]}>
+          {emptyMode === "offline-unavailable"
+            ? copy.offlineUnavailableTitle
+            : emptyMode === "slow-unavailable"
+              ? copy.slowTitle
+              : emptyMode === "awaiting-approval"
+                ? copy.awaitingApprovalTitle
+                : t("route.noRouteTitle")}
+        </Text>
       </View>
-      <Text style={styles.emptyTitle}>
-        {emptyMode === "offline-unavailable"
-          ? copy.offlineUnavailableTitle
-          : emptyMode === "slow-unavailable"
-            ? copy.slowTitle
-            : emptyMode === "awaiting-approval"
-              ? copy.awaitingApprovalTitle
-              : t("route.noRouteTitle")}
-      </Text>
-      <Text style={styles.emptyBody}>
+      <Text style={[styles.emptyBody, tablet && styles.paneStateBody]}>
         {emptyMode === "offline-unavailable"
           ? copy.offlineUnavailableBody
           : emptyMode === "slow-unavailable"
@@ -2261,22 +2304,31 @@ export default function RouteScreen() {
               <View style={styles.awaitingStopCopy}>
                 <Text style={styles.awaitingStopName} numberOfLines={1}>{stop.name}</Text>
                 {stop.place ? <Text style={styles.awaitingStopPlace} numberOfLines={2}>{stop.place}</Text> : null}
+                {/* A waiting route still says where the manager goes with him (live check 2026-10-30). */}
+                {jointByStop.get(stop.key) ? (
+                  <View style={styles.jointMark} testID={`route-awaiting-joint-mark-${stop.key}`}>
+                    <Icon name="people" size={15} color={fieldTheme.color.violet} />
+                    <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointByStop.get(stop.key)!.join(", ") })}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
           ))}
         </View>
       ) : null}
-      <ActionButton
-        label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
-        icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
-        onPress={() => {
-          // Changing today's waiting route opens on today; a new plan asks
-          // for its day after the clients.
-          if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder", emptyMode === "awaiting-approval" ? { initialDate: localRouteDateKey() } : undefined)
-          else { setLoading(true); fetchRoute() }
-        }}
-        tone="secondary"
-      />
+      <View style={tablet && styles.paneStateFooter}>
+        <ActionButton
+          label={emptyError ? copy.retry : canPlanOwnRoutes ? (emptyMode === "awaiting-approval" ? copy.changeDraftRoute : copy.planOwnRoute) : copy.refresh}
+          icon={emptyError || !canPlanOwnRoutes ? "refresh" : emptyMode === "awaiting-approval" ? "create-outline" : "add-circle-outline"}
+          onPress={() => {
+            // Changing today's waiting route opens on today; a new plan asks
+            // for its day after the clients.
+            if (!emptyError && canPlanOwnRoutes) navigation.navigate("PlanningBuilder", emptyMode === "awaiting-approval" ? { initialDate: localRouteDateKey() } : undefined)
+            else { setLoading(true); fetchRoute() }
+          }}
+          tone="secondary"
+        />
+      </View>
     </View>
   )
 
@@ -2301,20 +2353,23 @@ export default function RouteScreen() {
             />
             {route && !activeVisit ? <JourneySteps activeStep={currentStep} copy={copy} compact={false} /> : null}
             {route && !activeVisit ? <RouteSummary route={route} done={visitedPoints} total={totalPoints} remaining={remaining} language={i18n.language} copy={copy} /> : null}
-          </View>
-          <View style={styles.tabletBody}>
-            <View style={styles.tabletListPane}>
-              <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
-                <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
-                <View style={styles.sectionHeadingEnd}>
-                  <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
-                </View>
+            {/* The heading belongs above both columns. Keeping it inside
+                the list made its first card start lower than the action. */}
+            <View style={[styles.sectionHeading, styles.tabletSectionHeading]}>
+              <Text style={styles.sectionTitle}>{t("route.pointsSection")}</Text>
+              <View style={styles.sectionHeadingEnd}>
+                <Text style={styles.sectionCount}>{t("route.stopsCount", { count: displayedPoints.length })}</Text>
               </View>
-              {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
+            </View>
+            {changePlanAction ? <View style={styles.planActionRow}>{changePlanAction}</View> : null}
+          </View>
+          <View style={[styles.tabletBody, displayedPoints.length === 0 && styles.tabletEmptyBody]}>
+            <View style={styles.tabletListPane} testID="route-list-pane">
               <View style={styles.tabletListContent}>
                 {displayedPoints.length === 0 ? emptyState : displayedPoints.map((item, position) => (
                   <StopRow
                     key={item.id}
+                    flushTop={position === 0}
                     point={item}
                     index={item.orderIndex}
                     selected={focusPoint?.id === item.id}
@@ -2329,13 +2384,14 @@ export default function RouteScreen() {
                     visiting={visitingPointId === item.id}
                     nearest={nearestPointId === item.id}
                     visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
+                    jointWith={jointByStop.get(item.id)?.join(", ") ?? null}
                   />
                 ))}
               </View>
             </View>
-            <View style={styles.tabletActionPane}>
+            <View style={styles.tabletActionPane} testID="route-action-pane">
               {remaining === 0 && totalPoints > 0 && !activeVisit ? (
-                <View style={styles.completeCard}>
+                <View style={[styles.completeCard, styles.flushTop]}>
                   <Icon name="checkmark-done-circle" size={34} color={fieldTheme.color.success} />
                   <Text style={styles.completeTitle}>{copy.routeComplete}</Text>
                   <Text style={styles.completeBody}>{copy.routeCompleteBody}</Text>
@@ -2404,6 +2460,7 @@ export default function RouteScreen() {
               visiting={visitingPointId === item.id}
               nearest={nearestPointId === item.id}
               visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
+              jointWith={jointByStop.get(item.id)?.join(", ") ?? null}
             />
           </View>
         )}
@@ -2679,6 +2736,9 @@ const styles = themed(() => StyleSheet.create({
     borderRadius: fieldTheme.radius.md,
   },
   stopCardDone: { marginVertical: 0, paddingHorizontal: 0, backgroundColor: "transparent", borderWidth: 0, elevation: 0, shadowOpacity: 0 },
+  // A joint visit stands out in its own colour (owner, 2026-10-30); selected and
+  // visiting come after it and take the edge while they last.
+  stopCardJoint: { borderWidth: 1.5, borderColor: fieldTheme.color.violet, backgroundColor: fieldTheme.color.violetSoft },
   stopRowSelected: { borderWidth: 1.5, borderColor: fieldTheme.color.primary },
   // The stop being visited: an amber edge round its card, raised above the rest.
   stopRowVisiting: { borderWidth: 1.5, borderColor: fieldTheme.color.amber, elevation: 4 },
@@ -2701,6 +2761,18 @@ const styles = themed(() => StyleSheet.create({
   stopStatus: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 },
   stopStatusText: { fontSize: 12.5, fontWeight: "500" },
   stopAddress: { color: fieldTheme.color.inkMuted, fontSize: 13, marginTop: 2 },
+  jointMark: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: fieldTheme.space.xs,
+    paddingHorizontal: fieldTheme.space.sm,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: fieldTheme.color.violetSoft,
+  },
+  jointMarkText: { flexShrink: 1, color: fieldTheme.color.violet, fontSize: 12, fontWeight: "700" },
   stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
   stopVisitFacts: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.lg, marginTop: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
   stopVisitFactText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "500" },
@@ -2711,6 +2783,7 @@ const styles = themed(() => StyleSheet.create({
   completeTitle: { color: fieldTheme.color.success, fontSize: 20, fontWeight: "700" },
   completeBody: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 19, textAlign: "center" },
   emptyState: { alignItems: "center", justifyContent: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.xxl, backgroundColor: fieldTheme.color.surface, borderRadius: fieldTheme.radius.lg, borderWidth: 1, borderColor: fieldTheme.color.border, marginTop: fieldTheme.space.lg },
+  emptyHeading: { alignItems: "center", gap: fieldTheme.space.md },
   emptyIcon: { width: 60, height: 60, borderRadius: 30, alignItems: "center", justifyContent: "center" },
   emptyIconOffline: {},
   emptyIconSlow: {},
@@ -2734,15 +2807,23 @@ const styles = themed(() => StyleSheet.create({
   hintClose: { width: 44, height: 44, marginTop: -10, marginRight: -10, alignItems: "center", justifyContent: "center" },
 
   tabletTop: { paddingHorizontal: fieldTheme.space.xl },
+  flushTop: { marginTop: 0 },
   tabletBody: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.xl, padding: fieldTheme.space.xl, paddingTop: fieldTheme.space.lg },
+  // Empty-route and workday states are peers: the taller content determines
+  // both cards' height; text can grow without a fixed-height clipping trap.
+  tabletEmptyBody: { alignItems: "stretch" },
+  paneStateCard: { flexGrow: 1, minHeight: 0, marginTop: 0, alignItems: "stretch", justifyContent: "flex-start", padding: fieldTheme.space.lg, gap: fieldTheme.space.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary, borderRadius: fieldTheme.radius.lg },
+  paneStateHeading: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
+  paneStateIcon: { width: 22, height: 22, flexShrink: 0 },
+  paneStateTitle: { flex: 1, color: fieldTheme.color.ink, fontSize: 18, lineHeight: 24, fontWeight: "700", textAlign: "left" },
+  paneStateBody: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, textAlign: "left", maxWidth: "100%" },
+  paneStateFooter: { marginTop: "auto" },
   // The stops stand on the ground as cards on the day line, as on the phone;
   // a white pane under white cards hid them (2026-10-18).
-  tabletListPane: { flex: 1, minWidth: 280 },
-  tabletListContent: { paddingTop: 0 },
-  // The heading sat on the pane's edge: «Marşrut nöqtələri» touched the left
-  // border and «2 dayanacaq» the right one.
-  tabletSectionHeading: { marginTop: 0, paddingHorizontal: fieldTheme.space.md },
-  tabletActionPane: { flex: 1, minWidth: 300 },
+  tabletListPane: { flex: 1, minWidth: 0 },
+  tabletListContent: { paddingTop: 0, flexGrow: 1 },
+  tabletSectionHeading: { marginTop: fieldTheme.space.lg, marginBottom: 0, gap: fieldTheme.space.md, flexWrap: "wrap" },
+  tabletActionPane: { flex: 1, minWidth: 0 },
 
   modalLayer: { flex: 1, justifyContent: "flex-end" },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: fieldTheme.color.scrim },

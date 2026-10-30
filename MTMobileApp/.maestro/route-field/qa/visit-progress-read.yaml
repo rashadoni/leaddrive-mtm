@@ -1,0 +1,19 @@
+appId: com.mtmobileapp
+name: Read the existing QA visit and its confirmed photo before going offline
+---
+- assertTrue: ${RF_QA_PREFLIGHT === 'zeytun-owner-selected-qa-v1'}
+- runScript: ../shared/labels.js
+- runScript: ../shared/qa-labels.js
+- runFlow: ../shared/open-fixture-visits.yaml
+- scrollUntilVisible:
+    element:
+      text: ${output.qa.visit.active}
+    direction: UP
+    timeout: 45000
+- assertVisible: ${RF_QA_CUSTOMER_NAME}
+- extendedWaitUntil:
+    visible: ${output.qa.visit.onePhoto}
+    timeout: 30000
+- tapOn: ${output.copy.profileBack}
+- tapOn:
+    id: guide-spot-tab.Today

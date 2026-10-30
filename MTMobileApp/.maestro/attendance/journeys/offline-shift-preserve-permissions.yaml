@@ -1,0 +1,137 @@
+appId: com.leaddrive.attendance
+name: Queue an entire fresh offline shift without changing Android permissions
+# Host gate: verified fictional account, fresh workdate, admission, UID-only
+# offline lease and saved HR baseline. No launchApp or permission writes.
+# The host owns cold restarts and the signed in-place upgrade after this flow.
+---
+- runScript: ../shared/labels.js
+- assertVisible: "Fictional office employee"
+- assertVisible:
+    id: office-workday-offline
+- assertNotVisible:
+    id: office-workday-pending
+- assertVisible: "${output.copy.notStarted}"
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-action
+    enabled: true
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Tətbiq məkanınızdan istifadə edir"
+    commands:
+      - assertVisible: "İndi yox"
+      - tapOn:
+          id: app-choice-button-0
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-break
+    enabled: true
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.paused}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-break
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-break
+    enabled: true
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Tətbiq məkanınızdan istifadə edir"
+    commands:
+      - assertVisible: "İndi yox"
+      - tapOn:
+          id: app-choice-button-0
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.running}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-action
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- tapOn:
+    id: office-workday-action
+    enabled: true
+- assertVisible: "${output.copy.finishTitle}"
+- tapOn:
+    id: app-choice-button-1
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.completed}|Tətbiq məkanınızdan istifadə edir"
+    direction: UP
+    centerElement: true
+    timeout: 60000
+- runFlow:
+    when:
+      visible: "Tətbiq məkanınızdan istifadə edir"
+    commands:
+      - assertVisible: "İndi yox"
+      - tapOn:
+          id: app-choice-button-0
+- scrollUntilVisible:
+    element:
+      text: "${output.copy.completed}"
+    direction: UP
+    centerElement: true
+    timeout: 45000
+- scrollUntilVisible:
+    element:
+      id: office-workday-pending
+    direction: DOWN
+    centerElement: true
+    timeout: 45000
+- assertNotVisible:
+    id: office-workday-return
+- assertNotVisible:
+    id: office-workday-action

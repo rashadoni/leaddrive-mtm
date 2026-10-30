@@ -1,5 +1,6 @@
+import { TimeText as Text } from "../../attendance/ui/TimeText"
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, Pressable, StatusBar, StyleSheet, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { useTranslation } from "react-i18next"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -9,7 +10,7 @@ import { redial } from "../../services/connection-health"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 
-type BlockedAccess = Exclude<RouteFieldAccess, "enabled" | "legacy">
+type BlockedAccess = Exclude<RouteFieldAccess, "enabled" | "legacy" | "offline-enabled">
 
 function copyKey(access: BlockedAccess): "checking" | "disabled" | "unavailable" | "offline" {
   if (access === "pending") return "checking"

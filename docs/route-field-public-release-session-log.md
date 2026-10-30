@@ -1,0 +1,21 @@
+# Route & Field — isolated public release
+
+## 2026-10-24T15:17:51.335045+00:00 — resume and release scope
+
+User says «продолжай» after explanation that other devices receive1795 while native Tasks design is only QA1809. Continue the previously authorized RF implementation/publication after checks. Root /mnt/HC_Volume_106454338/codex-alt-data/worktrees/mtm-route-field-public-release, branch codex/route-field-public-release, origin rashadoni/leaddrive-mtm, base48e873551e0c95da8b2d829fbd3f48779307bdc9 verified currentorigin/main. Release route: reviewedmain -> hostedBuildAndroidAPK -> GitHub main release -> CRM /field. No CRM server change.
+
+The old combined PR201 and worktree are retained. Its genuine Time24hFAIL remains; no Time public APK or acceptance override. This isolated branch supersedes the combined release dependency for Field only by omitting the Time changes and retaining currentmain auth/outbox/attendance/build flavor. Select only MTMobileApp changes from RF commits 5d0ef98, f92688c, 7711a61, 93f6168, 2d0ef91, 27dd458, 9f7d58e, 3649f5f. Review exact path and dependency differences, targeted tests sequentially, hosted full Jest/TS/signing, physical candidate smoke, then normalmain release and public update smoke. No business-cycle rerun or account input. A true-landscape Tasks continuation is currently running on QA1809 from the old tree; it does not qualify an unbuilt isolated artifact.
+
+Initial status: cleanmain worktree created; isolated changes and gates NOT RUN.
+
+Selected eight RF patches applied cleanly, excluding their historical journal changes; no shared Time source was copied. Dependency review and all isolated-tree gates pending.
+
+Dependency review: all isolated production JS paths byte-match the already-checked integrated QA1809 source. Android build.gradle intentionally retains main without Time flavor, with only RF versionName3.11.54. Carried two test-only follow-ups: unmount rendered task trees after each case, and scroll to the actual saved month day before asserting cells. Added explicit landscape Maestro wrapper; requested rotation alone is never acceptance evidence. Existingmain auth/bootstrap/outbox/sync/attendance/MainActivity unchanged. Newpackage/CI/native still pending.
+
+2026-10-24T15:24:12.536731+00:00 — QA1809 true-landscape continuation PASS68.26s with4actual2316x1080 screenshots and all6cleanup checks true. Source/signed package unchanged; no task mutations, samebackend6a755. Visual review discovered the first task below the oversized list header despite functional PASS. Originalreceipt preserved; docs/evidence/route-field-tasks-landscape-review-20261024.json records finding. Used layout/impeccable with existingprojectcontext; isolated TaskScreen now uses a compact short-window heading/subtitle and inline filters/order at width>=720/font<=1.4, full48dp controls, oneFlatList, unchanged portrait and all actions. No new feature scope. Flow now captures initialoverview and scrolls to actualtitle rather than a barely visible row boundary.
+
+Isolated-tree targeted17suites209checks PASS15.446s. YAMLparse PASS. Targetedlint result recorded in following checkpoint. FullJest/TypeScript/Android builds NOT RUN locally perContabohostcontract; hosted gates required before release. Newisolatedartifact/native NOT RUN.
+
+2026-10-24T15:26:01.314371+00:00 — TargetedTS/TSXlint0errors20warnings, all20exactly match currentmain rule/message baseline (Route12,Tasks1,Today7; line-number shifts normalized). Initial broad command included an.mjs file in the ReactNativeESLintparser and failed on existingimport.meta; that tool mismatch is preserved, not called a product defect. Release checker Node syntax PASS; its unit tests are part of209PASS. No lint rules disabled or baseline changes. MaestroYAML parse and gitdiffcheckPASS.
+
+2026-10-24T15:26:38.156525+00:00 — Correction to preceding lint checkpoint: the first baseline-comparison command stopped on2existingmain Today hook errors before completing comparison/Node syntax; the preceding claimed completed comparison/syntax was premature. Follow-up completed: isolatedTS/TSX0errors20warnings; warning rule/message multiset exactly matchesmain20warnings, which additionally has2hookerrors absent from isolatedsource. Node syntax now actuallyPASS. All initial command outputs retained, no product/lintconfig change required.
