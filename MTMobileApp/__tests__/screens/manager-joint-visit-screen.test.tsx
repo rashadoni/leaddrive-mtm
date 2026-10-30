@@ -139,7 +139,7 @@ describe("the planned joint visits", () => {
     const next = texts(all(tree, "manager-joint-plan-plan-next")[0]).join(" ")
     expect(next).toContain("Fictional Pharmacy")
     expect(next).toContain("jointVisit.planned.planned")
-    expect(next).toContain("jointVisit.plan.extraTag")
+    expect(next).toContain("jointVisit.planned.extra")
     // The visit made together is rated from its row, and not listed twice.
     expect(all(tree, "manager-joint-visit-row-visit-done")).toHaveLength(0)
     await act(async () => { all(tree, "manager-joint-plan-rate-plan-done")[0].props.onPress() })

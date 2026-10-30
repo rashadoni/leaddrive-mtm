@@ -368,7 +368,7 @@ function PlannedRow({
         <Text style={styles.visitTitle} numberOfLines={2}>{who}</Text>
         {where ? <Text style={styles.visitMeta} numberOfLines={1}>{where}</Text> : null}
         <Text style={styles.visitMeta} numberOfLines={1}>
-          {plan.source === "EXTRA" ? `${plan.agent.name} · ${t("jointVisit.plan.extraTag")}` : plan.agent.name}
+          {plan.source === "EXTRA" ? `${plan.agent.name} · ${t("jointVisit.planned.extra")}` : plan.agent.name}
         </Text>
         <View style={styles.stageRow}>
           {stage === "atClient" ? <View style={styles.liveDot} /> : null}
