@@ -981,7 +981,7 @@ function StopRow({
       </View>
       {/* A stop still ahead is a white card on the line; a stop behind the
           agent is a quiet line of text, so the eye goes to what is left. */}
-      <View style={[styles.stopCard, done && styles.stopCardDone, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, flushTop && styles.flushTop]}>
+      <View style={[styles.stopCard, done && styles.stopCardDone, Boolean(jointWith) && !done && styles.stopCardJoint, selected && styles.stopRowSelected, visiting && styles.stopRowVisiting, flushTop && styles.flushTop]}>
         <View style={styles.stopCopy}>
           <View style={styles.stopTitleRow}>
             <Text style={[styles.stopName, done && styles.stopNameDone, visiting && styles.stopNameVisiting]} numberOfLines={2}>
@@ -996,7 +996,7 @@ function StopRow({
           {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
           {jointWith ? (
             <View style={styles.jointMark} testID={`route-joint-mark-${point.id}`}>
-              <Icon name="people" size={15} color={fieldTheme.color.primaryStrong} />
+              <Icon name="people" size={15} color={fieldTheme.color.violet} />
               <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointWith })}</Text>
             </View>
           ) : null}
@@ -2296,7 +2296,7 @@ export default function RouteScreen() {
                 {/* A waiting route still says where the manager goes with him (live check 2026-10-30). */}
                 {jointByStop.get(stop.key) ? (
                   <View style={styles.jointMark} testID={`route-awaiting-joint-mark-${stop.key}`}>
-                    <Icon name="people" size={15} color={fieldTheme.color.primaryStrong} />
+                    <Icon name="people" size={15} color={fieldTheme.color.violet} />
                     <Text style={styles.jointMarkText} numberOfLines={1}>{i18next.t("jointVisit.routeMark", { name: jointByStop.get(stop.key)!.join(", ") })}</Text>
                   </View>
                 ) : null}
@@ -2725,6 +2725,9 @@ const styles = themed(() => StyleSheet.create({
     borderRadius: fieldTheme.radius.md,
   },
   stopCardDone: { marginVertical: 0, paddingHorizontal: 0, backgroundColor: "transparent", borderWidth: 0, elevation: 0, shadowOpacity: 0 },
+  // A joint visit stands out in its own colour (owner, 2026-10-30); selected and
+  // visiting come after it and take the edge while they last.
+  stopCardJoint: { borderWidth: 1.5, borderColor: fieldTheme.color.violet, backgroundColor: fieldTheme.color.violetSoft },
   stopRowSelected: { borderWidth: 1.5, borderColor: fieldTheme.color.primary },
   // The stop being visited: an amber edge round its card, raised above the rest.
   stopRowVisiting: { borderWidth: 1.5, borderColor: fieldTheme.color.amber, elevation: 4 },
@@ -2756,9 +2759,9 @@ const styles = themed(() => StyleSheet.create({
     paddingHorizontal: fieldTheme.space.sm,
     paddingVertical: 3,
     borderRadius: 10,
-    backgroundColor: fieldTheme.color.primarySoft,
+    backgroundColor: fieldTheme.color.violetSoft,
   },
-  jointMarkText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "700" },
+  jointMarkText: { flexShrink: 1, color: fieldTheme.color.violet, fontSize: 12, fontWeight: "700" },
   stopMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
   stopVisitFacts: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.lg, marginTop: fieldTheme.space.sm, paddingTop: fieldTheme.space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
   stopVisitFactText: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "500" },
