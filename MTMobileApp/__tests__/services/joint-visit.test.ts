@@ -95,8 +95,8 @@ describe("what the manager's phone reads of a joint visit", () => {
   })
 
   it("reads an empty or broken answer as no session and no visits", () => {
-    expect(toJointVisitState(null)).toEqual({ session: null, visits: [] })
-    expect(toJointVisitState({ data: { session: { id: "s" }, visits: "x" } })).toEqual({ session: null, visits: [] })
+    expect(toJointVisitState(null)).toEqual({ session: null, visits: [], plans: [], today: "" })
+    expect(toJointVisitState({ data: { session: { id: "s" }, visits: "x", plans: "x" } })).toEqual({ session: null, visits: [], plans: [], today: "" })
   })
 })
 
