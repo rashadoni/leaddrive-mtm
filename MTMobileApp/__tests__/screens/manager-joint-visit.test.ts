@@ -130,6 +130,8 @@ describe("joint visit in the app", () => {
     expect(jointScreen).toContain("await managerApi.cancelJointPlan(row.id)")
     expect(routeScreen).toContain('jointWith={jointByStop.get(item.id)?.join(", ") ?? null}')
     expect(routeScreen).toContain('i18next.t("jointVisit.routeMark", { name: jointWith })')
+    // A route still waiting for approval lists its stops apart; the mark is there too.
+    expect(routeScreen).toContain('testID={`route-awaiting-joint-mark-${stop.key}`}')
   })
 })
 
