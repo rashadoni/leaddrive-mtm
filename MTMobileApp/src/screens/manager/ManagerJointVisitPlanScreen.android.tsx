@@ -126,7 +126,9 @@ export default function ManagerJointVisitPlanScreen() {
     try {
       await managerApi.saveJointPlans(planBody({ agentId, date, stopIds: [...ticked], extras }))
       notify({ tone: "success", title: t("jointVisit.plan.saved"), message: t("jointVisit.plan.savedBody", { name: agent?.name ?? "" }) })
-      navigation.navigate("ManagerJointVisit")
+      // Back to the list, not on top of this screen: «Back» from there must not
+      // land on a planner still holding the saved choice (live check 2026-10-30).
+      navigation.popTo("ManagerJointVisit")
     } catch (error) {
       const reason = planFailure(error)
       if (reason !== "session") notify({ tone: "error", title: t(`jointVisit.plan.errors.${reason}`) })

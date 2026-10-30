@@ -123,6 +123,9 @@ describe("joint visit in the app", () => {
     expect(entry).not.toContain("startJointVisit")
     expect(planScreen).toContain("await managerApi.saveJointPlans(planBody({ agentId, date, stopIds: [...ticked], extras }))")
     expect(planScreen).toContain('testID="joint-plan-add-extra"')
+    // Saved: back to the list, never a second list on top of the planner.
+    expect(planScreen).toContain('navigation.popTo("ManagerJointVisit")')
+    expect(planScreen).not.toContain('navigation.navigate("ManagerJointVisit")')
     expect(jointScreen).toContain('testID="manager-joint-visit-plan"')
     expect(jointScreen).toContain("await managerApi.cancelJointPlan(row.id)")
     expect(routeScreen).toContain('jointWith={jointByStop.get(item.id)?.join(", ") ?? null}')
