@@ -148,7 +148,8 @@ describe("the planned joint visits", () => {
     // The visit made together is rated from its row, and not listed twice.
     expect(all(tree, "manager-joint-visit-row-visit-done")).toHaveLength(0)
     await act(async () => { all(tree, "manager-joint-plan-rate-plan-done")[0].props.onPress() })
-    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-done" }) })
+    // The planned row opens the same sheet as the session row: with the company's questions.
+    expect(mockNavigate).toHaveBeenCalledWith("ManagerVisitEvaluation", { visit: expect.objectContaining({ id: "visit-done" }), questions: DEFAULT_EVALUATION_QUESTIONS })
 
     await act(async () => { all(tree, "manager-joint-plan-cancel-plan-next")[0].props.onPress() })
     // The question, then the request: a few turns of the promise queue.
