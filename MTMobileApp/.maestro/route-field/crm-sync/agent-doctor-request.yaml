@@ -1,0 +1,43 @@
+appId: com.mtmobileapp
+name: The agent asks for a new doctor; the manager's phone and the CRM then see it
+---
+# Writes one new-doctor request named RF_CRM_MARK at clinic RF_CRM_MARK. The
+# manager decides it (agent-bell then reads the answer); nothing else changes.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && /^RF-E2E-/.test(RF_CRM_MARK)}
+- runScript: doctor-labels.js
+- runFlow: agent-home.yaml
+- tapOn:
+    id: guide-spot-tab.Clients
+- scrollUntilVisible:
+    element:
+      text: ${output.doctor.add}
+    direction: UP
+    timeout: 15000
+- tapOn: ${output.doctor.add}
+- extendedWaitUntil:
+    visible: ${output.doctor.title}
+    timeout: 15000
+# The clinic first, while no keyboard covers the lower fields; then the
+# name at the top. A plain screen, so hideKeyboard (Back) only closes the IME.
+- tapOn:
+    below: ${output.doctor.clinic}
+    index: 0
+- inputText: ${RF_CRM_MARK} klinika
+- hideKeyboard
+- tapOn:
+    below: ${output.doctor.name}
+    index: 0
+- inputText: ${RF_CRM_MARK}
+- hideKeyboard
+- assertVisible: ${output.doctor.title}
+- scrollUntilVisible:
+    element:
+      text: ${output.doctor.submit}
+    direction: DOWN
+    timeout: 15000
+- tapOn: ${output.doctor.submit}
+- extendedWaitUntil:
+    visible: ${output.doctor.sent}
+    timeout: 30000
+- runFlow: agent-home.yaml
