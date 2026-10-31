@@ -60,6 +60,7 @@ jest.mock("../../src/components/StatusBarBand", () => () => null)
 import AttendanceQrScanner from "../../src/components/AttendanceQrScanner"
 import {guardAttendanceQr} from "../../src/services/attendance-qr"
 import AttendanceWorkdayScreen from "../../src/screens/attendance/AttendanceWorkdayScreen"
+import StaleWorkdayCloseSheet from "../../src/components/StaleWorkdayCloseSheet"
 import AttendanceInboxScreen from "../../src/screens/attendance/AttendanceInboxScreen"
 import ProfileScreen from "../../src/screens/profile/ProfileScreen"
 import { returnToClosedWorkday } from "../../src/services/workday-return"
@@ -127,8 +128,10 @@ it.each(["ru","az","en"])("shows a day left open since an earlier date (%s) as o
   expect(node(tree, "office-workday-correct")).toBeUndefined()
   expect(text(tree)).not.toContain("todayV2.")
   expect(text(tree)).toContain(mobileResources[language as "ru"|"az"|"en"].todayV2.staleCloseDay)
+  // The sheet's own window needs safe-area metrics this renderer has not got; its visibility is the contract.
+  expect(tree.root.findByType(StaleWorkdayCloseSheet).props.visible).toBe(false)
   await press(tree, "today-stale-close-day")
-  expect(node(tree, "today-stale-close-sheet")).toBeDefined()
+  expect(tree.root.findByType(StaleWorkdayCloseSheet).props.visible).toBe(true)
   expect(changeAttendanceWorkday).not.toHaveBeenCalled()
 })
 it("reads the day again once the forgotten day's finish is approved", async () => {
