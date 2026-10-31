@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import { api } from "../services/api"
-import { i18n } from "../i18n"
+// The i18next instance itself: ../i18n pulls a native module into every store test.
+import i18next from "i18next"
 import { getOfflineScope } from "../services/offline-scope"
 import { forgetAttendanceOffline, rememberAttendanceOnline, restoreAttendanceOffline } from '../services/attendance-offline'
 import { useSyncStatusStore } from './sync-status'
@@ -83,7 +84,7 @@ export const useBootstrapStore = create<BootstrapState>((set, get) => ({
       if (!current()) return "unavailable"
       if (res?.success && res.data) {
         // The server writes this agent's notices in the app's language.
-        void api.reportAppLanguage?.(i18n.language)
+        void api.reportAppLanguage?.(i18next.language)
         const data = toBootstrap(res.data)
         const binding = await offlineBinding(scope)
         if (!current()) return "unavailable"
