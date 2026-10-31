@@ -35,6 +35,7 @@ import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildEmployeeDayDocument, employeeDayHasMap } from "./employee-day-map"
+import { MOVEMENT_COLORS } from "../maps/movement-icons"
 import ManagerGiveTaskSheet from "./ManagerGiveTaskSheet.android"
 
 /**
@@ -149,6 +150,15 @@ export default function ManagerEmployeeScreen() {
     mapLoading: t("managerShell.liveMapLoading"),
     mapUnavailable: t("managerShell.liveMapTilesUnavailable"),
     mapAttribution: t("managerShell.liveMapAttribution"),
+    // Owner 2026-11-01: car / on foot / standing, arrows, and the day played by the clock.
+    replay: {
+      play: t("managerEmployee.replayPlay"),
+      pause: t("managerEmployee.replayPause"),
+      skipStill: t("managerEmployee.replaySkipStill"),
+      time: t("managerEmployee.replayTime"),
+      modes: Object.fromEntries(["DRIVE", "WALK", "STAY", "BREAK", "GAP"].map((mode) => [mode, t(`managerShell.movement.${mode}`)])),
+      compass: Object.fromEntries(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].map((point) => [point, t(`managerShell.compass.${point}`)])),
+    },
   }, { apiKey: tileApiKey }) : null), [day, language, t, tileApiKey])
   const tileOrigin = tileApiKey ? api.serverOrigin() : null
   const webViewSource = useMemo(() => (mapDocument ? { html: mapDocument, baseUrl: tileOrigin ? `${tileOrigin}/` : "about:blank" } : null), [mapDocument, tileOrigin])
@@ -303,7 +313,8 @@ export default function ManagerEmployeeScreen() {
               )}
               {webViewSource && !mapFailed ? (
                 <View style={styles.legend}>
-                  <Text style={styles.legendText}><Text style={{ color: fieldTheme.color.blue }}>━ </Text>{t("managerEmployee.legendTrack")}</Text>
+                  <Text style={styles.legendText}><Text style={{ color: MOVEMENT_COLORS.DRIVE }}>━ </Text>{t("managerEmployee.legendDrive")}</Text>
+                  <Text style={styles.legendText}><Text style={{ color: MOVEMENT_COLORS.WALK }}>┈ </Text>{t("managerEmployee.legendWalk")}</Text>
                   <Text style={styles.legendText}><Text style={{ color: fieldTheme.color.primary }}>┅ </Text>{t("managerEmployee.legendAhead")}</Text>
                   {isToday ? <Text style={styles.legendText}><Text style={{ color: fieldTheme.color.blue }}>● </Text>{t("managerEmployee.mapNow")}</Text> : null}
                 </View>
@@ -455,7 +466,8 @@ const styles = themed(() => StyleSheet.create({
   dayLabel: { flex: 1, textAlign: "center", color: fieldTheme.color.ink, fontSize: 16, fontWeight: "900" },
   todayChip: { minHeight: LAYOUT_TOUCH_TARGETS.compact, borderRadius: fieldTheme.radius.pill, borderWidth: 1.5, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface, paddingHorizontal: 14, justifyContent: "center" },
   todayChipText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "900" },
-  map: { height: 240, borderRadius: fieldTheme.radius.md, overflow: "hidden", borderWidth: 1, borderColor: fieldTheme.color.border },
+  // 240 of map and the replay's bar under it.
+  map: { height: 288, borderRadius: fieldTheme.radius.md, overflow: "hidden", borderWidth: 1, borderColor: fieldTheme.color.border },
   webView: { flex: 1, backgroundColor: fieldTheme.color.surfaceStrong },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: fieldTheme.space.md, marginTop: -4 },
   legendText: { color: fieldTheme.color.inkMuted, fontSize: 12 },

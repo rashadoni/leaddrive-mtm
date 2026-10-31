@@ -21,6 +21,13 @@ export interface ManagerTeamAgent {
   pushReady?: boolean
 }
 
+/** How the server reads his live point: car, on foot or standing, and which way (course from north). */
+export type ManagerMovementMode = "DRIVE" | "WALK" | "STAY"
+export interface ManagerMovement {
+  mode: ManagerMovementMode
+  course: number | null
+}
+
 export interface ManagerLocationEvidence {
   agentId: string
   latitude: number
@@ -30,6 +37,8 @@ export interface ManagerLocationEvidence {
   recordedAt: string | null
   lastSeenAt: string | null
   isOnline: boolean | null
+  /** Absent from an older server, and for any point that is not live. */
+  movement?: ManagerMovement | null
 }
 
 export interface ManagerAgentTruth {
@@ -96,8 +105,17 @@ export function normalizeManagerLocations(value: unknown): ManagerLocationEviden
       recordedAt: stringOrNull(source.recordedAt),
       lastSeenAt: stringOrNull(row.lastSeenAt),
       isOnline: typeof row.isOnline === "boolean" ? row.isOnline : null,
+      movement: managerMovement(row.movement),
     }]
   })
+}
+
+function managerMovement(value: unknown): ManagerMovement | null {
+  const raw = record(value)
+  const mode = raw.mode
+  if (mode !== "DRIVE" && mode !== "WALK" && mode !== "STAY") return null
+  const course = finiteNumber(raw.course)
+  return { mode, course: mode !== "STAY" && course != null && course >= 0 && course <= 360 ? course : null }
 }
 
 function latestTimestamp(left: string | null | undefined, right: string | null | undefined, nowMs: number) {
