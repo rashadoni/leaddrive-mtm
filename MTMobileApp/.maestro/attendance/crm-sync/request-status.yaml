@@ -1,0 +1,52 @@
+appId: com.leaddrive.attendance
+name: The marked request shows the status (and HR's reply) the CRM gave it
+---
+# TIME_EXPECT: PENDING | APPROVED | REJECTED | CANCELLED. TIME_REPLY, when set,
+# is HR's comment, shown under the request.
+- assertTrue: ${/^RF-E2E-/.test(TIME_CRM_MARK) && /^(PENDING|APPROVED|REJECTED|CANCELLED)$/.test(TIME_EXPECT)}
+- runScript: labels.js
+- tapOn:
+    id: time-tab-OwnRequests
+# The tab keeps its scroll position: look for «Yenilə» upwards.
+- scrollUntilVisible:
+    element:
+      id: attendance-refresh
+    direction: UP
+    timeout: 30000
+- tapOn:
+    id: attendance-filter-all
+    optional: true
+- repeat:
+    while:
+      notVisible:
+        text: ${output.time[TIME_EXPECT]}
+        above: ${TIME_CRM_MARK}
+    times: 6
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: attendance-refresh
+          direction: UP
+          timeout: 20000
+      - tapOn:
+          id: attendance-refresh
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - scrollUntilVisible:
+          element:
+            text: ${TIME_CRM_MARK}
+          direction: DOWN
+          timeout: 20000
+- assertVisible:
+    text: ${output.time[TIME_EXPECT]}
+    above: ${TIME_CRM_MARK}
+- runFlow:
+    when:
+      true: ${typeof TIME_REPLY !== 'undefined' && /^RF-E2E-/.test(TIME_REPLY)}
+    commands:
+      - scrollUntilVisible:
+          element:
+            # Shown as «Rəhbərin cavabı: <reply>».
+            text: ${'.*' + TIME_REPLY}
+          direction: DOWN
+          timeout: 20000

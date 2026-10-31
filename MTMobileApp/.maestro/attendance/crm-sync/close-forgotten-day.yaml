@@ -1,0 +1,63 @@
+appId: com.leaddrive.attendance
+name: A day left open since an earlier date is closed by a time-correction request
+---
+# Writes one TIME_CORRECTION request: start as recorded, finish TIME_END,
+# reason TIME_CRM_MARK. Where the company approves «close a forgotten day»
+# at once (attendanceAutoCloseForgottenDay), it comes back APPROVED and the
+# day closes; otherwise it waits for HR (TIME_EXPECT = PENDING).
+- assertTrue: ${/^RF-E2E-/.test(TIME_CRM_MARK) && /^(PENDING|APPROVED)$/.test(TIME_EXPECT)}
+- runFlow: home.yaml
+- assertVisible: ${output.time.running}
+- tapOn:
+    id: office-workday-correct
+# A form left open earlier is not overwritten: the list offers the
+# correction separately.
+- tapOn:
+    id: attendance-open-correction
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: attendance-form
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: attendance-endTime
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: attendance-endTime
+- runFlow:
+    file: pick-time.yaml
+    env:
+      PICK_TIME: ${TIME_END}
+- scrollUntilVisible:
+    element:
+      id: attendance-reason
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: attendance-reason
+- inputText: ${TIME_CRM_MARK}
+# No hideKeyboard: it is Back, and Back closes the request form. A tap on
+# the field's label closes the keyboard instead.
+- waitForAnimationToEnd:
+    timeout: 3000
+# The field itself carries the same accessibility label: tap the text above it.
+- tapOn:
+    text: ${output.time.reason}
+    above:
+      id: attendance-reason
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: attendance-submit
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: attendance-submit
+- extendedWaitUntil:
+    notVisible:
+      id: attendance-form
+    timeout: 60000
+- runFlow: request-status.yaml

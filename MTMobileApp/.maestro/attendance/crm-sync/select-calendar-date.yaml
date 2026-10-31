@@ -1,0 +1,30 @@
+appId: com.leaddrive.attendance
+# Caller opens a fresh date field and supplies a civil date and its month offset.
+# The harness derives the offset from the company's day, never the host timezone.
+---
+- assertTrue: ${/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/.test(TARGET_DATE)}
+- assertTrue: ${String(parseInt(MONTH_OFFSET, 10)) === String(MONTH_OFFSET) && Math.abs(parseInt(MONTH_OFFSET, 10)) <= 12}
+- repeat:
+    times: ${Math.abs(parseInt(MONTH_OFFSET, 10))}
+    commands:
+      - runFlow:
+          when:
+            true: ${parseInt(MONTH_OFFSET, 10) < 0}
+          commands:
+            - tapOn:
+                id: calendar-previous
+      - runFlow:
+          when:
+            true: ${parseInt(MONTH_OFFSET, 10) > 0}
+          commands:
+            - tapOn:
+                id: calendar-next
+- assertVisible:
+    id: ${'calendar-month-' + TARGET_DATE.slice(0, 7)}
+- scrollUntilVisible:
+    element:
+      id: ${'calendar-' + TARGET_DATE}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: ${'calendar-' + TARGET_DATE}
