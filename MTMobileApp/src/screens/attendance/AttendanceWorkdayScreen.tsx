@@ -17,6 +17,12 @@ import AttendanceLocationConsentCard from "../../components/AttendanceLocationCo
 import AttendanceMarkRecoveryCard from '../../components/AttendanceMarkRecoveryCard'
 import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery'
 import { canReturnToWorkday, returnToClosedWorkday } from '../../services/workday-return'
+import StaleWorkdayCard from '../../components/StaleWorkdayCard'
+import StaleWorkdayCloseSheet from '../../components/StaleWorkdayCloseSheet'
+import { staleWorkdayCorrection, staleWorkdayFinishSent, workdayOpenSinceEarlierDay, type StaleWorkdayFinishSent } from '../../services/stale-workday'
+import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from '../../services/attendance-requests'
+import type { AttendanceInput } from '../../services/attendance-contract'
+import { runMobileSync } from '../../services/sync-engine'
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import Icon from "react-native-vector-icons/Ionicons"
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native"
@@ -76,6 +82,17 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
   const returnable = !offline && !finishing && !installation.blocked && completed && canReturnToWorkday(bootstrap?.policies) && !refused
   const open = !!current && !finishing
   const paused = open && current?.paused
+  // A day left open since an earlier date is not "going on" (owner,
+  // 2026-10-18, on the field app): a red card and «Günü bağla», which asks
+  // only for the finish time and sends it as a time correction. Before this
+  // the office shell showed such a day as running, three days on, with
+  // «Fasilə» and a finish that would have written every hour since into it.
+  const staleDay = open && current ? workdayOpenSinceEarlierDay(current.startedAt, new Date(), bootstrap?.timezone ?? null) : null
+  const finishTimeRequestable = bootstrap?.policies.agentPermissions?.attendanceRequests === true
+  const [finishTimeSent, setFinishTimeSent] = useState<{ key: string; day: string; finish: StaleWorkdayFinishSent | null } | null>(null)
+  const staleSentFinish = staleDay !== null && finishTimeSent?.key === key && finishTimeSent.day === staleDay ? finishTimeSent.finish : null
+  const [closeSheetOpen, setCloseSheetOpen] = useState(false)
+  const [closeSending, setCloseSending] = useState(false), [closeFailed, setCloseFailed] = useState(false)
   const qrReason = !qr.available ? "attendanceQr.notEnabled" : completed ? "attendanceQr.dayCompleted"
     : paused ? "attendanceQr.breakPrivacy" : installation.blocked ? "attendanceQr.installationRequired"
     : recovery.operation || conflict ? "attendanceQr.resolveMark" : null
@@ -94,6 +111,45 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
     finally { if (mounted.current) setRefreshing(false) }
   }, [loadQueue, reloadDeliveries])
   useAutoRefresh(() => { void refresh() })
+  // The finish already sent for that day: the server's list, the saved one
+  // offline, and this phone's queue. Approved — at once where the company
+  // allows it — means closed on the server: read the day again.
+  const readFinishTimeSent = useCallback(async () => {
+    if (!staleDay || !finishTimeRequestable) return
+    let scope: string
+    try { scope = attendanceScope() } catch { return }
+    const queued = await attendanceQueued(scope).catch(() => [])
+    let requests = (await cachedAttendanceRequests(scope).catch(() => null))?.items ?? []
+    try { requests = (await loadAttendanceRequests(scope)).items } catch { /* offline: the saved list answers */ }
+    const finish = staleWorkdayFinishSent(staleDay, requests, queued)
+    if (mounted.current) setFinishTimeSent({ key, day: staleDay, finish })
+    if (finish?.approved) { await refreshAttendanceSession(); await loadQueue() }
+  }, [finishTimeRequestable, key, loadQueue, staleDay])
+  useEffect(() => { readFinishTimeSent().catch(() => {}) }, [readFinishTimeSent])
+  useAutoRefresh(() => { readFinishTimeSent().catch(() => {}) })
+  // Written to the phone's queue first, so no signal is needed to send it.
+  const sendFinishTime = useCallback(async (input: AttendanceInput) => {
+    if (!staleDay || closeSending) return
+    const day = staleDay
+    setCloseSending(true); setCloseFailed(false)
+    try {
+      await queueAttendanceRequest(attendanceScope(), input, [])
+      if (mounted.current) { setFinishTimeSent({ key, day, finish: { finish: input.endTime ?? '', approved: false } }); setCloseSheetOpen(false) }
+      runMobileSync().then(() => readFinishTimeSent()).catch(() => {})
+    } catch { if (mounted.current) setCloseFailed(true) }
+    finally { if (mounted.current) setCloseSending(false) }
+  }, [closeSending, key, readFinishTimeSent, staleDay])
+  const pendingFinishRequest = staleSentFinish?.pending ?? null
+  const cancelSentFinish = useCallback(async () => {
+    if (!pendingFinishRequest || closeSending) return
+    const confirmed = await ask({ title: t('attendanceRequests.cancelTitle'), message: t('attendanceRequests.cancelBody'), tone: 'warning', dismissValue: false,
+      buttons: [{ text: t('attendanceRequests.keep'), value: false, style: 'cancel' }, { text: t('attendanceRequests.cancel'), value: true, style: 'destructive' }] })
+    if (!confirmed) return
+    setCloseSending(true); setCloseFailed(false)
+    try { await queueAttendanceCancellation(attendanceScope(), pendingFinishRequest); await runMobileSync(); await readFinishTimeSent() }
+    catch { if (mounted.current) setCloseFailed(true) }
+    finally { if (mounted.current) setCloseSending(false) }
+  }, [closeSending, pendingFinishRequest, readFinishTimeSent, t])
   useEffect(() => { mounted.current = true; if (allowed) void loadQueue().catch(() => {}); else setOperations([]); return () => { mounted.current = false } }, [allowed, key, loadQueue])
   async function change(action: "start" | "end" | "pause" | "resume", qrToken?: string) {
     if (busyRef.current || !allowed || !hydrated || conflict || completed || recovery.operation || (installation.blocked && (action === 'start' || action === 'end'))) return
@@ -173,10 +229,20 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
         <Text style={styles.brand}>{compact ? 'LeadDrive Time' : t("officeAttendance.myAttendance")}</Text>
         <Text style={compact ? compactStyles.identity : styles.title}>{compact ? (allowed ? agent?.name : '') : t("officeAttendance.workday")}</Text>
       </View>{managerShell ? <NotificationBell /> : null}</View>}</View>
-    {allowed && !compact && qrAction}
+    {allowed && !compact && !staleDay && qrAction}
     <ScrollView contentContainerStyle={[styles.content, compact && compactStyles.content, { paddingBottom: bottom }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       {!allowed ? <Text testID="office-workday-unavailable" style={styles.muted}>{t("officeAttendance.unavailable")}</Text> : <>
-        <View style={[compact ? compactStyles.day : styles.card, rhythm && paused && rhythmCompactStyles.pausedDay]}>
+        {staleDay && current ? <StaleWorkdayCard
+          day={staleDay}
+          startedAt={current.startedAt}
+          timezone={bootstrap?.timezone}
+          mode={!finishTimeRequestable ? 'closeOnly' : staleSentFinish?.approved ? 'approved' : staleSentFinish ? 'sent' : 'request'}
+          sentFinish={staleSentFinish?.finish ?? null}
+          busy={busy || !hydrated || closeSending}
+          error={closeFailed || error ? t(installationRefusal ? `attendanceLocation.${installationRefusal}Body` : 'officeAttendance.failed') : null}
+          onCloseDay={finishTimeRequestable ? () => { setCloseFailed(false); setCloseSheetOpen(true) } : () => void change('end')}
+          onCancelSent={pendingFinishRequest ? () => { cancelSentFinish().catch(() => {}) } : undefined}
+        /> : <View style={[compact ? compactStyles.day : styles.card, rhythm && paused && rhythmCompactStyles.pausedDay]}>
           {compact && !rhythm && <Text style={compactStyles.title}>{t('officeAttendance.workday')}</Text>}
           {rhythm ? <View style={rhythmCompactStyles.statusRow}>
             <View style={[rhythmCompactStyles.statusDot, paused && rhythmCompactStyles.pausedDot, !open && !completed && rhythmCompactStyles.idleDot]} />
@@ -208,7 +274,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
             {returnable && <Pressable testID="office-workday-return" accessibilityRole="button" disabled={busy || !hydrated || pending} onPress={() => void returnToWork()} style={[styles.button, (busy || !hydrated || pending) && styles.disabled]}><Text style={styles.buttonText}>{t('officeAttendance.returnToWork')}</Text></Pressable>}
           </View>
           {!compact && <><Text style={styles.muted}>{t('officeAttendance.closeHint')}</Text>{correction}</>}
-        </View>
+        </View>}
         {rhythm && <TimeDayHistory rows={deliveries.rows} failed={deliveries.failed} workdayId={current?.workdayId ?? (completed ? bootstrap?.workday?.id : undefined)} timezone={bootstrap?.timezone} />}
         {compact ? <View key={detailKey} style={compactStyles.details}>
           <AttendanceMarkRecoveryCard installationBlocked={installation.blocked} operation={recovery.operation}
@@ -222,7 +288,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
           </AttendanceDisclosure>
           <AttendanceInstallationCard compact installation={installation} />
           <AttendanceLocationConsentCard compact hideUntilEnabled={managerShell} />
-          {correction}
+          {!staleDay && correction}
           <AttendanceDisclosure title={t('attendanceCompact.help')} icon="information-circle-outline" controlID="attendance-help-disclosure">
             <Text style={styles.muted}>{t('officeAttendance.closeHint')}</Text>
             {managerShell ? null : <Text style={styles.muted}>{t("officeAttendance.noTracking")}</Text>}
@@ -247,6 +313,16 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
         </>}
       </>}
     </ScrollView>
+    {staleDay && current ? <StaleWorkdayCloseSheet
+      visible={closeSheetOpen}
+      correction={staleWorkdayCorrection(current.startedAt, bootstrap?.timezone ?? null)}
+      timezone={bootstrap?.timezone}
+      lastMarkAt={current.lastMarkAt ?? null}
+      sending={closeSending}
+      failed={closeFailed}
+      onCancel={() => setCloseSheetOpen(false)}
+      onSend={input => { sendFinishTime(input).catch(() => {}) }}
+    /> : null}
     <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused && !installation.blocked && !recovery.operation && !finishing && !conflict} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
       if(!scan || scan.scope!==key || (scan.action==='FINISH' && current?.workdayId!==scan.workdayId) || (scan.action==='START' && current))throw new Error('ATTENDANCE_QR_CHANGED')
       guardAttendanceQr(key); await change(scan.action==='START'?'start':'end',token);setScan(null)

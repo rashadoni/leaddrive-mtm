@@ -9,6 +9,7 @@ import { I18nextProvider } from "react-i18next"
 import ru from "../../src/i18n/locales/ru.json"
 import en from "../../src/i18n/locales/en.json"
 import az from "../../src/i18n/locales/az.json"
+import { mobileResources } from "../../src/i18n/mobile-resources"
 import { officeAgent, officeBootstrap } from "../../test-support/office-attendance"
 import type { ActiveWorkday } from "../../src/store/workday"
 const mockAuth = { isLoggedIn: true, agent: officeAgent, logout: jest.fn(), switchServer: jest.fn(), serverDomain: "fictional.invalid" }
@@ -34,7 +35,11 @@ jest.mock("../../src/store/workday", () => ({ useWorkdayStore: (selector: (value
 jest.mock("../../src/services/attendance-session-guard", () => ({ officeAttendanceScope: () => "org-fixture:office-fixture", guardOfficeAttendance: jest.fn() }))
 jest.mock("../../src/services/attendance-session", () => ({ changeAttendanceWorkday: jest.fn().mockResolvedValue(undefined), refreshAttendanceSession: jest.fn().mockResolvedValue(true) }))
 jest.mock("../../src/services/attendance-inbox", () => ({ readAttendanceInbox: jest.fn(), markAttendanceInboxRead: jest.fn().mockResolvedValue(undefined) }))
-jest.mock("../../src/services/attendance-requests", () => ({ attendanceAccessDenied: (error: {status?: number}) => [401,403,404].includes(error?.status ?? 0) }))
+const mockRequests: { items: unknown[] } = { items: [] }
+jest.mock("../../src/services/attendance-requests", () => ({ attendanceAccessDenied: (error: {status?: number}) => [401,403,404].includes(error?.status ?? 0),
+  attendanceScope: () => "org-fixture:office-fixture", attendanceQueued: jest.fn().mockResolvedValue([]), cachedAttendanceRequests: jest.fn().mockResolvedValue(null),
+  loadAttendanceRequests: jest.fn(async () => ({ items: mockRequests.items })), queueAttendanceRequest: jest.fn().mockResolvedValue(undefined), queueAttendanceCancellation: jest.fn().mockResolvedValue(undefined) }))
+jest.mock("../../src/services/sync-engine", () => ({ runMobileSync: jest.fn().mockResolvedValue(undefined) }))
 jest.mock("../../src/services/outbox", () => ({ allOutboxOperations: jest.fn().mockResolvedValue([]) }))
 jest.mock("../../src/services/api", () => ({ api: { getProfile: jest.fn().mockResolvedValue({ success: true, data: {} }), getAlerts: jest.fn() } }))
 jest.mock("../../src/services/app-feedback", () => ({ ask: (...args: unknown[]) => mockAsk(...args) }))
@@ -83,8 +88,12 @@ function renderedTree(value: TestRenderer.ReactTestRendererJSON | TestRenderer.R
 }
 const text = (tree: TestRenderer.ReactTestRenderer) => JSON.stringify(renderedTree(tree.toJSON()))
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { node(tree,id).props.onPress() }); await settle() }
-beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: ru }, az: { translation: az }, en: { translation: en } }, interpolation: { escapeValue: false } }) })
-beforeEach(() => { jest.clearAllMocks(); mockAuth.serverDomain = "fictional.invalid"; mockDeliveries.rows = []; mockDeliveries.failed = false; Object.assign(mockInstallation, {visible:false, own:null, pending:null, busy:false, failed:false}); mockQr.available = false; mockInstallation.blocked = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
+// «Now» is fixed on the fixtures' day (20:00 in Baku): a day is stale only
+// when it was opened on an earlier company date. Timers stay real.
+beforeAll(() => { jest.useFakeTimers({ now: new Date("2026-10-13T16:00:00Z"), doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "nextTick", "queueMicrotask", "performance", "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "hrtime"] }) })
+afterAll(() => { jest.useRealTimers() })
+beforeAll(async () => { await locale.init({ lng: "ru", fallbackLng: "ru", resources: { ru: { translation: { ...ru, ...mobileResources.ru } }, az: { translation: { ...az, ...mobileResources.az } }, en: { translation: { ...en, ...mobileResources.en } } }, interpolation: { escapeValue: false } }) })
+beforeEach(() => { jest.clearAllMocks(); mockAuth.serverDomain = "fictional.invalid"; mockDeliveries.rows = []; mockDeliveries.failed = false; Object.assign(mockInstallation, {visible:false, own:null, pending:null, busy:false, failed:false}); mockQr.available = false; mockInstallation.blocked = false; mockBootstrap.data = officeBootstrap(); mockAuth.agent = { ...officeAgent }; mockWorkday.activeWorkday = null; mockWorkday.hydrated = true; mockAsk.mockResolvedValue(true); mockRequests.items = []; (allOutboxOperations as jest.Mock).mockResolvedValue([]); (readAttendanceInbox as jest.Mock).mockResolvedValue([notice]) })
 afterEach(async () => { await act(async () => { roots.splice(0).forEach(root => root.unmount()) }); await settle() })
 it.each(["ru","az","en"])("renders actual %s office day and sends the canonical start action", async language => {
   expect(mockBootstrap.data.manifest?.modules.routeField.enabled).toBe(false)
@@ -108,6 +117,27 @@ it("opens a scoped correction for the actual confirmed workday without submittin
   await press(tree, "office-workday-correct")
   expect(mockNavigate).toHaveBeenCalledWith("OwnRequests", { correction: expect.objectContaining({ scope: "org-fixture:office-fixture", server: "fictional.invalid", workDate: "2026-10-13", startedAt: "2026-10-13T18:00:00Z", completedAt: null }) })
   expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+it.each(["ru","az","en"])("shows a day left open since an earlier date (%s) as one to close, not as running", async language => {
+  mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-11T06:47:00Z", syncState: "CONFIRMED" }
+  const tree = await render(AttendanceWorkdayScreen, language, true)
+  expect(node(tree, "today-stale-workday")).toBeDefined()
+  expect(node(tree, "office-workday-break")).toBeUndefined()
+  expect(node(tree, "office-workday-action")).toBeUndefined()
+  expect(node(tree, "office-workday-correct")).toBeUndefined()
+  expect(text(tree)).not.toContain("todayV2.")
+  expect(text(tree)).toContain(mobileResources[language as "ru"|"az"|"en"].todayV2.staleCloseDay)
+  await press(tree, "today-stale-close-day")
+  expect(node(tree, "today-stale-close-sheet")).toBeDefined()
+  expect(changeAttendanceWorkday).not.toHaveBeenCalled()
+})
+it("reads the day again once the forgotten day's finish is approved", async () => {
+  mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-11T06:47:00Z", syncState: "CONFIRMED" }
+  mockRequests.items = [{ id: "r1", status: "APPROVED", startDate: "2026-10-11", endDate: "2026-10-11", reason: "close", details: { kind: "TIME_CORRECTION", unit: "HOURS", startTime: "10:47", endTime: "18:00" } }]
+  const { refreshAttendanceSession } = jest.requireMock("../../src/services/attendance-session")
+  const tree = await render(AttendanceWorkdayScreen, "az", true)
+  expect(text(tree)).toContain("18:00")
+  expect(refreshAttendanceSession).toHaveBeenCalled()
 })
 it("uses pause/resume and requires an explicit finish confirmation", async () => {
   mockWorkday.activeWorkday = { key: "org-fixture:office-fixture", workdayId: "wd", startedAt: "2026-10-13T08:00:00Z", syncState: "CONFIRMED" }
