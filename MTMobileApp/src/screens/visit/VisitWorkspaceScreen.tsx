@@ -44,6 +44,7 @@ import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { staleVisitDayDate, visitOpenSinceEarlierDay } from "../../services/stale-visit"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { isShortWindow, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
+import { visitDurationLabel, visitScreenLanguage } from "./visit-screen-model"
 
 type LoadState = "loading" | "ready" | "offline" | "error"
 type Language = "ru" | "az" | "en"
@@ -546,7 +547,7 @@ export default function VisitWorkspaceScreen() {
                 <Stat
                   icon="time-outline"
                   label={t("visitWorkspace.fieldDuration")}
-                  value={data.duration != null ? t("visitWorkspace.minutesTemplate", { count: data.duration }) : "—"}
+                  value={data.duration != null ? visitDurationLabel(data.duration, visitScreenLanguage(i18n.language)) : "—"}
                 />
                 <Stat icon="images-outline" label={t("visitWorkspace.actionPhoto")} value={String(data.photosCount)} />
               </View>

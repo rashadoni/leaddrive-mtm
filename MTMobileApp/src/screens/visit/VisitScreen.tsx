@@ -64,6 +64,8 @@ import { checkInRadiusMeters } from "../../lib/check-in-radius"
 import { LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
   filterVisitCustomers,
+  visitDurationLabel,
+  visitEndsSameDay,
   visitScreenLanguage,
   visitScreenLayout,
 } from "./visit-screen-model"
@@ -1780,7 +1782,10 @@ function VisitRow({ visit, copy, language, onPress }: {
   const active = visit.status === "CHECKED_IN"
   const pending = visit.pendingCheckOut === true
   const startTime = formatVisitStart(visit.checkInAt, language)
-  const endTime = formatVisitClock(visit.checkOutAt, language)
+  // Closed on another day: the end carries its date (mockup, 2026-10-31).
+  const endTime = visitEndsSameDay(visit.checkInAt, visit.checkOutAt)
+    ? formatVisitClock(visit.checkOutAt, language)
+    : formatVisitStart(visit.checkOutAt, language)
   const tone = pending
     ? { color: fieldTheme.color.amber, background: fieldTheme.color.amberSoft, icon: "cloud-upload-outline" }
     : active
@@ -1807,7 +1812,7 @@ function VisitRow({ visit, copy, language, onPress }: {
         <View style={styles.visitMetaRow}>
           <Text style={styles.visitTime}>{startTime || copy.noTime}{endTime ? ` – ${endTime}` : ""}</Text>
           {visit.duration != null && (
-            <Text style={styles.visitDuration}>{copy.duration.replace("{{count}}", String(visit.duration))}</Text>
+            <Text style={styles.visitDuration} numberOfLines={1}>{visitDurationLabel(visit.duration, visitScreenLanguage(language))}</Text>
           )}
         </View>
       </View>
@@ -2096,7 +2101,8 @@ const styles = themed(() => StyleSheet.create({
   visitCopy: { flex: 1, minWidth: 0 },
   visitName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700" },
   visitAddress: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, marginTop: 2 },
-  visitMetaRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.xs },
+  // Wraps as a whole: a long «date – date» pushes the length to the next line, never splits it.
+  visitMetaRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: fieldTheme.space.sm, rowGap: 2, marginTop: fieldTheme.space.xs },
   visitTime: { color: fieldTheme.color.inkMuted, fontSize: 12, fontWeight: "700" },
   visitDuration: { color: fieldTheme.color.primary, fontSize: 12, fontWeight: "700" },
   statusPill: { minHeight: 30, maxWidth: 120, justifyContent: "center" },
