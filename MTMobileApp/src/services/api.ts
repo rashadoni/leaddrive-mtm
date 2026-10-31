@@ -75,6 +75,8 @@ class ApiClient {
   }
   private token: string | null = null
   private agentId: string | null = null
+  /** «account:language» the server last accepted from reportAppLanguage. */
+  private reportedLanguage: string | null = null
   /**
    * A 401 from an optional feature endpoint is not proof that the whole
    * session was revoked. Keep one token-bound bootstrap probe in flight so a
@@ -689,6 +691,26 @@ class ApiClient {
     return this.request("/mobile/notifications", { signal }, 20_000, 1)
   }
   /** The server takes at most 100 ids per call. */
+  /**
+   * Tell the server which language the app shows (owner, 2026-10-31: an agent
+   * with the app in Russian got his task notices and the office's reminder in
+   * Azerbaijani — the server knew only a CRM login's language). Texts it writes
+   * for this agent then use it. Once per account and language; on a server
+   * without the route, or offline, it is asked again on the next bootstrap.
+   */
+  async reportAppLanguage(language: string | undefined): Promise<void> {
+    const code = (language ?? "").split("-")[0].toLowerCase()
+    if (!this.token || !["az", "ru", "en"].includes(code)) return
+    const key = `${this.agentId ?? ""}:${code}`
+    if (this.reportedLanguage === key) return
+    this.reportedLanguage = key
+    try {
+      await this.request("/mobile/language", { method: "PUT", body: JSON.stringify({ language: code }) }, 15_000, 1)
+    } catch {
+      if (this.reportedLanguage === key) this.reportedLanguage = null
+    }
+  }
+
   markMobileNotificationsRead(ids: string[]) {
     return this.request("/mobile/notifications", { method: "PATCH", body: JSON.stringify({ ids: ids.slice(0, 100), isRead: true }) }, 20_000, 1)
   }

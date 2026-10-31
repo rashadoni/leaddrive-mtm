@@ -149,6 +149,7 @@ export default function ProfileScreen({ managerShell = false, managerCard = null
   const onPickLocale = async (locale: SupportedLocale) => {
     await setLocale(locale)
     setCurrentLocale(locale)
+    void api.reportAppLanguage?.(locale)
   }
 
   const handleConfirm = () => {
