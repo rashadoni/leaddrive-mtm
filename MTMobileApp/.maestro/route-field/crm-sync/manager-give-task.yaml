@@ -1,0 +1,44 @@
+appId: com.mtmobileapp
+name: The manager gives his agent a task from the phone; the CRM then checks it
+---
+# Writes one task titled RF_CRM_MARK to RF_AGENT_ID, without a due date. The
+# agent gets a bell line and a push; the runbook deletes the task in the CRM.
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6 && RF_AGENT_ID.length > 0}
+- runFlow: manager-home.yaml
+- scrollUntilVisible:
+    element:
+      id: manager-agent-card-${RF_AGENT_ID}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: manager-agent-card-${RF_AGENT_ID}
+- scrollUntilVisible:
+    element:
+      id: manager-employee-give-task
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: manager-employee-give-task
+- extendedWaitUntil:
+    visible:
+      id: manager-task-sheet
+    timeout: 15000
+- tapOn:
+    id: manager-task-title
+- inputText: ${RF_CRM_MARK}
+# No hideKeyboard: on Android it is Back, and Back closes the sheet.
+- tapOn:
+    id: manager-task-due-none
+- tapOn:
+    id: manager-task-send
+# Sent: the sheet closes on the employee card, no error stays behind.
+- extendedWaitUntil:
+    notVisible:
+      id: manager-task-sheet
+    timeout: 30000
+- assertNotVisible:
+    id: manager-task-error
+- assertVisible:
+    id: manager-employee-give-task
+- runFlow: manager-home.yaml

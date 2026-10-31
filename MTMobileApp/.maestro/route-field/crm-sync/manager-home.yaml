@@ -1,0 +1,14 @@
+appId: com.mtmobileapp
+name: Back to the manager's Team tab from whatever screen is open
+---
+# Pushed screens (a rating, the bell, an employee card, a sheet) are left with
+# Back; nothing on the way is saved.
+- repeat:
+    while:
+      notVisible:
+        id: guide-spot-tab.Team
+    times: 5
+    commands:
+      - back
+- tapOn:
+    id: guide-spot-tab.Team

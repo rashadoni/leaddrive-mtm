@@ -1,0 +1,16 @@
+appId: com.mtmobileapp
+name: The manager's approvals list what the CRM's queues hold
+---
+# Read-only. RF_CRM_MARK is the request the CRM shows as waiting (a new
+# doctor's name, an agent's request …); no decision is taken here.
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6}
+- runFlow: manager-home.yaml
+- tapOn:
+    id: guide-spot-tab.Approvals
+- scrollUntilVisible:
+    element:
+      text: .*${RF_CRM_MARK}.*
+    direction: DOWN
+    timeout: 30000
+- runFlow: manager-home.yaml

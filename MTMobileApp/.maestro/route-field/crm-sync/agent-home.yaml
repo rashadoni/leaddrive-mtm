@@ -1,0 +1,19 @@
+appId: com.mtmobileapp
+name: Back to the agent's Today tab from whatever screen is open
+---
+- runFlow:
+    when:
+      visible:
+        id: guide-skip
+    commands:
+      - tapOn:
+          id: guide-skip
+- repeat:
+    while:
+      notVisible:
+        id: guide-spot-tab.Today
+    times: 5
+    commands:
+      - back
+- tapOn:
+    id: guide-spot-tab.Today
