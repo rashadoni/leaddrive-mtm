@@ -19,6 +19,10 @@ the owner's authorization, a synced agent screen and reconciled test task.
   identity. Credentials are read through a private wrapper, never CLI arguments.
 - `smoke/manager-tabs.yaml`: independently verified manager, read-only team,
   planning/filter cancel, approvals and profile. No publish, send or decision.
+- `smoke/manager-joint-visit.yaml`: the same verified manager, read-only joint
+  visits: the list (never «no joint visits yet» above a listed one), a rating
+  form left without saving, the plan form with an agent chosen and left
+  without saving. Gate `RF_MANAGER_PREFLIGHT`, like manager-tabs.
 
 The bounded runner is `scripts/e2e/route_field_native.py`. It requires private
 JSON identifying the published APK bytes/source and the protected background

@@ -1,0 +1,116 @@
+appId: com.mtmobileapp
+name: Field manager reads joint visits, the plan form and a rating without saving
+---
+# Read-only, like manager-tabs: the plan is never saved, no rating is sent,
+# no session is started or ended. Uses the manager the owner has signed into.
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+# Started from a pushed screen (the rating, the plan or the list itself): back to the tabs.
+- runFlow:
+    when:
+      visible:
+        id: manager-visit-evaluation-save
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: joint-plan-save
+    commands:
+      - back
+- runFlow:
+    when:
+      visible:
+        id: manager-joint-visit-plan
+    commands:
+      - back
+- tapOn:
+    id: guide-spot-tab.Team
+- scrollUntilVisible:
+    element:
+      id: manager-joint-visit-start
+    direction: DOWN
+    timeout: 30000
+# The list opens from whichever card the manager's day shows.
+- runFlow:
+    when:
+      visible:
+        id: manager-joint-visit-card
+    commands:
+      - tapOn:
+          id: manager-joint-visit-card
+- runFlow:
+    when:
+      visible:
+        id: manager-joint-visit-waiting
+    commands:
+      - tapOn:
+          id: manager-joint-visit-waiting
+- runFlow:
+    when:
+      visible:
+        id: manager-joint-visit-session
+    commands:
+      - tapOn:
+          id: manager-joint-visit-session
+- extendedWaitUntil:
+    visible:
+      id: manager-joint-visit-plan
+    timeout: 30000
+# «No joint visits yet» never stands above a joint visit that is listed
+# (live check 2026-10-31: it did, over yesterday's rated visit).
+- runFlow:
+    when:
+      visible:
+        id: manager-joint-visit-row-.*
+    commands:
+      - assertNotVisible:
+          id: manager-joint-visit-empty
+      # The rating opens on the visit's own questions; leave without saving.
+      - tapOn:
+          id: manager-joint-visit-rate-.*
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: manager-visit-evaluation-criteria
+          timeout: 15000
+      - assertVisible:
+          id: manager-visit-evaluation-agent
+      - assertVisible:
+          id: manager-visit-evaluation-save
+      - back
+      - extendedWaitUntil:
+          visible:
+            id: manager-joint-visit-plan
+          timeout: 15000
+# The plan form: agents and days to choose from; leave without saving.
+- tapOn:
+    id: manager-joint-visit-plan
+- extendedWaitUntil:
+    visible:
+      id: joint-plan-save
+    timeout: 30000
+# Days come once an agent is chosen; choosing only reads that agent's route.
+- extendedWaitUntil:
+    visible:
+      id: joint-plan-agents
+    timeout: 30000
+- tapOn:
+    id: joint-plan-agent-.*
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: joint-plan-days
+    timeout: 15000
+- back
+- extendedWaitUntil:
+    visible:
+      id: manager-joint-visit-plan
+    timeout: 15000
+- assertNotVisible:
+    id: joint-plan-save
+- back
+- scrollUntilVisible:
+    element:
+      id: manager-joint-visit-start
+    direction: DOWN
+    timeout: 15000
