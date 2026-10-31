@@ -61,6 +61,7 @@ const client = api as any
 function resetClient() {
   client.token = null
   client.agentId = null
+  client.reportedLanguage = null
   client.sessionValidation = null
   client._agentRole = null
   client._agentName = null
@@ -1190,5 +1191,51 @@ describe("ApiClient — a server that does not answer with JSON", () => {
     })
     await expect(client.request("/mobile/route-field/contact-create-requests", { method: "POST" }))
       .rejects.toMatchObject({ code: "MTM_CONTACT_CREATE_IDEMPOTENCY_MISMATCH", status: 409 })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// reportAppLanguage (owner, 2026-10-31: notices in the app's language)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("ApiClient — reportAppLanguage", () => {
+  const ok = () => ({ status: 200, ok: true, json: async () => ({ success: true }) })
+
+  it("tells the server once per account and language, and only a language the server knows", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    client.token = "t"
+    client.agentId = "agent-1"
+    const fetchMock = jest.fn().mockResolvedValue(ok())
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    await api.reportAppLanguage("ru-RU")
+    await api.reportAppLanguage("ru")
+    await api.reportAppLanguage("de")
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.leaddrivecrm.org/api/v1/mtm/mobile/language")
+    expect(init.method).toBe("PUT")
+    expect(JSON.parse(init.body)).toEqual({ language: "ru" })
+
+    await api.reportAppLanguage("az")
+    client.agentId = "agent-2"
+    await api.reportAppLanguage("az")
+    expect(fetchMock.mock.calls.map(([, call]) => JSON.parse(call.body).language)).toEqual(["ru", "az", "az"])
+  })
+
+  it("asks again after a failure, and never without a session", async () => {
+    client.baseUrl = "https://app.leaddrivecrm.org/api/v1/mtm"
+    const fetchMock = jest.fn()
+      .mockResolvedValueOnce({ status: 404, ok: false, json: async () => ({ error: "Not found" }) })
+      .mockResolvedValue(ok())
+    ;(global.fetch as jest.Mock) = fetchMock
+
+    await api.reportAppLanguage("en")
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    client.token = "t"
+    await api.reportAppLanguage("en")
+    await api.reportAppLanguage("en")
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
