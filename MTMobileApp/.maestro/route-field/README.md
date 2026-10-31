@@ -85,3 +85,36 @@ no visit may be accepted. These requests use synthetic fixture coordinates and
 are not physical phone GPS or OS permission evidence. Never substitute a real
 company manifest or erase accepted business records to satisfy the empty-fixture
 precondition.
+
+
+## CRM ↔ phone (`crm-sync/`)
+
+End-to-end checks that one side does something and the other side shows it.
+They are not in `config.yaml`: each needs the CRM step before or after it and
+the mark it carries. Every write uses a title, text or name starting with
+`RF-E2E-`, so it is found and removed by that mark. Gate:
+`RF_CRM_SYNC=owner-authorized-crm-sync-v1`, plus `RF_MANAGER_PREFLIGHT` or
+`RF_SHELL_PREFLIGHT` as for the read-only smoke flows. The phone runs under
+the accounts already signed in: the manager in the app, the agent in its
+Dual App copy (user 95) — no password is typed by these flows.
+
+| Direction | CRM side | Phone flow |
+|---|---|---|
+| CRM → manager | `/mtm/tasks` quick add, to the manager | `manager-bell` (`RF_CRM_MARK` = title) |
+| manager → CRM | — | `manager-give-task` (`RF_AGENT_ID`), then `GET /api/v1/mtm/tasks/<id>`: timeline `CREATED`, actor the manager, channel `mobile` |
+| manager → CRM → agent | `/api/v1/mtm/operations` thread | `manager-team-message` (`RF_AGENT_NAME`), then `agent-messages` |
+| CRM queues ↔ manager | `contact-create-requests` | `manager-approvals` (read only) |
+| manager → agent | — | `agent-task-listed`, `agent-bell` |
+| agent → CRM | task status, result | `agent-task-progress` (`RF_TASK_STEP` start, then complete with `RF_TASK_RESULT`) |
+| CRM → agent | task card «Geri qaytar» with a reason | `agent-bell` (`RF_CRM_MARK` = reason) |
+| agent → CRM | `GET /api/v1/mtm/visits/active`, then the visit | `agent-solo-visit` (`RF_CLIENT`, `RF_CLIENT_SEARCH`, `RF_VISIT_STEP` start, then finish with `RF_VISIT_NOTE`) |
+| agent → manager → agent | open request in CRM | `agent-doctor-request`, `manager-bell`, `manager-approvals`, `manager-reject-request` (`RF_REJECT_REASON`), `agent-bell` |
+
+Run the agent's flows with `LOCALE` of the agent's app language. Field labels
+for screens without testIDs live in `doctor-labels.js` and `reject-labels.js`.
+The reject sheet's confirm reads like the cards' «Approve» in az: the flow
+checks the sheet's title first and taps the button right of «Cancel».
+Android `hideKeyboard` is Back: never in a sheet (it closes it), only on a
+plain screen. A solo visit needs location granted to the app that runs it:
+on the S23 the Dual App copy is refused location by the system although its
+settings page reads «allowed» (2026-10-31), so run it in the main app.

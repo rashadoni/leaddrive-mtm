@@ -1,0 +1,36 @@
+appId: com.mtmobileapp
+name: The manager writes to one agent from the phone; the CRM then checks it
+---
+# Sends one message (RF_CRM_MARK) to the agent named RF_AGENT_NAME only.
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6 && RF_AGENT_NAME.length > 0}
+- runFlow: manager-home.yaml
+- scrollUntilVisible:
+    element:
+      id: manager-home-write-team
+    # The button is at the top; the Team list may be left scrolled down.
+    direction: UP
+    timeout: 30000
+- tapOn:
+    id: manager-home-write-team
+- extendedWaitUntil:
+    visible:
+      id: team-message-to-one
+    timeout: 15000
+- tapOn:
+    id: team-message-to-one
+- tapOn:
+    text: ${RF_AGENT_NAME}
+- tapOn:
+    id: team-message-body
+- inputText: ${RF_CRM_MARK}
+# No hideKeyboard: on Android it is Back, and Back closes the sheet.
+- tapOn:
+    id: team-message-send
+- extendedWaitUntil:
+    visible:
+      id: team-message-sent
+    timeout: 30000
+- tapOn:
+    id: team-message-back-to-team
+- runFlow: manager-home.yaml

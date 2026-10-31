@@ -1,0 +1,56 @@
+appId: com.mtmobileapp
+name: The agent starts, then completes, the CRM's test task; the CRM checks each step
+---
+# Writes the task's status. RF_TASK_STEP is «start» or «complete»; the
+# runbook reads IN_PROGRESS, then COMPLETED with RF_TASK_RESULT, in the CRM
+# between the two runs. Only a task titled with the RF-E2E mark.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && /^RF-E2E-/.test(RF_CRM_MARK)}
+- assertTrue: ${RF_TASK_STEP === 'start' || (RF_TASK_STEP === 'complete' && /^RF-E2E-/.test(RF_TASK_RESULT))}
+- runScript: ../shared/task-labels.js
+- runFlow: agent-home.yaml
+- tapOn:
+    id: guide-spot-tab.Tasks
+- tapOn:
+    id: tasks-filter-ALL
+- scrollUntilVisible:
+    element:
+      id: tasks-order
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: tasks-order
+- tapOn:
+    id: tasks-order-newest
+- scrollUntilVisible:
+    element:
+      text: .*${RF_CRM_MARK}.*
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: .*${RF_CRM_MARK}.*
+    index: 0
+- runFlow:
+    when:
+      true: ${RF_TASK_STEP === 'start'}
+    commands:
+      - tapOn: ${output.task.start}
+      - extendedWaitUntil:
+          visible: ${output.task.complete}
+          timeout: 30000
+- runFlow:
+    when:
+      true: ${RF_TASK_STEP === 'complete'}
+    commands:
+      - tapOn: ${output.task.complete}
+      - tapOn: ${output.task.placeholder}
+      - inputText: ${RF_TASK_RESULT}
+      # Back would cancel this native modal: submit the visible action.
+      - tapOn: ${output.task.submit}
+      - scrollUntilVisible:
+          element:
+            text: ${RF_TASK_RESULT}
+          direction: DOWN
+          timeout: 30000
+      - assertNotVisible: ${output.task.complete}
+- runFlow: agent-home.yaml

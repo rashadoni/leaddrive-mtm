@@ -1,0 +1,34 @@
+appId: com.mtmobileapp
+name: The manager rejects the agent's test request from the phone, with a reason
+---
+# Writes one decision: REJECTED, reason RF_REJECT_REASON, on the request whose
+# card shows RF_CRM_MARK. Rejected, so no doctor or client is created.
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && /^RF-E2E-/.test(RF_CRM_MARK) && /^RF-E2E-/.test(RF_REJECT_REASON)}
+- runScript: reject-labels.js
+- runFlow: manager-home.yaml
+- tapOn:
+    id: guide-spot-tab.Approvals
+- scrollUntilVisible:
+    element:
+      text: ${RF_CRM_MARK}
+    direction: DOWN
+    timeout: 30000
+# The card's own «Reject»: the nearest one right of the request's name row.
+- tapOn:
+    text: ${output.reject.reject}
+    below: ${RF_CRM_MARK}
+    index: 0
+- extendedWaitUntil:
+    visible: ${output.reject.title}
+    timeout: 10000
+- tapOn: ${output.reject.placeholder}
+- inputText: ${RF_REJECT_REASON}
+- assertVisible: ${output.reject.title}
+- tapOn:
+    text: ${output.reject.submit}
+    rightOf: ${output.reject.cancel}
+- extendedWaitUntil:
+    notVisible: ${RF_CRM_MARK}
+    timeout: 30000
+- runFlow: manager-home.yaml

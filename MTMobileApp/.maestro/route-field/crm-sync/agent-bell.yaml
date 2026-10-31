@@ -1,0 +1,15 @@
+appId: com.mtmobileapp
+name: The agent's bell shows what the CRM or his manager just sent him
+---
+# Read-only on the phone: a task given in the CRM or from the manager's
+# phone, a decision on his request … carrying RF_CRM_MARK.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6}
+- runFlow: agent-home.yaml
+- tapOn:
+    id: notification-bell
+- extendedWaitUntil:
+    visible:
+      text: .*${RF_CRM_MARK}.*
+    timeout: 30000
+- runFlow: agent-home.yaml

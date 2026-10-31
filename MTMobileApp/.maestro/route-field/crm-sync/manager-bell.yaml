@@ -1,0 +1,19 @@
+appId: com.mtmobileapp
+name: The manager's bell shows what the CRM just sent him
+---
+# Read-only on the phone. The CRM side has already acted (a task given to
+# this manager, a request filed by his agent …) and put RF_CRM_MARK in it.
+- assertTrue: ${RF_MANAGER_PREFLIGHT === 'owner-verified-manager-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6}
+- runFlow: manager-home.yaml
+- tapOn:
+    id: notification-bell
+- extendedWaitUntil:
+    visible:
+      text: .*${RF_CRM_MARK}.*
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    visible:
+      id: guide-spot-tab.Team
+    timeout: 15000

@@ -1,0 +1,90 @@
+appId: com.mtmobileapp
+name: The agent starts, then finishes, an unplanned visit to a test client; the CRM checks each step
+---
+# Writes one visit to RF_CLIENT (a client whose name carries RF-E2E-).
+# RF_VISIT_STEP «start»: check-in; the runbook then reads CHECKED_IN in the
+# CRM. «finish»: check-out with the note RF_VISIT_NOTE; then CHECKED_OUT.
+# Needs location granted to the app that runs it.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && /RF-E2E-/.test(RF_CLIENT)}
+- assertTrue: ${RF_VISIT_STEP === 'start' || (RF_VISIT_STEP === 'finish' && /^RF-E2E-/.test(RF_VISIT_NOTE))}
+- runScript: visit-labels.js
+# The visits screen lies over the tabs: when it is already open, stay on it.
+- runFlow:
+    when:
+      notVisible: ${output.visit.visits}
+    commands:
+      - runFlow: agent-home.yaml
+      - tapOn:
+          id: guide-spot-tab.More
+      - scrollUntilVisible:
+          element:
+            id: more-action-Visits
+          direction: DOWN
+          timeout: 15000
+      - tapOn:
+          id: more-action-Visits
+- extendedWaitUntil:
+    visible: ${output.visit.visits}
+    timeout: 15000
+- runFlow:
+    when:
+      true: ${RF_VISIT_STEP === 'start'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ${output.visit.search}
+          direction: UP
+          timeout: 15000
+      - tapOn: ${output.visit.search}
+      - inputText: ${RF_CLIENT_SEARCH}
+      # A plain screen: Back here only closes the keyboard over the results.
+      - hideKeyboard
+      - tapOn:
+          text: ${RF_CLIENT}
+          below: ${output.visit.results}
+      - scrollUntilVisible:
+          element:
+            text: ${output.visit.start}
+          direction: DOWN
+          timeout: 15000
+      - tapOn: ${output.visit.start}
+      - tapOn: ${output.visit.checkIn}
+      - scrollUntilVisible:
+          element:
+            text: ${output.visit.active}
+          direction: UP
+          timeout: 45000
+      - assertVisible: .*${RF_CLIENT}.*
+- runFlow:
+    when:
+      true: ${RF_VISIT_STEP === 'finish'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            text: ${output.visit.active}
+          direction: UP
+          timeout: 45000
+      - assertVisible: .*${RF_CLIENT}.*
+      - scrollUntilVisible:
+          element:
+            text: ${output.visit.finish}
+          direction: DOWN
+          timeout: 15000
+      - tapOn: ${output.visit.finish}
+      - tapOn: ${output.visit.note}
+      - inputText: ${RF_VISIT_NOTE}
+      # Back would cancel this modal: reach its action by scrolling its card.
+      - scrollUntilVisible:
+          element:
+            text: ${output.visit.submit}
+          direction: DOWN
+          timeout: 15000
+      - tapOn: ${output.visit.submit}
+      - extendedWaitUntil:
+          notVisible: ${output.visit.note}
+          timeout: 15000
+      - extendedWaitUntil:
+          notVisible: ${output.visit.active}
+          timeout: 45000
+- runFlow: agent-home.yaml

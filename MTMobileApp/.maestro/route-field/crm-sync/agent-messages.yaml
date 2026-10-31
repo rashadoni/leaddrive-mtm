@@ -1,0 +1,20 @@
+appId: com.mtmobileapp
+name: The agent reads the message his manager wrote from the phone
+---
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6}
+- runFlow: agent-home.yaml
+- tapOn:
+    id: guide-spot-tab.More
+- scrollUntilVisible:
+    element:
+      id: more-action-Messages
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: more-action-Messages
+- extendedWaitUntil:
+    visible:
+      text: .*${RF_CRM_MARK}.*
+    timeout: 30000
+- runFlow: agent-home.yaml

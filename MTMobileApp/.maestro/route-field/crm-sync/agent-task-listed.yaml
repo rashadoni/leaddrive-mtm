@@ -1,0 +1,34 @@
+appId: com.mtmobileapp
+name: The task given in the CRM or from the manager's phone is in the agent's list
+---
+# Read-only: finds the task titled RF_CRM_MARK, opens it and comes back
+# without starting it.
+- assertTrue: ${RF_SHELL_PREFLIGHT === 'agent-readonly-v1'}
+- assertTrue: ${RF_CRM_SYNC === 'owner-authorized-crm-sync-v1' && RF_CRM_MARK.length >= 6}
+- runFlow: agent-home.yaml
+- tapOn:
+    id: guide-spot-tab.Tasks
+- tapOn:
+    id: tasks-filter-ALL
+- scrollUntilVisible:
+    element:
+      id: tasks-order
+    direction: UP
+    timeout: 15000
+- tapOn:
+    id: tasks-order
+- tapOn:
+    id: tasks-order-newest
+- scrollUntilVisible:
+    element:
+      text: .*${RF_CRM_MARK}.*
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: .*${RF_CRM_MARK}.*
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: task-detail-primary
+    timeout: 15000
+- runFlow: agent-home.yaml
