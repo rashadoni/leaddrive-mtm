@@ -1,0 +1,51 @@
+appId: com.leaddrive.attendance
+name: A day left open since an earlier date is closed with «Günü bağla» and its finish time
+---
+# Writes one TIME_CORRECTION request: the day's recorded start, finish
+# TIME_END (HH:MM, company time), the app's fixed reason. Where the company
+# approves «close a forgotten day» at once (attendanceAutoCloseForgottenDay)
+# the card gives way to a fresh day (TIME_EXPECT = APPROVED); otherwise the
+# card says the finish is with the manager (TIME_EXPECT = PENDING).
+# The CRM side: «Personal → Qərarlar» — the correction, its decision, and
+# «was → became» in the day's timesheet row.
+- assertTrue: ${/^[0-2][0-9]:[0-5][0-9]$/.test(TIME_END) && /^(PENDING|APPROVED)$/.test(TIME_EXPECT)}
+- runFlow: home.yaml
+- assertVisible:
+    id: today-stale-workday
+- assertNotVisible:
+    id: office-workday-break
+- tapOn:
+    id: today-stale-close-day
+- extendedWaitUntil:
+    visible:
+      id: today-stale-finish
+    timeout: 10000
+- tapOn:
+    id: today-stale-finish
+# Digits only: the field writes the colon itself.
+- inputText: ${TIME_END.replace(':', '')}
+- assertVisible:
+    id: today-stale-finish
+    text: ${TIME_END}
+- tapOn:
+    id: today-stale-close-send
+- runFlow:
+    when:
+      true: ${TIME_EXPECT === 'APPROVED'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: office-workday-action
+          timeout: 90000
+      - assertNotVisible:
+          id: today-stale-workday
+      - assertVisible: ${output.time.notStarted}
+- runFlow:
+    when:
+      true: ${TIME_EXPECT === 'PENDING'}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: today-stale-cancel-sent
+          timeout: 90000
+      - assertVisible: ${'.*' + TIME_END + '.*'}

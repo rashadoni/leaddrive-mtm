@@ -1,0 +1,89 @@
+appId: com.leaddrive.attendance
+name: The employee sends one marked request; it reaches the server and waits for HR
+---
+# Writes one request of kind TIME_KIND (whole days) for TIME_DATE, reason
+# TIME_CRM_MARK. TIME_MONTH_OFFSET is TIME_DATE's month counted from the
+# company's current month (0 = this month).
+- assertTrue: ${/^RF-E2E-/.test(TIME_CRM_MARK) && /^(REMOTE_WORK|BUSINESS_TRIP|TIME_OFF|ANNUAL_LEAVE)$/.test(TIME_KIND)}
+- runFlow: home.yaml
+- tapOn:
+    id: time-tab-OwnRequests
+- extendedWaitUntil:
+    visible:
+      id: attendance-new
+    timeout: 30000
+- tapOn:
+    id: attendance-new
+- tapOn:
+    id: attendance-change-kind
+- scrollUntilVisible:
+    element:
+      id: ${'attendance-kind-' + TIME_KIND}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: ${'attendance-kind-' + TIME_KIND}
+- scrollUntilVisible:
+    element:
+      id: attendance-unit-DAYS
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-unit-DAYS
+- scrollUntilVisible:
+    element:
+      id: attendance-startDate
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-startDate
+- runFlow:
+    file: select-calendar-date.yaml
+    env:
+      TARGET_DATE: ${TIME_DATE}
+      MONTH_OFFSET: ${TIME_MONTH_OFFSET}
+- scrollUntilVisible:
+    element:
+      id: attendance-endDate
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-endDate
+- runFlow:
+    file: select-calendar-date.yaml
+    env:
+      TARGET_DATE: ${TIME_DATE}
+      MONTH_OFFSET: ${TIME_MONTH_OFFSET}
+- scrollUntilVisible:
+    element:
+      id: attendance-reason
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-reason
+- inputText: ${TIME_CRM_MARK}
+# Not hideKeyboard (Back closes the form): a tap on the field's label.
+- waitForAnimationToEnd:
+    timeout: 3000
+# The field itself carries the same accessibility label: tap the text above it.
+- tapOn:
+    text: ${output.time.reason}
+    above:
+      id: attendance-reason
+- waitForAnimationToEnd:
+    timeout: 3000
+- scrollUntilVisible:
+    element:
+      id: attendance-submit
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: attendance-submit
+- extendedWaitUntil:
+    notVisible:
+      id: attendance-form
+    timeout: 60000
+- runFlow:
+    file: request-status.yaml
+    env:
+      TIME_EXPECT: PENDING

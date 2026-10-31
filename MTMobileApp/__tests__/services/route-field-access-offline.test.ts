@@ -117,3 +117,23 @@ describe("a retry that actually dials", () => {
     expect(screen).toContain("{offline && attempts < ATTEMPTS_BEFORE_ESCAPE ? null : <Pressable")
   })
 })
+
+/**
+ * 1 November: LeadDrive Time, offline, told an office employee that "routes
+ * will appear" and that the app was waiting for "Route Field". Time has no
+ * routes; its own words say the workday will appear.
+ */
+describe("LeadDrive Time speaks of the workday, not of routes", () => {
+  it("uses its own copy while checking and while the server is away", () => {
+    expect(screen).toContain('"routeFieldAccess.timeOfflineBody"')
+    expect(screen).toContain('"routeFieldAccess.timeCheckingTitle"')
+    expect(screen).toContain('"routeFieldAccess.timeCheckingBody"')
+  })
+  it("has that copy in every language, without routes in it", () => {
+    for (const key of ["timeCheckingTitle", "timeCheckingBody", "timeOfflineBody"]) {
+      const lines = resources.split("\n").filter((line) => line.trim().startsWith(`${key}:`))
+      expect(lines).toHaveLength(3)
+      for (const line of lines) expect(line).not.toMatch(/marşrut|маршрут|route/i)
+    }
+  })
+})

@@ -1,0 +1,18 @@
+appId: com.leaddrive.attendance
+name: A decision taken in the CRM arrives in «Bildirişlər» as an unread notice
+---
+# TIME_NOTICE: the notice title the server writes in the employee's language,
+# e.g. «Müraciət rədd edildi». Read only: the notice is not marked read.
+- assertTrue: ${TIME_NOTICE.length > 3}
+- runFlow: home.yaml
+- tapOn:
+    id: time-tab-OwnInbox
+- extendedWaitUntil:
+    visible:
+      id: office-inbox-refresh
+    timeout: 30000
+- tapOn:
+    id: office-inbox-refresh
+- extendedWaitUntil:
+    visible: ${TIME_NOTICE}
+    timeout: 30000

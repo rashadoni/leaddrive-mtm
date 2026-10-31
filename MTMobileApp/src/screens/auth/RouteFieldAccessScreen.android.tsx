@@ -107,8 +107,9 @@ export default function RouteFieldAccessScreen({ access, attendance = false }: {
             ? <ActivityIndicator color={fieldTheme.color.primaryStrong} />
             : <Icon name="lock-closed" size={30} color={fieldTheme.color.primaryStrong} />}
         </View>
-        <Text style={styles.title}>{t(attendance && !offline && !checking ? "officeAttendance.workday" : `routeFieldAccess.${key}Title`)}</Text>
-        <Text style={styles.body}>{t(attendance && !offline && !checking ? "officeAttendance.unavailable" : `routeFieldAccess.${key}Body`)}</Text>
+        {/* LeadDrive Time has no routes: its own words while checking or offline. */}
+        <Text style={styles.title}>{t(!attendance ? `routeFieldAccess.${key}Title` : offline ? "routeFieldAccess.offlineTitle" : checking ? "routeFieldAccess.timeCheckingTitle" : "officeAttendance.workday")}</Text>
+        <Text style={styles.body}>{t(!attendance ? `routeFieldAccess.${key}Body` : offline ? "routeFieldAccess.timeOfflineBody" : checking ? "routeFieldAccess.timeCheckingBody" : "officeAttendance.unavailable")}</Text>
         {/* "It keeps checking" is a claim; this is the evidence for it. */}
         {offline && lastAttemptAt !== null ? (
           <Text style={styles.attempt}>

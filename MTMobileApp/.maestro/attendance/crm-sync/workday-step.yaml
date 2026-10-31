@@ -1,0 +1,76 @@
+appId: com.leaddrive.attendance
+name: One workday mark from the phone — start, pause, resume, finish or return
+---
+# TIME_STEP: start | pause | resume | finish | return. Each writes one event of
+# today's workday; the CRM side checks it on «Personal → Bu gün» and in the
+# employee's day. A day mark cannot be erased afterwards (the journal is
+# append-only by design), so run it only on the owner's own test card.
+- assertTrue: ${/^(start|pause|resume|finish|return)$/.test(TIME_STEP)}
+- runFlow: home.yaml
+- runFlow:
+    when:
+      true: ${TIME_STEP === 'start'}
+    commands:
+      - assertVisible: ${output.time.notStarted}
+      - tapOn:
+          id: office-workday-action
+      - extendedWaitUntil:
+          visible: ${output.time.running}
+          timeout: 60000
+- runFlow:
+    when:
+      true: ${TIME_STEP === 'pause'}
+    commands:
+      - assertVisible: ${output.time.running}
+      - tapOn:
+          id: office-workday-break
+      - extendedWaitUntil:
+          visible:
+            id: office-workday-break
+            enabled: true
+          timeout: 60000
+      - assertNotVisible: ${output.time.running}
+- runFlow:
+    when:
+      true: ${TIME_STEP === 'resume'}
+    commands:
+      - assertNotVisible: ${output.time.running}
+      - tapOn:
+          id: office-workday-break
+      - extendedWaitUntil:
+          visible: ${output.time.running}
+          timeout: 60000
+- runFlow:
+    when:
+      true: ${TIME_STEP === 'finish'}
+    commands:
+      - assertVisible: ${output.time.running}
+      - tapOn:
+          id: office-workday-action
+      # The confirm sheet: its title first, then its own «Günü bitir».
+      - extendedWaitUntil:
+          visible: ${output.time.finishTitle}
+          timeout: 10000
+      - tapOn:
+          text: ${output.time.finish}
+          below: ${output.time.finishTitle}
+      - extendedWaitUntil:
+          visible: ${output.time.completed}
+          timeout: 60000
+- runFlow:
+    when:
+      true: ${TIME_STEP === 'return'}
+    commands:
+      - assertVisible: ${output.time.completed}
+      - tapOn:
+          id: office-workday-return
+      - extendedWaitUntil:
+          visible: ${output.time.running}
+          timeout: 60000
+# Nothing left waiting in the phone's queue.
+- extendedWaitUntil:
+    notVisible:
+      id: office-workday-pending
+    timeout: 90000
+- assertNotVisible:
+    id: office-workday-conflict

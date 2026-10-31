@@ -1,0 +1,22 @@
+appId: com.leaddrive.attendance
+name: Back to «Gün» of the signed-in employee, and check it is the expected one
+---
+# No launchApp: Maestro's launchApp grants every permission unless told
+# otherwise, and these flows run on the owner's own phone. The harness brings
+# the app to the front (`am start --user 0`) before each flow.
+- assertTrue: ${TIME_CRM_SYNC === 'owner-authorized-time-crm-sync-v1' && TIME_EMPLOYEE.length > 2}
+- runScript: labels.js
+- repeat:
+    while:
+      notVisible:
+        id: time-tab-OwnWorkday
+    times: 4
+    commands:
+      - back
+- tapOn:
+    id: time-tab-OwnWorkday
+- extendedWaitUntil:
+    visible: ${TIME_EMPLOYEE}
+    timeout: 20000
+- assertNotVisible:
+    id: office-workday-unavailable

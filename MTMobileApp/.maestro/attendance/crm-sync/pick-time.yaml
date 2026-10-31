@@ -1,0 +1,60 @@
+appId: com.leaddrive.attendance
+name: Choose HH:MM in an open LeadDrive Time clock sheet
+---
+# The hour and minute columns are scroll views inside the sheet; a page
+# scroll does not move them, so each column is swiped on its own (hours on
+# the left, minutes on the right), first forward, then back if overshot.
+- assertTrue: ${/^[0-2][0-9]:[0-5][0-9]$/.test(PICK_TIME)}
+- extendedWaitUntil:
+    visible:
+      id: time-picker-value
+    timeout: 10000
+- repeat:
+    while:
+      notVisible:
+        id: ${'time-picker-hour-' + PICK_TIME.slice(0, 2)}
+    times: 6
+    commands:
+      - swipe:
+          start: 27%, 58%
+          end: 27%, 40%
+          duration: 600
+- repeat:
+    while:
+      notVisible:
+        id: ${'time-picker-hour-' + PICK_TIME.slice(0, 2)}
+    times: 10
+    commands:
+      - swipe:
+          start: 27%, 40%
+          end: 27%, 58%
+          duration: 600
+- tapOn:
+    id: ${'time-picker-hour-' + PICK_TIME.slice(0, 2)}
+- repeat:
+    while:
+      notVisible:
+        id: ${'time-picker-minute-' + PICK_TIME.slice(3, 5)}
+    times: 15
+    commands:
+      - swipe:
+          start: 72%, 58%
+          end: 72%, 40%
+          duration: 600
+- repeat:
+    while:
+      notVisible:
+        id: ${'time-picker-minute-' + PICK_TIME.slice(3, 5)}
+    times: 20
+    commands:
+      - swipe:
+          start: 72%, 40%
+          end: 72%, 58%
+          duration: 600
+- tapOn:
+    id: ${'time-picker-minute-' + PICK_TIME.slice(3, 5)}
+- assertVisible:
+    id: time-picker-value
+    text: ${PICK_TIME}
+- tapOn:
+    id: time-picker-confirm
