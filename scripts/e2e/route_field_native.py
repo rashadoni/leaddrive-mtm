@@ -61,7 +61,7 @@ def main():
     parser.add_argument("--java-home", required=True, type=Path)
     parser.add_argument("--protected-observation", required=True, type=Path)
     parser.add_argument("--locale", choices=("az", "ru", "en"), required=True)
-    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "employee-accessibility", "task-start", "task-complete", "manager-signin", "manager-tabs", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-location-denied", "zeytun-customer-radius-read", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
+    parser.add_argument("--flow", choices=("auth-entry", "employee-tabs", "employee-accessibility", "task-start", "task-complete", "manager-signin", "manager-tabs", "manager-joint-visit", "fixture-signin", "fixture-signin-resume", "fixture-missing-coordinates", "fixture-location-request", "fixture-visit-start", "fixture-visit-photo", "fixture-visit-complete", "zeytun-missing-coordinates", "zeytun-location-request", "zeytun-location-denied", "zeytun-customer-radius-read", "zeytun-visit-start", "zeytun-visit-photo", "zeytun-visit-progress-read", "zeytun-visit-complete", "zeytun-offline-persistence"), default="auth-entry")
     parser.add_argument("--task-case", type=Path)
     parser.add_argument("--manager-case", type=Path)
     parser.add_argument("--fixture-case", type=Path)
@@ -72,7 +72,7 @@ def main():
     # Refuse reuse: every attempt, including failures, keeps its original evidence.
     args.out.mkdir(mode=0o700)
     task_flow = args.flow in ("task-start", "task-complete")
-    manager_flow = args.flow in ("manager-signin", "manager-tabs")
+    manager_flow = args.flow in ("manager-signin", "manager-tabs", "manager-joint-visit")
     manager_switch = args.flow == "manager-signin"
     fixture_flow = args.flow.startswith("fixture-")
     qa_flow = args.flow.startswith("zeytun-")
@@ -181,7 +181,7 @@ def main():
                 own_texts = [node.get("text") for node in ET.fromstring(before_xml).iter("node")
                              if node.get("package") == PACKAGE]
                 require(manager_case.get("cleanSyncText") in own_texts, "RF_UNSYNCED_AGENT_REFUSED")
-            elif args.flow == "manager-tabs":
+            elif args.flow in ("manager-tabs", "manager-joint-visit"):
                 before = manager_shell(before_xml)
             else:
                 before = auth_form(before_xml, placeholder) if args.flow == "auth-entry" else agent_shell(before_xml)
