@@ -1,5 +1,13 @@
 export const mobileResources = {
   ru: {
+    dayRing: {
+      visits: "Визиты",
+      travel: "В пути",
+      break: "Перерыв",
+      hoursMinutes: "{{hours}} ч {{minutes}} мин",
+      minutes: "{{minutes}} мин",
+      since: "с {{time}}",
+    },
     launchSplash: {
       tagline: "Ваш день на одной карте",
     },
@@ -1121,6 +1129,14 @@ export const mobileResources = {
     },
   },
   en: {
+    dayRing: {
+      visits: "Visits",
+      travel: "On the way",
+      break: "Break",
+      hoursMinutes: "{{hours}} h {{minutes}} min",
+      minutes: "{{minutes}} min",
+      since: "since {{time}}",
+    },
     launchSplash: {
       tagline: "Your day on one map",
     },
@@ -2214,6 +2230,14 @@ export const mobileResources = {
     },
   },
   az: {
+    dayRing: {
+      visits: "Vizitlər",
+      travel: "Yolda",
+      break: "Fasilə",
+      hoursMinutes: "{{hours}} saat {{minutes}} dəq",
+      minutes: "{{minutes}} dəq",
+      since: "başladı {{time}}",
+    },
     launchSplash: {
       tagline: "Gününüz bir xəritədə",
     },

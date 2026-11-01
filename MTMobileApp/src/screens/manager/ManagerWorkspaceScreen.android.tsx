@@ -62,6 +62,8 @@ import ManagerLiveMap from "./ManagerLiveMap.android"
 import ManagerJointVisitEntry from "./ManagerJointVisitEntry.android"
 import { DAY_TRACK_TONES, DayTrack, DayTrackFooter, DayTrackRibbon, TRACK_COLORS } from "../../components/DayTrack"
 import { agentDayCard, agentInitials } from "./agent-day-card"
+import { DayRing } from "../../components/DayRing"
+import { readDayTime } from "../../components/day-ring"
 import { DAY_STRIP_MOVEMENT_ICON } from "../../components/day-line"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
@@ -701,6 +703,7 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
     liveMovement: moving,
     now: new Date(),
   })
+  const dayTime = readDayTime(agent.dayTime)
   const clock = (iso: string) => new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit", hour12: false })
   // In the app's greens, gold for a visit (owner, 2026-11-01, variant «A»).
   const ribbon = day.ribbon === "closed"
@@ -783,6 +786,13 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
                   : day.left.next ? t("dayTrack.nextName", { name: day.left.next }) : null,
             } : null}
           />
+        </View>
+      ) : null}
+
+      {/* Where his day went (owner, 2026-11-02, «Кольцо дня»). */}
+      {dayTime ? (
+        <View style={styles.agentRing} testID={`manager-agent-ring-${agent.id}`}>
+          <DayRing day={dayTime} t={t} sinceLabel={t("dayRing.since", { time: clock(dayTime.startedAt) })} />
         </View>
       ) : null}
 
@@ -995,6 +1005,7 @@ const styles = themed(() => StyleSheet.create({
   teamNowTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "600", paddingHorizontal: 4 },
   agentDayCount: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "700" },
   agentHeaderUnderRibbon: { paddingRight: 48 },
+  agentRing: { paddingTop: fieldTheme.space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: fieldTheme.color.border },
   agentInitials: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "700" },
   agentCardTablet: { width: "48%" },
   agentHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
