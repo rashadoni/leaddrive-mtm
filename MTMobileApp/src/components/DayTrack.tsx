@@ -155,13 +155,27 @@ export function DayTrackFooter({
 }
 
 /** The status in the card's corner: «В ПУТИ», «НА ВИЗИТЕ», «ДЕНЬ ЗАКРЫТ». */
-export function DayTrackRibbon({ text, color }: { text: string; color: string }) {
+export function DayTrackRibbon({ text, color, ink = TRACK_COLORS.ribbonInk }: { text: string; color: string; ink?: string }) {
   return (
     <View pointerEvents="none" style={[styles.ribbon, { backgroundColor: color }]} testID="day-track-ribbon">
-      <Text style={styles.ribbonText} numberOfLines={1}>{text}</Text>
+      <Text style={[styles.ribbonText, { color: ink }]} numberOfLines={1}>{text}</Text>
     </View>
   )
 }
+
+/**
+ * The marker and ribbon on the manager's cards, in the app's greens (owner,
+ * 2026-11-01, variant «A»: the brown of the map's «standing» did not go
+ * with the green). The map keeps its own colours for its lines.
+ */
+export const DAY_TRACK_TONES = {
+  DRIVE: { color: "#055342", ink: "#FFFFFF" },
+  WALK: { color: "#1C7A50", ink: "#FFFFFF" },
+  // Bright teal: the grey-green read «слишком тусклый» on the phone.
+  STAY: { color: "#0FA38A", ink: "#FFFFFF" },
+  VISITING: { color: "#FAC775", ink: "#5A3A06" },
+  BREAK: { color: "#7F948C", ink: "#FFFFFF" },
+} as const
 
 /** Fixed colours of the green card of the day: the same in both palettes. */
 export const TRACK_COLORS = {
@@ -169,7 +183,7 @@ export const TRACK_COLORS = {
   darkDoneInk: "#04342C",
   darkAhead: "rgba(255,255,255,0.45)",
   here: "#FAC775",
-  hereInk: "#633806",
+  hereInk: "#5A3A06",
   ribbonInk: "#FFFFFF",
   /** Words on the green card: the number and names, and what stands beside them. */
   darkInk: "#FFFFFF",

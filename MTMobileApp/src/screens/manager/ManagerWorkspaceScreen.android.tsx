@@ -60,10 +60,9 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
 import ManagerJointVisitEntry from "./ManagerJointVisitEntry.android"
-import { DayTrack, DayTrackFooter, DayTrackRibbon, TRACK_COLORS } from "../../components/DayTrack"
+import { DAY_TRACK_TONES, DayTrack, DayTrackFooter, DayTrackRibbon, TRACK_COLORS } from "../../components/DayTrack"
 import { agentDayCard, agentInitials } from "./agent-day-card"
 import { DAY_STRIP_MOVEMENT_ICON } from "../../components/day-line"
-import { MOVEMENT_COLORS } from "../maps/movement-icons"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -703,19 +702,20 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
     now: new Date(),
   })
   const clock = (iso: string) => new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit", hour12: false })
+  // In the app's greens, gold for a visit (owner, 2026-11-01, variant «A»).
   const ribbon = day.ribbon === "closed"
-    ? { text: t("dayTrack.ribbonClosed"), color: fieldTheme.color.successFill }
+    ? { text: t("dayTrack.ribbonClosed"), color: fieldTheme.color.successFill, ink: TRACK_COLORS.ribbonInk }
     : day.ribbon === "visiting"
-      ? { text: t("dayTrack.ribbonVisiting"), color: MOVEMENT_COLORS.STAY }
+      ? { text: t("dayTrack.ribbonVisiting"), ...DAY_TRACK_TONES.VISITING }
       : day.ribbon === "break"
-        ? { text: t("dayTrack.ribbonBreak"), color: MOVEMENT_COLORS.BREAK }
-        : day.ribbon === "onTheWay" && moving
-          ? { text: t("dayTrack.ribbonOnTheWay"), color: MOVEMENT_COLORS[moving] }
+        ? { text: t("dayTrack.ribbonBreak"), ...DAY_TRACK_TONES.BREAK }
+        : day.ribbon === "onTheWay"
+          ? { text: t("dayTrack.ribbonOnTheWay"), ...DAY_TRACK_TONES.DRIVE }
           : null
   const marker = day.marker?.kind === "visiting"
-    ? { icon: "storefront", color: MOVEMENT_COLORS.STAY, ink: TRACK_COLORS.ribbonInk, text: t("dayTrack.onVisit", { minutes: day.marker.minutes }) }
+    ? { icon: "storefront", ...DAY_TRACK_TONES.VISITING, text: t("dayTrack.onVisit", { minutes: day.marker.minutes }) }
     : day.marker?.kind === "moving"
-      ? { icon: DAY_STRIP_MOVEMENT_ICON[day.marker.mode], color: MOVEMENT_COLORS[day.marker.mode], ink: TRACK_COLORS.ribbonInk, text: t(`managerShell.movement${day.marker.mode}`) }
+      ? { icon: DAY_STRIP_MOVEMENT_ICON[day.marker.mode], ...DAY_TRACK_TONES[day.marker.mode], text: t(`managerShell.movement${day.marker.mode}`) }
       : null
   return (
     <Pressable
@@ -727,7 +727,7 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
     >
       {/* The card as a parcel in a tracking app (owner, 2026-11-01): his
           state in the corner, his day as a road, «started» and «left». */}
-      {ribbon ? <DayTrackRibbon text={ribbon.text} color={ribbon.color} /> : null}
+      {ribbon ? <DayTrackRibbon text={ribbon.text} color={ribbon.color} ink={ribbon.ink} /> : null}
       <View style={[styles.agentHeader, ribbon && styles.agentHeaderUnderRibbon]}>
         <View style={styles.agentAvatar}>
           <Text style={styles.agentInitials}>{agentInitials(agent.name)}</Text>
