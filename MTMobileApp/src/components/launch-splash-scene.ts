@@ -1,6 +1,7 @@
 /**
  * The opening of the app, as the owner chose it (2026-11-01, mockup «C2,
- * фирменный зелёный»): a city map in the app's green draws itself — streets,
+ * фирменный зелёный», then «тёмно-зелёный» — the green of the app's status
+ * bar, not the lighter one of the mockup): a city map in the app's green draws itself — streets,
  * blocks, a park, the river — the clients' pins drop onto it, a dashed route
  * joins them, the last pin pulses, the map steps back and the name comes up.
  *
@@ -12,12 +13,12 @@ export const SCENE_WIDTH = 258
 export const SCENE_HEIGHT = 468
 
 export const SPLASH_COLORS = {
-  ground: "#08705A",
-  river: "#0A6550",
-  park: "#0F7E64",
-  block: "#0B6853",
-  street: "#2A8D74",
-  lane: "#1C8068",
+  ground: "#055342",
+  river: "#04443A",
+  park: "#0A6A52",
+  block: "#064B3D",
+  street: "#1D7560",
+  lane: "#0F6450",
   route: "#FFFFFF",
   pin: "#FFFFFF",
   lastPin: "#FAC775",
