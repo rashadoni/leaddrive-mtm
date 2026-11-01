@@ -1102,6 +1102,28 @@ class ApiClient {
     }, 20_000, 2, guard)
   }
 
+  /**
+   * «Часы не те?»: from the spot, the agent proposes the place's real «часы
+   * приёма». Nothing about the place changes until a manager accepts.
+   */
+  async submitOrganizationHoursRequest(id: string, data: {
+    idempotencyKey: string
+    hours: Record<string, { open: string; close: string; breakFrom?: string; breakTo?: string } | null>
+    comment?: string
+  }) {
+    return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/hours-request`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
+  /** The agent takes his own waiting hours request about this place back. */
+  async cancelOrganizationHoursRequest(id: string) {
+    return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/hours-request`, {
+      method: "DELETE",
+    }, 20_000, 2)
+  }
+
   /** The agent takes his own waiting request about this organization back. */
   async cancelOrganizationLocationRequest(id: string) {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/location-request`, {
