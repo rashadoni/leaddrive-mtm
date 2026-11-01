@@ -1,0 +1,38 @@
+appId: com.leaddrive.attendance
+name: HR asked from the CRM to explain a day; the employee answers on the phone
+---
+# Writes one explanation: day TIME_DATE, kind TIME_KIND (LATE | ABSENT),
+# text TIME_CRM_MARK. The CRM side: «Hesabatlar → Gecikmələr» shows the day
+# answered, and «Bu gün» lists the answer with its date for HR to decide.
+- assertTrue: ${/^RF-E2E-/.test(TIME_CRM_MARK) && /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/.test(TIME_DATE) && /^(LATE|ABSENT)$/.test(TIME_KIND)}
+- runFlow: home.yaml
+- tapOn:
+    id: time-tab-OwnExplanations
+- extendedWaitUntil:
+    visible:
+      id: ${'explanation-asked-' + TIME_DATE + ':' + TIME_KIND}
+    timeout: 30000
+- tapOn:
+    id: ${'explanation-write-' + TIME_DATE + ':' + TIME_KIND}
+- tapOn:
+    id: ${'explanation-text-' + TIME_DATE + ':' + TIME_KIND}
+- inputText: ${TIME_CRM_MARK}
+- scrollUntilVisible:
+    element:
+      id: ${'explanation-send-' + TIME_DATE + ':' + TIME_KIND}
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: ${'explanation-send-' + TIME_DATE + ':' + TIME_KIND}
+# Sent answers live under «Göndərilənlər».
+- extendedWaitUntil:
+    notVisible:
+      id: ${'explanation-send-' + TIME_DATE + ':' + TIME_KIND}
+    timeout: 60000
+- tapOn:
+    id: explanations-filter-history
+- extendedWaitUntil:
+    visible:
+      id: ${'explanation-written-' + TIME_DATE + ':' + TIME_KIND}
+    timeout: 60000
+- assertVisible: ${'.*' + TIME_CRM_MARK + '.*'}
