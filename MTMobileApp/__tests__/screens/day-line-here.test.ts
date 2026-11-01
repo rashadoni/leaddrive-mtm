@@ -97,7 +97,10 @@ describe("on the screens", () => {
   it("the manager's card is a ribbon, the road and «started / left»", () => {
     const team = read("src/screens/manager/ManagerWorkspaceScreen.android.tsx")
     expect(team).toContain('const moving = currentPosition && (!workdayKnown || agent.workday?.status === "STARTED") ? location?.movement?.mode ?? null : null')
-    expect(team).toContain("{ribbon ? <DayTrackRibbon text={ribbon.text} color={ribbon.color} /> : null}")
+    expect(team).toContain("{ribbon ? <DayTrackRibbon text={ribbon.text} color={ribbon.color} ink={ribbon.ink} /> : null}")
+    // Variant «A» (owner, 2026-11-01): the greens and gold of the app, not the map's brown.
+    expect(team).not.toContain("MOVEMENT_COLORS.STAY")
+    expect(team).toContain("...DAY_TRACK_TONES[day.marker.mode]")
     expect(team).toContain("<DayTrack")
     expect(team).toContain("<DayTrackFooter")
   })
