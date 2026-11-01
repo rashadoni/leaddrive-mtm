@@ -123,12 +123,17 @@ describe("the employee's day for the manager's card", () => {
   })
 
   it("draws the line along the roads when the server matched it, else the fixes broken at the silences", () => {
-    expect(toEmployeeDay(HISTORY, true).track).toEqual([
+    // Each place also says which fix it belongs to and how he moved there (the replay's step 3).
+    const places = (track: Array<Array<{ latitude: number; longitude: number }>>) =>
+      track.map((segment) => segment.map(({ latitude, longitude }) => ({ latitude, longitude })))
+    expect(places(toEmployeeDay(HISTORY, true).track)).toEqual([
       [{ latitude: 40.40, longitude: 49.85 }, { latitude: 40.41, longitude: 49.86 }],
       [{ latitude: 40.42, longitude: 49.87 }, { latitude: 40.43, longitude: 49.88 }],
     ])
     const matched = toEmployeeDay({ ...HISTORY, matchedTrack: { segments: [[[40.4, 49.85], [40.405, 49.855], [40.41, 49.86]]] } }, true)
-    expect(matched.track).toEqual([[{ latitude: 40.4, longitude: 49.85 }, { latitude: 40.405, longitude: 49.855 }, { latitude: 40.41, longitude: 49.86 }]])
+    expect(places(matched.track)).toEqual([[{ latitude: 40.4, longitude: 49.85 }, { latitude: 40.405, longitude: 49.855 }, { latitude: 40.41, longitude: 49.86 }]])
+    // The street line's ends lie on the first and the second fix.
+    expect([matched.track[0][0].fix, matched.track[0][2].fix]).toEqual([0, 1])
   })
 
   it("survives an empty or broken answer", () => {

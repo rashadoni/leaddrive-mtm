@@ -12,7 +12,30 @@
  * the map simply has no line there.
  */
 
-export type EmployeeDayPoint = { latitude: number; longitude: number }
+export type EmployeeDayPoint = {
+  latitude: number
+  longitude: number
+  /** How he was moving here, as the server read the day; absent from an older server. */
+  mode?: EmployeeDayMode
+  /** The fix of `fixes` this place of the line belongs to — the replay cuts the line by it. */
+  fix?: number
+}
+
+export type EmployeeDayMode = "DRIVE" | "WALK" | "STAY"
+
+/**
+ * A fix of the day for the replay (owner 2026-11-01, the mockup's step 3):
+ * when, where, how he was moving and which way, and what lies after it — a
+ * break or a lost signal, across which nothing is drawn.
+ */
+export interface EmployeeDayFix {
+  latitude: number
+  longitude: number
+  at: number
+  mode: EmployeeDayMode
+  course: number | null
+  cut: null | "GAP" | "BREAK"
+}
 
 export type EmployeeDayStopStatus = "VISITED" | "SKIPPED" | "NEXT" | "PLANNED" | "MISSED"
 
@@ -49,6 +72,8 @@ export interface EmployeeDay {
   timezone: string | null
   /** Where he went, in pieces: a piece ends where the phone fell silent. */
   track: EmployeeDayPoint[][]
+  /** The day's fixes in time order, for the replay; empty when the server gave no times. */
+  fixes: EmployeeDayFix[]
   stops: EmployeeDayStop[]
   /** Visits that belong to no point of the day's routes. */
   extraVisits: EmployeeDayExtraVisit[]
@@ -86,32 +111,92 @@ const minutesBetween = (from: string | null, to: string | null): number | null =
   return Number.isFinite(span) && span >= 0 ? Math.round(span / 60_000) : null
 }
 
-/** The road-matched track when the server has one whole, else the recorded fixes split at the gaps. */
-function trackOf(data: any): EmployeeDayPoint[][] {
+/** Two fixes further apart than this are a silence even without a recorded gap (the server's line). */
+const TRIP_GAP_MAX_MS = 5 * 60_000
+
+type RecordedGap = { from: number; to: number; reason: unknown }
+
+const gapsOf = (data: any): RecordedGap[] => list(data?.gaps)
+  .map((gap) => ({ from: Date.parse(gap?.startedAt), to: Date.parse(gap?.endedAt), reason: gap?.reason }))
+  .filter((gap) => Number.isFinite(gap.from))
+
+/** The recorded gap or break lying between two fixes, if any (it starts at the earlier one, or after it). */
+const gapBetween = (gaps: RecordedGap[], from: number, to: number) =>
+  gaps.find((gap) => gap.from >= from - 1_000 && gap.from < to && (!Number.isFinite(gap.to) || gap.to <= to + 1_000))
+
+/** The day's fixes, each with what the server read of it and what lies after it. */
+function fixesOf(data: any): EmployeeDayFix[] {
+  const gaps = gapsOf(data)
+  const fixes: EmployeeDayFix[] = []
+  for (const row of list(data?.points)) {
+    const point = position(row?.latitude, row?.longitude)
+    const at = Date.parse(row?.recordedAt)
+    if (!point || !Number.isFinite(at) || (fixes.length && at <= fixes[fixes.length - 1].at)) continue
+    const mode: EmployeeDayMode = row?.mode === "DRIVE" || row?.mode === "WALK" ? row.mode : "STAY"
+    const course = num(row?.course)
+    fixes.push({ ...point, at, mode, course: mode !== "STAY" && course != null ? course : null, cut: null })
+  }
+  fixes.forEach((fix, index) => {
+    const next = fixes[index + 1]
+    if (!next) return
+    const gap = gapBetween(gaps, fix.at, next.at)
+    if (gap) fix.cut = gap.reason === "WORKDAY_PAUSED" ? "BREAK" : "GAP"
+    else if (next.at - fix.at > TRIP_GAP_MAX_MS) fix.cut = "GAP"
+  })
+  return fixes
+}
+
+const metres = (a: EmployeeDayPoint, b: EmployeeDayPoint) => {
+  const toRad = Math.PI / 180
+  const dLat = (b.latitude - a.latitude) * toRad
+  const dLon = (b.longitude - a.longitude) * toRad * Math.cos(((a.latitude + b.latitude) / 2) * toRad)
+  return Math.sqrt(dLat * dLat + dLon * dLon) * 6_371_000
+}
+
+/**
+ * The road-matched track when the server has one whole, else the recorded
+ * fixes split at the gaps. Each place carries the fix it belongs to and how
+ * he was moving there: the street line has no times of its own, and runs the
+ * way the fixes do, so each place is given the nearest fix at or after the
+ * one before it (as the web does, `timeRoadTrack`).
+ */
+function trackOf(data: any, fixes: EmployeeDayFix[]): EmployeeDayPoint[][] {
   const matched = list(data?.matchedTrack?.segments)
     .map((segment) => list(segment).map((point) => (
       Array.isArray(point) ? position(point[0], point[1]) : position(point?.latitude ?? point?.lat, point?.longitude ?? point?.lng)
     )).filter((point): point is EmployeeDayPoint => point !== null))
     .filter((segment) => segment.length > 1)
-  if (matched.length) return matched
+  if (matched.length) {
+    if (!fixes.length) return matched
+    let cursor = 0
+    return matched.map((segment) => segment.map((place) => {
+      let best = cursor
+      let bestMetres = Number.POSITIVE_INFINITY
+      for (let index = cursor; index < Math.min(fixes.length, cursor + 40); index += 1) {
+        const distance = metres(place, fixes[index])
+        if (distance < bestMetres) {
+          bestMetres = distance
+          best = index
+        }
+      }
+      cursor = best
+      return { ...place, fix: best, mode: fixes[best].mode }
+    }))
+  }
 
-  const gaps = list(data?.gaps).map((gap) => ({ from: Date.parse(gap?.startedAt), to: Date.parse(gap?.endedAt) }))
+  // The line breaks only where the server recorded a gap or a break, as it
+  // always has; a quiet phone between two fixes still draws the way he went.
+  const gaps = gapsOf(data)
   const segments: EmployeeDayPoint[][] = []
   let current: EmployeeDayPoint[] = []
-  let previousAt: number | null = null
-  for (const row of list(data?.points)) {
-    const point = position(row?.latitude, row?.longitude)
-    const at = Date.parse(row?.recordedAt)
-    if (!point || !Number.isFinite(at)) continue
-    const crossesGap = previousAt != null && gaps.some((gap) => gap.from >= previousAt! && gap.to <= at)
-    if (crossesGap && current.length) {
+  fixes.forEach((fix, index) => {
+    current.push({ latitude: fix.latitude, longitude: fix.longitude, fix: index, mode: fix.mode })
+    const next = fixes[index + 1]
+    if (!next || gapBetween(gaps, fix.at, next.at)) {
       segments.push(current)
       current = []
     }
-    current.push(point)
-    previousAt = at
-  }
-  if (current.length) segments.push(current)
+  })
   return segments
 }
 
@@ -164,6 +249,7 @@ function insideWork(startedAt: unknown, endedAt: unknown, windows: WorkWindow[])
  *   unvisited point «next» and the last fix «where he is now».
  */
 export function toEmployeeDay(data: any, isToday: boolean, stopMinimumMinutes = 5): EmployeeDay {
+  const fixes = fixesOf(data)
   const visits = list(data?.visits)
   const visitByPoint = new Map<string, any>()
   for (const visit of visits) {
@@ -257,7 +343,8 @@ export function toEmployeeDay(data: any, isToday: boolean, stopMinimumMinutes = 
   return {
     date: String(data?.range?.date ?? ""),
     timezone: str(data?.range?.timezone),
-    track: trackOf(data),
+    track: trackOf(data, fixes),
+    fixes,
     stops,
     extraVisits,
     current,

@@ -321,8 +321,11 @@ function uploadPosition(position: {
     latitude,
     longitude,
     accuracy: accuracy || undefined,
-    speed: speed ? speed * 3.6 : undefined,
-    heading: heading || undefined,
+    // A phone standing still says 0 km/h, and a course of 0° is due north:
+    // both are readings, not «none» — the server reads car / on foot /
+    // standing and the arrow from them (owner 2026-11-01).
+    speed: typeof speed === 'number' && Number.isFinite(speed) && speed >= 0 ? speed * 3.6 : undefined,
+    heading: typeof heading === 'number' && Number.isFinite(heading) && heading >= 0 && heading <= 360 ? heading : undefined,
     altitude: altitude || undefined,
     ...(activeTrackingWorkdayId ? { workdayId: activeTrackingWorkdayId } : {}),
     recordedAt,

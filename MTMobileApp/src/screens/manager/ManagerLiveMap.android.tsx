@@ -17,6 +17,7 @@ import {
   type ManagerLiveMapMarker,
   type ManagerLiveMapRow,
 } from "./manager-live-map"
+import { compassPoint } from "../maps/movement-icons"
 
 interface ManagerLiveMapProps {
   rows: ManagerLiveMapRow[]
@@ -70,6 +71,10 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     ...marker,
     statusLabel: markerStatusLabel(marker, t),
     ageLabel: evidenceAgeLabel(marker.locationAgeMs, t),
+    movementLabel: marker.movement
+      ? [t(`managerShell.movement${marker.movement.mode}`), marker.movement.course != null ? t(`managerShell.compass${compassPoint(marker.movement.course)}`) : null]
+          .filter(Boolean).join(" · ")
+      : "",
   })), [model.markers, t])
 
   const mapDocument = useMemo(() => buildManagerLiveMapDocument(documentMarkers, {

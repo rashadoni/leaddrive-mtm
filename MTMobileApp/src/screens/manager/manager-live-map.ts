@@ -1,8 +1,10 @@
 import type {
   ManagerAgentTruth,
   ManagerGpsFreshness,
+  ManagerMovement,
   ManagerTeamAgent,
 } from "../../services/manager-location-truth"
+import { MOVEMENT_ICON_SVG, MOVEMENT_COLORS } from "../maps/movement-icons"
 import {
   cartoTileMarkup,
   cartoTileScript,
@@ -33,6 +35,12 @@ export interface ManagerLiveMapMarker {
   isOnline: boolean
   gpsFreshness: ManagerGpsFreshness
   status: ManagerLiveMapMarkerStatus
+  /**
+   * Car, on foot or standing, and which way, as the server read it (owner
+   * 2026-11-01, the mockup's step 3). Only on a current marker: an older
+   * point says nothing about how he is moving now.
+   */
+  movement: ManagerMovement | null
 }
 
 export interface ManagerLiveMapModel {
@@ -47,6 +55,8 @@ export interface ManagerLiveMapModel {
 export interface ManagerLiveMapDocumentMarker extends ManagerLiveMapMarker {
   statusLabel: string
   ageLabel: string
+  /** «на машине · на север»; empty without a movement. */
+  movementLabel?: string
 }
 
 export interface ManagerLiveMapDocumentLabels {
@@ -120,6 +130,7 @@ export function buildManagerLiveMapModel(rows: ManagerLiveMapRow[]): ManagerLive
       isOnline: truth.isOnline,
       gpsFreshness: truth.gpsFreshness,
       status: markerStatus(truth),
+      movement: markerStatus(truth) === "CURRENT" ? location.movement ?? null : null,
     }]
   })
 
@@ -169,6 +180,9 @@ export function buildManagerLiveMapDocument(
     status: marker.status,
     statusLabel: marker.statusLabel,
     ageLabel: marker.ageLabel,
+    movementLabel: marker.movementLabel ?? "",
+    mode: marker.movement?.mode ?? null,
+    course: marker.movement?.course ?? null,
   }))
 
   return `<!doctype html>
@@ -223,6 +237,32 @@ export function buildManagerLiveMapDocument(
     .marker[data-status="CURRENT"] .marker-pin { background: #1c7a50; }
     .marker[data-status="LAST_KNOWN"] .marker-pin { background: #2e73d2; }
     .marker[data-status="STALE"] .marker-pin { background: #8b5a00; border-style: dashed; }
+    /* How he is moving: a badge with car / on foot / standing on the pin, and
+       an arrow around it the way he is going. */
+    .marker-mode {
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      display: flex;
+      width: 22px;
+      height: 22px;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fbfdfc;
+      border-radius: 50%;
+      color: #fbfdfc;
+      box-shadow: 0 1px 4px rgba(19,35,31,.3);
+    }
+    .marker-mode svg { width: 14px; height: 14px; }
+    .marker-arrow {
+      position: absolute;
+      left: -10px;
+      top: -10px;
+      width: 68px;
+      height: 68px;
+      pointer-events: none;
+      overflow: visible;
+    }
     .marker[data-selected="true"] .marker-pin {
       outline: 3px solid rgba(19,35,31,.32);
       outline-offset: 3px;
@@ -303,6 +343,8 @@ export function buildManagerLiveMapDocument(
     ${cartoTileScript(tiles)}
     (function () {
       var markers = ${scriptJson(safeMarkers)};
+      var modeIcons = ${scriptJson(MOVEMENT_ICON_SVG)};
+      var modeColors = ${scriptJson(MOVEMENT_COLORS)};
       var worldUnit = 256;
       var zoomOverride = null;
       var selectedId = null;
@@ -359,7 +401,7 @@ export function buildManagerLiveMapDocument(
         selectedId = marker.id;
         var popup = document.getElementById("popup");
         document.getElementById("popup-name").textContent = marker.name;
-        document.getElementById("popup-meta").textContent = marker.statusLabel + " · " + marker.ageLabel;
+        document.getElementById("popup-meta").textContent = marker.statusLabel + (marker.movementLabel ? " · " + marker.movementLabel : "") + " · " + marker.ageLabel;
         popup.hidden = false;
         Array.prototype.forEach.call(document.querySelectorAll(".marker"), function (button) {
           var selected = button.getAttribute("data-id") === selectedId;
@@ -402,7 +444,7 @@ export function buildManagerLiveMapDocument(
           button.setAttribute("data-status", marker.status);
           button.setAttribute("data-selected", marker.id === selectedId ? "true" : "false");
           button.setAttribute("aria-pressed", marker.id === selectedId ? "true" : "false");
-          button.setAttribute("aria-label", marker.name + ", " + marker.statusLabel + ", " + marker.ageLabel);
+          button.setAttribute("aria-label", marker.name + ", " + marker.statusLabel + (marker.movementLabel ? ", " + marker.movementLabel : "") + ", " + marker.ageLabel);
           button.style.left = point.x + "px";
           button.style.top = point.y + "px";
           var pin = document.createElement("span");
@@ -410,7 +452,31 @@ export function buildManagerLiveMapDocument(
           var initials = document.createElement("span");
           initials.textContent = marker.initials;
           pin.appendChild(initials);
+          if (marker.mode && marker.mode !== "STAY" && typeof marker.course === "number") {
+            // The arrow first, so the pin is drawn over its base.
+            var arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            arrow.setAttribute("class", "marker-arrow");
+            arrow.setAttribute("viewBox", "0 0 68 68");
+            arrow.setAttribute("aria-hidden", "true");
+            arrow.style.transform = "rotate(" + Math.round(marker.course) + "deg)";
+            var tip = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            tip.setAttribute("d", "M 34 1 L 41 12 L 27 12 Z");
+            tip.setAttribute("fill", modeColors[marker.mode]);
+            tip.setAttribute("stroke", "#fbfdfc");
+            tip.setAttribute("stroke-width", "2");
+            tip.setAttribute("stroke-linejoin", "round");
+            arrow.appendChild(tip);
+            button.appendChild(arrow);
+          }
           button.appendChild(pin);
+          if (marker.mode && modeIcons[marker.mode]) {
+            var badge = document.createElement("span");
+            badge.className = "marker-mode";
+            badge.style.background = modeColors[marker.mode];
+            // A fixed picture from this build, never text from the server.
+            badge.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + modeIcons[marker.mode] + "</svg>";
+            button.appendChild(badge);
+          }
           button.onclick = function () { selectMarker(marker); };
           markerLayer.appendChild(button);
         });
