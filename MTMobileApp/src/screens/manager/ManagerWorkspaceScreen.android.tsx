@@ -744,7 +744,7 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
             <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
               {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
             </Text>
-            <Text style={styles.agentMeta}>{` · ${workdayLabel(agent.workday?.status, t)}`}</Text>
+            <Text style={styles.agentMeta} numberOfLines={1}> · {statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
           </View>
           {agent.openVisitSince ? (
             <Text style={styles.agentOpenVisit} testID={`manager-agent-open-visit-${agent.id}`}>

@@ -1317,18 +1317,17 @@ const styles = themed(() => StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
-  // The green card of the day: the same green in both palettes, as the
-  // opening animation and the status bar of the day palette.
+  // The green card of the day: the app's strong green, white words on it.
   routeDayCard: {
     alignSelf: "stretch",
     padding: fieldTheme.space.lg,
     borderRadius: fieldTheme.radius.lg,
-    backgroundColor: "#055342",
+    backgroundColor: fieldTheme.color.primaryStrong,
   },
-  routeDayTitle: { color: "rgba(255,255,255,0.75)", fontSize: 12, lineHeight: 16, fontWeight: "600", letterSpacing: 0.4 },
-  routeDayMeta: { marginTop: 2, color: "rgba(255,255,255,0.75)", fontSize: 13, lineHeight: 18, fontWeight: "400" },
-  routeDayCount: { marginTop: 4, color: "#FFFFFF", fontSize: 30, lineHeight: 36, fontWeight: "700" },
-  routeDayTotal: { color: "rgba(255,255,255,0.75)", fontSize: 15, fontWeight: "400" },
+  routeDayTitle: { color: TRACK_COLORS.darkMuted, fontSize: 12, lineHeight: 16, fontWeight: "600", letterSpacing: 0.4 },
+  routeDayMeta: { marginTop: 2, color: TRACK_COLORS.darkMuted, fontSize: 13, lineHeight: 18, fontWeight: "400" },
+  routeDayCount: { marginTop: 4, color: TRACK_COLORS.darkInk, fontSize: 30, lineHeight: 36, fontWeight: "700" },
+  routeDayTotal: { color: TRACK_COLORS.darkMuted, fontSize: 15, fontWeight: "400" },
   routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   routeSummaryIcon: { width: 34, alignItems: "center" },
   routeSummaryCopy: { flex: 1, minWidth: 0 },

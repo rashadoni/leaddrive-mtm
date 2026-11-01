@@ -160,6 +160,9 @@ export const TRACK_COLORS = {
   here: "#FAC775",
   hereInk: "#633806",
   ribbonInk: "#FFFFFF",
+  /** Words on the green card: the number and names, and what stands beside them. */
+  darkInk: "#FFFFFF",
+  darkMuted: "rgba(255,255,255,0.75)",
 } as const
 
 const styles = themed(() => StyleSheet.create({
@@ -192,7 +195,7 @@ const styles = themed(() => StyleSheet.create({
   footEnd: { alignItems: "flex-end" },
   footLabel: { color: fieldTheme.color.inkMuted, fontSize: 10, fontWeight: "600", letterSpacing: 0.5 },
   footValue: { color: fieldTheme.color.ink, fontSize: 13, fontWeight: "600", marginTop: 2 },
-  footValueDark: { color: "#FFFFFF" },
+  footValueDark: { color: TRACK_COLORS.darkInk },
   footSub: { color: fieldTheme.color.inkMuted, fontSize: 11, marginTop: 1 },
   footMutedDark: { color: "rgba(255,255,255,0.68)" },
   textEnd: { textAlign: "right" },
