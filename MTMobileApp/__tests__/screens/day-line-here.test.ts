@@ -59,6 +59,15 @@ describe("an agent's card for the manager", () => {
     expect(card.left).toEqual({ count: 5, now: "Аптека 24", next: "Др. Алиева" })
   })
 
+  // Zeytun keeps no time: the server sends no workday, and every agent read
+  // «İş günü başlamayıb» — the car would never have shown (phone, 3.11.66).
+  it("without time-keeping, a live point is what says he is at work", () => {
+    const card = agentDayCard({ ...base, workdayStatus: null, workdayKnown: false, workdayStartedAt: null, liveMovement: "WALK" })
+    expect(card.ribbon).toBe("onTheWay")
+    expect(card.marker).toEqual({ kind: "moving", mode: "WALK" })
+    expect(agentDayCard({ ...base, workdayStatus: null, workdayKnown: false, liveMovement: null }).marker).toBeNull()
+  })
+
   it("the day closed: the green ribbon and no marker", () => {
     const card = agentDayCard({ ...base, workdayStatus: "COMPLETED", liveMovement: "DRIVE" })
     expect(card.ribbon).toBe("closed")
@@ -87,7 +96,7 @@ describe("an agent's card for the manager", () => {
 describe("on the screens", () => {
   it("the manager's card is a ribbon, the road and «started / left»", () => {
     const team = read("src/screens/manager/ManagerWorkspaceScreen.android.tsx")
-    expect(team).toContain('const moving = currentPosition && agent.workday?.status === "STARTED" ? location?.movement?.mode ?? null : null')
+    expect(team).toContain('const moving = currentPosition && (!workdayKnown || agent.workday?.status === "STARTED") ? location?.movement?.mode ?? null : null')
     expect(team).toContain("{ribbon ? <DayTrackRibbon text={ribbon.text} color={ribbon.color} /> : null}")
     expect(team).toContain("<DayTrack")
     expect(team).toContain("<DayTrackFooter")

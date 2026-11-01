@@ -690,9 +690,12 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
   const route = agent.routeToday
   // Car, on foot or standing — only from a live point of a day under way:
   // an old point says where he was, not how he is moving now.
-  const moving = currentPosition && agent.workday?.status === "STARTED" ? location?.movement?.mode ?? null : null
+  // Without time-keeping the server sends no workday; the live point alone says he works.
+  const workdayKnown = agent.workday != null
+  const moving = currentPosition && (!workdayKnown || agent.workday?.status === "STARTED") ? location?.movement?.mode ?? null : null
   const day = agentDayCard({
     workdayStatus: agent.workday?.status,
+    workdayKnown,
     workdayStartedAt: agent.workday?.startedAt,
     route,
     routeDay: agent.routeDay,
@@ -763,10 +766,13 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
             label={t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
           />
           <DayTrackFooter
-            left={day.started ? {
+            left={day.started ? (day.started.name ? {
               label: t("dayTrack.started", { time: clock(day.started.at) }),
-              value: day.started.name ?? workdayLabel(agent.workday?.status, t),
-            } : null}
+              value: day.started.name,
+            } : {
+              label: t("dayTrack.startedLabel"),
+              value: clock(day.started.at),
+            }) : null}
             right={day.left ? {
               label: t("dayTrack.left"),
               value: t("dayTrack.visits", { count: day.left.count }),

@@ -23,6 +23,8 @@ export interface AgentDayCard {
 
 export function agentDayCard(input: {
   workdayStatus: string | null | undefined
+  /** False when the server sends no workday for this company (no time-keeping). */
+  workdayKnown?: boolean
   workdayStartedAt: string | null | undefined
   route: { planned: number; visited: number; skipped: number } | null | undefined
   routeDay: ManagerRouteDay | null | undefined
@@ -31,7 +33,12 @@ export function agentDayCard(input: {
   now: Date
 }): AgentDayCard {
   const status = input.workdayStatus ?? null
-  const open = status === "STARTED" || status === "PAUSED"
+  // A company without time-keeping sends no workday at all (Zeytun: every
+  // agent read «İş günü başlamayıb»). Then a live point — recorded only
+  // while his day runs — is what says he is at work.
+  const unknown = input.workdayKnown === false
+  const open = status === "STARTED" || status === "PAUSED" || unknown
+  const working = status === "STARTED" || unknown
   const visiting = open ? input.routeDay?.visiting ?? null : null
   const remaining = input.route ? Math.max(0, input.route.planned - input.route.visited - input.route.skipped) : 0
 
@@ -39,13 +46,13 @@ export function agentDayCard(input: {
   if (status === "COMPLETED") ribbon = "closed"
   else if (visiting) ribbon = "visiting"
   else if (status === "PAUSED") ribbon = "break"
-  else if (status === "STARTED" && (input.liveMovement === "DRIVE" || input.liveMovement === "WALK")) ribbon = "onTheWay"
+  else if (working && (input.liveMovement === "DRIVE" || input.liveMovement === "WALK")) ribbon = "onTheWay"
 
   let marker: AgentDayMarker = null
   if (remaining > 0 && visiting) {
     const since = Date.parse(visiting.since)
     marker = { kind: "visiting", name: visiting.name, minutes: Number.isFinite(since) ? Math.max(0, Math.floor((input.now.getTime() - since) / 60_000)) : 0 }
-  } else if (remaining > 0 && status === "STARTED" && input.liveMovement) {
+  } else if (remaining > 0 && working && input.liveMovement) {
     marker = { kind: "moving", mode: input.liveMovement }
   }
 
