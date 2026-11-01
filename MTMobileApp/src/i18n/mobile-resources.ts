@@ -5,6 +5,7 @@ export const mobileResources = {
     },
     dayTrack: {
       started: "НАЧАЛ {{time}}",
+      startedLabel: "НАЧАЛ",
       left: "ОСТАЛОСЬ",
       next: "ДАЛЬШЕ",
       nextAt: "ДАЛЬШЕ · ПЛАН {{time}}",
@@ -1125,6 +1126,7 @@ export const mobileResources = {
     },
     dayTrack: {
       started: "STARTED {{time}}",
+      startedLabel: "STARTED",
       left: "LEFT",
       next: "NEXT",
       nextAt: "NEXT · PLAN {{time}}",
@@ -2217,6 +2219,7 @@ export const mobileResources = {
     },
     dayTrack: {
       started: "BAŞLADI {{time}}",
+      startedLabel: "BAŞLADI",
       left: "QALIB",
       next: "SONRA",
       nextAt: "SONRA · PLAN {{time}}",

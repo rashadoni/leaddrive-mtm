@@ -24,6 +24,12 @@ export interface DayTrackMarker {
 }
 
 const DOTS = 24
+const BUBBLE_WIDTH = 180
+const BUBBLE_FRAME = {
+  center: { left: (34 - BUBBLE_WIDTH) / 2, alignItems: "center" as const },
+  "flex-start": { left: 0, alignItems: "flex-start" as const },
+  "flex-end": { right: 0, alignItems: "flex-end" as const },
+}
 
 function Road({ done, tone }: { done: boolean; tone: DayTrackTone }) {
   const color = done
@@ -62,8 +68,13 @@ function Marker({ marker, align }: { marker: DayTrackMarker; align: "center" | "
   }, [lift])
   return (
     <Animated.View testID="day-track-marker" style={[styles.markerBox, { alignItems: align, transform: [{ translateY: lift }] }]}>
-      <View style={[styles.bubble, { backgroundColor: marker.color }]}>
-        <Text style={[styles.bubbleText, { color: marker.ink }]} numberOfLines={1}>{marker.text}</Text>
+      {/* A wide frame around the bubble: Android measures an absolute child
+          within its parent, and the 34 dp marker cut the words to «в…»
+          (phone, 3.11.66). */}
+      <View pointerEvents="none" style={[styles.bubbleFrame, BUBBLE_FRAME[align]]}>
+        <View style={[styles.bubble, { backgroundColor: marker.color }]}>
+          <Text style={[styles.bubbleText, { color: marker.ink }]} numberOfLines={1}>{marker.text}</Text>
+        </View>
       </View>
       <View style={[styles.bubbleTip, { backgroundColor: marker.color }, align === "flex-start" && styles.tipStart, align === "flex-end" && styles.tipEnd]} />
       <View style={[styles.marker, { backgroundColor: marker.color }]}>
@@ -91,7 +102,7 @@ export function DayTrack({
   const at = marker ? dayStripHereIndex(stops) : null
   const align = at === 0 ? "flex-start" : at === stops.length ? "flex-end" : "center"
   return (
-    <View style={styles.track} accessible accessibilityLabel={[label, marker?.text].filter(Boolean).join(", ")} testID="day-track">
+    <View style={[styles.track, marker ? styles.trackWithMarker : null]} accessible accessibilityLabel={[label, marker?.text].filter(Boolean).join(", ")} testID="day-track">
       {stops.map((state, index) => {
         const done = state === "done"
         return (
@@ -166,7 +177,9 @@ export const TRACK_COLORS = {
 } as const
 
 const styles = themed(() => StyleSheet.create({
-  track: { flexDirection: "row", alignItems: "center", marginTop: 34, marginBottom: 4, minHeight: 34 },
+  track: { flexDirection: "row", alignItems: "center", marginTop: 12, marginBottom: 4, minHeight: 24 },
+  // Room for the bubble above the marker, only when there is one.
+  trackWithMarker: { marginTop: 34, minHeight: 34 },
   road: { flex: 1, height: 3, marginHorizontal: 3, flexDirection: "row", alignItems: "center", gap: 3, overflow: "hidden" },
   dot: { width: 3, height: 3, borderRadius: 1.5 },
   dash: { width: 6, height: 2, borderRadius: 1 },
@@ -176,7 +189,8 @@ const styles = themed(() => StyleSheet.create({
   aheadDark: { borderColor: TRACK_COLORS.darkAhead, backgroundColor: "transparent" },
   markerBox: { width: 34, alignItems: "center" },
   marker: { width: 34, height: 34, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  bubble: { position: "absolute", bottom: 41, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 9, maxWidth: 170 },
+  bubbleFrame: { position: "absolute", bottom: 41, width: BUBBLE_WIDTH },
+  bubble: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 9, maxWidth: BUBBLE_WIDTH },
   bubbleText: { fontSize: 11, fontWeight: "600" },
   bubbleTip: { position: "absolute", bottom: 37, width: 8, height: 8, transform: [{ rotate: "45deg" }] },
   tipStart: { left: 13 },

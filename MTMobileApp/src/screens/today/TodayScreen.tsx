@@ -841,10 +841,13 @@ export default function TodayScreen() {
                       ) : null}
                       <DayTrackFooter
                         tone="dark"
-                        left={startedAt ? {
+                        left={startedAt ? (routeFirstVisited ? {
                           label: t("dayTrack.started", { time: startedAt }),
-                          value: routeFirstVisited ?? dateLabel,
-                        } : null}
+                          value: routeFirstVisited,
+                        } : {
+                          label: t("dayTrack.startedLabel"),
+                          value: startedAt,
+                        }) : null}
                         right={route.totalPoints === 0 ? null : route.remainingPoints === 0 ? {
                           label: t("dayTrack.left"),
                           value: t("dayTrack.allDone"),
