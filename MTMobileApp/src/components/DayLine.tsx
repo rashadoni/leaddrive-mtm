@@ -2,7 +2,7 @@ import React from "react"
 import { StyleSheet, View } from "react-native"
 import Icon from "react-native-vector-icons/Ionicons"
 import { fieldTheme, themed } from "../theme/fieldTheme"
-import { dayStripHereIndex, dayStripStops, type DayStopState } from "./day-line"
+import { dayStripStops, type DayStopState } from "./day-line"
 
 export type { DayStopState } from "./day-line"
 
@@ -61,38 +61,15 @@ export function DayLineRail({
  * An agent's day across a card: visited stops, then the rest of the plan.
  * The numbers stand beside it, so the line is a picture of them, not a
  * replacement — screen readers get the label.
- *
- * With `here`, a marker stands where he is now — after the stops behind him,
- * before the next — in the colour of how he moves, as a parcel on a delivery
- * app's line (owner, 2026-11-01).
  */
-export function DayLineStrip({
-  visited,
-  planned,
-  label,
-  here = null,
-}: {
-  visited: number
-  planned: number
-  label: string
-  here?: { icon: string; color: string } | null
-}) {
+export function DayLineStrip({ visited, planned, label }: { visited: number; planned: number; label: string }) {
   const stops = dayStripStops(visited, planned)
   if (stops.length === 0) return null
-  const at = here ? dayStripHereIndex(stops) : null
   return (
     <View style={styles.strip} accessible accessibilityLabel={label}>
       {stops.map((state, index) => (
         <React.Fragment key={index}>
           {index > 0 ? <View style={[styles.stripSegment, state === "done" && styles.segmentFilled]} /> : null}
-          {here && at === index ? (
-            <>
-              <View testID="day-strip-here" style={[styles.here, { backgroundColor: here.color }]}>
-                <Icon name={here.icon} size={13} color={fieldTheme.color.onColor} />
-              </View>
-              <View style={styles.stripSegment} />
-            </>
-          ) : null}
           <DayLineStation state={state} compact />
         </React.Fragment>
       ))}
@@ -118,5 +95,4 @@ const styles = themed(() => StyleSheet.create({
   ringCompact: { width: 12, height: 12, borderRadius: 6, borderWidth: 3 },
   strip: { flex: 1, minHeight: 20, flexDirection: "row", alignItems: "center" },
   stripSegment: { flex: 1, height: LINE, marginHorizontal: -1, backgroundColor: fieldTheme.color.line },
-  here: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: fieldTheme.color.surface },
 }))

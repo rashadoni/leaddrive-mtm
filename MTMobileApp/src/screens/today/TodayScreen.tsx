@@ -27,7 +27,8 @@ import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import GuideSpot from "../../components/guide/GuideSpot"
-import { DayLineRail, DayLineStrip } from "../../components/DayLine"
+import { DayLineRail } from "../../components/DayLine"
+import { DayTrack, DayTrackFooter, TRACK_COLORS } from "../../components/DayTrack"
 import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -526,6 +527,13 @@ export default function TodayScreen() {
         minute: "2-digit",
       })
     : null
+  // The first client he visited today, by the time of the visit: «НАЧАЛ 09:10 · …».
+  const routeFirstVisited = useMemo(() => {
+    const visited = (route?.points ?? [])
+      .filter((point) => point.status === "VISITED" && point.visitedAt)
+      .sort((a, b) => Date.parse(a.visitedAt!) - Date.parse(b.visitedAt!))[0]
+    return visited ? visited.contact?.displayName || visited.customer?.name || null : null
+  }, [route])
   // A workday left open past midnight read "started at 20:57" the next morning,
   // as if it had started today (measured on the phone 2026-09-14). The date is
   // said only when it is not today.
@@ -807,35 +815,48 @@ export default function TodayScreen() {
               >
                 {nextKind === "route" && route && route.points.length > 0 ? (
                   <>
-                    <View style={styles.routeSummaryHeader}>
-                      <View style={styles.routeSummaryIcon}>
-                        <Icon name={nextCopy.icon} size={22} color={fieldTheme.color.primary} />
-                      </View>
-                      <View style={styles.routeSummaryCopy}>
-                        <Text style={styles.routeSummaryTitle}>{t("todayV2.routeTitle")}</Text>
-                        <Text style={styles.routeSummaryMeta}>{routeSummaryText}</Text>
-                      </View>
+                    {/* The day as a parcel's way in a delivery app (owner,
+                        2026-11-01, mockup approved with «Давай»): the count,
+                        the road with «you are here» on it while the day is
+                        under way, where he began and who is next. */}
+                    <View style={styles.routeDayCard} testID="today-route-strip">
+                      <Text style={styles.routeDayTitle}>{t("todayV2.routeTitle")}</Text>
                       {route.totalPoints > 0 ? (
-                        <Text style={styles.routeSummaryCount}>
+                        <Text style={styles.routeDayCount}>
                           {route.visitedPoints}
-                          <Text style={styles.routeSummaryTotal}>{` / ${route.totalPoints}`}</Text>
+                          <Text style={styles.routeDayTotal}>{` ${t("dayTrack.ofVisits", { count: route.totalPoints })}`}</Text>
                         </Text>
                       ) : null}
-                    </View>
-                    {/* The day at a glance, as a delivery app's tracking
-                        line (owner, 2026-11-01): the stops behind him, a
-                        marker where he is, the rest ahead. Only while the
-                        day is under way and something is left. */}
-                    {workdayActive && route.totalPoints > 0 && route.remainingPoints > 0 ? (
-                      <View style={styles.routeStrip} testID="today-route-strip">
-                        <DayLineStrip
+                      <Text style={styles.routeDayMeta}>{routeSummaryText}</Text>
+                      {route.totalPoints > 0 ? (
+                        <DayTrack
+                          tone="dark"
                           visited={route.visitedPoints}
                           planned={route.totalPoints}
+                          marker={workdayActive && route.remainingPoints > 0
+                            ? { icon: "navigate", color: TRACK_COLORS.here, ink: TRACK_COLORS.hereInk, text: t("dayTrack.here") }
+                            : null}
                           label={routeSummaryText}
-                          here={{ icon: "navigate", color: fieldTheme.color.primary }}
                         />
-                      </View>
-                    ) : null}
+                      ) : null}
+                      <DayTrackFooter
+                        tone="dark"
+                        left={startedAt ? {
+                          label: t("dayTrack.started", { time: startedAt }),
+                          value: routeFirstVisited ?? dateLabel,
+                        } : null}
+                        right={route.totalPoints === 0 ? null : route.remainingPoints === 0 ? {
+                          label: t("dayTrack.left"),
+                          value: t("dayTrack.allDone"),
+                        } : route.nextPoint ? {
+                          label: route.nextPoint.plannedTime
+                            ? t("dayTrack.nextAt", { time: companyClock(new Date(route.nextPoint.plannedTime), companyTimezone) })
+                            : t("dayTrack.next"),
+                          value: route.nextPoint.contact?.displayName || route.nextPoint.customer?.name || t("todayV2.nextStopShort"),
+                          sub: route.nextPoint.customer?.address ?? null,
+                        } : null}
+                      />
+                    </View>
                     {/* The day as a line with its stops on it: the stops
                         behind the agent filled, the next one ringed. */}
                     <View style={styles.routeClients}>
@@ -1296,14 +1317,23 @@ const styles = themed(() => StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
-  routeStrip: { marginTop: fieldTheme.space.md, marginBottom: fieldTheme.space.xs },
+  // The green card of the day: the same green in both palettes, as the
+  // opening animation and the status bar of the day palette.
+  routeDayCard: {
+    alignSelf: "stretch",
+    padding: fieldTheme.space.lg,
+    borderRadius: fieldTheme.radius.lg,
+    backgroundColor: "#055342",
+  },
+  routeDayTitle: { color: "rgba(255,255,255,0.75)", fontSize: 12, lineHeight: 16, fontWeight: "600", letterSpacing: 0.4 },
+  routeDayMeta: { marginTop: 2, color: "rgba(255,255,255,0.75)", fontSize: 13, lineHeight: 18, fontWeight: "400" },
+  routeDayCount: { marginTop: 4, color: "#FFFFFF", fontSize: 30, lineHeight: 36, fontWeight: "700" },
+  routeDayTotal: { color: "rgba(255,255,255,0.75)", fontSize: 15, fontWeight: "400" },
   routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   routeSummaryIcon: { width: 34, alignItems: "center" },
   routeSummaryCopy: { flex: 1, minWidth: 0 },
   routeSummaryTitle: { color: fieldTheme.color.ink, fontSize: 18, lineHeight: 23, fontWeight: "700" },
   routeSummaryMeta: { marginTop: 2, color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18, fontWeight: "400" },
-  routeSummaryCount: { color: fieldTheme.color.primary, fontSize: 17, fontWeight: "700" },
-  routeSummaryTotal: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
   routeClients: { alignSelf: "stretch", marginTop: fieldTheme.space.sm },
   // No padding above or below a row: the line of one stop meets the next.
   routeClientRow: { minHeight: 44, flexDirection: "row", alignItems: "stretch", gap: fieldTheme.space.md },

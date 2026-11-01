@@ -15,10 +15,21 @@ export interface ManagerTeamAgent {
   workday: { status: string; startedAt?: string | null; completedAt?: string | null } | null
   /** Today's published route points: «Визиты 3 из 8». Absent without Routes. */
   routeToday?: { planned: number; visited: number; skipped: number } | null
+  /**
+   * Whom he began with, who is next, whom he is with now (owner, 2026-11-01:
+   * the card as a parcel in a tracking app); absent from an older server.
+   */
+  routeDay?: ManagerRouteDay | null
   /** Check-in of a visit still open from an earlier day of the company; absent from an older server. */
   openVisitSince?: string | null
   /** Whether a pop-up can reach his phone («Дать задачу» says so before sending); absent from an older server. */
   pushReady?: boolean
+}
+
+export interface ManagerRouteDay {
+  first: { name: string; at: string } | null
+  next: { name: string; plannedTime: string | null } | null
+  visiting: { name: string; since: string } | null
 }
 
 /** How the server reads his live point: car, on foot or standing, and which way (course from north). */
