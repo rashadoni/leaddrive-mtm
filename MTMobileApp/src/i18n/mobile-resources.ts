@@ -1,5 +1,8 @@
 export const mobileResources = {
   ru: {
+    launchSplash: {
+      tagline: "Ваш день на одной карте",
+    },
     dayTrack: {
       started: "НАЧАЛ {{time}}",
       left: "ОСТАЛОСЬ",
@@ -1117,6 +1120,9 @@ export const mobileResources = {
     },
   },
   en: {
+    launchSplash: {
+      tagline: "Your day on one map",
+    },
     dayTrack: {
       started: "STARTED {{time}}",
       left: "LEFT",
@@ -2206,6 +2212,9 @@ export const mobileResources = {
     },
   },
   az: {
+    launchSplash: {
+      tagline: "Gününüz bir xəritədə",
+    },
     dayTrack: {
       started: "BAŞLADI {{time}}",
       left: "QALIB",

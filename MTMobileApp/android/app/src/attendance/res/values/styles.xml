@@ -1,0 +1,11 @@
+<resources>
+
+    <!-- LeadDrive Time keeps its launch as it was: the green window and the
+         icon-less system splash of src/main/res belong to Route Field's
+         opening animation, which this app does not have. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+</resources>

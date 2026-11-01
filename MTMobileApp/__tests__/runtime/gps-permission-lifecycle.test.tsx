@@ -16,6 +16,7 @@ jest.mock("@react-native-community/netinfo", () => ({ fetch: jest.fn(async () =>
 jest.mock("../../src/navigation/AppNavigatorAndroidV2", () => () => null)
 jest.mock("../../src/components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }: { children: React.ReactNode }) => children }))
 jest.mock("../../src/components/AppFeedbackHost", () => () => null)
+jest.mock("../../src/components/LaunchSplash", () => () => null)
 jest.mock("../../src/store/auth", () => ({ useAuthStore: require("zustand").create(() => ({})) }))
 jest.mock("../../src/store/workday", () => ({ useWorkdayStore: require("zustand").create(() => ({})), workdayKey: (org?: string, agent?: string) => `${org}:${agent}` }))
 jest.mock("../../src/store/hints", () => ({ useHintsStore: { getState: () => ({ hydrate: async () => {} }) } }))

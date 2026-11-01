@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
-  ActivityIndicator,
   AppState,
   AppStateStatus,
   PermissionsAndroid,
@@ -14,6 +13,7 @@ import NetInfo from "@react-native-community/netinfo"
 import AppNavigatorAndroidV2 from "../navigation/AppNavigatorAndroidV2"
 import { ErrorBoundary } from "../components/ErrorBoundary"
 import AppFeedbackHost from "../components/AppFeedbackHost"
+import LaunchSplash from "../components/LaunchSplash"
 import { useAuthStore } from "../store/auth"
 import { useHintsStore } from "../store/hints"
 import { useLocationFixStore } from "../store/location-fixes"
@@ -271,6 +271,10 @@ function AppContent() {
 
 export default function AndroidApp() {
   const [i18nReady, setI18nReady] = useState(false)
+  // The opening animation (owner, 2026-11-01): once per start of the app,
+  // over the app, which starts underneath meanwhile.
+  const [splashDone, setSplashDone] = useState(false)
+  const endSplash = useCallback(() => setSplashDone(true), [])
   useFieldColorScheme()
 
   // Day or night, as the phone is, and at once when the phone switches — in
@@ -291,22 +295,14 @@ export default function AndroidApp() {
       .catch(() => setI18nReady(true))
   }, [])
 
-  if (!i18nReady) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={fieldTheme.color.onColor} />
-      </View>
-    )
-  }
-
-  return <AppContent />
+  return (
+    <View style={styles.root}>
+      {i18nReady ? <AppContent /> : null}
+      {splashDone ? null : <LaunchSplash ready={i18nReady} onDone={endSplash} />}
+    </View>
+  )
 }
 
 const styles = themed(() => StyleSheet.create({
-  loader: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: fieldTheme.color.primaryStrong,
-  },
+  root: { flex: 1 },
 }))
