@@ -831,7 +831,7 @@ export default function TodayScreen() {
                         <DayLineStrip
                           visited={route.visitedPoints}
                           planned={route.totalPoints}
-                          label={t("todayV2.routeRemaining", { count: route.remainingPoints })}
+                          label={routeSummaryText}
                           here={{ icon: "navigate", color: fieldTheme.color.primary }}
                         />
                       </View>
