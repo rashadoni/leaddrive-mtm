@@ -214,6 +214,23 @@ it.each([401, 403, 404])("clears cached reasons and controls after %s", async st
   expect(text(tree)).not.toContain(row.reason)
   expect(node(tree, "attendance-new")).toBeUndefined()
 })
+// Owner, 2026-11-01 (HRSS clip: «məzuniyyət ərizəsinin ən azı 5 gün əvvəl verilməsi tövsiyə olunur»):
+// the company's notice is a note in the leave form, nothing more; without one (or an older CRM) — no note.
+it.each([["ru", "Отпуск лучше просить заранее — не позже чем за 5 дн. до начала."], ["az", "Məzuniyyət ərizəsini başlanğıcdan ən azı 5 gün əvvəl verməyiniz tövsiyə olunur."]])("shows the company's leave notice in the %s leave form", async (language, expected) => {
+  ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(async (_scope, month) => ({ month, remainingMinutes: 360, remainingRequests: 2, usedMinutes: 120, usedRequests: 1,
+    limits: { monthlyMinutes: 480, monthlyRequests: 3, leaveNoticeDays: 5, version: null } }))
+  const tree = await open(language)
+  await press(tree, "attendance-new")
+  expect(node(tree, "attendance-leave-notice").props.children).toBe(expected)
+  await press(tree, "attendance-kind-SICK_LEAVE")
+  expect(node(tree, "attendance-leave-notice")).toBeUndefined()
+})
+it("shows no leave notice when the company set none or the CRM is older", async () => {
+  const tree = await open()
+  await press(tree, "attendance-new")
+  expect(node(tree, "attendance-form")).toBeDefined()
+  expect(node(tree, "attendance-leave-notice")).toBeUndefined()
+})
 it("hides the whole feature when the server has not explicitly granted it", async () => {
   mockBootstrap.data.policies.agentPermissions.attendanceRequests = false
   const tree = await open()

@@ -1118,6 +1118,7 @@
     "correctionEndDate": "End date",
     "correctionDateHint": "End on the start date or the following day. For an overnight shift, such as 22:00–06:00, select the following date. The period cannot exceed 24 hours.",
     "correctionHint": "Enter the correct start and end of the working day. Records change only after approval; original events are retained.",
+    "leaveNotice": "Please ask for leave at least {{count}} days before it starts.",
     "correctionFailed": "The correction was not accepted. Check the workday dates and time marks, then refresh the list.",
     "correctionOutsideMarks": "The time could not be matched with this day's marks. Contact your manager.",
     "staleWorkdayReason": "The workday was not closed on time",

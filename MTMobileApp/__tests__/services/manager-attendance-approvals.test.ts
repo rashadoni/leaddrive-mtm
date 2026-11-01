@@ -116,6 +116,11 @@ describe("Personnel requests in the manager's approvals", () => {
     expect(screen).toContain("await managerApi.attendanceDecision(item.id, decision, item.version, note)")
     expect(screen).toContain('if (decision === "REJECTED" && (note?.trim().length ?? 0) < ATTENDANCE_REJECT_NOTE_MIN) {')
     expect(screen).toContain('onReject={(id) => setRejectTarget({ kind: "attendance", id })}')
+    // Two-step approval in the CRM (2026-10-21): a manager's «yes» passes the request to HR, and the toast says so.
+    expect(screen).toContain('const passedToHr = decision === "APPROVED" && res.data?.passedToHr === true')
+    expect(screen).toContain('t(passedToHr ? "managerShell.passedToHr" : decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected")')
+    expect([mobileResources.ru.managerShell.passedToHr, mobileResources.az.managerShell.passedToHr, mobileResources.en.managerShell.passedToHr])
+      .toEqual(["Одобрено и передано HR", "Təsdiqləndi və HR-ə göndərildi", "Approved and passed to HR"])
     // The Workforce section stays as it was.
     expect(screen).toContain('<ApprovalSection title={t("managerShell.approvalsHrm")} items={approvals.hrm}')
   })
