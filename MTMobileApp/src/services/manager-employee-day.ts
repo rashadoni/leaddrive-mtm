@@ -114,11 +114,19 @@ const minutesBetween = (from: string | null, to: string | null): number | null =
 /** Two fixes further apart than this are a silence even without a recorded gap (the server's line). */
 const TRIP_GAP_MAX_MS = 5 * 60_000
 
+type RecordedGap = { from: number; to: number; reason: unknown }
+
+const gapsOf = (data: any): RecordedGap[] => list(data?.gaps)
+  .map((gap) => ({ from: Date.parse(gap?.startedAt), to: Date.parse(gap?.endedAt), reason: gap?.reason }))
+  .filter((gap) => Number.isFinite(gap.from))
+
+/** The recorded gap or break lying between two fixes, if any (it starts at the earlier one, or after it). */
+const gapBetween = (gaps: RecordedGap[], from: number, to: number) =>
+  gaps.find((gap) => gap.from >= from - 1_000 && gap.from < to && (!Number.isFinite(gap.to) || gap.to <= to + 1_000))
+
 /** The day's fixes, each with what the server read of it and what lies after it. */
 function fixesOf(data: any): EmployeeDayFix[] {
-  const gaps = list(data?.gaps)
-    .map((gap) => ({ at: Date.parse(gap?.startedAt), reason: gap?.reason }))
-    .filter((gap) => Number.isFinite(gap.at))
+  const gaps = gapsOf(data)
   const fixes: EmployeeDayFix[] = []
   for (const row of list(data?.points)) {
     const point = position(row?.latitude, row?.longitude)
@@ -131,8 +139,7 @@ function fixesOf(data: any): EmployeeDayFix[] {
   fixes.forEach((fix, index) => {
     const next = fixes[index + 1]
     if (!next) return
-    // A gap starts at the last fix before the silence, to the second.
-    const gap = gaps.find((candidate) => Math.abs(candidate.at - fix.at) < 1_000 && next.at > candidate.at)
+    const gap = gapBetween(gaps, fix.at, next.at)
     if (gap) fix.cut = gap.reason === "WORKDAY_PAUSED" ? "BREAK" : "GAP"
     else if (next.at - fix.at > TRIP_GAP_MAX_MS) fix.cut = "GAP"
   })
@@ -177,11 +184,15 @@ function trackOf(data: any, fixes: EmployeeDayFix[]): EmployeeDayPoint[][] {
     }))
   }
 
+  // The line breaks only where the server recorded a gap or a break, as it
+  // always has; a quiet phone between two fixes still draws the way he went.
+  const gaps = gapsOf(data)
   const segments: EmployeeDayPoint[][] = []
   let current: EmployeeDayPoint[] = []
   fixes.forEach((fix, index) => {
     current.push({ latitude: fix.latitude, longitude: fix.longitude, fix: index, mode: fix.mode })
-    if (fix.cut || index === fixes.length - 1) {
+    const next = fixes[index + 1]
+    if (!next || gapBetween(gaps, fix.at, next.at)) {
       segments.push(current)
       current = []
     }
