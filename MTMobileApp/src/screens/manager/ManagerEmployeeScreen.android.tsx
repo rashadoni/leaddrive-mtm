@@ -156,8 +156,8 @@ export default function ManagerEmployeeScreen() {
       pause: t("managerEmployee.replayPause"),
       skipStill: t("managerEmployee.replaySkipStill"),
       time: t("managerEmployee.replayTime"),
-      modes: Object.fromEntries(["DRIVE", "WALK", "STAY", "BREAK", "GAP"].map((mode) => [mode, t(`managerShell.movement.${mode}`)])),
-      compass: Object.fromEntries(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].map((point) => [point, t(`managerShell.compass.${point}`)])),
+      modes: Object.fromEntries(["DRIVE", "WALK", "STAY", "BREAK", "GAP"].map((mode) => [mode, t(`managerShell.movement${mode}`)])),
+      compass: Object.fromEntries(["N", "NE", "E", "SE", "S", "SW", "W", "NW"].map((point) => [point, t(`managerShell.compass${point}`)])),
     },
   }, { apiKey: tileApiKey }) : null), [day, language, t, tileApiKey])
   const tileOrigin = tileApiKey ? api.serverOrigin() : null

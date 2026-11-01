@@ -72,7 +72,7 @@ export default function ManagerLiveMap({ rows, loading, loadError }: ManagerLive
     statusLabel: markerStatusLabel(marker, t),
     ageLabel: evidenceAgeLabel(marker.locationAgeMs, t),
     movementLabel: marker.movement
-      ? [t(`managerShell.movement.${marker.movement.mode}`), marker.movement.course != null ? t(`managerShell.compass.${compassPoint(marker.movement.course)}`) : null]
+      ? [t(`managerShell.movement${marker.movement.mode}`), marker.movement.course != null ? t(`managerShell.compass${compassPoint(marker.movement.course)}`) : null]
           .filter(Boolean).join(" · ")
       : "",
   })), [model.markers, t])
