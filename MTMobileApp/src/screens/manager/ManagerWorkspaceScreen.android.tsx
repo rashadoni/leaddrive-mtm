@@ -61,6 +61,8 @@ import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
 import ManagerJointVisitEntry from "./ManagerJointVisitEntry.android"
 import { DayLineStrip } from "../../components/DayLine"
+import { DAY_STRIP_MOVEMENT_ICON } from "../../components/day-line"
+import { MOVEMENT_COLORS } from "../maps/movement-icons"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -685,6 +687,10 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
   }
 
   const route = agent.routeToday
+  // Car, on foot or standing — only from a live point of a day under way:
+  // an old point says where he was, not how he is moving now.
+  const moving = currentPosition && agent.workday?.status === "STARTED" ? location?.movement?.mode ?? null : null
+  const movingWord = moving ? t(`managerShell.movement${moving}`) : null
   return (
     <Pressable
       testID={`manager-agent-card-${agent.id}`}
@@ -721,12 +727,18 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
           <DayLineStrip
             visited={route.visited}
             planned={route.planned}
-            label={t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
+            label={[t("managerShell.visitsToday", { visited: route.visited, planned: route.planned }), movingWord].filter(Boolean).join(", ")}
+            here={moving ? { icon: DAY_STRIP_MOVEMENT_ICON[moving], color: MOVEMENT_COLORS[moving] } : null}
           />
-          <Text style={styles.agentDayCount}>
-            {route.visited}
-            <Text style={styles.agentDayTotal}>{` / ${route.planned}`}</Text>
-          </Text>
+          <View style={styles.agentDayFigures}>
+            <Text style={styles.agentDayCount}>
+              {route.visited}
+              <Text style={styles.agentDayTotal}>{` / ${route.planned}`}</Text>
+            </Text>
+            {moving ? (
+              <Text style={[styles.agentDayMoving, { color: MOVEMENT_COLORS[moving] }]} testID={`manager-agent-moving-${agent.id}`}>{movingWord}</Text>
+            ) : null}
+          </View>
         </View>
       ) : null}
 
@@ -939,6 +951,8 @@ const styles = themed(() => StyleSheet.create({
   agentDay: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   agentDayCount: { color: fieldTheme.color.primary, fontSize: 16, fontWeight: "700" },
   agentDayTotal: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
+  agentDayFigures: { alignItems: "flex-end" },
+  agentDayMoving: { fontSize: 12, fontWeight: "600", marginTop: 1 },
   agentCardTablet: { width: "48%" },
   agentHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   agentAvatar: {

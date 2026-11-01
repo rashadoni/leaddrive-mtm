@@ -27,7 +27,7 @@ import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import NotificationBell from "../../components/NotificationBell"
 import GuideSpot from "../../components/guide/GuideSpot"
-import { DayLineRail } from "../../components/DayLine"
+import { DayLineRail, DayLineStrip } from "../../components/DayLine"
 import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -822,6 +822,20 @@ export default function TodayScreen() {
                         </Text>
                       ) : null}
                     </View>
+                    {/* The day at a glance, as a delivery app's tracking
+                        line (owner, 2026-11-01): the stops behind him, a
+                        marker where he is, the rest ahead. Only while the
+                        day is under way and something is left. */}
+                    {workdayActive && route.totalPoints > 0 && route.remainingPoints > 0 ? (
+                      <View style={styles.routeStrip} testID="today-route-strip">
+                        <DayLineStrip
+                          visited={route.visitedPoints}
+                          planned={route.totalPoints}
+                          label={t("todayV2.routeRemaining", { count: route.remainingPoints })}
+                          here={{ icon: "navigate", color: fieldTheme.color.primary }}
+                        />
+                      </View>
+                    ) : null}
                     {/* The day as a line with its stops on it: the stops
                         behind the agent filled, the next one ringed. */}
                     <View style={styles.routeClients}>
@@ -1282,6 +1296,7 @@ const styles = themed(() => StyleSheet.create({
     lineHeight: 20,
     fontWeight: "500",
   },
+  routeStrip: { marginTop: fieldTheme.space.md, marginBottom: fieldTheme.space.xs },
   routeSummaryHeader: { alignSelf: "stretch", flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   routeSummaryIcon: { width: 34, alignItems: "center" },
   routeSummaryCopy: { flex: 1, minWidth: 0 },
