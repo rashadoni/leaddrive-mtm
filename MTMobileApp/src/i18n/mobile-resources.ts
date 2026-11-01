@@ -1,5 +1,8 @@
 export const mobileResources = {
   ru: {
+    launchSplash: {
+      tagline: "Ваш день на одной карте",
+    },
     navV2: {
       home: "Главная",
       route: "Маршрут",
@@ -1094,6 +1097,9 @@ export const mobileResources = {
     },
   },
   en: {
+    launchSplash: {
+      tagline: "Your day on one map",
+    },
     navV2: {
       home: "Home",
       route: "Route",
@@ -2164,6 +2170,9 @@ export const mobileResources = {
     },
   },
   az: {
+    launchSplash: {
+      tagline: "Gününüz bir xəritədə",
+    },
     navV2: {
       home: "Ana səhifə",
       route: "Marşrut",

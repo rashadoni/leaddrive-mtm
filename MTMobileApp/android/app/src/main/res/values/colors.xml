@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#6C63FF</color>
+    <!-- The ground of the opening animation (src/components/launch-splash-scene.ts):
+         Android 12+ shows it before the app draws, so the start is green throughout. -->
+    <color name="launch_ground">#08705A</color>
 </resources>

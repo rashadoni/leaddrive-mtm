@@ -1,0 +1,11 @@
+<resources>
+
+    <!-- values/styles.xml, plus the ground Android 12+ paints while the app
+         starts: the green of the opening animation, not a white flash before it. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowSplashScreenBackground">@color/launch_ground</item>
+    </style>
+
+</resources>
