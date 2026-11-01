@@ -171,7 +171,8 @@ export function DayTrackRibbon({ text, color, ink = TRACK_COLORS.ribbonInk }: { 
 export const DAY_TRACK_TONES = {
   DRIVE: { color: "#055342", ink: "#FFFFFF" },
   WALK: { color: "#1C7A50", ink: "#FFFFFF" },
-  STAY: { color: "#7F948C", ink: "#FFFFFF" },
+  // Bright teal: the grey-green read «слишком тусклый» on the phone.
+  STAY: { color: "#0FA38A", ink: "#FFFFFF" },
   VISITING: { color: "#FAC775", ink: "#5A3A06" },
   BREAK: { color: "#7F948C", ink: "#FFFFFF" },
 } as const
