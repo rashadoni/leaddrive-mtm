@@ -8,7 +8,8 @@ describe("Today: route summary stays compact and unambiguous", () => {
   it("does not repeat the next customer as a hero title", () => {
     expect(today).not.toContain("const nextName = route?.nextPoint?.customer?.name")
     expect(today).not.toContain("const nextAddress = route?.nextPoint?.customer?.address")
-    expect(today).toContain('<Text style={styles.routeSummaryTitle}>{t("todayV2.routeTitle")}</Text>')
+    // Since 2026-11-01 the green card of the day (owner-approved mockup).
+    expect(today).toContain('<Text style={styles.routeDayTitle}>{t("todayV2.routeTitle")}</Text>')
   })
 
   it("renders the route point list once and marks only the selected next point", () => {
@@ -19,7 +20,7 @@ describe("Today: route summary stays compact and unambiguous", () => {
 
   it("shows the remaining count only in the compact route header", () => {
     expect(today.match(/t\("todayV2\.routeRemaining"/g)).toHaveLength(1)
-    expect(today).toContain('<Text style={styles.routeSummaryMeta}>{routeSummaryText}</Text>')
+    expect(today).toContain('<Text style={styles.routeDayMeta}>{routeSummaryText}</Text>')
     expect(today).toContain("supporting: null")
   })
 

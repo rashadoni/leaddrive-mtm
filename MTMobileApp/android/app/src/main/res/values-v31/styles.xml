@@ -1,0 +1,15 @@
+<resources>
+
+    <!-- values/styles.xml, plus the ground Android 12+ paints while the app
+         starts: the green of the opening animation, not a white flash before it. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowBackground">@color/launch_ground</item>
+        <item name="android:windowSplashScreenBackground">@color/launch_ground</item>
+        <!-- No icon on Android's own splash: it would show the old launcher
+             icon for a moment before the map; the green runs straight into it. -->
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+    </style>
+
+</resources>

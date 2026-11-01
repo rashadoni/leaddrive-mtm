@@ -7,6 +7,10 @@
         <!-- The app draws its own night palette (src/theme/fieldTheme.ts):
              Android must not darken it a second time on its own. -->
         <item name="android:forceDarkAllowed">false</item>
+        <!-- Behind the app before its first frame: the green of the opening
+             animation (src/components/LaunchSplash.tsx), not one white frame
+             between the launch and the animation (phone, 3.11.65). -->
+        <item name="android:windowBackground">@color/launch_ground</item>
     </style>
 
 </resources>

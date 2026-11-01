@@ -32,3 +32,21 @@ export function dayStripStops(visited: number, planned: number): DayStopState[] 
   const done = planned > 0 ? Math.round((Math.min(Math.max(0, visited), planned) / planned) * total) : 0
   return Array.from({ length: total }, (_, index) => (index < done ? "done" : "planned"))
 }
+
+/**
+ * Where the agent is on the strip (owner, 2026-11-01, from a delivery app's
+ * tracking line: «так же для менеджеров и агентов в дневном маршруте»): after
+ * the stops behind him, before the next one. Nowhere once the plan is done.
+ */
+export function dayStripHereIndex(stops: DayStopState[]): number | null {
+  const done = stops.filter((state) => state === "done").length
+  return stops.length === 0 || done >= stops.length ? null : done
+}
+
+/** The marker's picture for how the server reads his live point. */
+export type DayStripMovement = "DRIVE" | "WALK" | "STAY"
+export const DAY_STRIP_MOVEMENT_ICON: Record<DayStripMovement, string> = {
+  DRIVE: "car",
+  WALK: "walk",
+  STAY: "stop",
+}

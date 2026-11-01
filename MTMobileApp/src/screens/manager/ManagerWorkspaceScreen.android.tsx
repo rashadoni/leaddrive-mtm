@@ -60,7 +60,10 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh"
 import ManagerPlanningWorkspace from "./ManagerPlanningWorkspace.android"
 import ManagerLiveMap from "./ManagerLiveMap.android"
 import ManagerJointVisitEntry from "./ManagerJointVisitEntry.android"
-import { DayLineStrip } from "../../components/DayLine"
+import { DayTrack, DayTrackFooter, DayTrackRibbon, TRACK_COLORS } from "../../components/DayTrack"
+import { agentDayCard, agentInitials } from "./agent-day-card"
+import { DAY_STRIP_MOVEMENT_ICON } from "../../components/day-line"
+import { MOVEMENT_COLORS } from "../maps/movement-icons"
 
 export type ManagerWorkspaceKind = "team" | "planning" | "approvals"
 
@@ -685,6 +688,32 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
   }
 
   const route = agent.routeToday
+  // Car, on foot or standing — only from a live point of a day under way:
+  // an old point says where he was, not how he is moving now.
+  const moving = currentPosition && agent.workday?.status === "STARTED" ? location?.movement?.mode ?? null : null
+  const day = agentDayCard({
+    workdayStatus: agent.workday?.status,
+    workdayStartedAt: agent.workday?.startedAt,
+    route,
+    routeDay: agent.routeDay,
+    liveMovement: moving,
+    now: new Date(),
+  })
+  const clock = (iso: string) => new Date(iso).toLocaleTimeString(language, { hour: "2-digit", minute: "2-digit", hour12: false })
+  const ribbon = day.ribbon === "closed"
+    ? { text: t("dayTrack.ribbonClosed"), color: fieldTheme.color.successFill }
+    : day.ribbon === "visiting"
+      ? { text: t("dayTrack.ribbonVisiting"), color: MOVEMENT_COLORS.STAY }
+      : day.ribbon === "break"
+        ? { text: t("dayTrack.ribbonBreak"), color: MOVEMENT_COLORS.BREAK }
+        : day.ribbon === "onTheWay" && moving
+          ? { text: t("dayTrack.ribbonOnTheWay"), color: MOVEMENT_COLORS[moving] }
+          : null
+  const marker = day.marker?.kind === "visiting"
+    ? { icon: "storefront", color: MOVEMENT_COLORS.STAY, ink: TRACK_COLORS.ribbonInk, text: t("dayTrack.onVisit", { minutes: day.marker.minutes }) }
+    : day.marker?.kind === "moving"
+      ? { icon: DAY_STRIP_MOVEMENT_ICON[day.marker.mode], color: MOVEMENT_COLORS[day.marker.mode], ink: TRACK_COLORS.ribbonInk, text: t(`managerShell.movement${day.marker.mode}`) }
+      : null
   return (
     <Pressable
       testID={`manager-agent-card-${agent.id}`}
@@ -693,40 +722,61 @@ function AgentTruthCard({ agent, truth, t, language, tablet, onOpen }: {
       onPress={onOpen}
       style={({ pressed }) => [styles.agentCard, tablet && styles.agentCardTablet, pressed && styles.buttonPressed]}
     >
-      <View style={styles.agentHeader}>
+      {/* The card as a parcel in a tracking app (owner, 2026-11-01): his
+          state in the corner, his day as a road, «started» and «left». */}
+      {ribbon ? <DayTrackRibbon text={ribbon.text} color={ribbon.color} /> : null}
+      <View style={[styles.agentHeader, ribbon && styles.agentHeaderUnderRibbon]}>
         <View style={styles.agentAvatar}>
-          <Icon name="person" size={22} color={fieldTheme.color.inkMuted} />
+          <Text style={styles.agentInitials}>{agentInitials(agent.name)}</Text>
         </View>
         <View style={styles.agentCopy}>
-          <Text style={styles.agentName}>{agent.name}</Text>
-          <Text style={styles.agentMeta}>{statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
+          <Text style={styles.agentName} numberOfLines={1}>{agent.name}</Text>
+          {route && route.planned > 0 ? (
+            <Text style={styles.agentMeta} testID={`manager-agent-route-count-${agent.id}`}>
+              <Text style={styles.agentDayCount}>{route.visited}</Text>
+              {` ${t("dayTrack.ofVisits", { count: route.planned })}`}
+            </Text>
+          ) : null}
+          {/* Online or not: a dot and the word in its colour, no tinted pill
+              (owner's rule, 2026-10-18). */}
+          <View style={styles.presencePill}>
+            <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
+            <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
+              {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
+            </Text>
+            <Text style={styles.agentMeta} numberOfLines={1}> · {statusLabel(t, "role", agent.role)} · {workdayLabel(agent.workday?.status, t)}</Text>
+          </View>
           {agent.openVisitSince ? (
             <Text style={styles.agentOpenVisit} testID={`manager-agent-open-visit-${agent.id}`}>
               {t("managerShell.openVisitLeft", { date: formatLocalizedDate(agent.openVisitSince, language, { day: "numeric", month: "long" }) })}
             </Text>
           ) : null}
         </View>
-        {/* Online or not: a dot and the word in its colour, no tinted pill
-            (owner's rule, 2026-10-18). */}
-        <View style={styles.presencePill}>
-          <View style={[styles.presenceDot, { backgroundColor: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]} />
-          <Text style={[styles.presenceText, { color: truth.isOnline ? fieldTheme.color.success : fieldTheme.color.inkMuted }]}>
-            {truth.isOnline ? t("managerShell.online", { defaultValue: "Online" }) : t("managerShell.offline", { defaultValue: "Offline" })}
-          </Text>
-        </View>
       </View>
 
-      {route ? (
-        <View style={styles.agentDay} testID={`manager-agent-route-${agent.id}`}>
-          <DayLineStrip
+      {route && route.planned > 0 ? (
+        <View testID={`manager-agent-route-${agent.id}`}>
+          <DayTrack
             visited={route.visited}
             planned={route.planned}
+            marker={marker}
             label={t("managerShell.visitsToday", { visited: route.visited, planned: route.planned })}
           />
-          <Text style={styles.agentDayCount}>
-            {route.visited}
-            <Text style={styles.agentDayTotal}>{` / ${route.planned}`}</Text>
-          </Text>
+          <DayTrackFooter
+            left={day.started ? {
+              label: t("dayTrack.started", { time: clock(day.started.at) }),
+              value: day.started.name ?? workdayLabel(agent.workday?.status, t),
+            } : null}
+            right={day.left ? {
+              label: t("dayTrack.left"),
+              value: t("dayTrack.visits", { count: day.left.count }),
+              sub: day.left.count === 0
+                ? t("dayTrack.allDone")
+                : day.left.now
+                  ? t("dayTrack.nowName", { name: day.left.now })
+                  : day.left.next ? t("dayTrack.nextName", { name: day.left.next }) : null,
+            } : null}
+          />
         </View>
       ) : null}
 
@@ -929,6 +979,7 @@ const styles = themed(() => StyleSheet.create({
   transferActionTitle: { color: fieldTheme.color.primaryStrong, fontSize: 16, fontWeight: "700" },
   transferActionBody: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 17 },
   agentCard: {
+    overflow: "hidden",
     gap: fieldTheme.space.md,
     padding: fieldTheme.space.lg,
     ...fieldTheme.card,
@@ -936,15 +987,15 @@ const styles = themed(() => StyleSheet.create({
   },
   teamSection: { gap: fieldTheme.space.sm },
   teamNowTitle: { color: fieldTheme.color.ink, fontSize: 16, fontWeight: "600", paddingHorizontal: 4 },
-  agentDay: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
-  agentDayCount: { color: fieldTheme.color.primary, fontSize: 16, fontWeight: "700" },
-  agentDayTotal: { color: fieldTheme.color.inkMuted, fontWeight: "400" },
+  agentDayCount: { color: fieldTheme.color.primary, fontSize: 13, fontWeight: "700" },
+  agentHeaderUnderRibbon: { paddingRight: 48 },
+  agentInitials: { color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "700" },
   agentCardTablet: { width: "48%" },
   agentHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md },
   agentAvatar: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: fieldTheme.color.surfaceStrong,
@@ -1001,12 +1052,7 @@ const styles = themed(() => StyleSheet.create({
   createRouteText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "500", textAlign: "center" },
   openRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2, marginTop: fieldTheme.space.sm, minHeight: 28 },
   openText: { color: fieldTheme.color.primary, fontSize: 14, fontWeight: "500" },
-  presencePill: {
-    minHeight: 32,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
+  presencePill: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 1 },
   presenceText: { fontSize: 12.5, fontWeight: "500" },
   presenceEvidence: {
     minHeight: 28,

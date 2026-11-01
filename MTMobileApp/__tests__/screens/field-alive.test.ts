@@ -80,7 +80,8 @@ describe("the day line", () => {
     const route = read("src/screens/route/RouteScreen.tsx")
     expect(route).toContain("<DayLineStation state={dayStopState(point.status, visiting, recommended)} />")
     const team = read("src/screens/manager/ManagerWorkspaceScreen.android.tsx")
-    expect(team).toContain("<DayLineStrip")
+    // Since 2026-11-01 as a parcel's way in a tracking app (components/DayTrack.tsx).
+    expect(team).toContain("<DayTrack")
     // The team before the map: the map was 360 dp and a scroll above them.
     expect(team.indexOf('t("managerShell.teamNow")')).toBeGreaterThan(-1)
     expect(team.indexOf('t("managerShell.teamNow")')).toBeLessThan(team.indexOf("<ManagerLiveMap rows={teamRows}"))
