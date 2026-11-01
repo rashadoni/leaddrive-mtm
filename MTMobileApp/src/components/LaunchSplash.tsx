@@ -192,7 +192,7 @@ export default function LaunchSplash({ ready, onDone }: { ready: boolean; onDone
           <Text style={styles.name} allowFontScaling={false}>
             Lead<Text style={styles.nameAccent}>Drive</Text>
           </Text>
-          <Text style={styles.product} allowFontScaling={false}>Route Field</Text>
+          <Text style={styles.product} allowFontScaling={false}>ROUTE FIELD</Text>
           {tagline ? <Text style={styles.tagline}>{tagline}</Text> : null}
         </Animated.View>
       </Pressable>
@@ -206,6 +206,6 @@ const styles = StyleSheet.create({
   title: { position: "absolute", left: 24, right: 24, alignItems: "center" },
   name: { color: SPLASH_COLORS.title, fontSize: 34, fontWeight: "600", letterSpacing: -0.4 },
   nameAccent: { color: SPLASH_COLORS.lastPin },
-  product: { color: SPLASH_COLORS.title, fontSize: 15, fontWeight: "500", letterSpacing: 3, marginTop: 2, textTransform: "uppercase" },
+  product: { color: SPLASH_COLORS.title, fontSize: 15, fontWeight: "500", letterSpacing: 3, marginTop: 2 },
   tagline: { color: SPLASH_COLORS.tagline, fontSize: 13, marginTop: 10, textAlign: "center" },
 })
