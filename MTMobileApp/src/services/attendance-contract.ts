@@ -14,7 +14,8 @@ export type AttendanceRequest = {
   details: { kind: AttendanceKind | "HR_RECORD"; dayKind?: AttendanceDayKindSnapshot; unit: "DAYS" | "HOURS"; startTime: string | null; endTime: string | null; timezone: string; attachmentIds: string[] }
 }
 export type AttendanceQuota = {
-  month: string; limits: { version: string | null; monthlyMinutes: number; monthlyRequests: number }
+  /** `leaveNoticeDays`: how many days ahead the company asks for annual leave; 0 or absent (older CRM) — no note. */
+  month: string; limits: { version: string | null; monthlyMinutes: number; monthlyRequests: number; leaveNoticeDays?: number }
   usedMinutes: number; usedRequests: number; remainingMinutes: number; remainingRequests: number
 }
 export type AttendanceDocument = { clientAttachmentId: string; path: string; scopeKey: string; uploadedId?: string }

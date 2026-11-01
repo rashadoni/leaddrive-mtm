@@ -249,7 +249,9 @@ function ManagerReadWorkspace({ kind, contactTransfer }: { kind: ManagerWorkspac
     try {
       const res = await managerApi.attendanceDecision(item.id, decision, item.version, note)
       if (res?.success) {
-        setToast({ visible: true, type: "success", title: t(decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
+        // Two-step approval (CRM, 2026-10-21): the manager's «yes» only passes the request to HR.
+        const passedToHr = decision === "APPROVED" && res.data?.passedToHr === true
+        setToast({ visible: true, type: "success", title: t(passedToHr ? "managerShell.passedToHr" : decision === "APPROVED" ? "managerShell.approved" : "managerShell.rejected") })
         reload("silent")
       }
     } catch (e: any) {

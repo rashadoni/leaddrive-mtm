@@ -1118,6 +1118,7 @@
     "correctionEndDate": "Bitmə tarixi",
     "correctionDateHint": "Bitmə tarixi başlanğıcla eyni gün və ya növbəti gün ola bilər. Gecə növbəsi, məsələn 22:00–06:00 üçün növbəti tarixi seçin. Müddət 24 saatdan çox ola bilməz.",
     "correctionHint": "İş gününün düzgün başlanğıc və bitmə vaxtını göstərin. Qeyd yalnız təsdiqdən sonra dəyişir; ilkin qeydlər saxlanılır.",
+    "leaveNotice": "Məzuniyyət ərizəsini başlanğıcdan ən azı {{count}} gün əvvəl verməyiniz tövsiyə olunur.",
     "correctionFailed": "Düzəliş qəbul edilmədi: iş gününün tarixlərini və qeydlərini yoxlayın, sonra siyahını yeniləyin.",
     "correctionOutsideMarks": "Vaxtı bu günün qeydləri ilə uzlaşdırmaq olmadı. Rəhbərinizə müraciət edin.",
     "staleWorkdayReason": "İş günü vaxtında bağlanmayıb",
