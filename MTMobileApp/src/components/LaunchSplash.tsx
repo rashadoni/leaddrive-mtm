@@ -117,11 +117,13 @@ export default function LaunchSplash({ ready, onDone }: { ready: boolean; onDone
     }
     // A dashed leg slides out of its start pin: the dashes travel along the
     // road as it is drawn, as a route being laid.
+    // The row clips its own dashes: the last ones overrun its length, and
+    // unclipped they stood at the start pin before the leg was drawn.
     const dash = DASH * scale * 0.8
     const count = Math.ceil(length / (dash * 2)) + 1
     return (
       <View key={key} style={[frame, { overflow: "hidden", transform: [{ rotate: `${segmentAngle(item)}deg` }] }]}>
-        <Animated.View style={{ flexDirection: "row", width: length, height: thickness, transform: [{ translateX: between(item.delay, item.duration, [-length, 0]) }] }}>
+        <Animated.View style={{ flexDirection: "row", width: length, height: thickness, overflow: "hidden", transform: [{ translateX: between(item.delay, item.duration, [-length, 0]) }] }}>
           {Array.from({ length: count }, (_, index) => (
             <View key={index} style={{ width: dash, height: thickness, marginRight: dash, backgroundColor: item.color, borderRadius: thickness / 2 }} />
           ))}
@@ -162,7 +164,9 @@ export default function LaunchSplash({ ready, onDone }: { ready: boolean; onDone
               width: pinSize * 0.44,
               height: pinSize * 0.44,
               borderRadius: pinSize * 0.22,
-              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] }),
+              // The ring starts at 0.8 opacity: without the gate it stood by
+              // the empty spot of the last pin from the first frame (phone, 3.11.65).
+              opacity: Animated.multiply(between(PULSE_START - 1, 1, [0, 1]), pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] })),
               transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 3.6] }) }],
             }]}
           />
