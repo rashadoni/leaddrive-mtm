@@ -29,6 +29,8 @@ import NotificationBell from "../../components/NotificationBell"
 import GuideSpot from "../../components/guide/GuideSpot"
 import { DayLineRail } from "../../components/DayLine"
 import { DayTrack, DayTrackFooter, TRACK_COLORS } from "../../components/DayTrack"
+import { DayRing } from "../../components/DayRing"
+import { readDayTime, type DayTime } from "../../components/day-ring"
 import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
 import { useAutoRefresh } from "../../hooks/useAutoRefresh"
@@ -103,6 +105,8 @@ export default function TodayScreen() {
   const serverReturnsWorkdays = useBootstrapStore((state) => canReturnToWorkday(state.data?.policies))
   const online = useSyncStatusStore((state) => state.online)
   const [route, setRoute] = useState<TodayRouteSummary | null>(null)
+  // Where his day went (owner, 2026-11-02, «Кольцо дня»): the server counts it.
+  const [dayTime, setDayTime] = useState<DayTime | null>(null)
   // Today's route that is saved but not approved yet (selectTodayAwaitingRoute):
   // shown with its stops, never started from here.
   const [awaitingRoute, setAwaitingRoute] = useState<TodayRouteSummary | null>(null)
@@ -215,7 +219,11 @@ export default function TodayScreen() {
       })
       .catch(() => {})
 
-    await Promise.all([routeRequest, fetchKpi("today"), messagesRequest])
+    const dayTimeRequest = api.getDayTime()
+      .then((response) => setDayTime(readDayTime(response?.data?.dayTime)))
+      .catch(() => {})
+
+    await Promise.all([routeRequest, fetchKpi("today"), messagesRequest, dayTimeRequest])
 
     const latestKpi = useKpiStore.getState()
     if (latestKpi.error && agent) {
@@ -859,6 +867,11 @@ export default function TodayScreen() {
                           sub: route.nextPoint.customer?.address ?? null,
                         } : null}
                       />
+                      {workdayOpen && dayTime ? (
+                        <View style={styles.routeDayRing} testID="today-day-ring">
+                          <DayRing tone="dark" day={dayTime} t={t} sinceLabel={t("dayRing.since", { time: companyClock(new Date(dayTime.startedAt), companyTimezone) })} />
+                        </View>
+                      ) : null}
                     </View>
                     {/* The day as a line with its stops on it: the stops
                         behind the agent filled, the next one ringed. */}
@@ -1327,6 +1340,7 @@ const styles = themed(() => StyleSheet.create({
     borderRadius: fieldTheme.radius.lg,
     backgroundColor: fieldTheme.color.primaryStrong,
   },
+  routeDayRing: { marginTop: fieldTheme.space.md, paddingTop: fieldTheme.space.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: TRACK_COLORS.darkMuted },
   routeDayTitle: { color: TRACK_COLORS.darkMuted, fontSize: 12, lineHeight: 16, fontWeight: "600", letterSpacing: 0.4 },
   routeDayMeta: { marginTop: 2, color: TRACK_COLORS.darkMuted, fontSize: 13, lineHeight: 18, fontWeight: "400" },
   routeDayCount: { marginTop: 4, color: TRACK_COLORS.darkInk, fontSize: 30, lineHeight: 36, fontWeight: "700" },

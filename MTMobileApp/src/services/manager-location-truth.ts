@@ -20,6 +20,8 @@ export interface ManagerTeamAgent {
    * the card as a parcel in a tracking app); absent from an older server.
    */
   routeDay?: ManagerRouteDay | null
+  /** Where his day of today went (the «ring of the day»); absent from an older server. */
+  dayTime?: unknown
   /** Check-in of a visit still open from an earlier day of the company; absent from an older server. */
   openVisitSince?: string | null
   /** Whether a pop-up can reach his phone («Дать задачу» says so before sending); absent from an older server. */

@@ -1207,6 +1207,11 @@ class ApiClient {
     return this.request("/mobile/products", { signal })
   }
 
+  /** Where his day of today went — clients, the way, the break (the «ring of the day»). */
+  async getDayTime(signal?: AbortSignal) {
+    return this.request("/mobile/day-time", { signal })
+  }
+
   async getMobileMessages(signal?: AbortSignal) {
     return this.request("/mobile/messages?limit=50", { signal })
   }
