@@ -26,6 +26,7 @@ adb shell am start --user 0 -n com.leaddrive.attendance/com.mtmobileapp.MainActi
 | phone → CRM | `workday-step` with `return` (same day) | «İşdədir» again; the journal adds `REOPEN` and `RESUME` to the same day |
 | phone → CRM | `request-submit` (`TIME_CRM_MARK`, `TIME_KIND`, `TIME_DATE`, `TIME_MONTH_OFFSET`) | «Qərarınızı gözləyir» row and the reviewer's bell |
 | CRM → phone | «Rədd et» or «Təsdiqlə» with a reply (`RF-E2E-…`) | `request-status` (`TIME_EXPECT`, `TIME_REPLY`), then `inbox-notice` (`TIME_NOTICE`) |
+| CRM → phone → CRM | «Hesabatlar → Gecikmələr / Kim gəlməyib» → «İzahat istə» on a past day | `explanation-answer` (`TIME_DATE`, `TIME_KIND`, `TIME_CRM_MARK`); then «Bu gün» shows the answer with its date → «Qəbul et / Qəbul etmə» → `inbox-notice` |
 | phone → CRM | `close-forgotten-day` (`TIME_END`, `TIME_EXPECT`) on a day left open since an earlier date | «Çıxış qeyd edilməyib» goes down by one; the decision and «was → became» appear in the timesheet |
 
 A day's marks cannot be erased afterwards, because the journal is append-only
