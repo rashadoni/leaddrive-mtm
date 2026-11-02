@@ -574,7 +574,7 @@ export default function TodayScreen() {
     ? nextStopMinutes(
       freshFix(phoneFix),
       nextStopCustomer,
-      checkInRadiusMeters(nextStopCustomer?.geofenceRadius, useBootstrapStore.getState().data?.policies),
+      checkInRadiusMeters(route?.nextPoint?.customer?.geofenceRadius, useBootstrapStore.getState().data?.policies),
     )
     : null
   // A workday left open past midnight read "started at 20:57" the next morning,
