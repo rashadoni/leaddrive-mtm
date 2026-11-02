@@ -30,6 +30,10 @@ import GuideSpot from "../../components/guide/GuideSpot"
 import { DayLineRail } from "../../components/DayLine"
 import { DayTrack, DayTrackFooter, TRACK_COLORS } from "../../components/DayTrack"
 import { DayRing } from "../../components/DayRing"
+import { freshFix, nextStopMinutes, nextStopMinutesLabel, type PhoneFix } from "../../components/next-stop-eta"
+import Geolocation from "@react-native-community/geolocation"
+import { checkInRadiusMeters } from "../../lib/check-in-radius"
+import { hasUsableCoordinates } from "../visit/visit-checkin-model"
 import { readDayTime, type DayTime } from "../../components/day-ring"
 import { dayStopState } from "../../components/day-line"
 import ConfirmSheet from "../../components/ConfirmSheet"
@@ -545,6 +549,34 @@ export default function TodayScreen() {
       .sort((a, b) => Date.parse(a.visitedAt!) - Date.parse(b.visitedAt!))[0]
     return visited ? visited.contact?.displayName || visited.customer?.name || null : null
   }, [route])
+  // «6 dəq qaldı» over his marker (owner 2026-11-02, variant «B. На линии
+  // дня»): where the phone is, asked once a minute while this screen is in
+  // front and there is a next client with a place on the map.
+  const nextStopCustomer = route?.nextPoint?.customer ?? null
+  const etaWanted = workdayActive && (route?.remainingPoints ?? 0) > 0 && hasUsableCoordinates(nextStopCustomer)
+  const [phoneFix, setPhoneFix] = useState<PhoneFix | null>(null)
+  const readPhoneFix = useCallback(() => {
+    if (!etaWanted) return
+    Geolocation.getCurrentPosition(
+      (position) => setPhoneFix({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp,
+      }),
+      () => {},
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }, [etaWanted])
+  useEffect(() => { readPhoneFix() }, [readPhoneFix])
+  useAutoRefresh(readPhoneFix)
+  const nextStopEta = etaWanted
+    ? nextStopMinutes(
+      freshFix(phoneFix),
+      nextStopCustomer,
+      checkInRadiusMeters(route?.nextPoint?.customer?.geofenceRadius, useBootstrapStore.getState().data?.policies),
+    )
+    : null
   // A workday left open past midnight read "started at 20:57" the next morning,
   // as if it had started today (measured on the phone 2026-09-14). The date is
   // said only when it is not today.
@@ -845,7 +877,13 @@ export default function TodayScreen() {
                           visited={route.visitedPoints}
                           planned={route.totalPoints}
                           marker={workdayActive && route.remainingPoints > 0
-                            ? { icon: "navigate", color: TRACK_COLORS.here, ink: TRACK_COLORS.hereInk, text: t("dayTrack.here") }
+                            ? {
+                              icon: "navigate",
+                              color: TRACK_COLORS.here,
+                              ink: TRACK_COLORS.hereInk,
+                              text: nextStopEta != null ? nextStopMinutesLabel(nextStopEta, t) : t("dayTrack.here"),
+                              lead: nextStopEta != null,
+                            }
                             : null}
                           label={routeSummaryText}
                         />

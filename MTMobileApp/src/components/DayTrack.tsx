@@ -21,6 +21,11 @@ export interface DayTrackMarker {
   /** The icon and the bubble's text on that fill. */
   ink: string
   text: string
+  /**
+   * The road from the marker to the next stop in the marker's colour: the
+   * bubble then says how far that stop is («6 dəq qaldı», owner 2026-11-02).
+   */
+  lead?: boolean
 }
 
 const DOTS = 24
@@ -31,14 +36,14 @@ const BUBBLE_FRAME = {
   "flex-end": { right: 0, alignItems: "flex-end" as const },
 }
 
-function Road({ done, tone }: { done: boolean; tone: DayTrackTone }) {
-  const color = done
+function Road({ done, tone, lead }: { done: boolean; tone: DayTrackTone; lead?: string }) {
+  const color = lead ?? (done
     ? tone === "dark" ? TRACK_COLORS.darkDone : fieldTheme.color.successFill
-    : tone === "dark" ? TRACK_COLORS.darkAhead : fieldTheme.color.line
+    : tone === "dark" ? TRACK_COLORS.darkAhead : fieldTheme.color.line)
   // Android draws a dashed border only on a box with all four sides, so the
   // road is a row of dots clipped to the space between two stops.
   return (
-    <View style={styles.road}>
+    <View style={styles.road} testID={lead ? "day-track-lead" : undefined}>
       {Array.from({ length: DOTS }, (_, index) => (
         <View key={index} style={[done ? styles.dot : styles.dash, { backgroundColor: color }]} />
       ))}
@@ -111,7 +116,7 @@ export function DayTrack({
             {marker && at === index ? (
               <>
                 <Marker marker={marker} align={align} />
-                <Road done={false} tone={tone} />
+                <Road done={false} tone={tone} lead={marker.lead ? marker.color : undefined} />
               </>
             ) : null}
             {done ? (
