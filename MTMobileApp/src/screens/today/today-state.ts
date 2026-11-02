@@ -1,4 +1,5 @@
 import type { CachedRoute } from "../../services/offline-reads"
+import { readWorkingHours, type WorkingHours } from "../base/organization-hours-model"
 
 const ACTIVE_ROUTE_STATUSES = new Set(["PLANNED", "IN_PROGRESS"])
 
@@ -13,6 +14,8 @@ export interface TodayRoutePoint {
     id?: string
     name?: string
     address?: string
+    /** «Часы приёма»: absent — the server gave none (or an older server said nothing). */
+    workingHours?: WorkingHours | null
   }
   /** The doctor this stop is about, when the route was planned by doctors. */
   contact?: {
@@ -80,6 +83,8 @@ function normalizePoint(value: unknown): TodayRoutePoint | null {
         id: string(customerSource.id),
         name: string(customerSource.name),
         address: string(customerSource.address),
+        // Only when the server gave a week: a stop of an older server stays as it was.
+        ...(readWorkingHours(customerSource.workingHours) ? { workingHours: readWorkingHours(customerSource.workingHours) } : {}),
       }
     : undefined
 

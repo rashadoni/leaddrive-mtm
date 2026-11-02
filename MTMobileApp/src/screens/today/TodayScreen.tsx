@@ -47,6 +47,7 @@ import { canReturnToWorkday, returnToClosedWorkday } from "../../services/workda
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { shiftDateKey } from "../../services/week"
+import { stopHoursLine, type Language as HoursLanguage } from "../base/organization-hours-model"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import {
   cachedRouteAsTodaySummary,
@@ -350,6 +351,8 @@ export default function TodayScreen() {
     return "empty"
   }, [awaitingRoute, kpiError, loading, route, routeError, taskRemaining])
 
+  const routeHasHours = Boolean(route?.points.some((point) => point.customer?.workingHours))
+  const hoursLanguage: HoursLanguage = i18n.language.toLowerCase().startsWith("az") ? "az" : i18n.language.toLowerCase().startsWith("en") ? "en" : "ru"
   const routeSummaryText = useMemo(() => {
     if (!route) return ""
     if (route.totalPoints === 0) return t("todayV2.routeNoStopsBody")
@@ -879,6 +882,18 @@ export default function TodayScreen() {
                       {route.points.map((point, index) => {
                         const done = point.status === "VISITED"
                         const isNext = point.id === route.nextPoint?.id
+                        // «Часы приёма» under each stop still ahead: open now
+                        // for the next one, at its planned time for the rest.
+                        // «Часы не указаны» only once some stop of the day has hours.
+                        const hours = !done && (point.customer?.workingHours || routeHasHours)
+                          ? stopHoursLine(
+                            point.customer?.workingHours ?? null,
+                            point.plannedTime ? new Date(point.plannedTime) : null,
+                            new Date(),
+                            isNext,
+                            hoursLanguage,
+                          )
+                          : null
                         const visitedAt = done && point.visitedAt
                           ? new Date(point.visitedAt).toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" })
                           : null
@@ -896,6 +911,20 @@ export default function TodayScreen() {
                                 {[point.contact?.displayName, point.customer?.name].filter(Boolean).join(" · ") || t("todayV2.routeTitle")}
                               </Text>
                               {isNext ? <Text style={styles.routeClientNextText}>{t("todayV2.nextStopShort")}</Text> : null}
+                              {hours ? (
+                                <Text
+                                  testID={`today-stop-hours-${index + 1}`}
+                                  style={[
+                                    styles.routeClientHours,
+                                    hours.tone === "ok" && styles.routeClientHoursOk,
+                                    hours.tone === "wait" && styles.routeClientHoursWait,
+                                    hours.tone === "off" && styles.routeClientHoursOff,
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {hours.text}
+                                </Text>
+                              ) : null}
                             </View>
                             {visitedAt ? <Text style={styles.routeClientTime}>{visitedAt}</Text> : null}
                           </View>
@@ -1359,6 +1388,10 @@ const styles = themed(() => StyleSheet.create({
   routeClientNameDone: { color: fieldTheme.color.inkMuted },
   routeClientNameNext: { fontSize: 17, lineHeight: 22, fontWeight: "700" },
   routeClientNextText: { color: fieldTheme.color.primary, fontSize: 13, lineHeight: 17, fontWeight: "500" },
+  routeClientHours: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 17, fontWeight: "500" },
+  routeClientHoursOk: { color: fieldTheme.color.success },
+  routeClientHoursWait: { color: fieldTheme.color.amber },
+  routeClientHoursOff: { color: fieldTheme.color.danger },
   routeClientTime: { alignSelf: "center", color: fieldTheme.color.success, fontSize: 13, fontWeight: "500" },
   cachedBadge: {
     minHeight: 30,

@@ -84,9 +84,9 @@ export function openStateAt(week: WorkingHours | null, now: Date): OpenState {
 export type Language = "ru" | "az" | "en"
 
 const WORDS = {
-  ru: { dayOff: "не работает", lunch: (a: string, b: string) => `обед ${a}–${b}`, open: (t: string) => `Открыто до ${t}`, openLunch: (t: string) => `Открыто · обед с ${t}`, lunchNow: (t: string) => `Обед · откроется в ${t}`, before: (t: string) => `Закрыто · откроется в ${t}`, closed: "Сейчас закрыто", todayOff: "Сегодня не работает", none: "Часы не указаны" },
-  az: { dayOff: "işləmir", lunch: (a: string, b: string) => `nahar ${a}–${b}`, open: (t: string) => `${t}-dək açıqdır`, openLunch: (t: string) => `Açıqdır · nahar ${t}-dan`, lunchNow: (t: string) => `Nahar · ${t}-da açılacaq`, before: (t: string) => `Bağlıdır · ${t}-da açılacaq`, closed: "İndi bağlıdır", todayOff: "Bu gün işləmir", none: "Saatlar göstərilməyib" },
-  en: { dayOff: "closed", lunch: (a: string, b: string) => `lunch ${a}–${b}`, open: (t: string) => `Open until ${t}`, openLunch: (t: string) => `Open · lunch from ${t}`, lunchNow: (t: string) => `Lunch · opens at ${t}`, before: (t: string) => `Closed · opens at ${t}`, closed: "Closed now", todayOff: "Closed today", none: "No hours given" },
+  ru: { atOpen: (t: string, c: string) => `В ${t} открыто до ${c}`, atLunch: (t: string, r: string) => `В ${t} обед · откроется в ${r}`, atBefore: (t: string, o: string) => `В ${t} ещё закрыто · откроется в ${o}`, atClosed: (t: string) => `В ${t} уже закрыто`, dayOff: "не работает", lunch: (a: string, b: string) => `обед ${a}–${b}`, open: (t: string) => `Открыто до ${t}`, openLunch: (t: string) => `Открыто · обед с ${t}`, lunchNow: (t: string) => `Обед · откроется в ${t}`, before: (t: string) => `Закрыто · откроется в ${t}`, closed: "Сейчас закрыто", todayOff: "Сегодня не работает", none: "Часы не указаны" },
+  az: { atOpen: (t: string, c: string) => `${t}-da açıqdır · ${c}-dək`, atLunch: (t: string, r: string) => `${t}-da nahardır · ${r}-da açılacaq`, atBefore: (t: string, o: string) => `${t}-da hələ bağlıdır · ${o}-da açılacaq`, atClosed: (t: string) => `${t}-da artıq bağlıdır`, dayOff: "işləmir", lunch: (a: string, b: string) => `nahar ${a}–${b}`, open: (t: string) => `${t}-dək açıqdır`, openLunch: (t: string) => `Açıqdır · nahar ${t}-dan`, lunchNow: (t: string) => `Nahar · ${t}-da açılacaq`, before: (t: string) => `Bağlıdır · ${t}-da açılacaq`, closed: "İndi bağlıdır", todayOff: "Bu gün işləmir", none: "Saatlar göstərilməyib" },
+  en: { atOpen: (t: string, c: string) => `At ${t} open until ${c}`, atLunch: (t: string, r: string) => `At ${t} at lunch · opens at ${r}`, atBefore: (t: string, o: string) => `At ${t} not open yet · opens at ${o}`, atClosed: (t: string) => `At ${t} already closed`, dayOff: "closed", lunch: (a: string, b: string) => `lunch ${a}–${b}`, open: (t: string) => `Open until ${t}`, openLunch: (t: string) => `Open · lunch from ${t}`, lunchNow: (t: string) => `Lunch · opens at ${t}`, before: (t: string) => `Closed · opens at ${t}`, closed: "Closed now", todayOff: "Closed today", none: "No hours given" },
 } as const
 
 /** «09:00–20:00 · обед 13:00–14:00» or «не работает». */
@@ -107,6 +107,32 @@ export function openStateText(state: OpenState, language: Language): { text: str
     case "closed": return { text: w.closed, tone: "off" }
     case "dayOff": return { text: w.todayOff, tone: "off" }
     default: return { text: w.none, tone: "none" }
+  }
+}
+
+/**
+ * The line under a stop in the list of the day (owner 2026-11-02, mockup «MTM:
+ * часы приёма клиентов», «Телефон агента: часы у точек»): the next stop and a
+ * stop without a planned time — whether it is open now; a later stop — whether
+ * it will be open at its planned time.
+ */
+export function stopHoursLine(
+  week: WorkingHours | null,
+  plannedAt: Date | null,
+  now: Date,
+  isNext: boolean,
+  language: Language,
+): { text: string; tone: "ok" | "wait" | "off" | "none" } {
+  if (!week || isNext || !plannedAt || Number.isNaN(plannedAt.getTime())) return openStateText(openStateAt(week, now), language)
+  const w = WORDS[language]
+  const at = `${String(plannedAt.getHours()).padStart(2, "0")}:${String(plannedAt.getMinutes()).padStart(2, "0")}`
+  const state = openStateAt(week, plannedAt)
+  switch (state.kind) {
+    case "open": return { text: w.atOpen(at, state.breakFrom ?? state.closesAt), tone: "ok" }
+    case "lunch": return { text: w.atLunch(at, state.reopensAt), tone: "wait" }
+    case "beforeOpen": return { text: w.atBefore(at, state.opensAt), tone: "wait" }
+    case "closed": return { text: w.atClosed(at), tone: "off" }
+    default: return openStateText(state, language)
   }
 }
 

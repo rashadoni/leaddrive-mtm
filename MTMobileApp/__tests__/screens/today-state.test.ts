@@ -57,6 +57,23 @@ describe("today-state", () => {
     expect(route?.nextPoint).toBeNull()
   })
 
+  it("carries a stop's «часы приёма», and none for a server that sends none", () => {
+    const day = { open: "09:00", close: "18:00" }
+    const week = { 1: day, 2: day, 3: day, 4: day, 5: day, 6: null, 7: null }
+    const route = selectTodayRoute([{
+      id: "route-hours",
+      date: "2026-08-20T00:00:00.000Z",
+      status: "IN_PROGRESS",
+      points: [
+        { id: "p1", orderIndex: 0, status: "PLANNED", customer: { id: "c1", name: "Aptek", workingHours: week } },
+        { id: "p2", orderIndex: 1, status: "PLANNED", customer: { id: "c2", name: "Clinic" } },
+      ],
+    }], "2026-08-20")
+    expect(route?.points[0].customer?.workingHours?.[6]).toBeNull()
+    expect(route?.points[0].customer?.workingHours?.[1]).toEqual(day)
+    expect(route?.points[1].customer?.workingHours).toBeUndefined()
+  })
+
   it("formats the device-local date without a UTC day shift", () => {
     expect(localDateKey(new Date(2026, 7, 20, 1, 30))).toBe("2026-08-20")
   })

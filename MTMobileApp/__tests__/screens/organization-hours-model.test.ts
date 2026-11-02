@@ -4,6 +4,7 @@ import {
   openStateText,
   proposedWeek,
   readWorkingHours,
+  stopHoursLine,
   toHoursRequest,
 } from "../../src/screens/base/organization-hours-model"
 
@@ -40,6 +41,22 @@ describe("часы приёма in the field app", () => {
     expect(closed[3]).toEqual(ph)
     expect(proposedWeek(week, 4, "time", { open: "19:00", close: "10:00", breakFrom: "", breakTo: "", allWeekdays: false })).toBeNull()
     expect(proposedWeek(null, 2, "lunch", { open: "", close: "", breakFrom: "12:30", breakTo: "13:30", allWeekdays: false })![2]).toEqual({ open: "09:00", close: "18:00", breakFrom: "12:30", breakTo: "13:30" })
+  })
+
+  // The list of the day (mockup «Телефон агента: часы у точек»).
+  it("says under a later stop whether it will be open at its planned time, and under the next one whether it is open now", () => {
+    const week = readWorkingHours(raw)
+    const now = at("13:20")
+    expect(stopHoursLine(week, at("10:15"), now, false, "ru")).toEqual({ text: "В 10:15 открыто до 13:00", tone: "ok" })
+    expect(stopHoursLine(week, at("13:10"), now, false, "ru")).toEqual({ text: "В 13:10 обед · откроется в 14:00", tone: "wait" })
+    expect(stopHoursLine(week, at("08:30"), now, false, "ru")).toEqual({ text: "В 08:30 ещё закрыто · откроется в 09:00", tone: "wait" })
+    expect(stopHoursLine(week, at("20:30"), now, false, "ru")).toEqual({ text: "В 20:30 уже закрыто", tone: "off" })
+    expect(stopHoursLine(week, at("15:00"), now, false, "en")).toEqual({ text: "At 15:00 open until 20:00", tone: "ok" })
+    // The next stop: the door now, whatever was planned.
+    expect(stopHoursLine(week, at("15:00"), now, true, "ru")).toEqual({ text: "Обед · откроется в 14:00", tone: "wait" })
+    // No planned time — the door now; no hours — «не указаны».
+    expect(stopHoursLine(week, null, now, false, "ru").tone).toBe("wait")
+    expect(stopHoursLine(null, at("10:15"), now, false, "ru")).toEqual({ text: "Часы не указаны", tone: "none" })
   })
 
   it("reads the request the server sends with the card", () => {
