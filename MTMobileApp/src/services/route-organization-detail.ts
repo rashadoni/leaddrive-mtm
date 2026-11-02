@@ -1,3 +1,5 @@
+import { readWorkingHours, type WorkingHours } from "../screens/base/organization-hours-model"
+
 /**
  * Route Field's projection of the additive `section=route-field` response.
  * Keep this deliberately narrower than the legacy organization detail model:
@@ -44,6 +46,8 @@ export interface RouteOrganizationDetail {
    * be read into its silence.
    */
   pinReported: boolean
+  /** «Часы приёма»: null when none are given (or the server predates them). */
+  workingHours: WorkingHours | null
   contacts: RouteOrganizationContact[]
   visits: RouteOrganizationVisit[]
 }
@@ -82,6 +86,7 @@ export function toRouteOrganizationDetail(raw: any): RouteOrganizationDetail {
     contactPerson: text(raw?.contactPerson),
     ...coordinates(raw),
     pinReported: !!raw && typeof raw === "object" && "latitude" in raw && "longitude" in raw,
+    workingHours: readWorkingHours(raw?.workingHours),
     contacts: contacts.map((contact: any): RouteOrganizationContact => {
       return {
         id: String(contact?.id ?? ""),

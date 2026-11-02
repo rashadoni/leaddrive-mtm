@@ -37,6 +37,7 @@ import {
 } from "./organization-location-fix-model"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useLocationFixStore } from "../../store/location-fixes"
+import { openStateAt, openStateText, toHoursRequest, type HoursRequest } from "./organization-hours-model"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { isExpandedTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
@@ -65,6 +66,12 @@ const COPY = {
     address: "Адрес",
     contactPerson: "Контактное лицо",
     phone: "Телефон",
+    hours: "Часы приёма",
+    hoursFix: "Часы не те?",
+    hoursWaitingMine: "Ваши часы на проверке у менеджера.",
+    hoursWaitingOther: "Часы этого места уже на проверке у менеджера.",
+    hoursApproved: "Менеджер принял ваши часы.",
+    hoursRejected: "Менеджер оставил часы как были.",
     code: "Код",
     category: "Категория",
     status: "Статус",
@@ -111,6 +118,12 @@ const COPY = {
     address: "Ünvan",
     contactPerson: "Əlaqə şəxsi",
     phone: "Telefon",
+    hours: "Qəbul saatları",
+    hoursFix: "Saatlar düz deyil?",
+    hoursWaitingMine: "Göndərdiyiniz saatlar rəhbərdə yoxlanılır.",
+    hoursWaitingOther: "Bu yerin saatları artıq rəhbərdə yoxlanılır.",
+    hoursApproved: "Rəhbər saatlarınızı qəbul etdi.",
+    hoursRejected: "Rəhbər saatları əvvəlki kimi saxladı.",
     code: "Kod",
     category: "Kateqoriya",
     status: "Status",
@@ -157,6 +170,12 @@ const COPY = {
     address: "Address",
     contactPerson: "Contact person",
     phone: "Phone",
+    hours: "Visiting hours",
+    hoursFix: "Hours wrong?",
+    hoursWaitingMine: "Your hours are waiting for the manager.",
+    hoursWaitingOther: "This place's hours are already waiting for the manager.",
+    hoursApproved: "The manager accepted your hours.",
+    hoursRejected: "The manager kept the hours as they were.",
     code: "Code",
     category: "Category",
     status: "Status",
@@ -293,6 +312,8 @@ export default function RouteOrganizationDetailScreen() {
   // «Клиент здесь»: the organization may switch the request off; only an explicit «no» hides it.
   const mayFixLocation = useBootstrapStore((state) => agentMay(state.data?.policies, "customerLocationRequest"))
   const [locationRequest, setLocationRequest] = useState<LocationFixRequest | null>(null)
+  // «Часы не те?»: the waiting request about this place, or the answer to his own.
+  const [hoursRequest, setHoursRequest] = useState<HoursRequest | null>(null)
   const [position, setPosition] = useState<LocationFixPoint | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [cancelFailed, setCancelFailed] = useState(false)
@@ -304,6 +325,7 @@ export default function RouteOrganizationDetailScreen() {
       if (!response?.success || !response.data?.organization) throw new Error("ROUTE_ORGANIZATION_NOT_AVAILABLE")
       if (signal?.aborted) return
       setDetail(toRouteOrganizationDetail(response.data.organization))
+      setHoursRequest(toHoursRequest(response.data.hoursRequest))
       const request = toLocationFixRequest(response.data.locationRequest)
       setLocationRequest(request)
       // The server's word on whether this agent's request still waits: the
@@ -464,6 +486,17 @@ export default function RouteOrganizationDetailScreen() {
         <DataRow icon="location-outline" label={copy.address} value={address ?? copy.unknown} />
         <DataRow icon="person-outline" label={copy.contactPerson} value={detail.contactPerson ?? copy.unknown} />
         <DataRow icon="call-outline" label={copy.phone} value={detail.phone ?? copy.unknown} />
+        {detail.workingHours ? (
+          <DataRow icon="time-outline" label={copy.hours} value={openStateText(openStateAt(detail.workingHours, new Date()), languageFor(i18n.language)).text} />
+        ) : null}
+        {hoursRequest?.status === "SUBMITTED" ? (
+          <Text style={styles.fixBody} testID="hours-fix-waiting">{hoursRequest.mine ? copy.hoursWaitingMine : copy.hoursWaitingOther}</Text>
+        ) : hoursRequest?.mine && (hoursRequest.status === "APPROVED" || hoursRequest.status === "REJECTED") ? (
+          <Text style={styles.fixBody} testID="hours-fix-answer">
+            {hoursRequest.status === "APPROVED" ? copy.hoursApproved : copy.hoursRejected}
+            {hoursRequest.status === "REJECTED" && hoursRequest.decisionComment ? ` «${hoursRequest.decisionComment}»` : ""}
+          </Text>
+        ) : null}
         {detail.code ? <DataRow icon="barcode-outline" label={copy.code} value={detail.code} /> : null}
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
         {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={statusLabel(t, "customer", detail.status)} /> : null}
@@ -522,6 +555,7 @@ export default function RouteOrganizationDetailScreen() {
           {directions ? <Pressable accessibilityRole="button" onPress={openDirections} style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="navigate-outline" size={19} color={fieldTheme.color.onColor} /><Text style={styles.actionText}>{copy.directions}</Text></Pressable> : null}
           {mayFixLocation && !waiting && offer.kind === "none" && (pin || detail.pinReported) ? <Pressable accessibilityRole="button" onPress={openLocationFix} testID="location-fix-ask" style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="pin-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.fixAsk}</Text></Pressable> : null}
           {detail.phone ? <Pressable accessibilityRole="button" onPress={() => call(detail.phone)} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="call-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.call}</Text></Pressable> : null}
+          {hoursRequest?.status !== "SUBMITTED" ? <Pressable accessibilityRole="button" testID="hours-fix-ask" onPress={() => navigation.navigate("OrganizationHoursFix", { id: detail.id, name: detail.name, hours: detail.workingHours ?? undefined })} style={({ pressed }) => [styles.routeActionButton, { minHeight: touchTarget }, pressed && styles.pressed]}><Icon name="time-outline" size={19} color={fieldTheme.color.primaryStrong} /><Text style={styles.routeActionText}>{copy.hoursFix}</Text></Pressable> : null}
         </View>
       </Section>
 

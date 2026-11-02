@@ -54,7 +54,18 @@ describe("Route Field organization detail projection", () => {
       }],
       // This server said nothing about the organization's pin.
       pinReported: false,
+      // …nor about its «часы приёма»: «не указаны», never a guessed week.
+      workingHours: null,
     })
+  })
+
+  it("carries the place's «часы приёма» and reads a broken week as «не указаны»", () => {
+    const day = { open: "09:00", close: "20:00", breakFrom: "13:00", breakTo: "14:00" }
+    const week = { 1: day, 2: day, 3: day, 4: day, 5: day, 6: { open: "10:00", close: "16:00" }, 7: null }
+    expect(toRouteOrganizationDetail({ id: "org-1", name: "N", workingHours: week }).workingHours?.[6])
+      .toEqual({ open: "10:00", close: "16:00" })
+    expect(toRouteOrganizationDetail({ id: "org-1", name: "N", workingHours: { 1: { open: "09:00" } } }).workingHours)
+      .toBeNull()
   })
 
   // «Клиент здесь» (owner, 12 October 2026): the card measures how far the

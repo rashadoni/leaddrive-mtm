@@ -37,6 +37,7 @@ import PresentationViewerScreen from "../screens/visit/PresentationViewerScreen"
 import DoctorCreateRequestScreen from "../screens/base/DoctorCreateRequestScreen"
 import RouteContactChangeRequestScreen from "../screens/base/RouteContactChangeRequestScreen.android"
 import RouteOrganizationLocationFixScreen from "../screens/base/RouteOrganizationLocationFixScreen.android"
+import RouteOrganizationHoursFixScreen from "../screens/base/RouteOrganizationHoursFixScreen.android"
 import GpsHistoryScreen from "../screens/gps/GpsHistoryScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import MoreScreen from "../screens/more/MoreScreen"
@@ -82,6 +83,8 @@ export type RootStackParamList = OwnAttendanceParamList & {
   ContactChangeRequest: { id: string; name?: string }
   /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
   OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
+  /** «Часы не те?»: the place's week as the card read it goes along. */
+  OrganizationHoursFix: { id: string; name?: string; hours?: unknown }
   TaskDetail: { task: RawTask }
   Visits: undefined
   Base: undefined
@@ -124,6 +127,8 @@ export type ClientsStackParamList = {
   ContactChangeRequest: { id: string; name?: string }
   /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
   OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
+  /** «Часы не те?»: the place's week as the card read it goes along. */
+  OrganizationHoursFix: { id: string; name?: string; hours?: unknown }
 }
 
 /**
@@ -243,6 +248,7 @@ function ClientsStackNavigator() {
       <ClientsStack.Screen name="DoctorCreateRequest" component={withFieldColorScheme(DoctorCreateRequestScreen)} />
       <ClientsStack.Screen name="ContactChangeRequest" component={withFieldColorScheme(RouteContactChangeRequestScreen)} />
       <ClientsStack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />
+      <ClientsStack.Screen name="OrganizationHoursFix" component={withFieldColorScheme(RouteOrganizationHoursFixScreen)} />
     </ClientsStack.Navigator>
   )
 }
@@ -493,6 +499,7 @@ export default function AppNavigatorAndroidV2() {
                 <Stack.Screen name="DoctorCreateRequest" component={withFieldColorScheme(DoctorCreateRequestScreen)} />
                 <Stack.Screen name="ContactChangeRequest" component={withFieldColorScheme(RouteContactChangeRequestScreen)} />
                 <Stack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />
+                <Stack.Screen name="OrganizationHoursFix" component={withFieldColorScheme(RouteOrganizationHoursFixScreen)} />
                 <Stack.Screen name="TaskDetail" component={withFieldColorScheme(TaskDetailScreen)} />
                 <Stack.Screen name="Visits" component={withFieldColorScheme(VisitScreen)} />
                 <Stack.Screen name="Base" component={withFieldColorScheme(RouteBaseScreen)} />
