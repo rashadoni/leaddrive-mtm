@@ -12,7 +12,7 @@ import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { mayUseOwnAttendanceRequests } from "../../services/attendance-access"
 import { getOfflineScope } from "../../services/offline-scope"
-import { ATTENDANCE_KINDS, attendanceDate, attendanceErrorKey, attendanceNeedsHours, attendanceUuid, validAttendanceInput, type AttendanceDocument, type AttendanceInput, type AttendanceKind, type AttendanceQuota, type AttendanceRequest } from "../../services/attendance-contract"
+import { ATTENDANCE_KINDS, attendanceApprovalSentence, attendanceCalendarDays, attendanceDate, attendanceErrorKey, attendanceNeedsHours, attendanceUuid, validAttendanceInput, type AttendanceDocument, type AttendanceInput, type AttendanceKind, type AttendanceQuota, type AttendanceRequest } from "../../services/attendance-contract"
 import { attendanceAccessDenied, attendanceGuard, attendanceQueued, attendanceScope, cachedAttendanceRequests, clearAttendanceCache, discardAttendanceDraftDocuments, keepAttendanceDocument, loadAttendanceQuota, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from "../../services/attendance-requests"
 import { retryOutboxConflict, type OutboxOperation } from "../../services/outbox"
 import { runMobileSync } from "../../services/sync-engine"
@@ -242,6 +242,9 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
     const snapshot = request.details.dayKind
     return snapshot ? `${snapshot.code} · ${snapshot.names[locale]}` : t("attendanceRequests.hrRecord")
   }
+  // What the form says before sending (owner, 2026-11-02): how many days, and who decides.
+  const calendarDays = attendanceCalendarDays(draft.startDate, draft.endDate)
+  const approval = quota?.approval ? attendanceApprovalSentence(quota.approval) : null
   const pendingCreates = queued.filter(operation => operation.op === "create" && !items.some(item => item.clientRequestId === operation.data.clientRequestId))
   const quotaContent = <View style={styles.quota} testID="attendance-quota">
     <Text style={styles.subtitle}>{t("attendanceRequests.quotaTitle", { month })}</Text>
@@ -299,6 +302,7 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
             </View>
             {rhythm && errorKey === "attendanceRequests.invalid" && draft.endDate < draft.startDate && <Text accessibilityRole="alert" style={styles.error}>{t("attendanceRhythm.dateOrder")}</Text>}
             {draft.kind === "TIME_CORRECTION" && <Text style={styles.caption}>{t("attendanceRequests.correctionDateHint")}</Text>}
+            {draft.unit === "DAYS" && draft.kind !== "TIME_CORRECTION" && calendarDays !== null && <Text testID="attendance-calendar-days" style={styles.caption}>{t("attendanceRequests.calendarDays", { count: calendarDays })}</Text>}
             {draft.unit === "HOURS" && <><Text style={styles.caption}>{t("attendanceRequests.timezone", { timezone: bootstrap?.timezone ?? "—" })}</Text><View style={styles.fields}>{field("startTime", t("attendanceRequests.startTime"), "HH:mm")}{field("endTime", t("attendanceRequests.endTime"), "HH:mm")}</View></>}
             {field("reason", t("attendanceRequests.reason"))}
             <Text style={styles.label}>{t("attendanceRequests.documents")}</Text>
@@ -307,6 +311,10 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
               <Image source={{ uri: `file://${document.path}` }} style={styles.thumbnail} accessibilityLabel={t("attendanceRequests.document", { count: index + 1 })} />
               {button(t("attendanceRequests.removeDocument", { count: index + 1 }), () => removePhoto(document), `attendance-remove-${index}`, false, busy)}
             </View>)}
+            {approval && <View testID="attendance-approval" style={styles.quota}>
+              <Text style={styles.label}>{t("attendanceRequests.approvalTitle")}</Text>
+              <Text style={styles.body}>{t(approval.key, { names: approval.names })}</Text>
+            </View>}
             <View style={styles.actions}>
               {button(t("attendanceRequests.photo"), () => setCamera(true), "attendance-photo", false, busy || documents.length >= 3)}
               {button(t("attendanceRequests.submit"), submit, "attendance-submit", true, busy)}
