@@ -16,6 +16,11 @@ export interface TodayRoutePoint {
     address?: string
     /** «Часы приёма»: absent — the server gave none (or an older server said nothing). */
     workingHours?: WorkingHours | null
+    /** Where the client is, for «N dəq qaldı» on the line of the day. */
+    latitude?: number
+    longitude?: number
+    /** The client's own check-in zone, if it has one. */
+    geofenceRadius?: number
   }
   /** The doctor this stop is about, when the route was planned by doctors. */
   contact?: {
@@ -85,6 +90,10 @@ function normalizePoint(value: unknown): TodayRoutePoint | null {
         address: string(customerSource.address),
         // Only when the server gave a week: a stop of an older server stays as it was.
         ...(readWorkingHours(customerSource.workingHours) ? { workingHours: readWorkingHours(customerSource.workingHours) } : {}),
+        ...(finiteNumber(customerSource.latitude) !== undefined && finiteNumber(customerSource.longitude) !== undefined
+          ? { latitude: finiteNumber(customerSource.latitude), longitude: finiteNumber(customerSource.longitude) }
+          : {}),
+        ...(finiteNumber(customerSource.geofenceRadius) !== undefined ? { geofenceRadius: finiteNumber(customerSource.geofenceRadius) } : {}),
       }
     : undefined
 
