@@ -416,7 +416,7 @@ it.each([false, true])("opens a new request on the choice of kind, then the form
   expect(node(tree, "attendance-startDate")).toBeUndefined(); expect(node(tree, "attendance-submit")).toBeUndefined()
   await press(tree, "attendance-kind-SICK_LEAVE")
   expect(node(tree, "attendance-kinds")).toBeUndefined()
-  expect(JSON.stringify(node(tree, "attendance-chosen-kind").props.children)).toContain(ru.attendanceRequests.kinds.SICK_LEAVE)
+  expect(node(tree, "attendance-chosen-kind")).toBeDefined(); expect(text(tree)).toContain(ru.attendanceRequests.kinds.SICK_LEAVE)
   expect(text(tree)).toContain(ru.attendanceRhythm.changeKind)
   await type(tree, "attendance-reason", "Fictional fever")
   // «Другой вид» goes back to the list, the current kind marked; the typed reason stays.
