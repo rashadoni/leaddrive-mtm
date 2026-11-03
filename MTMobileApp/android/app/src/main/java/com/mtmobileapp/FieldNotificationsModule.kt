@@ -268,11 +268,15 @@ class FieldNotificationReceiver : BroadcastReceiver() {
       manager.createNotificationChannel(channel)
     }
 
-    fun post(context: Context, id: String, title: String, body: String, channelId: String) {
+    /** Where a tap leads (`target` of the push); the app reads it through FieldPush.consumeOpenedTarget. */
+    const val EXTRA_PUSH_TARGET = "pushTarget"
+
+    fun post(context: Context, id: String, title: String, body: String, channelId: String, target: String? = null) {
       val manager = NotificationManagerCompat.from(context)
       if (!manager.areNotificationsEnabled()) return
       ensureChannel(context, channelId)
       val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        ?.apply { if (target != null) putExtra(EXTRA_PUSH_TARGET, target) }
       val contentIntent = launch?.let {
         PendingIntent.getActivity(
           context,

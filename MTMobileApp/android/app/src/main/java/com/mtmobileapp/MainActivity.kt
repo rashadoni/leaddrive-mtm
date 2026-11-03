@@ -1,5 +1,6 @@
 package com.mtmobileapp
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Build
 import android.content.res.Configuration
@@ -29,6 +30,12 @@ class MainActivity : ReactActivity() {
     }
     keepContentOutOfNavigationBar()
     updateAttendanceSystemNavigation(resources.configuration)
+  }
+
+  /** A tapped notification reaching the running app: its target is read from the current intent. */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {

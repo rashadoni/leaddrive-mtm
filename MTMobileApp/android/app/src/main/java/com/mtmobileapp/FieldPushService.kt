@@ -50,7 +50,7 @@ class FieldPushService : FirebaseMessagingService() {
     // phone is allowed to draw the notification.
     FieldPushModule.announceMessage()
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
-    FieldNotificationReceiver.post(this, id, title, body, channel)
+    FieldNotificationReceiver.post(this, id, title, body, channel, message.data["target"])
   }
 
   companion object {
@@ -116,6 +116,24 @@ class FieldPushModule(
         // simply has no token yet. That is not an error worth showing an
         // agent standing in a clinic.
         .addOnFailureListener { promise.resolve(null) }
+    } catch (error: Throwable) {
+      promise.resolve(null)
+    }
+  }
+
+  /**
+   * The screen a tapped notification leads to, once. A push drawn by the app
+   * carries it as `pushTarget`; one the system drew while the app was closed
+   * carries the push data itself, `target` among it.
+   */
+  @ReactMethod
+  fun consumeOpenedTarget(promise: Promise) {
+    try {
+      val intent = reactContext.currentActivity?.intent
+      val target = intent?.getStringExtra(FieldNotificationReceiver.EXTRA_PUSH_TARGET) ?: intent?.getStringExtra("target")
+      intent?.removeExtra(FieldNotificationReceiver.EXTRA_PUSH_TARGET)
+      intent?.removeExtra("target")
+      promise.resolve(target)
     } catch (error: Throwable) {
       promise.resolve(null)
     }
