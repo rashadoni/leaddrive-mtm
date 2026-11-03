@@ -40,3 +40,27 @@ describe("a manager's message pops up over the screen", () => {
     expect(notifications).toContain(".setPriority(if (channelId == TEAM_MESSAGES_CHANNEL) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)")
   })
 })
+
+/**
+ * Owner, 2026-11-03: in LeadDrive Time a decision on a request reached the
+ * phone in the default channel — an icon in the status bar — and he took it for
+ * a push that never came. HR's requests and decisions name the same
+ * high-importance channel; Time creates it at start under its own HR name.
+ */
+describe("HR's notifications pop up in LeadDrive Time", () => {
+  const time = read("android/app/src/attendance/java/com/mtmobileapp/AttendanceApplication.kt")
+  it("creates the high-importance channel before the first push and names it for HR", () => {
+    const created = time.indexOf("FieldNotificationReceiver.ensureTeamMessagesChannel(this)")
+    expect(created).toBeGreaterThan(-1)
+    expect(created).toBeLessThan(time.indexOf("loadReactNative(this)"))
+    for (const locale of ["values", "values-az", "values-ru"]) {
+      const own = read(`android/app/src/attendance/res/${locale}/strings.xml`)
+      expect(own).toContain('<string name="team_messages_channel_name">')
+      expect(own).not.toContain("Сообщения команды")
+    }
+  })
+  it("draws a push received while the app is open in the channel the server named", () => {
+    expect(pushService).toContain("?: notification?.channelId")
+    expect(pushService.indexOf('message.data["channel"]')).toBeLessThan(pushService.indexOf("?: notification?.channelId"))
+  })
+})

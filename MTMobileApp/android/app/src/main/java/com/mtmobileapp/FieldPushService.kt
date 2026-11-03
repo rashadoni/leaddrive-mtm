@@ -45,6 +45,8 @@ class FieldPushService : FirebaseMessagingService() {
     // While the app is open Firebase hands the push here instead of drawing it.
     // A team message pops up like a chat message; the rest stay reminders.
     val channel = message.data["channel"]
+      // The channel the server named (a manager's message, an HR request).
+      ?: notification?.channelId
       ?: if (message.data["target"] == "Messages") FieldNotificationReceiver.TEAM_MESSAGES_CHANNEL else FieldNotificationReceiver.DEFAULT_CHANNEL
     // The bell in the open app asks the server again, whether or not the
     // phone is allowed to draw the notification.

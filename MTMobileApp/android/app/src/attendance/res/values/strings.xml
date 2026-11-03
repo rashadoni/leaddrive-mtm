@@ -1,1 +1,1 @@
-<resources><string name="app_name">LeadDrive Time</string></resources>
+<resources><string name="app_name">LeadDrive Time</string><string name="team_messages_channel_name">HR: requests and explanations</string><string name="team_messages_channel_description">Explanation requests and decisions on your requests: they pop up over the screen.</string><string name="field_notifications_channel_name">Other notices</string><string name="field_notifications_channel_description">Other notices from the app.</string></resources>
