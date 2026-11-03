@@ -6,8 +6,9 @@ import { consumeOpenedPushTarget, timeRouteForPushTarget } from "../../src/atten
 describe("Time notification taps", () => {
   afterEach(() => { delete (NativeModules as Record<string, unknown>).FieldPush })
 
-  it("leads an explanation request to the explanations tab and nothing else anywhere", () => {
+  it("leads an explanation request and a decided request to their tabs and nothing else anywhere", () => {
     expect(timeRouteForPushTarget("AttendanceExplanations")).toBe("OwnExplanations")
+    expect(timeRouteForPushTarget("AttendanceRequests")).toBe("OwnRequests")
     for (const target of ["Messages", "Route", "Approvals", "Tasks", "toString", "__proto__", "", null, undefined, 7])
       expect(timeRouteForPushTarget(target)).toBeNull()
   })
