@@ -13,9 +13,26 @@ export type AttendanceRequest = {
   decisionNote: string | null; decidedAt: string | null; cancelledAt: string | null; version: string
   details: { kind: AttendanceKind | "HR_RECORD"; dayKind?: AttendanceDayKindSnapshot; unit: "DAYS" | "HOURS"; startTime: string | null; endTime: string | null; timezone: string; attachmentIds: string[] }
 }
+/** Who will decide the employee's requests (server 2026-11-02): managers by name, HR as a role. Absent from an older server. */
+export type AttendanceApprovalRoute = { twoStep: boolean; managers: string[] }
 export type AttendanceQuota = {
   month: string; limits: { version: string | null; monthlyMinutes: number; monthlyRequests: number }
   usedMinutes: number; usedRequests: number; remainingMinutes: number; remainingRequests: number
+  approval?: AttendanceApprovalRoute
+}
+/** Calendar days a whole-day request covers, both ends counted; null while a date is incomplete or the end comes first. */
+export function attendanceCalendarDays(startDate: string, endDate: string): number | null {
+  if (!attendanceDate(startDate) || !attendanceDate(endDate) || endDate < startDate) return null
+  return Math.round((Date.parse(`${endDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / 86_400_000) + 1
+}
+/**
+ * The sentence the request form says about who decides (owner, 2026-11-02, from
+ * the HRSS clip: the form shows its approval chain before it is sent).
+ */
+export function attendanceApprovalSentence(route: AttendanceApprovalRoute): { key: string; names: string } {
+  const names = route.managers.join(", ")
+  if (route.twoStep) return { key: route.managers.length ? "attendanceRequests.approvalTwoStep" : "attendanceRequests.approvalNoManager", names }
+  return { key: route.managers.length ? "attendanceRequests.approvalOneStep" : "attendanceRequests.approvalHrOnly", names }
 }
 export type AttendanceDocument = { clientAttachmentId: string; path: string; scopeKey: string; uploadedId?: string }
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i

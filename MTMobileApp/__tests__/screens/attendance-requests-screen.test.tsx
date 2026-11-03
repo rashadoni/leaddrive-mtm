@@ -360,3 +360,44 @@ it("Rhythm calendar changes civil dates without submitting or losing the reason"
   await press(tree, "attendance-close-form")
   expect(node(tree, "attendance-form")).toBeUndefined()
 })
+
+// Owner, 2026-11-02 (HRSS clip: the leave form shows its days and approval chain
+// before it is sent). The route comes from the server; an older server sends none.
+const quotaWith = (approval?: { twoStep: boolean; managers: string[] }) => async (_scope: string, month: string) => ({ month, remainingMinutes: 360, remainingRequests: 2,
+  limits: { monthlyMinutes: 480, monthlyRequests: 3, version: null }, usedMinutes: 120, usedRequests: 1, ...(approval ? { approval } : {}) })
+it("says how many calendar days a leave covers and who approves it, before sending", async () => {
+  ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(quotaWith({ twoStep: true, managers: ["Kamran Quliyev"] }))
+  const tree = await open("ru")
+  await press(tree, "attendance-new")
+  await type(tree, "attendance-startDate", "2026-11-04")
+  await type(tree, "attendance-endDate", "2026-11-06")
+  expect(node(tree, "attendance-calendar-days").props.children).toBe("3 календарных дня")
+  await type(tree, "attendance-endDate", "2026-11-04")
+  expect(node(tree, "attendance-calendar-days").props.children).toBe("1 календарный день")
+  // The end before the start says no number at all.
+  await type(tree, "attendance-endDate", "2026-11-01")
+  expect(node(tree, "attendance-calendar-days")).toBeUndefined()
+  expect(text(tree)).toContain("Сначала руководитель — Kamran Quliyev, потом HR.")
+  // Hours are not days.
+  await press(tree, "attendance-unit-HOURS")
+  expect(node(tree, "attendance-calendar-days")).toBeUndefined()
+  expect(node(tree, "attendance-approval")).toBeDefined()
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
+})
+it.each([
+  [{ twoStep: true, managers: [] }, "Руководитель не назначен — заявку сразу решит HR."],
+  [{ twoStep: false, managers: ["Kamran Quliyev", "Leyla Həsənova"] }, "Решит руководитель — Kamran Quliyev, Leyla Həsənova — или HR."],
+  [{ twoStep: false, managers: [] }, "Заявку решит HR."],
+])("names the approval route %j in words", async (approval, sentence) => {
+  ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(quotaWith(approval))
+  const tree = await open("ru")
+  await press(tree, "attendance-new")
+  expect(text(tree)).toContain(sentence)
+})
+it("shows no approval block when the server does not say who approves", async () => {
+  ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(quotaWith())
+  const tree = await open("az")
+  await press(tree, "attendance-new")
+  expect(node(tree, "attendance-approval")).toBeUndefined()
+  expect(node(tree, "attendance-calendar-days").props.children).toBe("1 təqvim günü")
+})
