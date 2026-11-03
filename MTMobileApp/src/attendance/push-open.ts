@@ -30,10 +30,10 @@ export async function consumeOpenedPushTarget(): Promise<string | null> {
  * nothing else — the inbox still lists everything.
  */
 export async function askTimeNotificationPermission(): Promise<void> {
-  if (Platform.OS !== "android" || Number(Platform.Version) < 33) return
-  const permission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
-  if (!permission) return
   try {
+    if (Platform.OS !== "android" || Number(Platform.Version) < 33) return
+    const permission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+    if (!permission) return
     if (await PermissionsAndroid.check(permission)) return
     await PermissionsAndroid.request(permission)
   } catch {
