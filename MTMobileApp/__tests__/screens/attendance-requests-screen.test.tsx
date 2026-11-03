@@ -50,6 +50,8 @@ async function open(language = "ru", correction?: AttendanceCorrectionIntent, rh
 function node(tree: TestRenderer.ReactTestRenderer, id: string) { return tree.root.findAll(item => item.props.testID === id, { deep: false })[0] }
 function text(tree: TestRenderer.ReactTestRenderer) { return JSON.stringify(tree.toJSON()) }
 async function press(tree: TestRenderer.ReactTestRenderer, id: string) { await act(async () => { tree.root.findAll(item => item.props.testID === id && typeof item.props.onPress === "function")[0].props.onPress() }); await settle() }
+/** «Yeni müraciət» opens on the choice of kind (owner, 2026-11-03); the form follows the choice. */
+async function newRequest(tree: TestRenderer.ReactTestRenderer, kind = "ANNUAL_LEAVE") { await press(tree, "attendance-new"); await press(tree, `attendance-kind-${kind}`) }
 async function type(tree: TestRenderer.ReactTestRenderer, id: string, value: string) { await act(async () => { node(tree, id).props.onChangeText(value) }); await settle() }
 function captureNightForm(tree: TestRenderer.ReactTestRenderer, language: string) {
   const dir = process.env.MTM_ATTENDANCE_RENDER_DIR
@@ -80,7 +82,8 @@ it.each(['ru', 'az', 'en'])('opens the selected overnight day in the existing %s
     workDate: '2026-10-21', startedAt: '2026-10-21T18:00:00Z', completedAt: '2026-10-22T02:00:00Z',
   })!
   const tree = await open(language, correction)
-  expect(node(tree, 'attendance-kind-TIME_CORRECTION').props.accessibilityState.selected).toBe(true)
+  // The correction arrives with its kind chosen: the form, not the choice of kind.
+  expect(node(tree, 'attendance-chosen-kind')).toBeDefined(); expect(node(tree, 'attendance-kinds')).toBeUndefined()
   expect(node(tree, 'attendance-startDate').props.value).toBe('2026-10-21')
   expect(node(tree, 'attendance-endDate').props.value).toBe('2026-10-22')
   expect(node(tree, 'attendance-startTime').props.value).toBe('22:00')
@@ -97,7 +100,7 @@ it('does not expose a correction intent belonging to another account', async () 
   expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
 })
 it('preserves an existing request when a new workday correction arrives', async () => {
-  const tree = await open(); await press(tree, 'attendance-new'); await type(tree, 'attendance-reason', 'Keep this existing draft')
+  const tree = await open(); await newRequest(tree); await type(tree, 'attendance-reason', 'Keep this existing draft')
   const correction = createAttendanceCorrectionIntent('fictional-org:fictional-agent', 'fixture.invalid', 'Asia/Baku', { startedAt: '2026-10-21T05:00:00Z' })!
   await act(async () => tree.update(<I18nextProvider i18n={locale}><TimePresentation.Provider value={false}><AttendanceRequestsScreen route={{ params: { correction } }} /></TimePresentation.Provider></I18nextProvider>)); await settle()
   expect(node(tree, 'attendance-reason').props.value).toBe('Keep this existing draft')
@@ -112,14 +115,13 @@ it.each(["ru", "az", "en"])("renders actual %s request status, manager reply, mo
   expect(text(tree)).toContain(dictionary.statuses.REJECTED)
   expect(text(tree)).toContain("Fictional reviewer response")
   expect(node(tree, "attendance-cancel-own-request")).toBeUndefined()
-  await press(tree, "attendance-new")
+  await newRequest(tree)
   expect(node(tree, "attendance-reason").props.accessibilityLabel).toBe(dictionary.reason)
   expect(text(tree)).not.toContain("attendanceRequests.")
 })
 it("submits a correction as an exact full pair and closes only after the durable queue write", async () => {
   const tree = await open()
-  await press(tree, "attendance-new")
-  await press(tree, "attendance-kind-TIME_CORRECTION")
+  await newRequest(tree, "TIME_CORRECTION")
   await type(tree, "attendance-startDate", "2026-10-12")
   await type(tree, "attendance-startTime", "09:10")
   await type(tree, "attendance-endTime", "18:00")
@@ -133,8 +135,7 @@ it("submits a correction as an exact full pair and closes only after the durable
 it.each(["ru", "az", "en"])("shows %s overnight dates and queues the exact full correction", async language => {
   const tree = await open(language)
   const dictionary = { ru, az, en }[language as "ru" | "az" | "en"].attendanceRequests
-  await press(tree, "attendance-new")
-  await press(tree, "attendance-kind-TIME_CORRECTION")
+  await newRequest(tree, "TIME_CORRECTION")
   await type(tree, "attendance-startDate", "2026-10-12")
   await type(tree, "attendance-endDate", "2026-10-13")
   await type(tree, "attendance-startTime", "22:00")
@@ -152,13 +153,13 @@ it.each(["ru", "az", "en"])("shows %s overnight dates and queues the exact full 
   expect(node(tree, "attendance-form")).toBeUndefined()
 })
 it("preserves the explicit end date while changing start date or reselecting correction", async () => {
-  const tree = await open(); await press(tree, "attendance-new"); await press(tree, "attendance-kind-TIME_CORRECTION")
+  const tree = await open(); await newRequest(tree, "TIME_CORRECTION")
   await type(tree, "attendance-startDate", "2026-10-12")
   await type(tree, "attendance-endDate", "2026-10-13")
   await type(tree, "attendance-startDate", "2026-10-")
   expect(node(tree, "attendance-endDate").props.value).toBe("2026-10-13")
   await type(tree, "attendance-startDate", "2026-10-11")
-  await press(tree, "attendance-kind-TIME_CORRECTION")
+  await press(tree, "attendance-change-kind"); await press(tree, "attendance-kind-TIME_CORRECTION")
   expect(node(tree, "attendance-endDate").props.value).toBe("2026-10-13")
   await type(tree, "attendance-startTime", "22:00"); await type(tree, "attendance-endTime", "06:00")
   await type(tree, "attendance-reason", "Fictional correction")
@@ -170,9 +171,9 @@ it("preserves the explicit end date while changing start date or reselecting cor
   expect(service.queueAttendanceRequest).toHaveBeenCalledTimes(1)
 })
 it.each(["HOURLY_ABSENCE", "OVERTIME"])("keeps %s within one day after leaving an overnight correction", async kind => {
-  const tree = await open(); await press(tree, "attendance-new"); await press(tree, "attendance-kind-TIME_CORRECTION")
+  const tree = await open(); await newRequest(tree, "TIME_CORRECTION")
   await type(tree, "attendance-startDate", "2026-10-12"); await type(tree, "attendance-endDate", "2026-10-13")
-  await press(tree, `attendance-kind-${kind}`)
+  await press(tree, "attendance-change-kind"); await press(tree, `attendance-kind-${kind}`)
   expect(node(tree, "attendance-endDate")).toBeUndefined()
   expect(text(tree)).not.toContain(ru.attendanceRequests.correctionDateHint)
   await type(tree, "attendance-startDate", "2026-10-14")
@@ -181,8 +182,7 @@ it.each(["HOURLY_ABSENCE", "OVERTIME"])("keeps %s within one day after leaving a
   expect(service.queueAttendanceRequest).toHaveBeenCalledWith("fictional-org:fictional-agent", expect.objectContaining({ kind, startDate: "2026-10-14", endDate: "2026-10-14" }), [])
 })
 it("rejects invalid date/time/reason locally without queueing", async () => {
-  const tree = await open(); await press(tree, "attendance-new")
-  await press(tree, "attendance-kind-HOURLY_ABSENCE")
+  const tree = await open(); await newRequest(tree, "HOURLY_ABSENCE")
   await type(tree, "attendance-startDate", "2026-02-30")
   await type(tree, "attendance-reason", "Valid fictional reason")
   await press(tree, "attendance-submit")
@@ -221,7 +221,7 @@ it("hides the whole feature when the server has not explicitly granted it", asyn
   expect(service.loadAttendanceRequests).not.toHaveBeenCalled()
 })
 it("does not pass watermark or GPS context to document capture", async () => {
-  const tree = await open(); await press(tree, "attendance-new"); await press(tree, "attendance-photo")
+  const tree = await open(); await newRequest(tree); await press(tree, "attendance-photo")
   const calls = (PhotoCaptureModal as jest.Mock).mock.calls
   expect(calls[calls.length - 1][0].visible).toBe(true)
   expect(calls[calls.length - 1][0].watermark).toBeUndefined()
@@ -236,7 +236,7 @@ async function capturePhoto(tree: TestRenderer.ReactTestRenderer) {
 }
 it("releases an unsubmitted private photo on Back/unmount", async () => {
   ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValueOnce(document)
-  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  const tree = await open(); await newRequest(tree); await capturePhoto(tree)
   expect(node(tree, "attendance-remove-0")).toBeDefined()
   await press(tree, "attendance-back")
   // Office only: «Geri» returns to the own workday tab.
@@ -247,7 +247,7 @@ it("releases an unsubmitted private photo on Back/unmount", async () => {
 it("also releases a private photo whose capture finishes after leaving", async () => {
   let finish!: (value: AttendanceDocument) => void
   ;(service.keepAttendanceDocument as jest.Mock).mockReturnValueOnce(new Promise(done => { finish = done }))
-  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  const tree = await open(); await newRequest(tree); await capturePhoto(tree)
   await act(async () => { tree.unmount() })
   expect(tree.toJSON()).toBeNull()
   await act(async () => { finish(document) }); await settle()
@@ -257,7 +257,7 @@ it("waits for a pending durable write before checking whether its photos can be 
   let finish!: (value: unknown) => void
   ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValueOnce(document)
   ;(service.queueAttendanceRequest as jest.Mock).mockReturnValueOnce(new Promise(done => { finish = done }))
-  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  const tree = await open(); await newRequest(tree); await capturePhoto(tree)
   await type(tree, "attendance-reason", "Fictional leave reason")
   await press(tree, "attendance-submit")
   await act(async () => { tree.unmount() }); await settle()
@@ -268,11 +268,11 @@ it("waits for a pending durable write before checking whether its photos can be 
 })
 it("releases only abandoned documents when a draft is closed or access is withdrawn", async () => {
   ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValue(document)
-  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  const tree = await open(); await newRequest(tree); await capturePhoto(tree)
   await press(tree, "attendance-close-form")
   expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
   ;(service.discardAttendanceDraftDocuments as jest.Mock).mockClear()
-  await press(tree, "attendance-new"); await capturePhoto(tree)
+  await newRequest(tree); await capturePhoto(tree)
   mockBootstrap.data.policies.agentPermissions.attendanceRequests = false
   await act(async () => { tree.update(<I18nextProvider i18n={locale}><AttendanceRequestsScreen /></I18nextProvider>) }); await settle()
   expect(service.discardAttendanceDraftDocuments).toHaveBeenCalledWith([document])
@@ -280,7 +280,7 @@ it("releases only abandoned documents when a draft is closed or access is withdr
 })
 it("hands confirmed queued photos to the outbox instead of releasing them on unmount", async () => {
   ;(service.keepAttendanceDocument as jest.Mock).mockResolvedValueOnce(document)
-  const tree = await open(); await press(tree, "attendance-new"); await capturePhoto(tree)
+  const tree = await open(); await newRequest(tree); await capturePhoto(tree)
   await type(tree, "attendance-reason", "Fictional leave reason")
   await press(tree, "attendance-submit")
   await act(async () => { tree.unmount() }); await settle()
@@ -368,7 +368,7 @@ const quotaWith = (approval?: { twoStep: boolean; managers: string[] }) => async
 it("says how many calendar days a leave covers and who approves it, before sending", async () => {
   ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(quotaWith({ twoStep: true, managers: ["Kamran Quliyev"] }))
   const tree = await open("ru")
-  await press(tree, "attendance-new")
+  await newRequest(tree)
   await type(tree, "attendance-startDate", "2026-11-04")
   await type(tree, "attendance-endDate", "2026-11-06")
   expect(node(tree, "attendance-calendar-days").props.children).toBe("3 календарных дня")
@@ -391,13 +391,38 @@ it.each([
 ])("names the approval route %j in words", async (approval, sentence) => {
   ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(quotaWith(approval))
   const tree = await open("ru")
-  await press(tree, "attendance-new")
+  await newRequest(tree)
   expect(text(tree)).toContain(sentence)
 })
 it("shows no approval block when the server does not say who approves", async () => {
   ;(service.loadAttendanceQuota as jest.Mock).mockImplementation(quotaWith())
   const tree = await open("az")
-  await press(tree, "attendance-new")
+  await newRequest(tree)
   expect(node(tree, "attendance-approval")).toBeUndefined()
   expect(node(tree, "attendance-calendar-days").props.children).toBe("1 təqvim günü")
+})
+
+// Owner, 2026-11-03: «там есть yeni müraciət, там не сразу понятно где выбирать какую форму, я сам путаюсь».
+// The new request opens on the choice of kind, nothing preselected; the chosen kind stands on top with «Другой вид».
+it.each([false, true])("opens a new request on the choice of kind, then the form with a way back (rhythm %s)", async rhythm => {
+  const tree = await open("ru", undefined, rhythm)
+  await press(tree, "attendance-new")
+  expect(node(tree, "attendance-kinds")).toBeDefined()
+  expect(text(tree)).toContain(ru.attendanceRequests.chooseKind)
+  for (const kind of ["ANNUAL_LEAVE", "SICK_LEAVE", "TIME_OFF", "HOURLY_ABSENCE", "BUSINESS_TRIP", "REMOTE_WORK", "OVERTIME", "TIME_CORRECTION"] as const)
+    expect(text(tree)).toContain(ru.attendanceRequests.kindHints[kind])
+  // Nothing is marked as chosen, and nothing to fill before the kind is chosen.
+  expect(node(tree, "attendance-kind-ANNUAL_LEAVE").props.accessibilityState.selected).toBe(false)
+  expect(node(tree, "attendance-startDate")).toBeUndefined(); expect(node(tree, "attendance-submit")).toBeUndefined()
+  await press(tree, "attendance-kind-SICK_LEAVE")
+  expect(node(tree, "attendance-kinds")).toBeUndefined()
+  expect(JSON.stringify(node(tree, "attendance-chosen-kind").props.children)).toContain(ru.attendanceRequests.kinds.SICK_LEAVE)
+  expect(text(tree)).toContain(ru.attendanceRhythm.changeKind)
+  await type(tree, "attendance-reason", "Fictional fever")
+  // «Другой вид» goes back to the list, the current kind marked; the typed reason stays.
+  await press(tree, "attendance-change-kind")
+  expect(node(tree, "attendance-kind-SICK_LEAVE").props.accessibilityState.selected).toBe(true)
+  await press(tree, "attendance-kind-ANNUAL_LEAVE")
+  expect(node(tree, "attendance-reason").props.value).toBe("Fictional fever")
+  expect(service.queueAttendanceRequest).not.toHaveBeenCalled()
 })

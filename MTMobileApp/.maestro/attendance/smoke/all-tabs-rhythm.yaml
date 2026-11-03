@@ -20,8 +20,8 @@ name: Rhythm all tabs discover filters, draft controls and privacy without write
     id: attendance-form
 - assertNotVisible:
     id: attendance-list
-- tapOn:
-    id: attendance-change-kind
+- assertVisible:
+    id: attendance-kinds
 - scrollUntilVisible:
     element:
       id: attendance-kind-TIME_CORRECTION

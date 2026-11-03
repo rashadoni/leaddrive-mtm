@@ -1152,6 +1152,17 @@
       "REMOTE_WORK": "Remote work",
       "OVERTIME": "Overtime",
       "TIME_CORRECTION": "Correct start / finish"
+    },
+    "chooseKind": "What are you requesting?",
+    "kindHints": {
+      "ANNUAL_LEAVE": "Annual leave for several days",
+      "SICK_LEAVE": "Illness — you can photograph the certificate",
+      "TIME_OFF": "A day off",
+      "HOURLY_ABSENCE": "Leave early or come in later on a workday",
+      "BUSINESS_TRIP": "Working elsewhere for some days",
+      "REMOTE_WORK": "Working outside the office",
+      "OVERTIME": "Worked beyond the schedule",
+      "TIME_CORRECTION": "Forgot to mark, or marked wrongly"
     }
   },
   "attendanceNotice": {
@@ -1415,7 +1426,7 @@
   "attendanceRhythm": {
     "allRequests": "All requests",
     "waiting": "Waiting",
-    "changeKind": "Change type",
+    "changeKind": "Other type",
     "hourlyLimit": "Hourly leave limit",
     "noWaitingLoaded": "No requests awaiting a decision in the loaded list.",
     "reasonRequired": "Describe the reason in at least 3 characters.",
