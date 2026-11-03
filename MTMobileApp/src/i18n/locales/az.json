@@ -1152,6 +1152,17 @@
       "REMOTE_WORK": "Məsafədən iş",
       "OVERTIME": "Əlavə iş",
       "TIME_CORRECTION": "Başlanğıc / bitmə düzəlişi"
+    },
+    "chooseKind": "Nə rəsmiləşdiririk?",
+    "kindHints": {
+      "ANNUAL_LEAVE": "Bir neçə günlük illik məzuniyyət",
+      "SICK_LEAVE": "Xəstəliyə görə — arayışın şəklini çəkmək olar",
+      "TIME_OFF": "Boş gün",
+      "HOURLY_ABSENCE": "İş günü tez getmək və ya gec gəlmək",
+      "BUSINESS_TRIP": "Bir neçə gün başqa yerdə iş",
+      "REMOTE_WORK": "Ofisdə deyil, uzaqdan işləyirəm",
+      "OVERTIME": "Qrafikdən çox işləmişəm",
+      "TIME_CORRECTION": "Qeyd etməyi unutmuşam və ya səhv qeyd etmişəm"
     }
   },
   "attendanceNotice": {
@@ -1415,7 +1426,7 @@
   "attendanceRhythm": {
     "allRequests": "Bütün müraciətlər",
     "waiting": "Gözləyənlər",
-    "changeKind": "Növü dəyiş",
+    "changeKind": "Başqa növ",
     "hourlyLimit": "Saatlıq icazə limiti",
     "noWaitingLoaded": "Yüklənmiş müraciətlərdə qərar gözləyən yoxdur.",
     "reasonRequired": "Səbəbi ən azı 3 simvolla təsvir edin.",

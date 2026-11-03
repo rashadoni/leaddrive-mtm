@@ -10,6 +10,8 @@ name: An empty reason is refused and closing the draft submits nothing
     timeout: 30000
 - tapOn:
     id: attendance-new
+- tapOn:
+    id: attendance-kind-ANNUAL_LEAVE
 - scrollUntilVisible:
     element:
       id: attendance-reason

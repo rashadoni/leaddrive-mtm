@@ -35,7 +35,11 @@ function newDraft(date: string): AttendanceInput {
 export default function AttendanceRequestsScreen({ route }: { route?: { params?: { correction?: AttendanceCorrectionIntent } } } = {}) {
   const { t, i18n } = useTranslation()
   const rhythm = useTimePresentation(), styles = rhythm ? rhythmStyles : legacyStyles
-  const [filter, setFilter] = useState<"all" | "waiting">("all"), [kindOpen, setKindOpen] = useState(false)
+  const [filter, setFilter] = useState<"all" | "waiting">("all")
+  // A new request starts by choosing what it is (owner, 2026-11-03: «не сразу
+  // понятно где выбирать какую форму, я сам путаюсь»); nothing is preselected.
+  // `kindPicked`: a kind was chosen once, so the list marks it when «Другой вид» reopens it.
+  const [kindChosen, setKindChosen] = useState(false), [kindPicked, setKindPicked] = useState(false)
   const scroll = useRef<ScrollView>(null)
   const navigation = useNavigation()
   const headerTop = useHeaderTop()
@@ -47,7 +51,7 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
   const allowed = mayUseOwnAttendanceRequests(bootstrap, agent, admission)
   const [draft, setDraft] = useState(() => newDraft(today(bootstrap?.timezone ?? null)))
   const [editing, setEditing] = useState(false)
-  useEffect(() => { setKindOpen(false); if (rhythm) scroll.current?.scrollTo({ y: 0, animated: false }) }, [editing, rhythm])
+  useEffect(() => { if (rhythm) scroll.current?.scrollTo({ y: 0, animated: false }) }, [editing, rhythm, kindChosen])
   const [documents, setDocuments] = useState<AttendanceDocument[]>([])
   const [camera, setCamera] = useState(false)
   const [items, setItems] = useState<AttendanceRequest[]>([])
@@ -82,7 +86,7 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
   const clear = useCallback(() => {
     lifecycle.current += 1; releaseDraft(); busyRef.current = false
     setBusy(false); setLoading(false); setItems([]); setQueued([]); setQuota(null); setNextCursor(null); setUpdatedAt(null); setDocuments([]); setEditing(false); setCamera(false)
-    setSuggestedCorrection(null); setFilter("all"); setKindOpen(false)
+    setSuggestedCorrection(null); setFilter("all"); setKindChosen(false); setKindPicked(false)
   }, [releaseDraft])
   const load = useCallback(async (more = false) => {
     if (!allowed || denied) return
@@ -135,14 +139,14 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
     consumedCorrection.current = correction.requestKey
     // An existing form (and its attachments) is never silently overwritten.
     if (editing || busyRef.current) { setSuggestedCorrection(input); return }
-    draftScope.current = getOfflineScope(); setDraft(input); setEditing(true); setErrorKey(null); setNoticeKey(null)
+    draftScope.current = getOfflineScope(); setDraft(input); setKindChosen(true); setKindPicked(true); setEditing(true); setErrorKey(null); setNoticeKey(null)
   }, [correction, allowed, denied, agent?.id, agent?.organizationId, server, bootstrap?.timezone, editing])
   const change = (patch: Partial<AttendanceInput>) => { setDraft(value => ({ ...value, ...patch })); setErrorKey(null) }
   const changeKind = (kind: AttendanceKind) => {
     if (kind === draft.kind) return
     change({ kind, ...(attendanceNeedsHours(kind) ? { unit: "HOURS", endDate: draft.startDate, startTime: draft.startTime ?? "09:00", endTime: draft.endTime ?? "18:00" } : {}) })
   }
-  const enter = () => { lifecycle.current += 1; releaseDraft(); draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); setDocuments([]); setEditing(true); setErrorKey(null); setNoticeKey(null) }
+  const enter = () => { lifecycle.current += 1; releaseDraft(); draftScope.current = getOfflineScope(); setDraft(newDraft(today(bootstrap?.timezone ?? null))); setDocuments([]); setKindChosen(false); setKindPicked(false); setEditing(true); setErrorKey(null); setNoticeKey(null) }
   const closeDraft = async () => {
     if (busyRef.current) return
     lifecycle.current += 1; releaseDraft()
@@ -273,7 +277,7 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
             <Text style={styles.body}>{t('attendanceCorrection.existingDraft', { date: suggestedCorrection.startDate })}</Text>
             {button(t('attendanceCorrection.openAfterDraft'), () => {
               if (editing || busyRef.current || !suggestedCorrection) return
-              draftScope.current = getOfflineScope(); setDraft(suggestedCorrection); setSuggestedCorrection(null); setEditing(true); setErrorKey(null)
+              draftScope.current = getOfflineScope(); setDraft(suggestedCorrection); setSuggestedCorrection(null); setKindChosen(true); setKindPicked(true); setEditing(true); setErrorKey(null)
             }, 'attendance-open-correction', false, editing || busy)}
           </View>}
           {(!rhythm || !editing) && <View style={styles.actions}>
@@ -286,12 +290,20 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
           {rhythm ? <AttendanceDisclosure title={t("attendanceRhythm.hourlyLimit")} icon="time-outline" controlID="attendance-quota-disclosure">{quotaContent}</AttendanceDisclosure> : quotaContent}
           {editing && <View style={styles.form} testID="attendance-form">
             {!rhythm && <Text style={styles.subtitle}>{t("attendanceRequests.new")}</Text>}
-            <Text style={styles.label}>{t("attendanceRequests.kind")}</Text>
-            {rhythm && <Pressable testID="attendance-change-kind" accessibilityRole="button" accessibilityState={{ expanded: kindOpen, disabled: busy }} disabled={busy} onPress={() => setKindOpen(value => !value)} style={rhythmStyles.kindControl}>
-              <Text style={styles.subtitle}>{t(`attendanceRequests.kinds.${draft.kind}`)}</Text><Text style={styles.buttonText}>{t("attendanceRhythm.changeKind")}</Text>
-            </Pressable>}
-            {(!rhythm || kindOpen) && <View style={styles.choices}>{ATTENDANCE_KINDS.map(kind => <Pressable key={kind} testID={`attendance-kind-${kind}`} accessibilityRole="button" accessibilityState={{ selected: draft.kind === kind, disabled: busy }} disabled={busy}
-              onPress={() => { changeKind(kind); setKindOpen(false) }} style={[styles.choice, draft.kind === kind && styles.selected]}><Text style={styles.choiceText}>{t(`attendanceRequests.kinds.${kind}`)}</Text></Pressable>)}</View>}
+            {!kindChosen ? <>
+              <Text style={styles.subtitle} accessibilityRole="header">{t("attendanceRequests.chooseKind")}</Text>
+              <View style={styles.kindList} testID="attendance-kinds">{ATTENDANCE_KINDS.map(kind => <Pressable key={kind} testID={`attendance-kind-${kind}`} accessibilityRole="button" accessibilityState={{ selected: kindPicked && draft.kind === kind, disabled: busy }}
+                accessibilityHint={t(`attendanceRequests.kindHints.${kind}`)} disabled={busy} onPress={() => { changeKind(kind); setKindChosen(true); setKindPicked(true) }} style={[styles.choice, styles.kindRow, kindPicked && draft.kind === kind && styles.selected]}>
+                <View style={styles.kindText}><Text style={styles.choiceText}>{t(`attendanceRequests.kinds.${kind}`)}</Text><Text style={styles.caption}>{t(`attendanceRequests.kindHints.${kind}`)}</Text></View>
+                <Text style={styles.kindChevron} accessibilityElementsHidden importantForAccessibility="no">›</Text>
+              </Pressable>)}</View>
+              {!rhythm && <View style={styles.actions}>{button(t("attendanceRequests.closeForm"), () => { void closeDraft() }, "attendance-close-form", false, busy)}</View>}
+            </> : <>
+            <View style={styles.kindChosen} testID="attendance-chosen-kind">
+              <View style={styles.kindText}><Text style={styles.label}>{t("attendanceRequests.kind")}</Text><Text style={styles.subtitle}>{t(`attendanceRequests.kinds.${draft.kind}`)}</Text></View>
+              <Pressable testID="attendance-change-kind" accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => setKindChosen(false)} style={styles.kindChange}>
+                <Text style={styles.kindChangeText}>{t("attendanceRhythm.changeKind")}</Text></Pressable>
+            </View>
             {draft.kind === "TIME_CORRECTION" && <Text style={styles.notice}>{t("attendanceRequests.correctionHint")}</Text>}
             {!attendanceNeedsHours(draft.kind) && <View style={styles.actions}>{(["DAYS", "HOURS"] as const).map(unit => <Pressable key={unit} testID={`attendance-unit-${unit}`} accessibilityRole="button" accessibilityState={{ selected: draft.unit === unit, disabled: busy }} disabled={busy}
               style={[styles.choice, draft.unit === unit && styles.selected]} onPress={() => change({ unit, ...(unit === "HOURS" ? { endDate: draft.startDate, startTime: "09:00", endTime: "18:00" } : { startTime: undefined, endTime: undefined }) })}><Text style={styles.choiceText}>{t(`attendanceRequests.units.${unit}`)}</Text></Pressable>)}</View>}
@@ -320,6 +332,7 @@ export default function AttendanceRequestsScreen({ route }: { route?: { params?:
               {button(t("attendanceRequests.submit"), submit, "attendance-submit", true, busy)}
               {!rhythm && button(t("attendanceRequests.closeForm"), () => { void closeDraft() }, "attendance-close-form", false, busy)}
             </View>
+            </>}
           </View>}
           {(busy || loading) && <ActivityIndicator accessibilityLabel={t("attendanceRequests.loading")} color={fieldTheme.color.primary} />}
           {(!rhythm || !editing) && <View testID="attendance-list" style={styles.list}>
@@ -365,6 +378,9 @@ const legacyStyles = themed(() => StyleSheet.create({
   buttonText: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.primaryStrong }, primary: { backgroundColor: fieldTheme.color.primary, borderColor: fieldTheme.color.primary }, primaryText: { color: fieldTheme.color.onColor }, disabled: { opacity: 0.5 },
   quota: { padding: 18, gap: 8, backgroundColor: fieldTheme.color.primarySoft, borderRadius: 16 }, form: { gap: 16, padding: 20, backgroundColor: fieldTheme.color.surface, borderRadius: 16, borderWidth: 1, borderColor: fieldTheme.color.border },
   choices: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, choice: { minHeight: 48, padding: 12, justifyContent: "center", borderRadius: 10, borderWidth: 1, borderColor: fieldTheme.color.border }, selected: { backgroundColor: fieldTheme.color.primarySoft, borderColor: fieldTheme.color.primary }, choiceText: { fontSize: 15, color: fieldTheme.color.ink, fontWeight: "600" },
+  kindList: { gap: 8 }, kindRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64 }, kindText: { flex: 1, gap: 2 }, kindChevron: { fontSize: 24, fontWeight: "700", color: fieldTheme.color.primaryStrong },
+  kindChosen: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 16, backgroundColor: fieldTheme.color.primarySoft, borderRadius: 16 },
+  kindChange: { minHeight: 44, paddingHorizontal: 16, justifyContent: "center", borderRadius: 12, borderWidth: 1.5, borderColor: fieldTheme.color.primary }, kindChangeText: { fontSize: 15, fontWeight: "700", color: fieldTheme.color.primaryStrong },
   fields: { flexDirection: "row", flexWrap: "wrap", gap: 16 }, field: { flexGrow: 1, flexBasis: 180, gap: 8 }, input: { minHeight: 50, borderWidth: 1, borderColor: fieldTheme.color.border, borderRadius: 10, padding: 12, fontSize: 17, color: fieldTheme.color.ink, backgroundColor: fieldTheme.color.canvas }, reason: { minHeight: 100, textAlignVertical: "top" },
   notice: { color: fieldTheme.color.amber, fontSize: 15, lineHeight: 22 }, error: { color: fieldTheme.color.danger, fontSize: 15, lineHeight: 22 }, list: { gap: 0 }, item: { paddingVertical: 22, borderBottomWidth: 1, borderColor: fieldTheme.color.border, gap: 10 }, itemHeading: { flexDirection: "row", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between" }, status: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "700" }, reply: { color: fieldTheme.color.ink, fontSize: 16, lineHeight: 23, padding: 14, backgroundColor: fieldTheme.color.surfaceStrong, borderRadius: 10 }, empty: { color: fieldTheme.color.inkMuted, fontSize: 17, lineHeight: 25, paddingVertical: 32 }, document: { flexDirection: "row", flexWrap: "wrap", gap: 12, alignItems: "center" }, thumbnail: { width: 72, height: 90, borderRadius: 8 },
 }))
@@ -377,7 +393,9 @@ const rhythmStyles = themed(() => StyleSheet.create({
   button: { ...timeStyles.action }, buttonText: { ...timeStyles.actionText }, primary: { ...timeStyles.primary }, primaryText: { ...timeStyles.primaryText },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   quota: { gap: 8, padding: 0 }, form: { gap: 24, paddingVertical: 8 },
-  kindControl: { backgroundColor: timeColor.soft, padding: 16, borderRadius: 20, gap: 8, minHeight: 64 },
+  kindChevron: { fontSize: 24, fontWeight: '700', color: timeColor.accent },
+  kindChosen: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 16, backgroundColor: timeColor.soft, borderRadius: 20, minHeight: 64 },
+  kindChange: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 16, borderWidth: 1.5, borderColor: timeColor.accent }, kindChangeText: { color: timeColor.accent, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, choice: { minHeight: 48, padding: 12, justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: timeColor.line, backgroundColor: timeColor.surface },
   selected: { backgroundColor: timeColor.soft, borderColor: timeColor.accent }, choiceText: { color: timeColor.ink, fontSize: 15, lineHeight: 21, fontWeight: '600' },
   input: { minHeight: 56, borderWidth: 1, borderColor: timeColor.line, borderRadius: 16, padding: 16, fontSize: 16, lineHeight: 24, color: timeColor.ink, backgroundColor: timeColor.surface },

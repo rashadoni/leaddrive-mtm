@@ -14,8 +14,6 @@ name: The employee sends one marked request; it reaches the server and waits for
     timeout: 30000
 - tapOn:
     id: attendance-new
-- tapOn:
-    id: attendance-change-kind
 - scrollUntilVisible:
     element:
       id: ${'attendance-kind-' + TIME_KIND}
