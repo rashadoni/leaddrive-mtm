@@ -14,6 +14,8 @@ jest.mock("react-native-safe-area-context", () => ({ SafeAreaProvider: ({ childr
 jest.mock("@react-native-community/netinfo", () => ({ addEventListener: jest.fn() }))
 jest.mock("@react-native-community/geolocation", () => ({ setRNConfiguration: jest.fn(), getCurrentPosition: jest.fn() }))
 jest.mock("../../src/attendance/AttendanceNavigator", () => () => null)
+jest.mock("../../src/services/push-lifecycle", () => ({ startPushTokenRefresh: jest.fn() }))
+jest.mock("../../src/attendance/push-open", () => ({ askTimeNotificationPermission: jest.fn(async () => {}) }))
 jest.mock("../../src/components/ErrorBoundary", () => ({ ErrorBoundary: ({ children }: { children: React.ReactNode }) => children }))
 jest.mock("../../src/components/AppFeedbackHost", () => () => null)
 jest.mock("../../src/store/auth", () => ({ useAuthStore: require("zustand").create(() => ({})) }))
@@ -110,4 +112,18 @@ it("offers only Time updates after startup and once per foreground transition, e
   expect(options.isCurrent()).toBe(false)
   lifecycle("background"); lifecycle("active")
   expect(checkTimeAppUpdate).toHaveBeenCalledTimes(2)
+})
+
+// Owner, 2026-11-03: an explanation request from HR arrived in Time without a notification.
+it("keeps the push address current while signed in and asks for notifications once", async () => {
+  const { startPushTokenRefresh } = jest.requireMock("../../src/services/push-lifecycle") as { startPushTokenRefresh: jest.Mock }
+  const { askTimeNotificationPermission } = jest.requireMock("../../src/attendance/push-open") as { askTimeNotificationPermission: jest.Mock }
+  const stopPush = jest.fn()
+  startPushTokenRefresh.mockReturnValue(stopPush)
+  await mount()
+  expect(startPushTokenRefresh).toHaveBeenCalledWith({ organizationId: officeAgent.organizationId, id: officeAgent.id })
+  expect(askTimeNotificationPermission).toHaveBeenCalledTimes(1)
+  await act(async () => { useAuthStore.setState({ isLoggedIn: false, agent: null as never }) })
+  expect(stopPush).toHaveBeenCalledTimes(1)
+  expect(askTimeNotificationPermission).toHaveBeenCalledTimes(1)
 })

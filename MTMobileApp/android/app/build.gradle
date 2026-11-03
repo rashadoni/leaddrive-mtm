@@ -3,7 +3,10 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 // A separate install, selected only by the dedicated attendance build job.
 def attendanceApp = project.findProperty("attendanceApp") == "true"
-if (!attendanceApp) apply plugin: "com.google.gms.google-services"
+// Both packages are clients of the one Firebase project (google-services.json):
+// LeadDrive Time receives pushes too since 2026-11-03 (owner: an explanation
+// request from HR arrived without any notification).
+apply plugin: "com.google.gms.google-services"
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
 
 /**

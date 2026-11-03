@@ -70,7 +70,10 @@ jobs:
           grep -q "versionCode='$((1000 + GITHUB_RUN_NUMBER))'" "$RUNNER_TEMP/attendance-badging.txt"
           grep -q 'AttendanceApplication' "$RUNNER_TEMP/attendance-manifest.txt"
           if grep -E 'ACCESS_BACKGROUND_LOCATION|FOREGROUND_SERVICE_LOCATION|RECEIVE_BOOT_COMPLETED|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' "$RUNNER_TEMP/attendance-permissions.txt"; then exit 1; fi
-          if grep -E 'FieldTrackingResume|RNBackgroundActionsTask|FieldPushService' "$RUNNER_TEMP/attendance-manifest.txt"; then exit 1; fi
+          if grep -E 'FieldTrackingResume|RNBackgroundActionsTask' "$RUNNER_TEMP/attendance-manifest.txt"; then exit 1; fi
+          # Server notifications since 2026-11-03: the push service and its permission are part of Time.
+          grep -q 'FieldPushService' "$RUNNER_TEMP/attendance-manifest.txt"
+          grep -q 'POST_NOTIFICATIONS' "$RUNNER_TEMP/attendance-permissions.txt"
           mkdir -p attendance-artifact
           cp "$APK" attendance-artifact/leaddrive-time-1.0.0.apk
           (cd attendance-artifact && sha256sum leaddrive-time-1.0.0.apk > leaddrive-time-1.0.0.apk.sha256)

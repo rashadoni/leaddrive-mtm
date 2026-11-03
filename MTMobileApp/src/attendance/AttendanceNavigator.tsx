@@ -1,7 +1,7 @@
 import { TimeText as Text } from "./ui/TimeText"
-import React from "react"
-import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from "react-native"
-import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/native"
+import React, { useEffect, useRef, useState } from "react"
+import { ActivityIndicator, AppState, StyleSheet, useWindowDimensions, View } from "react-native"
+import { DarkTheme, DefaultTheme, NavigationContainer, type NavigationContainerRef } from "@react-navigation/native"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -21,6 +21,7 @@ import AttendanceInboxScreen from "../screens/attendance/AttendanceInboxScreen"
 import ProfileScreen from "../screens/profile/ProfileScreen"
 import { TimePresentation, timeColor } from "./ui/TimeUI"
 import { ATTENDANCE_APP, attendanceTabs } from "./profile"
+import { consumeOpenedPushTarget, timeRouteForPushTarget } from "./push-open"
 
 const Tab = createBottomTabNavigator(), Stack = createNativeStackNavigator()
 const CompactWorkday = () => <AttendanceWorkdayScreen compact />
@@ -60,9 +61,24 @@ function OwnTabs() {
 export default function AttendanceNavigator() {
   const auth = useAuthStore(), data = useBootstrapStore(state => state.data)
   const scheme = useFieldColorScheme()
+  const navigation = useRef<NavigationContainerRef<Record<string, object | undefined>>>(null)
+  const [navigationReady, setNavigationReady] = useState(false)
+  const tabs = attendanceTabs(data, auth.agent)
+  // A tapped notification opens its screen: at start and on every return to the foreground.
+  useEffect(() => {
+    if (!navigationReady || !auth.isLoggedIn || !tabs.length) return
+    let mounted = true
+    const open = () => { void consumeOpenedPushTarget().then(target => {
+      const route = timeRouteForPushTarget(target)
+      if (mounted && route && tabs.includes(route) && navigation.current?.isReady()) navigation.current.navigate("Main", { screen: route })
+    }) }
+    open()
+    const lifecycle = AppState.addEventListener("change", next => { if (next === "active") open() })
+    return () => { mounted = false; lifecycle.remove() }
+  }, [navigationReady, auth.isLoggedIn, tabs.join(",")])
   if (auth.isLoading) return <View style={styles.loading}><ActivityIndicator /></View>
-  const admitted = attendanceTabs(data, auth.agent).length > 0
-  return <TimePresentation.Provider value><NavigationContainer theme={scheme === "dark" ? DarkTheme : DefaultTheme}>
+  const admitted = tabs.length > 0
+  return <TimePresentation.Provider value><NavigationContainer ref={navigation} onReady={() => setNavigationReady(true)} theme={scheme === "dark" ? DarkTheme : DefaultTheme}>
     <Stack.Navigator key={`${auth.agent?.organizationId ?? ""}:${auth.agent?.id ?? ""}:${admitted}`} screenOptions={{ headerShown: false }}>
       {auth.isLoggedIn ? <Stack.Screen name="Main" component={OwnTabs} /> : auth.hasServer ?
         <Stack.Screen name="Login">{() => <LoginScreen productName={ATTENDANCE_APP.displayName} serverDomain={auth.serverDomain} companyName={auth.companyName} onSwitchServer={auth.switchServer} />}</Stack.Screen> :

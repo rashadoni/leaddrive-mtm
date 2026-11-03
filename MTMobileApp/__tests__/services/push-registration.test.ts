@@ -53,7 +53,7 @@ describe("what a push may say and where it goes", () => {
    * belongs in the app behind the tap.
    */
   it("shows only what the payload carries, through the app's own notification path", () => {
-    expect(pushService).toContain("FieldNotificationReceiver.post(this, id, title, body, channel)")
+    expect(pushService).toContain('FieldNotificationReceiver.post(this, id, title, body, channel, message.data["target"])')
     expect(pushService).toContain("areNotificationsEnabled()")
   })
 

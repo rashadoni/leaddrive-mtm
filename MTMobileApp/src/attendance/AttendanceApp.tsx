@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { ActivityIndicator, AppState, StatusBar, View } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import NetInfo from "@react-native-community/netinfo"
@@ -17,11 +17,13 @@ import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
 import { followPhoneColorScheme } from "../services/follow-phone-color-scheme"
 import { dismissAllChoices } from "../services/app-feedback"
 import { checkTimeAppUpdate } from "../services/time-app-update"
+import { startPushTokenRefresh } from "../services/push-lifecycle"
+import { askTimeNotificationPermission } from "./push-open"
 import { fieldTheme, useFieldColorScheme } from "../theme/fieldTheme"
 import AttendanceNavigator from "./AttendanceNavigator"
 import { TimePresentationProvider } from "./ui/TimePresentation"
 
-/** Separate entry point: no field runtime, GPS service, heartbeat or MTM updater. */
+/** Separate entry point: no field runtime, GPS service, heartbeat or MTM updater; server notifications only. */
 export default function AttendanceApp() {
   const [ready, setReady] = useState(false)
   const scheme = useFieldColorScheme()
@@ -71,6 +73,15 @@ export default function AttendanceApp() {
     const lifecycle = AppState.addEventListener("change", state => { if (state === "active") refresh() })
     return () => { network(); lifecycle.remove() }
   }, [isLoggedIn, agent?.organizationId, agent?.id])
+  // The push address follows the session, as in the field app: once now, on
+  // every return to the foreground and on Firebase's rotation. An employee who
+  // signed in before Time had pushes registers here, not at a new sign-in.
+  const notificationAsked = useRef(false)
+  useEffect(() => {
+    if (!ready || !isLoggedIn) return
+    if (!notificationAsked.current) { notificationAsked.current = true; void askTimeNotificationPermission() }
+    return startPushTokenRefresh({ organizationId: agent?.organizationId, id: agent?.id })
+  }, [ready, isLoggedIn, agent?.organizationId, agent?.id])
   // A field login cannot start the generic field queue scheduler in this app.
   useEffect(() => admitted ? startForegroundSyncRetry() : undefined, [admitted])
   return <TimePresentationProvider><SafeAreaProvider>
