@@ -29,6 +29,9 @@ class AttendanceApplication : Application(), ReactApplication {
         // A push that arrives while the app is closed is drawn by the system
         // into this channel; it must exist before the first one.
         FieldNotificationReceiver.ensureChannel(this, FieldNotificationReceiver.DEFAULT_CHANNEL)
+        // HR's explanation requests and decisions come in this one (owner,
+        // 2026-11-03: the default channel only showed an icon in the status bar).
+        FieldNotificationReceiver.ensureTeamMessagesChannel(this)
         loadReactNative(this)
     }
 }

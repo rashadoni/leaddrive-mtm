@@ -1,1 +1,1 @@
-<resources><string name="app_name">LeadDrive Время</string></resources>
+<resources><string name="app_name">LeadDrive Время</string><string name="team_messages_channel_name">Кадры: заявки и объяснительные</string><string name="team_messages_channel_description">Запросы объяснительных и решения по вашим заявкам: всплывают поверх экрана.</string><string name="field_notifications_channel_name">Прочие уведомления</string><string name="field_notifications_channel_description">Прочие уведомления приложения.</string></resources>
