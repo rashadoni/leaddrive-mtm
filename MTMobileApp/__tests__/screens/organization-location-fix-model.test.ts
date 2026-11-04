@@ -18,6 +18,12 @@ import {
   toLocationFixRequest,
   usablePoint,
   waitingLocationFixOf,
+  awaitsConfirmation,
+  locationConfirmFailure,
+  locationConfirmPayload,
+  locationConfirmProblem,
+  mayProposeInAdvance,
+  requestCoversVisits,
 } from "../../src/screens/base/organization-location-fix-model"
 
 /**
@@ -169,7 +175,7 @@ describe("the request as the card was told it", () => {
     expect(toLocationFixRequest({
       id: "r1", status: "REJECTED", mine: true, proposedLatitude: 40.41, proposedLongitude: 49.85,
       decisionComment: "  Это склад  ", submittedAt: "2026-10-12T08:00:00.000Z",
-    })).toEqual({ id: "r1", status: "REJECTED", mine: true, proposed: { latitude: 40.41, longitude: 49.85 }, decisionComment: "Это склад" })
+    })).toEqual({ id: "r1", status: "REJECTED", mine: true, proposed: { latitude: 40.41, longitude: 49.85 }, decisionComment: "Это склад", origin: "ON_SITE", confirmed: false })
   })
 
   it("is somebody else's unless the server says «mine»", () => {
@@ -252,5 +258,65 @@ describe("a check-in from the place the agent reported", () => {
   it("covers nothing without a reported place or without a position", () => {
     expect(locationFixCoversCheckIn(null, DOOR, 100)).toBe(false)
     expect(locationFixCoversCheckIn(DOOR, null, 100)).toBe(false)
+  })
+})
+
+// «Адрес и точка» (owner, 2026-11-04): «должно быть и до и на месте».
+describe("a place proposed in advance", () => {
+  const north = (latitude: number, meters: number) => latitude + meters / 111_195
+  const PROPOSED = { latitude: 40.41, longitude: 49.85 }
+  const NOW_MS = Date.parse("2026-11-04T09:00:00.000Z")
+  const request = (over: Record<string, unknown> = {}) => toLocationFixRequest({
+    id: "r1", status: "SUBMITTED", mine: true, proposedLatitude: 40.41, proposedLongitude: 49.85,
+    origin: "REMOTE", confirmedAt: null, proposedAddress: " Nizami küç. 41 ", ...over,
+  })
+
+  it("is read with where it was made from, whether it was confirmed and the address it proposes", () => {
+    expect(request()).toMatchObject({ origin: "REMOTE", confirmed: false, proposedAddress: "Nizami küç. 41" })
+    expect(request({ confirmedAt: "2026-11-04T08:00:00.000Z" })?.confirmed).toBe(true)
+    // A server from before says nothing: from the spot.
+    expect(request({ origin: undefined, proposedAddress: undefined })).toMatchObject({ origin: "ON_SITE", confirmed: false })
+    expect(request({ proposedAddress: undefined })).not.toHaveProperty("proposedAddress")
+  })
+
+  it("waits for the agent who proposed it to stand at it — and only then lets a visit lean on it", () => {
+    expect(awaitsConfirmation(request())).toBe(true)
+    expect(requestCoversVisits(request())).toBe(false)
+    expect(awaitsConfirmation(request({ confirmedAt: "2026-11-04T08:00:00.000Z" }))).toBe(false)
+    expect(requestCoversVisits(request({ confirmedAt: "2026-11-04T08:00:00.000Z" }))).toBe(true)
+    expect(requestCoversVisits(request({ origin: "ON_SITE" }))).toBe(true)
+    // A colleague's, or one already answered, is nobody's to confirm.
+    expect(awaitsConfirmation(request({ mine: false }))).toBe(false)
+    expect(awaitsConfirmation(request({ status: "APPROVED" }))).toBe(false)
+    expect(requestCoversVisits(request({ mine: false, origin: "ON_SITE" }))).toBe(false)
+  })
+
+  it("is replaced by his next proposal while unconfirmed; anything else waiting stops a new one", () => {
+    expect(mayProposeInAdvance(null)).toBe("free")
+    expect(mayProposeInAdvance(request({ status: "REJECTED" }))).toBe("free")
+    expect(mayProposeInAdvance(request())).toBe("replaces")
+    expect(mayProposeInAdvance(request({ confirmedAt: "2026-11-04T08:00:00.000Z" }))).toBe("waiting")
+    expect(mayProposeInAdvance(request({ origin: "ON_SITE" }))).toBe("waiting")
+    expect(mayProposeInAdvance(request({ mine: false }))).toBe("waiting")
+  })
+
+  it("is confirmed only from a phone at the proposed pin that knows where it is, now", () => {
+    const at = { latitude: north(40.41, 30), longitude: 49.85, accuracy: 9, timestamp: NOW_MS - 3_000 }
+    expect(locationConfirmProblem(PROPOSED, at, NOW_MS)).toBeNull()
+    expect(locationConfirmProblem(PROPOSED, null, NOW_MS)).toBe("noFix")
+    expect(locationConfirmProblem(PROPOSED, { ...at, mocked: true }, NOW_MS)).toBe("mock")
+    expect(locationConfirmProblem(PROPOSED, { ...at, accuracy: 300 }, NOW_MS)).toBe("accuracy")
+    expect(locationConfirmProblem(PROPOSED, { ...at, timestamp: NOW_MS - 600_000 }, NOW_MS)).toBe("stale")
+    expect(locationConfirmProblem(PROPOSED, { ...at, latitude: north(40.41, 400) }, NOW_MS)).toBe("notHere")
+    expect(locationConfirmPayload(at, NOW_MS)).toEqual({ agent: { latitude: at.latitude, longitude: 49.85, accuracyMeters: 9, fixAgeSeconds: 3 } })
+  })
+
+  it("names the server's refusals of a confirmation", () => {
+    const refused = (code: string) => Object.assign(new Error("x"), { code })
+    expect(locationConfirmFailure(refused("MTM_LOCATION_REQUEST_CONFIRM_TOO_FAR"))).toBe("notHere")
+    expect(locationConfirmFailure(refused("MTM_LOCATION_REQUEST_NOTHING_TO_CONFIRM"))).toBe("notFound")
+    expect(locationConfirmFailure(refused("MTM_LOCATION_REQUEST_MOCK_LOCATION"))).toBe("mock")
+    expect(locationConfirmFailure(new Error("REQUEST_TIMEOUT"))).toBe("offline")
+    expect(locationConfirmFailure(new Error("boom"))).toBe("failed")
   })
 })

@@ -1080,11 +1080,29 @@ class ApiClient {
    */
   async submitOrganizationLocationRequest(id: string, data: {
     idempotencyKey: string
+    /** From the spot (the default) or in advance, from «Предложить изменение» — then `agent` may be absent. */
+    origin?: "ON_SITE" | "REMOTE"
     proposed: { latitude: number; longitude: number }
-    agent: { latitude: number; longitude: number; accuracyMeters: number; fixAgeSeconds: number; isMock?: boolean }
+    agent?: { latitude: number; longitude: number; accuracyMeters: number; fixAgeSeconds: number; isMock?: boolean }
+    /** The street address as the agent says it is. */
+    address?: string
     comment?: string
   }) {
     return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/location-request`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, 20_000, 2)
+  }
+
+  /**
+   * «Подтвердить: клиент здесь»: the agent who proposed a place in advance
+   * stands at it. The server holds the phone's fix to the rules of «Клиент
+   * здесь»; from then on visits count from the proposed place.
+   */
+  async confirmOrganizationLocationRequest(id: string, data: {
+    agent: { latitude: number; longitude: number; accuracyMeters: number; fixAgeSeconds: number; isMock?: boolean }
+  }) {
+    return this.request(`/mobile/route-field/organizations/${encodeURIComponent(id)}/location-request/confirm`, {
       method: "POST",
       body: JSON.stringify(data),
     }, 20_000, 2)

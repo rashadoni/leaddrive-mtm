@@ -24,7 +24,8 @@ const store = read("src/store/location-fixes.ts")
 describe("«Клиент здесь» is reachable", () => {
   it("is a screen of both stacks it is opened from", () => {
     expect(navigator).toContain('import RouteOrganizationLocationFixScreen from "../screens/base/RouteOrganizationLocationFixScreen.android"')
-    expect(navigator.match(/OrganizationLocationFix: \{ id: string; name\?: string; latitude\?: number; longitude\?: number \}/g)).toHaveLength(2)
+    // `mode: "advance"`: the same map, opened from «Предложить изменение» (2026-11-04).
+    expect(navigator.match(/OrganizationLocationFix: \{ id: string; name\?: string; latitude\?: number; longitude\?: number; mode\?: "advance" \}/g)).toHaveLength(2)
     expect(navigator).toContain('<ClientsStack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />')
     expect(navigator).toContain('<Stack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />')
   })
@@ -129,7 +130,8 @@ describe("a visit from the reported place, while the request waits", () => {
   it("remembers the place when the request goes out, and what the server says about it afterwards", () => {
     expect(screen).toContain("useLocationFixStore.getState().remember(id, pin)")
     // The card is told by the server whether this agent's request still waits.
-    expect(card).toContain('if (request?.mine && request.status === "SUBMITTED" && request.proposed) useLocationFixStore.getState().remember(id, request.proposed)')
+    // Made at the place, or proposed in advance and confirmed there since (requestCoversVisits).
+    expect(card).toContain("if (requestCoversVisits(request) && request?.proposed) useLocationFixStore.getState().remember(id, request.proposed)")
     expect(card).toContain("else useLocationFixStore.getState().forget(id)")
     expect(card).toContain("useLocationFixStore.getState().forget(detail.id)")
   })
@@ -167,5 +169,27 @@ describe("a visit from the reported place, while the request waits", () => {
     const flow = visit.slice(visit.indexOf("const leaning = "), visit.indexOf("const { visit, operation } = await queueVisitCheckIn({"))
     expect(flow).not.toMatch(/forceCheckIn = true/)
     expect(flow).not.toMatch(/leaning[^\n]*forceCheckIn/)
+  })
+})
+
+// «Адрес и точка» (owner, 2026-11-04): proposed in advance in «Предложить
+// изменение», confirmed at the place on the place's card.
+describe("a place proposed in advance", () => {
+  const form = read("src/screens/base/RouteContactChangeRequestScreen.android.tsx")
+  it("is put on the same map, which sends nothing and hands the pin back to the form", () => {
+    expect(screen).toContain('const advance = route.params.mode === "advance"')
+    expect(screen).toContain("useLocationPickStore.getState().pick(id, pin)")
+    expect(form).toContain('mode: "advance"')
+    expect(form).toContain("useLocationPickStore((state) => (placeId ? state.picks[placeId] ?? null : null))")
+  })
+  it("goes to the place's own door, marked as made in advance", () => {
+    expect(form).toContain("api.submitOrganizationLocationRequest(placeId, advancePlacePayload(")
+    expect(api).toContain("/location-request/confirm`")
+    expect(card).toContain("api.confirmOrganizationLocationRequest(detail.id, locationConfirmPayload(fix, Date.now()))")
+  })
+  it("is confirmed on the place's card, and only then lets the visit lean on it", () => {
+    expect(card).toContain('testID="location-fix-confirm"')
+    expect(card).toContain('testID="location-fix-not-here"')
+    expect(card).toContain("useLocationFixStore.getState().remember(detail.id, locationRequest.proposed)")
   })
 })

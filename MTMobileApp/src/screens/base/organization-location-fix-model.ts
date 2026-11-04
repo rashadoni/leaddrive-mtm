@@ -175,6 +175,15 @@ export interface LocationFixRequest {
   mine: boolean
   proposed: LocationFixPoint | null
   decisionComment?: string
+  /**
+   * From the spot («Клиент здесь») or in advance, from «Предложить изменение»
+   * (owner, 2026-11-04). A server older than that says nothing: from the spot.
+   */
+  origin: "ON_SITE" | "REMOTE"
+  /** An advance request the agent has since confirmed standing at the place. */
+  confirmed: boolean
+  /** The street address the request proposes; absent — it does not touch it. */
+  proposedAddress?: string
 }
 
 export function toLocationFixRequest(raw: unknown): LocationFixRequest | null {
@@ -184,13 +193,96 @@ export function toLocationFixRequest(raw: unknown): LocationFixRequest | null {
   const status = row.status
   if (!id || (status !== "SUBMITTED" && status !== "APPROVED" && status !== "REJECTED")) return null
   const comment = typeof row.decisionComment === "string" ? row.decisionComment.trim() : ""
+  const address = typeof row.proposedAddress === "string" ? row.proposedAddress.trim() : ""
   return {
     id,
     status,
     mine: row.mine === true,
     proposed: usablePoint({ latitude: row.proposedLatitude, longitude: row.proposedLongitude }),
     ...(comment ? { decisionComment: comment } : {}),
+    origin: row.origin === "REMOTE" ? "REMOTE" : "ON_SITE",
+    confirmed: typeof row.confirmedAt === "string" && row.confirmedAt.length > 0,
+    ...(address ? { proposedAddress: address } : {}),
   }
+}
+
+/**
+ * His own advance proposal that waits for him to stand at it: the card
+ * offers «Подтвердить: клиент здесь».
+ */
+export function awaitsConfirmation(request: LocationFixRequest | null): boolean {
+  return !!request && request.mine && request.status === "SUBMITTED" && request.origin === "REMOTE" && !request.confirmed && !!request.proposed
+}
+
+/**
+ * Whether a check-in may lean on this request: his own, waiting, made at the
+ * place or confirmed there. The server's own rule (leaddrive-v2
+ * `waitingLocationRequestCovers`): a pin proposed in advance from anywhere is
+ * no place a visit counts from until he has stood at it.
+ */
+export function requestCoversVisits(request: LocationFixRequest | null): boolean {
+  return !!request && request.mine && request.status === "SUBMITTED" && !!request.proposed
+    && (request.origin === "ON_SITE" || request.confirmed)
+}
+
+/**
+ * Whether «Предложить изменение» may send a new place for this customer: no
+ * request waits, or only his own advance one that he has not confirmed — the
+ * server replaces that one with the new.
+ */
+export function mayProposeInAdvance(request: LocationFixRequest | null): "free" | "replaces" | "waiting" {
+  if (!request || request.status !== "SUBMITTED") return "free"
+  return request.mine && request.origin === "REMOTE" && !request.confirmed ? "replaces" : "waiting"
+}
+
+/** Why a confirmation cannot be sent as it stands. */
+export type LocationConfirmProblem = "noFix" | "mock" | "accuracy" | "stale" | "notHere"
+
+/**
+ * «Подтвердить: клиент здесь» — the server's own conditions: the phone knows
+ * where it is, now, of itself, and is at the proposed pin, give or take the
+ * entrance round the corner.
+ */
+export function locationConfirmProblem(
+  proposed: LocationFixPoint | null,
+  fix: LocationFixReading | null,
+  nowMs: number,
+): LocationConfirmProblem | null {
+  if (!proposed || !fix) return "noFix"
+  if (fix.mocked === true) return "mock"
+  if (typeof fix.accuracy === "number" && fix.accuracy > LOCATION_FIX_MAX_ACCURACY_METERS) return "accuracy"
+  if (locationFixAgeSeconds(fix, nowMs) > LOCATION_FIX_MAX_FIX_AGE_SECONDS) return "stale"
+  if (locationFixDistanceMeters(fix, proposed) > LOCATION_FIX_MAX_PIN_FROM_AGENT_METERS) return "notHere"
+  return null
+}
+
+/** What the phone sends to confirm: where it is and what it knows of itself. */
+export function locationConfirmPayload(fix: LocationFixReading, nowMs: number) {
+  return {
+    agent: {
+      latitude: fix.latitude,
+      longitude: fix.longitude,
+      accuracyMeters: typeof fix.accuracy === "number" && fix.accuracy >= 0 ? fix.accuracy : LOCATION_FIX_MAX_ACCURACY_METERS,
+      fixAgeSeconds: locationFixAgeSeconds(fix, nowMs),
+      ...(typeof fix.mocked === "boolean" ? { isMock: fix.mocked } : {}),
+    },
+  }
+}
+
+const CONFIRM_CODES: Record<string, LocationConfirmProblem | "notFound"> = {
+  MTM_LOCATION_REQUEST_MOCK_LOCATION: "mock",
+  MTM_LOCATION_REQUEST_ACCURACY_TOO_LOW: "accuracy",
+  MTM_LOCATION_REQUEST_FIX_TOO_OLD: "stale",
+  MTM_LOCATION_REQUEST_CONFIRM_TOO_FAR: "notHere",
+  MTM_LOCATION_REQUEST_NOTHING_TO_CONFIRM: "notFound",
+}
+
+export function locationConfirmFailure(error: unknown): LocationConfirmProblem | "notFound" | "offline" | "failed" {
+  const code = error && typeof error === "object" ? (error as { code?: unknown }).code : undefined
+  if (typeof code === "string" && CONFIRM_CODES[code]) return CONFIRM_CODES[code]
+  const message = error instanceof Error ? error.message : ""
+  if (message === "REQUEST_TIMEOUT" || message === "Network request failed" || message === "ABORTED") return "offline"
+  return "failed"
 }
 
 /** «350 м», «1,2 км» — as a person says a distance. */
