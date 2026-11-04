@@ -37,6 +37,8 @@ export interface ActiveWorkday {
    * `paused` is absent.
    */
   pausedAt?: string
+  /** The kind of the break going on, as the employee chose it on this phone (leaddrive-v2 `attendance-break-kinds.ts`). */
+  breakKindId?: string
   /**
    * The open day's latest mark, from the server. «Günü bağla» on a day left
    * open since an earlier date cannot finish before it (stale-workday.ts).
@@ -119,7 +121,7 @@ interface WorkdayState {
    * (leaddrive-v2 `MTM_LOCATION_WORKDAY_PAUSED`), so the local flag is not
    * cosmetic: it is what stops this device sending them in the first place.
    */
-  pause: (key: string, guard?: () => void) => Promise<void>
+  pause: (key: string, guard?: () => void, breakKindId?: string) => Promise<void>
   /** Come back from a break. */
   resume: (key: string, guard?: () => void) => Promise<void>
   /**
@@ -305,7 +307,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(activeWorkday)); guard()
     set({ activeWorkday, syncError: null })
   }),
-  pause: (key, guard) => serializeMutation(async () => {
+  pause: (key, guard, breakKindId) => serializeMutation(async () => {
     guard?.()
     await guardOfficeSequence(key); guard?.()
     const activeWorkday = get().activeWorkday
@@ -315,9 +317,10 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     if (activeWorkday?.key !== key || activeWorkday.syncState === 'FINISH_PENDING' || (activeWorkday.syncState !== "CONFIRMED" && !officeCapture(key)) || activeWorkday.paused) return
     const occurredAt = new Date().toISOString()
     guard?.()
-    await queueWorkday({ entity: "workdays", op: "create", data: { action: "PAUSE", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
+    // The kind the employee chose, when the company asks for one (owner, 2026-11-04).
+    await queueWorkday({ entity: "workdays", op: "create", data: { action: "PAUSE", workdayId: activeWorkday.workdayId, occurredAt, ...(breakKindId ? { attendanceBreak: { version: 1, kindId: breakKindId } } : {}) } }, key, guard)
     guard?.()
-    const paused: ActiveWorkday = { ...activeWorkday, paused: true, pausedAt: occurredAt }
+    const paused: ActiveWorkday = { ...activeWorkday, paused: true, pausedAt: occurredAt, ...(breakKindId ? { breakKindId } : {}) }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(paused))
     if (get().activeWorkday?.key === key) set({ activeWorkday: paused, syncError: null })
   }),
@@ -330,7 +333,7 @@ export const useWorkdayStore = create<WorkdayState>((set, get) => ({
     guard?.()
     await queueWorkday({ entity: "workdays", op: "create", data: { action: "RESUME", workdayId: activeWorkday.workdayId, occurredAt } }, key, guard)
     guard?.()
-    const { paused: _paused, pausedAt: _pausedAt, ...running } = activeWorkday
+    const { paused: _paused, pausedAt: _pausedAt, breakKindId: _breakKindId, ...running } = activeWorkday
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(running))
     if (get().activeWorkday?.key === key) set({ activeWorkday: running, syncError: null })
   }),

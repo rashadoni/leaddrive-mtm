@@ -1466,5 +1466,18 @@
     "download": "Yüklə",
     "openPlay": "Google Play-i aç",
     "later": "Sonra"
+  },
+  "attendanceBreaks": {
+    "chooseTitle": "Hansı fasilə?",
+    "kind_smoke": "Siqaret",
+    "kind_lunch": "Nahar",
+    "kind_personal": "Şəxsi",
+    "kindNone": "Fasilə",
+    "used": "bu gün {{used}} / {{limit}} dəq",
+    "usedNoLimit": "limitsiz · bu gün {{used}} dəq",
+    "noLimit": "limitsiz",
+    "cancel": "Ləğv et",
+    "pausedKind": "Fasilə · {{name}}",
+    "overLimit": "Limit keçildi — kadrlar şöbəsi qeyd görəcək"
   }
 }

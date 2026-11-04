@@ -36,9 +36,10 @@ export async function refreshAttendanceSession(continueSession?: () => void): Pr
   await reconcile()
   return true
 }
-export async function changeAttendanceWorkday(action: "start" | "end" | "pause" | "resume", qrToken?: string | null) {
+export async function changeAttendanceWorkday(action: "start" | "end" | "pause" | "resume", qrToken?: string | null, breakKindId?: string) {
   const scope = officeAttendanceScope()
   if ((action === "start" || action === "end") && qrToken !== undefined) await useWorkdayStore.getState()[action](scope, () => guardOfficeAttendance(scope), qrToken)
+  else if (action === "pause" && breakKindId) await useWorkdayStore.getState().pause(scope, () => guardOfficeAttendance(scope), breakKindId)
   else await useWorkdayStore.getState()[action](scope, () => guardOfficeAttendance(scope))
   guardOfficeAttendance(scope)
 }
