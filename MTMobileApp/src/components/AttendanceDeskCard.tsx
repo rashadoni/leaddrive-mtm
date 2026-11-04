@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react"
-import { View } from "react-native"
+import { Share, View } from "react-native"
 import { useTranslation } from "react-i18next"
 import { TimeText as Text } from "../attendance/ui/TimeText"
 import { TimeAction, timeStyles } from "../attendance/ui/TimeUI"
@@ -8,6 +8,8 @@ import { attendanceQrAvailable, guardAttendanceQr } from "../services/attendance
 import { officeAttendanceScope } from "../services/attendance-session-guard"
 import { attendanceDeskRefusal, pairAttendanceDesk, readAttendanceDesks, revokeAttendanceDesk, type AttendanceDesk } from "../services/attendance-desks"
 import { ask } from "../services/app-feedback"
+import { useAuthStore } from "../store/auth"
+import { attendanceDeskScreenLink } from "../services/attendance-desk-contract"
 
 /**
  * «Профиль → Рабочее место» (owner, 2026-11-04; leaddrive-v2 mockup
@@ -21,6 +23,8 @@ export default function AttendanceDeskCard() {
   const [scanning, setScanning] = useState(false), [desks, setDesks] = useState<AttendanceDesk[] | null>(null)
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null), [busy, setBusy] = useState(false)
   // Branch QR off (or the account gone): no workplace to connect.
+  // The company's own server, so each company's employees get their own address (owner, 2026-11-04).
+  const link = attendanceDeskScreenLink(useAuthStore(state => state.serverDomain))
   const available = !!scope && (() => { try { return attendanceQrAvailable() } catch { return false } })()
   const load = useCallback(async () => { if (scope && available) setDesks(await readAttendanceDesks(scope).catch(() => null)) }, [scope, available])
   useEffect(() => { void load() }, [load])
@@ -35,6 +39,11 @@ export default function AttendanceDeskCard() {
   return <View style={timeStyles.section} testID="attendance-desk-card">
     <Text style={timeStyles.sectionTitle}>{t("attendanceDesks.title")}</Text>
     <Text style={timeStyles.caption}>{t("attendanceDesks.hint")}</Text>
+    {link && <View style={{ gap: 6 }} testID="attendance-desk-link">
+      <Text style={timeStyles.caption}>{t("attendanceDesks.linkLabel")}</Text>
+      <Text selectable style={[timeStyles.sectionTitle, { fontSize: 17 }]} testID="attendance-desk-link-text">{link.replace(/^https?:\/\//, "")}</Text>
+      <TimeAction label={t("attendanceDesks.shareLink")} icon="share-outline" onPress={() => { void Share.share({ message: link }).catch(() => {}) }} testID="attendance-desk-share" />
+    </View>}
     {desks?.map(desk => <View key={desk.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }} testID="attendance-desk">
       <Text style={[timeStyles.body, { flex: 1 }]}>{t("attendanceDesks.item", { branch: desk.branchName })}</Text>
       <TimeAction label={t("attendanceDesks.revoke")} icon="close-circle-outline" onPress={() => { void revoke(desk) }} disabled={busy} />
