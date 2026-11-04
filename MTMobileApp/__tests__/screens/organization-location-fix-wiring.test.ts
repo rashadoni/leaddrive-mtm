@@ -24,7 +24,8 @@ const store = read("src/store/location-fixes.ts")
 describe("«Клиент здесь» is reachable", () => {
   it("is a screen of both stacks it is opened from", () => {
     expect(navigator).toContain('import RouteOrganizationLocationFixScreen from "../screens/base/RouteOrganizationLocationFixScreen.android"')
-    expect(navigator.match(/OrganizationLocationFix: \{ id: string; name\?: string; latitude\?: number; longitude\?: number \}/g)).toHaveLength(2)
+    // `mode: "advance"`: the same map, opened from «Предложить изменение» (2026-11-04).
+    expect(navigator.match(/OrganizationLocationFix: \{ id: string; name\?: string; latitude\?: number; longitude\?: number; mode\?: "advance" \}/g)).toHaveLength(2)
     expect(navigator).toContain('<ClientsStack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />')
     expect(navigator).toContain('<Stack.Screen name="OrganizationLocationFix" component={withFieldColorScheme(RouteOrganizationLocationFixScreen)} />')
   })
