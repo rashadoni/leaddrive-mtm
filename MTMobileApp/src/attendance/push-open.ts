@@ -6,8 +6,10 @@ import { NativeModules, PermissionsAndroid, Platform } from "react-native"
  * посмотреть, откроется ли та страница»). A tap leads to the screen the push
  * names; any other target simply opens the app where it was.
  */
-// A decided request (owner, 2026-11-03) opens «Sorğular».
-const TIME_PUSH_ROUTES: Readonly<Record<string, string>> = { AttendanceExplanations: "OwnExplanations", AttendanceRequests: "OwnRequests" }
+// A decided request (owner, 2026-11-03) opens «Sorğular»; in the field app a
+// new request on the manager's phone opens «Təsdiqlər» (tab `Approvals`). A
+// navigator opens a route only if it has it.
+const TIME_PUSH_ROUTES: Readonly<Record<string, string>> = { AttendanceExplanations: "OwnExplanations", AttendanceRequests: "OwnRequests", Approvals: "Approvals" }
 
 export function timeRouteForPushTarget(target: unknown): string | null {
   return typeof target === "string" && Object.prototype.hasOwnProperty.call(TIME_PUSH_ROUTES, target) ? TIME_PUSH_ROUTES[target] : null

@@ -133,7 +133,9 @@ describe("every control a step points at is marked on its screen", () => {
 
   it("lies over the navigator, follows its focused route and stays under the app's notices", () => {
     const navigator = fs.readFileSync(path.join(SRC, "navigation/AppNavigatorAndroidV2.tsx"), "utf8")
-    expect(navigator).toContain("<NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ref={navigationRef} onReady={followRoute} onStateChange={followRoute}>")
+    expect(navigator).toContain("<NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ref={navigationRef} onReady={onNavigationReady} onStateChange={followRoute}>")
+    // Ready also opens a tapped notification's screen (owner, 2026-11-04); the guide still follows the route first.
+    expect(navigator).toContain("const onNavigationReady = () => { followRoute(); setNavigationReady(true) }")
     expect(navigator.indexOf("{isLoggedIn ? <GuideOverlay /> : null}")).toBeGreaterThan(navigator.indexOf("</Stack.Navigator>"))
     const app = fs.readFileSync(path.join(SRC, "runtime/AndroidApp.tsx"), "utf8")
     expect(app.indexOf("<AppFeedbackHost />")).toBeGreaterThan(app.indexOf("<AppNavigatorAndroidV2 />"))
