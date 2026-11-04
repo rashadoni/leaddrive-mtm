@@ -6,8 +6,9 @@ import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context
 import {useTranslation} from 'react-i18next'
 import {guardAttendanceQr} from '../services/attendance-qr'
 import {validAttendanceQrToken} from '../services/attendance-qr-contract'
+import {validAttendanceDeskToken} from '../services/attendance-desk-contract'
 import { fieldTheme, themed } from '../theme/fieldTheme'
-export type AttendanceQrScannerProps={visible:boolean;scope:string;action:'START'|'FINISH';onClose:()=>void;onConfirm:(token:string)=>Promise<void>}
+export type AttendanceQrScannerProps={visible:boolean;scope:string;action:'START'|'FINISH'|'DESK';onClose:()=>void;onConfirm:(token:string)=>Promise<void>}
 export default function AttendanceQrScanner(props:AttendanceQrScannerProps){
   if(!props.visible)return null
   return <Modal visible animationType="slide" onRequestClose={props.onClose} statusBarTranslucent navigationBarTranslucent><SafeAreaProvider><Scanner key={props.scope} {...props}/></SafeAreaProvider></Modal>
@@ -23,7 +24,7 @@ function Scanner({scope,action,onClose,onConfirm}:AttendanceQrScannerProps){
   useEffect(()=>{mounted.current=true;const listener=AppState.addEventListener('change',state=>{setActive(state==='active');if(state!=='active'){scanning.current=false;setToken(null);if(!requestingPermission.current)close.current()}});return()=>{mounted.current=false;listener.remove()}},[])
   const scanner=useCodeScanner({codeTypes:['qr'],onCodeScanned:codes=>{
     if(!scanning.current||writing.current)return
-    try{current();const next=codes.find(code=>code.type==='qr'&&validAttendanceQrToken(code.value))?.value;if(!next){setFailed(true);return}scanning.current=false;setToken(next);setFailed(false)}catch{/* A late camera callback never becomes a new action. */}
+    try{current();const next=codes.find(code=>code.type==='qr'&&(action==='DESK'?validAttendanceDeskToken(code.value):validAttendanceQrToken(code.value)))?.value;if(!next){setFailed(true);return}scanning.current=false;setToken(next);setFailed(false)}catch{/* A late camera callback never becomes a new action. */}
   }})
   async function requestCamera(){
     if(requestingPermission.current)return
@@ -44,8 +45,8 @@ function Scanner({scope,action,onClose,onConfirm}:AttendanceQrScannerProps){
   async function confirm(){if(!token||writing.current)return;writing.current=true;setBusy(true);setFailed(false);try{current();await onConfirm(token);if(mounted.current){setToken(null);onClose()}}catch{if(mounted.current)setFailed(true)}finally{writing.current=false;if(mounted.current)setBusy(false)}}
   function rescan(){if(writing.current)return;try{current();scanning.current=true;setToken(null);setFailed(false)}catch{onClose()}}
   return <View style={styles.screen}><ScrollView contentContainerStyle={[styles.content,{paddingTop:insets.top+24,paddingBottom:insets.bottom+24}]}>
-    <Text style={styles.title}>{t(token?(action==='START'?'attendanceQr.confirmStart':'attendanceQr.confirmFinish'):'attendanceQr.scanTitle')}</Text>
-    {token ? <><Text style={styles.state}>{t('attendanceQr.scanned')}</Text><Text style={styles.copy}>{t('attendanceQr.checkAtSend')}</Text><Pressable testID="attendance-qr-confirm" accessibilityRole="button" disabled={busy} style={styles.primary} onPress={()=>void confirm()}><Text style={styles.primaryText}>{t(action==='START'?'attendanceQr.confirmStart':'attendanceQr.confirmFinish')}</Text></Pressable><Pressable testID="attendance-qr-rescan" accessibilityRole="button" disabled={busy} style={styles.button} onPress={rescan}><Text style={styles.buttonText}>{t('attendanceQr.rescan')}</Text></Pressable><Text style={styles.copy}>{t('attendanceQr.offline')}</Text></>
+    <Text style={styles.title}>{t(action==='DESK'?(token?'attendanceDesks.confirmTitle':'attendanceDesks.scanTitle'):token?(action==='START'?'attendanceQr.confirmStart':'attendanceQr.confirmFinish'):'attendanceQr.scanTitle')}</Text>
+    {token ? <><Text style={styles.state}>{t('attendanceQr.scanned')}</Text><Text style={styles.copy}>{t(action==='DESK'?'attendanceDesks.confirmBody':'attendanceQr.checkAtSend')}</Text><Pressable testID="attendance-qr-confirm" accessibilityRole="button" disabled={busy} style={styles.primary} onPress={()=>void confirm()}><Text style={styles.primaryText}>{t(action==='DESK'?'attendanceDesks.connect':action==='START'?'attendanceQr.confirmStart':'attendanceQr.confirmFinish')}</Text></Pressable><Pressable testID="attendance-qr-rescan" accessibilityRole="button" disabled={busy} style={styles.button} onPress={rescan}><Text style={styles.buttonText}>{t('attendanceQr.rescan')}</Text></Pressable><Text style={styles.copy}>{t('attendanceQr.offline')}</Text></>
     : !admitted ? <Text style={styles.error}>{t('attendanceQr.failed')}</Text>
     : !hasPermission || !device ? <><Text style={styles.copy}>{t(!hasPermission?'attendanceQr.permission':'attendanceQr.noCamera')}</Text>{!hasPermission && <Pressable testID="attendance-qr-permission" accessibilityRole="button" style={styles.primary} onPress={()=>void requestCamera()}><Text style={styles.primaryText}>{t('attendanceQr.allowCamera')}</Text></Pressable>}</>
     : <><Text style={styles.copy}>{t('attendanceQr.aim')}</Text><View style={styles.camera}><Camera testID="attendance-qr-camera" style={StyleSheet.absoluteFill} device={device} isActive={active && !busy} codeScanner={scanner}/></View><Text style={styles.copy}>{t('attendanceQr.privacy')}</Text></>}

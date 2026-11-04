@@ -13,6 +13,7 @@ import { useAttendanceInstallation } from '../../hooks/useAttendanceInstallation
 import AttendanceInstallationCard from '../../components/AttendanceInstallationCard';
 import AttendanceLocationConsentCard from '../../components/AttendanceLocationConsentCard';
 import AttendanceDisclosure from '../../components/AttendanceDisclosure';
+import AttendanceDeskCard from '../../components/AttendanceDeskCard';
 import LightScreenStatusBar from '../../components/LightScreenStatusBar';
 import StatusBarBand from '../../components/StatusBarBand';
 import { upperInitial } from '../../lib/upper';
@@ -104,6 +105,7 @@ export default function TimeProfile({
             />
           </View>
         )}
+        <AttendanceDeskCard />
         <View style={timeStyles.section}>
           <Text style={styles.label}>{t('attendanceRhythm.preferences')}</Text>
           <Text style={timeStyles.sectionTitle}>{t('profile.language')}</Text>

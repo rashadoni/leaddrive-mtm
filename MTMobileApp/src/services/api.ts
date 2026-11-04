@@ -785,6 +785,16 @@ class ApiClient {
   cancelAttendanceRequest(id: string, guard: () => void) {
     return this.request(`/mobile/route-field/attendance/requests/${encodeURIComponent(id)}`, { method: "DELETE" }, 20_000, 2, guard)
   }
+  /** Owner, 2026-11-04: the employee's own computer becomes their workplace (leaddrive-v2 attendance-desk-screen.ts). */
+  pairAttendanceDesk(token: string, guard: () => void) {
+    return this.request("/mobile/route-field/attendance/desk-pairing", { method: "POST", body: JSON.stringify({ token }) }, 20_000, 2, guard)
+  }
+  getAttendanceDesks(guard: () => void) {
+    return this.request("/mobile/route-field/attendance/desks", {}, 20_000, 2, guard)
+  }
+  revokeAttendanceDesk(id: string, guard: () => void) {
+    return this.request(`/mobile/route-field/attendance/desks/${encodeURIComponent(id)}/revoke`, { method: "POST" }, 20_000, 2, guard)
+  }
   /** Owner, 2026-10-16: HR asks the late and the absent to explain; the employee answers here. */
   getAttendanceExplanations(guard: () => void) {
     return this.request("/mobile/route-field/attendance/explanations", {}, 20_000, 2, guard)
