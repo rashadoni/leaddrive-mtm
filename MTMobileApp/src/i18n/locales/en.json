@@ -1466,5 +1466,18 @@
     "download": "Download",
     "openPlay": "Open Google Play",
     "later": "Later"
+  },
+  "attendanceBreaks": {
+    "chooseTitle": "Which break?",
+    "kind_smoke": "Smoking",
+    "kind_lunch": "Lunch",
+    "kind_personal": "Personal",
+    "kindNone": "Break",
+    "used": "today {{used}} of {{limit}} min",
+    "usedNoLimit": "no limit · today {{used}} min",
+    "noLimit": "no limit",
+    "cancel": "Cancel",
+    "pausedKind": "Break · {{name}}",
+    "overLimit": "Over the limit — HR will see a remark"
   }
 }

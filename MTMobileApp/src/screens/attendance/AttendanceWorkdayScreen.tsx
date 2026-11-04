@@ -19,6 +19,8 @@ import { useAttendanceMarkRecovery } from '../../hooks/useAttendanceMarkRecovery
 import { canReturnToWorkday, returnToClosedWorkday } from '../../services/workday-return'
 import StaleWorkdayCard from '../../components/StaleWorkdayCard'
 import StaleWorkdayCloseSheet from '../../components/StaleWorkdayCloseSheet'
+import AttendanceBreakKindSheet from '../../components/AttendanceBreakKindSheet'
+import { attendanceBreakKindName, attendanceBreakOverLimit, attendanceBreakUsage } from '../../services/attendance-break-kinds'
 import { staleWorkdayCorrection, staleWorkdayFinishSent, workdayOpenSinceEarlierDay, type StaleWorkdayFinishSent } from '../../services/stale-workday'
 import { attendanceQueued, attendanceScope, cachedAttendanceRequests, loadAttendanceRequests, queueAttendanceCancellation, queueAttendanceRequest } from '../../services/attendance-requests'
 import type { AttendanceInput } from '../../services/attendance-contract'
@@ -151,7 +153,12 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
     finally { if (mounted.current) setCloseSending(false) }
   }, [closeSending, pendingFinishRequest, readFinishTimeSent, t])
   useEffect(() => { mounted.current = true; if (allowed) void loadQueue().catch(() => {}); else setOperations([]); return () => { mounted.current = false } }, [allowed, key, loadQueue])
-  async function change(action: "start" | "end" | "pause" | "resume", qrToken?: string) {
+  // Kinds of a break (owner, 2026-11-04): «Fasilə» asks which, when the company does.
+  const breakKinds = bootstrap?.policies.attendanceBreakKinds
+  const [breakSheet, setBreakSheet] = useState(false)
+  const breakKindId = paused ? current?.breakKindId ?? breakKinds?.currentKindId ?? null : null
+  const breakKind = breakKindId ? breakKinds?.kinds.find(kind => kind.id === breakKindId) ?? null : null
+  async function change(action: "start" | "end" | "pause" | "resume", qrToken?: string, breakKindChoice?: string) {
     if (busyRef.current || !allowed || !hydrated || conflict || completed || recovery.operation || (installation.blocked && (action === 'start' || action === 'end'))) return
     const scope = officeAttendanceScope()
     busyRef.current = true; setBusy(true); setError(false); setInstallationRefusal(null)
@@ -162,6 +169,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
       }
       guardOfficeAttendance(scope)
       if (qrToken !== undefined) await changeAttendanceWorkday(action, qrToken)
+      else if (breakKindChoice) await changeAttendanceWorkday(action, undefined, breakKindChoice)
       else await changeAttendanceWorkday(action)
       if (!mounted.current) return
       await loadQueue()
@@ -251,7 +259,10 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
           {!compact && <Text style={styles.name}>{agent?.name}</Text>}
           {(!rhythm || open || completed) && <Text style={compact ? compactStyles.time : styles.clock}>{compact ? `${t(completed ? 'officeAttendance.finishedAt' : 'officeAttendance.startedAt')} · ${dayTime}` : dayTime}</Text>}
           {!compact && <Text style={styles.muted}>{t(completed ? "officeAttendance.finishedAt" : "officeAttendance.startedAt")}</Text>}
+          {paused && breakKind && <Text testID="office-workday-break-kind" style={[compact ? compactStyles.status : styles.status, { color: timeColor.amber }]}>{t('attendanceBreaks.pausedKind', { name: attendanceBreakKindName(breakKind, t) })}</Text>}
           {paused && <Text style={compact ? compactStyles.hint : styles.muted}>{t("officeAttendance.pausedAt", { time: time(current?.pausedAt) })}</Text>}
+          {paused && breakKind && <Text testID="office-workday-break-usage" style={compact ? compactStyles.hint : styles.muted}>{`${attendanceBreakKindName(breakKind, t)}: ${attendanceBreakUsage(breakKind, t)}`}</Text>}
+          {paused && breakKind && attendanceBreakOverLimit(breakKind) && <Text accessibilityRole="alert" style={styles.error}>{t('attendanceBreaks.overLimit')}</Text>}
           {offline && <View style={compact ? compactStyles.offline : undefined}>
             <Text testID="office-workday-offline" style={styles.notice}>{t(compact ? 'attendanceCompact.offline' : 'officeAttendance.offlineHint')}</Text>
             {compact && bootstrap?.attendanceOffline && <Text testID="office-workday-offline-until" style={styles.notice}>{t('attendanceCompact.validUntil', { time: time(new Date(bootstrap.attendanceOffline.validUntil).toISOString()) })}</Text>}
@@ -265,7 +276,7 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
           {!compact && qr.available && !completed && <Text style={styles.muted}>{t(paused?'attendanceQr.breakPrivacy':'attendanceQr.optional')}</Text>}
           {compact && qrAction}
           <View style={compact ? compactStyles.actions : styles.actions}>
-            {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || conflict} onPress={() => void change(paused ? 'resume' : 'pause')} style={[styles.button, styles.secondary, rhythm && rhythmCompactStyles.pairedAction, (busy || conflict) && styles.disabled]}>{rhythm && <Icon name={paused ? 'play-outline' : 'pause-outline'} size={19} color={timeColor.accent} />}<Text style={[styles.secondaryText, rhythm && rhythmCompactStyles.actionLabel]}>{t(paused ? 'officeAttendance.resume' : 'officeAttendance.pause')}</Text></Pressable>}
+            {open && <Pressable testID="office-workday-break" accessibilityRole="button" disabled={busy || conflict} onPress={() => { if (!paused && breakKinds?.kinds.length) setBreakSheet(true); else void change(paused ? 'resume' : 'pause') }} style={[styles.button, styles.secondary, rhythm && rhythmCompactStyles.pairedAction, (busy || conflict) && styles.disabled]}>{rhythm && <Icon name={paused ? 'play-outline' : 'pause-outline'} size={19} color={timeColor.accent} />}<Text style={[styles.secondaryText, rhythm && rhythmCompactStyles.actionLabel]}>{t(paused ? 'officeAttendance.resume' : 'officeAttendance.pause')}</Text></Pressable>}
             {!completed && !recovery.operation && !installation.blocked && <Pressable testID="office-workday-action" accessibilityRole="button" disabled={busy || !hydrated || conflict} onPress={() => void change(open ? 'end' : 'start')}
               style={rhythm ? [styles.button, qr.available && styles.secondary, open && rhythmCompactStyles.pairedAction, (busy || !hydrated || conflict) && styles.disabled] : compact && qr.available && open ? [compactStyles.textAction, (busy || !hydrated || conflict) && styles.disabled] : [styles.button, qr.available && styles.secondary, (busy || !hydrated || conflict) && styles.disabled]}>
               {rhythm && open && <Icon name="stop-circle-outline" size={19} color={qr.available ? timeColor.accent : timeColor.onFill} />}
@@ -323,6 +334,8 @@ export default function AttendanceWorkdayScreen({ managerShell = false, compact 
       onCancel={() => setCloseSheetOpen(false)}
       onSend={input => { sendFinishTime(input).catch(() => {}) }}
     /> : null}
+    <AttendanceBreakKindSheet visible={breakSheet && open && !paused && !!breakKinds?.kinds.length} kinds={breakKinds?.kinds ?? []} busy={busy}
+      onCancel={() => setBreakSheet(false)} onChoose={kindId => { setBreakSheet(false); void change('pause', undefined, kindId) }} />
     <AttendanceQrScanner visible={!!scan && scan.scope===key && allowed && qr.available && !paused && !installation.blocked && !recovery.operation && !finishing && !conflict} scope={key} action={scan?.action??'START'} onClose={()=>setScan(null)} onConfirm={async token=>{
       if(!scan || scan.scope!==key || (scan.action==='FINISH' && current?.workdayId!==scan.workdayId) || (scan.action==='START' && current))throw new Error('ATTENDANCE_QR_CHANGED')
       guardAttendanceQr(key); await change(scan.action==='START'?'start':'end',token);setScan(null)

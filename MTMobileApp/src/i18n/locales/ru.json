@@ -1466,5 +1466,18 @@
     "download": "Скачать",
     "openPlay": "Открыть Google Play",
     "later": "Позже"
+  },
+  "attendanceBreaks": {
+    "chooseTitle": "Какой перерыв?",
+    "kind_smoke": "Перекур",
+    "kind_lunch": "Обед",
+    "kind_personal": "Личное",
+    "kindNone": "Перерыв",
+    "used": "сегодня {{used}} из {{limit}} мин",
+    "usedNoLimit": "без лимита · сегодня {{used}} мин",
+    "noLimit": "без лимита",
+    "cancel": "Отмена",
+    "pausedKind": "Перерыв · {{name}}",
+    "overLimit": "Лимит превышен — кадровик увидит замечание"
   }
 }

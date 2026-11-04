@@ -76,7 +76,7 @@ export function rememberOfflineBootstrap(data: BootstrapData, value: unknown,
     const bootstrap: BootstrapData = { ...data, workday: null,
       manifest: data.manifest ? { ...data.manifest, modules: { ...data.manifest.modules,
         workforceHrm: { enabled: false, scopeVersion: null }, commercial: { enabled: false, scopeVersion: null } } } : null,
-      policies: { ...data.policies, attendanceMarkVersion: undefined, attendanceBranchQrVersion: undefined,
+      policies: { ...data.policies, attendanceMarkVersion: undefined, attendanceBranchQrVersion: undefined, attendanceBreakKinds: undefined,
         agentPermissions: { ...data.policies.agentPermissions, attendanceRequests: false,
           attendanceWorkday: false, attendanceLocation: false, attendanceInstallation: false } } }
     // Anchor to request start: a slow/suspended response must not extend the

@@ -51,6 +51,26 @@ describe("workday break (field UX audit A7, tasks T2/T3)", () => {
     expect(typeof active?.pausedAt).toBe("string")
   })
 
+  // Owner, 2026-11-04: the kind of a break, when the company asks for it.
+  it("sends the chosen kind with PAUSE only, remembers it, and forgets it on RESUME", async () => {
+    setActive()
+    await useWorkdayStore.getState().pause(KEY, undefined, "smoke")
+    expect(mockedEnqueue).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ action: "PAUSE", workdayId: "wd-1", attendanceBreak: { version: 1, kindId: "smoke" } }),
+    }))
+    expect(useWorkdayStore.getState().activeWorkday?.breakKindId).toBe("smoke")
+    await useWorkdayStore.getState().resume(KEY)
+    const resume = mockedEnqueue.mock.calls.map(call => call[0]).find(input => input.data.action === "RESUME")
+    expect(resume.data).not.toHaveProperty("attendanceBreak")
+    expect(useWorkdayStore.getState().activeWorkday?.breakKindId).toBeUndefined()
+  })
+
+  it("keeps the old PAUSE exactly when no kind is chosen", async () => {
+    setActive()
+    await useWorkdayStore.getState().pause(KEY)
+    expect(mockedEnqueue.mock.calls[0][0].data).not.toHaveProperty("attendanceBreak")
+  })
+
   it("survives a restart: the break and its time are persisted", async () => {
     setActive()
     await useWorkdayStore.getState().pause(KEY)

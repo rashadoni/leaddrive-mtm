@@ -91,10 +91,37 @@ const KNOWN_CAPABILITIES: readonly MobileCapability[] = [
  * keeps no local override, so a tenant decision cannot be undone by a stale
  * build.
  */
+export type AttendanceBreakKind = { id: string; name: string | null; limitMinutes: number | null; usedSeconds: number }
+export type AttendanceBreakKinds = { kinds: AttendanceBreakKind[]; currentKindId: string | null }
+/** Exactly the server's shape, or nothing: a malformed list never reaches the screen. */
+export function parseAttendanceBreakKinds(value: unknown): AttendanceBreakKinds | undefined {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : null
+  if (!raw || !Array.isArray(raw.kinds) || !raw.kinds.length || raw.kinds.length > 12) return undefined
+  const id = (item: unknown): item is string => typeof item === 'string' && /^[a-z0-9-]{1,40}$/.test(item)
+  const kinds: AttendanceBreakKind[] = []
+  for (const item of raw.kinds) {
+    const kind = item && typeof item === 'object' ? item as Record<string, unknown> : null
+    if (!kind || !id(kind.id)) return undefined
+    const name = kind.name === null ? null : typeof kind.name === 'string' && kind.name.trim() && kind.name.length <= 40 ? kind.name : undefined
+    const limit = kind.limitMinutes === null ? null : Number.isInteger(kind.limitMinutes) && (kind.limitMinutes as number) >= 1 && (kind.limitMinutes as number) <= 720 ? kind.limitMinutes as number : undefined
+    const used = Number.isInteger(kind.usedSeconds) && (kind.usedSeconds as number) >= 0 ? kind.usedSeconds as number : undefined
+    if (name === undefined || limit === undefined || used === undefined) return undefined
+    kinds.push({ id: kind.id, name, limitMinutes: limit, usedSeconds: used })
+  }
+  const current = raw.currentKindId === null || raw.currentKindId === undefined ? null : id(raw.currentKindId) ? raw.currentKindId : undefined
+  return current === undefined ? undefined : { kinds, currentKindId: current }
+}
+
 export interface BootstrapPolicies {
   /** Exact opt-in wire version. Missing/unknown never requests a location. */
   attendanceMarkVersion?: 1
   attendanceBranchQrVersion?: 1
+  /**
+   * Kinds of a break, when the company asks for them (leaddrive-v2
+   * `attendance-break-kinds.ts`, owner 2026-11-04). Absent: «Fasilə» is one tap.
+   * A built-in kind ("smoke", "lunch", "personal") has no name: the app names it.
+   */
+  attendanceBreakKinds?: AttendanceBreakKinds
   /**
    * Burn a visible plaque (time, agent, customer, GPS) into field photos.
    * Defaults to FALSE when the server omits it: the plaque travels inside the
@@ -422,6 +449,7 @@ export function toBootstrap(raw: any): BootstrapData {
     policies: {
       ...(record(raw?.policies)?.attendanceMarkVersion === 1 ? { attendanceMarkVersion: 1 as const } : {}),
       ...(record(raw?.policies)?.attendanceBranchQrVersion === 1 ? { attendanceBranchQrVersion: 1 as const } : {}),
+      ...(parseAttendanceBreakKinds(record(raw?.policies)?.attendanceBreakKinds) ? { attendanceBreakKinds: parseAttendanceBreakKinds(record(raw?.policies)?.attendanceBreakKinds) } : {}),
       photoWatermark: record(raw?.policies)?.photoWatermark === true,
       // Missing means an older server: do not expose a planning action that
       // cannot be confirmed by the server yet.
