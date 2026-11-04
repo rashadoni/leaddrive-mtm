@@ -1,8 +1,9 @@
 import { api } from "./api"
 import { guardOfficeAttendance } from "./attendance-session-guard"
 
-/** A desk's pairing QR: 256 random bits its browser made (leaddrive-v2 attendance-desk-screen.ts). */
-export const validAttendanceDeskToken = (value: unknown): value is string => typeof value === "string" && /^mtmd1\.[A-Za-z0-9_-]{43}$/.test(value)
+import { validAttendanceDeskToken } from "./attendance-desk-contract"
+
+export { validAttendanceDeskToken }
 export type AttendanceDesk = { id: string; branchName: string; pairedAt: string; lastSeenAt: string | null }
 
 /** The phone confirms the desk it scanned; the desk takes its workplace within two minutes. */

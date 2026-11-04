@@ -20,7 +20,8 @@ export default function AttendanceDeskCard() {
   const [scope] = useState(() => { try { return officeAttendanceScope() } catch { return null } })
   const [scanning, setScanning] = useState(false), [desks, setDesks] = useState<AttendanceDesk[] | null>(null)
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null), [busy, setBusy] = useState(false)
-  const available = !!scope && attendanceQrAvailable()
+  // Branch QR off (or the account gone): no workplace to connect.
+  const available = !!scope && (() => { try { return attendanceQrAvailable() } catch { return false } })()
   const load = useCallback(async () => { if (scope && available) setDesks(await readAttendanceDesks(scope).catch(() => null)) }, [scope, available])
   useEffect(() => { void load() }, [load])
   if (!available || !scope) return null

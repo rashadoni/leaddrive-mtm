@@ -6,7 +6,7 @@ import {SafeAreaProvider,useSafeAreaInsets} from 'react-native-safe-area-context
 import {useTranslation} from 'react-i18next'
 import {guardAttendanceQr} from '../services/attendance-qr'
 import {validAttendanceQrToken} from '../services/attendance-qr-contract'
-import {validAttendanceDeskToken} from '../services/attendance-desks'
+import {validAttendanceDeskToken} from '../services/attendance-desk-contract'
 import { fieldTheme, themed } from '../theme/fieldTheme'
 export type AttendanceQrScannerProps={visible:boolean;scope:string;action:'START'|'FINISH'|'DESK';onClose:()=>void;onConfirm:(token:string)=>Promise<void>}
 export default function AttendanceQrScanner(props:AttendanceQrScannerProps){
