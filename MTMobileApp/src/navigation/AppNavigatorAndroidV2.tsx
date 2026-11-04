@@ -1,5 +1,5 @@
-import React, { useEffect } from "react"
-import { ActivityIndicator, StyleSheet, Text, useWindowDimensions, View } from "react-native"
+import React, { useEffect, useState } from "react"
+import { ActivityIndicator, AppState, StyleSheet, Text, useWindowDimensions, View } from "react-native"
 import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator, type BottomTabBarButtonProps } from "@react-navigation/bottom-tabs"
@@ -66,6 +66,7 @@ import ManagerSelfLocationShare from "../screens/manager/ManagerSelfLocationShar
 import ManagerPlanningWorkspace from "../screens/manager/ManagerPlanningWorkspace.android"
 import { AGENT_TAB_NAMES, hasManagerShellAccess, mainShell, type ManagerTabName } from "./role-tabs"
 import { currentRouteName, navigationRef } from "./navigation-ref"
+import { consumeOpenedPushTarget, timeRouteForPushTarget } from "../attendance/push-open"
 import GuideOverlay from "../components/guide/GuideOverlay"
 import GuideTabButton from "../components/guide/GuideTabButton"
 import { useGuideStore } from "../store/guide"
@@ -468,6 +469,25 @@ export default function AppNavigatorAndroidV2() {
     checkAuth()
   }, [checkAuth])
 
+  // A tapped notification opens its screen — a new request on the manager's
+  // phone «Təsdiqlər» (owner, 2026-11-04) — at start and on every return to the
+  // foreground, when this session's tabs have that screen.
+  const [navigationReady, setNavigationReady] = useState(false)
+  const onNavigationReady = () => { followRoute(); setNavigationReady(true) }
+  useEffect(() => {
+    if (!navigationReady || !isLoggedIn) return
+    let mounted = true
+    const open = () => { void consumeOpenedPushTarget().then(target => {
+      const route = timeRouteForPushTarget(target)
+      if (!mounted || !route || !navigationRef.isReady()) return
+      const tabs = navigationRef.getRootState()?.routes.find(item => item.name === "Main")?.state
+      if (tabs?.routeNames?.includes(route)) (navigationRef as unknown as { navigate: (name: string, params: object) => void }).navigate("Main", { screen: route })
+    }) }
+    open()
+    const lifecycle = AppState.addEventListener("change", next => { if (next === "active") open() })
+    return () => { mounted = false; lifecycle.remove() }
+  }, [navigationReady, isLoggedIn])
+
   if (isLoading) {
     return (
       <View style={styles.loader}>
@@ -477,7 +497,7 @@ export default function AppNavigatorAndroidV2() {
   }
 
   return (
-    <NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ref={navigationRef} onReady={followRoute} onStateChange={followRoute}>
+    <NavigationContainer theme={NAVIGATION_THEMES[colorScheme]} ref={navigationRef} onReady={onNavigationReady} onStateChange={followRoute}>
       <Stack.Navigator
         // Recreate the stack when admission changes so a revoked user cannot
         // remain on a previously-mounted detail screen with stale read data.

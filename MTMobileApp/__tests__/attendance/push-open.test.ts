@@ -9,7 +9,8 @@ describe("Time notification taps", () => {
   it("leads an explanation request and a decided request to their tabs and nothing else anywhere", () => {
     expect(timeRouteForPushTarget("AttendanceExplanations")).toBe("OwnExplanations")
     expect(timeRouteForPushTarget("AttendanceRequests")).toBe("OwnRequests")
-    for (const target of ["Messages", "Route", "Approvals", "Tasks", "toString", "__proto__", "", null, undefined, 7])
+    expect(timeRouteForPushTarget("Approvals")).toBe("Approvals")
+    for (const target of ["Messages", "Route", "Tasks", "toString", "__proto__", "", null, undefined, 7])
       expect(timeRouteForPushTarget(target)).toBeNull()
   })
 
