@@ -1479,5 +1479,24 @@
     "cancel": "Ləğv et",
     "pausedKind": "Fasilə · {{name}}",
     "overLimit": "Limit keçildi — kadrlar şöbəsi qeyd görəcək"
+  },
+  "attendanceDesks": {
+    "title": "İş yeri kompüterdə",
+    "hint": "Kompüterdə ekran keçidini açın, orada görünən QR-ı burada skan edin — kompüter sizin iş yeriniz olacaq: səhər kod və fasilə düymələri onda görünəcək.",
+    "connect": "Kompüteri qoş",
+    "scanTitle": "Kompüterdəki QR-ı skan edin",
+    "confirmTitle": "Bu kompüteri qoşaq?",
+    "confirmBody": "Kompüter sizin filialınızda iş yeriniz olacaq. Onu burada istənilən vaxt ayıra bilərsiniz.",
+    "connected": "Qoşuldu: «{{branch}}» filialında iş yeri. Kompüterdə bir neçə saniyəyə kod görünəcək.",
+    "item": "Kompüter · {{branch}}",
+    "revoke": "Ayır",
+    "revokeTitle": "Kompüteri ayıraq?",
+    "revokeBody": "«{{branch}}» filialındakı kompüter artıq kod və fasilə düymələri göstərməyəcək.",
+    "keep": "Saxla",
+    "failed": "Alınmadı. Yenidən cəhd edin.",
+    "refused_off": "Şirkətiniz kompüterləri qoşmağa icazə verməyib. Kadrlar şöbəsinə müraciət edin.",
+    "refused_noBranch": "Sizin üçün filial seçilməyib. Kadrlar şöbəsinə müraciət edin.",
+    "refused_tooMany": "Artıq üç kompüter qoşulub. Birini ayırın və yenidən cəhd edin.",
+    "refused_failed": "Qoşmaq alınmadı. Kompüterdə yeni QR-ı skan edin."
   }
 }

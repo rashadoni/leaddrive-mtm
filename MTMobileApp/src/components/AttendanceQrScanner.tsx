@@ -1,5 +1,5 @@
 import React from 'react'
-export type AttendanceQrScannerProps={visible:boolean;scope:string;action:'START'|'FINISH';onClose:()=>void;onConfirm:(token:string)=>Promise<void>}
+export type AttendanceQrScannerProps={visible:boolean;scope:string;action:'START'|'FINISH'|'DESK';onClose:()=>void;onConfirm:(token:string)=>Promise<void>}
 /** Load the native camera surface only after the explicit scan action. */
 export default function AttendanceQrScanner(props:AttendanceQrScannerProps){
   if(!props.visible)return null
