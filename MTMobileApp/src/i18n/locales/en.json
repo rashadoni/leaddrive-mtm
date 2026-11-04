@@ -1484,6 +1484,8 @@
     "title": "Workplace on a computer",
     "hint": "Open the screen link on your computer and scan its QR here — the computer becomes your workplace: the code in the morning, break buttons during the day.",
     "connect": "Connect a computer",
+    "linkLabel": "Open this link on the computer:",
+    "shareLink": "Send the link",
     "scanTitle": "Scan the QR on the computer",
     "confirmTitle": "Connect this computer?",
     "confirmBody": "The computer becomes your workplace at your branch. You can disconnect it here at any time.",

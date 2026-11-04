@@ -2,6 +2,7 @@ jest.mock("../../src/services/api", () => ({ api: { pairAttendanceDesk: jest.fn(
 jest.mock("../../src/services/attendance-session-guard", () => ({ guardOfficeAttendance: jest.fn() }))
 import { api } from "../../src/services/api"
 import { attendanceDeskRefusal, pairAttendanceDesk, readAttendanceDesks, validAttendanceDeskToken } from "../../src/services/attendance-desks"
+import { attendanceDeskScreenLink } from "../../src/services/attendance-desk-contract"
 
 const token = `mtmd1.${"A".repeat(43)}`
 describe("pairing a desk (leaddrive-v2 attendance-desk-screen.ts)", () => {
@@ -27,5 +28,11 @@ describe("pairing a desk (leaddrive-v2 attendance-desk-screen.ts)", () => {
   it("lists the employee's desks and drops malformed rows", async () => {
     ;(api.getAttendanceDesks as jest.Mock).mockResolvedValue({ success: true, data: { desks: [{ id: "d1", branchName: "Main office", pairedAt: "2026-11-04T09:00:00Z", lastSeenAt: null }, { id: 5 }] } })
     await expect(readAttendanceDesks("scope")).resolves.toEqual([{ id: "d1", branchName: "Main office", pairedAt: "2026-11-04T09:00:00Z", lastSeenAt: null }])
+  })
+  it("points the computer at the company's own server", () => {
+    expect(attendanceDeskScreenLink("app.leaddrivecrm.org")).toBe("https://app.leaddrivecrm.org/screen")
+    expect(attendanceDeskScreenLink("https://crm.example.az/")).toBe("https://crm.example.az/screen")
+    expect(attendanceDeskScreenLink("10.0.2.2:3000")).toBe("http://10.0.2.2:3000/screen")
+    expect(attendanceDeskScreenLink("")).toBeNull(); expect(attendanceDeskScreenLink("a b/c")).toBeNull()
   })
 })

@@ -1484,6 +1484,8 @@
     "title": "İş yeri kompüterdə",
     "hint": "Kompüterdə ekran keçidini açın, orada görünən QR-ı burada skan edin — kompüter sizin iş yeriniz olacaq: səhər kod və fasilə düymələri onda görünəcək.",
     "connect": "Kompüteri qoş",
+    "linkLabel": "Kompüterdə bu keçidi açın:",
+    "shareLink": "Keçidi göndər",
     "scanTitle": "Kompüterdəki QR-ı skan edin",
     "confirmTitle": "Bu kompüteri qoşaq?",
     "confirmBody": "Kompüter sizin filialınızda iş yeriniz olacaq. Onu burada istənilən vaxt ayıra bilərsiniz.",
