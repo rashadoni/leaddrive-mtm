@@ -26,12 +26,19 @@ import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { fieldContactsEnabled } from "../../lib/field-contacts-policy"
 import { agentMay } from "../../lib/agent-permissions"
 import { ask } from "../../services/app-feedback"
-import { readRoughLocation } from "../../services/location-fix"
+import { readLocationFix, readRoughLocation } from "../../services/location-fix"
 import {
+  awaitsConfirmation,
   formatLocationFixDistance,
+  locationConfirmFailure,
+  locationConfirmPayload,
+  locationConfirmProblem,
+  locationFixDistanceMeters,
   locationFixOffer,
+  requestCoversVisits,
   toLocationFixRequest,
   usablePoint,
+  type LocationConfirmProblem,
   type LocationFixPoint,
   type LocationFixRequest,
 } from "./organization-location-fix-model"
@@ -99,6 +106,25 @@ const COPY = {
     fixApproved: "Точку исправили по вашему запросу.",
     fixRejected: "Руководитель оставил точку на месте.",
     fixUnits: { m: "м", km: "км" },
+    advanceTitle: "Вы предложили новый адрес заранее",
+    advanceAddress: (address: string) => `Новый адрес: ${address}`,
+    advanceDistance: (distance: string) => `Вы сейчас в ${distance} от предложенного места.`,
+    advanceAtPlace: "Вы на предложенном месте.",
+    advanceBody: "Когда будете у клиента, подтвердите место — тогда визит здесь засчитается.",
+    advanceConfirm: "Подтвердить: клиент здесь",
+    advanceNotHere: "Не здесь — поправить точку",
+    advanceConfirming: "Проверяем, где вы…",
+    advanceConfirmedBody: "Вы подтвердили новое место на месте. Ждём решения руководителя. Визит можно начинать отсюда.",
+    confirmProblems: {
+      noFix: "Не удалось определить, где вы. Включите геолокацию и повторите.",
+      mock: "В телефоне включена подмена местоположения. Выключите её — иначе подтверждение не примут.",
+      accuracy: "GPS пока неточный. Выйдите на открытое место и повторите.",
+      stale: "Координата устарела. Повторите.",
+      notHere: "Вы не у предложенного места. Подойдите к клиенту или поправьте точку.",
+      notFound: "Подтверждать уже нечего: заявку решили или отозвали.",
+      offline: "Нет связи с сервером. Проверьте интернет и повторите.",
+      failed: "Не удалось подтвердить. Попробуйте ещё раз.",
+    },
   },
   az: {
     back: "Geri",
@@ -151,6 +177,25 @@ const COPY = {
     fixApproved: "Nöqtə sizin sorğunuzla düzəldildi.",
     fixRejected: "Rəhbər nöqtəni yerində saxladı.",
     fixUnits: { m: "m", km: "km" },
+    advanceTitle: "Yeni ünvanı əvvəlcədən təklif etmisiniz",
+    advanceAddress: (address: string) => `Yeni ünvan: ${address}`,
+    advanceDistance: (distance: string) => `Təklif etdiyiniz yerdən ${distance} aralısınız.`,
+    advanceAtPlace: "Təklif etdiyiniz yerdəsiniz.",
+    advanceBody: "Müştərinin yanında olanda yeri təsdiqləyin — onda vizit burada sayılacaq.",
+    advanceConfirm: "Təsdiqlə: müştəri buradadır",
+    advanceNotHere: "Burada deyil — nöqtəni düzəlt",
+    advanceConfirming: "Harada olduğunuz yoxlanılır…",
+    advanceConfirmedBody: "Yeni yeri yerində təsdiqlədiniz. Rəhbərin qərarını gözləyirik. Vizitə buradan başlaya bilərsiniz.",
+    confirmProblems: {
+      noFix: "Yerinizi müəyyən etmək alınmadı. Geolokasiyanı yandırın və təkrar edin.",
+      mock: "Telefonda saxta yer rejimi yanılıdır. Söndürün — əks halda təsdiq qəbul olunmayacaq.",
+      accuracy: "GPS hələ dəqiq deyil. Açıq yerə çıxın və təkrar edin.",
+      stale: "Koordinat köhnəlib. Təkrar edin.",
+      notHere: "Təklif etdiyiniz yerdə deyilsiniz. Müştəriyə yaxınlaşın və ya nöqtəni düzəldin.",
+      notFound: "Təsdiqləməyə bir şey yoxdur: sorğu üzrə qərar verilib və ya geri götürülüb.",
+      offline: "Serverlə əlaqə yoxdur. İnterneti yoxlayın və təkrar edin.",
+      failed: "Təsdiqləmək alınmadı. Yenidən cəhd edin.",
+    },
   },
   en: {
     back: "Back",
@@ -203,6 +248,25 @@ const COPY = {
     fixApproved: "The pin was corrected at your request.",
     fixRejected: "The manager left the pin where it was.",
     fixUnits: { m: "m", km: "km" },
+    advanceTitle: "You proposed a new address in advance",
+    advanceAddress: (address: string) => `New address: ${address}`,
+    advanceDistance: (distance: string) => `You are ${distance} from the place you proposed.`,
+    advanceAtPlace: "You are at the place you proposed.",
+    advanceBody: "When you are at the customer, confirm the place — then the visit here counts.",
+    advanceConfirm: "Confirm: the customer is here",
+    advanceNotHere: "Not here — correct the pin",
+    advanceConfirming: "Checking where you are…",
+    advanceConfirmedBody: "You confirmed the new place on the spot. Waiting for the manager's decision. You can start the visit from here.",
+    confirmProblems: {
+      noFix: "Could not find where you are. Turn location on and try again.",
+      mock: "Mock location is on in this phone. Turn it off — otherwise the confirmation will not be taken.",
+      accuracy: "GPS is not precise yet. Step into the open and try again.",
+      stale: "The position is out of date. Try again.",
+      notHere: "You are not at the place you proposed. Come closer to the customer or correct the pin.",
+      notFound: "There is nothing to confirm: the request was decided or withdrawn.",
+      offline: "No connection to the server. Check the internet and try again.",
+      failed: "Could not confirm. Try again.",
+    },
   },
 } as const
 
@@ -317,6 +381,9 @@ export default function RouteOrganizationDetailScreen() {
   const [position, setPosition] = useState<LocationFixPoint | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [cancelFailed, setCancelFailed] = useState(false)
+  // «Подтвердить: клиент здесь» of his own proposal made in advance.
+  const [confirming, setConfirming] = useState(false)
+  const [confirmProblem, setConfirmProblem] = useState<LocationConfirmProblem | "notFound" | "offline" | "failed" | null>(null)
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setFailed(false)
@@ -330,7 +397,8 @@ export default function RouteOrganizationDetailScreen() {
       setLocationRequest(request)
       // The server's word on whether this agent's request still waits: the
       // check-in is measured against the reported place only while it does.
-      if (request?.mine && request.status === "SUBMITTED" && request.proposed) useLocationFixStore.getState().remember(id, request.proposed)
+      // A proposal made in advance counts only once he has confirmed it at the place.
+      if (requestCoversVisits(request) && request?.proposed) useLocationFixStore.getState().remember(id, request.proposed)
       else useLocationFixStore.getState().forget(id)
     } catch (error: any) {
       if (signal?.aborted || error?.message === "ABORTED" || error?.message === "SESSION_EXPIRED") return
@@ -361,14 +429,16 @@ export default function RouteOrganizationDetailScreen() {
   // Roughly where the phone is — only to notice a pin that is evidently in the wrong place.
   const pinKnown = !!detail && detail.latitude != null
   const waiting = locationRequest?.status === "SUBMITTED"
+  const toConfirm = awaitsConfirmation(locationRequest)
   useEffect(() => {
-    if (!mayFixLocation || !pinKnown || waiting) return
+    // Near the pin, to notice it is wrong; or, with his advance proposal waiting, to say how far from it he is.
+    if (!mayFixLocation || (!toConfirm && (!pinKnown || waiting))) return
     let alive = true
     void readRoughLocation().then((reading) => {
       if (alive && reading) setPosition({ latitude: reading.latitude, longitude: reading.longitude })
     })
     return () => { alive = false }
-  }, [mayFixLocation, pinKnown, waiting])
+  }, [mayFixLocation, pinKnown, toConfirm, waiting])
 
   const retry = () => {
     if (detail) setRefreshing(true)
@@ -445,6 +515,29 @@ export default function RouteOrganizationDetailScreen() {
       void load()
     }
   }
+  const confirmAtPlace = async () => {
+    if (!detail || !locationRequest?.proposed || confirming) return
+    setConfirming(true)
+    setConfirmProblem(null)
+    try {
+      const fix = await readLocationFix().catch(() => null)
+      setPosition(fix ? { latitude: fix.latitude, longitude: fix.longitude } : null)
+      const problem = locationConfirmProblem(locationRequest.proposed, fix, Date.now())
+      if (problem || !fix) {
+        setConfirmProblem(problem ?? "noFix")
+        return
+      }
+      await api.confirmOrganizationLocationRequest(detail.id, locationConfirmPayload(fix, Date.now()))
+      // From now on the check-in is measured against the confirmed place.
+      useLocationFixStore.getState().remember(detail.id, locationRequest.proposed)
+      void load()
+    } catch (error: any) {
+      if (error?.message !== "SESSION_EXPIRED") setConfirmProblem(locationConfirmFailure(error))
+      if (locationConfirmFailure(error) === "notFound") void load()
+    } finally {
+      setConfirming(false)
+    }
+  }
   const addToRoute = () => {
     if (!detail) return
     navigation.navigate("PlanningBuilder", {
@@ -500,13 +593,62 @@ export default function RouteOrganizationDetailScreen() {
         {detail.code ? <DataRow icon="barcode-outline" label={copy.code} value={detail.code} /> : null}
         {detail.category ? <DataRow icon="pricetag-outline" label={copy.category} value={detail.category} /> : null}
         {detail.status ? <DataRow icon="shield-checkmark-outline" label={copy.status} value={statusLabel(t, "customer", detail.status)} /> : null}
-        {waiting ? (
+        {toConfirm && locationRequest?.proposed ? (
+          <View style={styles.fixOffer} accessibilityLiveRegion="polite" testID="location-fix-advance">
+            <View style={styles.fixHeading}>
+              <Icon name="location" size={19} color={fieldTheme.color.amber} />
+              <Text style={styles.fixWaitingTitle}>{copy.advanceTitle}</Text>
+            </View>
+            {locationRequest.proposedAddress ? <Text style={styles.fixBody}>{copy.advanceAddress(locationRequest.proposedAddress)}</Text> : null}
+            {position ? (
+              <Text style={styles.fixBody} testID="location-fix-advance-distance">
+                {locationFixDistanceMeters(position, locationRequest.proposed) < 30
+                  ? copy.advanceAtPlace
+                  : copy.advanceDistance(formatLocationFixDistance(locationFixDistanceMeters(position, locationRequest.proposed), i18n.language, copy.fixUnits))}
+              </Text>
+            ) : null}
+            <Text style={styles.fixBody}>{copy.advanceBody}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void confirmAtPlace()}
+              disabled={confirming}
+              testID="location-fix-confirm"
+              style={({ pressed }) => [styles.actionButton, { minHeight: touchTarget }, confirming && styles.disabled, pressed && styles.pressed]}
+            >
+              {confirming ? <ActivityIndicator size="small" color={fieldTheme.color.onColor} /> : <Icon name="checkmark-circle-outline" size={19} color={fieldTheme.color.onColor} />}
+              <Text style={styles.actionText}>{confirming ? copy.advanceConfirming : copy.advanceConfirm}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={openLocationFix}
+              testID="location-fix-not-here"
+              style={({ pressed }) => [styles.fixGhostButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+            >
+              <Text style={styles.fixGhostText}>{copy.advanceNotHere}</Text>
+            </Pressable>
+            {confirmProblem ? <Text style={styles.fixError} testID="location-fix-confirm-problem">{copy.confirmProblems[confirmProblem]}</Text> : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void cancelLocationRequest()}
+              disabled={cancelling}
+              testID="location-fix-cancel"
+              style={({ pressed }) => [styles.fixGhostButton, { minHeight: touchTarget }, cancelling && styles.disabled, pressed && styles.pressed]}
+            >
+              {cancelling ? <ActivityIndicator size="small" color={fieldTheme.color.primaryStrong} /> : null}
+              <Text style={styles.fixGhostText}>{copy.fixCancel}</Text>
+            </Pressable>
+            {cancelFailed ? <Text style={styles.fixError}>{copy.fixCancelFailed}</Text> : null}
+          </View>
+        ) : waiting ? (
           <View style={styles.fixWaiting} accessibilityLiveRegion="polite" testID="location-fix-waiting">
             <View style={styles.fixHeading}>
               <Icon name="time-outline" size={19} color={fieldTheme.color.amber} />
               <Text style={styles.fixWaitingTitle}>{copy.fixWaitingTitle}</Text>
             </View>
-            <Text style={styles.fixBody}>{locationRequest?.mine ? copy.fixWaitingMine : copy.fixWaitingOther}</Text>
+            <Text style={styles.fixBody}>
+              {!locationRequest?.mine ? copy.fixWaitingOther : locationRequest.origin === "REMOTE" ? copy.advanceConfirmedBody : copy.fixWaitingMine}
+            </Text>
+            {locationRequest?.mine && locationRequest.proposedAddress ? <Text style={styles.fixBody}>{copy.advanceAddress(locationRequest.proposedAddress)}</Text> : null}
             {locationRequest?.mine ? (
               <Pressable
                 accessibilityRole="button"

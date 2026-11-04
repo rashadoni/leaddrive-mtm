@@ -16,14 +16,16 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview"
 import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask } from "../../services/app-feedback"
-import { readLocationFix } from "../../services/location-fix"
+import { readLocationFix, readRoughLocation } from "../../services/location-fix"
 import { useHeaderTop } from "../../hooks/useTabBarHeight"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { useLocationFixStore } from "../../store/location-fixes"
+import { useLocationPickStore } from "../../store/location-picks"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { CARTO_TILE_WEBVIEW_ORIGINS } from "../maps/carto-tiles"
 import { buildLocationFixMapDocument } from "./organization-location-fix-map"
 import {
+  LOCATION_FIX_MIN_MOVE_METERS,
   formatLocationFixDistance,
   locationFixDistanceMeters,
   locationFixFailure,
@@ -37,6 +39,9 @@ import {
 } from "./organization-location-fix-model"
 
 type Language = "ru" | "az" | "en"
+
+/** Where the map starts in advance for a customer with no pin, when the phone says nothing either: Baku. */
+const ADVANCE_FALLBACK_CENTER: LocationFixPoint = { latitude: 40.4093, longitude: 49.8671 }
 
 const COPY = {
   ru: {
@@ -84,6 +89,10 @@ const COPY = {
       failed: "Не получилось отправить. Попробуйте ещё раз.",
     },
     refresh: "Обновить моё место",
+    advanceTitle: "Где клиент теперь?",
+    advanceHint: "Двигайте карту — булавка на новом месте клиента",
+    advanceDone: "Готово — точка здесь",
+    advanceStays: "Точка остаётся на месте",
   },
   az: {
     back: "Geri",
@@ -130,6 +139,10 @@ const COPY = {
       failed: "Göndərmək alınmadı. Yenidən cəhd edin.",
     },
     refresh: "Yerimi yenilə",
+    advanceTitle: "Müştəri indi haradadır?",
+    advanceHint: "Xəritəni hərəkət etdirin — sancaq müştərinin yeni yerində olsun",
+    advanceDone: "Hazır — nöqtə buradadır",
+    advanceStays: "Nöqtə yerində qalır",
   },
   en: {
     back: "Back",
@@ -176,6 +189,10 @@ const COPY = {
       failed: "Could not send. Try again.",
     },
     refresh: "Refresh my place",
+    advanceTitle: "Where is the customer now?",
+    advanceHint: "Move the map — the pin on the customer's new place",
+    advanceDone: "Done — the pin is here",
+    advanceStays: "The pin stays where it is",
   },
 } as const
 
@@ -195,6 +212,12 @@ function languageFor(value: string): Language {
  * server's own rules, repeated in organization-location-fix-model.ts), and the
  * button waits for it: a phone that does not know where it is, a pin moved
  * streets away, a pin that is already there.
+ *
+ * `mode: "advance"` («Адрес и точка» in «Предложить изменение», owner
+ * 2026-11-04): the same map, to put the pin where the customer has moved
+ * to — from wherever the agent is. Nothing is sent from here: the pin goes
+ * back to the form (store/location-picks), which sends it with the rest.
+ * The map starts at the pin put earlier, or at the customer's own.
  */
 export default function RouteOrganizationLocationFixScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
@@ -204,6 +227,7 @@ export default function RouteOrganizationLocationFixScreen() {
   const copy = COPY[language]
   const headerTop = useHeaderTop()
   const { id, name } = route.params
+  const advance = route.params.mode === "advance"
   const current = useMemo(
     () => usablePoint({ latitude: route.params.latitude, longitude: route.params.longitude }),
     [route.params.latitude, route.params.longitude],
@@ -245,7 +269,31 @@ export default function RouteOrganizationLocationFixScreen() {
     }
   }, [])
 
-  useEffect(() => { void locate(true) }, [locate])
+  useEffect(() => {
+    if (!advance) {
+      void locate(true)
+      return
+    }
+    // In advance: where the agent stands is no condition. Start at the pin
+    // put earlier, or at the customer's own; for a customer with no pin, at
+    // the phone, roughly, or at the city.
+    const earlier = useLocationPickStore.getState().picks[id] ?? null
+    const from = earlier ?? current
+    const begin = (point: LocationFixPoint) => {
+      setStart({ latitude: point.latitude, longitude: point.longitude, timestamp: Date.now() })
+      setPin(point)
+      setLocating(false)
+    }
+    if (from) {
+      begin(from)
+      return
+    }
+    let alive = true
+    void readRoughLocation().then((reading) => {
+      if (alive) begin(reading ? { latitude: reading.latitude, longitude: reading.longitude } : ADVANCE_FALLBACK_CENTER)
+    })
+    return () => { alive = false }
+  }, [advance, current, id, locate])
 
   // A fix grows old while the agent looks at the map: the screen notices.
   useEffect(() => {
@@ -254,7 +302,7 @@ export default function RouteOrganizationLocationFixScreen() {
   }, [])
 
   const mapDocument = useMemo(() => (start ? buildLocationFixMapDocument(
-    { center: start, agent: start, current },
+    { center: start, agent: advance ? null : start, current },
     {
       loading: copy.mapLoading,
       unavailable: copy.mapUnavailable,
@@ -265,7 +313,7 @@ export default function RouteOrganizationLocationFixScreen() {
       zoomOut: copy.zoomOut,
     },
     { apiKey: tileApiKey },
-  ) : null), [copy, current, start, tileApiKey])
+  ) : null), [advance, copy, current, start, tileApiKey])
   // A CARTO key is bound to the tenant's web origin, so the tile requests
   // must carry that origin as their referrer; without a key stay sandboxed.
   const tileOrigin = tileApiKey ? api.serverOrigin() : null
@@ -325,6 +373,17 @@ export default function RouteOrganizationLocationFixScreen() {
     }
   }
 
+  // «Готово»: the pin goes back to the form; a pin left where it stands is no change.
+  const done = () => {
+    if (pin && (!current || locationFixDistanceMeters(current, pin) >= LOCATION_FIX_MIN_MOVE_METERS)) {
+      useLocationPickStore.getState().pick(id, pin)
+    } else {
+      useLocationPickStore.getState().clear(id)
+    }
+    navigation.goBack()
+  }
+  const stays = !!pin && !!current && locationFixDistanceMeters(current, pin) < LOCATION_FIX_MIN_MOVE_METERS
+
   const said = failure
     ? (failure in copy.problems ? copy.problems[failure as LocationFixProblem] : copy.failures[failure as keyof typeof copy.failures])
     : problem && problem !== "noFix" ? copy.problems[problem] : null
@@ -342,7 +401,7 @@ export default function RouteOrganizationLocationFixScreen() {
           <Icon name="arrow-back" size={21} color={fieldTheme.color.onColor} />
           <Text style={styles.backText}>{copy.back}</Text>
         </Pressable>
-        <Text style={styles.title} numberOfLines={2}>{copy.title}</Text>
+        <Text style={styles.title} numberOfLines={2}>{advance ? copy.advanceTitle : copy.title}</Text>
         <Text style={styles.subtitle} numberOfLines={1}>{name || ""}</Text>
       </View>
 
@@ -394,9 +453,9 @@ export default function RouteOrganizationLocationFixScreen() {
               </View>
             )}
             <View style={styles.hint} pointerEvents="none">
-              <Text style={styles.hintText}>{copy.hint}</Text>
+              <Text style={styles.hintText}>{advance ? copy.advanceHint : copy.hint}</Text>
             </View>
-            <Pressable
+            {advance ? null : <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.backToMe}
               onPress={() => void locate(true)}
@@ -406,9 +465,29 @@ export default function RouteOrganizationLocationFixScreen() {
                 ? <ActivityIndicator size="small" color={fieldTheme.color.primary} />
                 : <Icon name="locate" size={18} color={fieldTheme.color.primary} />}
               <Text style={styles.backToMeText}>{copy.backToMe}</Text>
-            </Pressable>
+            </Pressable>}
           </View>
 
+          {advance ? (
+            <View style={styles.sheet}>
+              <View style={styles.sheetCopy}>
+                <Text style={styles.label}>{copy.newPlace}</Text>
+                <Text style={styles.value} testID="location-fix-moves">
+                  {stays ? copy.advanceStays : moved == null ? copy.firstPin : copy.moves(distance(moved))}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={copy.advanceDone}
+                onPress={done}
+                testID="location-fix-done"
+                style={({ pressed }) => [styles.submit, pressed && styles.pressed]}
+              >
+                <Icon name="checkmark" size={18} color={fieldTheme.color.onColor} />
+                <Text style={styles.submitText}>{copy.advanceDone}</Text>
+              </Pressable>
+            </View>
+          ) : (
           <View style={styles.sheet}>
             <View style={styles.sheetRow}>
               <View style={styles.sheetCopy}>
@@ -465,6 +544,7 @@ export default function RouteOrganizationLocationFixScreen() {
               <Text style={styles.submitText}>{sending ? copy.sending : copy.send}</Text>
             </Pressable>
           </View>
+          )}
         </>
       )}
     </KeyboardAvoidingView>

@@ -83,7 +83,7 @@ export type RootStackParamList = OwnAttendanceParamList & {
   DoctorCreateRequest: undefined
   ContactChangeRequest: { id: string; name?: string }
   /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
-  OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
+  OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number; mode?: "advance" }
   /** «Часы не те?»: the place's week as the card read it goes along. */
   OrganizationHoursFix: { id: string; name?: string; hours?: unknown }
   TaskDetail: { task: RawTask }
@@ -127,7 +127,7 @@ export type ClientsStackParamList = {
   DoctorCreateRequest: undefined
   ContactChangeRequest: { id: string; name?: string }
   /** «Клиент здесь»: where the organization's pin stands now goes along, so the map can show it. */
-  OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number }
+  OrganizationLocationFix: { id: string; name?: string; latitude?: number; longitude?: number; mode?: "advance" }
   /** «Часы не те?»: the place's week as the card read it goes along. */
   OrganizationHoursFix: { id: string; name?: string; hours?: unknown }
 }
