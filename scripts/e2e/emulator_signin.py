@@ -474,6 +474,34 @@ def tap_text(found, text):
     return True
 
 
+def guide_walk():
+    """The first-run guide (3.11.x, 2026-10-18) opens by itself after a sign-in on a new phone; «Skip» gives the tabs back.
+
+    It lies over every screen, so while it is up a tap on a tab lands on the
+    dim, not the tab. From 2026-10-21 to 2026-11-04 this walk did not know it:
+    it «opened» each tab through the dim, read the same 43 words five times and
+    passed them, then failed on the client list it never reached.
+    """
+    started = time.time()
+    found = []
+    for _ in range(10):  # ~20 s: the tour waits 1.2 s for the first screen to settle
+        found, _ = nodes()
+        if by_id(found, "guide-skip"):
+            break
+        time.sleep(2)
+    skip = by_id(found, "guide-skip")
+    if not skip:
+        # Only the field and manager shells have a tour; the attendance fixture may open the office one,
+        # and its own walk proves the tabs answer the press.
+        if SMOKE_MODE != "attendance_fixture":
+            record(False, "A first sign-in on this phone opens the guide", "no guide in 20 s")
+        return
+    record(True, "A first sign-in on this phone opens the guide with «Skip»", f"{time.time() - started:.0f} s after the tabs")
+    tap(skip)
+    wait_for("«Skip» closes the guide and gives the screen back",
+             lambda seen: not by_id(seen, "guide-dim") and not by_id(seen, "guide-skip") and "closed", 15, "")
+
+
 def sign_in_open(found):
     """The sign-in screen is up, on either of its tabs.
 
@@ -778,6 +806,8 @@ def signed_in_walk(server, sign_in):
         record(False, what, reason)
         return
     record(True, what, f"{time.time() - pressed:.0f} s after the button")
+    guide_walk()
+    found, _ = nodes()
 
     clients = tabs["clients"] if has_text(found, tabs["clients"]) else tabs["places"]
     record(has_text(found, clients), "All five tabs are there", ", ".join([tabs["today"], tabs["route"], clients, tabs["tasks"], tabs["more"]]))
@@ -792,8 +822,10 @@ def signed_in_walk(server, sign_in):
         crashed = crash_line()
         faults = screen_faults(found)
         texts = sum(1 for n in found if n.get("text"))
-        record(not crashed and not faults and texts >= 3, f"«{caption}» opens and shows words, not keys or raw values",
-               f"crashed: {crashed}" if crashed else "; ".join(faults) if faults else f"{texts} texts on screen")
+        # The guide's dim takes the tap: under it the tab never opened, whatever words show through.
+        covered = bool(by_id(found, "guide-dim"))
+        record(not crashed and not faults and not covered and texts >= 3, f"«{caption}» opens and shows words, not keys or raw values",
+               f"crashed: {crashed}" if crashed else "; ".join(faults) if faults else "the guide covers the screen" if covered else f"{texts} texts on screen")
         if crashed:
             return
 
