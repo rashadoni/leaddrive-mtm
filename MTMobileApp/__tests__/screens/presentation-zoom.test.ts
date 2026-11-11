@@ -151,10 +151,22 @@ describe("presentation viewer — the slide gets the whole screen", () => {
     "utf8",
   )
 
-  it("puts the panels away on a single tap and keeps the double tap for zoom", () => {
-    expect(screenSource).toContain("setChromeVisible")
-    expect(screenSource).toContain("PRESENTATION_DOUBLE_TAP_MS + 40")
-    expect(screenSource).toContain("if (singleTapTimer.current) clearTimeout(singleTapTimer.current)")
+  // Owner, 2026-11-11, on a client's tablet video: the deck opens full screen,
+  // and a tap no longer flips it — swiping agents kept flipping it by accident.
+  it("opens full screen, and only the button brings the panels back — a tap on the page does not", () => {
+    expect(screenSource).toContain("useState(false)")
+    expect(screenSource).toMatch(/const \[chromeVisible, setChromeVisible\] = useState\(false\)/)
+    expect(screenSource).not.toContain("singleTapTimer")
+    expect(screenSource).toContain('testID="presentation-fullscreen-close"')
+    expect(screenSource).toContain('testID="presentation-fullscreen-next"')
+    // The double tap still zooms.
+    expect(screenSource).toContain("zoomTo(nextDoubleTapScale(transform.current.scale)")
+  })
+
+  it("turns pages under the finger, with the neighbours rendered ahead", () => {
+    expect(screenSource).toContain("swipeTurn({")
+    expect(screenSource).toContain("pagesToPrepare(zeroBasedPage, rendered.pageCount)")
+    expect(screenSource).toContain("onPress={() => turnPage(1)}")
   })
 
   it("hides the system bars through the native bridge and always restores them", () => {
