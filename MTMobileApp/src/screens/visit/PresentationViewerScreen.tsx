@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Animated,
@@ -34,7 +34,6 @@ import {
 import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { isTabletWidth } from "../../theme/layoutBreakpoints"
 import {
-  PRESENTATION_DOUBLE_TAP_MS,
   clampPan,
   clampZoomScale,
   fittedPageBox,
@@ -49,6 +48,13 @@ import {
   type ZoomSize,
   type ZoomTransform,
 } from "./presentation-zoom"
+import {
+  PRESENTATION_DOTS_MAX,
+  PRESENTATION_PAGE_GAP,
+  pagesToPrepare,
+  swipeOffset,
+  swipeTurn,
+} from "./presentation-swipe"
 
 const COPY = {
   ru: {
@@ -175,7 +181,12 @@ export default function PresentationViewerScreen() {
   const pageEvents = useRef<Array<{ page: number; viewedAt: string }>>([])
   const loadedImageUris = useRef(new Set<string>())
   const renderedUris = useRef(new Set<string>())
-  const retiredUris = useRef(new Set<string>())
+  // Every page rendered in this opening, by its index: going back to a page,
+  // or onto a neighbour prepared ahead, shows it without rendering it again.
+  const renderedPages = useRef(new Map<number, RenderedPdfPage>())
+  // Neighbours whose picture is already on screen beside the page: turning
+  // onto one of them counts it as displayed at once, as it is.
+  const neighbourLoaded = useRef(new Set<string>())
   const localFile = useRef<string | null>(null)
   const loadGeneration = useRef(0)
   const renderGeneration = useRef(0)
@@ -188,13 +199,20 @@ export default function PresentationViewerScreen() {
   const [evidenceState, setEvidenceState] = useState<EvidenceState>("idle")
   const [zoomedIn, setZoomedIn] = useState(false)
   // The panels (header, evidence banner, page controls) cost about a third of
-  // a phone screen, which is exactly the third a 16:9 slide needed. One tap
-  // puts them away; the page then owns the whole display, system bars
-  // included.
-  const [chromeVisible, setChromeVisible] = useState(true)
+  // a phone screen, which is exactly the third a 16:9 slide needed. The deck
+  // opens without them, system bars included (owner, 2026-11-11: «пусть сразу
+  // же открывается полноэкранным»); «Panelləri göstər» brings them back. A tap
+  // on the page no longer toggles them: the client's agents, swiping, kept
+  // flipping the screen in and out of full screen.
+  const [chromeVisible, setChromeVisible] = useState(false)
+  const [neighbours, setNeighbours] = useState<{ previous: RenderedPdfPage | null; next: RenderedPdfPage | null }>({ previous: null, next: null })
+  const [stageBox, setStageBox] = useState<ZoomSize>({ width: 0, height: 0 })
   const [pageBox, setPageBox] = useState<ZoomSize>({ width: 0, height: 0 })
   const insets = useSafeAreaInsets()
-  const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The strip of pages under the finger: the page and its neighbours slide together.
+  const swipeX = useRef(new Animated.Value(0)).current
+  const turning = useRef(false)
+  const settleSwipeOnPage = useRef<number | null>(null)
 
   // The page is one Animated layer: gestures write these values directly, so a
   // pinch does not re-render the screen (and does not interrupt the evidence
@@ -239,21 +257,25 @@ export default function PresentationViewerScreen() {
   }, [applyTransform])
 
   const toggleChrome = useCallback(() => {
-    setChromeVisible((visible) => {
-      ignore(setPresentationImmersive(visible))
-      return !visible
-    })
+    setChromeVisible((visible) => !visible)
   }, [])
+
+  // Full screen is the page alone: while the deck is still loading, or failed,
+  // the header (and its close button) stays.
+  const immersive = !chromeVisible && viewer.kind === "pdf"
+  useEffect(() => {
+    ignore(setPresentationImmersive(immersive))
+  }, [immersive])
 
   // Leaving the viewer must never leave the phone without its system bars.
   useEffect(() => () => {
-    if (singleTapTimer.current) clearTimeout(singleTapTimer.current)
     ignore(setPresentationImmersive(false))
   }, [])
 
   const onStageLayout = useCallback((event: LayoutChangeEvent) => {
     const { width: stageWidth, height: stageHeight } = event.nativeEvent.layout
     stageSize.current = { width: stageWidth, height: stageHeight }
+    setStageBox((current) => (current.width === stageWidth && current.height === stageHeight ? current : { width: stageWidth, height: stageHeight }))
     measureFit()
     // Touches arrive in window coordinates, and the page layer is transformed,
     // so a touch's own `locationX` is measured against a moving target. The
@@ -282,6 +304,18 @@ export default function PresentationViewerScreen() {
     }))
   }, [applyTransform])
 
+  // The responder is made once; what it needs to know about the page on
+  // screen it reads here, as it is at the moment of the gesture.
+  const viewerRef = useRef(viewer)
+  viewerRef.current = viewer
+  const neighboursRef = useRef(neighbours)
+  neighboursRef.current = neighbours
+  const turnPageRef = useRef<(direction: -1 | 1) => void>(() => {})
+
+  const springBack = useCallback(() => {
+    Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 24 }).start()
+  }, [swipeX])
+
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: (event, state) => (
@@ -304,16 +338,9 @@ export default function PresentationViewerScreen() {
       if (isDoubleTap(lastTapAt.current, now)) {
         lastTapAt.current = null
         gesture.current.mode = "none"
-        // The pending single tap belonged to this double tap: panels must not
-        // disappear on the way to zooming in.
-        if (singleTapTimer.current) {
-          clearTimeout(singleTapTimer.current)
-          singleTapTimer.current = null
-        }
         zoomTo(nextDoubleTapScale(transform.current.scale), stagePoint(touches[0]))
         return
       }
-      lastTapAt.current = now
     },
     onPanResponderMove: (event, state) => {
       const touches = event.nativeEvent.touches
@@ -349,7 +376,12 @@ export default function PresentationViewerScreen() {
         }
         return
       }
-      if (!isZoomed(transform.current.scale)) return
+      if (!isZoomed(transform.current.scale)) {
+        // A whole page under one finger: the strip follows it, as in the gallery.
+        if (gesture.current.mode !== "pan" || turning.current) return
+        swipeX.setValue(swipeOffset(state.dx, Boolean(neighboursRef.current.previous) || (viewerRef.current.kind === "pdf" && viewerRef.current.pageIndex > 0), Boolean(neighboursRef.current.next) || (viewerRef.current.kind === "pdf" && viewerRef.current.pageIndex < viewerRef.current.rendered.pageCount - 1)))
+        return
+      }
       const moved = clampPan(
         { x: gesture.current.x + (state.dx - gesture.current.dxBase), y: gesture.current.y + (state.dy - gesture.current.dyBase) },
         fittedSize.current,
@@ -359,23 +391,36 @@ export default function PresentationViewerScreen() {
       applyTransform({ scale: transform.current.scale, x: moved.x, y: moved.y })
     },
     onPanResponderRelease: (_event, state) => {
-      const tapped = gesture.current.mode !== "pinch"
-        && Math.abs(state.dx) < 6
-        && Math.abs(state.dy) < 6
+      // Only a tap starts a double tap: two quick swipes in a row are two
+      // page turns, not a zoom.
+      const tapped = gesture.current.mode !== "pinch" && Math.abs(state.dx) < 6 && Math.abs(state.dy) < 6
+      lastTapAt.current = tapped && gesture.current.mode !== "none" ? Date.now() : null
+      const swiped = !tapped && gesture.current.mode === "pan" && !isZoomed(transform.current.scale)
       gesture.current = { mode: "none", distance: 0, scale: transform.current.scale, x: transform.current.x, y: transform.current.y, dxBase: 0, dyBase: 0 }
-      if (!tapped) return
-      // Wait out the double-tap window before acting on a single tap, so one
-      // gesture never both hides the panels and zooms.
-      if (singleTapTimer.current) clearTimeout(singleTapTimer.current)
-      singleTapTimer.current = setTimeout(() => {
-        singleTapTimer.current = null
-        toggleChrome()
-      }, PRESENTATION_DOUBLE_TAP_MS + 40)
+      if (turning.current) return
+      if (!swiped) {
+        // A tap may have nudged the strip a few pixels.
+        springBack()
+        return
+      }
+      const current = viewerRef.current
+      const turn = current.kind === "pdf"
+        ? swipeTurn({
+          dx: state.dx,
+          vx: state.vx,
+          stageWidth: stageSize.current.width,
+          hasPrevious: current.pageIndex > 0,
+          hasNext: current.pageIndex < current.rendered.pageCount - 1,
+        })
+        : 0
+      if (turn === 0) springBack()
+      else turnPageRef.current(turn)
     },
     onPanResponderTerminate: () => {
       gesture.current = { mode: "none", distance: 0, scale: transform.current.scale, x: transform.current.x, y: transform.current.y, dxBase: 0, dyBase: 0 }
+      if (!turning.current) springBack()
     },
-  }), [applyTransform, stagePoint, toggleChrome, zoomTo])
+  }), [applyTransform, springBack, stagePoint, swipeX, zoomTo])
 
   const activeDurationSeconds = useCallback((now: number) => (
     activeSeconds.current
@@ -453,68 +498,121 @@ export default function PresentationViewerScreen() {
     lastPage.current = displayedPage
     pageCount.current = knownPageCount
     ensureEvidenceSession(knownPageCount)
-    for (const retiredUri of retiredUris.current) {
-      renderedUris.current.delete(retiredUri)
-      ignore(cleanupPresentationFiles(null, [retiredUri]))
-    }
-    retiredUris.current.clear()
     setViewer((current) => current.kind === "pdf" && current.rendered.uri === uri
       ? { ...current, imageLoaded: true }
       : current)
   }, [ensureEvidenceSession])
 
+  /** One page as a picture: from this opening's renders when it is there, rendered once otherwise. */
+  const renderPage = useCallback(async (filePath: string, zeroBasedPage: number): Promise<RenderedPdfPage> => {
+    const known = renderedPages.current.get(zeroBasedPage)
+    if (known) return known
+    const rendered = await renderPdfPage(filePath, zeroBasedPage, targetRenderWidthRef.current)
+    renderedPages.current.set(zeroBasedPage, rendered)
+    renderedUris.current.add(rendered.uri)
+    return rendered
+  }, [])
+
+  const neighboursOf = useCallback((zeroBasedPage: number) => ({
+    previous: renderedPages.current.get(zeroBasedPage - 1) ?? null,
+    next: renderedPages.current.get(zeroBasedPage + 1) ?? null,
+  }), [])
+
   const showPdfPage = useCallback(async (filePath: string, zeroBasedPage: number) => {
     const generation = ++renderGeneration.current
     try {
-      const rendered = await renderPdfPage(filePath, zeroBasedPage, targetRenderWidthRef.current)
-      if (!mounted.current || generation !== renderGeneration.current) {
-        ignore(cleanupPresentationFiles(null, [rendered.uri]))
-        return
-      }
-      setViewer((current) => {
-        if (current.kind === "pdf" && current.rendered.uri !== rendered.uri) {
-          retiredUris.current.add(current.rendered.uri)
-        }
-        return { kind: "pdf", filePath, pageIndex: zeroBasedPage, rendered, imageLoaded: false }
-      })
+      const rendered = await renderPage(filePath, zeroBasedPage)
+      if (!mounted.current || generation !== renderGeneration.current) return
+      // A neighbour already on screen is a page already displayed: no
+      // «Səhifə hazırlanır…» over a picture the agent just slid in.
+      const alreadyShown = neighbourLoaded.current.has(rendered.uri)
+      setViewer({ kind: "pdf", filePath, pageIndex: zeroBasedPage, rendered, imageLoaded: false })
+      setNeighbours(neighboursOf(zeroBasedPage))
       // A new page starts fitted: carrying a zoom over would open the next
       // slide somewhere in its middle with no way back but pinching out.
       pageSize.current = { width: rendered.width, height: rendered.height }
       fittedSize.current = fittedPageBox(stageSize.current, pageSize.current)
       resetZoom()
-      renderedUris.current.add(rendered.uri)
       pageCount.current = rendered.pageCount
+      if (alreadyShown) markPageDisplayed(rendered.uri, zeroBasedPage, rendered.pageCount)
+      // The neighbours are rendered ahead, next first, so a swipe never waits.
+      for (const neighbour of pagesToPrepare(zeroBasedPage, rendered.pageCount)) {
+        try {
+          await renderPage(filePath, neighbour)
+        } catch {
+          // A neighbour that fails is rendered again when it is turned to.
+        }
+        if (!mounted.current || generation !== renderGeneration.current) return
+        setNeighbours(neighboursOf(zeroBasedPage))
+      }
     } catch {
       if (mounted.current && generation === renderGeneration.current) setViewer({ kind: "failed" })
     }
-  }, [resetZoom])
+  }, [markPageDisplayed, neighboursOf, renderPage, resetZoom])
+
+  /**
+   * To the previous or the next page. With the neighbour already rendered the
+   * strip slides on to it, as under the finger; otherwise the page is rendered
+   * and shown where it is. The strip goes back to rest once the new page is
+   * the one on screen (the layout effect below), so nothing flashes between.
+   */
+  const turnPage = useCallback((direction: -1 | 1) => {
+    const current = viewerRef.current
+    if (current.kind !== "pdf" || turning.current) return
+    const target = current.pageIndex + direction
+    if (target < 0 || target >= current.rendered.pageCount) {
+      springBack()
+      return
+    }
+    turning.current = true
+    const finish = () => {
+      settleSwipeOnPage.current = target
+      showPdfPage(current.filePath, target).finally(() => { turning.current = false })
+    }
+    if (!renderedPages.current.has(target) || stageSize.current.width <= 0) {
+      swipeX.setValue(0)
+      finish()
+      return
+    }
+    Animated.timing(swipeX, {
+      toValue: -direction * (stageSize.current.width + PRESENTATION_PAGE_GAP),
+      duration: 200,
+      useNativeDriver: true,
+    }).start(finish)
+  }, [showPdfPage, springBack, swipeX])
+  turnPageRef.current = turnPage
+
+  useLayoutEffect(() => {
+    if (viewer.kind === "pdf" && settleSwipeOnPage.current === viewer.pageIndex) {
+      settleSwipeOnPage.current = null
+      swipeX.setValue(0)
+    }
+  }, [swipeX, viewer])
 
   useEffect(() => {
     const generation = ++loadGeneration.current
-    let downloadedPath: string | null = null
-    const previousFile = localFile.current
     const previousRenderedUris = [...renderedUris.current]
     localFile.current = null
     renderedUris.current.clear()
-    retiredUris.current.clear()
+    renderedPages.current.clear()
+    neighbourLoaded.current.clear()
     loadedImageUris.current.clear()
-    if (previousFile || previousRenderedUris.length) {
-      ignore(cleanupPresentationFiles(previousFile, previousRenderedUris))
+    setNeighbours({ previous: null, next: null })
+    // The downloaded deck stays on the device for the next opening; only this
+    // opening's page pictures go.
+    if (previousRenderedUris.length) {
+      ignore(cleanupPresentationFiles(null, previousRenderedUris))
     }
     setViewer({ kind: "starting" })
     setEvidenceState(sessionId.current ? "recorded" : "idle")
 
     const load = async () => {
       if (!source || format === "unsupported") throw new Error("PRESENTATION_SOURCE_UNAVAILABLE")
-      downloadedPath = await downloadPresentationFile({
+      const downloadedPath = await downloadPresentationFile({
         source,
         document: product.document,
-        cacheKey: clientSessionId.current,
       })
-      if (!mounted.current || generation !== loadGeneration.current) {
-        ignore(cleanupPresentationFiles(downloadedPath, []))
-        return
-      }
+      if (!mounted.current || generation !== loadGeneration.current) return
       localFile.current = downloadedPath
       if (format === "pdf") {
         await showPdfPage(downloadedPath, 0)
@@ -532,9 +630,6 @@ export default function PresentationViewerScreen() {
     return () => {
       ++loadGenerationRef.current
       ++renderGenerationRef.current
-      if (downloadedPath && downloadedPath !== localFile.current) {
-        ignore(cleanupPresentationFiles(downloadedPath, []))
-      }
     }
   }, [attempt, format, product.document, showPdfPage, source])
 
@@ -572,7 +667,7 @@ export default function PresentationViewerScreen() {
     ++loadGeneration.current
     ++renderGeneration.current
     if (sessionId.current) finalizeSession(sessionId.current)
-    ignore(cleanupPresentationFiles(localFile.current, renderedUris.current))
+    ignore(cleanupPresentationFiles(null, renderedUris.current))
   }, [finalizeSession])
 
   const openPowerPoint = useCallback(async () => {
@@ -594,8 +689,8 @@ export default function PresentationViewerScreen() {
   const evidenceBackground = evidenceState === "failed" ? fieldTheme.color.dangerSoft : fieldTheme.color.successSoft
 
   return (
-    <View style={[styles.container, !chromeVisible && styles.containerImmersive]}>
-      {chromeVisible ? (
+    <View style={[styles.container, immersive && styles.containerImmersive]}>
+      {!immersive ? (
       <View style={[styles.header, tablet && styles.headerTablet, { paddingTop: 8 + insets.top, paddingLeft: 14 + insets.left, paddingRight: 14 + insets.right }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={copy.close} onPress={() => navigation.goBack()} style={styles.closeButton}>
           <Icon name="close" size={24} color={fieldTheme.color.ink} />
@@ -661,6 +756,29 @@ export default function PresentationViewerScreen() {
             onLayout={onStageLayout}
             {...panResponder.panHandlers}
           >
+            {/* The page and its neighbours on one strip that follows the finger. */}
+            <Animated.View style={[styles.swipeStrip, { transform: [{ translateX: swipeX }] }]}>
+            {([["previous", -1], ["next", 1]] as const).map(([side, direction]) => {
+              const page = neighbours[side]
+              if (!page || stageBox.width <= 0) return null
+              const fitted = fittedPageBox(stageBox, { width: page.width, height: page.height })
+              return (
+                <View
+                  key={side}
+                  pointerEvents="none"
+                  style={[styles.neighbour, { left: direction * (stageBox.width + PRESENTATION_PAGE_GAP), width: stageBox.width, height: stageBox.height }]}
+                >
+                  <View style={[styles.paper, { width: fitted.width, height: fitted.height }]}>
+                    <Image
+                      source={{ uri: page.uri }}
+                      resizeMode="contain"
+                      style={styles.pageImage}
+                      onLoad={() => { neighbourLoaded.current.add(page.uri) }}
+                    />
+                  </View>
+                </View>
+              )
+            })}
             <Animated.View
               style={[
                 styles.pageLayer,
@@ -683,18 +801,21 @@ export default function PresentationViewerScreen() {
                 />
               </View>
             </Animated.View>
+            </Animated.View>
             {viewer.imageLoaded ? (
               <View style={[styles.chipRow, { right: 10 + insets.right, bottom: 10 + (chromeVisible ? 0 : insets.bottom) }]} pointerEvents="box-none">
+              {chromeVisible ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={chromeVisible ? copy.fullScreen : copy.showChrome}
+                accessibilityLabel={copy.fullScreen}
                 onPress={toggleChrome}
                 style={({ pressed }) => [styles.zoomChip, pressed && styles.pressed]}
                 testID="presentation-chrome-chip"
               >
-                <Icon name={chromeVisible ? "scan-outline" : "chevron-collapse-outline"} size={16} color={fieldTheme.color.ink} />
-                <Text style={styles.zoomChipText}>{chromeVisible ? copy.fullScreen : copy.showChrome}</Text>
+                <Icon name="scan-outline" size={16} color={fieldTheme.color.ink} />
+                <Text style={styles.zoomChipText}>{copy.fullScreen}</Text>
               </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={zoomedIn ? copy.zoomReset : copy.zoomHint}
@@ -719,6 +840,54 @@ export default function PresentationViewerScreen() {
                 <Text style={styles.pageLoadingText}>{copy.pageLoading}</Text>
               </View>
             ) : null}
+            {/* Full screen keeps what the agent needs on the page itself: close,
+                the panels back, and where he is in the deck with both ways. */}
+            {!chromeVisible ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.close}
+                  onPress={() => navigation.goBack()}
+                  style={({ pressed }) => [styles.overlayRound, { top: 12 + insets.top, left: 12 + insets.left }, pressed && styles.pressed]}
+                  testID="presentation-fullscreen-close"
+                >
+                  <Icon name="close" size={22} color="#FFFFFF" />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={copy.showChrome}
+                  onPress={toggleChrome}
+                  style={({ pressed }) => [styles.overlayChip, { top: 12 + insets.top, right: 12 + insets.right }, pressed && styles.pressed]}
+                  testID="presentation-chrome-chip"
+                >
+                  <Icon name="chevron-collapse-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.overlayChipText}>{copy.showChrome}</Text>
+                </Pressable>
+                <View style={[styles.overlayPager, { bottom: 14 + insets.bottom }]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={copy.previous}
+                    disabled={viewer.pageIndex === 0}
+                    onPress={() => turnPage(-1)}
+                    style={({ pressed }) => [styles.overlayPagerButton, viewer.pageIndex === 0 && styles.pageButtonDisabled, pressed && styles.pressed]}
+                    testID="presentation-fullscreen-previous"
+                  >
+                    <Icon name="chevron-back" size={20} color="#FFFFFF" />
+                  </Pressable>
+                  <Text style={styles.overlayPagerText}>{viewer.pageIndex + 1} / {viewer.rendered.pageCount}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={copy.next}
+                    disabled={viewer.pageIndex >= viewer.rendered.pageCount - 1}
+                    onPress={() => turnPage(1)}
+                    style={({ pressed }) => [styles.overlayPagerButton, viewer.pageIndex >= viewer.rendered.pageCount - 1 && styles.pageButtonDisabled, pressed && styles.pressed]}
+                    testID="presentation-fullscreen-next"
+                  >
+                    <Icon name="chevron-forward" size={20} color="#FFFFFF" />
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
           </View>
           {chromeVisible ? (
           <View style={[styles.pageControls, tablet && styles.pageControlsTablet, { paddingBottom: (tablet ? 14 : 8) + insets.bottom, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
@@ -726,17 +895,26 @@ export default function PresentationViewerScreen() {
               accessibilityRole="button"
               accessibilityLabel={copy.previous}
               disabled={viewer.pageIndex === 0 || !viewer.imageLoaded}
-              onPress={() => { ignore(showPdfPage(viewer.filePath, viewer.pageIndex - 1)) }}
+              onPress={() => turnPage(-1)}
               style={({ pressed }) => [styles.pageButton, (viewer.pageIndex === 0 || !viewer.imageLoaded) && styles.pageButtonDisabled, pressed && styles.pressed]}
             >
               <Icon name="chevron-back" size={24} color={fieldTheme.color.ink} />
             </Pressable>
-            <Text style={styles.pageCounter}>{copy.page} {viewer.pageIndex + 1} / {viewer.rendered.pageCount}</Text>
+            <View>
+              <Text style={styles.pageCounter}>{copy.page} {viewer.pageIndex + 1} / {viewer.rendered.pageCount}</Text>
+              {viewer.rendered.pageCount > 1 && viewer.rendered.pageCount <= PRESENTATION_DOTS_MAX ? (
+                <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  {Array.from({ length: viewer.rendered.pageCount }, (_unused, index) => (
+                    <View key={index} style={[styles.dot, index === viewer.pageIndex && styles.dotCurrent]} />
+                  ))}
+                </View>
+              ) : null}
+            </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.next}
               disabled={viewer.pageIndex >= viewer.rendered.pageCount - 1 || !viewer.imageLoaded}
-              onPress={() => { ignore(showPdfPage(viewer.filePath, viewer.pageIndex + 1)) }}
+              onPress={() => turnPage(1)}
               style={({ pressed }) => [styles.pageButton, (viewer.pageIndex >= viewer.rendered.pageCount - 1 || !viewer.imageLoaded) && styles.pageButtonDisabled, pressed && styles.pressed]}
             >
               <Icon name="chevron-forward" size={24} color={fieldTheme.color.ink} />
@@ -775,6 +953,17 @@ const styles = themed(() => StyleSheet.create({
   pageStageTablet: { marginHorizontal: 22, marginVertical: 14 },
   pageStageImmersive: { margin: 0, borderRadius: 0, borderWidth: 0 },
   pageLayer: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
+  swipeStrip: { ...StyleSheet.absoluteFillObject },
+  neighbour: { position: "absolute", top: 0, alignItems: "center", justifyContent: "center" },
+  overlayRound: { position: "absolute", width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(19, 35, 31, 0.72)" },
+  overlayChip: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "rgba(19, 35, 31, 0.72)" },
+  overlayChipText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  overlayPager: { position: "absolute", alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 24, backgroundColor: "rgba(19, 35, 31, 0.72)" },
+  overlayPagerButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255, 255, 255, 0.14)" },
+  overlayPagerText: { minWidth: 56, color: "#FFFFFF", fontSize: 15, fontWeight: "800", textAlign: "center" },
+  dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 6 },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: fieldTheme.color.border },
+  dotCurrent: { width: 18, backgroundColor: fieldTheme.color.primary },
   paper: { overflow: "hidden", backgroundColor: "#FFFFFF" },
   paperFill: { width: "100%", height: "100%" },
   pageImage: { width: "100%", height: "100%" },

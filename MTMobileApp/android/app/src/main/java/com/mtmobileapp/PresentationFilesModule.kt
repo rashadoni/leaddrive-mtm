@@ -78,11 +78,15 @@ class PresentationFilesModule(
                 }
                 val fileKey = Integer.toHexString(input.absolutePath.hashCode())
                 val generation = System.nanoTime()
-                val output = File(outputDirectory, "$fileKey-$pageIndex-$bitmapWidth-$generation.png")
+                val output = File(outputDirectory, "$fileKey-$pageIndex-$bitmapWidth-$generation.jpg")
                 val temporaryOutput = File(outputDirectory, ".${output.name}.part")
                 try {
                   FileOutputStream(temporaryOutput).use { stream ->
-                    check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)) {
+                    // JPEG, not PNG at 100: a 2_600 px slide took most of a
+                    // second to encode as PNG on a mid-range tablet, and the
+                    // agent waited that long on «Səhifə hazırlanır…» for every
+                    // page (owner's client, 2026-11-11: «медленно открывает»).
+                    check(bitmap.compress(Bitmap.CompressFormat.JPEG, 92, stream)) {
                       "Rendered PDF page could not be saved"
                     }
                     stream.fd.sync()

@@ -64,19 +64,54 @@ async function removeIfPresent(path: string): Promise<void> {
   } catch {}
 }
 
+/**
+ * The file a presentation is kept in on the device: one per document and its
+ * content (checksum, or size when the server sent none), so a second opening
+ * of the same deck reads the disk instead of the network (owner's client,
+ * 2026-11-11: «медленно открывает» — every opening downloaded the whole file
+ * again under a fresh name and deleted it on close).
+ */
+export function presentationCachePath(document: PresentationDocumentDescriptor): string {
+  const checksum = document.checksumSha256?.trim().toLowerCase()
+  const version = checksum && /^[a-f0-9]{64}$/.test(checksum) ? checksum.slice(0, 16) : `s${Math.max(0, Math.floor(document.sizeBytes || 0))}`
+  return `${RNFS.CachesDirectoryPath}/presentations/doc-${safeSegment(document.id)}-${version}.${extensionFor(document)}`
+}
+
+async function cachedCopy(path: string, expectedSize: number): Promise<boolean> {
+  try {
+    if (!(await RNFS.exists(path))) return false
+    const stat = await RNFS.stat(path)
+    const size = Number(stat.size)
+    return size > 0 && size <= MAX_PRESENTATION_BYTES && (expectedSize === 0 || size === expectedSize)
+  } catch {
+    return false
+  }
+}
+
+/** Earlier versions of the same document: a new upload replaces them on the device too. */
+async function removeOtherVersions(destination: string, document: PresentationDocumentDescriptor): Promise<void> {
+  const prefix = `doc-${safeSegment(document.id)}-`
+  try {
+    const entries = await RNFS.readDir(`${RNFS.CachesDirectoryPath}/presentations`)
+    await Promise.all(entries
+      .filter((entry) => entry.isFile() && entry.name.startsWith(prefix) && entry.path !== destination && !entry.name.endsWith(".part"))
+      .map((entry) => removeIfPresent(entry.path)))
+  } catch {}
+}
+
 export async function downloadPresentationFile(input: {
   source: AuthorizedDocumentSource
   document: PresentationDocumentDescriptor
-  cacheKey: string
 }): Promise<string> {
   const expectedSize = Math.max(0, Math.floor(input.document.sizeBytes || 0))
   if (expectedSize > MAX_PRESENTATION_BYTES) throw new Error("PRESENTATION_TOO_LARGE")
 
   const directory = `${RNFS.CachesDirectoryPath}/presentations`
   await RNFS.mkdir(directory)
-  const unique = `${safeSegment(input.cacheKey)}-${safeSegment(input.document.id)}-${Date.now()}`
-  const destination = `${directory}/${unique}.${extensionFor(input.document)}`
-  const partial = `${destination}.part`
+  const destination = presentationCachePath(input.document)
+  if (await cachedCopy(destination, expectedSize)) return destination
+  // A unique partial: two screens opening the same deck must not write one file.
+  const partial = `${destination}.${Date.now()}.part`
   await removeIfPresent(partial)
 
   try {
@@ -98,11 +133,12 @@ export async function downloadPresentationFile(input: {
       if (actualChecksum !== expectedChecksum) throw new Error("PRESENTATION_CHECKSUM_MISMATCH")
     }
 
+    await removeIfPresent(destination)
     await RNFS.moveFile(partial, destination)
+    await removeOtherVersions(destination, input.document)
     return destination
   } catch (error) {
     await removeIfPresent(partial)
-    await removeIfPresent(destination)
     throw error
   }
 }
