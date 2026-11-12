@@ -165,7 +165,7 @@ describe("presentation viewer — the slide gets the whole screen", () => {
 
   it("turns pages under the finger, with the neighbours rendered ahead", () => {
     expect(screenSource).toContain("swipeTurn({")
-    expect(screenSource).toContain("pagesToPrepare(zeroBasedPage, rendered.pageCount)")
+    expect(screenSource).toContain("pagesToPrepare(zeroBasedPage, pageTotal)")
     expect(screenSource).toContain("onPress={() => turnPage(1)}")
   })
 

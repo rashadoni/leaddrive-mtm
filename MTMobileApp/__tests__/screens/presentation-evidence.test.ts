@@ -25,7 +25,8 @@ describe("presentation evidence in a visit", () => {
 
   it("records a PDF only after a rendered page is actually displayed", () => {
     expect(viewer).toContain("<Image")
-    expect(viewer).toContain("onLoad={() => markPageDisplayed")
+    expect(viewer).toContain("onLoad={() => onPagePictureLoad")
+    expect(viewer).toContain("markPageDisplayed(uri, zeroBasedPage, knownPageCount)")
     expect(viewer).toContain("ensureEvidenceSession(knownPageCount)")
     expect(viewer).not.toContain("<WebView")
     expect(viewer).not.toContain("pagesViewed: []")

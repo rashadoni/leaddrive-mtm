@@ -47,5 +47,12 @@ export function pagesToPrepare(pageIndex: number, pageCount: number): number[] {
   return [pageIndex + 1, pageIndex - 1].filter((index) => index >= 0 && index < pageCount)
 }
 
+/**
+ * How long a turn waits for the new page's own picture before the strip goes
+ * back to rest anyway. Normally the picture reports itself drawn well before
+ * this; the limit only keeps a picture that never reports from holding the deck.
+ */
+export const PRESENTATION_SETTLE_FALLBACK_MS = 800
+
 /** Dots under the counter only while they still read as dots. */
 export const PRESENTATION_DOTS_MAX = 15
