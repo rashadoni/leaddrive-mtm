@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Animated,
   AppState,
+  BackHandler,
   Image,
   PanResponder,
   PixelRatio,
@@ -634,6 +635,21 @@ export default function PresentationViewerScreen() {
   }, [settleTurn, showPdfPage, springBack, swipeX])
   turnPageRef.current = turnPage
 
+  // «Назад» on the phone — the button, or the swipe in from the edge of the
+  // screen — is the previous slide, not the end of the deck (owner,
+  // 2026-11-12: «если нажимаю назад, то слайд предыдущий должен открываться, а
+  // не с первого»). It closed the viewer, and the deck opened again on page 1.
+  // On the first page it closes, as before.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      const current = viewerRef.current
+      if (current.kind !== "pdf" || current.pageIndex === 0) return false
+      turnPageRef.current(-1)
+      return true
+    })
+    return () => subscription.remove()
+  }, [])
+
   useEffect(() => {
     const generation = ++loadGeneration.current
     const previousRenderedUris = [...renderedUris.current]
@@ -893,19 +909,11 @@ export default function PresentationViewerScreen() {
                 <Text style={styles.pageLoadingText}>{copy.pageLoading}</Text>
               </View>
             ) : null}
-            {/* Full screen keeps what the agent needs on the page itself: close,
-                the panels back, and where he is in the deck with both ways. */}
+            {/* Full screen keeps what the agent needs on the page itself: the
+                panels back, and at the bottom where he is in the deck with both
+                ways and the close beside them. */}
             {!chromeVisible ? (
               <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={copy.close}
-                  onPress={() => navigation.goBack()}
-                  style={({ pressed }) => [styles.overlayRound, { top: 12 + insets.top, left: 12 + insets.left }, pressed && styles.pressed]}
-                  testID="presentation-fullscreen-close"
-                >
-                  <Icon name="close" size={22} color="#FFFFFF" />
-                </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={copy.showChrome}
@@ -916,7 +924,20 @@ export default function PresentationViewerScreen() {
                   <Icon name="chevron-collapse-outline" size={16} color="#FFFFFF" />
                   <Text style={styles.overlayChipText}>{copy.showChrome}</Text>
                 </Pressable>
+                {/* Close sits with the arrows, where the thumb already is (owner,
+                    2026-11-12: «закрыть кнопка должна быть везде вниз, где
+                    навигация, крестиком»). */}
                 <View style={[styles.overlayPager, { bottom: 14 + insets.bottom }]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={copy.close}
+                    onPress={() => navigation.goBack()}
+                    style={({ pressed }) => [styles.overlayPagerButton, pressed && styles.pressed]}
+                    testID="presentation-fullscreen-close"
+                  >
+                    <Icon name="close" size={20} color="#FFFFFF" />
+                  </Pressable>
+                  <View style={styles.overlayPagerDivider} />
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={copy.previous}
@@ -944,6 +965,15 @@ export default function PresentationViewerScreen() {
           </View>
           {chromeVisible ? (
           <View style={[styles.pageControls, tablet && styles.pageControlsTablet, { paddingBottom: (tablet ? 14 : 8) + insets.bottom, paddingLeft: 16 + insets.left, paddingRight: 16 + insets.right }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={copy.close}
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [styles.pageButton, pressed && styles.pressed]}
+              testID="presentation-panels-close"
+            >
+              <Icon name="close" size={24} color={fieldTheme.color.ink} />
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={copy.previous}
@@ -1008,11 +1038,11 @@ const styles = themed(() => StyleSheet.create({
   pageLayer: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   swipeStrip: { ...StyleSheet.absoluteFillObject },
   neighbour: { position: "absolute", top: 0, alignItems: "center", justifyContent: "center" },
-  overlayRound: { position: "absolute", width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(19, 35, 31, 0.72)" },
   overlayChip: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "rgba(19, 35, 31, 0.72)" },
   overlayChipText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
   overlayPager: { position: "absolute", alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 24, backgroundColor: "rgba(19, 35, 31, 0.72)" },
   overlayPagerButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255, 255, 255, 0.14)" },
+  overlayPagerDivider: { width: 1, height: 24, backgroundColor: "rgba(255, 255, 255, 0.28)" },
   overlayPagerText: { minWidth: 56, color: "#FFFFFF", fontSize: 15, fontWeight: "800", textAlign: "center" },
   dots: { flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 6 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: fieldTheme.color.border },
