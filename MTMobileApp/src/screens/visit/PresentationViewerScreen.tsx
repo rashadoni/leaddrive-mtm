@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Animated,
@@ -51,6 +51,7 @@ import {
 import {
   PRESENTATION_DOTS_MAX,
   PRESENTATION_PAGE_GAP,
+  PRESENTATION_SETTLE_FALLBACK_MS,
   pagesToPrepare,
   swipeOffset,
   swipeTurn,
@@ -212,7 +213,12 @@ export default function PresentationViewerScreen() {
   // The strip of pages under the finger: the page and its neighbours slide together.
   const swipeX = useRef(new Animated.Value(0)).current
   const turning = useRef(false)
+  // The page a turn is landing on. Until its own picture is drawn, the strip
+  // stays where the slide left it — on the neighbour's picture, already drawn
+  // — so the dark stage never shows between the two (client of the owner,
+  // 2026-11-12: «slaydları çevirdikcə flash atır»).
   const settleSwipeOnPage = useRef<number | null>(null)
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // The page is one Animated layer: gestures write these values directly, so a
   // pinch does not re-render the screen (and does not interrupt the evidence
@@ -489,6 +495,14 @@ export default function PresentationViewerScreen() {
   }, [evidencePayload, finalizeSession, product.id, visitId])
 
   const markPageDisplayed = useCallback((uri: string, zeroBasedPage: number, knownPageCount: number) => {
+    // The picture is on screen every time it is drawn, not only the first
+    // time: a page turned back to used to stay under «Səhifə hazırlanır…» for
+    // good, because the journal had already counted it (client of the owner,
+    // 2026-11-12: «geriyə çevirdikdə donur»).
+    setViewer((current) => current.kind === "pdf" && current.rendered.uri === uri && !current.imageLoaded
+      ? { ...current, imageLoaded: true }
+      : current)
+    // The journal counts a page once per opening, as before.
     if (loadedImageUris.current.has(uri)) return
     loadedImageUris.current.add(uri)
     const displayedPage = zeroBasedPage + 1
@@ -498,9 +512,6 @@ export default function PresentationViewerScreen() {
     lastPage.current = displayedPage
     pageCount.current = knownPageCount
     ensureEvidenceSession(knownPageCount)
-    setViewer((current) => current.kind === "pdf" && current.rendered.uri === uri
-      ? { ...current, imageLoaded: true }
-      : current)
   }, [ensureEvidenceSession])
 
   /** One page as a picture: from this opening's renders when it is there, rendered once otherwise. */
@@ -518,6 +529,28 @@ export default function PresentationViewerScreen() {
     next: renderedPages.current.get(zeroBasedPage + 1) ?? null,
   }), [])
 
+  /** The neighbours beside a page — unless a turn onto it still shows the slid-in picture. */
+  const showNeighboursOf = useCallback((zeroBasedPage: number) => {
+    if (settleSwipeOnPage.current === zeroBasedPage) return
+    setNeighbours(neighboursOf(zeroBasedPage))
+  }, [neighboursOf])
+
+  /**
+   * The neighbours are rendered ahead, next first, so a swipe never waits. In
+   * the background: the agent can turn on while they are being drawn.
+   */
+  const prepareNeighbours = useCallback(async (filePath: string, zeroBasedPage: number, pageTotal: number, generation: number) => {
+    for (const neighbour of pagesToPrepare(zeroBasedPage, pageTotal)) {
+      try {
+        await renderPage(filePath, neighbour)
+      } catch {
+        // A neighbour that fails is rendered again when it is turned to.
+      }
+      if (!mounted.current || generation !== renderGeneration.current) return
+      showNeighboursOf(zeroBasedPage)
+    }
+  }, [renderPage, showNeighboursOf])
+
   const showPdfPage = useCallback(async (filePath: string, zeroBasedPage: number) => {
     const generation = ++renderGeneration.current
     try {
@@ -527,7 +560,7 @@ export default function PresentationViewerScreen() {
       // «Səhifə hazırlanır…» over a picture the agent just slid in.
       const alreadyShown = neighbourLoaded.current.has(rendered.uri)
       setViewer({ kind: "pdf", filePath, pageIndex: zeroBasedPage, rendered, imageLoaded: false })
-      setNeighbours(neighboursOf(zeroBasedPage))
+      showNeighboursOf(zeroBasedPage)
       // A new page starts fitted: carrying a zoom over would open the next
       // slide somewhere in its middle with no way back but pinching out.
       pageSize.current = { width: rendered.width, height: rendered.height }
@@ -535,20 +568,34 @@ export default function PresentationViewerScreen() {
       resetZoom()
       pageCount.current = rendered.pageCount
       if (alreadyShown) markPageDisplayed(rendered.uri, zeroBasedPage, rendered.pageCount)
-      // The neighbours are rendered ahead, next first, so a swipe never waits.
-      for (const neighbour of pagesToPrepare(zeroBasedPage, rendered.pageCount)) {
-        try {
-          await renderPage(filePath, neighbour)
-        } catch {
-          // A neighbour that fails is rendered again when it is turned to.
-        }
-        if (!mounted.current || generation !== renderGeneration.current) return
-        setNeighbours(neighboursOf(zeroBasedPage))
-      }
+      ignore(prepareNeighbours(filePath, zeroBasedPage, rendered.pageCount, generation))
     } catch {
       if (mounted.current && generation === renderGeneration.current) setViewer({ kind: "failed" })
     }
-  }, [markPageDisplayed, neighboursOf, renderPage, resetZoom])
+  }, [markPageDisplayed, prepareNeighbours, renderPage, resetZoom, showNeighboursOf])
+
+  /**
+   * The turn has landed: the page's own picture is drawn, so the strip goes
+   * back to rest under it and the neighbours move round it. Gestures wait for
+   * this — a swipe that started while the strip still stood on the slid-in
+   * picture would drag the wrong page.
+   */
+  const settleTurn = useCallback((zeroBasedPage: number) => {
+    if (settleSwipeOnPage.current !== zeroBasedPage) return
+    settleSwipeOnPage.current = null
+    if (settleTimer.current) {
+      clearTimeout(settleTimer.current)
+      settleTimer.current = null
+    }
+    swipeX.setValue(0)
+    setNeighbours(neighboursOf(zeroBasedPage))
+    turning.current = false
+  }, [neighboursOf, swipeX])
+
+  const onPagePictureLoad = useCallback((uri: string, zeroBasedPage: number, knownPageCount: number) => {
+    markPageDisplayed(uri, zeroBasedPage, knownPageCount)
+    settleTurn(zeroBasedPage)
+  }, [markPageDisplayed, settleTurn])
 
   /**
    * To the previous or the next page. With the neighbour already rendered the
@@ -567,7 +614,12 @@ export default function PresentationViewerScreen() {
     turning.current = true
     const finish = () => {
       settleSwipeOnPage.current = target
-      showPdfPage(current.filePath, target).finally(() => { turning.current = false })
+      showPdfPage(current.filePath, target).finally(() => {
+        // A picture that never reports itself drawn must not hold the deck.
+        if (settleSwipeOnPage.current !== target || !mounted.current) return
+        if (settleTimer.current) clearTimeout(settleTimer.current)
+        settleTimer.current = setTimeout(() => settleTurn(target), PRESENTATION_SETTLE_FALLBACK_MS)
+      })
     }
     if (!renderedPages.current.has(target) || stageSize.current.width <= 0) {
       swipeX.setValue(0)
@@ -579,15 +631,8 @@ export default function PresentationViewerScreen() {
       duration: 200,
       useNativeDriver: true,
     }).start(finish)
-  }, [showPdfPage, springBack, swipeX])
+  }, [settleTurn, showPdfPage, springBack, swipeX])
   turnPageRef.current = turnPage
-
-  useLayoutEffect(() => {
-    if (viewer.kind === "pdf" && settleSwipeOnPage.current === viewer.pageIndex) {
-      settleSwipeOnPage.current = null
-      swipeX.setValue(0)
-    }
-  }, [swipeX, viewer])
 
   useEffect(() => {
     const generation = ++loadGeneration.current
@@ -597,6 +642,9 @@ export default function PresentationViewerScreen() {
     renderedPages.current.clear()
     neighbourLoaded.current.clear()
     loadedImageUris.current.clear()
+    settleSwipeOnPage.current = null
+    turning.current = false
+    swipeX.setValue(0)
     setNeighbours({ previous: null, next: null })
     // The downloaded deck stays on the device for the next opening; only this
     // opening's page pictures go.
@@ -631,7 +679,7 @@ export default function PresentationViewerScreen() {
       ++loadGenerationRef.current
       ++renderGenerationRef.current
     }
-  }, [attempt, format, product.document, showPdfPage, source])
+  }, [attempt, format, product.document, showPdfPage, source, swipeX])
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -666,6 +714,7 @@ export default function PresentationViewerScreen() {
     closeRequested.current = true
     ++loadGeneration.current
     ++renderGeneration.current
+    if (settleTimer.current) clearTimeout(settleTimer.current)
     if (sessionId.current) finalizeSession(sessionId.current)
     ignore(cleanupPresentationFiles(null, renderedUris.current))
   }, [finalizeSession])
@@ -772,6 +821,7 @@ export default function PresentationViewerScreen() {
                     <Image
                       source={{ uri: page.uri }}
                       resizeMode="contain"
+                      fadeDuration={0}
                       style={styles.pageImage}
                       onLoad={() => { neighbourLoaded.current.add(page.uri) }}
                     />
@@ -795,8 +845,11 @@ export default function PresentationViewerScreen() {
                   accessibilityLabel={`${copy.page} ${viewer.pageIndex + 1} / ${viewer.rendered.pageCount}`}
                   source={{ uri: viewer.rendered.uri }}
                   resizeMode="contain"
+                  // Android fades every new picture in over 300 ms from the dark
+                  // stage: on each turn the slide came up as a flash.
+                  fadeDuration={0}
                   style={styles.pageImage}
-                  onLoad={() => markPageDisplayed(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
+                  onLoad={() => onPagePictureLoad(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
                   onError={() => setViewer({ kind: "failed" })}
                 />
               </View>
