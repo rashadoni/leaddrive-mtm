@@ -52,8 +52,8 @@ import {
 import {
   PRESENTATION_DOTS_MAX,
   PRESENTATION_PAGE_GAP,
-  PRESENTATION_SETTLE_FALLBACK_MS,
   pagesToPrepare,
+  stripRest,
   swipeOffset,
   swipeTurn,
 } from "./presentation-swipe"
@@ -207,19 +207,21 @@ export default function PresentationViewerScreen() {
   // on the page no longer toggles them: the client's agents, swiping, kept
   // flipping the screen in and out of full screen.
   const [chromeVisible, setChromeVisible] = useState(false)
-  const [neighbours, setNeighbours] = useState<{ previous: RenderedPdfPage | null; next: RenderedPdfPage | null }>({ previous: null, next: null })
+  // The pages beside `around`, as far as they are rendered.
+  const [neighbours, setNeighbours] = useState<{ around: number; previous: RenderedPdfPage | null; next: RenderedPdfPage | null }>({ around: 0, previous: null, next: null })
   const [stageBox, setStageBox] = useState<ZoomSize>({ width: 0, height: 0 })
-  const [pageBox, setPageBox] = useState<ZoomSize>({ width: 0, height: 0 })
   const insets = useSafeAreaInsets()
-  // The strip of pages under the finger: the page and its neighbours slide together.
+  // The strip of pages under the finger. Every page has its own place on it —
+  // page i at i stage widths — and the strip stands at the page on screen, so
+  // a turn only moves the strip on: the picture that slid in IS the page, the
+  // same picture, never swapped for another one afterwards. It used to be: the
+  // strip jumped back to rest and the page's one picture changed its file, and
+  // on the tablet the previous slide came up over the new one for a frame
+  // (client of the owner, 2026-11-12: «slaydı dəyişəndə hələ də flash atır,
+  // elə bil əvvəlki slaydla üst-üstə düşür bir anlıq»).
   const swipeX = useRef(new Animated.Value(0)).current
+  const stripIndex = useRef(0)
   const turning = useRef(false)
-  // The page a turn is landing on. Until its own picture is drawn, the strip
-  // stays where the slide left it — on the neighbour's picture, already drawn
-  // — so the dark stage never shows between the two (client of the owner,
-  // 2026-11-12: «slaydları çevirdikcə flash atır»).
-  const settleSwipeOnPage = useRef<number | null>(null)
-  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // The page is one Animated layer: gestures write these values directly, so a
   // pinch does not re-render the screen (and does not interrupt the evidence
@@ -254,11 +256,6 @@ export default function PresentationViewerScreen() {
   const measureFit = useCallback(() => {
     const fitted = fittedPageBox(stageSize.current, pageSize.current)
     fittedSize.current = fitted
-    setPageBox((current) => (
-      Math.abs(current.width - fitted.width) < 0.5 && Math.abs(current.height - fitted.height) < 0.5
-        ? current
-        : fitted
-    ))
     const bounded = clampPan(transform.current, fitted, stageSize.current, transform.current.scale)
     applyTransform({ scale: transform.current.scale, x: bounded.x, y: bounded.y })
   }, [applyTransform])
@@ -284,6 +281,7 @@ export default function PresentationViewerScreen() {
     stageSize.current = { width: stageWidth, height: stageHeight }
     setStageBox((current) => (current.width === stageWidth && current.height === stageHeight ? current : { width: stageWidth, height: stageHeight }))
     measureFit()
+    swipeX.setValue(stripRest(stripIndex.current, stageWidth))
     // Touches arrive in window coordinates, and the page layer is transformed,
     // so a touch's own `locationX` is measured against a moving target. The
     // stage origin converts them once, in the only frame that stays still.
@@ -294,7 +292,7 @@ export default function PresentationViewerScreen() {
         measureFit()
       }
     })
-  }, [measureFit])
+  }, [measureFit, swipeX])
 
   const stagePoint = useCallback((touch: NativeTouchEvent): ZoomPoint => ({
     x: touch.pageX - stageOrigin.current.x,
@@ -320,7 +318,7 @@ export default function PresentationViewerScreen() {
   const turnPageRef = useRef<(direction: -1 | 1) => void>(() => {})
 
   const springBack = useCallback(() => {
-    Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 24 }).start()
+    Animated.spring(swipeX, { toValue: stripRest(stripIndex.current, stageSize.current.width), useNativeDriver: true, bounciness: 0, speed: 24 }).start()
   }, [swipeX])
 
   const panResponder = useMemo(() => PanResponder.create({
@@ -386,7 +384,7 @@ export default function PresentationViewerScreen() {
       if (!isZoomed(transform.current.scale)) {
         // A whole page under one finger: the strip follows it, as in the gallery.
         if (gesture.current.mode !== "pan" || turning.current) return
-        swipeX.setValue(swipeOffset(state.dx, Boolean(neighboursRef.current.previous) || (viewerRef.current.kind === "pdf" && viewerRef.current.pageIndex > 0), Boolean(neighboursRef.current.next) || (viewerRef.current.kind === "pdf" && viewerRef.current.pageIndex < viewerRef.current.rendered.pageCount - 1)))
+        swipeX.setValue(stripRest(stripIndex.current, stageSize.current.width) + swipeOffset(state.dx, Boolean(neighboursRef.current.previous) || (viewerRef.current.kind === "pdf" && viewerRef.current.pageIndex > 0), Boolean(neighboursRef.current.next) || (viewerRef.current.kind === "pdf" && viewerRef.current.pageIndex < viewerRef.current.rendered.pageCount - 1)))
         return
       }
       const moved = clampPan(
@@ -526,15 +524,10 @@ export default function PresentationViewerScreen() {
   }, [])
 
   const neighboursOf = useCallback((zeroBasedPage: number) => ({
+    around: zeroBasedPage,
     previous: renderedPages.current.get(zeroBasedPage - 1) ?? null,
     next: renderedPages.current.get(zeroBasedPage + 1) ?? null,
   }), [])
-
-  /** The neighbours beside a page — unless a turn onto it still shows the slid-in picture. */
-  const showNeighboursOf = useCallback((zeroBasedPage: number) => {
-    if (settleSwipeOnPage.current === zeroBasedPage) return
-    setNeighbours(neighboursOf(zeroBasedPage))
-  }, [neighboursOf])
 
   /**
    * The neighbours are rendered ahead, next first, so a swipe never waits. In
@@ -548,9 +541,9 @@ export default function PresentationViewerScreen() {
         // A neighbour that fails is rendered again when it is turned to.
       }
       if (!mounted.current || generation !== renderGeneration.current) return
-      showNeighboursOf(zeroBasedPage)
+      setNeighbours(neighboursOf(zeroBasedPage))
     }
-  }, [renderPage, showNeighboursOf])
+  }, [neighboursOf, renderPage])
 
   const showPdfPage = useCallback(async (filePath: string, zeroBasedPage: number) => {
     const generation = ++renderGeneration.current
@@ -561,7 +554,7 @@ export default function PresentationViewerScreen() {
       // «Səhifə hazırlanır…» over a picture the agent just slid in.
       const alreadyShown = neighbourLoaded.current.has(rendered.uri)
       setViewer({ kind: "pdf", filePath, pageIndex: zeroBasedPage, rendered, imageLoaded: false })
-      showNeighboursOf(zeroBasedPage)
+      setNeighbours(neighboursOf(zeroBasedPage))
       // A new page starts fitted: carrying a zoom over would open the next
       // slide somewhere in its middle with no way back but pinching out.
       pageSize.current = { width: rendered.width, height: rendered.height }
@@ -573,36 +566,23 @@ export default function PresentationViewerScreen() {
     } catch {
       if (mounted.current && generation === renderGeneration.current) setViewer({ kind: "failed" })
     }
-  }, [markPageDisplayed, prepareNeighbours, renderPage, resetZoom, showNeighboursOf])
+  }, [markPageDisplayed, neighboursOf, prepareNeighbours, renderPage, resetZoom])
 
   /**
-   * The turn has landed: the page's own picture is drawn, so the strip goes
-   * back to rest under it and the neighbours move round it. Gestures wait for
-   * this — a swipe that started while the strip still stood on the slid-in
-   * picture would drag the wrong page.
+   * A page's picture is drawn on the strip. The page on screen counts as
+   * displayed; a neighbour drawn beside it counts the moment it is turned to.
    */
-  const settleTurn = useCallback((zeroBasedPage: number) => {
-    if (settleSwipeOnPage.current !== zeroBasedPage) return
-    settleSwipeOnPage.current = null
-    if (settleTimer.current) {
-      clearTimeout(settleTimer.current)
-      settleTimer.current = null
-    }
-    swipeX.setValue(0)
-    setNeighbours(neighboursOf(zeroBasedPage))
-    turning.current = false
-  }, [neighboursOf, swipeX])
-
   const onPagePictureLoad = useCallback((uri: string, zeroBasedPage: number, knownPageCount: number) => {
-    markPageDisplayed(uri, zeroBasedPage, knownPageCount)
-    settleTurn(zeroBasedPage)
-  }, [markPageDisplayed, settleTurn])
+    neighbourLoaded.current.add(uri)
+    const current = viewerRef.current
+    if (current.kind === "pdf" && current.rendered.uri === uri) markPageDisplayed(uri, zeroBasedPage, knownPageCount)
+  }, [markPageDisplayed])
 
   /**
-   * To the previous or the next page. With the neighbour already rendered the
-   * strip slides on to it, as under the finger; otherwise the page is rendered
-   * and shown where it is. The strip goes back to rest once the new page is
-   * the one on screen (the layout effect below), so nothing flashes between.
+   * To the previous or the next page. With the neighbour's picture already
+   * drawn the strip slides on to it, as under the finger, and stays there:
+   * that picture is the page from now on. Otherwise the strip moves at once and
+   * the page is rendered in its place, under «Səhifə hazırlanır…».
    */
   const turnPage = useCallback((direction: -1 | 1) => {
     const current = viewerRef.current
@@ -613,26 +593,19 @@ export default function PresentationViewerScreen() {
       return
     }
     turning.current = true
+    stripIndex.current = target
+    const rest = stripRest(target, stageSize.current.width)
     const finish = () => {
-      settleSwipeOnPage.current = target
-      showPdfPage(current.filePath, target).finally(() => {
-        // A picture that never reports itself drawn must not hold the deck.
-        if (settleSwipeOnPage.current !== target || !mounted.current) return
-        if (settleTimer.current) clearTimeout(settleTimer.current)
-        settleTimer.current = setTimeout(() => settleTurn(target), PRESENTATION_SETTLE_FALLBACK_MS)
-      })
+      showPdfPage(current.filePath, target).finally(() => { turning.current = false })
     }
-    if (!renderedPages.current.has(target) || stageSize.current.width <= 0) {
-      swipeX.setValue(0)
+    const ready = renderedPages.current.get(target)
+    if (!ready || !neighbourLoaded.current.has(ready.uri) || stageSize.current.width <= 0) {
+      swipeX.setValue(rest)
       finish()
       return
     }
-    Animated.timing(swipeX, {
-      toValue: -direction * (stageSize.current.width + PRESENTATION_PAGE_GAP),
-      duration: 200,
-      useNativeDriver: true,
-    }).start(finish)
-  }, [settleTurn, showPdfPage, springBack, swipeX])
+    Animated.timing(swipeX, { toValue: rest, duration: 200, useNativeDriver: true }).start(finish)
+  }, [showPdfPage, springBack, swipeX])
   turnPageRef.current = turnPage
 
   // «Назад» on the phone — the button, or the swipe in from the edge of the
@@ -658,10 +631,10 @@ export default function PresentationViewerScreen() {
     renderedPages.current.clear()
     neighbourLoaded.current.clear()
     loadedImageUris.current.clear()
-    settleSwipeOnPage.current = null
+    stripIndex.current = 0
     turning.current = false
     swipeX.setValue(0)
-    setNeighbours({ previous: null, next: null })
+    setNeighbours({ around: 0, previous: null, next: null })
     // The downloaded deck stays on the device for the next opening; only this
     // opening's page pictures go.
     if (previousRenderedUris.length) {
@@ -730,7 +703,6 @@ export default function PresentationViewerScreen() {
     closeRequested.current = true
     ++loadGeneration.current
     ++renderGeneration.current
-    if (settleTimer.current) clearTimeout(settleTimer.current)
     if (sessionId.current) finalizeSession(sessionId.current)
     ignore(cleanupPresentationFiles(null, renderedUris.current))
   }, [finalizeSession])
@@ -821,55 +793,57 @@ export default function PresentationViewerScreen() {
             onLayout={onStageLayout}
             {...panResponder.panHandlers}
           >
-            {/* The page and its neighbours on one strip that follows the finger. */}
+            {/* The page and its neighbours on one strip that follows the finger.
+                Each page keeps its own place and its own picture (key = page):
+                turning moves the strip, it never swaps a picture. */}
             <Animated.View style={[styles.swipeStrip, { transform: [{ translateX: swipeX }] }]}>
-            {([["previous", -1], ["next", 1]] as const).map(([side, direction]) => {
-              const page = neighbours[side]
-              if (!page || stageBox.width <= 0) return null
+            {[
+              neighbours.around === viewer.pageIndex ? { index: viewer.pageIndex - 1, page: neighbours.previous } : null,
+              { index: viewer.pageIndex, page: viewer.rendered },
+              neighbours.around === viewer.pageIndex ? { index: viewer.pageIndex + 1, page: neighbours.next } : null,
+            ].map((slot) => {
+              if (!slot?.page) return null
+              const { index, page } = slot
+              const current = index === viewer.pageIndex
+              if (!current && stageBox.width <= 0) return null
+              const laidOut = stageBox.width > 0
               const fitted = fittedPageBox(stageBox, { width: page.width, height: page.height })
               return (
                 <View
-                  key={side}
+                  key={index}
                   pointerEvents="none"
-                  style={[styles.neighbour, { left: direction * (stageBox.width + PRESENTATION_PAGE_GAP), width: stageBox.width, height: stageBox.height }]}
+                  style={laidOut
+                    ? [styles.stripSlot, { left: index * (stageBox.width + PRESENTATION_PAGE_GAP), width: stageBox.width, height: stageBox.height }]
+                    : styles.pageLayer}
                 >
-                  <View style={[styles.paper, { width: fitted.width, height: fitted.height }]}>
-                    <Image
-                      source={{ uri: page.uri }}
-                      resizeMode="contain"
-                      fadeDuration={0}
-                      style={styles.pageImage}
-                      onLoad={() => { neighbourLoaded.current.add(page.uri) }}
-                    />
-                  </View>
+                  <Animated.View
+                    style={[
+                      styles.pageLayer,
+                      current ? { transform: [{ translateX: zoomX }, { translateY: zoomY }, { scale: zoomScale }] } : null,
+                    ]}
+                  >
+                    {/*
+                      The white sheet is the page itself, not the stage around it: a
+                      16:9 slide inside a portrait card used to sit in a field of
+                      white with no edge to tell page from padding.
+                    */}
+                    <View style={[styles.paper, laidOut ? { width: fitted.width, height: fitted.height } : styles.paperFill]}>
+                      <Image
+                        accessibilityLabel={current ? `${copy.page} ${index + 1} / ${page.pageCount}` : undefined}
+                        source={{ uri: page.uri }}
+                        resizeMode="contain"
+                        // Android fades every new picture in over 300 ms from the
+                        // dark stage: a page drawn on a turn came up as a flash.
+                        fadeDuration={0}
+                        style={styles.pageImage}
+                        onLoad={() => onPagePictureLoad(page.uri, index, page.pageCount)}
+                        onError={current ? () => setViewer({ kind: "failed" }) : undefined}
+                      />
+                    </View>
+                  </Animated.View>
                 </View>
               )
             })}
-            <Animated.View
-              style={[
-                styles.pageLayer,
-                { transform: [{ translateX: zoomX }, { translateY: zoomY }, { scale: zoomScale }] },
-              ]}
-            >
-              {/*
-                The white sheet is the page itself, not the stage around it: a
-                16:9 slide inside a portrait card used to sit in a field of
-                white with no edge to tell page from padding.
-              */}
-              <View style={[styles.paper, pageBox.width > 0 ? { width: pageBox.width, height: pageBox.height } : styles.paperFill]}>
-                <Image
-                  accessibilityLabel={`${copy.page} ${viewer.pageIndex + 1} / ${viewer.rendered.pageCount}`}
-                  source={{ uri: viewer.rendered.uri }}
-                  resizeMode="contain"
-                  // Android fades every new picture in over 300 ms from the dark
-                  // stage: on each turn the slide came up as a flash.
-                  fadeDuration={0}
-                  style={styles.pageImage}
-                  onLoad={() => onPagePictureLoad(viewer.rendered.uri, viewer.pageIndex, viewer.rendered.pageCount)}
-                  onError={() => setViewer({ kind: "failed" })}
-                />
-              </View>
-            </Animated.View>
             </Animated.View>
             {viewer.imageLoaded ? (
               <View style={[styles.chipRow, { right: 10 + insets.right, bottom: 10 + (chromeVisible ? 0 : insets.bottom) }]} pointerEvents="box-none">
@@ -1037,7 +1011,7 @@ const styles = themed(() => StyleSheet.create({
   pageStageImmersive: { margin: 0, borderRadius: 0, borderWidth: 0 },
   pageLayer: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   swipeStrip: { ...StyleSheet.absoluteFillObject },
-  neighbour: { position: "absolute", top: 0, alignItems: "center", justifyContent: "center" },
+  stripSlot: { position: "absolute", top: 0, alignItems: "center", justifyContent: "center" },
   overlayChip: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: "rgba(19, 35, 31, 0.72)" },
   overlayChipText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
   overlayPager: { position: "absolute", alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 24, backgroundColor: "rgba(19, 35, 31, 0.72)" },

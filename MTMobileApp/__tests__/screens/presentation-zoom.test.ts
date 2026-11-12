@@ -187,7 +187,7 @@ describe("presentation viewer — the slide gets the whole screen", () => {
 
   it("draws the white sheet at the size of the page, on a dark stage", () => {
     expect(screenSource).toContain("STAGE_BACKDROP")
-    expect(screenSource).toContain("pageBox.width > 0 ?")
+    expect(screenSource).toContain("styles.paper, laidOut ? { width: fitted.width, height: fitted.height } : styles.paperFill")
     expect(screenSource).toMatch(/paper: \{[^}]*backgroundColor: "#FFFFFF"/)
   })
 })

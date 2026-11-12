@@ -1,4 +1,4 @@
-import { pagesToPrepare, swipeDistance, swipeOffset, swipeTurn } from "../../src/screens/visit/presentation-swipe"
+import { PRESENTATION_PAGE_GAP, pagesToPrepare, stripRest, swipeDistance, swipeOffset, swipeTurn } from "../../src/screens/visit/presentation-swipe"
 
 describe("swiping between presentation pages", () => {
   const stage = { stageWidth: 1200, hasPrevious: true, hasNext: true }
@@ -30,5 +30,12 @@ describe("swiping between presentation pages", () => {
     expect(pagesToPrepare(3, 7)).toEqual([4, 2])
     expect(pagesToPrepare(6, 7)).toEqual([5])
     expect(pagesToPrepare(0, 1)).toEqual([])
+  })
+
+  it("rests the strip at the page on screen: each page has its own place, a gap apart", () => {
+    expect(stripRest(0, 1200)).toBe(0)
+    expect(stripRest(3, 1200)).toBe(-3 * (1200 + PRESENTATION_PAGE_GAP))
+    // Before the stage is laid out there is nowhere to stand but the start.
+    expect(stripRest(3, 0)).toBe(0)
   })
 })
