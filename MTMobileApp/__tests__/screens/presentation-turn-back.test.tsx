@@ -19,9 +19,12 @@ import TestRenderer, { act } from "react-test-renderer"
 
 const PAGES = 7
 
-jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({ goBack: jest.fn(), navigate: jest.fn() }),
-  useRoute: () => ({
+// One route and one navigation for the whole life of the screen, as the
+// navigator gives them: a fresh params object on every render would reload the
+// deck on every render.
+jest.mock("@react-navigation/native", () => {
+  const navigation = { goBack: jest.fn(), navigate: jest.fn() }
+  const route = {
     params: {
       visitId: "visit-1",
       product: {
@@ -32,17 +35,24 @@ jest.mock("@react-navigation/native", () => ({
         document: { title: "Makroqol", fileName: "makroqol.pdf", mimeType: "application/pdf" },
       },
     },
-  }),
-}))
+  }
+  return { useNavigation: () => navigation, useRoute: () => route }
+})
 jest.mock("@react-native-community/geolocation", () => ({
   getCurrentPosition: (_ok: unknown, fail: () => void) => fail(),
 }))
-jest.mock("react-native-safe-area-context", () => ({ useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }))
+jest.mock("react-native-safe-area-context", () => {
+  const insets = { top: 0, bottom: 0, left: 0, right: 0 }
+  return { useSafeAreaInsets: () => insets }
+})
 jest.mock("react-native-vector-icons/Ionicons", () => "Icon")
-jest.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "az" }, t: (key: string) => key }) }))
+jest.mock("react-i18next", () => {
+  const translation = { i18n: { language: "az" }, t: (key: string) => key }
+  return { useTranslation: () => translation }
+})
 jest.mock("../../src/services/api", () => ({
   api: {
-    authorizedDocumentSource: () => ({ uri: "https://example.test/file", headers: {} }),
+    authorizedDocumentSource: jest.fn(() => ({ uri: "https://example.test/file", headers: {} })),
     startPresentationSession: jest.fn(() => Promise.resolve({ success: true, data: { id: "session-1" } })),
     savePresentationSession: jest.fn(() => Promise.resolve({ success: true })),
   },
