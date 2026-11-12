@@ -6,9 +6,11 @@
  * - Back to a page already shown: the page stayed under «Səhifə hazırlanır…»
  *   for good — the journal had counted it once, and the screen took «already
  *   counted» for «not drawn yet».
- * - Every turn: the strip went back to rest the moment the new page was
- *   chosen, before its picture was drawn, so the dark stage showed between the
- *   slid-in picture and the page's own (and Android faded it in over 300 ms).
+ * - Every turn: the page had one picture that changed its file on each turn,
+ *   so the slid-in picture was swapped for another one — the dark stage, then
+ *   (after the first fix) the previous slide over the new one for a frame
+ *   («slaydı dəyişəndə hələ də flash atır, elə bil əvvəlki slaydla üst-üstə
+ *   düşür bir anlıq»). Now each page keeps its own picture on the strip.
  *
  * The real screen, with the native file module and the server replaced: a
  * picture is «drawn» when the test fires its onLoad, as the device would.
@@ -200,23 +202,29 @@ describe("turning presentation pages on a visit", () => {
     expect(loaderShown()).toBe(false)
   })
 
-  it("keeps the slid-in picture on screen until the new page's own picture is drawn", async () => {
+  it("turns by moving the strip: the picture that slid in IS the page — nothing is swapped or drawn again", async () => {
     await drawNeighbours()
-    expect(uris()).toContain(pageUri(1))
+    const slidIn = images().find((image) => (image.props.source as { uri: string }).uri === pageUri(1))!
+    const firstPage = pagePicture()
 
     await press("presentation-fullscreen-next")
     expect(counter()).toEqual([2, " / ", PAGES])
-    // The page itself now asks for page 2's picture, which is not drawn yet.
-    // The strip still stands where the slide left it, on the neighbour's
-    // picture of page 2, drawn already — it is not swapped for page 3 yet.
+    // The same picture, not a second one asked for the same file: on the
+    // tablet the swap showed the previous slide over the new one for a frame.
+    expect(pagePicture()).toBe(slidIn)
     expect((pagePicture().props.source as { uri: string }).uri).toBe(pageUri(1))
-    expect(uris().filter((uri) => uri === pageUri(1))).toHaveLength(2)
-    expect(uris()).not.toContain(pageUri(2))
+    expect(new Set(uris()).size).toBe(uris().length)
+    expect(loaderShown()).toBe(false)
 
     await drawAll()
-    // Drawn: the neighbours move round the new page.
     expect(uris()).toEqual(expect.arrayContaining([pageUri(0), pageUri(1), pageUri(2)]))
-    expect(uris().filter((uri) => uri === pageUri(1))).toHaveLength(1)
+    expect(new Set(uris()).size).toBe(uris().length)
+
+    // Back: the first page's own picture comes back, still drawn.
+    await press("presentation-fullscreen-previous")
+    expect(counter()).toEqual([1, " / ", PAGES])
+    expect(pagePicture()).toBe(firstPage)
+    expect(loaderShown()).toBe(false)
   })
 
   it("does not fade the pictures in from the dark stage", () => {
