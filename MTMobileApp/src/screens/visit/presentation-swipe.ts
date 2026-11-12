@@ -48,11 +48,13 @@ export function pagesToPrepare(pageIndex: number, pageCount: number): number[] {
 }
 
 /**
- * How long a turn waits for the new page's own picture before the strip goes
- * back to rest anyway. Normally the picture reports itself drawn well before
- * this; the limit only keeps a picture that never reports from holding the deck.
+ * Where the strip of pages rests with a page on screen: page i has its own
+ * place at i stage widths (and a gap each), so turning only moves the strip.
  */
-export const PRESENTATION_SETTLE_FALLBACK_MS = 800
+export function stripRest(pageIndex: number, stageWidth: number): number {
+  if (stageWidth <= 0 || pageIndex <= 0) return 0
+  return -pageIndex * (stageWidth + PRESENTATION_PAGE_GAP)
+}
 
 /** Dots under the counter only while they still read as dots. */
 export const PRESENTATION_DOTS_MAX = 15
