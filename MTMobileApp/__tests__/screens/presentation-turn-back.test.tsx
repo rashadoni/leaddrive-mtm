@@ -14,7 +14,7 @@
  * picture is «drawn» when the test fires its onLoad, as the device would.
  */
 import React from "react"
-import { Image, Text } from "react-native"
+import { BackHandler, Image, Text } from "react-native"
 import TestRenderer, { act } from "react-test-renderer"
 
 const PAGES = 7
@@ -128,8 +128,26 @@ async function press(testID: string) {
   await settle()
 }
 
+/** What the phone's «Назад» reaches: the screen's own handler, newest first. */
+let backHandlers: Array<() => boolean | null | undefined> = []
+
+/** The phone's «Назад»: true when the screen kept it, false when the navigator gets it and closes. */
+async function pressBack() {
+  let kept = false
+  await act(async () => {
+    kept = [...backHandlers].reverse().some((handler) => handler() === true)
+  })
+  await settle()
+  return kept
+}
+
 beforeEach(async () => {
   jest.useFakeTimers()
+  backHandlers = []
+  jest.spyOn(BackHandler, "addEventListener").mockImplementation((_event, handler) => {
+    backHandlers.push(handler)
+    return { remove: () => { backHandlers = backHandlers.filter((known) => known !== handler) } }
+  })
   await act(async () => {
     tree = TestRenderer.create(<PresentationViewerScreen />, {
       createNodeMock: () => ({
@@ -150,6 +168,7 @@ beforeEach(async () => {
 afterEach(() => {
   act(() => tree.unmount())
   jest.useRealTimers()
+  jest.restoreAllMocks()
 })
 
 describe("turning presentation pages on a visit", () => {
@@ -214,4 +233,52 @@ describe("turning presentation pages on a visit", () => {
     await press("presentation-fullscreen-next")
     expect(counter()).toEqual([3, " / ", PAGES])
   })
+
+  it("goes to the previous slide on the phone's «Назад», and closes only on the first", async () => {
+    await press("presentation-fullscreen-next")
+    await drawAll()
+    await press("presentation-fullscreen-next")
+    await drawAll()
+    expect(counter()).toEqual([3, " / ", PAGES])
+
+    expect(await pressBack()).toBe(true)
+    await drawAll()
+    expect(counter()).toEqual([2, " / ", PAGES])
+    expect(loaderShown()).toBe(false)
+
+    expect(await pressBack()).toBe(true)
+    await drawAll()
+    expect(counter()).toEqual([1, " / ", PAGES])
+
+    // On the first slide «Назад» is the navigator's: the viewer closes.
+    expect(await pressBack()).toBe(false)
+    expect(counter()).toEqual([1, " / ", PAGES])
+  })
+
+  it("closes with the ✕ at the bottom, beside the arrows — in full screen and with the panels", async () => {
+    const { goBack } = jest.requireMock("@react-navigation/native").useNavigation()
+    goBack.mockClear()
+    const pressable = (match: (props: Record<string, unknown>) => boolean) => tree.root.findAll((node) => (
+      typeof node.props.onPress === "function" && match(node.props)
+    ))[0]
+    /** The row the previous-page arrow sits in holds the close too. */
+    const closeBesideArrows = (closeTestID: string) => {
+      const previous = pressable((props) => props.accessibilityLabel === "Əvvəlki səhifə")
+      return previous.parent!.findAll((node) => node.props.testID === closeTestID).length > 0
+    }
+
+    expect(closeBesideArrows("presentation-fullscreen-close")).toBe(true)
+    await act(async () => {
+      pressable((props) => props.testID === "presentation-fullscreen-close").props.onPress()
+    })
+    expect(goBack).toHaveBeenCalledTimes(1)
+
+    await press("presentation-chrome-chip")
+    expect(closeBesideArrows("presentation-panels-close")).toBe(true)
+    await act(async () => {
+      pressable((props) => props.testID === "presentation-panels-close").props.onPress()
+    })
+    expect(goBack).toHaveBeenCalledTimes(2)
+  })
 })
+
