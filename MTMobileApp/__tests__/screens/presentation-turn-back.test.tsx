@@ -254,4 +254,31 @@ describe("turning presentation pages on a visit", () => {
     expect(await pressBack()).toBe(false)
     expect(counter()).toEqual([1, " / ", PAGES])
   })
+
+  it("closes with the ✕ at the bottom, beside the arrows — in full screen and with the panels", async () => {
+    const { goBack } = jest.requireMock("@react-navigation/native").useNavigation()
+    goBack.mockClear()
+    const pressable = (match: (props: Record<string, unknown>) => boolean) => tree.root.findAll((node) => (
+      typeof node.props.onPress === "function" && match(node.props)
+    ))[0]
+    /** The row the previous-page arrow sits in holds the close too. */
+    const closeBesideArrows = (closeTestID: string) => {
+      const previous = pressable((props) => props.accessibilityLabel === "Əvvəlki səhifə")
+      return previous.parent!.findAll((node) => node.props.testID === closeTestID).length > 0
+    }
+
+    expect(closeBesideArrows("presentation-fullscreen-close")).toBe(true)
+    await act(async () => {
+      pressable((props) => props.testID === "presentation-fullscreen-close").props.onPress()
+    })
+    expect(goBack).toHaveBeenCalledTimes(1)
+
+    await press("presentation-chrome-chip")
+    expect(closeBesideArrows("presentation-panels-close")).toBe(true)
+    await act(async () => {
+      pressable((props) => props.testID === "presentation-panels-close").props.onPress()
+    })
+    expect(goBack).toHaveBeenCalledTimes(2)
+  })
 })
+
