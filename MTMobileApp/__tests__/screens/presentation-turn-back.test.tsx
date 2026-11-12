@@ -211,7 +211,8 @@ describe("turning presentation pages on a visit", () => {
     expect(counter()).toEqual([2, " / ", PAGES])
     // The same picture, not a second one asked for the same file: on the
     // tablet the swap showed the previous slide over the new one for a frame.
-    expect(pagePicture()).toBe(slidIn)
+    // (compared as a yes/no: a failing toBe would print two whole render trees)
+    expect(pagePicture() === slidIn).toBe(true)
     expect((pagePicture().props.source as { uri: string }).uri).toBe(pageUri(1))
     expect(new Set(uris()).size).toBe(uris().length)
     expect(loaderShown()).toBe(false)
@@ -223,7 +224,7 @@ describe("turning presentation pages on a visit", () => {
     // Back: the first page's own picture comes back, still drawn.
     await press("presentation-fullscreen-previous")
     expect(counter()).toEqual([1, " / ", PAGES])
-    expect(pagePicture()).toBe(firstPage)
+    expect(pagePicture() === firstPage).toBe(true)
     expect(loaderShown()).toBe(false)
   })
 
