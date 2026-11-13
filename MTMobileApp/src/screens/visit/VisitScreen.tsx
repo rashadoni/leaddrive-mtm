@@ -17,11 +17,12 @@ import {
   View,
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
-import { useNavigation } from "@react-navigation/native"
+import { useIsFocused, useNavigation } from "@react-navigation/native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTranslation } from "react-i18next"
 import Icon from "react-native-vector-icons/Ionicons"
 import { lastKnownPosition } from "../../services/location"
+import { readVisitPosition, useWarmVisitPosition } from "../../services/visit-position"
 import { api } from "../../services/api"
 import { enqueueMediaUpload } from "../../services/media-outbox"
 import {
@@ -50,7 +51,7 @@ import StatusBarBand from "../../components/StatusBarBand"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import { ask, notify, type FeedbackTone } from "../../services/app-feedback"
 import { askLocationDisclosure } from "../../services/location-disclosure"
-import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
+import { askJointManagerForCheckIn, prefetchJointManagersForCheckIn } from "../../services/joint-visit-check-in"
 import HintCard from "../../components/HintCard"
 import NotificationBell from "../../components/NotificationBell"
 import { fieldTheme, themed, useFieldColorScheme } from "../../theme/fieldTheme"
@@ -542,6 +543,10 @@ export default function VisitScreen() {
     () => customersWithDistance.find((customer) => customer.id === selectedCustomerId) ?? null,
     [customersWithDistance, selectedCustomerId],
   )
+  // A fix kept warm while a visit can be started or is open (owner,
+  // 2026-11-13: «начать визит и закончить — секунд 6»).
+  const screenFocused = useIsFocused()
+  useWarmVisitPosition(screenFocused && (Boolean(activeVisit) || Boolean(selectedCustomer)))
 
   useEffect(() => {
     if (selectedCustomerId && !customersWithDistance.some((customer) => customer.id === selectedCustomerId)) {
@@ -594,16 +599,7 @@ export default function VisitScreen() {
     const hasPermission = await requestLocationPermission()
     if (!hasPermission) return null
     try {
-      return await new Promise((resolve, reject) => {
-        Geolocation.getCurrentPosition(
-          (position) => resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          }),
-          reject,
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
-        )
-      })
+      return await readVisitPosition(15000)
     } catch {
       notify({ tone: "error", title: t("common.error"), message: t("visit.gpsSignalLost") })
       return null
@@ -618,16 +614,7 @@ export default function VisitScreen() {
     const hasPermission = await requestLocationPermission()
     if (!hasPermission) return { coords: null, failure: "permission" }
     try {
-      const coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-        Geolocation.getCurrentPosition(
-          (position) => resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          }),
-          reject,
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
-        )
-      })
+      const coords = await readVisitPosition(15000)
       return { coords, failure: null }
     } catch {
       return { coords: null, failure: "gps" }
@@ -831,6 +818,8 @@ export default function VisitScreen() {
     if (mutating) return
     setMutating(true)
     setCheckInIssue(null)
+    // Who is in the field with him is asked while the position is read, not after it.
+    prefetchJointManagersForCheckIn()
     try {
       // Before anything about coordinates: on a break nothing else matters,
       // and naming the real reason keeps the agent from hunting a GPS problem
@@ -1056,16 +1045,7 @@ export default function VisitScreen() {
     let uploadCoords: { latitude: number; longitude: number } | undefined
     try {
       try {
-        uploadCoords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (position) => resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            }),
-            reject,
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
-          )
-        })
+        uploadCoords = await readVisitPosition(10000)
       } catch {
         uploadCoords = undefined
       }
