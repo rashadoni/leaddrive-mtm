@@ -26,7 +26,9 @@ import { useSyncStatusStore } from "../../store/sync-status"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import {
+  dayRouteAgenda,
   shiftMonthKey,
+  type DayStopRow,
   type WeekData,
   type WeekDay,
   type WeekTaskItem,
@@ -37,6 +39,7 @@ import { fieldTheme, themed } from "../../theme/fieldTheme"
 import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../theme/layoutBreakpoints"
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
+import { planningTimeLabel } from "../../services/manager-planning"
 
 type CalendarLanguage = "ru" | "az" | "en"
 
@@ -91,6 +94,10 @@ const CALENDAR_COPY = {
     client: "Клиент",
     planOwnRoute: "Составить мой маршрут",
     planOwnRouteHint: "Выберите клиентов и день — редактировать этот план сможете только вы.",
+    offRouteVisits: "Визиты вне маршрута",
+    stopVisited: "Визит был",
+    stopMissed: "Не посещён",
+    stopPlanned: "По плану",
   },
   az: {
     title: "Təqvim",
@@ -142,6 +149,10 @@ const CALENDAR_COPY = {
     client: "Müştəri",
     planOwnRoute: "Öz marşrutumu qur",
     planOwnRouteHint: "Müştəriləri və günü seçin — bu planı yalnız siz redaktə edə bilərsiniz.",
+    offRouteVisits: "Marşrutdan kənar ziyarətlər",
+    stopVisited: "Ziyarət olunub",
+    stopMissed: "Ziyarət olunmayıb",
+    stopPlanned: "Planda",
   },
   en: {
     title: "Calendar",
@@ -193,6 +204,10 @@ const CALENDAR_COPY = {
     client: "Client",
     planOwnRoute: "Build my route",
     planOwnRouteHint: "Choose customers and a day — only you can edit this plan.",
+    offRouteVisits: "Visits off the route",
+    stopVisited: "Visited",
+    stopMissed: "Not visited",
+    stopPlanned: "Planned",
   },
 } as const
 
@@ -1153,10 +1168,12 @@ function DayAgenda({ day, copy, touchTarget, onVisitPress, onTaskPress, compact 
   onTaskPress: (task: WeekTaskItem) => void
   compact?: boolean
 }) {
+  const { stops, offRouteVisits } = dayRouteAgenda(day)
   const agendaEmpty = day.visitsTotal === 0
     && day.tasksTotal === 0
     && day.visits.length === 0
     && day.tasks.length === 0
+    && stops.length === 0
   // A day with a planned route is not an empty day. Its metrics row already
   // says how many stops the route has; saying "nothing is planned" underneath
   // contradicted it. Measured on the phone 2026-09-13: 14 September showed
@@ -1173,22 +1190,43 @@ function DayAgenda({ day, copy, touchTarget, onVisitPress, onTaskPress, compact 
       </View>
     )
   }
+  // The day's route comes first, stop by stop — a future day included
+  // (Zeytun 2026-11-13). A visit made at a stop opens from its stop; the
+  // visits list below keeps only the visits made off the route.
   return (
     <>
-      <AgendaSection
-        icon="checkmark-circle-outline"
-        label={copy.visitsShort}
-        count={day.visitsTotal}
-        compact={compact}
-      >
-        <VisitList
-          day={day}
-          copy={copy}
-          touchTarget={touchTarget}
-          onVisitPress={onVisitPress}
+      {stops.length > 0 ? (
+        <AgendaSection
+          icon="navigate-outline"
+          label={copy.routeShort}
+          count={stops.length}
           compact={compact}
-        />
-      </AgendaSection>
+        >
+          <StopList
+            stops={stops}
+            copy={copy}
+            touchTarget={touchTarget}
+            onVisitPress={onVisitPress}
+            compact={compact}
+          />
+        </AgendaSection>
+      ) : null}
+      {stops.length === 0 || offRouteVisits.length > 0 ? (
+        <AgendaSection
+          icon="checkmark-circle-outline"
+          label={stops.length > 0 ? copy.offRouteVisits : copy.visitsShort}
+          count={stops.length > 0 ? offRouteVisits.length : day.visitsTotal}
+          compact={compact}
+        >
+          <VisitList
+            visits={stops.length > 0 ? offRouteVisits : day.visits}
+            copy={copy}
+            touchTarget={touchTarget}
+            onVisitPress={onVisitPress}
+            compact={compact}
+          />
+        </AgendaSection>
+      ) : null}
       <AgendaSection
         icon="checkbox-outline"
         label={copy.tasksShort}
@@ -1304,14 +1342,87 @@ function TaskList({ tasks, copy, touchTarget, onTaskPress, compact = false }: {
   )
 }
 
-function VisitList({ day, copy, touchTarget, onVisitPress, compact = false }: {
-  day: WeekDay
+function stopPresentation(status: string, copy: Copy) {
+  switch (status.toUpperCase()) {
+    case "VISITED":
+      return { label: copy.stopVisited, icon: "checkmark-circle", ink: fieldTheme.color.success }
+    case "MISSED":
+      return { label: copy.stopMissed, icon: "close-circle-outline", ink: fieldTheme.color.danger }
+    default:
+      return { label: copy.stopPlanned, icon: "time-outline", ink: fieldTheme.color.blue }
+  }
+}
+
+function StopList({ stops, copy, touchTarget, onVisitPress, compact = false }: {
+  stops: DayStopRow[]
   copy: Copy
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   compact?: boolean
 }) {
-  if (day.visits.length === 0) {
+  const timezone = useBootstrapStore((state) => state.data?.timezone)
+  return (
+    <View style={styles.visitList}>
+      {stops.map(({ key, stop, visit }, index) => {
+        const presentation = stopPresentation(stop.status, copy)
+        const time = planningTimeLabel(stop.plannedTime, timezone)
+        const name = stop.name || copy.client
+        const body = (
+          <>
+            <Text style={styles.stopOrder}>{index + 1}</Text>
+            <View style={styles.visitCopy}>
+              <Text style={styles.visitName} numberOfLines={2}>{name}</Text>
+              {stop.place ? <Text style={styles.stopPlace} numberOfLines={1}>{stop.place}</Text> : null}
+              <View style={styles.stopStatusRow}>
+                <Icon name={presentation.icon} size={15} color={presentation.ink} />
+                <Text style={[styles.visitStatus, { color: presentation.ink }]}>
+                  {time ? `${time} · ${presentation.label}` : presentation.label}
+                </Text>
+              </View>
+            </View>
+          </>
+        )
+        return visit ? (
+          <Pressable
+            key={key}
+            testID="calendar-route-stop"
+            accessibilityRole="button"
+            accessibilityLabel={`${copy.openVisit}: ${name}`}
+            onPress={() => onVisitPress(visit.id, visit.name || name)}
+            style={({ pressed }) => [
+              styles.visitRow,
+              compact && styles.visitRowCompact,
+              { minHeight: touchTarget },
+              pressed && styles.visitRowPressed,
+            ]}
+          >
+            {body}
+            <Icon name="chevron-forward" size={20} color={fieldTheme.color.inkMuted} />
+          </Pressable>
+        ) : (
+          <View
+            key={key}
+            testID="calendar-route-stop"
+            accessible
+            accessibilityLabel={[name, stop.place, time, presentation.label].filter(Boolean).join(", ")}
+            style={[styles.visitRow, compact && styles.visitRowCompact, { minHeight: touchTarget }]}
+          >
+            {body}
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+function VisitList({ visits, copy, touchTarget, onVisitPress, compact = false }: {
+  visits: WeekDay["visits"]
+  copy: Copy
+  touchTarget: number
+  onVisitPress: (id: string, name: string) => void
+  compact?: boolean
+}) {
+  if (visits.length === 0) {
     return (
       <View style={[styles.visitEmpty, compact && styles.visitEmptyCompact]}>
         <Icon name="calendar-clear-outline" size={22} color={fieldTheme.color.inkMuted} />
@@ -1325,7 +1436,7 @@ function VisitList({ day, copy, touchTarget, onVisitPress, compact = false }: {
 
   return (
     <View style={styles.visitList}>
-      {day.visits.map((visit) => {
+      {visits.map((visit) => {
         const completed = visit.status === "CHECKED_OUT"
         return (
           <Pressable
@@ -1640,6 +1751,9 @@ const styles = themed(() => StyleSheet.create({
   visitCopy: { flex: 1, minWidth: 0 },
   visitName: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "600" },
   visitStatus: { color: fieldTheme.color.blue, fontSize: 11, lineHeight: 15, fontWeight: "700", marginTop: 2 },
+  stopOrder: { width: 24, height: 24, borderRadius: 12, overflow: "hidden", textAlign: "center", lineHeight: 24, fontSize: 12, fontWeight: "700", color: fieldTheme.color.primaryStrong, backgroundColor: fieldTheme.color.surfaceStrong },
+  stopPlace: { color: fieldTheme.color.inkMuted, fontSize: 12, lineHeight: 16, marginTop: 1 },
+  stopStatusRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
   visitStatusDone: { color: fieldTheme.color.success },
   visitEmpty: { minHeight: 82, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.md, padding: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surfaceStrong },
   visitEmptyCompact: { minHeight: 56 },

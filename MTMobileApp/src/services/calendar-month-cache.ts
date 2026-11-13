@@ -28,10 +28,17 @@ function projectWeek(week: WeekData): WeekData {
   return toWeekData({ weekStart: week.weekStart, weekEndExclusive: week.weekEndExclusive, today: week.today,
     summary: { ...week.summary, coverage: { percentage: week.summary.coveragePct } },
     days: week.days.map(day => ({ ...day,
-      routes: day.routes.map(route => ({ id: route.id, name: route.name, status: route.status,
-        totalPoints: route.plannedStops })),
+      routes: day.routes.map(route => {
+        // A month saved before the stops were kept has none: its count stays.
+        const stops = Array.isArray(route.stops) ? route.stops : []
+        return { id: route.id, name: route.name, status: route.status, totalPoints: route.plannedStops,
+          ...(stops.length === route.plannedStops ? { points: stops.map(stop => ({ id: stop.id,
+            effectiveStatus: stop.status, plannedTime: stop.plannedTime,
+            customer: { name: stop.place ?? stop.name }, contact: stop.place ? { displayName: stop.name } : null })) } : {}) }
+      }),
       visits: { total: day.visitsTotal, completed: day.visitsCompleted,
-        items: day.visits.map(v => ({ id: v.id, customer: { name: v.name }, status: v.status, checkInAt: v.checkInAt })) },
+        items: day.visits.map(v => ({ id: v.id, customer: { name: v.name }, status: v.status, checkInAt: v.checkInAt,
+          routePointId: v.routePointId })) },
       tasks: { total: day.tasksTotal, completed: day.tasksCompleted, items: day.tasks },
     })) })
 }

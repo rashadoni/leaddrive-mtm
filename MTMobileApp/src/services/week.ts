@@ -11,6 +11,8 @@ export interface WeekVisitItem {
   name: string
   status: string
   checkInAt?: string
+  /** The route stop this visit was made at; absent for a visit off the route. */
+  routePointId?: string
 }
 
 /**
@@ -23,11 +25,29 @@ export interface WeekTaskItem extends RawTask {
   priority: string
 }
 
+/**
+ * One stop of a day's route, as the calendar shows it (Zeytun 2026-11-13:
+ * «при выборе даты маршруты в будущие дни не видны — виден только которые
+ * исполнились»). The server always sent the stops; the app kept only their
+ * count, so a day without visits yet showed nobody to go to.
+ */
+export interface WeekRouteStop {
+  id: string
+  /** The doctor on a doctor stop, otherwise the pharmacy/clinic. */
+  name: string
+  /** Where the doctor works; absent on an organization stop. */
+  place?: string
+  /** Server effective status: PENDING | VISITED | MISSED. */
+  status: string
+  plannedTime?: string
+}
+
 export interface WeekRouteSummary {
   id: string
   name?: string
   status?: string
   plannedStops: number
+  stops: WeekRouteStop[]
 }
 
 export interface WeekDay {
@@ -94,6 +114,18 @@ function optStr(value: unknown): string | undefined {
   return s.length > 0 ? s : undefined
 }
 
+function mapStop(raw: any): WeekRouteStop {
+  const doctor = optStr(raw?.contact?.displayName)
+  const organization = optStr(raw?.customer?.name)
+  return {
+    id: String(raw?.id ?? ""),
+    name: doctor ?? organization ?? "",
+    place: doctor ? organization : undefined,
+    status: optStr(raw?.effectiveStatus) ?? optStr(raw?.status) ?? "PENDING",
+    plannedTime: optStr(raw?.plannedTime),
+  }
+}
+
 function mapDay(raw: any): WeekDay {
   const routes = Array.isArray(raw?.routes) ? raw.routes : []
   const plannedStops = routes.reduce(
@@ -121,6 +153,7 @@ function mapDay(raw: any): WeekDay {
       name: optStr(route?.name),
       status: optStr(route?.effectiveStatus) ?? optStr(route?.status),
       plannedStops: Array.isArray(route?.points) ? route.points.length : num(route?.totalPoints),
+      stops: Array.isArray(route?.points) ? route.points.map(mapStop) : [],
     })),
     routeStatus,
     plannedStops,
@@ -133,6 +166,7 @@ function mapDay(raw: any): WeekDay {
       name: optStr(v?.customer?.name) ?? optStr(v?.contact?.displayName) ?? "",
       status: optStr(v?.status) ?? "",
       checkInAt: optStr(v?.checkInAt),
+      routePointId: optStr(v?.routePointId),
     })),
     tasks: taskItems.map((task: any) => ({
       id: String(task?.id ?? ""),
@@ -167,6 +201,32 @@ export function toWeekData(raw: any): WeekData {
       coveragePct: num(s.coverage?.percentage),
     },
   }
+}
+
+export interface DayStopRow {
+  key: string
+  stop: WeekRouteStop
+  /** The visit made at this stop, when there is one: the row opens it. */
+  visit?: WeekVisitItem
+}
+
+/**
+ * The chosen day as the agent reads it: every stop of the day's routes in
+ * route order, each with the visit made there, and the visits made off the
+ * route. A visit made at a stop is shown once — on its stop.
+ */
+export function dayRouteAgenda(day: WeekDay): { stops: DayStopRow[]; offRouteVisits: WeekVisitItem[] } {
+  const visitsByPoint = new Map<string, WeekVisitItem>()
+  for (const visit of day.visits) {
+    if (visit.routePointId && !visitsByPoint.has(visit.routePointId)) visitsByPoint.set(visit.routePointId, visit)
+  }
+  const used = new Set<string>()
+  const stops = day.routes.flatMap((route) => (route.stops ?? []).map((stop, index) => {
+    const visit = stop.id ? visitsByPoint.get(stop.id) : undefined
+    if (visit) used.add(visit.id)
+    return { key: `${route.id}:${stop.id || index}`, stop, ...(visit ? { visit } : {}) }
+  }))
+  return { stops, offRouteVisits: day.visits.filter((visit) => !used.has(visit.id)) }
 }
 
 /**
