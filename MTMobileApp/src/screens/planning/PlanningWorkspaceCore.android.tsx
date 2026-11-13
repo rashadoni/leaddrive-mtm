@@ -115,6 +115,8 @@ export type PlanningWorkspaceTargetQuery = {
   search?: string
   objectType?: string
   organizationKind?: string
+  /** «Врачи клиники» (Zeytun 2026-11-13): the doctors of this clinic only. */
+  clinicId?: string
   continuation?: string | null
 }
 
@@ -131,6 +133,8 @@ export type PlanningWorkspaceTargetPage = {
 }
 
 export type PlanningWorkspaceTargetSource = {
+  /** The source can list one clinic's doctors (`clinicId`); then a clinic opens its doctors. */
+  clinicDoctors?: boolean
   loadTargets: (
     query: PlanningWorkspaceTargetQuery,
     signal?: AbortSignal,
@@ -201,6 +205,9 @@ const SELF_PLANNER_COPY = {
     daySubtitle: "Отметьте клиентов, потом выберите день.",
     editSubtitle: "Вы меняете опубликованный маршрут.",
     quickTitle: "Добавить в маршрут",
+    clinicDoctors: "Врачи клиники «{{name}}» — отметьте, кого посетить.",
+    clinicBack: "Назад к клиникам",
+    clinicAddItself: "Врачей нет — добавить клинику",
     quickSubtitle: "Клиент выбран. Внизу выберите день и сохраните маршрут.",
     quickClient: "Добавляем в маршрут",
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
@@ -221,6 +228,9 @@ const SELF_PLANNER_COPY = {
     daySubtitle: "Müştəriləri seçin, sonra günü.",
     editSubtitle: "Dərc edilmiş marşrutu dəyişirsiniz.",
     quickTitle: "Marşruta əlavə et",
+    clinicDoctors: "«{{name}}» klinikasının həkimləri — ziyarət ediləcəkləri seçin.",
+    clinicBack: "Klinikalara qayıt",
+    clinicAddItself: "Həkim yoxdur — klinikanı əlavə et",
     quickSubtitle: "Müştəri seçilib. Aşağıda günü seçin və marşrutu yadda saxlayın.",
     quickClient: "Marşruta əlavə olunur",
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
@@ -241,6 +251,9 @@ const SELF_PLANNER_COPY = {
     daySubtitle: "Mark customers, then choose the day.",
     editSubtitle: "You are changing a published route.",
     quickTitle: "Add to route",
+    clinicDoctors: "Doctors of «{{name}}» — tick the ones to visit.",
+    clinicBack: "Back to clinics",
+    clinicAddItself: "No doctors — add the clinic",
     quickSubtitle: "The customer is selected. Choose the day below and save the route.",
     quickClient: "Adding to route",
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
@@ -376,6 +389,8 @@ export default function PlanningWorkspaceCore({
   const [activeDate, setActiveDate] = useState(anchor)
   const [targetTypeId, setTargetTypeId] = useState("")
   const [targetSearch, setTargetSearch] = useState(initialTarget?.name ?? "")
+  // A clinic opened for its doctors: «выбор клиники — чтоб выбрать там врачей».
+  const [clinicFocus, setClinicFocus] = useState<{ target: PlanningTarget } | null>(null)
   const [debouncedSearch, setDebouncedSearch] = useState(initialTarget?.name ?? "")
   const [targetResults, setTargetResults] = useState<PlanningTarget[]>([])
   const [targetTotal, setTargetTotal] = useState<number | null>(null)
@@ -441,7 +456,7 @@ export default function PlanningWorkspaceCore({
     () => routeTargetTypes.find((target) => target.id === targetTypeId) ?? routeTargetTypes[0],
     [routeTargetTypes, targetTypeId],
   )
-  const targetKind = initialTarget?.kind ?? (activeTargetType?.direction === "DOCTOR" ? "contact" : "organization")
+  const targetKind = initialTarget?.kind ?? (clinicFocus || activeTargetType?.direction === "DOCTOR" ? "contact" : "organization")
   const targetQuery = useMemo<PlanningWorkspaceTargetQuery>(() => ({
     kind: targetKind,
     date: activeDate,
@@ -453,7 +468,8 @@ export default function PlanningWorkspaceCore({
       objectType: activeTargetType?.objectType ?? undefined,
       organizationKind: activeTargetType?.organizationKind ?? undefined,
     } : {}),
-  }), [activeDate, activeTargetType?.objectType, activeTargetType?.organizationKind, debouncedSearch, initialTarget, targetKind])
+    ...(!initialTarget && clinicFocus ? { clinicId: clinicFocus.target.customerId } : {}),
+  }), [activeDate, activeTargetType?.objectType, activeTargetType?.organizationKind, clinicFocus, debouncedSearch, initialTarget, targetKind])
   // A server cursor is opaque and scoped to every one of these fields. Keep a
   // local provenance key as well, so a render immediately after a date/filter
   // change cannot offer a stale continuation before the fetching effect resets
@@ -465,6 +481,7 @@ export default function PlanningWorkspaceCore({
     targetQuery.search ?? "",
     targetQuery.objectType ?? "",
     targetQuery.organizationKind ?? "",
+    targetQuery.clinicId ?? "",
   ]), [targetQuery])
   const hasMoreTargets = targetNextPage?.queryKey === targetQueryKey
   const showTargetMoreError = targetMoreError && hasMoreTargets
@@ -772,6 +789,15 @@ export default function PlanningWorkspaceCore({
       changedDates.forEach((date) => next.add(date))
       return next
     })
+  }
+
+  /** On «Клиники» a clinic is chosen for its doctors; the clinic itself is not a stop. */
+  const openClinicDoctors = (target: PlanningTarget): boolean => {
+    if (!targetSource.clinicDoctors || clinicFocus || initialTarget || target.kind !== "organization") return false
+    if (activeTargetType?.objectType !== "CLINIC") return false
+    setClinicFocus({ target })
+    setTargetSearch("")
+    return true
   }
 
   const toggleTarget = (target: PlanningTarget) => {
@@ -1855,7 +1881,7 @@ export default function PlanningWorkspaceCore({
                           accessibilityState={{ selected, disabled: saving || !browseEditable }}
                           disabled={saving || !browseEditable}
                           style={({ pressed }) => [styles.targetTypeButton, selected && styles.targetTypeButtonActive, (saving || !browseEditable) && styles.disabled, pressed && styles.pressed]}
-                          onPress={() => { setTargetTypeId(type.id); setTargetSearch("") }}
+                          onPress={() => { setTargetTypeId(type.id); setTargetSearch(""); setClinicFocus(null) }}
                         >
                           <Icon name={targetTypeIcon(type)} size={19} color={selected ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} />
                           <Text style={[styles.targetTypeText, selected && styles.targetTypeTextActive]}>{mobileRouteTargetLabel(type, i18n.language)}</Text>
@@ -1880,6 +1906,20 @@ export default function PlanningWorkspaceCore({
                 </>
               )}
             {selfPlanning ? null : <Text style={styles.scopeNote}>{t("managerShell.planScopeNote")}</Text>}
+            {clinicFocus ? (
+              <View style={styles.clinicBanner} testID="planning-clinic-doctors">
+                <Icon name="business-outline" size={19} color={fieldTheme.color.primaryStrong} />
+                <Text style={styles.clinicBannerText}>{selfCopy.clinicDoctors.replace("{{name}}", clinicFocus.target.name)}</Text>
+                <Pressable testID="planning-clinic-back" accessibilityRole="button" onPress={() => setClinicFocus(null)} style={({ pressed }) => [styles.clinicBannerButton, pressed && styles.pressed]}>
+                  <Text style={styles.clinicBannerButtonText}>{selfCopy.clinicBack}</Text>
+                </Pressable>
+                {!loadingTargets && !targetError && targetResults.length === 0 && !hasMoreTargets ? (
+                  <Pressable testID="planning-clinic-add-itself" accessibilityRole="button" onPress={() => { const clinic = clinicFocus.target; setClinicFocus(null); toggleTarget(clinic) }} style={({ pressed }) => [styles.clinicBannerButton, pressed && styles.pressed]}>
+                    <Text style={styles.clinicBannerButtonText}>{selfCopy.clinicAddItself}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
 
             {targetError ? (
               <InlineEmpty icon="cloud-offline-outline" text={t("managerShell.planTargetsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => setTargetReload((value) => value + 1) : undefined} />
@@ -1913,7 +1953,7 @@ export default function PlanningWorkspaceCore({
                       .map((date) => weekdayShort(date, i18n.language))
                       .join(", ")
                     return (
-                      <TargetOption key={target.key} target={displayTarget} selected={selected} inRoute={inRoute} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} onPress={() => toggleTarget(target)} t={t} tablet={tablet} />
+                      <TargetOption key={target.key} target={displayTarget} selected={selected} inRoute={inRoute} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} onPress={() => { if (!openClinicDoctors(target)) toggleTarget(target) }} t={t} tablet={tablet} />
                     )
                   })}
                 </View>
@@ -2831,6 +2871,10 @@ const styles = themed(() => StyleSheet.create({
   loadMoreTargets: { alignSelf: "center", minHeight: LAYOUT_TOUCH_TARGETS.compact, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 14, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.primarySoft },
   loadMoreTargetsText: { color: fieldTheme.color.primaryStrong, fontSize: 12, fontWeight: "900" },
   targetList: { gap: 6, paddingRight: 2 },
+  clinicBanner: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: fieldTheme.space.sm, padding: fieldTheme.space.sm, marginBottom: fieldTheme.space.sm, borderRadius: fieldTheme.radius.sm, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surfaceStrong },
+  clinicBannerText: { flex: 1, minWidth: 180, color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "600" },
+  clinicBannerButton: { minHeight: 40, justifyContent: "center", paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
+  clinicBannerButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 14, fontWeight: "700" },
   targetListTablet: { flexDirection: "row", flexWrap: "wrap" },
   targetOption: { minHeight: 64, flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: 9, paddingVertical: 7, borderRadius: fieldTheme.radius.md, backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.border },
   targetOptionTablet: { width: "49%" },
