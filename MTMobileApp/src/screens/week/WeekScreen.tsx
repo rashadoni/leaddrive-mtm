@@ -656,20 +656,18 @@ export default function WeekScreen() {
           {tablet ? (
             <View style={styles.tabletWorkspace}>
               <View style={styles.monthPane}>
-                {mode === "week" ? (
-                  <WeekList days={weekDays} selectedDate={selectedDate} lang={i18n.language} copy={copy} t={t} onSelect={selectCalendarDay} />
-                ) : (
-                <MonthCalendar
-                  days={data.days}
-                  anchor={anchor}
-                  selectedDate={selectedDate}
-                  lang={i18n.language}
-                  todayLabel={copy.todayMarker}
-                  copy={copy}
-                  tablet
-                  onSelect={selectCalendarDay}
-                />
-                )}
+                {mode === "week"
+                  ? <WeekList days={weekDays} selectedDate={selectedDate} lang={i18n.language} copy={copy} t={t} onSelect={selectCalendarDay} />
+                  : <MonthCalendar
+                      days={data.days}
+                      anchor={anchor}
+                      selectedDate={selectedDate}
+                      lang={i18n.language}
+                      todayLabel={copy.todayMarker}
+                      copy={copy}
+                      tablet
+                      onSelect={selectCalendarDay}
+                    />}
           {canPlanOwnRoutes ? (
             <Pressable
               accessibilityRole="button"
@@ -708,20 +706,18 @@ export default function WeekScreen() {
             </View>
           ) : (
             <View style={styles.phoneDays}>
-              {mode === "week" ? (
-                <WeekList days={weekDays} selectedDate={selectedDate} lang={i18n.language} copy={copy} t={t} onSelect={selectCalendarDay} />
-              ) : (
-              <MonthCalendar
-                days={data.days}
-                anchor={anchor}
-                selectedDate={selectedDate}
-                lang={i18n.language}
-                todayLabel={copy.todayMarker}
-                copy={copy}
-                tablet={false}
-                onSelect={selectCalendarDay}
-              />
-              )}
+              {mode === "week"
+                ? <WeekList days={weekDays} selectedDate={selectedDate} lang={i18n.language} copy={copy} t={t} onSelect={selectCalendarDay} />
+                : <MonthCalendar
+                    days={data.days}
+                    anchor={anchor}
+                    selectedDate={selectedDate}
+                    lang={i18n.language}
+                    todayLabel={copy.todayMarker}
+                    copy={copy}
+                    tablet={false}
+                    onSelect={selectCalendarDay}
+                  />}
           {canPlanOwnRoutes ? (
             <Pressable
               accessibilityRole="button"
