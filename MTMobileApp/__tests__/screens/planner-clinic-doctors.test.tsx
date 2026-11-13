@@ -58,10 +58,20 @@ const doctor = (id: string, clinicId: string, date: string): PlanningTarget => (
 })
 
 const loadTargets = jest.fn(async (query: { kind: string; date: string; objectType?: string; clinicId?: string }) => {
+  if (query.clinicId === "hospital-6") return { targets: [doctor("mammadova", "hospital-6", query.date)], nextPage: null }
   if (query.clinicId === "clinic-3") return { targets: [doctor("aliyeva", "clinic-3", query.date), doctor("huseynov", "clinic-3", query.date)], nextPage: null }
   if (query.clinicId) return { targets: [], nextPage: null }
   if (query.kind === "organization" && query.objectType === "CLINIC") return { targets: [clinic("clinic-3", "Klinika 3"), clinic("clinic-9", "Klinika 9")], nextPage: null }
   if (query.kind === "organization" && query.objectType === "PHARMACY") return { targets: [clinic("pharmacy-92", "Aptek 92")], nextPage: null }
+  // A tab that is not «Klinikalar» (Zeytun's «Bütün müştərilər»): the row says what it is.
+  if (query.kind === "organization" && query.objectType === "OTHER") return {
+    targets: [
+      { ...clinic("hospital-6", "6 saylı Xəstəxana"), objectType: "OTHER", doctorCount: 2 },
+      { ...clinic("pharmacy-7", "Aptek 7"), objectType: "PHARMACY", doctorCount: 1 },
+      { ...clinic("office-1", "Ofis 1"), objectType: "OTHER", doctorCount: 0 },
+    ],
+    nextPage: null,
+  }
   return { targets: [], nextPage: null }
 })
 const saveDraft = jest.fn(async (..._args: unknown[]) => ({ routeId: "route-new", version: 1 }))
@@ -166,6 +176,32 @@ describe("«Klinikalar» opens a clinic's doctors", () => {
     await press(tab(manager, "Klinikalar"))
     await press(client(manager, "Klinika 3"))
     expect(has(manager, "planning-clinic-doctors")).toBe(false)
+  })
+})
+
+describe("a clinic opens its doctors from any tab (Zeytun 2026-11-13: «klinikanı müştəri kimi açır, həkimləri yox»)", () => {
+  it("says how many doctors work there and opens them instead of adding the clinic", async () => {
+    const tree = await open({ loadTargets, clinicDoctors: true })
+    await press(tab(tree, "Digər təşkilatlar"))
+
+    const hospital = button(tree, "6 saylı Xəstəxana")
+    expect(textsOf(hospital)).toEqual(expect.arrayContaining(["Həkim: 2", "Həkimlər"]))
+    await press(hospital)
+
+    expect(has(tree, "planning-clinic-doctors")).toBe(true)
+    expect(loadTargets).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "contact", clinicId: "hospital-6" }), expect.anything())
+    expect(screenText(tree)).not.toContain("1 müştəri seçilib")
+    await press(client(tree, "Dr mammadova"))
+    expect(screenText(tree)).toContain("1 müştəri seçilib")
+  })
+
+  it("keeps a pharmacy, and a place with no doctors, a stop of its own", async () => {
+    const tree = await open({ loadTargets, clinicDoctors: true })
+    await press(tab(tree, "Digər təşkilatlar"))
+    await press(client(tree, "Aptek 7"))
+    await press(client(tree, "Ofis 1"))
+    expect(has(tree, "planning-clinic-doctors")).toBe(false)
+    expect(screenText(tree)).toContain("2 müştəri seçilib")
   })
 })
 
