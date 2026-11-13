@@ -9,7 +9,7 @@ import path from "path"
 import { doctorOtherClinicHere, parseDoctorOtherClinics } from "../../src/services/doctor-other-clinic"
 import { toRoutePlanningTarget } from "../../src/services/route-planning-target"
 import { carrySelfPlanBasket } from "../../src/screens/planning/self-plan-day"
-import type { PlanningAssignedTarget, PlanningTarget } from "../../src/services/manager-planning"
+import type { PlanningAssignedTarget, PlanningClinicChoice, PlanningTarget } from "../../src/services/manager-planning"
 
 const STOP = { latitude: 40.4093, longitude: 49.8671 }
 const CLINIC_B = { id: "clinic-b", name: "Clinic B", latitude: 40.4363, longitude: 49.8671, geofenceRadiusMeters: 300 } // 3 km north
@@ -70,7 +70,7 @@ describe("the planner's clinic choice", () => {
   })
 
   it("keeps the clinic the agent picked when the day changes, while the server still offers it", () => {
-    const choices = [
+    const choices: PlanningClinicChoice[] = [
       { customerId: "clinic-a", organizationName: "Clinic A", lastVisited: true },
       { customerId: "clinic-b", organizationName: "Clinic B", lastVisited: false },
     ]
