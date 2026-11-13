@@ -243,6 +243,15 @@ export function shiftDateKey(dateKey: string, deltaDays: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** The Monday-first week (seven date keys) a date belongs to. */
+export function weekOfDate(dateKey: string): string[] {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey)
+  if (!match) return []
+  const day = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+  const monday = shiftDateKey(dateKey, -((day.getUTCDay() + 6) % 7))
+  return Array.from({ length: 7 }, (_, index) => shiftDateKey(monday, index))
+}
+
 function calendarDateKey(year: number, monthIndex: number, day: number): string {
   return new Date(Date.UTC(year, monthIndex, day)).toISOString().slice(0, 10)
 }

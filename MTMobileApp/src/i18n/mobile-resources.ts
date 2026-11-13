@@ -58,7 +58,7 @@ export const mobileResources = {
     routeSection: {
       title: "Маршрут",
       today: "Сегодня",
-      month: "Месяц",
+      month: "Календарь",
       plan: "Составить маршрут",
       planHint: "Выберите клиентов и день — этот план сможете менять только вы",
     },
@@ -1185,7 +1185,7 @@ export const mobileResources = {
     routeSection: {
       title: "Route",
       today: "Today",
-      month: "Month",
+      month: "Calendar",
       plan: "Plan a route",
       planHint: "Choose the clients and the day — only you can change this plan",
     },
@@ -2288,7 +2288,7 @@ export const mobileResources = {
     routeSection: {
       title: "Marşrut",
       today: "Bu gün",
-      month: "Ay",
+      month: "Təqvim",
       plan: "Marşrut qur",
       planHint: "Müştəriləri və günü seçin — bu planı yalnız siz dəyişə bilərsiniz",
     },
