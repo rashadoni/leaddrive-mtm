@@ -1500,5 +1500,12 @@
     "refused_noBranch": "Sizin üçün filial seçilməyib. Kadrlar şöbəsinə müraciət edin.",
     "refused_tooMany": "Artıq üç kompüter qoşulub. Birini ayırın və yenidən cəhd edin.",
     "refused_failed": "Qoşmaq alınmadı. Kompüterdə yeni QR-ı skan edin."
+  },
+  "previousNote": {
+    "title": "Əvvəlki ziyarətin qeydi",
+    "beforeVisit": "Ziyarətdən əvvəl: {{name}}",
+    "gotIt": "Aydındır",
+    "show": "Qeydi tam göstər",
+    "hide": "Qeydi yığ"
   }
 }

@@ -38,6 +38,8 @@ import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
 import { cachedJointPlans, jointManagersByStop, refreshJointManagers, type AgentJointPlan } from "../../services/joint-visit"
 import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
+import PreviousNoteStrip from "../../components/PreviousNoteStrip"
+import { previousNoteBeforeVisit } from "../../services/previous-visit-note"
 import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
@@ -115,6 +117,8 @@ interface RoutePoint {
   customer: { id: string; name: string; address?: string; latitude?: number; longitude?: number }
   /** The doctor this stop is about, when the route was planned by doctors. */
   contact?: { id?: string; displayName?: string | null; specialtyName?: string | null } | null
+  /** The note from the last visit to this doctor or place (server, 2026-11-13); absent on older servers. */
+  previousNote?: unknown
 }
 
 interface Route {
@@ -994,6 +998,9 @@ function StopRow({
             ) : null}
           </View>
           {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
+          {/* What was written here last time (Zeytun 2026-11-13), folded to a
+              line; a stop behind the agent needs no reminder. */}
+          {done ? null : <PreviousNoteStrip note={point.previousNote} testID={`route-previous-note-${point.id}`} />}
           {jointWith ? (
             <View style={styles.jointMark} testID={`route-joint-mark-${point.id}`}>
               <Icon name="people" size={15} color={fieldTheme.color.violet} />
@@ -1165,6 +1172,9 @@ function PointActionPanel({
         </View>
         <Text style={styles.actionTitle}>{who.name}</Text>
         {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
+        {point && point.id === activeVisit.routePointId ? (
+          <PreviousNoteStrip note={point.previousNote} testID="route-visit-previous-note" />
+        ) : null}
         <View style={styles.visitFacts}>
           <View style={styles.factPill}>
             <Icon name="time-outline" size={17} color={fieldTheme.color.primaryStrong} />
@@ -2047,6 +2057,11 @@ export default function RouteScreen() {
       // The doctor when the stop names one: «Test E2E Klinika ziyarəti» was the
       // organization, not the person the agent came to see (2026-10-17).
       notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: checkInNoticeName(point) }) })
+      // The note from last time, as the visit begins (owner's mockup,
+      // 2026-11-13): one sheet, closed with «Понятно»; the strip stays in the
+      // visit panel. Not awaited — the visit has started either way.
+      const reminder = previousNoteBeforeVisit(point, checkInNoticeName(point), t, i18n.language)
+      if (reminder) void ask({ ...reminder, tone: "info" })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
         if (result.conflicted > 0) notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
