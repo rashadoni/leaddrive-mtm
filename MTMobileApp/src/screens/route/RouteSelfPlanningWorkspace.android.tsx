@@ -71,7 +71,7 @@ export default function RouteSelfPlanningWorkspace({
         ...(query.kind === "organization" ? {
           objectType: query.objectType,
           organizationKind: query.organizationKind,
-        } : {}),
+        } : query.clinicId ? { customerId: query.clinicId } : {}),
       }, signal)
       if (!response?.success) throw new Error(response?.error || "ROUTE_PLANNING_TARGETS_UNAVAILABLE")
       // This response is already guarded by AbortController/request sequencing
@@ -96,7 +96,8 @@ export default function RouteSelfPlanningWorkspace({
     return { targets: [], nextPage: null, eligibility: null }
   }, [])
 
-  const targetSource = useMemo<PlanningWorkspaceTargetSource>(() => ({ loadTargets }), [loadTargets])
+  // The server lists one clinic's doctors (customerId, leaddrive-v2 #1610).
+  const targetSource = useMemo<PlanningWorkspaceTargetSource>(() => ({ loadTargets, clinicDoctors: true }), [loadTargets])
 
   const writeSource = useMemo<PlanningWorkspaceWriteSource>(() => ({
     saveDraft: async ({ date, routeId, expectedVersion, points }) => {

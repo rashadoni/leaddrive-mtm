@@ -65,9 +65,18 @@ describe("route screen speaks through the app's own feedback layer", () => {
     // noCoordinates, locationUnavailable, tooFar x3 (override, allowed by the
     // organization, refused), signature required, signature save failed, and
     // the battery line's own sheet before the phone's settings open
-    // (2026-10-18, Google Play), worded from the screen's ROUTE_COPY.
-    expect(askCalls).toHaveLength(8)
-    for (const call of askCalls) {
+    // (2026-10-18, Google Play), worded from the screen's ROUTE_COPY; and the
+    // note from the last visit at check-in (Zeytun 2026-11-13), whose sheet is
+    // built by previousNoteBeforeVisit — checked against the same rules below.
+    expect(askCalls).toHaveLength(9)
+    const reminder = askCalls.filter((call) => call.startsWith("({ ...reminder"))
+    expect(reminder).toHaveLength(1)
+    const builder = fs.readFileSync(path.resolve(__dirname, "../../src/services/previous-visit-note.ts"), "utf8")
+    const sheet = builder.slice(builder.indexOf("export function previousNoteBeforeVisit("))
+    expect(sheet).toContain("dismissValue: true")
+    expect(sheet).toContain('title: t("previousNote.beforeVisit"')
+    expect(sheet).toContain('buttons: [{ text: t("previousNote.gotIt"), value: true }]')
+    for (const call of askCalls.filter((call) => !reminder.includes(call))) {
       const buttons = call.match(/\{ text: /g) ?? []
       expect(buttons.length).toBeGreaterThanOrEqual(1)
       expect(buttons.length).toBeLessThanOrEqual(3)
