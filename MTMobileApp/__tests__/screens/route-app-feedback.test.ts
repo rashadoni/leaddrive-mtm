@@ -67,8 +67,9 @@ describe("route screen speaks through the app's own feedback layer", () => {
     // the battery line's own sheet before the phone's settings open
     // (2026-10-18, Google Play), worded from the screen's ROUTE_COPY; and the
     // note from the last visit at check-in (Zeytun 2026-11-13), whose sheet is
-    // built by previousNoteBeforeVisit — checked against the same rules below.
-    expect(askCalls).toHaveLength(9)
+    // built by previousNoteBeforeVisit — checked against the same rules below;
+    // and «is the doctor here today?» at his other clinic (2026-11-13).
+    expect(askCalls).toHaveLength(10)
     const reminder = askCalls.filter((call) => call.startsWith("({ ...reminder"))
     expect(reminder).toHaveLength(1)
     const builder = fs.readFileSync(path.resolve(__dirname, "../../src/services/previous-visit-note.ts"), "utf8")

@@ -59,7 +59,10 @@ describe("who a stop of the route is about", () => {
 
   it("keeps the place, not the person, in what is said about distance and coordinates", () => {
     expect(route).toContain('message: t("route.noCoordinatesBody", { name: point.customer.name }),')
-    expect(route).toContain('t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: pointCheckInRadius(point) })')
+    // The place the visit is made at: the stop's clinic, or the doctor's other
+    // one the agent named (2026-11-13) — still a place, never the doctor.
+    expect(route).toContain('t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: placeCustomer.name, max: placeRadius })')
+    expect(route).toContain("const placeCustomer = visitPlace?.customer ?? point.customer")
   })
 })
 

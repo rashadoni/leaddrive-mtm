@@ -2061,7 +2061,7 @@ export default function RouteScreen() {
       let visitPlace: { customer: RoutePoint["customer"]; radius: number } | null = null
       if (otherClinic) {
         const doctorHere = await ask<boolean>({
-          title: renderTemplate(copy.doctorHereTitle, { doctor: checkInNoticeName(point) }),
+          title: copy.doctorHereTitle.replace("{{doctor}}", checkInNoticeName(point)),
           message: renderTemplate(copy.doctorHereBody, { clinic: otherClinic.name, stop: point.customer.name }),
           tone: "info",
           buttons: [

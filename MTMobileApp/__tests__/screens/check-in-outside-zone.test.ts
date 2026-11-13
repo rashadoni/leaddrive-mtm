@@ -20,7 +20,7 @@ describe("check-in while not at the client, when the organization allows it", ()
     const gate = route.slice(route.indexOf("const canOverride = api.canForceCheckIn"), route.indexOf("forceCheckIn = canOverride"))
     expect(gate).toContain("const outsideAllowed = !canOverride && agentMayCheckInOutsideZone(useBootstrapStore.getState().data?.policies)")
     expect(gate).toContain("} else if (outsideAllowed) {")
-    expect(gate).toContain('message: t("visit.outsideZoneAllowedBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: pointCheckInRadius(point) })')
+    expect(gate).toContain('message: t("visit.outsideZoneAllowedBody", { distance: formatDistance(measuredDistance), name: placeCustomer.name, max: placeRadius })')
     expect(gate).toContain('{ text: t("visit.checkInAnyway"), value: true }')
     // «Cancel», back and a tap outside still end the check-in.
     expect(gate).toContain("if (!proceed) {")

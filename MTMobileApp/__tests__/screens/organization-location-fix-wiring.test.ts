@@ -156,7 +156,8 @@ describe("a visit from the reported place, while the request waits", () => {
     const flow = route.slice(route.indexOf("const handleCheckIn = async (point: RoutePoint) => {"), route.indexOf("let forceCheckIn = false", route.indexOf("const handleCheckIn = async (point: RoutePoint) => {")))
     expect(flow).toContain("const waitingFix = waitingLocationFixFor(point.customer.id)")
     expect(flow).toContain("if (!hasUsableCoordinates(point.customer) && !waitingFix) {")
-    expect(flow).toContain("const leaning = locationFixCoversCheckIn(waitingFix, coords, pointCheckInRadius(point))")
+    // The reported place is this stop's; at the doctor's other clinic (2026-11-13) it does not apply.
+    expect(flow).toContain("const leaning = !visitPlace && locationFixCoversCheckIn(waitingFix, coords, placeRadius)")
     expect(flow).toContain("const customerCoordinates = leaning && waitingFix")
   })
 

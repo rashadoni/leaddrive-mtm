@@ -55,7 +55,8 @@ describe("joint visit in the app", () => {
 
   it("asks the agent at both check-ins and sends the answer with the visit", () => {
     // The route names the stop, so a manager who planned it is asked about by name.
-    expect(routeScreen).toContain("const joint = await askJointManagerForCheckIn(t, { routePointId: point.id, customerId: point.customer.id })")
+    // The place of the visit: the stop's, or the doctor's other clinic the agent named (2026-11-13).
+    expect(routeScreen).toContain("const joint = await askJointManagerForCheckIn(t, { routePointId: point.id, customerId: placeCustomer.id })")
     expect(visitScreen).toContain("const joint = await askJointManagerForCheckIn(t, { customerId: customer.id })")
     for (const screen of [routeScreen, visitScreen]) expect(screen).toContain("jointManagerId: joint.jointManagerId,")
     // Closing the sheet starts no visit: the agent must choose.
