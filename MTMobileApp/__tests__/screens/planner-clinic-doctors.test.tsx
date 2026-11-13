@@ -140,7 +140,9 @@ describe("«Klinikalar» opens a clinic's doctors", () => {
   it("lists the clinic's doctors instead of adding the clinic, and the ticked doctor is the stop", async () => {
     const tree = await open({ loadTargets, clinicDoctors: true })
     await press(tab(tree, "Klinikalar"))
-    await press(client(tree, "Klinika 3"))
+    // A clinic row is a button that opens doctors, not a client to tick.
+    expect(pressables(tree, "checkbox").some((node) => textsOf(node).includes("Klinika 3"))).toBe(false)
+    await press(button(tree, "Klinika 3"))
 
     expect(has(tree, "planning-clinic-doctors")).toBe(true)
     expect(loadTargets).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "contact", clinicId: "clinic-3", date: TODAY }), expect.anything())
@@ -159,7 +161,7 @@ describe("«Klinikalar» opens a clinic's doctors", () => {
   it("adds a clinic with no doctors as itself, when asked", async () => {
     const tree = await open({ loadTargets, clinicDoctors: true })
     await press(tab(tree, "Klinikalar"))
-    await press(client(tree, "Klinika 9"))
+    await press(button(tree, "Klinika 9"))
     await press(byTestIdPress(tree, "planning-clinic-add-itself"))
     expect(has(tree, "planning-clinic-doctors")).toBe(false)
     expect(screenText(tree)).toContain("1 müştəri seçilib")
