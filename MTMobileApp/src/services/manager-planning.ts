@@ -52,6 +52,20 @@ export interface PlanningTarget {
   objectType?: string
   /** Doctors working at this organization on the planned date (planner lookup). */
   doctorCount?: number
+  /**
+   * A doctor who works in several clinics (Zeytun, 2026-11-13): the clinics the
+   * agent may plan him at, the one of his last visit first. `customerId` is the
+   * default; the agent picks another. Never `workplaces` — that field is the
+   * legacy manager picker's and refuses a doctor without a unique primary.
+   */
+  clinicChoices?: PlanningClinicChoice[]
+}
+
+export interface PlanningClinicChoice {
+  customerId: string
+  organizationName?: string
+  address?: string
+  lastVisited: boolean
 }
 
 export interface PlanningRouteAssignment {

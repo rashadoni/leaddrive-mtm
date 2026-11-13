@@ -98,7 +98,15 @@ export function carrySelfPlanBasket(
     }
     const match = confirmed.get(stop.key)
     const resolved = match ? planningTargetForDate(match, day) : null
-    if (resolved) kept.push({ ...resolved, plannedTime: null, date: day })
+    // A doctor of several clinics keeps the clinic the agent chose, while the
+    // server still offers it for the new day (Zeytun, 2026-11-13); the row's
+    // default is only the clinic of his last visit.
+    const chosen = resolved && stop.kind === "contact" && stop.customerId !== resolved.customerId
+      ? resolved.clinicChoices?.find((choice) => choice.customerId === stop.customerId)
+      : undefined
+    if (resolved && chosen) {
+      kept.push({ ...resolved, customerId: chosen.customerId, organizationName: chosen.organizationName, address: chosen.address, plannedTime: null, date: day })
+    } else if (resolved) kept.push({ ...resolved, plannedTime: null, date: day })
     else dropped.push(stop)
   }
   return { kept, dropped }

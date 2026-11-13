@@ -1,4 +1,4 @@
-import type { PlanningTarget } from "./manager-planning"
+import type { PlanningClinicChoice, PlanningTarget } from "./manager-planning"
 
 export type RoutePlanningTargetHint = {
   kind: "contact" | "organization"
@@ -57,6 +57,7 @@ export function toRoutePlanningTarget(raw: unknown, date: string): PlanningTarge
   if (kind === "contact") {
     const contactId = text(source.contactId)
     if (!contactId) return null
+    const clinicChoices = contactClinicChoices(source.workplaces)
     return {
       key: `contact:${contactId}`,
       kind: "contact",
@@ -68,8 +69,33 @@ export function toRoutePlanningTarget(raw: unknown, date: string): PlanningTarge
       eligible: true,
       contactStatus: "ACTIVE",
       validOnDate: date,
+      ...(clinicChoices ? { clinicChoices } : {}),
     }
   }
 
   return null
+}
+
+/**
+ * The clinics of a doctor who works in several (server, 2026-11-13): each one
+ * the save would accept, the one of his last visit first. Fewer than two is no
+ * choice at all.
+ */
+function contactClinicChoices(value: unknown): PlanningClinicChoice[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const seen = new Set<string>()
+  const choices: PlanningClinicChoice[] = []
+  for (const raw of value) {
+    const place = record(raw)
+    const customerId = text(place?.customerId)
+    if (!place || !customerId || seen.has(customerId)) continue
+    seen.add(customerId)
+    choices.push({
+      customerId,
+      organizationName: text(place.name),
+      address: text(place.address),
+      lastVisited: place.lastVisited === true,
+    })
+  }
+  return choices.length > 1 ? choices : undefined
 }
