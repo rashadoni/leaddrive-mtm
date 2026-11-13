@@ -27,7 +27,9 @@ import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upperFirst } from "../../lib/upper"
 import {
   dayRouteAgenda,
+  shiftDateKey,
   shiftMonthKey,
+  weekOfDate,
   type DayStopRow,
   type WeekData,
   type WeekDay,
@@ -94,6 +96,12 @@ const CALENDAR_COPY = {
     client: "Клиент",
     planOwnRoute: "Составить мой маршрут",
     planOwnRouteHint: "Выберите клиентов и день — редактировать этот план сможете только вы.",
+    modeWeek: "Неделя",
+    modeMonth: "Месяц",
+    previousWeekOnly: "Предыдущая неделя",
+    nextWeekOnly: "Следующая неделя",
+    noRouteDay: "Маршрута нет",
+    modeLabel: "Вид календаря",
     offRouteVisits: "Визиты вне маршрута",
     stopVisited: "Визит был",
     stopMissed: "Не посещён",
@@ -149,6 +157,12 @@ const CALENDAR_COPY = {
     client: "Müştəri",
     planOwnRoute: "Öz marşrutumu qur",
     planOwnRouteHint: "Müştəriləri və günü seçin — bu planı yalnız siz redaktə edə bilərsiniz.",
+    modeWeek: "Həftə",
+    modeMonth: "Ay",
+    previousWeekOnly: "Əvvəlki həftə",
+    nextWeekOnly: "Növbəti həftə",
+    noRouteDay: "Marşrut yoxdur",
+    modeLabel: "Təqvimin görünüşü",
     offRouteVisits: "Marşrutdan kənar ziyarətlər",
     stopVisited: "Ziyarət olunub",
     stopMissed: "Ziyarət olunmayıb",
@@ -204,6 +218,12 @@ const CALENDAR_COPY = {
     client: "Client",
     planOwnRoute: "Build my route",
     planOwnRouteHint: "Choose customers and a day — only you can edit this plan.",
+    modeWeek: "Week",
+    modeMonth: "Month",
+    previousWeekOnly: "Previous week",
+    nextWeekOnly: "Next week",
+    noRouteDay: "No route",
+    modeLabel: "Calendar view",
     offRouteVisits: "Visits off the route",
     stopVisited: "Visited",
     stopMissed: "Not visited",
@@ -392,6 +412,9 @@ export default function WeekScreen() {
   const [offline, setOffline] = useState(false)
   const notice = cachedViewNotice({ online, requestFailed: offline })
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  // «по дням/неделям» (Zeytun 2026-11-13): the month grid, or the chosen
+  // day's week as seven rows that name each day's stops.
+  const [mode, setMode] = useState<"week" | "month">("month")
   const scrollRef = useRef<ScrollView>(null)
   // Only the latest read may land: a quiet re-read of this month must not
   // overwrite the month the agent has paged to meanwhile.
@@ -477,12 +500,23 @@ export default function WeekScreen() {
     setAnchor(shiftMonthKey(anchor, offset))
   }
 
+  const weekDates = useMemo(() => weekOfDate(selectedDate ?? data?.today ?? localDateKey()), [selectedDate, data])
+  const weekDays = useMemo(
+    () => weekDates.flatMap((date) => data?.days.find((day) => day.date === date) ?? []),
+    [weekDates, data],
+  )
+
   const selectCalendarDay = (date: string) => {
     setSelectedDate(date)
     if (!sameMonth(date, anchor)) {
       setLoading(true)
       setAnchor(monthStartKey(date))
     }
+  }
+
+  const changeWeek = (offset: number) => {
+    if (loading || !weekDates.length) return
+    selectCalendarDay(shiftDateKey(selectedDate ?? weekDates[0], offset * 7))
   }
 
   const returnToToday = () => {
@@ -553,16 +587,17 @@ export default function WeekScreen() {
         onPlan={canPlanOwnRoutes ? openOwnRoutePlanner : undefined}
       />
       <MonthNavigation
-        range={formatMonthTitle(anchor, i18n.language)}
+        range={mode === "week" ? formatWeekRange(weekDates, i18n.language) : formatMonthTitle(anchor, i18n.language)}
         todayLabel={t("week.today")}
-        previousLabel={copy.previousWeek}
-        nextLabel={copy.nextWeek}
+        previousLabel={mode === "week" ? copy.previousWeekOnly : copy.previousWeek}
+        nextLabel={mode === "week" ? copy.nextWeekOnly : copy.nextWeek}
         loading={loading}
         touchTarget={touchTarget}
-        onPrevious={() => changeMonth(-1)}
-        onNext={() => changeMonth(1)}
+        onPrevious={() => (mode === "week" ? changeWeek(-1) : changeMonth(-1))}
+        onNext={() => (mode === "week" ? changeWeek(1) : changeMonth(1))}
         onToday={returnToToday}
       />
+      <CalendarModeSwitch mode={mode} copy={copy} onChange={setMode} />
     </>
   )
 
@@ -621,6 +656,9 @@ export default function WeekScreen() {
           {tablet ? (
             <View style={styles.tabletWorkspace}>
               <View style={styles.monthPane}>
+                {mode === "week" ? (
+                  <WeekList days={weekDays} selectedDate={selectedDate} lang={i18n.language} copy={copy} t={t} onSelect={selectCalendarDay} />
+                ) : (
                 <MonthCalendar
                   days={data.days}
                   anchor={anchor}
@@ -631,6 +669,7 @@ export default function WeekScreen() {
                   tablet
                   onSelect={selectCalendarDay}
                 />
+                )}
           {canPlanOwnRoutes ? (
             <Pressable
               accessibilityRole="button"
@@ -669,6 +708,9 @@ export default function WeekScreen() {
             </View>
           ) : (
             <View style={styles.phoneDays}>
+              {mode === "week" ? (
+                <WeekList days={weekDays} selectedDate={selectedDate} lang={i18n.language} copy={copy} t={t} onSelect={selectCalendarDay} />
+              ) : (
               <MonthCalendar
                 days={data.days}
                 anchor={anchor}
@@ -679,6 +721,7 @@ export default function WeekScreen() {
                 tablet={false}
                 onSelect={selectCalendarDay}
               />
+              )}
           {canPlanOwnRoutes ? (
             <Pressable
               accessibilityRole="button"
@@ -890,6 +933,110 @@ function SummaryMetric({ icon, value, label, color, softColor }: {
         <Text style={[styles.metricValue, { color }]}>{value}</Text>
         <Text style={styles.metricLabel}>{label}</Text>
       </View>
+    </View>
+  )
+}
+
+function formatWeekRange(dates: string[], lang: string): string {
+  const first = dates.length ? dateFromKey(dates[0]) : null
+  const last = dates.length ? dateFromKey(dates[dates.length - 1]) : null
+  if (!first || !last) return ""
+  const day = (date: Date) => formatLocalizedDate(date, lang, { day: "numeric", timeZone: "UTC" })
+  const dayMonth = (date: Date) => formatLocalizedDate(date, lang, { day: "numeric", month: "long", timeZone: "UTC" })
+  return first.getUTCMonth() === last.getUTCMonth()
+    ? `${day(first)}–${dayMonth(last)}`
+    : `${dayMonth(first)} – ${dayMonth(last)}`
+}
+
+function CalendarModeSwitch({ mode, copy, onChange }: {
+  mode: "week" | "month"
+  copy: Copy
+  onChange: (mode: "week" | "month") => void
+}) {
+  return (
+    <View style={styles.modeSwitch} accessibilityRole="tablist" accessibilityLabel={copy.modeLabel}>
+      {(["week", "month"] as const).map((value) => {
+        const active = mode === value
+        return (
+          <Pressable
+            key={value}
+            testID={`calendar-mode-${value}`}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(value)}
+            style={({ pressed }) => [styles.modeButton, active && styles.modeButtonActive, pressed && styles.pressed]}
+          >
+            <Text style={[styles.modeText, active && styles.modeTextActive]}>
+              {value === "week" ? copy.modeWeek : copy.modeMonth}
+            </Text>
+          </Pressable>
+        )
+      })}
+    </View>
+  )
+}
+
+/** Seven rows, Monday first: each day names its routes and the people on them. */
+function WeekList({ days, selectedDate, lang, copy, t, onSelect }: {
+  days: WeekDay[]
+  selectedDate: string | null
+  lang: string
+  copy: Copy
+  t: (key: string, options?: any) => string
+  onSelect: (date: string) => void
+}) {
+  return (
+    <View style={styles.weekList}>
+      {days.map((day) => {
+        const selected = day.date === selectedDate
+        const routeLines = day.routes.map((route, index) => {
+          const names = (route.stops ?? []).map((stop) => stop.name).filter(Boolean)
+          const shown = names.slice(0, 3).join(", ")
+          return {
+            key: route.id || `${day.date}-${index}`,
+            title: `${route.name || copy.routeShort} · ${t("week.stopsTemplate", { count: route.plannedStops })}`,
+            people: names.length > 3 ? `${shown} +${names.length - 3}` : shown,
+            status: route.status ? statusLabel((key) => t(key), "route", route.status) : "",
+          }
+        })
+        const empty = routeLines.length === 0
+        const emptyText = day.isWorkingDay ? copy.noRouteDay : dayOffReason(day)
+        return (
+          <Pressable
+            key={day.date}
+            testID="calendar-week-day"
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            accessibilityLabel={[
+              formatFullDate(day.date, lang),
+              day.isToday ? copy.todayMarker : null,
+              ...routeLines.map((line) => `${line.title}: ${line.people}`),
+              empty ? emptyText : null,
+            ].filter(Boolean).join(", ")}
+            onPress={() => onSelect(day.date)}
+            style={({ pressed }) => [styles.weekRow, selected && styles.weekRowSelected, pressed && styles.pressed]}
+          >
+            <View style={[styles.dateTile, day.isToday && styles.dateTileToday]}>
+              <Text style={[styles.dateWeekday, day.isToday && styles.dateTextToday]}>{weekdayShort(day.date, lang)}</Text>
+              <Text style={[styles.dateNumber, day.isToday && styles.dateTextToday]}>{formatDayNumber(day.date)}</Text>
+            </View>
+            <View style={styles.weekRowCopy}>
+              {empty ? (
+                <Text style={styles.weekRowEmpty}>{emptyText}</Text>
+              ) : routeLines.map((line) => (
+                <View key={line.key} style={styles.weekRoute}>
+                  <Text style={styles.weekRouteTitle} numberOfLines={1}>{line.title}</Text>
+                  {line.people ? <Text style={styles.weekRoutePeople} numberOfLines={2}>{line.people}</Text> : null}
+                  {line.status ? <Text style={styles.routeStatusChip}>{line.status}</Text> : null}
+                </View>
+              ))}
+              {day.tasksTotal > 0 ? (
+                <Text style={styles.weekRowTasks}>{copy.tasksShort}: {day.tasksCompleted}/{day.tasksTotal}</Text>
+              ) : null}
+            </View>
+          </Pressable>
+        )
+      })}
     </View>
   )
 }
@@ -1701,6 +1848,20 @@ const styles = themed(() => StyleSheet.create({
   dayMetricValue: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 24, fontWeight: "700", marginTop: fieldTheme.space.sm },
   dayMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, fontWeight: "600", marginTop: 2 },
   phoneDays: { gap: fieldTheme.space.md },
+  modeSwitch: { flexDirection: "row", gap: fieldTheme.space.xs, marginHorizontal: fieldTheme.space.lg, marginBottom: fieldTheme.space.sm, padding: 3, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surfaceStrong },
+  modeButton: { flex: 1, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm - 2 },
+  modeButtonActive: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  modeText: { color: fieldTheme.color.inkMuted, fontSize: 15, fontWeight: "600" },
+  modeTextActive: { color: fieldTheme.color.primaryStrong, fontWeight: "700" },
+  weekList: { gap: fieldTheme.space.sm },
+  weekRow: { flexDirection: "row", alignItems: "flex-start", gap: fieldTheme.space.md, padding: fieldTheme.space.sm, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.border, backgroundColor: fieldTheme.color.surface },
+  weekRowSelected: { borderColor: fieldTheme.color.primary, borderWidth: 2 },
+  weekRowCopy: { flex: 1, minWidth: 0, gap: fieldTheme.space.xs, paddingTop: 2 },
+  weekRowEmpty: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 19, paddingTop: fieldTheme.space.sm },
+  weekRoute: { gap: 1 },
+  weekRouteTitle: { color: fieldTheme.color.ink, fontSize: 14, lineHeight: 19, fontWeight: "700" },
+  weekRoutePeople: { color: fieldTheme.color.inkMuted, fontSize: 13, lineHeight: 18 },
+  weekRowTasks: { color: fieldTheme.color.blue, fontSize: 12, lineHeight: 16, fontWeight: "600" },
   weekStrip: { flexDirection: "row", gap: fieldTheme.space.xs },
   routeStatusChip: { color: fieldTheme.color.primaryStrong, fontSize: 12, lineHeight: 15, fontWeight: "500" },
   openRouteButton: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },

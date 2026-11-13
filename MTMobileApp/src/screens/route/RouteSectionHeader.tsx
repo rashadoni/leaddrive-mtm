@@ -28,6 +28,13 @@ export function useRouteSection(): RouteSection | null {
 
 const VIEWS: RouteSectionView[] = ["today", "month"]
 
+/**
+ * Two large buttons, not a thin underlined tab (Zeytun 2026-11-13: «общий
+ * календарь… не нашёл — надо в видном месте, либо кнопку»). The words under
+ * the header read as a subtitle; «Календарь» was called «Месяц» and was missed.
+ */
+const VIEW_ICONS: Record<RouteSectionView, string> = { today: "navigate-outline", month: "calendar-outline" }
+
 export default function RouteSectionHeader({
   subtitle,
   headerTop,
@@ -79,10 +86,10 @@ export default function RouteSectionHeader({
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 onPress={() => section.show(view)}
-                style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+                style={({ pressed }) => [styles.tab, active && styles.tabActive, pressed && styles.pressed]}
               >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>{t(`routeSection.${view}`)}</Text>
-                <View style={[styles.tabLine, active && styles.tabLineActive]} />
+                <Icon name={VIEW_ICONS[view]} size={19} color={active ? fieldTheme.color.primaryStrong : fieldTheme.color.inkMuted} />
+                <Text style={[styles.tabText, active && styles.tabTextActive]} numberOfLines={1}>{t(`routeSection.${view}`)}</Text>
               </Pressable>
             )
           })}
@@ -101,8 +108,7 @@ const styles = themed(() => StyleSheet.create({
     paddingHorizontal: fieldTheme.space.lg,
     paddingBottom: fieldTheme.space.lg,
   },
-  // The tabs' line lies on the header's edge.
-  headerWithTabs: { paddingBottom: 0 },
+  headerWithTabs: { paddingBottom: fieldTheme.space.md },
   titleRow: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.sm },
   title: { flex: 1, color: fieldTheme.color.ink, fontSize: 28, lineHeight: 34, fontWeight: "700", letterSpacing: -0.6 },
   subtitle: { color: fieldTheme.color.inkMuted, fontSize: 14, lineHeight: 20, marginTop: fieldTheme.space.xs },
@@ -124,11 +130,24 @@ const styles = themed(() => StyleSheet.create({
     elevation: 4,
   },
   planText: { flexShrink: 1, color: fieldTheme.color.onColor, fontSize: 15, fontWeight: "700" },
-  tabs: { flexDirection: "row", gap: fieldTheme.space.xl, marginTop: fieldTheme.space.md },
-  tab: { minHeight: 44, justifyContent: "flex-end" },
-  tabText: { color: fieldTheme.color.inkMuted, fontSize: 16, lineHeight: 22, fontWeight: "500", paddingBottom: fieldTheme.space.sm },
-  tabTextActive: { color: fieldTheme.color.ink, fontWeight: "700" },
-  tabLine: { height: 3, borderRadius: 2, backgroundColor: "transparent" },
-  tabLineActive: { backgroundColor: fieldTheme.color.primary },
+  tabs: { flexDirection: "row", gap: fieldTheme.space.sm, marginTop: fieldTheme.space.md },
+  tab: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: fieldTheme.space.xs,
+    paddingHorizontal: fieldTheme.space.md,
+    borderRadius: fieldTheme.radius.md,
+    borderWidth: 1,
+    borderColor: fieldTheme.color.border,
+    backgroundColor: fieldTheme.color.surface,
+  },
+  // A tinted button with a strong edge: the header keeps its one filled
+  // button, «+ Составить маршрут» (one fill per screen, owner 2026-10-18).
+  tabActive: { backgroundColor: fieldTheme.color.surfaceStrong, borderColor: fieldTheme.color.primaryStrong, borderWidth: 2 },
+  tabText: { flexShrink: 1, color: fieldTheme.color.inkMuted, fontSize: 16, lineHeight: 22, fontWeight: "600" },
+  tabTextActive: { color: fieldTheme.color.primaryStrong, fontWeight: "700" },
   pressed: { opacity: 0.82 },
 }))
