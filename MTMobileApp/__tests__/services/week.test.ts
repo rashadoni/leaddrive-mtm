@@ -78,6 +78,7 @@ describe("week/agenda mapping", () => {
       status: "PUBLISHED",
       plannedStops: 3,
       stops: [unnamedStop, unnamedStop, unnamedStop],
+      own: false,
     }])
     expect(data.days[0].visits).toEqual([
       { id: "vv1", name: "Clinic A", status: "CHECKED_OUT", checkInAt: undefined },
