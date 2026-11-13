@@ -37,6 +37,10 @@ export function toRoutePlanningTarget(raw: unknown, date: string): PlanningTarge
   if (!customerId) return null
 
   if (kind === "organization") {
+    const objectType = text(source.objectType)
+    const doctorCount = typeof source.doctorCount === "number" && Number.isInteger(source.doctorCount) && source.doctorCount >= 0
+      ? source.doctorCount
+      : undefined
     return {
       key: `organization:${customerId}`,
       kind: "organization",
@@ -45,6 +49,8 @@ export function toRoutePlanningTarget(raw: unknown, date: string): PlanningTarge
       address: text(source.address),
       eligible: true,
       validOnDate: date,
+      ...(objectType ? { objectType } : {}),
+      ...(doctorCount !== undefined ? { doctorCount } : {}),
     }
   }
 
