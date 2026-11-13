@@ -63,7 +63,8 @@ describe("«Повторить маршрут» in the manager's calendar", () =
     expect(all(tree, "planning-route-repeat")).toHaveLength(2)
     expect(tree.root.findAll((node) => node.props.testID === "route-repeat-sheet")).toHaveLength(0)
 
-    await act(async () => { all(tree, "planning-route-repeat")[0].props.onPress() })
+    const seymur = all(tree, "planning-route-repeat").find((node) => String(node.props.accessibilityLabel).includes("Seymur Fictional"))!
+    await act(async () => { seymur.props.onPress() })
     await act(async () => { await Promise.resolve() })
     expect(mockGetRoute).toHaveBeenCalledWith("r1")
     expect(tree.root.findAll((node) => node.props.testID === "route-repeat-sheet").length).toBeGreaterThan(0)
