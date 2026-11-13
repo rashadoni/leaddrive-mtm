@@ -34,6 +34,7 @@ import NotificationBell from "../../components/NotificationBell"
 import LightScreenStatusBar from "../../components/LightScreenStatusBar"
 import GuideSpot from "../../components/guide/GuideSpot"
 import { fieldTheme, themed } from "../../theme/fieldTheme"
+import RouteRepeatSheet from "../week/RouteRepeatSheet"
 import { isExpandedTabletWidth, isTabletWidth, LAYOUT_TOUCH_TARGETS } from "../../theme/layoutBreakpoints"
 import { formatLocalizedDate } from "../../lib/format-localized-date"
 import { upper, upperFirst } from "../../lib/upper"
@@ -212,7 +213,7 @@ function routeColors(route: ManagerCalendarRoute) {
 
 export default function ManagerPlanningCalendarScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { width } = useWindowDimensions()
   const headerTop = useHeaderTop()
   const tabBarPadding = useTabBarPadding()
@@ -221,6 +222,9 @@ export default function ManagerPlanningCalendarScreen() {
   const [anchor, setAnchor] = useState(today)
   const [mode, setMode] = useState<ManagerCalendarMode>("month")
   const [selectedDate, setSelectedDate] = useState(today)
+  const [repeatRouteId, setRepeatRouteId] = useState<string | null>(null)
+  // Bumped after «Повторить маршрут» made routes: the range is read again.
+  const [reload, setReload] = useState(0)
   const [data, setData] = useState<ManagerCalendarData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -269,7 +273,7 @@ export default function ManagerPlanningCalendarScreen() {
       active = false
       controller.abort()
     }
-  }, [window])
+  }, [window, reload])
 
   useEffect(() => {
     if (selectedDate < window.from || selectedDate > window.to) {
@@ -454,8 +458,19 @@ export default function ManagerPlanningCalendarScreen() {
           language={i18n.language}
           copy={copy}
           onCreate={() => navigation.navigate("PlanningBuilder", { initialDate: selectedDate, initialHorizon: 1 })}
+          onRepeat={setRepeatRouteId}
+          repeatLabel={t("routeRepeat.button")}
         />
       </ScrollView>
+
+      <RouteRepeatSheet
+        routeId={repeatRouteId}
+        today={today}
+        onClose={(created) => {
+          setRepeatRouteId(null)
+          if (created) setReload((value) => value + 1)
+        }}
+      />
 
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
         <Pressable style={styles.scrim} onPress={() => setPickerOpen(false)} accessibilityLabel={copy.close}>
@@ -625,12 +640,15 @@ function RouteChip({ route, compact = false, hideName = false }: { route: Manage
   )
 }
 
-function DayAgenda({ date, routes, language, copy, onCreate }: {
+function DayAgenda({ date, routes, language, copy, onCreate, onRepeat, repeatLabel }: {
   date: string
   routes: ManagerCalendarRoute[]
   language: string
   copy: Copy
   onCreate: () => void
+  /** «Повторить маршрут» (Zeytun 2026-11-13): the same route on later weeks. */
+  onRepeat: (routeId: string) => void
+  repeatLabel: string
 }) {
   return (
     <View style={styles.agenda}>
@@ -652,7 +670,15 @@ function DayAgenda({ date, routes, language, copy, onCreate }: {
                   <Text style={styles.progressLabel}>{copy.progress.replace("{{visited}}", String(route.visited)).replace("{{total}}", String(route.total))}</Text>
                   <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${ratio * 100}%`, backgroundColor: colors.ink }]} /></View>
                 </View>
-                <View style={[styles.statusPill, { backgroundColor: colors.fill }]}><Text style={[styles.statusText, { color: colors.ink }]}>{statusLabel(route, copy)}</Text></View>
+                <View style={styles.agendaCardSide}>
+                  <View style={[styles.statusPill, { backgroundColor: colors.fill }]}><Text style={[styles.statusText, { color: colors.ink }]}>{statusLabel(route, copy)}</Text></View>
+                  {route.total > 0 && route.status !== "CANCELLED" ? (
+                    <Pressable testID="planning-route-repeat" accessibilityRole="button" accessibilityLabel={`${repeatLabel}: ${route.agentName}`} onPress={() => onRepeat(route.id)} style={({ pressed }) => [styles.repeatButton, pressed && styles.pressed]}>
+                      <Icon name="repeat" size={17} color={fieldTheme.color.primaryStrong} />
+                      <Text style={styles.repeatButtonText}>{repeatLabel}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
             )
           })}
@@ -800,6 +826,9 @@ const styles = themed(() => StyleSheet.create({
   progressLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, fontWeight: "700" },
   progressTrack: { height: 5, overflow: "hidden", borderRadius: 3, backgroundColor: fieldTheme.color.border },
   progressFill: { height: 5, borderRadius: 3 },
+  agendaCardSide: { alignItems: "flex-end", gap: fieldTheme.space.xs },
+  repeatButton: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: fieldTheme.space.sm, borderRadius: fieldTheme.radius.pill, borderWidth: 1, borderColor: fieldTheme.color.primary },
+  repeatButtonText: { color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "700" },
   statusPill: { minHeight: 28, justifyContent: "center", paddingHorizontal: 8, borderRadius: fieldTheme.radius.pill },
   statusText: { fontSize: 10, fontWeight: "900" },
   dayEmpty: { minHeight: 140, alignItems: "center", justifyContent: "center", gap: 6, padding: 10 },

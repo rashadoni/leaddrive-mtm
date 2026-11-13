@@ -48,6 +48,8 @@ export interface WeekRouteSummary {
   status?: string
   plannedStops: number
   stops: WeekRouteStop[]
+  /** The reader is this route's primary agent: «Повторить маршрут» is his to use. */
+  own: boolean
 }
 
 export interface WeekDay {
@@ -154,6 +156,7 @@ function mapDay(raw: any): WeekDay {
       status: optStr(route?.effectiveStatus) ?? optStr(route?.status),
       plannedStops: Array.isArray(route?.points) ? route.points.length : num(route?.totalPoints),
       stops: Array.isArray(route?.points) ? route.points.map(mapStop) : [],
+      own: route?.assignmentRole === "PRIMARY",
     })),
     routeStatus,
     plannedStops,

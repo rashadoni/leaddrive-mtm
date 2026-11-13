@@ -32,6 +32,7 @@ function projectWeek(week: WeekData): WeekData {
         // A month saved before the stops were kept has none: its count stays.
         const stops = Array.isArray(route.stops) ? route.stops : []
         return { id: route.id, name: route.name, status: route.status, totalPoints: route.plannedStops,
+          assignmentRole: route.own ? "PRIMARY" : undefined,
           ...(stops.length === route.plannedStops ? { points: stops.map(stop => ({ id: stop.id,
             effectiveStatus: stop.status, plannedTime: stop.plannedTime,
             customer: { name: stop.place ?? stop.name }, contact: stop.place ? { displayName: stop.name } : null })) } : {}) }

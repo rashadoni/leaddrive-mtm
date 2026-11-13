@@ -892,6 +892,12 @@ class ApiClient {
     return this.request(`/routes?${query.toString()}`, { signal })
   }
 
+  /** One agent's routes over a span of days, with what this reader may do (canPublish). */
+  async getAgentRoutesBetween(agentId: string, start: string, endExclusive: string, signal?: AbortSignal) {
+    const query = new URLSearchParams({ agentId, start, endExclusive, limit: "200" })
+    return this.request(`/routes?${query.toString()}`, { signal })
+  }
+
   /** Create a real server-side route draft. Publishing is a separate action. */
   async createRouteDraft(data: {
     agentId: string

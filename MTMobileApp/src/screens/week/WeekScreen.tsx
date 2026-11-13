@@ -42,6 +42,7 @@ import { LAYOUT_TOUCH_TARGETS, isShortWindow, tabContentWidth } from "../../them
 import { useAuthStore } from "../../store/auth"
 import { useBootstrapStore } from "../../store/bootstrap"
 import { planningTimeLabel } from "../../services/manager-planning"
+import RouteRepeatSheet from "./RouteRepeatSheet"
 
 type CalendarLanguage = "ru" | "az" | "en"
 
@@ -415,6 +416,7 @@ export default function WeekScreen() {
   // «по дням/неделям» (Zeytun 2026-11-13): the month grid, or the chosen
   // day's week as seven rows that name each day's stops.
   const [mode, setMode] = useState<"week" | "month">("month")
+  const [repeatRouteId, setRepeatRouteId] = useState<string | null>(null)
   const scrollRef = useRef<ScrollView>(null)
   // Only the latest read may land: a quiet re-read of this month must not
   // overwrite the month the agent has paged to meanwhile.
@@ -604,6 +606,14 @@ export default function WeekScreen() {
   return (
     <View style={styles.container}>
       <LightScreenStatusBar />
+      <RouteRepeatSheet
+        routeId={repeatRouteId}
+        today={localDateKey()}
+        onClose={(created) => {
+          setRepeatRouteId(null)
+          if (created) fetchMonth(anchor)
+        }}
+      />
       {short ? null : header}
 
       {loading ? (
@@ -700,6 +710,7 @@ export default function WeekScreen() {
                     touchTarget={touchTarget}
                     onVisitPress={openVisit}
                     onTaskPress={openTask}
+                    onRepeat={canPlanOwnRoutes ? setRepeatRouteId : undefined}
                   />
                 ) : (
                   <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
@@ -750,6 +761,7 @@ export default function WeekScreen() {
                   onVisitPress={openVisit}
                   onTaskPress={openTask}
                   onOpenRoute={openTodayRoute}
+                  onRepeat={canPlanOwnRoutes ? setRepeatRouteId : undefined}
                 />
               ) : (
                 <Text style={styles.chooseDay}>{copy.chooseDay}</Text>
@@ -1161,7 +1173,7 @@ function MonthCalendar({ days, anchor, selectedDate, lang, todayLabel, copy, tab
   )
 }
 
-function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress }: {
+function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onRepeat }: {
   day: WeekDay
   lang: string
   copy: Copy
@@ -1169,6 +1181,7 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
+  onRepeat?: (routeId: string) => void
 }) {
   const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
@@ -1206,16 +1219,18 @@ function DayDetail({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress 
         <DayAgenda
           day={day}
           copy={copy}
+          t={t}
           touchTarget={touchTarget}
           onVisitPress={onVisitPress}
           onTaskPress={onTaskPress}
+          onRepeat={onRepeat}
         />
       )}
     </View>
   )
 }
 
-function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onOpenRoute }: {
+function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, onOpenRoute, onRepeat }: {
   day: WeekDay
   lang: string
   copy: Copy
@@ -1224,6 +1239,7 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
   onOpenRoute: () => void
+  onRepeat?: (routeId: string) => void
 }) {
   const hasAgenda = day.visits.length > 0 || day.tasks.length > 0
   return (
@@ -1275,9 +1291,11 @@ function PhoneDay({ day, lang, copy, t, touchTarget, onVisitPress, onTaskPress, 
         <DayAgenda
           day={day}
           copy={copy}
+          t={t}
           touchTarget={touchTarget}
           onVisitPress={onVisitPress}
           onTaskPress={onTaskPress}
+          onRepeat={onRepeat}
           compact
         />
       )}
@@ -1307,12 +1325,15 @@ function CompactMetric({ icon, value, label }: { icon: string; value: string; la
   )
 }
 
-function DayAgenda({ day, copy, touchTarget, onVisitPress, onTaskPress, compact = false }: {
+function DayAgenda({ day, copy, t, touchTarget, onVisitPress, onTaskPress, onRepeat, compact = false }: {
   day: WeekDay
   copy: Copy
+  t: (key: string, options?: any) => string
   touchTarget: number
   onVisitPress: (id: string, name: string) => void
   onTaskPress: (task: WeekTaskItem) => void
+  /** «Повторить маршрут» (Zeytun 2026-11-13) for the agent's own routes of the day. */
+  onRepeat?: (routeId: string) => void
   compact?: boolean
 }) {
   const { stops, offRouteVisits } = dayRouteAgenda(day)
@@ -1356,6 +1377,20 @@ function DayAgenda({ day, copy, touchTarget, onVisitPress, onTaskPress, compact 
             onVisitPress={onVisitPress}
             compact={compact}
           />
+          {onRepeat ? day.routes.filter((route) => route.own && route.plannedStops > 0).map((route, index, own) => (
+            <Pressable
+              key={route.id}
+              testID="calendar-route-repeat"
+              accessibilityRole="button"
+              onPress={() => onRepeat(route.id)}
+              style={({ pressed }) => [styles.repeatButton, { minHeight: touchTarget }, pressed && styles.pressed]}
+            >
+              <Icon name="repeat" size={19} color={fieldTheme.color.primaryStrong} />
+              <Text style={styles.repeatButtonText} numberOfLines={1}>
+                {own.length > 1 && route.name ? `${t("routeRepeat.button")} · ${route.name}` : t("routeRepeat.button")}
+              </Text>
+            </Pressable>
+          )) : null}
         </AgendaSection>
       ) : null}
       {stops.length === 0 || offRouteVisits.length > 0 ? (
@@ -1848,6 +1883,8 @@ const styles = themed(() => StyleSheet.create({
   dayMetricValue: { color: fieldTheme.color.ink, fontSize: 20, lineHeight: 24, fontWeight: "700", marginTop: fieldTheme.space.sm },
   dayMetricLabel: { color: fieldTheme.color.inkMuted, fontSize: 11, lineHeight: 16, fontWeight: "600", marginTop: 2 },
   phoneDays: { gap: fieldTheme.space.md },
+  repeatButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: fieldTheme.space.xs, marginTop: fieldTheme.space.sm, paddingHorizontal: fieldTheme.space.md, borderRadius: fieldTheme.radius.md, borderWidth: 1, borderColor: fieldTheme.color.primary, backgroundColor: fieldTheme.color.surface },
+  repeatButtonText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 15, fontWeight: "700" },
   modeSwitch: { flexDirection: "row", gap: fieldTheme.space.xs, marginHorizontal: fieldTheme.space.lg, marginBottom: fieldTheme.space.sm, padding: 3, borderRadius: fieldTheme.radius.sm, backgroundColor: fieldTheme.color.surfaceStrong },
   modeButton: { flex: 1, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: fieldTheme.radius.sm - 2 },
   modeButtonActive: { backgroundColor: fieldTheme.color.surface, borderWidth: 1, borderColor: fieldTheme.color.primary },
