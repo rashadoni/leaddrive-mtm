@@ -15,7 +15,7 @@ import {
   View,
 } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
-import { useNavigation } from "@react-navigation/native"
+import { useIsFocused, useNavigation } from "@react-navigation/native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
 import { useTranslation } from "react-i18next"
@@ -37,12 +37,13 @@ import type { RootStackParamList } from "../../navigation/AppNavigatorAndroidV2"
 import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
 import { cachedJointPlans, jointManagersByStop, refreshJointManagers, type AgentJointPlan } from "../../services/joint-visit"
-import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
+import { askJointManagerForCheckIn, prefetchJointManagersForCheckIn } from "../../services/joint-visit-check-in"
 import PreviousNoteStrip from "../../components/PreviousNoteStrip"
 import { clinicFollowUp, clinicGroups, nextDoctorInClinic } from "./clinic-chain"
 import { previousNoteBeforeVisit } from "../../services/previous-visit-note"
 import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
+import { readVisitPosition, useWarmVisitPosition } from "../../services/visit-position"
 import { readOfflineRoute } from "../../services/offline-reads"
 import { enqueueMediaUpload } from "../../services/media-outbox"
 import {
@@ -1780,6 +1781,11 @@ export default function RouteScreen() {
       : null
   }
   const clinicNext = activeVisit || !focusPoint || notMetLocally.has(focusPoint.id) ? null : clinicFollowUp(chainPoints, focusPoint)
+  // A fix is kept warm while «Начать визит» or the open visit's buttons are
+  // on screen, so the press does not wait for the satellites (owner,
+  // 2026-11-13: «начать визит и закончить — секунд 6»).
+  const screenFocused = useIsFocused()
+  useWarmVisitPosition(screenFocused && (Boolean(activeVisit) || focusPoint?.status === "PENDING"))
   const activeVisitWho = routeStopWho(activeRoutePoint ?? { customer: activeVisit?.customer })
   const staleSinceDay = visitOpenSinceEarlierDay(activeVisit?.checkInAt, new Date(), timezone)
   const staleSinceLabel = staleSinceDay
@@ -1824,13 +1830,7 @@ export default function RouteScreen() {
     try {
       let coords: { latitude: number; longitude: number } | null = null
       try {
-        coords = await new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-            reject,
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
-          )
-        })
+        coords = await readVisitPosition(10000)
       } catch {}
       uploadCoords = coords
       await api.uploadPhoto({
@@ -1999,6 +1999,8 @@ export default function RouteScreen() {
       return
     }
     setMutating(true)
+    // Who is in the field with him is asked while the position is read, not after it.
+    prefetchJointManagersForCheckIn()
     try {
       // The library no longer asks for location by itself (AndroidApp): the
       // check-in asks here, after the disclosure. Refused, the read below
@@ -2006,13 +2008,7 @@ export default function RouteScreen() {
       await ensureFieldLocation()
       let coords: { latitude: number; longitude: number } | null = null
       try {
-        coords = await new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-            reject,
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
-          )
-        })
+        coords = await readVisitPosition(15000)
       } catch {
         const staleLimit = 120_000
         const cacheFresh = lastKnownPosition && Date.now() - lastKnownPosition.timestamp < staleLimit
@@ -2189,13 +2185,7 @@ export default function RouteScreen() {
     try {
       let coords: { latitude: number; longitude: number } | null = null
       try {
-        coords = await new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-            reject,
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
-          )
-        })
+        coords = await readVisitPosition(10000)
       } catch {}
       const { visit } = await queueVisitCheckOut(activeVisit, {
         latitude: coords?.latitude,
