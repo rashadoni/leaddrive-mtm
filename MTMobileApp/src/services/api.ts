@@ -1227,10 +1227,13 @@ class ApiClient {
       limit?: number
       objectType?: string
       organizationKind?: string
+      /** The doctors of this clinic only (kind "contact"). */
+      customerId?: string
     },
     signal?: AbortSignal,
   ) {
     const query = new URLSearchParams({ kind: params.kind, date: params.date })
+    if (params.customerId) query.set("customerId", params.customerId)
     if (params.targetId) query.set("targetId", params.targetId)
     if (params.search) query.set("search", params.search)
     if (params.page) query.set("page", params.page)

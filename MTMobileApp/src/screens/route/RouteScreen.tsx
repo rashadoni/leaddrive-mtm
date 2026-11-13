@@ -38,6 +38,9 @@ import { api } from "../../services/api"
 import { ask, notify } from "../../services/app-feedback"
 import { cachedJointPlans, jointManagersByStop, refreshJointManagers, type AgentJointPlan } from "../../services/joint-visit"
 import { askJointManagerForCheckIn } from "../../services/joint-visit-check-in"
+import PreviousNoteStrip from "../../components/PreviousNoteStrip"
+import { clinicFollowUp, clinicGroups, nextDoctorInClinic } from "./clinic-chain"
+import { previousNoteBeforeVisit } from "../../services/previous-visit-note"
 import { ensureFieldLocation } from "../../services/field-location-permission"
 import { lastKnownPosition } from "../../services/location"
 import { readOfflineRoute } from "../../services/offline-reads"
@@ -115,6 +118,8 @@ interface RoutePoint {
   customer: { id: string; name: string; address?: string; latitude?: number; longitude?: number }
   /** The doctor this stop is about, when the route was planned by doctors. */
   contact?: { id?: string; displayName?: string | null; specialtyName?: string | null } | null
+  /** The note from the last visit to this doctor or place (server, 2026-11-13); absent on older servers. */
+  previousNote?: unknown
 }
 
 interface Route {
@@ -173,6 +178,11 @@ const ROUTE_COPY = {
     recommended: "Рекомендуем идти по порядку. Следующая: {{name}}.",
     visited: "Посещено",
     skipped: "Пропущено",
+    clinicGroup: "{{clinic}} · врачей: {{count}} · один приезд",
+    clinicNextDoctor: "{{clinic}}: следующий врач",
+    clinicStartDoctor: "Начать визит к врачу",
+    clinicNotMet: "Не застал — следующий врач",
+    clinicDoctorsLeft: "Ещё врачей здесь: {{count}}",
     planned: "В плане",
     visiting: "Идёт визит",
     nearest: "Ближайшая",
@@ -275,6 +285,11 @@ const ROUTE_COPY = {
     recommended: "Ardıcıllıqla getmək məsləhətdir. Növbəti: {{name}}.",
     visited: "Ziyarət edilib",
     skipped: "Buraxılıb",
+    clinicGroup: "{{clinic}} · həkim: {{count}} · bir gəliş",
+    clinicNextDoctor: "{{clinic}}: növbəti həkim",
+    clinicStartDoctor: "Həkimlə ziyarətə başla",
+    clinicNotMet: "Tapmadım — növbəti həkim",
+    clinicDoctorsLeft: "Burada daha həkim: {{count}}",
     planned: "Plandadır",
     visiting: "Ziyarət davam edir",
     nearest: "Ən yaxın",
@@ -377,6 +392,11 @@ const ROUTE_COPY = {
     recommended: "Following the planned order is recommended. Next: {{name}}.",
     visited: "Visited",
     skipped: "Skipped",
+    clinicGroup: "{{clinic}} · doctors: {{count}} · one arrival",
+    clinicNextDoctor: "{{clinic}}: next doctor",
+    clinicStartDoctor: "Start the visit to the doctor",
+    clinicNotMet: "Not found — next doctor",
+    clinicDoctorsLeft: "More doctors here: {{count}}",
     planned: "Planned",
     visiting: "Visit in progress",
     nearest: "Nearest",
@@ -934,9 +954,12 @@ function StopRow({
   visitFacts,
   flushTop = false,
   jointWith = null,
+  clinicHeader = null,
 }: {
   point: RoutePoint
   index: number
+  /** Above the first doctor of a clinic visited in one arrival (Zeytun 2026-11-13). */
+  clinicHeader?: string | null
   /** The manager(s) planning to visit this stop with the agent (2026-10-30). */
   jointWith?: string | null
   selected: boolean
@@ -960,7 +983,7 @@ function StopRow({
   const status = pointStatus(point, copy, visiting ? point.id : null)
   const who = routeStopWho(point)
   const done = point.status === "VISITED" && !visiting
-  return (
+  const row = (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
@@ -994,6 +1017,9 @@ function StopRow({
             ) : null}
           </View>
           {who.place ? <Text style={styles.stopAddress} numberOfLines={2}>{who.place}</Text> : null}
+          {/* What was written here last time (Zeytun 2026-11-13), folded to a
+              line; a stop behind the agent needs no reminder. */}
+          {done ? null : <PreviousNoteStrip note={point.previousNote} testID={`route-previous-note-${point.id}`} />}
           {jointWith ? (
             <View style={styles.jointMark} testID={`route-joint-mark-${point.id}`}>
               <Icon name="people" size={15} color={fieldTheme.color.violet} />
@@ -1042,6 +1068,16 @@ function StopRow({
       {first ? <GuideSpot id="route.first" /> : null}
     </Pressable>
   )
+  if (!clinicHeader) return row
+  return (
+    <View>
+      <View style={styles.clinicHeader} testID={`route-clinic-group-${point.id}`}>
+        <Icon name="business-outline" size={15} color={fieldTheme.color.primaryStrong} />
+        <Text style={styles.clinicHeaderText} numberOfLines={1}>{clinicHeader}</Text>
+      </View>
+      {row}
+    </View>
+  )
 }
 
 /** «Planı dəyiş» next to the stop list of today's own published route. */
@@ -1082,9 +1118,14 @@ function PointActionPanel({
   onSignature,
   flushTop = false,
   jointWith = null,
+  clinicNext = null,
+  onNotMet,
 }: {
   point: RoutePoint | null
   nextPoint: RoutePoint | null
+  /** The agent is in this clinic already: the next doctor needs no drive. */
+  clinicNext?: { clinicName: string; doctorsLeft: number } | null
+  onNotMet?: (point: RoutePoint) => void
   activeVisit: OptimisticVisit | null
   /** The day an open visit was started, when that day is over — see stale-visit.ts. */
   staleSinceLabel: string | null
@@ -1165,6 +1206,9 @@ function PointActionPanel({
         </View>
         <Text style={styles.actionTitle}>{who.name}</Text>
         {who.place ? <Text style={styles.actionAddress}>{who.place}</Text> : null}
+        {point && point.id === activeVisit.routePointId ? (
+          <PreviousNoteStrip note={point.previousNote} testID="route-visit-previous-note" />
+        ) : null}
         <View style={styles.visitFacts}>
           <View style={styles.factPill}>
             <Icon name="time-outline" size={17} color={fieldTheme.color.primaryStrong} />
@@ -1268,6 +1312,23 @@ function PointActionPanel({
   const nearby = point.distanceMeters != null && point.distanceMeters <= pointCheckInRadius(point)
   const directionsFirst = hasDirections && !nearby
 
+  if (clinicNext && !visited && !skipped) {
+    return (
+      <View style={[styles.actionPanel, flushTop && styles.flushTop]} testID="route-clinic-next">
+        <Text style={styles.actionEyebrow}>{renderTemplate(copy.clinicNextDoctor, { clinic: clinicNext.clinicName })}</Text>
+        <Text style={styles.actionTitle}>{who.name}</Text>
+        <Text style={styles.actionAddress}>{renderTemplate(copy.clinicDoctorsLeft, { count: clinicNext.doctorsLeft })}</Text>
+        <ActionButton
+          label={mutating ? copy.finishingVisit : copy.clinicStartDoctor}
+          icon={mutating ? "hourglass-outline" : "log-in-outline"}
+          onPress={() => onCheckIn(point)}
+          disabled={mutating}
+        />
+        {onNotMet ? <ActionButton label={copy.clinicNotMet} icon="play-skip-forward-outline" onPress={() => onNotMet(point)} disabled={mutating} tone="secondary" /> : null}
+      </View>
+    )
+  }
+
   return (
     <View style={[styles.actionPanel, flushTop && styles.flushTop]}>
       <Text style={styles.actionEyebrow}>{isRecommended ? copy.nextStop : copy.selectedStop}</Text>
@@ -1370,6 +1431,9 @@ export default function RouteScreen() {
   const [startingWorkday, setStartingWorkday] = useState(false)
   const [startingRoute, setStartingRoute] = useState(false)
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null)
+  // Doctors the agent did not find in the clinic today: still unvisited (the
+  // day closes them as missed), but not offered again as «next».
+  const [notMetLocally, setNotMetLocally] = useState<ReadonlySet<string>>(() => new Set())
   const [phonePanelVisible, setPhonePanelVisible] = useState(false)
   const [navigationStartedFor, setNavigationStartedFor] = useState<string | null>(null)
   const [activeVisit, setActiveVisit] = useState<OptimisticVisit | null>(null)
@@ -1694,7 +1758,12 @@ export default function RouteScreen() {
     ? sortedPoints.filter((point) => point.status === "VISITED").length
     : route?.visitedPoints ?? 0
   const remaining = Math.max(totalPoints - visitedPoints, 0)
-  const nextPoint = sortedPoints.find((point) => point.status === "PENDING") ?? null
+  const nextPoint = sortedPoints.find((point) => point.status === "PENDING" && !notMetLocally.has(point.id)) ?? null
+  // The clinic chain reads a doctor left as «not found» as no longer next.
+  const chainPoints = useMemo(
+    () => sortedPoints.map((point) => (notMetLocally.has(point.id) ? { ...point, status: "NOT_MET" } : point)),
+    [sortedPoints, notMetLocally],
+  )
   const activeRoutePoint = activeVisit?.routePointId
     ? sortedPoints.find((point) => point.id === activeVisit.routePointId) ?? null
     : null
@@ -1702,6 +1771,15 @@ export default function RouteScreen() {
     ? sortedPoints.find((point) => point.id === selectedPointId) ?? null
     : null
   const focusPoint = activeRoutePoint ?? selectedPoint ?? nextPoint ?? sortedPoints[0] ?? null
+  // Doctors of one clinic in a row: one group, one arrival (Zeytun 2026-11-13, «А: подряд»).
+  const clinicGroupByStop = useMemo(() => clinicGroups(sortedPoints), [sortedPoints])
+  const clinicHeaderFor = (point: RoutePoint) => {
+    const group = clinicGroupByStop.get(point.id)
+    return group && group.pointIds[0] === point.id
+      ? renderTemplate(copy.clinicGroup, { clinic: group.clinicName, count: group.pointIds.length })
+      : null
+  }
+  const clinicNext = activeVisit || !focusPoint || notMetLocally.has(focusPoint.id) ? null : clinicFollowUp(chainPoints, focusPoint)
   const activeVisitWho = routeStopWho(activeRoutePoint ?? { customer: activeVisit?.customer })
   const staleSinceDay = visitOpenSinceEarlierDay(activeVisit?.checkInAt, new Date(), timezone)
   const staleSinceLabel = staleSinceDay
@@ -2047,6 +2125,11 @@ export default function RouteScreen() {
       // The doctor when the stop names one: «Test E2E Klinika ziyarəti» was the
       // organization, not the person the agent came to see (2026-10-17).
       notify({ tone: "success", title: t("visit.checkInQueuedTitle"), message: t("visit.checkInQueuedBody", { name: checkInNoticeName(point) }) })
+      // The note from last time, as the visit begins (owner's mockup,
+      // 2026-11-13): one sheet, closed with «Понятно»; the strip stays in the
+      // visit panel. Not awaited — the visit has started either way.
+      const reminder = previousNoteBeforeVisit(point, checkInNoticeName(point), t, i18n.language)
+      if (reminder) void ask({ ...reminder, tone: "info" })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
         if (result.conflicted > 0) notify({ tone: "warning", title: t("visit.syncConflictTitle"), message: t("visit.syncConflictBody") })
@@ -2122,8 +2205,9 @@ export default function RouteScreen() {
       setActiveVisit(visit)
       setFinishedLocally((current) => markStopFinishedLocally(current, visit))
       // The panel moves on to the next stop instead of staying on the one
-      // just finished (Redmi Pad SE, 2026-09-15).
-      setSelectedPointId(null)
+      // just finished (Redmi Pad SE, 2026-09-15) — the next doctor of the same
+      // clinic first, when there is one (Zeytun 2026-11-13, «А: подряд»).
+      setSelectedPointId(nextDoctorInClinic(chainPoints, activeVisit.routePointId)?.id ?? null)
       notify({ tone: "success", title: t("visit.checkOutQueuedTitle"), message: t("visit.checkOutQueuedBody") })
       runMobileSync().then(async (result) => {
         await Promise.all([fetchRoute(), fetchActiveVisit()])
@@ -2183,6 +2267,12 @@ export default function RouteScreen() {
       signature={signature}
       onSignature={signature.openPad}
       jointWith={focusPoint ? jointByStop.get(focusPoint.id)?.join(", ") ?? null : null}
+      clinicNext={clinicNext}
+      onNotMet={(point) => {
+        const next = nextDoctorInClinic(chainPoints.map((item) => (item.id === point.id ? { ...item, status: "NOT_MET" } : item)), point.id)
+        setNotMetLocally((current) => new Set(current).add(point.id))
+        setSelectedPointId(next?.id ?? null)
+      }}
     />
   ) : (
     <RouteExecutionGate
@@ -2385,6 +2475,7 @@ export default function RouteScreen() {
                     nearest={nearestPointId === item.id}
                     visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
                     jointWith={jointByStop.get(item.id)?.join(", ") ?? null}
+                    clinicHeader={clinicHeaderFor(item)}
                   />
                 ))}
               </View>
@@ -2461,6 +2552,7 @@ export default function RouteScreen() {
               nearest={nearestPointId === item.id}
               visitFacts={visitingPointId === item.id ? { minutes: elapsedMin, photos: photos.count } : undefined}
               jointWith={jointByStop.get(item.id)?.join(", ") ?? null}
+              clinicHeader={clinicHeaderFor(item)}
             />
           </View>
         )}
@@ -2716,6 +2808,8 @@ const styles = themed(() => StyleSheet.create({
   // One road, not a stack of cards: a row has no margin and no padding above
   // or below, so the line of one stop meets the line of the next. As separate
   // cards the road was a grey stub inside each of them.
+  clinicHeader: { flexDirection: "row", alignItems: "center", gap: fieldTheme.space.xs, paddingLeft: 44, paddingTop: fieldTheme.space.sm, paddingBottom: 2 },
+  clinicHeaderText: { flexShrink: 1, color: fieldTheme.color.primaryStrong, fontSize: 13, fontWeight: "700" },
   stopRow: {
     minHeight: 64,
     flexDirection: "row",

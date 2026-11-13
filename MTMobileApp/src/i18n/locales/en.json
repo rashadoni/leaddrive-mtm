@@ -1500,5 +1500,12 @@
     "refused_noBranch": "No branch is set for you. Ask HR.",
     "refused_tooMany": "Three computers are already connected. Disconnect one and try again.",
     "refused_failed": "Could not connect. Scan the new QR on the computer."
+  },
+  "previousNote": {
+    "title": "Note from the last visit",
+    "beforeVisit": "Before the visit: {{name}}",
+    "gotIt": "Got it",
+    "show": "Show the whole note",
+    "hide": "Fold the note"
   }
 }

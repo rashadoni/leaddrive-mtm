@@ -192,6 +192,8 @@ describe("route action panel after the route is done", () => {
     expect(source).toMatch(/<RouteFinishedPanel\b[^>]*visited=\{visitedPoints\}[^>]*total=\{totalPoints\}[^>]*copy=\{copy\}/)
     expect(source.match(/routeFinishedBody: "/g)).toHaveLength(3)
     const checkOut = source.slice(source.indexOf("const performCheckOut"), source.indexOf("const performCheckOut") + 1500)
-    expect(checkOut).toContain("setSelectedPointId(null)")
+    // Moves on: to the next doctor of the same clinic when there is one
+    // (Zeytun 2026-11-13, «А: подряд»), otherwise to no stop — never the one just finished.
+    expect(checkOut).toContain("setSelectedPointId(nextDoctorInClinic(chainPoints, activeVisit.routePointId)?.id ?? null)")
   })
 })
