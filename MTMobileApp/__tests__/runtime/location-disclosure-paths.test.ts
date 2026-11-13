@@ -76,7 +76,7 @@ describe("Android's location sheet opens only after the app's disclosure", () =>
     const route = read("src/screens/route/RouteScreen.tsx")
     const start = route.indexOf("const handleCheckIn = async")
     const ask = route.indexOf("await ensureFieldLocation()", start)
-    const reading = route.indexOf("Geolocation.getCurrentPosition(", start)
+    const reading = route.indexOf("readVisitPosition(", start)
     expect(start).toBeGreaterThan(-1)
     expect(ask).toBeGreaterThan(start)
     expect(reading).toBeGreaterThan(ask)
