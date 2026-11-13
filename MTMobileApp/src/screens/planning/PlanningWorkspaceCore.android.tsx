@@ -207,6 +207,8 @@ const SELF_PLANNER_COPY = {
     quickTitle: "Добавить в маршрут",
     clinicDoctors: "Врачи клиники «{{name}}» — отметьте, кого посетить.",
     clinicBack: "Назад к клиникам",
+    clinicDoctorsAction: "Врачи",
+    clinicDoctorCount: "Врачей: {{count}}",
     clinicAddItself: "Врачей нет — добавить клинику",
     quickSubtitle: "Клиент выбран. Внизу выберите день и сохраните маршрут.",
     quickClient: "Добавляем в маршрут",
@@ -230,6 +232,8 @@ const SELF_PLANNER_COPY = {
     quickTitle: "Marşruta əlavə et",
     clinicDoctors: "«{{name}}» klinikasının həkimləri — ziyarət ediləcəkləri seçin.",
     clinicBack: "Klinikalara qayıt",
+    clinicDoctorsAction: "Həkimlər",
+    clinicDoctorCount: "Həkim: {{count}}",
     clinicAddItself: "Həkim yoxdur — klinikanı əlavə et",
     quickSubtitle: "Müştəri seçilib. Aşağıda günü seçin və marşrutu yadda saxlayın.",
     quickClient: "Marşruta əlavə olunur",
@@ -253,6 +257,8 @@ const SELF_PLANNER_COPY = {
     quickTitle: "Add to route",
     clinicDoctors: "Doctors of «{{name}}» — tick the ones to visit.",
     clinicBack: "Back to clinics",
+    clinicDoctorsAction: "Doctors",
+    clinicDoctorCount: "Doctors: {{count}}",
     clinicAddItself: "No doctors — add the clinic",
     quickSubtitle: "The customer is selected. Choose the day below and save the route.",
     quickClient: "Adding to route",
@@ -791,10 +797,18 @@ export default function PlanningWorkspaceCore({
     })
   }
 
-  /** On «Клиники» a clinic is chosen for its doctors; the clinic itself is not a stop. */
-  const openClinicDoctors = (target: PlanningTarget): boolean => {
+  /**
+   * A clinic is chosen for its doctors; the clinic itself is not a stop. On
+   * «Клиники» always; on any other tab (Zeytun's «Bütün müştərilər») when the
+   * row says doctors work there. A pharmacy stays a stop (owner, 2026-11-13).
+   */
+  const opensClinicDoctors = (target: PlanningTarget): boolean => {
     if (!targetSource.clinicDoctors || clinicFocus || initialTarget || target.kind !== "organization") return false
-    if (activeTargetType?.objectType !== "CLINIC") return false
+    if (activeTargetType?.objectType === "CLINIC") return true
+    return target.objectType !== "PHARMACY" && (target.doctorCount ?? 0) > 0
+  }
+  const openClinicDoctors = (target: PlanningTarget): boolean => {
+    if (!opensClinicDoctors(target)) return false
     setClinicFocus({ target })
     setTargetSearch("")
     return true
@@ -1952,8 +1966,13 @@ export default function PlanningWorkspaceCore({
                       .filter((date) => date !== activeDate && targetsForPlanningDay(date, assignments, routes).some((row) => row.key === target.key))
                       .map((date) => weekdayShort(date, i18n.language))
                       .join(", ")
+                    // A clinic already on the day comes off it like any stop; one
+                    // not yet chosen opens its doctors.
+                    const doctors = !selected && opensClinicDoctors(target)
+                      ? { action: selfCopy.clinicDoctorsAction, meta: target.doctorCount ? selfCopy.clinicDoctorCount.replace("{{count}}", String(target.doctorCount)) : undefined }
+                      : undefined
                     return (
-                      <TargetOption key={target.key} target={displayTarget} selected={selected} inRoute={inRoute} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} onPress={() => { if (!openClinicDoctors(target)) toggleTarget(target) }} t={t} tablet={tablet} />
+                      <TargetOption key={target.key} target={displayTarget} selected={selected} inRoute={inRoute} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} doctors={doctors} onPress={() => { if (selected || !openClinicDoctors(target)) toggleTarget(target) }} t={t} tablet={tablet} />
                     )
                   })}
                 </View>
@@ -2461,17 +2480,18 @@ function WeekSnapshot({ dates, routes, loading, language, t }: { dates: string[]
   )
 }
 
-function TargetOption({ target, selected, inRoute = false, unavailable, disabled, otherDays, onPress, t, tablet }: { target: PlanningTarget; selected: boolean; /** Already a stop of the chosen day's live route. */ inRoute?: boolean; unavailable: boolean; disabled: boolean; otherDays?: string; onPress: () => void; t: any; tablet: boolean }) {
+function TargetOption({ target, selected, inRoute = false, unavailable, disabled, otherDays, doctors, onPress, t, tablet }: { target: PlanningTarget; selected: boolean; /** Already a stop of the chosen day's live route. */ inRoute?: boolean; unavailable: boolean; disabled: boolean; otherDays?: string; /** Pressing opens this clinic's doctors instead of adding it. */ doctors?: { action: string; meta?: string }; onPress: () => void; t: any; tablet: boolean }) {
   return (
-    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.targetOption, tablet && styles.targetOptionTablet, selected && styles.targetOptionSelected, inRoute && styles.targetOptionInRoute, disabled && !inRoute && styles.disabled, pressed && styles.pressed]}>
+    <Pressable accessibilityRole={doctors ? "button" : "checkbox"} accessibilityState={{ checked: doctors ? undefined : selected, disabled }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.targetOption, tablet && styles.targetOptionTablet, selected && styles.targetOptionSelected, inRoute && styles.targetOptionInRoute, disabled && !inRoute && styles.disabled, pressed && styles.pressed]}>
       <View style={[styles.targetMark, selected && styles.targetMarkSelected, inRoute && styles.targetMarkInRoute]}><Icon name={inRoute ? "lock-closed" : selected ? "checkmark" : target.kind === "contact" ? "medkit-outline" : "business-outline"} size={20} color={selected ? fieldTheme.color.onColor : fieldTheme.color.primaryStrong} /></View>
       <View style={styles.targetCopy}>
         <Text style={styles.targetName}>{target.name || t("managerShell.planUnnamedTarget")}</Text>
         <Text style={styles.targetMeta}>{target.kind === "contact" ? target.organizationName || t("managerShell.planNoWorkplace") : target.address || t("managerShell.planAddressMissing")}</Text>
+        {doctors?.meta ? <Text style={styles.targetAlsoOn}>{doctors.meta}</Text> : null}
         {otherDays ? <Text style={styles.targetAlsoOn}>{t("managerShell.planAlsoOn", { days: otherDays })}</Text> : null}
         {unavailable || !target.eligible ? <Text style={styles.targetProblem}>{t("managerShell.planNoActiveWorkplace")}</Text> : null}
       </View>
-      <Text style={[styles.targetAction, selected && styles.targetActionSelected, inRoute && styles.targetActionInRoute]}>{t(inRoute ? "managerShell.planInRoute" : selected ? "managerShell.planRemove" : "managerShell.planAdd")}</Text>
+      <Text style={[styles.targetAction, selected && styles.targetActionSelected, inRoute && styles.targetActionInRoute]}>{doctors ? doctors.action : t(inRoute ? "managerShell.planInRoute" : selected ? "managerShell.planRemove" : "managerShell.planAdd")}</Text>
     </Pressable>
   )
 }

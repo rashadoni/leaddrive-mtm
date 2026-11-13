@@ -48,6 +48,10 @@ export interface PlanningTarget {
   pointId?: string
   /** Server point status (PENDING, VISITED, SKIPPED, …) of a saved stop. */
   pointStatus?: string
+  /** Organization type from the planner lookup (CLINIC, PHARMACY, …). */
+  objectType?: string
+  /** Doctors working at this organization on the planned date (planner lookup). */
+  doctorCount?: number
 }
 
 export interface PlanningRouteAssignment {
