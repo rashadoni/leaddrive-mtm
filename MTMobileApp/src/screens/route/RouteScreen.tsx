@@ -61,6 +61,7 @@ import { agentMayCheckInOutsideZone } from "../../lib/agent-permissions"
 import { waitingLocationFixFor } from "../../store/location-fixes"
 import { locationFixCoversCheckIn } from "../base/organization-location-fix-model"
 import { checkInRadiusMeters, FALLBACK_CHECK_IN_RADIUS_METERS } from "../../lib/check-in-radius"
+import { doctorOtherClinicHere, parseDoctorOtherClinics } from "../../services/doctor-other-clinic"
 import { useWorkdayStore, workdayKey } from "../../store/workday"
 import { useSyncStatusStore } from "../../store/sync-status"
 import { refreshRouteFieldSession } from "../../services/field-session"
@@ -121,6 +122,8 @@ interface RoutePoint {
   contact?: { id?: string; displayName?: string | null; specialtyName?: string | null } | null
   /** The note from the last visit to this doctor or place (server, 2026-11-13); absent on older servers. */
   previousNote?: unknown
+  /** The doctor's other clinics where the server accepts this stop's visit, with their pins (2026-11-13). */
+  otherClinics?: unknown
 }
 
 interface Route {
@@ -156,6 +159,10 @@ const ROUTE_COPY = {
     progress: "{{done}} из {{total}} точек готово",
     remaining: "Осталось: {{count}}",
     openMaps: "Построить путь",
+    doctorHereTitle: "{{doctor}} сегодня здесь?",
+    doctorHereBody: "Вы в клинике «{{clinic}}», а визит запланирован в «{{stop}}». Если врач сегодня принимает здесь, визит запишется в эту клинику.",
+    doctorHereYes: "Да, визит здесь",
+    doctorHereNo: "Нет, в запланированной",
     alreadyHere: "Я уже на месте",
     arrivedCheckIn: "Я приехал — начать визит",
     takePhoto: "Сделать фото",
@@ -263,6 +270,10 @@ const ROUTE_COPY = {
     progress: "{{total}} nöqtədən {{done}} hazırdır",
     remaining: "Qalıb: {{count}}",
     openMaps: "Yolu aç",
+    doctorHereTitle: "{{doctor}} bu gün buradadır?",
+    doctorHereBody: "Siz «{{clinic}}» klinikasındasınız, vizit isə «{{stop}}» üçün planlaşdırılıb. Həkim bu gün burada qəbul edirsə, vizit bu klinikada yazılacaq.",
+    doctorHereYes: "Bəli, vizit burada",
+    doctorHereNo: "Xeyr, planlaşdırılan yerdə",
     alreadyHere: "Artıq buradayam",
     arrivedCheckIn: "Gəldim — ziyarətə başla",
     takePhoto: "Foto çək",
@@ -370,6 +381,10 @@ const ROUTE_COPY = {
     progress: "{{done}} of {{total}} stops complete",
     remaining: "Left: {{count}}",
     openMaps: "Get directions",
+    doctorHereTitle: "Is {{doctor}} here today?",
+    doctorHereBody: "You are at «{{clinic}}», and the visit is planned at «{{stop}}». If the doctor sees patients here today, the visit is recorded at this clinic.",
+    doctorHereYes: "Yes, the visit is here",
+    doctorHereNo: "No, at the planned one",
     alreadyHere: "I'm already here",
     arrivedCheckIn: "I've arrived — start visit",
     takePhoto: "Take a photo",
@@ -2029,12 +2044,48 @@ export default function RouteScreen() {
         }
       }
 
+      // A doctor who works in two clinics (Zeytun, 2026-11-13): standing in
+      // his other one, the agent says whether the doctor is here today. On
+      // «yes» the visit is recorded there and judged by that clinic's pin; the
+      // stop stays planned where it was.
+      const fallbackRadius = checkInRadiusMeters(null, useBootstrapStore.getState().data?.policies)
+      const otherClinic = point.contact?.id
+        ? doctorOtherClinicHere({
+            position: coords,
+            stop: point.customer,
+            stopRadiusMeters: pointCheckInRadius(point),
+            otherClinics: parseDoctorOtherClinics(point.otherClinics),
+            fallbackRadiusMeters: fallbackRadius,
+          })
+        : null
+      let visitPlace: { customer: RoutePoint["customer"]; radius: number } | null = null
+      if (otherClinic) {
+        const doctorHere = await ask<boolean>({
+          title: renderTemplate(copy.doctorHereTitle, { doctor: checkInNoticeName(point) }),
+          message: renderTemplate(copy.doctorHereBody, { clinic: otherClinic.name, stop: point.customer.name }),
+          tone: "info",
+          buttons: [
+            { text: copy.doctorHereNo, value: false, style: "cancel" },
+            { text: copy.doctorHereYes, value: true },
+          ],
+          dismissValue: false,
+        })
+        if (doctorHere) {
+          visitPlace = {
+            customer: { id: otherClinic.id, name: otherClinic.name, address: otherClinic.address, latitude: otherClinic.latitude, longitude: otherClinic.longitude },
+            radius: otherClinic.geofenceRadiusMeters ?? fallbackRadius,
+          }
+        }
+      }
+      const placeCustomer = visitPlace?.customer ?? point.customer
+      const placeRadius = visitPlace?.radius ?? pointCheckInRadius(point)
+
       // 0°,0° or non-finite stored coordinates count as "no coordinates" (field audit 2026-09-05).
       // Standing at the place he reported, he is measured against it; anywhere else, against the pin as always.
-      const leaning = locationFixCoversCheckIn(waitingFix, coords, pointCheckInRadius(point))
+      const leaning = !visitPlace && locationFixCoversCheckIn(waitingFix, coords, placeRadius)
       const customerCoordinates = leaning && waitingFix
         ? { latitude: waitingFix.latitude, longitude: waitingFix.longitude }
-        : { latitude: point.customer.latitude, longitude: point.customer.longitude }
+        : { latitude: placeCustomer.latitude, longitude: placeCustomer.longitude }
       const measuredDistance = coords && hasUsableCoordinates(customerCoordinates)
         ? Math.round(haversineDistance(
             coords.latitude,
@@ -2042,9 +2093,9 @@ export default function RouteScreen() {
             customerCoordinates.latitude,
             customerCoordinates.longitude,
           ))
-        : point.distanceMeters
+        : visitPlace ? null : point.distanceMeters
       let forceCheckIn = false
-      if (coords && measuredDistance != null && measuredDistance > pointCheckInRadius(point)) {
+      if (coords && measuredDistance != null && measuredDistance > placeRadius) {
         const canOverride = api.canForceCheckIn
         // The organization may let its agents check in while not at the
         // client: the visit is recorded as outside the zone and a manager
@@ -2055,7 +2106,7 @@ export default function RouteScreen() {
         if (canOverride) {
           proceed = await ask({
             title: t("visit.tooFarTitle"),
-            message: t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: pointCheckInRadius(point) }),
+            message: t("visit.tooFarBody", { distance: formatDistance(measuredDistance), name: placeCustomer.name, max: placeRadius }),
             tone: "warning",
             buttons: [
               { text: t("common.cancel"), value: false, style: "cancel" },
@@ -2066,7 +2117,7 @@ export default function RouteScreen() {
         } else if (outsideAllowed) {
           proceed = await ask({
             title: t("visit.tooFarTitle"),
-            message: t("visit.outsideZoneAllowedBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: pointCheckInRadius(point) }),
+            message: t("visit.outsideZoneAllowedBody", { distance: formatDistance(measuredDistance), name: placeCustomer.name, max: placeRadius }),
             tone: "warning",
             buttons: [
               { text: t("common.cancel"), value: false, style: "cancel" },
@@ -2080,7 +2131,7 @@ export default function RouteScreen() {
           // ends this check-in.
           const pick = await ask<"ok" | "maps">({
             title: t("visit.tooFarTitle"),
-            message: t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: point.customer.name, max: pointCheckInRadius(point) }),
+            message: t("route.tooFarSupervisorBody", { distance: formatDistance(measuredDistance), name: placeCustomer.name, max: placeRadius }),
             tone: "warning",
             buttons: [
               { text: t("common.ok"), value: "ok", style: "cancel" },
@@ -2100,19 +2151,21 @@ export default function RouteScreen() {
       // Joint visit (owner, 2026-10-20): while a manager is in the field
       // with this agent, or planned this stop with him (2026-10-30), the
       // agent says whether he is on this visit.
-      const joint = await askJointManagerForCheckIn(t, { routePointId: point.id, customerId: point.customer.id })
+      const joint = await askJointManagerForCheckIn(t, { routePointId: point.id, customerId: placeCustomer.id })
       if (!joint.proceed) {
         setMutating(false)
         return
       }
 
       const { visit } = await queueVisitCheckIn({
-        customer: point.customer,
+        customer: placeCustomer,
         latitude: coords?.latitude,
         longitude: coords?.longitude,
         force: forceCheckIn,
         routeId: route?.id,
         routePointId: point.id,
+        // The server takes another clinic only for the stop's own doctor.
+        ...(visitPlace && point.contact?.id ? { contactId: point.contact.id } : {}),
         jointManagerId: joint.jointManagerId,
       })
       setActiveVisit(visit)

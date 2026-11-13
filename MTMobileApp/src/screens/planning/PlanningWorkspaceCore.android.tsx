@@ -210,6 +210,12 @@ const SELF_PLANNER_COPY = {
     clinicDoctorsAction: "Врачи",
     clinicDoctorCount: "Врачей: {{count}}",
     clinicAddItself: "Врачей нет — добавить клинику",
+    doctorClinicAction: "Выбрать клинику",
+    doctorClinicCount: "Мест работы: {{count}}",
+    doctorClinicTitle: "Где будет {{name}}?",
+    doctorClinicLastVisit: "Здесь был последний визит",
+    doctorClinicHint: "Если в день визита врач окажется в другой своей клинике, приложение предложит начать визит там.",
+    doctorClinicCancel: "Отмена",
     quickSubtitle: "Клиент выбран. Внизу выберите день и сохраните маршрут.",
     quickClient: "Добавляем в маршрут",
     weekSubtitle: "Выберите начало недели, добавьте клиентов и распределите визиты по семи дням.",
@@ -235,6 +241,12 @@ const SELF_PLANNER_COPY = {
     clinicDoctorsAction: "Həkimlər",
     clinicDoctorCount: "Həkim: {{count}}",
     clinicAddItself: "Həkim yoxdur — klinikanı əlavə et",
+    doctorClinicAction: "Klinikanı seç",
+    doctorClinicCount: "İş yeri: {{count}}",
+    doctorClinicTitle: "{{name}} harada olacaq?",
+    doctorClinicLastVisit: "Son vizit burada olub",
+    doctorClinicHint: "Vizit günü həkim başqa klinikasında olsa, tətbiq vizitə orada başlamağı təklif edəcək.",
+    doctorClinicCancel: "Ləğv et",
     quickSubtitle: "Müştəri seçilib. Aşağıda günü seçin və marşrutu yadda saxlayın.",
     quickClient: "Marşruta əlavə olunur",
     weekSubtitle: "Həftənin başlanğıcını seçin, müştəriləri əlavə edin və ziyarətləri yeddi gün üzrə bölüşdürün.",
@@ -260,6 +272,12 @@ const SELF_PLANNER_COPY = {
     clinicDoctorsAction: "Doctors",
     clinicDoctorCount: "Doctors: {{count}}",
     clinicAddItself: "No doctors — add the clinic",
+    doctorClinicAction: "Choose clinic",
+    doctorClinicCount: "Workplaces: {{count}}",
+    doctorClinicTitle: "Where will {{name}} be?",
+    doctorClinicLastVisit: "Last visit was here",
+    doctorClinicHint: "If on the day the doctor is at his other clinic, the app will offer to start the visit there.",
+    doctorClinicCancel: "Cancel",
     quickSubtitle: "The customer is selected. Choose the day below and save the route.",
     quickClient: "Adding to route",
     weekSubtitle: "Choose the start of the week, add customers, and distribute visits across seven days.",
@@ -397,6 +415,9 @@ export default function PlanningWorkspaceCore({
   const [targetSearch, setTargetSearch] = useState(initialTarget?.name ?? "")
   // A clinic opened for its doctors: «выбор клиники — чтоб выбрать там врачей».
   const [clinicFocus, setClinicFocus] = useState<{ target: PlanningTarget } | null>(null)
+  // A doctor who works in several clinics: the agent picks where to plan him
+  // (Zeytun, 2026-11-13). The server sent the clinics the save will accept.
+  const [clinicChoice, setClinicChoice] = useState<PlanningTarget | null>(null)
   const [debouncedSearch, setDebouncedSearch] = useState(initialTarget?.name ?? "")
   const [targetResults, setTargetResults] = useState<PlanningTarget[]>([])
   const [targetTotal, setTargetTotal] = useState<number | null>(null)
@@ -1934,6 +1955,37 @@ export default function PlanningWorkspaceCore({
                 ) : null}
               </View>
             ) : null}
+            <Modal visible={Boolean(clinicChoice)} transparent animationType="fade" onRequestClose={() => setClinicChoice(null)}>
+              <Pressable style={styles.dateSheetBackdrop} onPress={() => setClinicChoice(null)} accessibilityRole="button" accessibilityLabel={selfCopy.doctorClinicCancel}>
+                <Pressable style={styles.dateSheet} onPress={() => undefined} testID="planning-doctor-clinic-choice">
+                  <Text style={styles.dateTitle}>{selfCopy.doctorClinicTitle.replace("{{name}}", clinicChoice?.name ?? "")}</Text>
+                  {(clinicChoice?.clinicChoices ?? []).map((choice) => (
+                    <Pressable
+                      key={choice.customerId}
+                      testID={`planning-doctor-clinic-${choice.customerId}`}
+                      accessibilityRole="button"
+                      onPress={() => {
+                        const doctor = clinicChoice
+                        setClinicChoice(null)
+                        if (doctor) toggleTarget({ ...doctor, customerId: choice.customerId, organizationName: choice.organizationName, address: choice.address })
+                      }}
+                      style={({ pressed }) => [styles.targetOption, pressed && styles.pressed]}
+                    >
+                      <View style={styles.targetMark}><Icon name="business-outline" size={20} color={fieldTheme.color.primaryStrong} /></View>
+                      <View style={styles.targetCopy}>
+                        <Text style={styles.targetName}>{choice.organizationName || t("managerShell.planUnnamedTarget")}</Text>
+                        {choice.address ? <Text style={styles.targetMeta}>{choice.address}</Text> : null}
+                        {choice.lastVisited ? <Text style={styles.targetAlsoOn}>{selfCopy.doctorClinicLastVisit}</Text> : null}
+                      </View>
+                    </Pressable>
+                  ))}
+                  <Text style={styles.targetMeta}>{selfCopy.doctorClinicHint}</Text>
+                  <Pressable testID="planning-doctor-clinic-cancel" accessibilityRole="button" onPress={() => setClinicChoice(null)} style={({ pressed }) => [styles.clinicBannerButton, pressed && styles.pressed]}>
+                    <Text style={styles.clinicBannerButtonText}>{selfCopy.doctorClinicCancel}</Text>
+                  </Pressable>
+                </Pressable>
+              </Pressable>
+            </Modal>
 
             {targetError ? (
               <InlineEmpty icon="cloud-offline-outline" text={t("managerShell.planTargetsError")} action={!saving ? t("common.retry") : undefined} onAction={!saving ? () => setTargetReload((value) => value + 1) : undefined} />
@@ -1968,11 +2020,19 @@ export default function PlanningWorkspaceCore({
                       .join(", ")
                     // A clinic already on the day comes off it like any stop; one
                     // not yet chosen opens its doctors.
-                    const doctors = !selected && opensClinicDoctors(target)
+                    const opensDoctors = !selected && opensClinicDoctors(target)
+                    // A doctor of several clinics, not yet chosen: pressing asks where.
+                    const choosesClinic = !selected && !opensDoctors && (target.clinicChoices?.length ?? 0) > 1
+                    const doctors = opensDoctors
                       ? { action: selfCopy.clinicDoctorsAction, meta: target.doctorCount ? selfCopy.clinicDoctorCount.replace("{{count}}", String(target.doctorCount)) : undefined }
-                      : undefined
+                      : choosesClinic
+                        ? { action: selfCopy.doctorClinicAction, meta: selfCopy.doctorClinicCount.replace("{{count}}", String(target.clinicChoices?.length ?? 0)) }
+                        : undefined
                     return (
-                      <TargetOption key={target.key} target={displayTarget} selected={selected} inRoute={inRoute} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} doctors={doctors} onPress={() => { if (selected || !openClinicDoctors(target)) toggleTarget(target) }} t={t} tablet={tablet} />
+                      <TargetOption key={target.key} target={displayTarget} selected={selected} inRoute={inRoute} unavailable={unavailable} disabled={disabled || copying} otherDays={otherDays} doctors={doctors} onPress={() => {
+                        if (choosesClinic) setClinicChoice(target)
+                        else if (selected || !openClinicDoctors(target)) toggleTarget(target)
+                      }} t={t} tablet={tablet} />
                     )
                   })}
                 </View>
