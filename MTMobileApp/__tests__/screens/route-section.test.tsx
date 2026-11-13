@@ -103,6 +103,17 @@ describe("«Маршрут» → «Сегодня | Месяц»", () => {
     expect(mockPlan).toHaveBeenCalledTimes(1)
   })
 
+  it("names the calendar «Календарь» on a large button with an icon (Zeytun 2026-11-13: «не нашёл»)", async () => {
+    const { mobileResources } = jest.requireActual("../../src/i18n/mobile-resources")
+    expect([mobileResources.ru, mobileResources.az, mobileResources.en].map((language: any) => language.routeSection.month))
+      .toEqual(["Календарь", "Təqvim", "Calendar"])
+    let tree!: Tree
+    await act(async () => { tree = TestRenderer.create(<RouteSectionScreen />) })
+    const tab = byId(byId(tree.root, "route-section-today")[0], "route-section-tab-month")[0]
+    expect(tab.findAll((node) => (node.type as unknown) === "Icon" && node.props.name === "calendar-outline")).toHaveLength(1)
+    expect(StyleSheet.flatten(tab.props.style({ pressed: false })).minHeight).toBeGreaterThanOrEqual(48)
+  })
+
   it("draws neither the button without a planner nor the tabs outside «Маршрут»", async () => {
     let tree!: Tree
     await act(async () => { tree = TestRenderer.create(<RouteSectionHeader subtitle="alone" headerTop={0} />) })
