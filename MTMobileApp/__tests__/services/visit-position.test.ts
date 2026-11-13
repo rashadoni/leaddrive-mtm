@@ -8,8 +8,10 @@
 import fs from "fs"
 import path from "path"
 
-const mockLocation: { lastKnownPosition: null | { latitude: number; longitude: number; accuracy: number; timestamp: number } } = { lastKnownPosition: null }
-jest.mock("../../src/services/location", () => mockLocation)
+// Self-contained: jest.mock is hoisted above the imports, which run before any const here.
+jest.mock("../../src/services/location", () => ({ lastKnownPosition: null }))
+const mockLocation: { lastKnownPosition: null | { latitude: number; longitude: number; accuracy: number; timestamp: number } } =
+  jest.requireMock("../../src/services/location")
 
 const mockGetCurrentPosition = jest.fn()
 const mockWatchPosition = jest.fn()
