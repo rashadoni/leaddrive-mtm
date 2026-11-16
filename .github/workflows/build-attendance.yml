@@ -1,4 +1,4 @@
-name: Build standalone attendance APK
+name: Build standalone attendance APK and Play bundle
 
 on:
   workflow_dispatch:
@@ -50,9 +50,12 @@ jobs:
           test -s android/app/mtm-release.keystore
       - name: Build separate package and attendance entry point
         working-directory: MTMobileApp/android
+        # The .aab is what Google Play accepts for a new app; the .apk stays
+        # for /time and in-place updates. Both come from one Gradle run, so
+        # they carry the same code, versionCode and signing key.
         run: |
           export MTM_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))
-          ./gradlew assembleRelease -PattendanceApp=true --no-daemon --no-parallel --max-workers=2 --console=plain
+          ./gradlew assembleRelease bundleRelease -PattendanceApp=true --no-daemon --no-parallel --max-workers=2 --console=plain
       - name: Verify packaged identity, permissions and signing certificate
         run: |
           set -euo pipefail
@@ -74,9 +77,20 @@ jobs:
           # Server notifications since 2026-11-03: the push service and its permission are part of Time.
           grep -q 'FieldPushService' "$RUNNER_TEMP/attendance-manifest.txt"
           grep -q 'POST_NOTIFICATIONS' "$RUNNER_TEMP/attendance-permissions.txt"
+          # The Play bundle must carry the same certificate: Play App Signing
+          # uses this key, so a Play install updates an APK install in place.
+          AAB=android/app/build/outputs/bundle/release/app-release.aab
+          test -s "$AAB"
+          AAB_CERT=$(keytool -printcert -jarfile "$AAB" | sed -nE 's/^[[:space:]]*SHA256: //p' | head -n 1 | tr -d ':' | tr 'A-F' 'a-f')
+          test "$AAB_CERT" = d6e9a6a76bb7c12e0ed81e2094f56e356e6f0d12b07ba35a2ed6598a88cecf2b
+          # Same package and no background-location permission in the bundle.
+          unzip -p "$AAB" base/manifest/AndroidManifest.xml > "$RUNNER_TEMP/attendance-bundle-manifest.pb"
+          grep -aq 'com.leaddrive.attendance' "$RUNNER_TEMP/attendance-bundle-manifest.pb"
+          if grep -aE 'ACCESS_BACKGROUND_LOCATION|FOREGROUND_SERVICE_LOCATION|RECEIVE_BOOT_COMPLETED|REQUEST_IGNORE_BATTERY_OPTIMIZATIONS' "$RUNNER_TEMP/attendance-bundle-manifest.pb"; then exit 1; fi
           mkdir -p attendance-artifact
           cp "$APK" attendance-artifact/leaddrive-time-1.0.0.apk
-          (cd attendance-artifact && sha256sum leaddrive-time-1.0.0.apk > leaddrive-time-1.0.0.apk.sha256)
+          cp "$AAB" "attendance-artifact/leaddrive-time-1.0.0-$((1000 + GITHUB_RUN_NUMBER)).aab"
+          (cd attendance-artifact && sha256sum leaddrive-time-1.0.0.apk > leaddrive-time-1.0.0.apk.sha256 && sha256sum leaddrive-time-1.0.0-*.aab > leaddrive-time-1.0.0.aab.sha256)
           printf '{"sourceSha":"%s","package":"com.leaddrive.attendance","version":"1.0.0","versionCode":%s,"physicalMaestro":"NOT_RUN"}\n' "$GITHUB_SHA" "$((1000 + GITHUB_RUN_NUMBER))" > attendance-artifact/build.json
       - uses: actions/upload-artifact@v4
         with:
