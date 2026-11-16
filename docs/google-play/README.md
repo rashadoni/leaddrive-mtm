@@ -167,6 +167,8 @@ java -jar pepk.jar --keystore=/home/rashad/.leaddrive-keys/mtm-release.keystore 
 details»; пароль один на все демо-учётки Google, задал и вписал владелец, в git
 его нет. Клиентский тенант (Zeytun и др.) не давать.
 
+Отправка (17.11.2026, по «давай» владельца): проверка Google идёт только через закрытый тест («Alpha»: Азербайджан, список тестировщиков «LeadDrive team», отзывы info@fanumsec.com, версия 2053). Для Route Field Play требует ещё две анкеты — «Location permissions» (фон) и «Foreground service» (Background location updates → Other); обе со ссылкой на видео YouTube (по ссылке, канал LeadDrive CRM, то же видео 19.10). В открытый магазин не выпускалось.
+
 ## 6. Безопасность данных (Data safety)
 
 Общее: собирает — Yes; шифрование в пути — Yes; аккаунты — «My app does not
