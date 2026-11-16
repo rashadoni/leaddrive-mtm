@@ -51,11 +51,12 @@
 | App activity → Other user-generated content | причины заявок, объяснения | App functionality | Optional |
 | App activity → Other actions | отметки начала, конца, перерыва | App functionality | Required |
 | Device or other IDs | `rf-…` из `field-device-id.ts`, FCM-токен | App functionality; Fraud prevention, security, and compliance | Required |
+| App info and performance → Diagnostics | встроенный Google ML Kit сканера QR (модели в `assets/mlkit_barcode_models` .aab 1065) шлёт Google модель устройства, версии, скорость; без изображения | Analytics | Required |
 
 Не собирается: контакты, SMS, звонки, календарь, микрофон, файлы, история
 браузера, финансы, рекламный ID. Sentry в точке входа Time не
-инициализируется (`src/attendance/AttendanceApp.tsx`), аналитика Firebase
-выключена в манифесте.
+инициализируется (`src/attendance/AttendanceApp.tsx`), DSN в манифесте .aab
+1065 нет; аналитика Firebase выключена, `AD_ID` в манифесте нет.
 
 ## 4. Остальные анкеты
 
