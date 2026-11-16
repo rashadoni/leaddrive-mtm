@@ -50,7 +50,7 @@
 | Photos and videos → Photos | фото документа к заявке | App functionality | Optional |
 | App activity → Other user-generated content | причины заявок, объяснения | App functionality | Optional |
 | App activity → Other actions | отметки начала, конца, перерыва | App functionality | Required |
-| Device or other IDs | `rf-…` из `field-device-id.ts`, FCM-токен | App functionality; Fraud prevention, security, and compliance | Required |
+| Device or other IDs | `rf-…` из `field-device-id.ts`, FCM-токен, идентификаторы ML Kit | App functionality; Analytics; Fraud prevention, security, and compliance | Required |
 | App info and performance → Diagnostics | встроенный Google ML Kit сканера QR (модели в `assets/mlkit_barcode_models` .aab 1065) шлёт Google модель устройства, версии, скорость; без изображения | Analytics | Required |
 
 Не собирается: контакты, SMS, звонки, календарь, микрофон, файлы, история
@@ -72,7 +72,11 @@
   не давать.
 - **Government / financial / health apps, news:** нет.
 
-## 5. Графика
+## 5. Что внесено в Play Console (16.11.2026)
+
+Аккаунт «Fanum-Dev», приложение 4972271078031281411. Ответы выше внесены как есть; витрина az/ru/en, рейтинг IARC получен, Data safety — черновик (окончательное сохранение Play открывает после Target audience), сборка 1065 — черновик выпуска во внутреннем тесте. Скриншоты для Play — 9:16 (1080×1920, с подписью сверху): Play больше не берёт другие пропорции.
+
+## 6. Графика
 
 - `icon-512.png` — из `res/drawable/attendance_launcher.xml` (`render_icon.py 512`).
 - `feature-graphic.png` — 1024×500, фон и цвета иконки.
