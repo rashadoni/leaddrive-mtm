@@ -101,6 +101,15 @@ java -jar pepk.jar --keystore=/home/rashad/.leaddrive-keys/mtm-release.keystore 
 `pepk.jar` — по ссылке из той же страницы консоли. Получившийся zip зашифрован
 открытым ключом Google; его отдают владельцу, он загружает в «Upload private key».
 
+**Как было на деле (16.11.2026, «Fanum-Dev»).** Выбора ключа при первой загрузке
+не было: Play сам выпустил ключ Google при создании приложения. Заменить его
+можно в «Test and release → App signing → Change app signing key», пока у
+приложения 0 установок; так оба приложения (Route Field и Time) получили наш
+ключ `D6:E9:A6:A7…CF:2B`. Сборки, залитые до замены, Play больше не принимает
+(«An active app bundle was uploaded before you chose your app signing key»), а
+их versionCode повторно не взять — нужна новая сборка CI (тогда: 2052 → 2053,
+у Time 1065 → 1066). Поэтому в новом приложении сначала ключ, потом сборка.
+
 ## 3. Пакет и номер версии
 
 - `.aab` публикуется в каждом релизе `build-apk.yml`:
@@ -150,8 +159,13 @@ java -jar pepk.jar --keystore=/home/rashad/.leaddrive-keys/mtm-release.keystore 
 офлайн — outbox + центр синхронизации.
 
 Вход для проверяющего: компания `leaddrive` (демо-тенант LeadDrive Inc.,
-`leaddrive.leaddrivecrm.org`), логин и пароль демо-агента — **вписывает
-владелец**. Клиентский тенант (Zeytun и др.) не давать.
+`leaddrive.leaddrivecrm.org`). С 17.11.2026 — отдельные демо-учётки для Google
+(вымышленные люди): агент и его руководитель, роли AGENT и MANAGER; вход
+руководителя назван в пояснении к входу агента («тот же код и пароль»), так
+галочка «полный доступ» правдива. Агент `play-review@…` (Elvin) им не отдан: под
+ним ходят автотест и видео деклараций. Логины — в Play Console, «Sign in
+details»; пароль один на все демо-учётки Google, задал и вписал владелец, в git
+его нет. Клиентский тенант (Zeytun и др.) не давать.
 
 ## 6. Безопасность данных (Data safety)
 
