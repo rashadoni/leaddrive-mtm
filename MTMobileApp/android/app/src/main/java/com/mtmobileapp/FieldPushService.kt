@@ -1,6 +1,7 @@
 package com.mtmobileapp
 
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -11,6 +12,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import com.asterinet.react.bgactions.RNBackgroundActionsTask
 import java.lang.ref.WeakReference
 
 /**
@@ -38,6 +40,7 @@ class FieldPushService : FirebaseMessagingService() {
   }
 
   override fun onMessageReceived(message: RemoteMessage) {
+    if (message.data["event"] == WORKDAY_CLOSED_EVENT) endTrackingOf(message.data["workdayId"])
     val notification = message.notification
     val title = notification?.title ?: message.data["title"] ?: return
     val body = notification?.body ?: message.data["body"].orEmpty()
@@ -55,7 +58,29 @@ class FieldPushService : FirebaseMessagingService() {
     FieldNotificationReceiver.post(this, id, title, body, channel, message.data["target"])
   }
 
+  /**
+   * The company's hour closed this day on the server (client, 2026-11-21:
+   * «sabaha kimi açıq qalmasın»). From now on the server refuses the points,
+   * so the phone must stop taking them and stop saying «your location is being
+   * recorded». Done here and not in JS: with the app in the background JS
+   * timers stand still, and this service runs anyway. Only for the very day
+   * being recorded — a push can arrive late, into the next day's work.
+   */
+  private fun endTrackingOf(workdayId: String?) {
+    if (workdayId.isNullOrBlank()) return
+    FieldPushModule.announceWorkdayClosed(workdayId)
+    if (FieldTrackingResume.trackedWorkdayId(this) != workdayId) return
+    FieldTrackingResume.forget(this)
+    FieldLocationModule.stopStream()
+    try {
+      stopService(Intent(this, RNBackgroundActionsTask::class.java))
+    } catch (_: Exception) {
+      // Not running, or already stopping: either way nothing is recorded.
+    }
+  }
+
   companion object {
+    const val WORKDAY_CLOSED_EVENT = "workday_closed"
     const val PREFS = "field_push"
     const val KEY_PENDING_TOKEN = "pending_token"
   }
@@ -82,6 +107,7 @@ class FieldPushModule(
   companion object {
     const val TOKEN_REFRESH_EVENT = "FieldPushTokenRefresh"
     const val MESSAGE_EVENT = "FieldPushMessage"
+    const val WORKDAY_CLOSED_JS_EVENT = "FieldPushWorkdayClosed"
     @Volatile private var active: WeakReference<ReactApplicationContext>? = null
 
     /** Best effort: with no live JS the token waits in prefs for the next start. */
@@ -94,6 +120,19 @@ class FieldPushModule(
         context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(TOKEN_REFRESH_EVENT, payload)
       } catch (error: Throwable) {
         // The pending token in prefs is still there.
+      }
+    }
+
+    /** Best effort: with no live JS the app reads the closed day when it next opens. */
+    fun announceWorkdayClosed(workdayId: String) {
+      val context = active?.get() ?: return
+      try {
+        if (!context.hasActiveReactInstance()) return
+        val payload = Arguments.createMap()
+        payload.putString("workdayId", workdayId)
+        context.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit(WORKDAY_CLOSED_JS_EVENT, payload)
+      } catch (error: Throwable) {
+        // The next bootstrap says the same.
       }
     }
 

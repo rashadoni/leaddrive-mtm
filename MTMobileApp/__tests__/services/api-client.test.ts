@@ -868,7 +868,7 @@ describe("ApiClient — sign-in by number and by a WhatsApp code", () => {
   it("asks for a code with the company, the number and the app's language", async () => {
     ;(global.fetch as jest.Mock) = answer({ success: true, data: { sent: true, resendAfterSeconds: 42, expiresInSeconds: 600 } })
     expect(await api.requestLoginCode("+994501234567", "az")).toEqual({ resendAfterSeconds: 42, expiresInSeconds: 600 })
-    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/code", body: { organizationSlug: "zeytun", application: "ROUTE_FIELD", phone: "+994501234567", language: "az" } }])
+    expect(sent()).toEqual([{ url: "https://zeytun.leaddrivecrm.org/api/v1/mtm/mobile/auth/code", body: { organizationSlug: "zeytun", application: "ROUTE_FIELD", phone: "+994501234567", language: "az", reportUnknownPhone: true } }])
   })
 
   it("passes the server's refusal code on, for the screen to say in words", async () => {

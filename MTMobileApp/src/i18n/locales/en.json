@@ -133,6 +133,7 @@
     "codeUnavailable": "Codes can't be sent to WhatsApp right now. Try later or ask your administrator.",
     "codeTooMany": "Too many attempts. Wait a little and try again.",
     "codeNoCompany": "No company selected. Tap “Change company” and enter it again.",
+    "codeNoPhone": "This number is not in the company. Check it or ask your manager.",
     "codeSendFailed": "The code wasn't sent. Try again in a minute.",
     "codeInvalid": "Wrong code. Check the six digits from WhatsApp.",
     "codeExpired": "The code has expired or was already used. Ask for a new one.",

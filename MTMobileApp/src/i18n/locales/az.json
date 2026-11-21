@@ -133,6 +133,7 @@
     "codeUnavailable": "Hazırda kod WhatsApp-a göndərilmir. Bir az sonra yoxlayın və ya administratora müraciət edin.",
     "codeTooMany": "Həddindən çox cəhd. Bir az gözləyib yenidən yoxlayın.",
     "codeNoCompany": "Şirkət seçilməyib. «Şirkəti dəyiş» düyməsini basıb yenidən daxil edin.",
+    "codeNoPhone": "Bu nömrə şirkətdə yoxdur. Nömrəni yoxlayın və ya rəhbərinizə müraciət edin.",
     "codeSendFailed": "Kod göndərilmədi. Bir dəqiqədən sonra yenidən yoxlayın.",
     "codeInvalid": "Kod səhvdir. WhatsApp-dakı altı rəqəmi yoxlayın.",
     "codeExpired": "Kodun vaxtı keçib və ya artıq istifadə olunub. Yenisini istəyin.",

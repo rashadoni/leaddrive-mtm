@@ -39,10 +39,18 @@ object FieldTrackingResume {
   private const val KEY_DESC = "desc"
   private const val KEY_STOPPED_TITLE = "stoppedTitle"
   private const val KEY_STOPPED_BODY = "stoppedBody"
+  private const val KEY_WORKDAY = "workdayId"
   private const val REMINDER_CHANNEL = "field-reminders"
   private const val STOPPED_NOTICE = "field-tracking-stopped"
 
   private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+  /** The day being recorded: a late push about another day must not stop this one. */
+  fun trackedWorkdayId(context: Context): String? = prefs(context).getString(KEY_WORKDAY, null)
+
+  fun rememberWorkday(context: Context, workdayId: String?) {
+    prefs(context).edit().putString(KEY_WORKDAY, workdayId).apply()
+  }
 
   fun remember(context: Context, title: String, desc: String, stoppedTitle: String, stoppedBody: String) {
     clearStoppedNotice(context)

@@ -71,6 +71,23 @@ export function classifyUploadFailure(error: FailureShape | null | undefined): U
   return "retry"
 }
 
+/**
+ * The server refused the point being recorded right now because the day it
+ * belongs to is over: closed at the company's hour or on another device, and
+ * the push saying so did not arrive. A queued point from before does not count:
+ * it can be refused for its own moment while the day is open.
+ */
+export function pointOutsideOpenDay(
+  error: FailureShape | null | undefined,
+  pointWorkdayId: string | null | undefined,
+  activeWorkdayId: string | null | undefined,
+): boolean {
+  return error?.status === 409
+    && error.code === "MTM_LOCATION_OUTSIDE_WORKDAY"
+    && !!pointWorkdayId
+    && pointWorkdayId === activeWorkdayId
+}
+
 /** Append, keeping the newest when the queue is full. */
 export function appendPoint(
   queue: readonly QueuedPoint[],

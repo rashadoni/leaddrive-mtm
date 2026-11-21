@@ -8,6 +8,9 @@ export const PUSH_TOKEN_REFRESH_EVENT = "FieldPushTokenRefresh"
 /** Emitted by FieldPushModule when a push arrives while the app is open: the bell asks again. */
 export const PUSH_MESSAGE_EVENT = "FieldPushMessage"
 
+/** Emitted by FieldPushService when the company's hour closed a workday on the server. */
+export const PUSH_WORKDAY_CLOSED_EVENT = "FieldPushWorkdayClosed"
+
 /**
  * While one principal is signed in — agent, office employee or manager, the
  * same app for all three — keep the server's address for this phone current:
