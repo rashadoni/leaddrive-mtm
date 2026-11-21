@@ -120,6 +120,7 @@ describe("signing in with a code from WhatsApp", () => {
     ["MTM_LOGIN_CODE_UNAVAILABLE", "auth.codeUnavailable"],
     ["MTM_LOGIN_CODE_TOO_MANY", "auth.codeTooMany"],
     ["MTM_LOGIN_CODE_NO_COMPANY", "auth.codeNoCompany"],
+    ["MTM_LOGIN_CODE_NO_PHONE", "auth.codeNoPhone"],
     ["MTM_LOGIN_CODE_SEND_FAILED", "auth.codeSendFailed"],
     [undefined, "auth.codeNetwork"],
   ])("says %s in words and stays on the number", async (code, text) => {

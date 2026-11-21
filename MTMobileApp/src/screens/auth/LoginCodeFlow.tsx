@@ -39,6 +39,7 @@ const ERROR_TEXT: Record<string, string> = {
   MTM_LOGIN_CODE_BUSY: "auth.codeTooMany",
   MTM_LOGIN_CODE_NO_COMPANY: "auth.codeNoCompany",
   MTM_COMPANY_NOT_FOUND: "auth.codeNoCompany",
+  MTM_LOGIN_CODE_NO_PHONE: "auth.codeNoPhone",
   MTM_LOGIN_CODE_SEND_FAILED: "auth.codeSendFailed",
   MTM_LOGIN_CODE_INVALID: "auth.codeInvalid",
   MTM_LOGIN_CODE_EXPIRED: "auth.codeExpired",

@@ -555,7 +555,7 @@ class ApiClient {
   async requestLoginCode(phone: string, language: string): Promise<{ resendAfterSeconds: number; expiresInSeconds: number; challengeId?: string }> {
     const data = await this.request("/mobile/auth/code", {
       method: "POST",
-      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), application: clientApplication(), phone, language }),
+      body: JSON.stringify({ organizationSlug: await this.companySlugForCode(), application: clientApplication(), phone, language, reportUnknownPhone: true }),
     })
     return { resendAfterSeconds: Number(data.data?.resendAfterSeconds) || 60, expiresInSeconds: Number(data.data?.expiresInSeconds) || 600,
       ...(typeof data.data?.challengeId === "string" ? { challengeId: data.data.challengeId } : {}) }
