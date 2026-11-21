@@ -1,4 +1,4 @@
-import { NativeEventEmitter, NativeModules } from "react-native"
+import { DeviceEventEmitter, NativeEventEmitter, NativeModules } from "react-native"
 import Geolocation from "@react-native-community/geolocation"
 import BackgroundService from "react-native-background-actions"
 import { api } from "./api"
@@ -7,6 +7,7 @@ import { i18n } from "../i18n/index.android"
 import {
   classifyUploadFailure,
   flushQueue,
+  pointOutsideOpenDay,
   queuePoint,
   type QueuedPoint,
 } from "./location-outbox"
@@ -26,6 +27,11 @@ const MAX_ACCURACY = 50
 // keeps delayed uploads honest: they cannot accidentally become a point for a
 // later shift, and the server can reject points captured after “End day”.
 let activeTrackingWorkdayId: string | null = null
+
+/** Asks the app to read the workday from the server: it may be over. */
+export const WORKDAY_RECHECK_EVENT = "FieldWorkdayRecheck"
+const WORKDAY_RECHECK_GAP_MS = 60_000
+let lastWorkdayRecheckAt = 0
 
 export function setTrackingWorkdayId(workdayId: string | null) {
   activeTrackingWorkdayId = workdayId?.trim() || null
@@ -173,7 +179,7 @@ function onHeartbeat(reading: Reading) {
 type FieldLocationModule = {
   start: () => Promise<boolean>
   stop: () => Promise<boolean>
-  rememberTracking?: (texts: { title: string; desc: string; stoppedTitle: string; stoppedBody: string }) => Promise<boolean>
+  rememberTracking?: (texts: { title: string; desc: string; stoppedTitle: string; stoppedBody: string; workdayId?: string }) => Promise<boolean>
   forgetTracking?: () => Promise<boolean>
   stopTrackingService?: () => Promise<boolean>
 }
@@ -272,6 +278,11 @@ async function sendOrQueue(point: QueuedPoint, nativeMock?: boolean): Promise<vo
   try {
     await api.sendLocation(point, prepared.guard)
   } catch (error) {
+    if (pointOutsideOpenDay(error as { status?: number; code?: string }, point.workdayId, activeTrackingWorkdayId)
+      && Date.now() - lastWorkdayRecheckAt >= WORKDAY_RECHECK_GAP_MS) {
+      lastWorkdayRecheckAt = Date.now()
+      DeviceEventEmitter.emit(WORKDAY_RECHECK_EVENT)
+    }
     const verdict = classifyUploadFailure(error as { message?: string; status?: number })
     if (verdict === "stop") {
       stopTracking().catch(() => {})
@@ -371,6 +382,7 @@ function rememberTrackingResume() {
     desc: i18n.t("location.taskDesc"),
     stoppedTitle: i18n.t("location.stoppedTitle"),
     stoppedBody: i18n.t("location.stoppedBody"),
+    ...(activeTrackingWorkdayId ? { workdayId: activeTrackingWorkdayId } : {}),
   }).catch(() => {})
 }
 

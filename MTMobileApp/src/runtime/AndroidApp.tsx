@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
+  DeviceEventEmitter,
   AppState,
   AppStateStatus,
   PermissionsAndroid,
@@ -19,7 +20,8 @@ import { useHintsStore } from "../store/hints"
 import { useLocationFixStore } from "../store/location-fixes"
 import { useWorkdayStore, workdayKey } from "../store/workday"
 import { useSyncStatusStore } from "../store/sync-status"
-import { forgetTrackingResume, setTrackingWorkdayId, startTracking, stopTracking } from "../services/location.android"
+import { forgetTrackingResume, setTrackingWorkdayId, startTracking, stopTracking, WORKDAY_RECHECK_EVENT } from "../services/location.android"
+import { PUSH_WORKDAY_CLOSED_EVENT } from "../services/push-lifecycle"
 import { api } from "../services/api"
 import { markMobileOffline } from "../services/sync-engine"
 import { startForegroundSyncRetry } from "../services/foreground-sync-retry"
@@ -98,6 +100,26 @@ function AppContent() {
   useEffect(() => {
     if (isLoggedIn) {
       refreshAdmissionAndSync().catch(() => {})
+    }
+  }, [isLoggedIn, refreshAdmissionAndSync])
+
+  // The company's hour closed the day on the server. The push stops recording
+  // natively; here the screen learns it too. The recheck is for a phone the
+  // push did not reach: the server refused a point because the day is over.
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const closed = DeviceEventEmitter.addListener(PUSH_WORKDAY_CLOSED_EVENT, (event: { workdayId?: unknown } | null) => {
+      if (typeof event?.workdayId !== "string" || event.workdayId !== useWorkdayStore.getState().activeWorkday?.workdayId) return
+      setTrackingWorkdayId(null)
+      stopTracking().catch(() => {})
+      refreshAdmissionAndSync().catch(() => {})
+    })
+    const recheck = DeviceEventEmitter.addListener(WORKDAY_RECHECK_EVENT, () => {
+      refreshAdmissionAndSync().catch(() => {})
+    })
+    return () => {
+      closed.remove()
+      recheck.remove()
     }
   }, [isLoggedIn, refreshAdmissionAndSync])
 

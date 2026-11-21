@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.Handler
 import android.os.Looper
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationCompat
@@ -22,6 +23,7 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import java.lang.ref.WeakReference
 
 /**
  * A stream of positions from Google's fused provider, pushed to JS as events.
@@ -40,6 +42,10 @@ import com.google.android.gms.location.Priority
 class FieldLocationModule(
   private val reactContext: ReactApplicationContext,
 ) : ReactContextBaseJavaModule(reactContext) {
+
+  init {
+    active = WeakReference(this)
+  }
 
   override fun getName(): String = "FieldLocation"
 
@@ -136,6 +142,7 @@ class FieldLocationModule(
       texts.getString("desc") ?: "",
       texts.getString("stoppedTitle") ?: "LeadDrive",
       texts.getString("stoppedBody") ?: "",
+      if (texts.hasKey("workdayId")) texts.getString("workdayId") else null,
     )
     promise.resolve(true)
   }
@@ -175,5 +182,18 @@ class FieldLocationModule(
 
   companion object {
     const val EVENT_NAME = "FieldLocationUpdate"
+    @Volatile private var active: WeakReference<FieldLocationModule>? = null
+
+    /**
+     * The stream ends without JS: a backgrounded app's JS timers stand still,
+     * and the server has already closed the day this stream records.
+     */
+    fun stopStream() {
+      Handler(Looper.getMainLooper()).post {
+        val module = active?.get() ?: return@post
+        module.callback?.let(module.client::removeLocationUpdates)
+        module.callback = null
+      }
+    }
   }
 }
