@@ -142,8 +142,8 @@ class FieldLocationModule(
       texts.getString("desc") ?: "",
       texts.getString("stoppedTitle") ?: "LeadDrive",
       texts.getString("stoppedBody") ?: "",
-      if (texts.hasKey("workdayId")) texts.getString("workdayId") else null,
     )
+    FieldTrackingResume.rememberWorkday(reactContext, if (texts.hasKey("workdayId")) texts.getString("workdayId") else null)
     promise.resolve(true)
   }
 

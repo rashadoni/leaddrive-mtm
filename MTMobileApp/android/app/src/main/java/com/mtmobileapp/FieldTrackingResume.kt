@@ -48,7 +48,11 @@ object FieldTrackingResume {
   /** The day being recorded: a late push about another day must not stop this one. */
   fun trackedWorkdayId(context: Context): String? = prefs(context).getString(KEY_WORKDAY, null)
 
-  fun remember(context: Context, title: String, desc: String, stoppedTitle: String, stoppedBody: String, workdayId: String?) {
+  fun rememberWorkday(context: Context, workdayId: String?) {
+    prefs(context).edit().putString(KEY_WORKDAY, workdayId).apply()
+  }
+
+  fun remember(context: Context, title: String, desc: String, stoppedTitle: String, stoppedBody: String) {
     clearStoppedNotice(context)
     prefs(context).edit()
       .putBoolean(KEY_WANTED, true)
@@ -56,7 +60,6 @@ object FieldTrackingResume {
       .putString(KEY_DESC, desc)
       .putString(KEY_STOPPED_TITLE, stoppedTitle)
       .putString(KEY_STOPPED_BODY, stoppedBody)
-      .putString(KEY_WORKDAY, workdayId)
       .apply()
   }
 

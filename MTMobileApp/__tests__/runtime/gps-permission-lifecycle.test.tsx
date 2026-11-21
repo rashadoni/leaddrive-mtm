@@ -4,6 +4,7 @@ import { AppState, PermissionsAndroid } from "react-native"
 
 jest.mock("react-native", () => ({
   AppState: { currentState: "active", addEventListener: jest.fn() },
+  DeviceEventEmitter: { addListener: jest.fn(() => ({ remove: jest.fn() })) },
   PermissionsAndroid: {
     PERMISSIONS: { ACCESS_FINE_LOCATION: "fine", ACCESS_COARSE_LOCATION: "coarse", POST_NOTIFICATIONS: "notifications" },
     RESULTS: { GRANTED: "granted", DENIED: "denied" }, check: jest.fn(), requestMultiple: jest.fn(), request: jest.fn(),
