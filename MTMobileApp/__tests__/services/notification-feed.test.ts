@@ -450,3 +450,35 @@ describe("the bell is in the corner of every main screen", () => {
     expect(read("services/api.ts")).toContain('JSON.stringify({ all: true, isRead: true })')
   })
 })
+
+describe("what the manager's agent did on his own", () => {
+  const clients = "12 vizit: Dr. Əliyev (Klinika 1); Klinika 2; Klinika 3; Klinika 4; Klinika 5; Klinika 6; Klinika 7"
+
+  it("shows the server's words whole, for a route and for a visit", () => {
+    const items = feed({
+      context: manager,
+      sources: {
+        server: [
+          row("route", { domain: "route", event: "agent_route_published", subjectAgentId: "a", activityRouteId: "r", pushBody: "12 vizit." }, { title: "Aqil: 24 noyabr üçün yeni marşrut", body: clients }),
+          row("visit", { domain: "route", event: "agent_visit_off_route", subjectAgentId: "a", activityVisitId: "v", pushBody: "Saat 14:32." }, { title: "Aqil: marşrutdan kənar vizit", body: "Klinika 9 · Nizami 4 · 14:32" }),
+        ],
+      },
+    })
+    expect(items.map((item) => [item.kind, item.title, item.body, item.fullBody, item.alert])).toEqual(expect.arrayContaining([
+      ["route", "Aqil: 24 noyabr üçün yeni marşrut", clients, true, undefined],
+      ["visit", "Aqil: marşrutdan kənar vizit", "Klinika 9 · Nizami 4 · 14:32", true, undefined],
+    ]))
+    // The manager's phone has no route tab to open.
+    expect(items.every((item) => item.target === undefined)).toBe(true)
+  })
+
+  it("leaves every other line at three lines", () => {
+    const [item] = feed({ sources: { server: [row("published", { routeId: "r", event: "route_published" }, { body: "Route for 2026-10-20 is ready." })] } })
+    expect(item.fullBody).toBeUndefined()
+  })
+
+  it("is what the bell screen reads", () => {
+    const screen = fs.readFileSync(path.join(__dirname, "../../src/screens/more/NotificationsScreen.tsx"), "utf8")
+    expect(screen).toContain("numberOfLines={item.fullBody ? undefined : 3}")
+  })
+})
