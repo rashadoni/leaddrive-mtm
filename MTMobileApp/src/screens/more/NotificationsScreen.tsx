@@ -276,7 +276,7 @@ export default function NotificationsScreen() {
             {item.read ? null : <View style={styles.unreadDot} />}
             <Text style={styles.itemTitle}>{item.title}</Text>
           </View>
-          {item.body ? <Text style={styles.itemBody} numberOfLines={3}>{item.body}</Text> : null}
+          {item.body ? <Text style={styles.itemBody} numberOfLines={item.fullBody ? undefined : 3}>{item.body}</Text> : null}
           {when || item.target ? (
             <View style={styles.itemMeta}>
               <Text style={styles.itemTime}>{when}</Text>

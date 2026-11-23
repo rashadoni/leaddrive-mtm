@@ -61,6 +61,8 @@ export interface FeedItem {
   alert?: boolean
   /** Where tapping the line leads; none — the line only says something. */
   target?: FeedTarget
+  /** The body is the news itself (the clients of an agent's route): never cut to three lines. */
+  fullBody?: boolean
   /** The server rows this line stands for, still unread there. */
   unreadServerIds: string[]
 }
@@ -218,6 +220,7 @@ type Classified = {
   body?: string
   target?: FeedTarget
   alert?: boolean
+  fullBody?: boolean
   /** Rows with the same key are one line: the deviation alerts of one route on one day. */
   group?: string
   deviationMeters?: number
@@ -303,6 +306,16 @@ export function classifyServerNotification(
   if (str(m.executionId) && str(m.reviewId)) return as("request", undefined, row.body)
 
   const event = str(m.event)
+  // What the manager's agent did on his own (owner, 2026-11-23: «уведомление
+  // детальное»): which clients, where, when. The server writes it in the
+  // manager's language, and the whole list is the point of the line.
+  if (event === "agent_route_published" || event === "agent_route_updated") {
+    return { ...as("route", undefined, row.body), fullBody: true }
+  }
+  if (event === "agent_visit_off_route" || event === "agent_visit_out_of_order") {
+    return { ...as("visit", undefined, row.body), fullBody: true }
+  }
+
   // Joint visits (2026-10-30): where the manager goes with the agent, in the
   // agent's language as the server wrote it. The line opens his route of that
   // day — a line that led nowhere was the bug the owner found. Notices of the
@@ -431,6 +444,7 @@ export function buildNotificationFeed(input: {
       read: row.isRead || read.has(id),
       alert: classified.alert,
       target: classified.target,
+      fullBody: classified.fullBody,
       unreadServerIds: row.isRead ? [] : [row.id],
     })
   }
