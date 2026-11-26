@@ -52,11 +52,14 @@ export type MobileRouteCommandInput =
   | {
       command: "CREATE_DRAFT"
       payload: { date: string; points: MobileRouteCommandPoint[] }
+      /** Publish the draft once the server has it, when the saver could not (see flush). */
+      thenPublish?: true
     }
   | {
       command: "UPDATE_DRAFT"
       routeId: string
       payload: { expectedVersion: number; points: MobileRouteCommandPoint[] }
+      thenPublish?: true
     }
   | {
       /**
@@ -92,6 +95,10 @@ export type MobileRouteCommandAppliedResponse = {
 }
 
 export type RouteCommandJournalItem = MobileRouteCommandRequest & {
+  /** A draft save whose author meant to publish it (Zeytun, 2026-11-26). */
+  thenPublish?: true
+  /** A PUBLISH the journal queued itself after such a save reached the server. */
+  followUp?: true
   clientTimestamp: number
   attempts: number
   nextAttemptAt: number
@@ -171,6 +178,8 @@ function isJournalItem(value: unknown): value is RouteCommandJournalItem {
   ) return false
   if (value.command !== "CREATE_DRAFT" && typeof value.routeId !== "string") return false
   if (value.conflict !== undefined && !isRecord(value.conflict)) return false
+  if (value.thenPublish !== undefined && value.thenPublish !== true) return false
+  if (value.followUp !== undefined && value.followUp !== true) return false
   return true
 }
 
@@ -417,7 +426,12 @@ async function nextFlushableRouteCommand(now: number): Promise<RouteCommandJourn
  */
 export async function flushRouteCommandJournal(
   send: RouteCommandSender,
-  options?: { now?: () => number; random?: () => number },
+  options?: {
+    now?: () => number
+    random?: () => number
+    /** The command its caller sends and publishes itself: no follow-up publish for it. */
+    ownOperationId?: string
+  },
 ): Promise<RouteCommandFlushResult> {
   const result: RouteCommandFlushResult = { sent: 0, deferred: 0, conflicted: 0, acknowledgements: [] }
   const now = options?.now ?? Date.now
@@ -441,6 +455,7 @@ export async function flushRouteCommandJournal(
       }
       result.sent += 1
       result.acknowledgements.push({ operationId: item.operationId, response })
+      await followUpAcknowledgedDraft(item, response, options?.ownOperationId)
     } catch (error) {
       const failure = errorDetails(error)
       if (isTerminalConflict(error)) {
@@ -463,6 +478,49 @@ export async function flushRouteCommandJournal(
       }
     }
   }
+}
+
+/**
+ * A draft save made without network is queued, and the planner that made it
+ * had no route id to publish (Zeytun, 2026-11-26: Seymur's day stayed two
+ * unpublished drafts). When such a save reaches the server, the journal queues
+ * the PUBLISH its author meant. A later save of the same draft moves that
+ * PUBLISH to the newest version, so it publishes what the agent saved last.
+ */
+async function followUpAcknowledgedDraft(
+  item: RouteCommandJournalItem,
+  response: MobileRouteCommandAppliedResponse,
+  ownOperationId: string | undefined,
+) {
+  if (item.command !== "CREATE_DRAFT" && item.command !== "UPDATE_DRAFT") return
+  if (response.data.status !== undefined && response.data.status !== "DRAFT") return
+  const scope = getOfflineScope()
+  if (!scope || item.scopeKey !== scope) return
+  const routeId = response.data.id
+  const version = response.data.version
+  await serializeMutation(async () => {
+    if (getOfflineScope() !== scope) return
+    const items = await read()
+    let queued = false
+    const next = items.map((entry) => {
+      if (
+        entry.scopeKey !== scope
+        || entry.status !== "pending"
+        || entry.followUp !== true
+        || entry.command !== "PUBLISH"
+        || entry.routeId !== routeId
+      ) return entry
+      queued = true
+      return { ...entry, payload: { expectedVersion: version } }
+    })
+    if (!queued && item.thenPublish === true && item.operationId !== ownOperationId) {
+      next.push({
+        ...journalItemFor({ command: "PUBLISH", routeId, payload: { expectedVersion: version } }, scope),
+        followUp: true,
+      })
+    }
+    await write(next)
+  })
 }
 
 function routeCommandError(input: {
@@ -494,7 +552,7 @@ export async function submitRouteCommand(
   options?: { now?: () => number; random?: () => number },
 ): Promise<MobileRouteCommandAppliedResponse> {
   const item = await enqueueRouteCommand(input)
-  const result = await flushRouteCommandJournal(send, options)
+  const result = await flushRouteCommandJournal(send, { ...options, ownOperationId: item.operationId })
   const acknowledgement = result.acknowledgements.find((entry) => entry.operationId === item.operationId)
   if (acknowledgement) return acknowledgement.response
 

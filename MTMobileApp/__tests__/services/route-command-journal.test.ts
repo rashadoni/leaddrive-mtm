@@ -10,6 +10,7 @@ import {
   enqueueRouteCommand,
   flushRouteCommandJournal,
   pendingRouteCommands,
+  submitRouteCommand,
 } from "../../src/services/route-command-journal"
 import { setOfflineScope } from "../../src/services/offline-scope"
 
@@ -170,5 +171,76 @@ describe("durable Route Field route-command journal", () => {
     expect(await allRouteCommandJournalEntries()).toEqual([
       expect.objectContaining({ operationId: item.operationId, status: "pending", attempts: 1 }),
     ])
+  })
+
+  describe("a save made without network publishes once it reaches the server (Zeytun, 2026-11-26)", () => {
+    const offline = async () => { throw Object.assign(new Error("Network request failed"), { retryAfterMs: 1 }) }
+
+    it("queues the save, then sends it and the publish its author meant", async () => {
+      await expect(submitRouteCommand({ ...createDraft, thenPublish: true }, offline, { now: () => 0, random: () => 0 }))
+        .rejects.toMatchObject({ code: "MOBILE_ROUTE_COMMAND_QUEUED" })
+
+      const sent: unknown[] = []
+      const result = await flushRouteCommandJournal(async (request) => {
+        sent.push(request)
+        return request.command === "PUBLISH"
+          ? { success: true, data: { id: "route-1", version: 2, status: "PLANNED" } }
+          : appliedResponse("route-1", 1)
+      }, { now: () => 10_000 })
+
+      expect(result).toMatchObject({ sent: 2, conflicted: 0 })
+      expect(sent).toEqual([
+        expect.objectContaining({ command: "CREATE_DRAFT" }),
+        expect.objectContaining({ command: "PUBLISH", routeId: "route-1", payload: { expectedVersion: 1 } }),
+      ])
+      // The flag never reaches the server: the request is the command alone.
+      expect(sent[0]).not.toHaveProperty("thenPublish")
+      expect(await allRouteCommandJournalEntries()).toEqual([])
+    })
+
+    it("leaves the publish to the planner when the save went through at once", async () => {
+      const sent: string[] = []
+      const response = await submitRouteCommand({ ...createDraft, thenPublish: true }, async (request) => {
+        sent.push(request.command)
+        return appliedResponse("route-1", 1)
+      })
+      expect(response.data).toMatchObject({ id: "route-1", version: 1 })
+      expect(sent).toEqual(["CREATE_DRAFT"])
+      expect(await allRouteCommandJournalEntries()).toEqual([])
+    })
+
+    it("publishes the version of the last save when the agent saved again before the first one left", async () => {
+      await expect(submitRouteCommand({ ...createDraft, thenPublish: true }, offline, { now: () => 0, random: () => 0 }))
+        .rejects.toMatchObject({ code: "MOBILE_ROUTE_COMMAND_QUEUED" })
+
+      // The second save names other clients; the server adds them to the same draft.
+      const second = { ...createDraft, payload: { ...createDraft.payload, points: [{ customerId: "customer-2" }] } }
+      const sent: Array<{ command: string; expectedVersion?: number }> = []
+      const response = await submitRouteCommand({ ...second, thenPublish: true }, async (request) => {
+        sent.push({ command: request.command, expectedVersion: "expectedVersion" in request.payload ? request.payload.expectedVersion : undefined })
+        if (request.command === "PUBLISH") return { success: true, data: { id: "route-1", version: 3, status: "PLANNED" } }
+        return sent.filter((entry) => entry.command === "CREATE_DRAFT").length === 1
+          ? appliedResponse("route-1", 1)
+          : appliedResponse("route-1", 2)
+      }, { now: () => 10_000 })
+
+      expect(response.data).toMatchObject({ id: "route-1", version: 2 })
+      expect(sent).toEqual([
+        { command: "CREATE_DRAFT", expectedVersion: undefined },
+        { command: "CREATE_DRAFT", expectedVersion: undefined },
+        { command: "PUBLISH", expectedVersion: 2 },
+      ])
+    })
+
+    it("does not publish a save that was only a draft", async () => {
+      await expect(submitRouteCommand(createDraft, offline, { now: () => 0, random: () => 0 }))
+        .rejects.toMatchObject({ code: "MOBILE_ROUTE_COMMAND_QUEUED" })
+      const sent: string[] = []
+      await flushRouteCommandJournal(async (request) => {
+        sent.push(request.command)
+        return appliedResponse("route-1", 1)
+      }, { now: () => 10_000 })
+      expect(sent).toEqual(["CREATE_DRAFT"])
+    })
   })
 })

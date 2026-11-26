@@ -100,18 +100,22 @@ export default function RouteSelfPlanningWorkspace({
   const targetSource = useMemo<PlanningWorkspaceTargetSource>(() => ({ loadTargets, clinicDoctors: true }), [loadTargets])
 
   const writeSource = useMemo<PlanningWorkspaceWriteSource>(() => ({
-    saveDraft: async ({ date, routeId, expectedVersion, points }) => {
+    saveDraft: async ({ date, routeId, expectedVersion, points, publishWhenSent }) => {
       // The self planner never transports an agent ID. The backend derives
       // actor/tenant/route scope from the mobile JWT and durable receipt.
+      // A save that cannot reach the server now still publishes once it does.
+      const thenPublish = publishWhenSent ? { thenPublish: true as const } : {}
       const response = routeId
         ? await submitRouteCommand({
             command: "UPDATE_DRAFT",
             routeId,
             payload: { expectedVersion: expectedVersion!, points },
+            ...thenPublish,
           }, (request) => api.executeRouteCommand(request))
         : await submitRouteCommand({
             command: "CREATE_DRAFT",
             payload: { date, points },
+            ...thenPublish,
           }, (request) => api.executeRouteCommand(request))
       return { routeId: response.data.id, version: response.data.version }
     },

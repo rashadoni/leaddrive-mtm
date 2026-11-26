@@ -146,6 +146,9 @@ export type PlanningWorkspaceTargetSource = {
  * the durable self-command journal; legacy manager code remains in its own
  * unreachable adapter instead of leaking direct writes into the APK graph.
  */
+/** The durable journal kept the save; it is sent when the network is back. */
+const ROUTE_COMMAND_QUEUED = "MOBILE_ROUTE_COMMAND_QUEUED"
+
 export type PlanningWorkspaceWriteSource = {
   saveDraft: (input: {
     agentId: string
@@ -153,6 +156,8 @@ export type PlanningWorkspaceWriteSource = {
     routeId?: string
     expectedVersion?: number
     points: Array<{ customerId: string; contactId?: string | null; plannedTime?: string | null }>
+    /** The save is meant to be published: a transport that queues it publishes it when sent. */
+    publishWhenSent?: boolean
   }) => Promise<{ routeId: string; version: number }>
   publishDraft: (input: { routeId: string; expectedVersion: number }) => Promise<void>
 }
@@ -1024,12 +1029,15 @@ export default function PlanningWorkspaceCore({
             date: write.date,
             ...(write.existingRouteId ? { routeId: write.existingRouteId, expectedVersion: write.expectedVersion! } : {}),
             points: write.points,
+            publishWhenSent: operationMode === "publish" && write.points.length > 0,
           })
           if (!saved.routeId || !Number.isInteger(saved.version) || saved.version < 1) throw planningError("ROUTE_VERSION_MISSING")
           savedWrites.push({ routeId: saved.routeId, version: saved.version, write })
         } catch (error: any) {
           draftFailures.push({ error, write })
-          retryDates.add(write.date)
+          // A queued save is saved: it leaves the phone when the network is
+          // back. Keeping the day «unsaved» made agents save it again.
+          if (error?.code !== ROUTE_COMMAND_QUEUED) retryDates.add(write.date)
         }
       }
 
@@ -1058,7 +1066,13 @@ export default function PlanningWorkspaceCore({
       if (!isCurrent()) return
       const savedCount = savedWrites.length
       const conflictCodes = new Set(["ROUTE_CONFLICT", "ROUTE_VERSION_CONFLICT", "ROUTE_DUPLICATE"])
-      if (draftFailures.length > 0) {
+      if (draftFailures.length > 0 && draftFailures.every(({ error }) => error?.code === ROUTE_COMMAND_QUEUED)) {
+        if (selfPlanning) setBasket([])
+        setSaveMessage({
+          tone: "warning",
+          text: t(operationMode === "publish" ? "managerShell.planQueuedPublish" : "managerShell.planQueuedDraft"),
+        })
+      } else if (draftFailures.length > 0) {
         const conflict = draftFailures.some(({ error }) => conflictCodes.has(error?.code))
         setSaveMessage({
           tone: savedCount > 0 || conflict ? "warning" : "danger",
