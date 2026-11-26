@@ -174,6 +174,8 @@ describe("a doctor of two clinics in the agent's planner", () => {
       agentId: "agent-1",
       date: TOMORROW,
       points: [{ customerId: "clinic-b", contactId: "two", plannedTime: null }],
+      // The agent may publish: a save that cannot reach the server publishes once it does.
+      publishWhenSent: true,
     })
   })
 

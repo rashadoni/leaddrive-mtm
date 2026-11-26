@@ -196,6 +196,8 @@ describe("the agent picks the day after the clients", () => {
       agentId: "agent-1",
       date: TOMORROW,
       points: [{ customerId: "clinic-a", contactId: "a", plannedTime: null }],
+      // The agent may publish: a save that cannot reach the server publishes once it does.
+      publishWhenSent: true,
     })
     expect(publishDraft).toHaveBeenCalledWith({ routeId: "route-new", expectedVersion: 1 })
     expect(onClose).toHaveBeenCalledTimes(1)
@@ -268,6 +270,8 @@ describe("«Planı dəyiş» names its day and leads to another one", () => {
       agentId: "agent-1",
       date: TOMORROW,
       points: [{ customerId: "clinic-a", contactId: "a", plannedTime: null }],
+      // The agent may publish: a save that cannot reach the server publishes once it does.
+      publishWhenSent: true,
     })
     expect(updatePublished).not.toHaveBeenCalled()
   })
